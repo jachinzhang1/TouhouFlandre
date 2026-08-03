@@ -1,6 +1,7 @@
 [
   {
     "id": "reimu_hakurei",
+    "avatarUrl": "/characters/0001-博丽灵梦.png",
     "names": {
       "zhHans": "博丽灵梦",
       "zhHant": "博麗靈夢",
@@ -10,12 +11,7 @@
       "aliases": ["灵梦", "红白", "博丽巫女"]
     },
     "firstAppearance": {
-      "workId": "th01_hrtp",
-      "workTitle": "东方灵异传",
-      "workType": "game",
-      "releaseYear": 1996,
-      "mainlineIndex": 1,
-      "era": "pc98"
+      "workId": "th01_hrtp"
     },
     "species": ["人类"],
     "abilityDisplay": "在空中飞翔程度的能力",
@@ -32,6 +28,7 @@
   },
   {
     "id": "marisa_kirisame",
+    "avatarUrl": "/characters/0002-雾雨魔理沙.png",
     "names": {
       "zhHans": "雾雨魔理沙",
       "zhHant": "霧雨魔理沙",
@@ -41,12 +38,7 @@
       "aliases": ["魔理沙", "黑白", "普通的魔法使"]
     },
     "firstAppearance": {
-      "workId": "th02_soew",
-      "workTitle": "东方封魔录",
-      "workType": "game",
-      "releaseYear": 1997,
-      "mainlineIndex": 2,
-      "era": "pc98"
+      "workId": "th02_soew"
     },
     "species": ["人类"],
     "abilityDisplay": "使用魔法程度的能力",
@@ -63,6 +55,7 @@
   },
   {
     "id": "rumia",
+    "avatarUrl": "/characters/0601-露米娅.png",
     "names": {
       "zhHans": "露米娅",
       "zhHant": "露米婭",
@@ -72,12 +65,7 @@
       "aliases": ["十进制", "宵暗的妖怪"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["妖怪"],
     "abilityDisplay": "操纵黑暗程度的能力",
@@ -94,6 +82,7 @@
   },
   {
     "id": "cirno",
+    "avatarUrl": "/characters/0603-琪露诺.png",
     "names": {
       "zhHans": "琪露诺",
       "zhHant": "琪露諾",
@@ -103,12 +92,7 @@
       "aliases": ["⑨", "冰之妖精"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["妖精"],
     "abilityDisplay": "操纵冷气程度的能力",
@@ -125,6 +109,7 @@
   },
   {
     "id": "hong_meiling",
+    "avatarUrl": "/characters/0604-红美铃.png",
     "names": {
       "zhHans": "红美铃",
       "zhHant": "紅美鈴",
@@ -134,12 +119,7 @@
       "aliases": ["美铃", "门番", "中国"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["妖怪"],
     "abilityDisplay": "使用气程度的能力",
@@ -156,6 +136,7 @@
   },
   {
     "id": "patchouli_knowledge",
+    "avatarUrl": "/characters/0606-帕秋莉.png",
     "names": {
       "zhHans": "帕秋莉·诺蕾姬",
       "zhHant": "帕秋莉·諾蕾姬",
@@ -165,12 +146,7 @@
       "aliases": ["帕秋莉", "姆Q", "不动的大图书馆"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["魔法使"],
     "abilityDisplay": "操纵火水木金土日月程度的能力",
@@ -187,6 +163,7 @@
   },
   {
     "id": "sakuya_izayoi",
+    "avatarUrl": "/characters/0607-十六夜咲夜.png",
     "names": {
       "zhHans": "十六夜咲夜",
       "zhHant": "十六夜咲夜",
@@ -196,12 +173,7 @@
       "aliases": ["咲夜", "女仆长", "PAD长"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["人类"],
     "abilityDisplay": "操纵时间程度的能力",
@@ -218,6 +190,7 @@
   },
   {
     "id": "remilia_scarlet",
+    "avatarUrl": "/characters/0608-蕾米莉亚.png",
     "names": {
       "zhHans": "蕾米莉亚·斯卡蕾特",
       "zhHant": "蕾米莉亞·斯卡蕾特",
@@ -227,12 +200,7 @@
       "aliases": ["蕾米", "大小姐", "蕾咪"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["吸血鬼"],
     "abilityDisplay": "操纵命运程度的能力",
@@ -249,6 +217,7 @@
   },
   {
     "id": "flandre_scarlet",
+    "avatarUrl": "/characters/0609-芙兰朵露.png",
     "names": {
       "zhHans": "芙兰朵露·斯卡蕾特",
       "zhHant": "芙蘭朵露·斯卡蕾特",
@@ -258,12 +227,7 @@
       "aliases": ["芙兰", "二小姐", "妹样"]
     },
     "firstAppearance": {
-      "workId": "th06_eosd",
-      "workTitle": "东方红魔乡",
-      "workType": "game",
-      "releaseYear": 2002,
-      "mainlineIndex": 6,
-      "era": "windows"
+      "workId": "th06_eosd"
     },
     "species": ["吸血鬼"],
     "abilityDisplay": "破坏一切事物程度的能力",
@@ -280,6 +244,7 @@
   },
   {
     "id": "youmu_konpaku",
+    "avatarUrl": "/characters/0708-魂魄妖梦.png",
     "names": {
       "zhHans": "魂魄妖梦",
       "zhHant": "魂魄妖夢",
@@ -289,12 +254,7 @@
       "aliases": ["妖梦", "半人半灵", "庭师"]
     },
     "firstAppearance": {
-      "workId": "th07_pcb",
-      "workTitle": "东方妖妖梦",
-      "workType": "game",
-      "releaseYear": 2003,
-      "mainlineIndex": 7,
-      "era": "windows"
+      "workId": "th07_pcb"
     },
     "species": ["半人半灵"],
     "abilityDisplay": "使用剑术程度的能力",
@@ -311,6 +271,7 @@
   },
   {
     "id": "yuyuko_saigyouji",
+    "avatarUrl": "/characters/0709-西行寺幽幽子.png",
     "names": {
       "zhHans": "西行寺幽幽子",
       "zhHant": "西行寺幽幽子",
@@ -320,12 +281,7 @@
       "aliases": ["幽幽子", "亡灵公主"]
     },
     "firstAppearance": {
-      "workId": "th07_pcb",
-      "workTitle": "东方妖妖梦",
-      "workType": "game",
-      "releaseYear": 2003,
-      "mainlineIndex": 7,
-      "era": "windows"
+      "workId": "th07_pcb"
     },
     "species": ["亡灵"],
     "abilityDisplay": "操纵死亡程度的能力",
@@ -342,6 +298,7 @@
   },
   {
     "id": "yukari_yakumo",
+    "avatarUrl": "/characters/0711-八云紫.png",
     "names": {
       "zhHans": "八云紫",
       "zhHant": "八雲紫",
@@ -351,12 +308,7 @@
       "aliases": ["紫", "妖怪贤者", "境界妖怪"]
     },
     "firstAppearance": {
-      "workId": "th07_pcb",
-      "workTitle": "东方妖妖梦",
-      "workType": "game",
-      "releaseYear": 2003,
-      "mainlineIndex": 7,
-      "era": "windows"
+      "workId": "th07_pcb"
     },
     "species": ["妖怪"],
     "abilityDisplay": "操纵境界程度的能力",
@@ -373,6 +325,7 @@
   },
   {
     "id": "reisen_udongein_inaba",
+    "avatarUrl": "/characters/0806-铃仙.png",
     "names": {
       "zhHans": "铃仙·优昙华院·因幡",
       "zhHant": "鈴仙·優曇華院·因幡",
@@ -382,12 +335,7 @@
       "aliases": ["铃仙", "兔子", "狂气之瞳"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["月兔"],
     "abilityDisplay": "操纵狂气程度的能力",
@@ -404,6 +352,7 @@
   },
   {
     "id": "kaguya_houraisan",
+    "avatarUrl": "/characters/0808-蓬莱山辉夜.png",
     "names": {
       "zhHans": "蓬莱山辉夜",
       "zhHant": "蓬萊山輝夜",
@@ -413,12 +362,7 @@
       "aliases": ["辉夜", "公主"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["月人"],
     "abilityDisplay": "操纵永远与须臾程度的能力",
@@ -435,6 +379,7 @@
   },
   {
     "id": "sanae_kochiya",
+    "avatarUrl": "/characters/1006-东风谷早苗.png",
     "names": {
       "zhHans": "东风谷早苗",
       "zhHant": "東風谷早苗",
@@ -444,12 +389,7 @@
       "aliases": ["早苗", "风祝", "现人神"]
     },
     "firstAppearance": {
-      "workId": "th10_mof",
-      "workTitle": "东方风神录",
-      "workType": "game",
-      "releaseYear": 2007,
-      "mainlineIndex": 10,
-      "era": "windows"
+      "workId": "th10_mof"
     },
     "species": ["人类", "现人神"],
     "abilityDisplay": "引发奇迹程度的能力",
@@ -466,6 +406,7 @@
   },
   {
     "id": "koishi_komeiji",
+    "avatarUrl": "/characters/1108-古明地恋.png",
     "names": {
       "zhHans": "古明地恋",
       "zhHant": "古明地戀",
@@ -475,12 +416,7 @@
       "aliases": ["恋恋", "小五萝妹", "无意识"]
     },
     "firstAppearance": {
-      "workId": "th11_sa",
-      "workTitle": "东方地灵殿",
-      "workType": "game",
-      "releaseYear": 2008,
-      "mainlineIndex": 11,
-      "era": "windows"
+      "workId": "th11_sa"
     },
     "species": ["觉"],
     "abilityDisplay": "操纵无意识程度的能力",
@@ -497,6 +433,7 @@
   },
   {
     "id": "alice_margatroid",
+    "avatarUrl": "/characters/0703-爱丽丝.png",
     "names": {
       "zhHans": "爱丽丝·玛格特洛依德",
       "zhHant": "愛麗絲·瑪格特洛依德",
@@ -506,12 +443,7 @@
       "aliases": ["爱丽丝", "七色的人偶使", "人偶使"]
     },
     "firstAppearance": {
-      "workId": "th05_ms",
-      "workTitle": "东方怪绮谈",
-      "workType": "game",
-      "releaseYear": 1998,
-      "mainlineIndex": 5,
-      "era": "pc98"
+      "workId": "th05_ms"
     },
     "species": ["魔法使"],
     "abilityDisplay": "操纵人偶程度的能力",
@@ -528,6 +460,7 @@
   },
   {
     "id": "chen",
+    "avatarUrl": "/characters/0702-橙.png",
     "names": {
       "zhHans": "橙",
       "zhHant": "橙",
@@ -537,12 +470,7 @@
       "aliases": ["式神猫", "猫又"]
     },
     "firstAppearance": {
-      "workId": "th07_pcb",
-      "workTitle": "东方妖妖梦",
-      "workType": "game",
-      "releaseYear": 2003,
-      "mainlineIndex": 7,
-      "era": "windows"
+      "workId": "th07_pcb"
     },
     "species": ["妖怪", "猫又"],
     "abilityDisplay": "使用妖术程度的能力",
@@ -559,6 +487,7 @@
   },
   {
     "id": "ran_yakumo",
+    "avatarUrl": "/characters/0710-八云蓝.png",
     "names": {
       "zhHans": "八云蓝",
       "zhHant": "八雲藍",
@@ -568,12 +497,7 @@
       "aliases": ["蓝", "九尾狐", "紫的式神"]
     },
     "firstAppearance": {
-      "workId": "th07_pcb",
-      "workTitle": "东方妖妖梦",
-      "workType": "game",
-      "releaseYear": 2003,
-      "mainlineIndex": 7,
-      "era": "windows"
+      "workId": "th07_pcb"
     },
     "species": ["妖怪", "九尾狐"],
     "abilityDisplay": "使用式神程度的能力",
@@ -590,6 +514,7 @@
   },
   {
     "id": "wriggle_nightbug",
+    "avatarUrl": "/characters/0801-莉格露.png",
     "names": {
       "zhHans": "莉格露·奈特巴格",
       "zhHant": "莉格露·奈特巴格",
@@ -599,12 +524,7 @@
       "aliases": ["莉格露", "虫子", "萤火虫妖怪"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["妖怪", "虫"],
     "abilityDisplay": "操纵虫子程度的能力",
@@ -621,6 +541,7 @@
   },
   {
     "id": "mystia_lorelei",
+    "avatarUrl": "/characters/0802-米斯蒂娅.png",
     "names": {
       "zhHans": "米斯蒂娅·萝蕾拉",
       "zhHant": "米斯蒂婭·蘿蕾拉",
@@ -630,12 +551,7 @@
       "aliases": ["米斯蒂娅", "夜雀", "烧八目鳗"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["妖怪", "夜雀"],
     "abilityDisplay": "用歌声迷惑人程度的能力",
@@ -652,6 +568,7 @@
   },
   {
     "id": "keine_kamishirasawa",
+    "avatarUrl": "/characters/0803-上白泽慧音.png",
     "names": {
       "zhHans": "上白泽慧音",
       "zhHant": "上白澤慧音",
@@ -661,12 +578,7 @@
       "aliases": ["慧音", "老师", "白泽"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["半兽", "白泽"],
     "abilityDisplay": "吞噬历史程度的能力",
@@ -683,6 +595,7 @@
   },
   {
     "id": "mokou_fujiwara",
+    "avatarUrl": "/characters/0809-藤原妹红.png",
     "names": {
       "zhHans": "藤原妹红",
       "zhHant": "藤原妹紅",
@@ -692,12 +605,7 @@
       "aliases": ["妹红", "不死人", "蓬莱人"]
     },
     "firstAppearance": {
-      "workId": "th08_in",
-      "workTitle": "东方永夜抄",
-      "workType": "game",
-      "releaseYear": 2004,
-      "mainlineIndex": 8,
-      "era": "windows"
+      "workId": "th08_in"
     },
     "species": ["人类", "蓬莱人"],
     "abilityDisplay": "不老不死程度的能力",
@@ -714,6 +622,7 @@
   },
   {
     "id": "aya_shameimaru",
+    "avatarUrl": "/characters/0010-射命丸文.png",
     "names": {
       "zhHans": "射命丸文",
       "zhHant": "射命丸文",
@@ -723,12 +632,7 @@
       "aliases": ["文文", "鸦天狗", "记者"]
     },
     "firstAppearance": {
-      "workId": "th09_pofv",
-      "workTitle": "东方花映塚",
-      "workType": "game",
-      "releaseYear": 2005,
-      "mainlineIndex": 9,
-      "era": "windows"
+      "workId": "th09_pofv"
     },
     "species": ["天狗", "妖怪"],
     "abilityDisplay": "操纵风程度的能力",
@@ -745,6 +649,7 @@
   },
   {
     "id": "nitori_kawashiro",
+    "avatarUrl": "/characters/1004-河城荷取.png",
     "names": {
       "zhHans": "河城荷取",
       "zhHant": "河城荷取",
@@ -754,12 +659,7 @@
       "aliases": ["荷取", "河童", "工程师"]
     },
     "firstAppearance": {
-      "workId": "th10_mof",
-      "workTitle": "东方风神录",
-      "workType": "game",
-      "releaseYear": 2007,
-      "mainlineIndex": 10,
-      "era": "windows"
+      "workId": "th10_mof"
     },
     "species": ["河童", "妖怪"],
     "abilityDisplay": "操纵水程度的能力",
@@ -776,6 +676,7 @@
   },
   {
     "id": "kanako_yasaka",
+    "avatarUrl": "/characters/1007-八坂神奈子.png",
     "names": {
       "zhHans": "八坂神奈子",
       "zhHant": "八坂神奈子",
@@ -785,12 +686,7 @@
       "aliases": ["神奈子", "山坂与湖水的化身"]
     },
     "firstAppearance": {
-      "workId": "th10_mof",
-      "workTitle": "东方风神录",
-      "workType": "game",
-      "releaseYear": 2007,
-      "mainlineIndex": 10,
-      "era": "windows"
+      "workId": "th10_mof"
     },
     "species": ["神明"],
     "abilityDisplay": "创造乾程度的能力",
@@ -807,6 +703,7 @@
   },
   {
     "id": "suwako_moriya",
+    "avatarUrl": "/characters/1008-洩矢诹访子.png",
     "names": {
       "zhHans": "洩矢诹访子",
       "zhHant": "洩矢諏訪子",
@@ -816,12 +713,7 @@
       "aliases": ["诹访子", "青蛙子", "土著神"]
     },
     "firstAppearance": {
-      "workId": "th10_mof",
-      "workTitle": "东方风神录",
-      "workType": "game",
-      "releaseYear": 2007,
-      "mainlineIndex": 10,
-      "era": "windows"
+      "workId": "th10_mof"
     },
     "species": ["神明"],
     "abilityDisplay": "创造坤程度的能力",
@@ -838,6 +730,7 @@
   },
   {
     "id": "satori_komeiji",
+    "avatarUrl": "/characters/1105-古明地觉.png",
     "names": {
       "zhHans": "古明地觉",
       "zhHant": "古明地覺",
@@ -847,12 +740,7 @@
       "aliases": ["觉", "小五萝", "读心妖怪"]
     },
     "firstAppearance": {
-      "workId": "th11_sa",
-      "workTitle": "东方地灵殿",
-      "workType": "game",
-      "releaseYear": 2008,
-      "mainlineIndex": 11,
-      "era": "windows"
+      "workId": "th11_sa"
     },
     "species": ["觉"],
     "abilityDisplay": "读取心灵程度的能力",
@@ -869,6 +757,7 @@
   },
   {
     "id": "utsuho_reiuji",
+    "avatarUrl": "/characters/1107-灵乌路空.png",
     "names": {
       "zhHans": "灵乌路空",
       "zhHant": "靈烏路空",
@@ -878,12 +767,7 @@
       "aliases": ["阿空", "空", "核融合鸦"]
     },
     "firstAppearance": {
-      "workId": "th11_sa",
-      "workTitle": "东方地灵殿",
-      "workType": "game",
-      "releaseYear": 2008,
-      "mainlineIndex": 11,
-      "era": "windows"
+      "workId": "th11_sa"
     },
     "species": ["地狱鸦", "妖怪"],
     "abilityDisplay": "操纵核融合程度的能力",

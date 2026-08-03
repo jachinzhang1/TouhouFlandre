@@ -6,6 +6,7 @@ import {
   ChevronsDown,
   ChevronsUp,
   Copy,
+  ExternalLink,
   Flower2,
   Home,
   Loader2,
@@ -22,27 +23,28 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import {
   createShareText,
-  GUESS_FIELDS,
+  GAME_CONTENT_DEFINITIONS,
   HAIR_COLOR_LABELS,
+  isSinglePlayerGameMode,
 } from "@touhoufriberg/shared";
 import type {
-  CharacterSearchResult,
   FieldFeedback,
-  GameMode,
   PublicGameSession,
+  SinglePlayerGameMode,
 } from "@touhoufriberg/shared";
+import { requestJson } from "./api";
+import { BilibiliIcon } from "./components/BilibiliIcon";
+import { CharacterAvatar } from "./components/CharacterAvatar";
+import { modeConfig, SINGLE_PLAYER_MODE_IDS } from "./gameModes";
+import { useCatalogSummary } from "./hooks/useCatalogSummary";
+import { useCharacterSearch } from "./hooks/useCharacterSearch";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const DAILY_STORAGE_KEY = "touhoufriberg:daily-session";
-const RANDOM_STORAGE_KEY = "touhoufriberg:random-session";
+const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
+const GAME_SEARCH_RESULT_LIMIT = 12;
 
 type PuzzleResponse = {
   puzzleLabel: string;
   session: PublicGameSession;
-};
-
-type SearchResponse = {
-  results: CharacterSearchResult[];
 };
 
 type GuessResponse = {
@@ -53,52 +55,29 @@ type Route =
   | { name: "home" }
   | { name: "search" }
   | { name: "singleLobby" }
-  | { name: "singleGame"; mode: Exclude<GameMode, "multiplayer"> }
+  | { name: "singleGame"; mode: SinglePlayerGameMode }
   | { name: "multiLobby" }
   | { name: "multiRoom" }
   | { name: "stats" }
   | { name: "leaderboard" }
   | { name: "announcement" }
+  | { name: "links" }
   | { name: "admin" }
   | { name: "notFound" };
-
-const modeConfig: Record<
-  Exclude<GameMode, "multiplayer">,
-  { label: string; icon: typeof CalendarDays; storageKey: string }
-> = {
-  daily: { label: "每日题", icon: CalendarDays, storageKey: DAILY_STORAGE_KEY },
-  random: { label: "随机题", icon: Shuffle, storageKey: RANDOM_STORAGE_KEY },
-};
-
-const requestJson = async <T,>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload.error ?? "请求失败。");
-  }
-  return payload as T;
-};
 
 const parseRoute = (pathname: string): Route => {
   if (pathname === "/") return { name: "home" };
   if (pathname === "/search") return { name: "search" };
   if (pathname === "/single") return { name: "singleLobby" };
-  if (pathname === "/single/daily")
-    return { name: "singleGame", mode: "daily" };
-  if (pathname === "/single/random")
-    return { name: "singleGame", mode: "random" };
+  const singleMode = pathname.match(/^\/single\/([^/]+)$/)?.[1];
+  if (singleMode && isSinglePlayerGameMode(singleMode))
+    return { name: "singleGame", mode: singleMode };
   if (pathname === "/multi") return { name: "multiLobby" };
   if (pathname === "/multi/room") return { name: "multiRoom" };
   if (pathname === "/stats") return { name: "stats" };
   if (pathname === "/leaderboard") return { name: "leaderboard" };
   if (pathname === "/announcement") return { name: "announcement" };
+  if (pathname === "/links") return { name: "links" };
   if (pathname === "/admin") return { name: "admin" };
   return { name: "notFound" };
 };
@@ -113,6 +92,7 @@ const routePath = (route: Route) => {
   if (route.name === "stats") return "/stats";
   if (route.name === "leaderboard") return "/leaderboard";
   if (route.name === "announcement") return "/announcement";
+  if (route.name === "links") return "/links";
   if (route.name === "admin") return "/admin";
   return "/404";
 };
@@ -186,7 +166,7 @@ function SiteFrame({
           </span>
           <span className="brand-copy">
             <strong>TouhouFlandre</strong>
-            <small>幻想乡角色推理</small>
+            <small>东方芙一把</small>
           </span>
         </button>
         <div className="nav-links">
@@ -216,11 +196,8 @@ function SiteFrame({
       <main className="page-content">{children}</main>
       <footer className="site-footer">
         <span>TouhouFlandre · 非官方东方 Project 同人项目</span>
-        <button
-          type="button"
-          onClick={() => navigate({ name: "announcement" })}
-        >
-          站点公告
+        <button type="button" onClick={() => navigate({ name: "links" })}>
+          友链与鸣谢
         </button>
       </footer>
     </div>
@@ -228,6 +205,11 @@ function SiteFrame({
 }
 
 function HomePage({ navigate }: { navigate: (route: Route) => void }) {
+  const catalog = useCatalogSummary();
+  const characterSummary = catalog?.contents.find(
+    (entry) => entry.contentType === "character",
+  );
+
   return (
     <>
       <section className="hero-page">
@@ -259,13 +241,16 @@ function HomePage({ navigate }: { navigate: (route: Route) => void }) {
           </div>
           <div className="hero-meta" aria-label="今日题信息">
             <span>
-              <strong>8</strong> 次机会
+              <strong>{CHARACTER_GAME.maxGuesses}</strong> 次机会
             </span>
             <span>
-              <strong>6</strong> 项线索
+              <strong>
+                {CHARACTER_GAME.fields.filter((field) => field.visible).length}
+              </strong>{" "}
+              项线索
             </span>
             <span>
-              <strong>30</strong> 名角色
+              <strong>{characterSummary?.guessable ?? "-"}</strong> 名角色
             </span>
           </div>
         </div>
@@ -334,40 +319,32 @@ function SingleLobby({ navigate }: { navigate: (route: Route) => void }) {
         <p>选择一局，沿着角色留下的线索抵达答案。</p>
       </div>
       <div className="mode-choice-grid">
-        <button
-          className="mode-choice"
-          type="button"
-          onClick={() => navigate({ name: "singleGame", mode: "daily" })}
-        >
-          <span className="mode-choice-top">
-            <span className="mode-icon">
-              <CalendarDays size={22} aria-hidden="true" />
-            </span>
-            <small className="mode-state live">今日可玩</small>
-          </span>
-          <span className="mode-title">
-            <strong>每日题</strong>
-            <ArrowRight size={20} aria-hidden="true" />
-          </span>
-          <span>所有玩家每天面对同一个隐藏角色。</span>
-        </button>
-        <button
-          className="mode-choice"
-          type="button"
-          onClick={() => navigate({ name: "singleGame", mode: "random" })}
-        >
-          <span className="mode-choice-top">
-            <span className="mode-icon">
-              <Shuffle size={22} aria-hidden="true" />
-            </span>
-            <small className="mode-state">不限次数</small>
-          </span>
-          <span className="mode-title">
-            <strong>随机题</strong>
-            <ArrowRight size={20} aria-hidden="true" />
-          </span>
-          <span>从 demo 题库中随机抽取角色。</span>
-        </button>
+        {SINGLE_PLAYER_MODE_IDS.map((modeId) => {
+          const config = modeConfig[modeId];
+          const Icon = config.icon;
+          return (
+            <button
+              className="mode-choice"
+              key={modeId}
+              type="button"
+              onClick={() => navigate({ name: "singleGame", mode: modeId })}
+            >
+              <span className="mode-choice-top">
+                <span className="mode-icon">
+                  <Icon size={22} aria-hidden="true" />
+                </span>
+                <small className={`mode-state ${config.stateClass}`.trim()}>
+                  {config.stateLabel}
+                </small>
+              </span>
+              <span className="mode-title">
+                <strong>{config.label}</strong>
+                <ArrowRight size={20} aria-hidden="true" />
+              </span>
+              <span>{config.description}</span>
+            </button>
+          );
+        })}
         <button
           className="mode-choice"
           type="button"
@@ -409,34 +386,10 @@ function SingleLobby({ navigate }: { navigate: (route: Route) => void }) {
 
 function SearchPage() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CharacterSearchResult[]>([]);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      try {
-        const payload = await requestJson<SearchResponse>(
-          `/api/characters/search?q=${encodeURIComponent(query)}`,
-          {
-            signal: controller.signal,
-          },
-        );
-        setResults(payload.results);
-      } catch (error) {
-        if (!controller.signal.aborted)
-          setMessage(error instanceof Error ? error.message : "搜索失败。");
-      }
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [query]);
+  const { error, loading, results, total } = useCharacterSearch(query);
 
   return (
-    <section className="page-panel">
+    <section className="page-panel" aria-busy={loading}>
       <div className="page-heading">
         <p className="kicker">ARCHIVE</p>
         <h1>角色搜索</h1>
@@ -450,17 +403,19 @@ function SearchPage() {
           placeholder="例如 灵梦 / Reimu / 红白"
         />
       </label>
-      {message ? <p className="message error">{message}</p> : null}
+      {error ? <p className="message error">{error}</p> : null}
       <div className="result-summary">
-        <strong>{results.length}</strong>
+        <strong>{total}</strong>
         <span>条结果</span>
       </div>
       <div className="candidate-list page-candidates">
         {results.map((result) => (
           <article className="candidate static" key={result.id}>
-            <span className="avatar" aria-hidden="true">
-              {result.initials}
-            </span>
+            <CharacterAvatar
+              avatarUrl={result.avatarUrl}
+              name={result.name}
+              initials={result.initials}
+            />
             <span className="candidate-copy">
               <strong>{result.name}</strong>
               <small>
@@ -503,19 +458,52 @@ function PlaceholderPage({
   );
 }
 
+function LinksPage() {
+  return (
+    <section className="page-panel links-page">
+      <div className="page-heading">
+        <p className="kicker">LINKS & CREDITS</p>
+        <h1>友链与鸣谢</h1>
+        <p>感谢为本项目提供创作资源与帮助的作者。</p>
+      </div>
+      <div className="friend-links">
+        <a
+          className="friend-link"
+          href="https://space.bilibili.com/152309938"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span className="friend-link-icon" aria-hidden="true">
+            <BilibiliIcon size={28} />
+          </span>
+          <span className="friend-link-copy">
+            <small>像素肖像素材</small>
+            <strong>苗库里 - 哔哩哔哩个人空间</strong>
+            <span>东方全角色像素肖像素材包原作者</span>
+          </span>
+          <ExternalLink size={18} aria-hidden="true" />
+        </a>
+      </div>
+      <p className="asset-note">
+        本项目中的角色像素头像经作者开放用于个人及非商业用途，包括同人作品、免费游戏与网站。素材版权归原作者所有。
+      </p>
+    </section>
+  );
+}
+
 function SingleGame({
   mode,
   navigate,
 }: {
-  mode: Exclude<GameMode, "multiplayer">;
+  mode: SinglePlayerGameMode;
   navigate: (route: Route) => void;
 }) {
   const [session, setSession] = useState<PublicGameSession | null>(null);
-  const [puzzleLabel, setPuzzleLabel] = useState(
-    mode === "daily" ? "今日每日题" : "随机题",
-  );
+  const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CharacterSearchResult[]>([]);
+  const { error: searchError, results } = useCharacterSearch(query, {
+    limit: GAME_SEARCH_RESULT_LIMIT,
+  });
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -535,13 +523,13 @@ function SingleGame({
     results.length > 0;
 
   const persistSession = (
-    nextMode: Exclude<GameMode, "multiplayer">,
+    nextMode: SinglePlayerGameMode,
     nextSession: PublicGameSession,
   ) => {
     localStorage.setItem(modeConfig[nextMode].storageKey, nextSession.id);
   };
 
-  const loadSession = async (nextMode: Exclude<GameMode, "multiplayer">) => {
+  const loadSession = async (nextMode: SinglePlayerGameMode) => {
     setLoading(true);
     setMessage("");
     setShareMessage("");
@@ -556,27 +544,20 @@ function SingleGame({
             `/api/sessions/${storedSessionId}`,
           );
           setSession(restored.session);
-          setPuzzleLabel(nextMode === "daily" ? "今日每日题" : "随机题");
+          setPuzzleLabel(modeConfig[nextMode].puzzleLabel);
           return;
         } catch {
           localStorage.removeItem(modeConfig[nextMode].storageKey);
         }
       }
 
-      if (nextMode === "daily") {
-        const created = await requestJson<PuzzleResponse>("/api/puzzles/daily");
-        setSession(created.session);
-        setPuzzleLabel(created.puzzleLabel);
-        persistSession(nextMode, created.session);
-      } else {
-        const created = await requestJson<PuzzleResponse>(
-          "/api/puzzles/random",
-          { method: "POST" },
-        );
-        setSession(created.session);
-        setPuzzleLabel(created.puzzleLabel);
-        persistSession(nextMode, created.session);
-      }
+      const created = await requestJson<PuzzleResponse>(
+        modeConfig[nextMode].createPath,
+        { method: "POST" },
+      );
+      setSession(created.session);
+      setPuzzleLabel(created.puzzleLabel);
+      persistSession(nextMode, created.session);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "加载游戏失败。");
     } finally {
@@ -593,32 +574,8 @@ function SingleGame({
     void loadSession(mode);
   }, [mode]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      try {
-        const payload = await requestJson<SearchResponse>(
-          `/api/characters/search?q=${encodeURIComponent(query)}`,
-          {
-            signal: controller.signal,
-          },
-        );
-        setResults(payload.results);
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setMessage(error instanceof Error ? error.message : "搜索失败。");
-        }
-      }
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [query]);
-
-  const submitGuess = async (characterId = selectedId) => {
-    if (!session || !characterId || submitting || isFinished) return;
+  const submitGuess = async (guessId = selectedId) => {
+    if (!session || !guessId || submitting || isFinished) return;
     setSubmitting(true);
     setMessage("");
     setShareMessage("");
@@ -628,7 +585,7 @@ function SingleGame({
         `/api/sessions/${session.id}/guess`,
         {
           method: "POST",
-          body: JSON.stringify({ characterId }),
+          body: JSON.stringify({ guessId }),
         },
       );
       setSession(payload.session);
@@ -658,14 +615,12 @@ function SingleGame({
               <Flower2 size={22} aria-hidden="true" />
             </span>
             <div>
-              <p className="kicker">
-                {mode === "daily" ? "DAILY PUZZLE" : "RANDOM PUZZLE"}
-              </p>
+              <p className="kicker">{modeConfig[mode].eyebrow}</p>
               <h1>东方角色芙一把</h1>
             </div>
           </div>
           <div className="mode-tabs" role="tablist" aria-label="游戏模式">
-            {(["daily", "random"] as const).map((modeKey) => {
+            {SINGLE_PLAYER_MODE_IDS.map((modeKey) => {
               const Icon = modeConfig[modeKey].icon;
               return (
                 <button
@@ -693,7 +648,7 @@ function SingleGame({
             <span className="progress-track" aria-hidden="true">
               <span
                 style={{
-                  width: `${((session?.guesses.length ?? 0) / (session?.maxGuesses ?? 8)) * 100}%`,
+                  width: `${((session?.guesses.length ?? 0) / (session?.maxGuesses ?? CHARACTER_GAME.maxGuesses)) * 100}%`,
                 }}
               />
             </span>
@@ -701,7 +656,8 @@ function SingleGame({
           <div>
             <span className="label">进度</span>
             <strong>
-              {session?.guesses.length ?? 0}/{session?.maxGuesses ?? 8}
+              {session?.guesses.length ?? 0}/
+              {session?.maxGuesses ?? CHARACTER_GAME.maxGuesses}
             </strong>
           </div>
           <div>
@@ -778,6 +734,12 @@ function SingleGame({
                         setSearchFocused(false);
                       }}
                     >
+                      <CharacterAvatar
+                        avatarUrl={result.avatarUrl}
+                        name={result.name}
+                        initials={result.initials}
+                        className="suggestion-avatar"
+                      />
                       <span className="suggestion-main">
                         <strong>{result.name}</strong>
                         <small>{result.subtitle}</small>
@@ -809,7 +771,9 @@ function SingleGame({
           </button>
         </form>
 
-        {message ? <p className="message error">{message}</p> : null}
+        {message || searchError ? (
+          <p className="message error">{message || searchError}</p>
+        ) : null}
         {shareMessage ? (
           <p className="message success">{shareMessage}</p>
         ) : null}
@@ -819,7 +783,7 @@ function SingleGame({
             <thead>
               <tr>
                 <th>角色</th>
-                {GUESS_FIELDS.map((field) => (
+                {CHARACTER_GAME.fields.map((field) => (
                   <th key={field.key}>{field.label}</th>
                 ))}
               </tr>
@@ -831,7 +795,17 @@ function SingleGame({
                     key={guess.guessId}
                     style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
                   >
-                    <th scope="row">{guess.guessName}</th>
+                    <th scope="row">
+                      <span className="guess-character">
+                        <CharacterAvatar
+                          avatarUrl={guess.guessAvatarUrl}
+                          name={guess.guessName}
+                          initials={guess.guessName.slice(0, 2)}
+                          className="guess-avatar"
+                        />
+                        <span>{guess.guessName}</span>
+                      </span>
+                    </th>
                     {guess.feedback.map((feedback) => (
                       <td key={feedback.field}>
                         <span
@@ -849,7 +823,10 @@ function SingleGame({
                 ))
               ) : (
                 <tr>
-                  <td className="empty-state" colSpan={GUESS_FIELDS.length + 1}>
+                  <td
+                    className="empty-state"
+                    colSpan={CHARACTER_GAME.fields.length + 1}
+                  >
                     {loading ? (
                       <span>
                         <Loader2
@@ -884,9 +861,14 @@ function SingleGame({
               {session.guesses.length} 次猜测。
             </p>
           </div>
-          <div className="answer-token">
-            {session.answer?.names.zhHans.slice(0, 2)}
-          </div>
+          {session.answer ? (
+            <CharacterAvatar
+              avatarUrl={session.answer.avatarUrl}
+              name={session.answer.names.zhHans}
+              initials={session.answer.names.zhHans.slice(0, 2)}
+              className="answer-token"
+            />
+          ) : null}
           <div className="result-actions">
             <button
               className="secondary-button"
@@ -966,6 +948,7 @@ export function App() {
         text="当前暂无公告。"
       />
     );
+  else if (route.name === "links") content = <LinksPage />;
   else if (route.name === "admin")
     content = (
       <PlaceholderPage

@@ -9,6 +9,7 @@ datasource db {
 
 model Character {
   id                  String   @id
+  avatarUrl           String
   namesJson           String
   firstAppearanceJson String
   speciesJson         String
@@ -44,6 +45,7 @@ model Work {
 model GameSession {
   id          String    @id @default(cuid())
   mode        String
+  contentType String    @default("character")
   answerId    String
   status      String
   maxGuesses  Int

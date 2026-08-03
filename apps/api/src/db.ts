@@ -1,5 +1,15 @@
 import { PrismaClient } from "@prisma/client";
-import type { Character, DifficultyTier, FirstAppearance, GameMode, GuessResult, HairColor, LocalizedNames, SessionStatus } from "@touhoufriberg/shared";
+import type {
+  Character,
+  DifficultyTier,
+  FirstAppearance,
+  GameContentType,
+  GameMode,
+  GuessResult,
+  HairColor,
+  LocalizedNames,
+  SessionStatus,
+} from "@touhoufriberg/shared";
 
 export const prisma = new PrismaClient();
 
@@ -9,6 +19,7 @@ const parseJson = <T>(value: string): T => JSON.parse(value) as T;
 
 export const toCharacter = (row: NonNullable<CharacterRow>): Character => ({
   id: row.id,
+  avatarUrl: row.avatarUrl,
   names: parseJson<LocalizedNames>(row.namesJson),
   firstAppearance: parseJson<FirstAppearance>(row.firstAppearanceJson),
   species: parseJson<string[]>(row.speciesJson),
@@ -22,14 +33,16 @@ export const toCharacter = (row: NonNullable<CharacterRow>): Character => ({
   enabledAsAnswer: row.enabledAsAnswer,
   enabledAsGuess: row.enabledAsGuess,
   difficultyTier: row.difficultyTier as DifficultyTier,
-  sourceRefs: parseJson<string[]>(row.sourceRefsJson)
+  sourceRefs: parseJson<string[]>(row.sourceRefsJson),
 });
 
-export const parseGuesses = (value: string): GuessResult[] => parseJson<GuessResult[]>(value);
+export const parseGuesses = (value: string): GuessResult[] =>
+  parseJson<GuessResult[]>(value);
 
 export const toPublicSession = async (session: {
   id: string;
   mode: string;
+  contentType: string;
   answerId: string;
   status: string;
   maxGuesses: number;
@@ -38,16 +51,19 @@ export const toPublicSession = async (session: {
   endedAt: Date | null;
 }) => {
   const answerRow =
-    session.status === "playing" ? null : await prisma.character.findUnique({ where: { id: session.answerId } });
+    session.status === "playing"
+      ? null
+      : await prisma.character.findUnique({ where: { id: session.answerId } });
 
   return {
     id: session.id,
     mode: session.mode as GameMode,
+    contentType: session.contentType as GameContentType,
     status: session.status as SessionStatus,
     maxGuesses: session.maxGuesses,
     guesses: parseGuesses(session.guessesJson),
     startedAt: session.startedAt.toISOString(),
     endedAt: session.endedAt?.toISOString(),
-    answer: answerRow ? toCharacter(answerRow) : undefined
+    answer: answerRow ? toCharacter(answerRow) : undefined,
   };
 };

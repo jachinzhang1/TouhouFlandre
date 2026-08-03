@@ -27,8 +27,9 @@
 | 字段              | 必填 | 用途                         |
 | ----------------- | ---- | ---------------------------- |
 | `id`              | 是   | 稳定的机器可读标识           |
+| `avatarUrl`       | 是   | 仓库内角色肖像的公开访问路径 |
 | `names`           | 是   | 多语言名称、罗马字与别名     |
-| `firstAppearance` | 是   | 初登场作品、媒介、年份与时代 |
+| `firstAppearance` | 是   | 初登场作品 ID                |
 | `species`         | 是   | 标准化种族集合               |
 | `abilityDisplay`  | 是   | 面向玩家展示的能力说明       |
 | `abilityTags`     | 是   | 可检索、可比较的能力标签     |
@@ -55,14 +56,7 @@
 
 ## 初登场
 
-初登场应指角色首次在官方作品中被明确呈现的作品。字段包括：
-
-- `workId`：指向作品表中的稳定 ID；
-- `workTitle`：用于反馈展示的中文标题；
-- `workType`：`game`、`print`、`music_cd` 或 `other`；
-- `releaseYear`：该作品首次正式发布年份；
-- `mainlineIndex`：存在官方或社区通用整数编号时填写；
-- `era`：`pc98`、`windows` 或 `other`。
+初登场应指角色首次在官方作品中被明确呈现的作品。角色记录只保存 `workId`，指向作品表中的稳定 ID。用于反馈和搜索的作品标题、媒介、发布年份、正作编号与时代由 `packages/data` 在加载时从作品记录自动派生，避免同一作品资料在多个角色中重复维护。
 
 客串、背景出现、后续设定补充等边界情况应在变更说明中给出来源与判定理由。
 
@@ -118,19 +112,25 @@
 2. 运行 `pnpm --filter @touhoufriberg/data validate`；
 3. 确认新增角色引用的 `workId` 已存在；
 4. 确认 ID、名称和别名没有重复；
-5. 在提交说明中列出新增或修改字段的来源；
-6. 对会影响反馈结果的变更补充或更新比较逻辑测试。
+5. 确认 `avatarUrl` 指向 `apps/web/public/characters` 中存在的文件；
+6. 运行 `pnpm seed`，确认搜索页自动出现对应角色及头像；
+7. 在提交说明中列出新增或修改字段的来源；
+8. 对会影响反馈结果的变更补充或更新比较逻辑测试。
 
 纯排版或译名修正也应保持 JSON 格式稳定，避免夹带无关字段重排。
 
 ## 图像与版权
 
-仓库默认不分发角色立绘、游戏截图或未经许可的同人图片。若未来引入图像资源，必须同时记录作者、原始地址、许可证与必要的署名方式，并确认许可证允许仓库分发和网站使用。
+角色像素头像来自苗库里的“东方全角色像素肖像素材包”，作者开放个人及非商业用途使用，包括同人作品、免费游戏和网站。素材存放在 `apps/web/public/characters`，详细授权与署名信息见 [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md)。这些图片不适用仓库的 MIT 许可证，版权仍归原作者所有。
 
-TouhouFlandre 是非官方同人项目。使用名称和设定时应遵守[东方 Project 二次创作指南](https://touhou-project.news/guidelines/)，并在站点和发行物中保留非官方声明。
+每条角色记录通过 `avatarUrl` 关联头像。前端不维护角色 ID 到文件名的映射；搜索卡片、游戏建议、猜测历史和答案展示均使用 API 返回的头像地址。
+
+除上述已获授权素材外，仓库不分发原作提取图片、游戏截图或来源不明的同人图片。引入新图像资源时，必须同时记录作者、原始地址、许可证与必要的署名方式，并确认许可证允许仓库分发和网站使用。
+
+TouhouFlandre 是非官方同人项目。使用名称和设定时应遵守[东方 Project 二次创作指南](https://touhou-project.news/guideline/)，并在站点和发行物中保留非官方声明。
 
 ## 参考资料
 
 - [东方 Project 官方新闻站](https://touhou-project.news/)
-- [东方 Project 二次创作指南](https://touhou-project.news/guidelines/)
+- [东方 Project 二次创作指南](https://touhou-project.news/guideline/)
 - [Touhou Wiki 角色列表](https://en.touhouwiki.net/wiki/Characters)

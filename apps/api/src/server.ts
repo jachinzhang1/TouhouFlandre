@@ -4,12 +4,13 @@ import express from "express";
 import { z } from "zod";
 import {
   ApiError,
-  createDailySession,
-  createRandomSession,
+  createPuzzleSession,
+  getCatalogSummary,
   getPublicSession,
   searchCharacterRows,
   submitGuess,
 } from "./game";
+import { SINGLE_PLAYER_GAME_MODES } from "@touhoufriberg/shared";
 
 const app = express();
 const port = Number(process.env.API_PORT ?? 4000);
@@ -24,38 +25,42 @@ app.get("/api/health", (_req, res) => {
 app.get("/api/characters/search", async (req, res, next) => {
   try {
     const query = z.string().optional().parse(req.query.q);
-    res.json({ results: await searchCharacterRows(query ?? "") });
+    const limit = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .parse(req.query.limit);
+    const offset = z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .parse(req.query.offset);
+    res.json(await searchCharacterRows(query ?? "", { limit, offset }));
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/puzzles/daily", async (req, res, next) => {
+app.get("/api/catalog", async (_req, res, next) => {
   try {
-    const dateKey = z.string().optional().parse(req.query.date);
-    res.json({
-      puzzleLabel: dateKey ? `每日题 ${dateKey}` : "今日每日题",
-      session: await createDailySession(dateKey),
-    });
+    res.json(await getCatalogSummary());
   } catch (error) {
     next(error);
   }
 });
 
-app.post("/api/puzzles/daily/guess", async (req, res, next) => {
+app.post("/api/puzzles/:mode", async (req, res, next) => {
   try {
+    const params = z
+      .object({ mode: z.enum(SINGLE_PLAYER_GAME_MODES) })
+      .parse(req.params);
     const body = z
-      .object({ sessionId: z.string(), characterId: z.string() })
-      .parse(req.body);
-    res.json({ session: await submitGuess(body.sessionId, body.characterId) });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post("/api/puzzles/random", async (_req, res, next) => {
-  try {
-    res.json({ puzzleLabel: "随机题", session: await createRandomSession() });
+      .object({ dateKey: z.string().optional() })
+      .parse(req.body ?? {});
+    res.json(await createPuzzleSession(params.mode, body.dateKey));
   } catch (error) {
     next(error);
   }
@@ -64,9 +69,9 @@ app.post("/api/puzzles/random", async (_req, res, next) => {
 app.post("/api/sessions/:sessionId/guess", async (req, res, next) => {
   try {
     const params = z.object({ sessionId: z.string() }).parse(req.params);
-    const body = z.object({ characterId: z.string() }).parse(req.body);
+    const body = z.object({ guessId: z.string() }).parse(req.body);
     res.json({
-      session: await submitGuess(params.sessionId, body.characterId),
+      session: await submitGuess(params.sessionId, body.guessId),
     });
   } catch (error) {
     next(error);

@@ -1,4 +1,5 @@
 import type { GuessResult, PublicGameSession } from "./types";
+import { GAME_CONTENT_DEFINITIONS } from "./fields";
 
 const rowToShareLine = (guess: GuessResult) =>
   guess.feedback.map((field) => field.symbol).join(" ");
@@ -15,7 +16,10 @@ export const createShareText = (
   const lines = [
     `TouhouFlandre ${puzzleLabel}`,
     result,
-    "作品 年份 种族 阵营 地点 发色",
+    GAME_CONTENT_DEFINITIONS[session.contentType].fields
+      .filter((field) => field.visible)
+      .map((field) => field.label)
+      .join(" "),
     ...session.guesses.map(rowToShareLine),
     siteUrl,
   ];

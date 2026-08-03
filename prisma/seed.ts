@@ -20,7 +20,7 @@ async function main() {
         type: work.type,
         releaseYear: work.releaseYear,
         mainlineIndex: work.mainlineIndex,
-        era: work.era
+        era: work.era,
       },
       create: {
         id: work.id,
@@ -31,8 +31,8 @@ async function main() {
         type: work.type,
         releaseYear: work.releaseYear,
         mainlineIndex: work.mainlineIndex,
-        era: work.era
-      }
+        era: work.era,
+      },
     });
   }
 
@@ -40,6 +40,7 @@ async function main() {
     await prisma.character.upsert({
       where: { id: character.id },
       update: {
+        avatarUrl: character.avatarUrl,
         namesJson: stringify(character.names),
         firstAppearanceJson: stringify(character.firstAppearance),
         speciesJson: stringify(character.species),
@@ -53,10 +54,11 @@ async function main() {
         enabledAsAnswer: character.enabledAsAnswer,
         enabledAsGuess: character.enabledAsGuess,
         difficultyTier: character.difficultyTier,
-        sourceRefsJson: stringify(character.sourceRefs)
+        sourceRefsJson: stringify(character.sourceRefs),
       },
       create: {
         id: character.id,
+        avatarUrl: character.avatarUrl,
         namesJson: stringify(character.names),
         firstAppearanceJson: stringify(character.firstAppearance),
         speciesJson: stringify(character.species),
@@ -70,12 +72,14 @@ async function main() {
         enabledAsAnswer: character.enabledAsAnswer,
         enabledAsGuess: character.enabledAsGuess,
         difficultyTier: character.difficultyTier,
-        sourceRefsJson: stringify(character.sourceRefs)
-      }
+        sourceRefsJson: stringify(character.sourceRefs),
+      },
     });
   }
 
-  console.log(`Seeded ${demoWorks.length} works and ${demoCharacters.length} characters.`);
+  console.log(
+    `Seeded ${demoWorks.length} works and ${demoCharacters.length} characters.`,
+  );
 }
 
 main()

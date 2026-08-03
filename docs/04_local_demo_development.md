@@ -59,8 +59,12 @@ pnpm dev
 
 ```text
 apps/web/src/
-  App.tsx           页面、路由与客户端交互
-  styles.css        全局视觉系统与响应式样式
+  App.tsx                    页面、路由与客户端交互
+  api.ts                     统一 API 客户端
+  gameModes.ts               单人模式的界面配置
+  components/                可复用头像与品牌图标
+  hooks/                     题库摘要与角色搜索数据 Hook
+  styles.css                 全局视觉系统与响应式样式
 apps/api/src/
   server.ts         HTTP 路由与错误处理
   game.ts           会话、搜索与猜测服务
@@ -69,6 +73,7 @@ packages/shared/src/
   compare.ts        字段比较规则
   daily.ts          每日题选择
   fields.ts         当前启用的反馈字段
+  modes.ts          可玩模式与内容类型定义
   search.ts         搜索归一化逻辑
   share.ts          无剧透分享文本
   types.ts          共享类型
@@ -78,7 +83,6 @@ packages/data/src/
   schema.ts
 prisma/
   schema.prisma
-  migrations/
   seed.ts
 ```
 
@@ -98,12 +102,14 @@ prisma/
 - 进行中的会话不得返回隐藏答案；
 - 可预期的业务错误使用 `ApiError`；
 - 新接口应保持 JSON 错误结构一致。
+- 新游戏模式通过共享模式定义和服务端答案选择器注册，避免新增平行路由。
 
 ### 共享逻辑
 
 - 比较、搜索、每日题和分享逻辑应保持无框架依赖；
 - 修改反馈规则时必须添加覆盖边界情况的测试；
 - 客户端与服务端共享的结构统一定义在 `packages/shared`。
+- 猜测内容的字段与次数从 `GAME_CONTENT_DEFINITIONS` 读取；新增内容类型时建立独立定义与比较器。
 
 ### 题库
 
@@ -113,10 +119,11 @@ prisma/
 
 修改 `prisma/schema.prisma` 后：
 
-1. 为可发布的结构变化创建迁移；
-2. 运行 `pnpm db:generate` 更新客户端；
-3. 在新的本地数据库上执行迁移和 seed；
-4. 验证旧会话无法恢复时客户端能清理本地会话 ID 并正常重建。
+1. 运行 `pnpm db:push` 同步本地开发数据库并更新 Prisma Client；
+2. 运行 `pnpm seed` 补齐题库字段；
+3. 对已有数据增加必填列时采用可空列、回填、收紧约束的无损步骤；
+4. 发布环境应为同一结构变化创建并审查正式 Prisma migration；
+5. 验证旧会话无法恢复时客户端能清理本地会话 ID 并正常重建。
 
 不要提交开发机生成的 SQLite 数据库。
 

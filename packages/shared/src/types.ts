@@ -16,10 +16,15 @@ export type HairColor =
 
 export type WorkType = "game" | "print" | "music_cd" | "other";
 export type DifficultyTier = "easy" | "normal" | "hard" | "lunatic";
-export type GameMode = "daily" | "random" | "multiplayer";
+export const SINGLE_PLAYER_GAME_MODES = ["daily", "random"] as const;
+export type SinglePlayerGameMode = (typeof SINGLE_PLAYER_GAME_MODES)[number];
+export type GameMode = SinglePlayerGameMode | "multiplayer";
+export const GAME_CONTENT_TYPES = ["character"] as const;
+export type GameContentType = (typeof GAME_CONTENT_TYPES)[number];
 export type SessionStatus = "playing" | "won" | "lost";
 
-export type FeedbackStatus = "exact" | "partial" | "miss" | "higher" | "lower" | "unknown";
+export type FeedbackStatus =
+  "exact" | "partial" | "miss" | "higher" | "lower" | "unknown";
 
 export type LocalizedNames = {
   zhHans: string;
@@ -41,6 +46,7 @@ export type FirstAppearance = {
 
 export type Character = {
   id: string;
+  avatarUrl: string;
   names: LocalizedNames;
   firstAppearance: FirstAppearance;
   species: string[];
@@ -99,6 +105,7 @@ export type FieldFeedback = {
 export type GuessResult = {
   guessId: string;
   guessName: string;
+  guessAvatarUrl?: string;
   isCorrect: boolean;
   feedback: FieldFeedback[];
 };
@@ -106,6 +113,7 @@ export type GuessResult = {
 export type PublicGameSession = {
   id: string;
   mode: GameMode;
+  contentType: GameContentType;
   status: SessionStatus;
   maxGuesses: number;
   guesses: GuessResult[];
@@ -119,5 +127,25 @@ export type CharacterSearchResult = {
   name: string;
   subtitle: string;
   initials: string;
+  avatarUrl: string;
   hairColors: HairColor[];
+};
+
+export type CharacterSearchResponse = {
+  results: CharacterSearchResult[];
+  total: number;
+};
+
+export type CatalogContentSummary = {
+  contentType: GameContentType;
+  label: string;
+  total: number;
+  guessable: number;
+  answerable: number;
+  maxGuesses: number;
+  visibleFieldCount: number;
+};
+
+export type CatalogSummary = {
+  contents: CatalogContentSummary[];
 };

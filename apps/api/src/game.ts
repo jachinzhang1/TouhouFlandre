@@ -1,13 +1,25 @@
-import { compareCharacter, getDailyAnswer, searchCharacters } from "@touhoufriberg/shared";
-import type { Character, GameMode, GuessResult, SessionStatus } from "@touhoufriberg/shared";
+import {
+  compareCharacter,
+  GAME_CONTENT_DEFINITIONS,
+  getDailyAnswer,
+  searchCharacters,
+  SINGLE_PLAYER_MODE_DEFINITIONS,
+} from "@touhoufriberg/shared";
+import type {
+  Character,
+  CharacterSearchOptions,
+  CatalogSummary,
+  GameContentType,
+  GuessResult,
+  SessionStatus,
+  SinglePlayerGameMode,
+} from "@touhoufriberg/shared";
 import { prisma, parseGuesses, toCharacter, toPublicSession } from "./db";
-
-const MAX_GUESSES = 8;
 
 export class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
   ) {
     super(message);
   }
@@ -29,47 +41,100 @@ const pickRandomAnswer = (characters: Character[]) => {
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-export const searchCharacterRows = async (query: string) => searchCharacters(await getCharacters(), query);
+export const searchCharacterRows = async (
+  query: string,
+  options?: CharacterSearchOptions,
+) => searchCharacters(await getCharacters(), query, options);
 
-export const createSession = async (mode: GameMode, answer: Character) => {
+export const getCatalogSummary = async (): Promise<CatalogSummary> => {
+  const [total, guessable, answerable] = await Promise.all([
+    prisma.character.count(),
+    prisma.character.count({ where: { enabledAsGuess: true } }),
+    prisma.character.count({ where: { enabledAsAnswer: true } }),
+  ]);
+  const definition = GAME_CONTENT_DEFINITIONS.character;
+
+  return {
+    contents: [
+      {
+        contentType: "character" as const,
+        label: definition.label,
+        total,
+        guessable,
+        answerable,
+        maxGuesses: definition.maxGuesses,
+        visibleFieldCount: definition.fields.filter((field) => field.visible)
+          .length,
+      },
+    ],
+  };
+};
+
+export const createSession = async (
+  mode: SinglePlayerGameMode,
+  contentType: GameContentType,
+  answer: Character,
+) => {
   const session = await prisma.gameSession.create({
     data: {
       mode,
+      contentType,
       answerId: answer.id,
       status: "playing",
-      maxGuesses: MAX_GUESSES
-    }
+      maxGuesses: GAME_CONTENT_DEFINITIONS[contentType].maxGuesses,
+    },
   });
 
   return toPublicSession(session);
 };
 
-export const createDailySession = async (dateKey?: string) => {
-  const answer = getDailyAnswer(await getCharacters(), dateKey);
-  return createSession("daily", answer);
+const modeAnswerSelectors: Record<
+  SinglePlayerGameMode,
+  (dateKey?: string) => Promise<Character>
+> = {
+  daily: async (dateKey) => getDailyAnswer(await getCharacters(), dateKey),
+  random: async () => pickRandomAnswer(await getCharacters()),
 };
 
-export const createRandomSession = async () => {
-  const answer = pickRandomAnswer(await getCharacters());
-  return createSession("random", answer);
+export const createPuzzleSession = async (
+  mode: SinglePlayerGameMode,
+  dateKey?: string,
+) => {
+  const definition = SINGLE_PLAYER_MODE_DEFINITIONS[mode];
+  const answer = await modeAnswerSelectors[mode](dateKey);
+  return {
+    puzzleLabel:
+      mode === "daily" && dateKey
+        ? `${definition.label} ${dateKey}`
+        : definition.puzzleLabel,
+    session: await createSession(mode, definition.contentType, answer),
+  };
 };
 
 export const getPublicSession = async (sessionId: string) => {
-  const session = await prisma.gameSession.findUnique({ where: { id: sessionId } });
+  const session = await prisma.gameSession.findUnique({
+    where: { id: sessionId },
+  });
   if (!session) throw new ApiError(404, "没有找到这一局游戏。");
   return toPublicSession(session);
 };
 
-export const submitGuess = async (sessionId: string, characterId: string) => {
-  const session = await prisma.gameSession.findUnique({ where: { id: sessionId } });
+export const submitGuess = async (sessionId: string, guessId: string) => {
+  const session = await prisma.gameSession.findUnique({
+    where: { id: sessionId },
+  });
   if (!session) throw new ApiError(404, "没有找到这一局游戏。");
   if (session.status !== "playing") throw new ApiError(409, "这一局已经结束。");
+  if (session.contentType !== "character") {
+    throw new ApiError(501, `暂不支持 ${session.contentType} 类型的猜测。`);
+  }
 
-  const guess = await getCharacterById(characterId);
-  if (!guess || !guess.enabledAsGuess) throw new ApiError(400, "请选择题库中的角色。");
+  const guess = await getCharacterById(guessId);
+  if (!guess || !guess.enabledAsGuess)
+    throw new ApiError(400, "请选择题库中的角色。");
 
   const guesses = parseGuesses(session.guessesJson);
-  if (guesses.some((entry) => entry.guessId === characterId)) {
+  if (guesses.some((entry) => entry.guessId === guessId)) {
     throw new ApiError(409, "这个角色已经猜过了。");
   }
 
@@ -78,15 +143,19 @@ export const submitGuess = async (sessionId: string, characterId: string) => {
 
   const result: GuessResult = compareCharacter(guess, answer);
   const nextGuesses = [...guesses, result];
-  const nextStatus: SessionStatus = result.isCorrect ? "won" : nextGuesses.length >= session.maxGuesses ? "lost" : "playing";
+  const nextStatus: SessionStatus = result.isCorrect
+    ? "won"
+    : nextGuesses.length >= session.maxGuesses
+      ? "lost"
+      : "playing";
 
   const updated = await prisma.gameSession.update({
     where: { id: sessionId },
     data: {
       guessesJson: JSON.stringify(nextGuesses),
       status: nextStatus,
-      endedAt: nextStatus === "playing" ? null : new Date()
-    }
+      endedAt: nextStatus === "playing" ? null : new Date(),
+    },
   });
 
   return toPublicSession(updated);
