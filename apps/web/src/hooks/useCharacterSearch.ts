@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
 import type {
+  CharacterSort,
   CharacterSearchResponse,
   CharacterSearchResult,
+  SortDirection,
 } from "@touhoufriberg/shared";
 import { requestJson } from "../api";
 
 export function useCharacterSearch(
   query: string,
-  options: { limit?: number; delay?: number } = {},
+  options: {
+    limit?: number;
+    offset?: number;
+    delay?: number;
+    sort?: CharacterSort;
+    direction?: SortDirection;
+  } = {},
 ) {
-  const { delay = 120, limit } = options;
+  const { delay = 120, direction, limit, offset, sort } = options;
   const [results, setResults] = useState<CharacterSearchResult[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
@@ -23,6 +31,9 @@ export function useCharacterSearch(
     const timeout = window.setTimeout(async () => {
       const params = new URLSearchParams({ q: query });
       if (limit !== undefined) params.set("limit", String(limit));
+      if (offset !== undefined) params.set("offset", String(offset));
+      if (sort !== undefined) params.set("sort", sort);
+      if (direction !== undefined) params.set("direction", direction);
 
       try {
         const payload = await requestJson<CharacterSearchResponse>(
@@ -44,7 +55,7 @@ export function useCharacterSearch(
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [delay, limit, query]);
+  }, [delay, direction, limit, offset, query, sort]);
 
   return { results, total, error, loading };
 }

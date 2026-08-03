@@ -4,7 +4,7 @@
 
 ## 环境要求
 
-- Node.js 20 或更高版本；
+- Node.js 20.19 或更高的 20.x 版本，或 Node.js 22.12 及更高版本；
 - pnpm 11；
 - Git；
 - 可写的本地目录用于 SQLite 数据库。
@@ -13,12 +13,16 @@
 
 ## 安装与启动
 
+先将 `.env.example` 复制为 `.env`，再执行：
+
 ```bash
 pnpm install
-pnpm db:push
+pnpm exec prisma migrate deploy
 pnpm seed
 pnpm dev
 ```
+
+`prisma migrate deploy` 适用于空数据库或由 Prisma migration 管理的数据库。若本地可丢弃数据库已有表但没有 migration 历史，并出现 `P3005`，可以将 `DATABASE_URL` 指向新的 SQLite 文件；仅需同步本地结构时也可以使用 `pnpm db:push`。
 
 默认服务地址：
 
@@ -26,32 +30,34 @@ pnpm dev
 - API：`http://localhost:4000`
 - 健康检查：`http://localhost:4000/api/health`
 
-`pnpm dev` 会同时启动 API 与 Web。开发服务器支持热更新，Vite 会把 `/api` 请求代理到本地 API。
+`pnpm dev` 会同时启动 API 与 Web，两个开发服务器都支持热更新。默认 `.env` 让 Web 直接请求 `http://localhost:4000`；将 `VITE_API_BASE_URL` 留空时，Web 改用同源 `/api`，由 Vite 代理到本地 API。
 
 ## 环境变量
 
 将 `.env.example` 复制为 `.env` 后按需修改：
 
-| 变量                | 作用                      | 默认值              |
-| ------------------- | ------------------------- | ------------------- |
-| `DATABASE_URL`      | Prisma 使用的 SQLite 地址 | 见 `.env.example`   |
-| `API_PORT`          | API 监听端口              | `4000`              |
-| `VITE_API_BASE_URL` | Web 请求的 API 根地址     | 空，使用同源 `/api` |
+| 变量                | 作用                                   | 默认值                  |
+| ------------------- | -------------------------------------- | ----------------------- |
+| `DATABASE_URL`      | Prisma 使用的 SQLite 地址              | 见 `.env.example`       |
+| `API_PORT`          | API 监听端口                           | `4000`                  |
+| `VITE_API_BASE_URL` | Web 请求的 API 根地址                  | `http://localhost:4000` |
+| `WEB_ORIGINS`       | 允许跨域访问 API 的 Web 来源，逗号分隔 | 本地 5173 地址          |
 
 不要提交 `.env`、本地数据库或包含凭据的日志文件。
 
 ## 常用命令
 
-| 命令                                         | 说明                         |
-| -------------------------------------------- | ---------------------------- |
-| `pnpm dev`                                   | 同时启动 Web 与 API          |
-| `pnpm build`                                 | 构建所有 workspace 包        |
-| `pnpm test`                                  | 运行共享游戏逻辑测试         |
-| `pnpm typecheck`                             | 对所有包执行 TypeScript 检查 |
-| `pnpm db:generate`                           | 生成 Prisma Client           |
-| `pnpm db:push`                               | 初始化或更新本地数据库结构   |
-| `pnpm seed`                                  | 导入演示题库                 |
-| `pnpm --filter @touhoufriberg/data validate` | 校验角色与作品数据           |
+| 命令                                         | 说明                             |
+| -------------------------------------------- | -------------------------------- |
+| `pnpm dev`                                   | 同时启动 Web 与 API              |
+| `pnpm build`                                 | 构建所有 workspace 包            |
+| `pnpm test`                                  | 运行共享、数据与 API 测试        |
+| `pnpm typecheck`                             | 对所有包执行 TypeScript 检查     |
+| `pnpm db:generate`                           | 生成 Prisma Client               |
+| `pnpm exec prisma migrate deploy`            | 应用仓库中已提交的数据库迁移     |
+| `pnpm db:push`                               | 同步本地 schema 试验，不生成迁移 |
+| `pnpm seed`                                  | 同步演示角色与作品题库           |
+| `pnpm --filter @touhoufriberg/data validate` | 校验角色与作品数据               |
 
 提交改动前至少运行 `pnpm typecheck` 和 `pnpm test`。涉及构建配置或前端资源时还应运行 `pnpm build`。
 
@@ -59,14 +65,16 @@ pnpm dev
 
 ```text
 apps/web/src/
-  App.tsx                    页面、路由与客户端交互
+  App.tsx                    站点框架与页面路由
   api.ts                     统一 API 客户端
   gameModes.ts               单人模式的界面配置
   components/                可复用头像与品牌图标
   hooks/                     题库摘要与角色搜索数据 Hook
+  pages/                     搜索页与游戏页等功能页面
   styles.css                 全局视觉系统与响应式样式
 apps/api/src/
-  server.ts         HTTP 路由与错误处理
+  app.ts            Express 路由、校验与错误处理
+  server.ts         环境加载与 HTTP 服务启动
   game.ts           会话、搜索与猜测服务
   db.ts             数据库访问
 packages/shared/src/
@@ -82,6 +90,7 @@ packages/data/src/
   works.demo.json
   schema.ts
 prisma/
+  migrations/
   schema.prisma
   seed.ts
 ```
@@ -92,7 +101,7 @@ prisma/
 
 - 业务状态以 API 返回的 `PublicGameSession` 为准；
 - 不在客户端选择答案或重新计算反馈；
-- 新增图标优先使用现有 `lucide-react` 依赖；
+- 界面图标优先使用现有 `lucide-react` 依赖；
 - 交互必须覆盖加载、空、错误、禁用和完成状态；
 - 样式修改需要检查窄屏布局和减少动态效果设置。
 
@@ -102,14 +111,14 @@ prisma/
 - 进行中的会话不得返回隐藏答案；
 - 可预期的业务错误使用 `ApiError`；
 - 新接口应保持 JSON 错误结构一致。
-- 新游戏模式通过共享模式定义和服务端答案选择器注册，避免新增平行路由。
+- 游戏模式通过共享模式定义和服务端答案选择器注册，避免建立平行路由。
 
 ### 共享逻辑
 
 - 比较、搜索、每日题和分享逻辑应保持无框架依赖；
 - 修改反馈规则时必须添加覆盖边界情况的测试；
 - 客户端与服务端共享的结构统一定义在 `packages/shared`。
-- 猜测内容的字段与次数从 `GAME_CONTENT_DEFINITIONS` 读取；新增内容类型时建立独立定义与比较器。
+- 猜测内容的字段与次数从 `GAME_CONTENT_DEFINITIONS` 读取；扩展内容类型时建立独立定义与比较器。
 
 ### 题库
 
@@ -119,13 +128,18 @@ prisma/
 
 修改 `prisma/schema.prisma` 后：
 
-1. 运行 `pnpm db:push` 同步本地开发数据库并更新 Prisma Client；
-2. 运行 `pnpm seed` 补齐题库字段；
-3. 对已有数据增加必填列时采用可空列、回填、收紧约束的无损步骤；
-4. 发布环境应为同一结构变化创建并审查正式 Prisma migration；
-5. 验证旧会话无法恢复时客户端能清理本地会话 ID 并正常重建。
+1. 运行 `pnpm exec prisma migrate dev --name <change-name>` 创建并应用开发迁移；
+2. 审查 `prisma/migrations` 中生成的 SQL，确认不会意外丢失现有数据；
+3. 运行 `pnpm seed` 同步题库并建立新的版本化快照；
+4. 对已有数据增加必填列时采用可空列、回填、收紧约束的无损步骤；
+5. 运行类型检查、测试和生产构建，并在空数据库上验证 `pnpm exec prisma migrate deploy`；
+6. 验证历史会话继续引用原题库快照，持久化记录能兼容读取。
+
+`prisma migrate dev` 要求开发数据库具有一致的 migration 历史。没有 migration 历史的可丢弃本地数据库应改用新的 SQLite 文件；需要保留的数据必须先备份并制定明确的 baseline 方案。
 
 不要提交开发机生成的 SQLite 数据库。
+
+正式部署使用 `pnpm exec prisma migrate deploy`，不以 `db:push` 代替 migration。seed 在单个事务中同步当前角色与作品、删除不再存在的当前记录，并保留已被历史会话引用的题库快照。
 
 ## 故障排查
 
@@ -139,12 +153,12 @@ prisma/
 
 ```bash
 pnpm db:generate
-pnpm db:push
+pnpm exec prisma migrate deploy
 ```
 
 ### 题库修改后页面仍显示旧数据
 
-重新运行 `pnpm seed`。如果已存在进行中的浏览器会话，清除对应站点的本地存储后重新创建题目。
+重新运行 `pnpm seed`。搜索页会使用最新题库；已开始的游戏会话则按设计继续使用创建时的冻结快照。要在随机题中使用新题库，请重新开始一局。当天的每日题映射不会因 seed 改变，需要等到下一个 `Asia/Shanghai` 自然日。
 
 ## 提交范围
 

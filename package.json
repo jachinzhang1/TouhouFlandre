@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"pnpm --filter @touhoufriberg/api dev\" \"pnpm --filter @touhoufriberg/web dev\"",
     "build": "pnpm -r build",
-    "test": "pnpm --filter @touhoufriberg/shared test",
+    "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -24,7 +24,8 @@
   "packageManager": "pnpm@11.9.0",
   "dependencies": {
     "@prisma/client": "^6.13.0",
-    "@touhoufriberg/data": "workspace:*"
+    "@touhoufriberg/data": "workspace:*",
+    "@touhoufriberg/shared": "workspace:*"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

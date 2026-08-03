@@ -23,3 +23,11 @@ Touhou Project characters and settings belong to their respective rights holders
 - **Location:** `apps/web/src/components/BilibiliIcon.tsx`
 
 The Bilibili logo path is sourced from Lobe Icons. Bilibili is a trademark of its respective owner; use of the logo only identifies the linked platform.
+
+## Hero Collage
+
+- **Location:** `apps/web/public/hero-touhou-collage.jpg`
+- **Provenance:** present in the repository's initial commit; original creator and source were not recorded
+- **License status:** unresolved; it is not covered by the repository's MIT license
+
+Do not redistribute this image outside the existing project checkout until its source and permission terms are confirmed, or replace it with an asset whose redistribution terms are documented.

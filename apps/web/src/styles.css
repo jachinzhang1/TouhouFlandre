@@ -33,6 +33,17 @@
   box-sizing: border-box;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -681,6 +692,48 @@ input:focus-visible {
   margin-top: 26px;
 }
 
+.catalog-querybar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.catalog-querybar .search-box.standalone {
+  flex: 1;
+  margin-top: 0;
+}
+
+.catalog-tools {
+  display: flex;
+  gap: 7px;
+}
+
+.catalog-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 104px;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: var(--paper);
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.catalog-tool:hover {
+  border-color: var(--jade);
+  background: var(--jade-soft);
+}
+
 .search-box:focus-within {
   color: var(--jade);
   border-color: var(--jade);
@@ -723,6 +776,69 @@ input:focus-visible {
 
 .page-candidates {
   margin-top: 10px;
+}
+
+.catalog-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  margin-top: 10px;
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-soft);
+  background: var(--paper-muted);
+}
+
+.catalog-table-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.catalog-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.catalog-table th,
+.catalog-table td {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.catalog-table thead th {
+  height: 44px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  background: #f5f7f6;
+  white-space: nowrap;
+}
+
+.catalog-table tbody th {
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.catalog-table tbody tr:last-child th,
+.catalog-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.catalog-table tbody tr:hover {
+  background: #f8faf9;
+}
+
+.catalog-avatar-column {
+  width: 62px;
+}
+
+.catalog-avatar {
+  width: 46px;
+  height: 46px;
 }
 
 .candidate {
@@ -1392,6 +1508,26 @@ input:focus-visible {
   .page-content {
     min-height: calc(100vh - 128px);
     padding: 12px 0 28px;
+  }
+
+  .search-page {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .catalog-querybar {
+    display: grid;
+    gap: 9px;
+  }
+
+  .catalog-tools {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .catalog-tool {
+    min-width: 0;
+    padding: 0 7px;
   }
 
   .hero-page {

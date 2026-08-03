@@ -8,6 +8,7 @@
   },
   "scripts": {
     "validate": "tsx src/validate.ts",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@types/node": "^24.2.1",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

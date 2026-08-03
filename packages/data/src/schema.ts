@@ -1,21 +1,17 @@
 import { z } from "zod";
+import {
+  DIFFICULTY_TIERS,
+  HAIR_COLORS,
+  WORK_TYPES,
+} from "@touhoufriberg/shared";
 
-export const hairColorSchema = z.enum([
-  "black",
-  "brown",
-  "blonde",
-  "white",
-  "silver",
-  "red",
-  "pink",
-  "purple",
-  "blue",
-  "green",
-  "orange",
-  "gray",
-  "multicolor",
-  "other",
-]);
+export const hairColorSchema = z.enum(HAIR_COLORS);
+const uniqueStringArray = z
+  .array(z.string().trim().min(1))
+  .min(1)
+  .refine((values) => new Set(values).size === values.length, {
+    message: "Values must be unique.",
+  });
 
 export const workSchema = z.object({
   id: z.string().min(1),
@@ -23,7 +19,7 @@ export const workSchema = z.object({
   titleJa: z.string().min(1),
   titleEn: z.string().optional(),
   shortName: z.string().min(1),
-  type: z.enum(["game", "print", "music_cd", "other"]),
+  type: z.enum(WORK_TYPES),
   releaseYear: z.number().int(),
   mainlineIndex: z.number().int().optional(),
   era: z.enum(["pc98", "windows", "other"]).optional(),
@@ -43,20 +39,33 @@ export const characterSourceSchema = z.object({
   firstAppearance: z.object({
     workId: z.string().min(1),
   }),
-  species: z.array(z.string().min(1)).min(1),
+  species: uniqueStringArray,
   abilityDisplay: z.string().min(1),
-  abilityTags: z.array(z.string().min(1)).min(1),
-  affiliations: z.array(z.string().min(1)).min(1),
-  locations: z.array(z.string().min(1)).min(1),
-  roles: z.array(z.string().min(1)).min(1),
+  abilityTags: uniqueStringArray,
+  affiliations: uniqueStringArray,
+  locations: uniqueStringArray,
+  roles: uniqueStringArray,
   hairColors: z.array(hairColorSchema).min(1),
   playable: z.boolean(),
   enabledAsAnswer: z.boolean(),
   enabledAsGuess: z.boolean(),
-  difficultyTier: z.enum(["easy", "normal", "hard", "lunatic"]),
+  difficultyTier: z.enum(DIFFICULTY_TIERS),
   sourceRefs: z.array(z.string().url()).min(1),
 });
 
 export const characterSchema = characterSourceSchema;
 export const charactersSchema = z.array(characterSourceSchema).min(1);
 export const worksSchema = z.array(workSchema).min(1);
+
+export const characterRuntimeSchema = characterSourceSchema.extend({
+  appearanceOrder: z.number().int().min(0).max(9999),
+  firstAppearance: z.object({
+    workId: z.string().min(1),
+    workTitle: z.string().min(1),
+    workType: z.enum(WORK_TYPES),
+    releaseYear: z.number().int(),
+    mainlineIndex: z.number().int().optional(),
+    era: z.enum(["pc98", "windows", "other"]).optional(),
+  }),
+});
+export const characterRuntimeListSchema = z.array(characterRuntimeSchema);

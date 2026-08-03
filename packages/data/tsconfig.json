@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "isolatedModules": false
   },
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

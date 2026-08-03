@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareCharacters,
   compareCharacter,
   createShareText,
   getDailyAnswer,
+  getPuzzleDateKey,
   searchCharacters,
 } from "../src";
 import type {
@@ -15,6 +17,7 @@ import type {
 const baseCharacter: Character = {
   id: "base",
   avatarUrl: "/characters/base.png",
+  appearanceOrder: 601,
   names: {
     zhHans: "测试角色",
     ja: "テスト",
@@ -99,6 +102,12 @@ describe("compareCharacter", () => {
 });
 
 describe("daily puzzle", () => {
+  it("uses the Asia/Shanghai calendar date", () => {
+    expect(getPuzzleDateKey(new Date("2026-08-02T16:30:00.000Z"))).toBe(
+      "2026-08-03",
+    );
+  });
+
   it("returns the same answer for the same date", () => {
     const characters = [
       makeCharacter({ id: "a" }),
@@ -106,6 +115,17 @@ describe("daily puzzle", () => {
     ];
     expect(getDailyAnswer(characters, "2026-08-03").id).toBe(
       getDailyAnswer(characters, "2026-08-03").id,
+    );
+  });
+
+  it("is independent of catalog ordering", () => {
+    const characters = [
+      makeCharacter({ id: "a" }),
+      makeCharacter({ id: "b", names: { zhHans: "角色 B" } }),
+      makeCharacter({ id: "c", names: { zhHans: "角色 C" } }),
+    ];
+    expect(getDailyAnswer(characters, "2026-08-03").id).toBe(
+      getDailyAnswer([...characters].reverse(), "2026-08-03").id,
     );
   });
 });
@@ -152,5 +172,36 @@ describe("character search", () => {
     expect(page.total).toBe(15);
     expect(page.results).toHaveLength(12);
     expect(page.results[0].avatarUrl).toBe("/characters/character-0.png");
+  });
+
+  it("sorts by appearance order in both directions", () => {
+    const unordered = [
+      makeCharacter({ id: "mystia", appearanceOrder: 802 }),
+      makeCharacter({ id: "wriggle", appearanceOrder: 801 }),
+    ];
+    expect(
+      searchCharacters(unordered, "", {
+        sort: "appearance",
+        direction: "asc",
+      }).results.map((result) => result.id),
+    ).toEqual(["wriggle", "mystia"]);
+    expect(
+      searchCharacters(unordered, "", {
+        sort: "appearance",
+        direction: "desc",
+      }).results.map((result) => result.id),
+    ).toEqual(["mystia", "wriggle"]);
+  });
+
+  it("uses romanized names for alphabetical sorting", () => {
+    const reimu = makeCharacter({
+      id: "reimu",
+      names: { en: "Reimu Hakurei" },
+    });
+    const marisa = makeCharacter({
+      id: "marisa",
+      names: { en: "Marisa Kirisame" },
+    });
+    expect(compareCharacters(reimu, marisa, "name", "asc")).toBeGreaterThan(0);
   });
 });
