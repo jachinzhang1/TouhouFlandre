@@ -1,0 +1,38 @@
+{
+  "name": "touhoufriberg",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local playable Touhou Project themed Friberg guessing game demo.",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"pnpm --filter @touhoufriberg/api dev\" \"pnpm --filter @touhoufriberg/web dev\"",
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @touhoufriberg/shared test",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "prisma generate",
+    "db:push": "tsx prisma/init-db.ts",
+    "seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "keywords": [
+    "touhou",
+    "friberg",
+    "wordle",
+    "game"
+  ],
+  "license": "MIT",
+  "packageManager": "pnpm@11.9.0",
+  "dependencies": {
+    "@prisma/client": "^6.13.0",
+    "@touhoufriberg/data": "workspace:*"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "eslint": "^9.33.0",
+    "prettier": "^3.6.2",
+    "prisma": "^6.13.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

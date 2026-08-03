@@ -1,0 +1,101 @@
+[
+  {
+    "id": "th01_hrtp",
+    "titleZh": "东方灵异传",
+    "titleJa": "東方靈異伝",
+    "titleEn": "Highly Responsive to Prayers",
+    "shortName": "TH01",
+    "type": "game",
+    "releaseYear": 1996,
+    "mainlineIndex": 1,
+    "era": "pc98"
+  },
+  {
+    "id": "th02_soew",
+    "titleZh": "东方封魔录",
+    "titleJa": "東方封魔録",
+    "titleEn": "Story of Eastern Wonderland",
+    "shortName": "TH02",
+    "type": "game",
+    "releaseYear": 1997,
+    "mainlineIndex": 2,
+    "era": "pc98"
+  },
+  {
+    "id": "th05_ms",
+    "titleZh": "东方怪绮谈",
+    "titleJa": "東方怪綺談",
+    "titleEn": "Mystic Square",
+    "shortName": "TH05",
+    "type": "game",
+    "releaseYear": 1998,
+    "mainlineIndex": 5,
+    "era": "pc98"
+  },
+  {
+    "id": "th06_eosd",
+    "titleZh": "东方红魔乡",
+    "titleJa": "東方紅魔郷",
+    "titleEn": "Embodiment of Scarlet Devil",
+    "shortName": "TH06",
+    "type": "game",
+    "releaseYear": 2002,
+    "mainlineIndex": 6,
+    "era": "windows"
+  },
+  {
+    "id": "th07_pcb",
+    "titleZh": "东方妖妖梦",
+    "titleJa": "東方妖々夢",
+    "titleEn": "Perfect Cherry Blossom",
+    "shortName": "TH07",
+    "type": "game",
+    "releaseYear": 2003,
+    "mainlineIndex": 7,
+    "era": "windows"
+  },
+  {
+    "id": "th08_in",
+    "titleZh": "东方永夜抄",
+    "titleJa": "東方永夜抄",
+    "titleEn": "Imperishable Night",
+    "shortName": "TH08",
+    "type": "game",
+    "releaseYear": 2004,
+    "mainlineIndex": 8,
+    "era": "windows"
+  },
+  {
+    "id": "th09_pofv",
+    "titleZh": "东方花映塚",
+    "titleJa": "東方花映塚",
+    "titleEn": "Phantasmagoria of Flower View",
+    "shortName": "TH09",
+    "type": "game",
+    "releaseYear": 2005,
+    "mainlineIndex": 9,
+    "era": "windows"
+  },
+  {
+    "id": "th10_mof",
+    "titleZh": "东方风神录",
+    "titleJa": "東方風神録",
+    "titleEn": "Mountain of Faith",
+    "shortName": "TH10",
+    "type": "game",
+    "releaseYear": 2007,
+    "mainlineIndex": 10,
+    "era": "windows"
+  },
+  {
+    "id": "th11_sa",
+    "titleZh": "东方地灵殿",
+    "titleJa": "東方地霊殿",
+    "titleEn": "Subterranean Animism",
+    "shortName": "TH11",
+    "type": "game",
+    "releaseYear": 2008,
+    "mainlineIndex": 11,
+    "era": "windows"
+  }
+]

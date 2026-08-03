@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Character {
+  id                  String   @id
+  namesJson           String
+  firstAppearanceJson String
+  speciesJson         String
+  abilityDisplay      String
+  abilityTagsJson     String
+  affiliationsJson    String
+  locationsJson       String
+  rolesJson           String
+  hairColorsJson      String
+  playable            Boolean
+  enabledAsAnswer     Boolean
+  enabledAsGuess      Boolean
+  difficultyTier      String
+  sourceRefsJson      String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Work {
+  id            String   @id
+  titleZh       String
+  titleJa       String
+  titleEn       String?
+  shortName     String
+  type          String
+  releaseYear   Int
+  mainlineIndex Int?
+  era           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model GameSession {
+  id          String    @id @default(cuid())
+  mode        String
+  answerId    String
+  status      String
+  maxGuesses  Int
+  guessesJson String    @default("[]")
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([mode])
+  @@index([status])
+}
