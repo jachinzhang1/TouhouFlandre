@@ -27,17 +27,17 @@ test.describe("搜索", () => {
     await page.goto("/search");
     const input = page.getByLabel("搜索角色");
     await input.fill("reimu");
-    await expect(page.locator(".candidate strong")).toHaveText(["博丽灵梦"]);
+    await expect(page.locator("article strong")).toHaveText(["博丽灵梦"]);
     await input.fill("");
     await input.pressSequentially("红白");
-    await expect(page.locator(".candidate strong")).toHaveText(["博丽灵梦"]);
+    await expect(page.locator("article strong")).toHaveText(["博丽灵梦"]);
   });
 
   test("列表视图切换同步 URL", async ({ page }) => {
     await page.goto("/search");
     await page.locator(".catalog-tool", { hasText: "图标" }).click();
     await expect(page).toHaveURL(/view=list/);
-    await expect(page.locator(".catalog-table tbody tr")).toHaveCount(29);
+    await expect(page.locator("table tbody tr")).toHaveCount(29);
   });
 });
 
