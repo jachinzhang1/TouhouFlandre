@@ -33,7 +33,7 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 - API：`http://localhost:4000`
 - 健康检查：`http://localhost:4000/api/health`、`/livez`、`/readyz`
 
-`pnpm dev` 会同时启动 API 与 Web。默认 `.env` 让 Web 直接请求 `http://localhost:4000`；将 `VITE_API_BASE_URL` 留空时，Web 改用同源 `/api`，由 Vite 代理到本地 API。
+`pnpm dev` 会同时启动 API 与 Web。Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API（4000）；设置 `NEXT_PUBLIC_API_BASE_URL` 可改为直连。
 
 ## 环境变量
 
@@ -42,7 +42,7 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 | 变量                | 作用                                 | 默认值                              |
 | ------------------- | ------------------------------------ | ----------------------------------- |
 | `API_PORT`          | API 监听端口                         | `4000`                              |
-| `VITE_API_BASE_URL` | Web 请求的 API 根地址                | `http://localhost:4000`             |
+| `NEXT_PUBLIC_API_BASE_URL` | Web 请求的 API 根地址（留空为同源代理） | 空（同源 `/api`） |
 | `WEB_ORIGINS`       | 允许跨域访问 API 的 Web 来源，逗号分隔 | 本地 5173 地址                      |
 | `POSTGRES_PASSWORD` | compose Postgres 密码                | `touhouflandre-dev`                 |
 | `DATABASE_URL_PG`   | Go 服务 Postgres 连接串              | 见 `.env.example`（127.0.0.1:5433） |
@@ -60,7 +60,9 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 | `task db:migrate`                            | 应用 goose 数据库迁移            |
 | `task db:seed`                               | 校验题库并写入 Postgres 快照     |
 | `pnpm build`                                 | 构建所有 workspace 包            |
-| `pnpm test`                                  | 运行共享与数据测试               |
+| `pnpm test`                                  | 运行共享、数据与 Web（Vitest）测试 |
+| `pnpm typecheck`                             | 对所有包执行 TypeScript 检查        |
+| `pnpm test:e2e`（在 `apps/web`）              | Playwright E2E（需 `task dev` 运行中） |
 | `pnpm typecheck`                             | 对所有包执行 TypeScript 检查     |
 | `go test ./...`（在 `apps/api`）              | Go 单元与集成测试（需 Postgres） |
 | `go vet ./...`（在 `apps/api`）               | Go 静态检查                      |
@@ -72,14 +74,23 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 ## 项目结构
 
 ```text
-apps/web/src/
-  App.tsx                    站点框架与页面路由
-  lib/api.ts                 统一 API 客户端（openapi-fetch）
-  gameModes.ts               单人模式的界面配置
-  components/                可复用头像与品牌图标
-  hooks/                     题库摘要与角色搜索数据 Hook
-  pages/                     搜索页与游戏页等功能页面
-  styles.css                 全局视觉系统与响应式样式
+apps/web/
+  src/
+    app/                      Next.js App Router 路由
+      page.tsx                首页
+      search/page.tsx         搜索页
+      single/page.tsx         游戏模式选择
+      single/[mode]/page.tsx  每日题/随机题（非法模式 404）
+      links/page.tsx          友链与鸣谢
+      not-found.tsx           404 页
+    components/               SiteNav、HomePage、SingleGamePage 等组件
+    domain/                   前端专用展示逻辑（joinValues 等）
+    generated/                openapi-typescript 生成类型
+    hooks/                    题库摘要与角色搜索数据 Hook
+    lib/api.ts                统一 API 客户端（openapi-fetch，同源 /api）
+    test/setup.ts             Vitest jsdom 环境
+  e2e/                        Playwright 测试
+  globals.css 相关: src/app/globals.css（Tailwind v4 + 组件样式）
 apps/api/
   cmd/server/                服务入口
   cmd/seed/                  题库 seed 入口
@@ -105,13 +116,15 @@ packages/data/src/
 
 ## 开发约定
 
-### 前端
+### 前端（Next.js App Router）
 
 - 业务状态以 API 返回的 `PublicGameSession` 为准；
 - 不在客户端选择答案或重新计算反馈；
-- 界面图标优先使用现有 `lucide-react` 依赖；
+- 路由由 App Router 文件系统管理，`/single/[mode]` 需校验非法模式并 `notFound()`；
+- API 默认同源 `/api`（`next.config.ts` rewrites 代理到 Go），直连用 `NEXT_PUBLIC_API_BASE_URL`；
+- 样式以 Tailwind utility 为主，设计 token 定义在 `globals.css` 的 `@theme`；复杂动画/伪元素类保留为组件类；
 - 交互必须覆盖加载、空、错误、禁用和完成状态；
-- 样式修改需要检查窄屏布局和减少动态效果设置。
+- 样式修改需要检查窄屏布局和减少动态效果设置（`prefers-reduced-motion`）。
 
 ### API（Go）
 
@@ -149,7 +162,7 @@ packages/data/src/
 
 ### Web 可以打开，但请求失败
 
-确认 API 正在监听 `4000` 端口，并访问健康检查地址（`/api/health`、`/readyz`）。若单独启动 Web，检查 Vite 代理或 `VITE_API_BASE_URL` 是否正确。`/readyz` 返回 503 表示 Postgres 不可达，先确认 `task db:up` 与 `DATABASE_URL_PG`。
+确认 API 正在监听 `4000` 端口，并访问健康检查地址（`/api/health`、`/readyz`）。若单独启动 Web，检查 Next rewrites 或 `NEXT_PUBLIC_API_BASE_URL` 是否正确。`/readyz` 返回 503 表示 Postgres 不可达，先确认 `task db:up` 与 `DATABASE_URL_PG`。
 
 ### Go 服务启动报数据库连接错误
 

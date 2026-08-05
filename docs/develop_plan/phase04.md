@@ -1,7 +1,7 @@
 # Phase 4 开发计划 — 前端迁移（Vite → Next.js App Router）
 
 > 依据：[`05_tech_stack_migration.md`](../05_tech_stack_migration.md) §4/§5/§10/§13 Phase 4；[`07_productization_plan.md`](../07_productization_plan.md) §9 验收场景；[`phase03.md`](./phase03.md) §10 回归基线
-> 状态：待评审（规划完成，未开始执行）
+> 状态：已完成（执行记录见 §10）
 > 影响范围：`apps/web-next`（新建）、`apps/web`（替换）、`Taskfile.yml`、root/`apps/web` `package.json`、`pnpm-workspace.yaml`、CI、文档
 > 原则：**并行目录迁移、页面级替换、行为平移优先；视觉回归用截图对比兜底；旧 Vite 实现保留在 git 历史（提交即回滚）**
 
@@ -200,3 +200,50 @@
 ## 10. 执行记录
 
 > 本阶段执行完成后，在此追加各任务执行情况、验证证据与偏差（格式参照 phase03 §10）。
+
+### 执行记录（2026-08-05）
+
+> 执行人：承接 Phase 3 的同一工作会话。提交：`93b2275`（骨架）→ `9076dc3`（搜索）→ `ff2d05e`（测试）→ `9b35740`/`3c084cc`（样式改造）→ `0320535`（替换）。
+
+### T1 — 骨架 ✅
+
+- Next.js **16.3.0**（最新 stable）+ Tailwind **4.3.3**，`pnpm create next-app` 脚手架后并入根 workspace（删除嵌套 lockfile/AGENTS.md 等样板）。
+- `next.config.ts`：`rewrites /api/:path* → http://127.0.0.1:4000`；`allowedDevOrigins: ["127.0.0.1", "localhost"]`（Next 16 默认拦截 dev 资源跨源，导致 hydrate 失败）。
+- `lib/api.ts` 平移：默认同源（rewrites），`NEXT_PUBLIC_API_BASE_URL` 可直连；`gen:api` 接入。
+- **偏差**：create-next-app 生成的 `pnpm-workspace.yaml`/lockfile 删除并入根；public 资源（characters/hero/favicon）从旧应用平移。
+
+### T2-T4 — 页面迁移 ✅
+
+- 路由映射按 05 §4.2 全部落地：首页、搜索、single 大厅、`single/[mode]`（`isSinglePlayerGameMode` 校验，非法模式 `notFound()`）、multi/stats/leaderboard/announcement/admin 占位页、links、not-found。
+- 手写 `parseRoute`/`routePath`/`useRouter` 移除；导航高亮改用 `usePathname`。
+- 会话延续：dev 固定 `-p 5173`（D2），localStorage key 不变，替换后同一 origin 直接恢复进行中会话（E2E 验证：刷新 1/8 保留、伪造旧 id 重建）。
+- 浏览器回归：首页 29 角色、每日题创建→猜测→赢局（答案取自 Postgres）→分享、随机题、搜索（关键词/别名/罗马字）、404 全部通过。
+
+### T5 — 测试与视觉回归 ✅
+
+- Vitest + RTL：`domain/format`、`HomePage`（catalog 成功/失败）、`SingleGamePage`（创建 + 赢局面板），6 用例。
+- Playwright：desktop + mobile 双项目 16 用例（导航/404/搜索/每日题全流程/模式切换/非法模式/列表视图 URL 同步）。
+- 视觉回归：新旧应用 6 路由 × 桌面/移动 pixelmatch 对比，最终全部 <1.6%（差异为字体抗锯齿级）。
+- 样式改造（D5 阶段二）：layout/首页/lobby/links/占位/搜索页 utility 化；`globals.css` 1758 → 1120 行。
+- **偏差（样式范围）**：游戏页（feedback/suggestion/guess-table 等状态与动画组件）与共享类（nav-link 伪元素、按钮、quick-link 子选择器、catalog-tool）**保留语义类**——05 §5「保留必要的 reset、字体、复杂动画」；utility 化完成度以"已删未引用页面类"衡量。
+- **偏差（preflight）**：阶段一与二均只 import `tailwindcss/theme.css` + `utilities.css`，**跳过 preflight**——preflight 的 `line-height: calc(1em + 0.5rem)` 会改变 Vite 基线行高（实测 8% 像素差异）。
+- **偏差（兼容依据）**：旧 Vite 应用经 Vite 处理后的 CSS 规则顺序与源文件不一致（`@media` 内 `.search-page`/`.search-box` 覆盖未生效），**以旧应用实际渲染为准**（如搜索页 mobile padding 18px、search-box margin-top 26px）。
+- **偏差（vitest）**：jsdom 30 + vitest 3.2 组合下全局 `localStorage` getter 返回 undefined，`src/test/setup.ts` 从 `globalThis.jsdom` 直接注入。
+
+### T6 — 替换 ✅
+
+- `git rm` 旧 `apps/web` 源（App.tsx/main.tsx/index.html/vite.config.ts/tsconfig/src/public）后 `git mv apps/web-next apps/web`（shell 移动 + `git add -A` 保留 rename 历史）。
+- package.json 名称改回 `@touhoufriberg/web`；Taskfile 删除 `dev:web-next`；workspace/lockfile 清理。
+- CI：go job 增加 Playwright E2E 步骤（起 Go + Postgres，`playwright install --with-deps chromium`，`pnpm test:e2e`）。
+- 全量验证：`task dev` 一键启动；`pnpm test`（21 用例）、`typecheck`、`build`（Next 16 静态+动态 12 路由）、`go test`、`go vet` 全绿；`NEXT_PUBLIC_API_BASE_URL` 替代 `VITE_API_BASE_URL`。
+
+### 偏差汇总
+
+| 偏差 | 原因 | 影响 |
+|---|---|---|
+| 跳过 Tailwind preflight | 保持 Vite 基线行高/默认样式 | globals.css 头部 import 方式 |
+| 游戏页/共享类保留语义类 | 复杂状态/动画（05 §5） | styles.css 保留约 600 行 |
+| 以旧应用实际渲染为视觉基线 | Vite CSS 排序与源文件不一致 | 搜索页 mobile 细节 |
+| vitest localStorage 注入 | jsdom 30 + vitest 组合问题 | test setup 文件 |
+| CI E2E 置于 go job | E2E 依赖 Go + Postgres | ci.yml |
+| `VITE_API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL` | 前端栈更换 | .env/.env.example/04 文档 |

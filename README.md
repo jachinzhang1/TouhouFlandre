@@ -4,7 +4,7 @@ TouhouFlandre（东方角色芙一把）is a playable Touhou Project themed char
 
 This repository is organized as a standard open-source web project with a pnpm workspace:
 
-- `apps/web`: Vite, React, and TypeScript frontend.
+- `apps/web`: Next.js 16 App Router, React, TypeScript, and Tailwind CSS v4 frontend.
 - `apps/api`: Go + Echo API server (OpenAPI-validated, Postgres-backed).
 - `packages/shared`: shared game types, field definitions, comparators, daily puzzle logic, and sharing utilities.
 - `packages/data`: validated Touhou character, portrait metadata, and work data.
@@ -31,8 +31,9 @@ The web app runs on `http://localhost:5173`.
 
 - `pnpm dev` / `task dev`: start the Go API and web app together.
 - `pnpm build`: build all workspace packages.
-- `pnpm test`: run shared and data tests (Go integration tests live in `apps/api`).
+- `pnpm test`: run shared, data, and web (Vitest + RTL) tests.
 - `pnpm typecheck`: type-check all workspace packages.
+- `pnpm test:e2e` (in `apps/web`): run Playwright E2E (needs `task dev` running).
 - `go test ./...` (in `apps/api`): run Go unit and integration tests (needs a reachable Postgres).
 - `task db:up` / `db:down`: start/stop the local Postgres container.
 - `task db:migrate`: apply goose migrations.

@@ -412,12 +412,13 @@ volumes:
 - 旧实现保留在 git 历史中，确认稳定后不再维护双后端。
 - 执行记录见 [`develop_plan/phase03.md`](./develop_plan/phase03.md) §10。
 
-### Phase 4 — 迁移前端
+### Phase 4 — 迁移前端（已完成，2026-08-05）
 
 - 在并行目录迁移 Next.js 路由和页面。
 - 按页面迁移 Tailwind CSS。
 - 建立 Vitest、React Testing Library 和 Playwright 测试。
 - 稳定后替换 Vite 应用。
+- 执行记录见 [`develop_plan/phase04.md`](./develop_plan/phase04.md) §10。
 
 ### Phase 5 — 清理仓库
 
