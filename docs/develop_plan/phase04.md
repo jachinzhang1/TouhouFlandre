@@ -234,7 +234,7 @@
 
 - `git rm` 旧 `apps/web` 源（App.tsx/main.tsx/index.html/vite.config.ts/tsconfig/src/public）后 `git mv apps/web-next apps/web`（shell 移动 + `git add -A` 保留 rename 历史）。
 - package.json 名称改回 `@touhoufriberg/web`；Taskfile 删除 `dev:web-next`；workspace/lockfile 清理。
-- CI：go job 增加 Playwright E2E 步骤（起 Go + Postgres，`playwright install --with-deps chromium`，`pnpm test:e2e`）。
+- CI：曾尝试在 go job 增加 Playwright E2E 步骤（起 Go + Postgres），随后**放弃 CI E2E**——E2E 仅本地运行（`task dev` + `pnpm test:e2e`），CI 保留 `pnpm test`（Vitest）与 Go 集成测试。
 - 全量验证：`task dev` 一键启动；`pnpm test`（21 用例）、`typecheck`、`build`（Next 16 静态+动态 12 路由）、`go test`、`go vet` 全绿；`NEXT_PUBLIC_API_BASE_URL` 替代 `VITE_API_BASE_URL`。
 
 ### 偏差汇总
@@ -245,5 +245,5 @@
 | 游戏页/共享类保留语义类 | 复杂状态/动画（05 §5） | styles.css 保留约 600 行 |
 | 以旧应用实际渲染为视觉基线 | Vite CSS 排序与源文件不一致 | 搜索页 mobile 细节 |
 | vitest localStorage 注入 | jsdom 30 + vitest 组合问题 | test setup 文件 |
-| CI E2E 置于 go job | E2E 依赖 Go + Postgres | ci.yml |
+| CI E2E 放弃（仅本地运行） | CI 成本与稳定性权衡 | ci.yml 无 Playwright 步骤 |
 | `VITE_API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL` | 前端栈更换 | .env/.env.example/04 文档 |

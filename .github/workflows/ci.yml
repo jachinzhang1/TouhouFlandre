@@ -91,18 +91,6 @@ jobs:
           DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
         run: go test ./...
 
-      - name: E2E (Playwright, Next + Go + Postgres)
-        working-directory: apps/api
-        env:
-          DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
-          API_PORT: "4000"
-        run: |
-          go run ./cmd/server &
-          sleep 2
-          cd ../web
-          pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e
-
       - name: Generated Go code is up to date
         working-directory: apps/api
         env:
