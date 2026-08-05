@@ -44,7 +44,7 @@
 | D2 | **端口固定 5173**：Next.js dev 用 `next dev -p 5173`，与 Vite 相同 | 保持 origin（`127.0.0.1:5173`）不变：localStorage 会话延续、`WEB_ORIGINS` CORS 白名单零改动 |
 | D3 | **API 访问改同源**：`next.config` rewrites `/api` → `http://127.0.0.1:4000`；`lib/api.ts` 基址默认同源，保留 `NEXT_PUBLIC_API_BASE_URL` 直连选项 | 对齐目标拓扑（05 §3 同源入口）；rewrites 与 Vite proxy 语义等价；Phase 3 的 CORS 支持保留作直连选项 |
 | D4 | **路由**：App Router 文件路由替换 `parseRoute`/`routePath`/`useRouter`（App.tsx）；导航高亮用 `usePathname`；`/single/[mode]` 非法模式 → `notFound()` | 05 §4.1/§4.2 路由映射表 |
-| D5 | **样式**：Tailwind v4，`@theme` 直接映射 styles.css `:root` 现有 token（`--ink`/`--paper`/`--vermilion`/`--jade`/`--amber`/`--shadow-*` 等 17 个）；按页面迁移；保留 reset/字体/焦点可见/动画 | 05 §5；token 已存在，映射而非重设计 |
+| D5 | **样式两阶段**：阶段一 T1-T4 将 styles.css **原样平移**为全局 CSS（视觉零回归，页面迁移只做行为平移），Tailwind v4 同时接入 `@theme` 映射同一组 `:root` token（`--ink`/`--paper`/`--vermilion`/`--jade`/`--amber`/`--shadow-*` 等 17 个）；阶段二（样式改造任务）按页面把语义类改写为 Tailwind utility，每页截图对比确认，全部完成后删除 styles.css 页面部分，仅保留 reset/字体/焦点可见/动画 | 05 §5「按页面迁移、保留 reset 与动画」；直接 utility 化则 1738 行一次性重写，旧页面已删、截图基线无从建立 |
 | D6 | **数据与逻辑边界**：API 层平移 `lib/api.ts`（openapi-fetch + `generated/api.ts`，契约唯一源）；搜索归一化在 `packages/shared`（不动）；游戏规则在 Go（前端不重复）；前端展示格式化落 `src/domain/` | 05 §7/§11；避免形成第二个后端（05 §14） |
 | D7 | **测试**：Vitest + RTL 覆盖 domain 纯函数、hooks、Client Components；Playwright 覆盖路由/404/游戏全流程/键盘/移动端/视觉截图对比（新旧应用同页面截图 diff） | 05 §10；不引入 Jest/Cypress |
 | D8 | **会话延续**：localStorage key（`touhoufriberg:daily-session`/`random-session`）不变；迁移期新应用在同一 origin 可直接恢复进行中会话 | D2 推论；Phase 3 的 404 重建逻辑兜底（07 §2 匿名可玩） |
@@ -60,7 +60,7 @@
 **输入**：Phase 3 运行环境；`apps/web` 现有依赖与配置。
 **动作**：
 
-1. 脚手架 `apps/web-next`：Next.js（TypeScript）+ App Router 目录结构（`app/`、`src/domain/`、`src/generated/`）；固定 Next.js 与 Tailwind v4 版本（Phase 0 基线精神，实施时锁定并记录）。
+1. 脚手架 `apps/web-next`：Next.js 16（最新 stable，实施时锁定次版本）+ TypeScript + App Router 目录结构（`app/`、`src/domain/`、`src/generated/`）。
 2. Tailwind v4 接入（postcss 配置 + `@theme` token 映射表，从 styles.css `:root` 摘录）。
 3. `next.config.ts`：`rewrites()` 将 `/api/:path*` 代理到 `http://127.0.0.1:4000`。
 4. root layout + 字体/assets（`public/` 从旧应用平移：`characters/`、`favicon.png`、hero 图）；`not-found.tsx`/`error.tsx`/`loading.tsx` 约定文件。
@@ -80,7 +80,7 @@
 1. `SiteFrame` → root layout：brand、6 项 nav（`usePathname` 高亮，含 singleLobby 的 singleGame/multi 子路径激活规则）、footer；nav 从 `button` 改为 `Link`。
 2. 首页：Hero（目录摘要数据平移 `useCatalogSummary` 到 Client 子树）+ 快捷入口 → `app/page.tsx`。
 3. 占位页：`multi/page.tsx`、`multi/room/page.tsx`、`stats/page.tsx`、`leaderboard/page.tsx`、`announcement/page.tsx`、`admin/page.tsx` → 共享 `PlaceholderPage` 组件；`links/page.tsx` 平移。
-4. 上述页面样式按 Tailwind 迁移（保留视觉一致）；静态页优先 Server Component，含状态的子树标记 Client（05 §4.2/§4.3）。
+4. 阶段一：样式不动（styles.css 原样全局引入，className 不变，D5）；静态页优先 Server Component，含状态的子树标记 Client（05 §4.2/§4.3）。
 5. 每页同步补 Vitest + RTL 渲染测试。
 
 **验收**：
@@ -95,7 +95,7 @@
 
 1. `app/search/page.tsx`：平移 `useCharacterSearch`（防抖/取消、结果 12 条限制）、图标/列表视图切换、排序、空/加载/错误态、键盘可达性。
 2. 展示格式化逻辑（若有）落 `src/domain/`；纯函数补 Vitest 用例。
-3. 样式 Tailwind 迁移。
+3. 阶段一：样式不动（D5）。
 
 **验收**：
 
@@ -110,7 +110,7 @@
 1. `app/single/page.tsx`：模式选择网格 + 多人占位入口。
 2. `app/single/[mode]/page.tsx`：`params.mode` 经 `isSinglePlayerGameMode` 校验，非法 → `notFound()`；游戏页为 Client Component（05 §4.2），平移：提交猜测（输入/建议/提交）、反馈表、赢/输终局、分享文本、localStorage 会话恢复与 404 重建（D8）。
 3. `useCharacterSearch`/`useCatalogSummary` hooks 平移。
-4. 样式 Tailwind 迁移；交互组件补 RTL 测试。
+4. 阶段一：样式不动（D5）；交互组件补 RTL 测试。
 
 **验收**：
 
@@ -118,7 +118,7 @@
 - [ ] 非法 mode（如 `/single/foo`）渲染 404。
 - [ ] 移动端视口可完成一局（Playwright）。
 
-### T5 — E2E 与视觉回归
+### T5 — E2E、视觉回归与样式改造（阶段二）
 
 **输入**：T2-T4 完成的 web-next；可运行的旧 `apps/web`。
 **动作**：
@@ -126,11 +126,13 @@
 1. Playwright 接入 web-next：路由导航、404、每日题全流程（赢/输）、随机题、搜索、会话恢复场景（对照 07 §9 游戏回归表）。
 2. 视觉回归：旧 Vite 应用与 web-next 同路由截图 diff（桌面 + 移动端视口）；差异人工确认后建立基线。
 3. 键盘（Tab 顺序/焦点可见）、移动端、基本无障碍（aria 标签）检查。
-4. CI：`check` job 增加 web-next 测试步骤（Playwright 需要浏览器缓存策略）。
+4. 样式改造（D5 阶段二）：在截图对比基础设施上，按页面把语义类改写为 Tailwind utility（`@theme` token），每页改完截图 diff 确认；全部页面完成后删除 styles.css 的页面部分，仅保留 reset/字体/焦点可见/动画（Tailwind base 或极少量全局 CSS）。
+5. CI：`check` job 增加 web-next 测试步骤（Playwright 需要浏览器缓存策略）。
 
 **验收**：
 
 - [ ] Playwright 全绿；视觉截图对比通过或差异已确认接受。
+- [ ] styles.css 页面部分删除后视觉与基线一致（Tailwind utility 化完成）。
 - [ ] CI 前端测试步骤生效（本地复跑与 CI 命令一致）。
 
 ### T6 — 替换 apps/web
