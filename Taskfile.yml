@@ -15,6 +15,10 @@ tasks:
     cmds:
       - pnpm --filter @touhoufriberg/web dev
 
+  dev:web-next:
+    cmds:
+      - pnpm --filter @touhoufriberg/web-next dev
+
   db:up:
     cmds:
       - docker compose up -d --wait postgres

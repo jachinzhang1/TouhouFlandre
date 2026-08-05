@@ -1,0 +1,29 @@
+{
+  "name": "@touhoufriberg/web-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 5173",
+    "build": "next build",
+    "start": "next start -p 5173",
+    "typecheck": "tsc --noEmit",
+    "gen:api": "openapi-typescript ../../contracts/openapi/openapi.yaml -o src/generated/api.ts"
+  },
+  "dependencies": {
+    "@touhoufriberg/shared": "workspace:*",
+    "lucide-react": "^0.539.0",
+    "next": "16.3.0",
+    "openapi-fetch": "^0.17.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "openapi-typescript": "^7.13.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5"
+  }
+}

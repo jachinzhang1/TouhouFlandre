@@ -1,5 +1,6 @@
 packages:
   - "apps/web"
+  - "apps/web-next"
   - "packages/*"
 allowBuilds:
   esbuild: true
