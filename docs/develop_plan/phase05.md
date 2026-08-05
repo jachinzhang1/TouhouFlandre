@@ -1,7 +1,7 @@
 # Phase 5 开发计划 — 清理仓库
 
 > 依据：[`05_tech_stack_migration.md`](../05_tech_stack_migration.md) §11/§13 Phase 5；[`phase04.md`](./phase04.md) §10
-> 状态：待评审（规划完成，未开始执行）
+> 状态：已完成（执行记录见 §10）
 > 影响范围：`packages/shared`（无调用者导出删除）、`Taskfile.yml`（goose 版本固定）、CI/文档微调
 > 原则：**只删无调用者代码；Go 是权威游戏规则（Phase 2/3 已平移），shared 仅保留前端与 data 校验所需；提交即回滚**
 
@@ -134,3 +134,43 @@
 
 - **07 产品化（Stage 2+）**：身份/后台/多人实现时，如需前端类型先回到 `packages/shared` 或 OpenAPI 生成类型，以契约（OpenAPI）为准补充，不重建 TS 规则副本。
 - **05 §11 拆分**：若 shared 体积增长，再按调用者拆分（当前不预做）。
+
+---
+
+## 10. 执行记录（2026-08-05）
+
+> 执行人：承接 Phase 4 的同一工作会话。提交：`33ae033`（gen:web）→ P5 清理提交。
+
+### T1 — shared 清理 ✅
+
+- 删除 `compare.ts`（compareField/compareCharacter）与 `tests/compare.test.ts`——Go `internal/game` 已承担权威比较（Phase 2 黄金用例等价验证）。
+- 删除 `daily.ts`（PUZZLE_DATE_KEY/getPuzzleDateKey/getDailyAnswer）——Go 已承担；前端模式配置来自 modes.ts。
+- `search.ts` 仅保留 `normalizeSearchText`（`packages/data` validate.ts 仍用于 seed 校验一致性）；删除 `characterSearchText`/`toSearchResult`/`CharacterSearchOptions`/`characterNameSortKey`/`compareCharacters`/`searchCharacters`（Go 搜索走 DB `search_text`，web 走 API）。
+- `fields.ts` 删除 `GUESS_FIELDS`（compatibility export，无消费者）、`WORK_TYPE_LABELS`（无消费者）。
+- `types.ts` 删除 `Work`（web/data 无引用；works 数据由 zod schema 校验）。
+- `index.ts` 移除 compare/daily 的 export。
+- shared `test` script 加 `--passWithNoTests`（tests 目录清空后 vitest 报错）。
+- 验证：`pnpm typecheck`、`pnpm test`（shared/data/web）、`pnpm build` 全绿。
+
+### T2 — 收尾核对 ✅
+
+- README/CI 无 shared 内部符号引用（grep 仅命中 phase02/phase05 计划文档的历史记录，属预期）。
+- 命令与文档一致性已在 Phase 4 T7 核对。
+
+### T3 — 工具链可复现 ✅
+
+- **goose 固定**：`go get -tool github.com/pressly/goose/v3/cmd/goose@v3.27.3`（go.mod `tool` 指令）；`Taskfile db:migrate` 改为 `go tool goose -dir migrations up`。迁移执行验证通过（v1，无变更）。
+- 顺带升级 `modernc.org/libc` v1.74.3 → v1.74.4（goose 传递依赖 retracted 警告）。
+- `task gen` 全链（gen:openapi + gen:repo + gen:web）执行后生成物（openapi 生成、sqlc 生成、web generated/api.ts）**零 diff**。
+
+### T4 — 文档 ✅
+
+- `05_tech_stack_migration.md`：§13 Phase 5 标记完成。
+- 本文件状态头与执行记录更新。
+
+### 偏差汇总
+
+| 偏差 | 原因 | 影响 |
+|---|---|---|
+| shared `test` 加 `--passWithNoTests` | tests 目录随 compare 删除清空 | packages/shared/package.json |
+| 无其他偏差 | — | — |

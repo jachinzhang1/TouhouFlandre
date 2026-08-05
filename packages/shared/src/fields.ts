@@ -1,4 +1,4 @@
-import type { GuessField, HairColor, WorkType } from "./types";
+import type { GuessField, HairColor } from "./types";
 
 export const CHARACTER_GUESS_FIELDS: GuessField[] = [
   {
@@ -55,9 +55,6 @@ export const GAME_CONTENT_DEFINITIONS = {
   },
 } as const;
 
-// Kept as a compatibility export for existing consumers.
-export const GUESS_FIELDS = CHARACTER_GUESS_FIELDS;
-
 export const HAIR_COLOR_LABELS: Record<HairColor, string> = {
   black: "黑",
   brown: "棕",
@@ -72,12 +69,5 @@ export const HAIR_COLOR_LABELS: Record<HairColor, string> = {
   orange: "橙",
   gray: "灰",
   multicolor: "多色",
-  other: "其他",
-};
-
-export const WORK_TYPE_LABELS: Record<WorkType, string> = {
-  game: "游戏",
-  print: "书籍/漫画",
-  music_cd: "音乐 CD",
   other: "其他",
 };

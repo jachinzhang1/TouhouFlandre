@@ -26,7 +26,7 @@ tasks:
   db:migrate:
     dir: apps/api
     cmds:
-      - bash -c 'set -a && . ../../.env && set +a && goose -dir migrations up'
+      - bash -c 'set -a && . ../../.env && set +a && go tool goose -dir migrations up'
 
   db:seed:
     deps: [catalog:check]

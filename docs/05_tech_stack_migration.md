@@ -420,11 +420,12 @@ volumes:
 - 稳定后替换 Vite 应用。
 - 执行记录见 [`develop_plan/phase04.md`](./develop_plan/phase04.md) §10。
 
-### Phase 5 — 清理仓库
+### Phase 5 — 清理仓库（已完成，2026-08-05）
 
 - 删除无调用者的共享类型和重复游戏规则。
 - 更新 README、开发命令和 CI。
 - 确认生成代码、migration 和工具版本可复现。
+- 执行记录见 [`develop_plan/phase05.md`](./develop_plan/phase05.md) §10。
 
 身份、后台、多人玩法和生产运维能力在技术迁移完成后，按产品化规划独立实施；它们不是技术栈替换阶段。
 
