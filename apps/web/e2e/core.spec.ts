@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("站点骨架", () => {
   test("首页展示目录摘要与导航", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "东方角色芙一把" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "东方芙一把" })).toBeVisible();
     await expect(page.getByText("29", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("navigation", { name: "站点导航" })).toBeVisible();
   });

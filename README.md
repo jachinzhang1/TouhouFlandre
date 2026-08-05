@@ -1,6 +1,6 @@
-# TouhouFlandre / 东方角色芙一把
+# TouhouFlandre / 东方芙一把
 
-TouhouFlandre（东方角色芙一把）is a playable Touhou Project themed character guessing game. Players guess a hidden character and use structured tag feedback to narrow down the answer.
+TouhouFlandre（东方芙一把）is a playable Touhou Project themed character guessing game. Players guess a hidden character and use structured tag feedback to narrow down the answer.
 
 This repository is organized as a standard open-source web project with a pnpm workspace:
 

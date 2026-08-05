@@ -3,7 +3,7 @@ info:
   title: TouhouFlandre API
   version: 1.0.0
   description: |
-    东方角色芙一把（TouhouFlandre）API 契约。多文件拆分，本文件是唯一入口，
+    东方芙一把（TouhouFlandre）API 契约。多文件拆分，本文件是唯一入口，
     所有生成器只读取本文件；paths 与 schemas 通过本地 $ref 引用。
   license:
     name: MIT

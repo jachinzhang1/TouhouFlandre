@@ -30,7 +30,7 @@ export function HomePage() {
             今日题已开放
           </p>
           <h1 className="m-0 font-brand text-[4.5rem] leading-none text-[#172b26] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
-            东方角色芙一把
+            东方芙一把
           </h1>
           <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[#354b44] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
             从初登场作品、年份、种族、阵营、地点和头发颜色里一点点缩小范围，猜出今天的东方角色。

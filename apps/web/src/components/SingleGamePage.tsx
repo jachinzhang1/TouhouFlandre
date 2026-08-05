@@ -189,7 +189,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             </span>
             <div>
               <p className="kicker">{modeConfig[mode].eyebrow}</p>
-              <h1>东方角色芙一把</h1>
+              <h1>东方芙一把</h1>
             </div>
           </div>
           <div className="mode-tabs" role="tablist" aria-label="游戏模式">
