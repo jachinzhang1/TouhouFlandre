@@ -11,3 +11,5 @@ dev.db-journal
 apps/web/.vite
 apps/api/dist
 packages/*/dist
+apps/api/.openapi.bundled.yaml
+apps/api/server

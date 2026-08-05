@@ -1,0 +1,60 @@
+version: "3"
+
+tasks:
+  db:up:
+    cmds:
+      - docker compose up -d --wait postgres
+
+  db:down:
+    cmds:
+      - docker compose down
+
+  db:migrate:
+    dir: apps/api
+    cmds:
+      - bash -c 'set -a && . ../../.env && set +a && goose -dir migrations up'
+
+  db:seed:
+    deps: [catalog:check]
+    cmds:
+      - task: db:seed:go
+
+  db:seed:go:
+    dir: apps/api
+    cmds:
+      - bash -c 'set -a && . ../../.env && set +a && go run ./cmd/seed'
+
+  catalog:check:
+    cmds:
+      - pnpm --filter @touhoufriberg/data validate
+
+  gen:openapi:
+    dir: apps/api
+    cmds:
+      - pnpm exec redocly bundle ../../contracts/openapi/openapi.yaml -o .openapi.bundled.yaml
+      - go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config oapi-codegen.yaml .openapi.bundled.yaml
+
+  gen:repo:
+    dir: apps/api
+    cmds:
+      - sqlc generate
+
+  gen:
+    cmds:
+      - task: gen:openapi
+      - task: gen:repo
+
+  check:generated:
+    cmds:
+      - task: gen
+      - git diff --exit-code -- apps/api/internal/generated
+
+  test:go:
+    dir: apps/api
+    cmds:
+      - go test ./...
+
+  dev:go:
+    dir: apps/api
+    cmds:
+      - go run ./cmd/server
