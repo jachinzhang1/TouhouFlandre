@@ -69,7 +69,7 @@ cd apps/api && go test ./...   # 需 DATABASE_URL_PG（或根 .env）；go vet .
 - 交互页面/组件一律 `'use client'`；纯展示页（`links`/`SingleLobby`/`PlaceholderPage`/`SiteFooter`）保持 server 组件。新增交互组件默认先考虑 client。
 - 数据获取：`lib/api.ts` 的 `api.*` 客户端（`requestApi` 统一抛错 `new Error(error.error ?? "请求失败。")`）；hooks 用 `AbortController`（卸载取消）+ 防抖（搜索 `delay: 120`）。
 - 会话状态：localStorage key `touhoufriberg:daily-session` / `random-session`（`gameModes.ts` 定义）；`loadSession` 恢复失败（404/日期过期）即删 key 重建，`parseStoredSession` 兼容旧纯字符串 id。**不要改 storageKey 与 dev 端口 5173**（origin 不变才能延续会话）。
-- 样式：Tailwind v4 完整入口（含 preflight，2026-08-05 收敛为标准配置）；设计 token 在 `@theme`（`--color-ink/paper/vermilion/jade/amber-*`）；游戏页状态类（`feedback-*`/`suggestion`/`game-surface`/`nav-link::after`）保留语义类；`globals.css` 末尾有一段 preflight 兼容覆盖（`html { line-height: normal }`，恢复语义类旧基线）——新代码无需依赖，但改动 `globals.css` 末尾段需用截图对比验证。断点用 `max-[680px]:`/`max-[900px]:`（非默认 Tailwind 断点）。
+- 样式：Tailwind v4 完整入口（含 preflight）；设计 token 在 `@theme`（`--color-ink/paper/vermilion/jade/amber-*`）；游戏页状态类（`feedback-*`/`suggestion`/`game-surface`/`nav-link::after`）保留语义类；`globals.css` 末尾有一段 preflight 兼容覆盖（`html { line-height: normal }`，恢复语义类旧基线）——新代码无需依赖，但改动 `globals.css` 末尾段需用截图对比验证。断点用 `max-[680px]:`/`max-[900px]:`（非默认 Tailwind 断点）。
 - 路由：App Router 文件路由；`/single/[mode]` 用 `isSinglePlayerGameMode` 校验 + `notFound()`；导航高亮 `usePathname`（游戏项前缀匹配 `/single*`/`/multi*`）。
 
 ## Important Files
@@ -89,7 +89,7 @@ cd apps/api && go test ./...   # 需 DATABASE_URL_PG（或根 .env）；go vet .
 
 ## Runtime/Tooling Preferences
 
-- **运行时**：Go 1.26+、Node 20.19+/22.12+（pnpm 11）、Docker（Postgres 18.4-alpine，宿主 5433）。
+- **运行时**：Go 1.26+、Node 24+（pnpm 11）、Docker（Postgres 18.4-alpine，宿主 5433）。
 - **包管理**：pnpm 11 workspace；**不用 npm/yarn**。构建脚本白名单 `allowBuilds: esbuild`（pnpm 10+ 要求，缺了 `pnpm run` 会被依赖状态检查拦截）。
 - **Go 工具**：goose 经 go.mod `tool` 指令（`go tool goose`，无全局安装）；sqlc 未进 go.mod，本地需自行安装（CI 用 `sqlc-dev/setup-sqlc` 1.31.1）。
 - **生成物纪律**：`internal/generated/`、`src/generated/`、`apps/api/.openapi.bundled.yaml`（gitignored）禁止手改；改契约后必须 `task gen` 并保持提交零 diff。
