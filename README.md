@@ -12,7 +12,7 @@ This repository is organized as a standard open-source web project with a pnpm w
 
 ## Local Development
 
-Prerequisites: Node.js 20.19+ or 22.12+, pnpm 11, Go 1.26+, Docker (for Postgres), and [Task](https://taskfile.dev/). Copy `.env.example` to `.env`, then run:
+Prerequisites: Node.js 24 (LTS) or later, pnpm 11, Go 1.26+, Docker (for Postgres), and [Task](https://taskfile.dev/). Copy `.env.example` to `.env`, then run:
 
 ```bash
 pnpm install

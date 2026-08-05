@@ -4,7 +4,7 @@
 
 ## 环境要求
 
-- Node.js 20.19 或更高的 20.x 版本，或 Node.js 22.12 及更高版本；
+- Node.js 24 LTS 或更高版本；
 - pnpm 11；
 - Go 1.26 及以上；
 - Docker（本地 Postgres 容器）；
