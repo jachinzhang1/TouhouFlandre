@@ -1,0 +1,282 @@
+# 角色目录 schema：Character 及相关搜索结构
+# 对应 packages/shared/src/types.ts 与 packages/data/src/schema.ts
+
+HairColor:
+  type: string
+  enum:
+    - black
+    - brown
+    - blonde
+    - white
+    - silver
+    - red
+    - pink
+    - purple
+    - blue
+    - green
+    - orange
+    - gray
+    - multicolor
+    - other
+
+DifficultyTier:
+  type: string
+  enum:
+    - easy
+    - normal
+    - hard
+    - lunatic
+
+Era:
+  type: string
+  enum:
+    - pc98
+    - windows
+    - other
+
+LocalizedNames:
+  type: object
+  required:
+    - zhHans
+    - ja
+    - en
+    - aliases
+  properties:
+    zhHans:
+      type: string
+      minLength: 1
+    zhHant:
+      type: string
+    ja:
+      type: string
+      minLength: 1
+    en:
+      type: string
+      minLength: 1
+    romaji:
+      type: string
+    aliases:
+      type: array
+      items:
+        type: string
+
+FirstAppearance:
+  type: object
+  required:
+    - workId
+    - workTitle
+    - workType
+    - releaseYear
+  properties:
+    workId:
+      type: string
+      minLength: 1
+    workTitle:
+      type: string
+      minLength: 1
+    workType:
+      $ref: "./work.yaml#/WorkType"
+    releaseYear:
+      type: integer
+    mainlineIndex:
+      type: integer
+    era:
+      $ref: "#/Era"
+
+Character:
+  type: object
+  description: 角色完整资料（运行时形态，含 appearanceOrder 与展开的 firstAppearance）。
+  required:
+    - id
+    - avatarUrl
+    - appearanceOrder
+    - names
+    - firstAppearance
+    - species
+    - abilityDisplay
+    - abilityTags
+    - affiliations
+    - locations
+    - roles
+    - hairColors
+    - playable
+    - enabledAsAnswer
+    - enabledAsGuess
+    - difficultyTier
+    - sourceRefs
+  properties:
+    id:
+      type: string
+      minLength: 1
+    avatarUrl:
+      type: string
+      pattern: "^/characters/[^/]+\\.png$"
+    appearanceOrder:
+      type: integer
+      minimum: 0
+      maximum: 9999
+    names:
+      $ref: "#/LocalizedNames"
+    firstAppearance:
+      $ref: "#/FirstAppearance"
+    species:
+      type: array
+      items:
+        type: string
+      minItems: 1
+    abilityDisplay:
+      type: string
+      minLength: 1
+    abilityTags:
+      type: array
+      items:
+        type: string
+      minItems: 1
+    affiliations:
+      type: array
+      items:
+        type: string
+      minItems: 1
+    locations:
+      type: array
+      items:
+        type: string
+      minItems: 1
+    roles:
+      type: array
+      items:
+        type: string
+      minItems: 1
+    hairColors:
+      type: array
+      items:
+        $ref: "#/HairColor"
+      minItems: 1
+    playable:
+      type: boolean
+    enabledAsAnswer:
+      type: boolean
+    enabledAsGuess:
+      type: boolean
+    difficultyTier:
+      $ref: "#/DifficultyTier"
+    sourceRefs:
+      type: array
+      items:
+        type: string
+        format: uri
+      minItems: 1
+
+CharacterSearchResult:
+  type: object
+  description: 搜索卡片视图模型（firstAppearance 仅含 workTitle 与 releaseYear）。
+  required:
+    - id
+    - name
+    - subtitle
+    - initials
+    - avatarUrl
+    - appearanceOrder
+    - firstAppearance
+    - species
+    - locations
+    - affiliations
+    - hairColors
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    subtitle:
+      type: string
+    initials:
+      type: string
+    avatarUrl:
+      type: string
+    appearanceOrder:
+      type: integer
+    firstAppearance:
+      type: object
+      required:
+        - workTitle
+        - releaseYear
+      properties:
+        workTitle:
+          type: string
+        releaseYear:
+          type: integer
+    species:
+      type: array
+      items:
+        type: string
+    locations:
+      type: array
+      items:
+        type: string
+    affiliations:
+      type: array
+      items:
+        type: string
+    hairColors:
+      type: array
+      items:
+        $ref: "#/HairColor"
+
+CharacterSearchResponse:
+  type: object
+  required:
+    - results
+    - total
+  properties:
+    results:
+      type: array
+      items:
+        $ref: "#/CharacterSearchResult"
+    total:
+      type: integer
+      minimum: 0
+
+CatalogContentSummary:
+  type: object
+  required:
+    - contentType
+    - label
+    - total
+    - guessable
+    - answerable
+    - maxGuesses
+    - visibleFieldCount
+  properties:
+    contentType:
+      $ref: "./session.yaml#/GameContentType"
+    label:
+      type: string
+    total:
+      type: integer
+      minimum: 0
+    guessable:
+      type: integer
+      minimum: 0
+    answerable:
+      type: integer
+      minimum: 0
+    maxGuesses:
+      type: integer
+      minimum: 1
+    visibleFieldCount:
+      type: integer
+      minimum: 0
+
+CatalogSummary:
+  type: object
+  required:
+    - dailyDateKey
+    - contents
+  properties:
+    dailyDateKey:
+      type: string
+      description: 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。
+    contents:
+      type: array
+      items:
+        $ref: "#/CatalogContentSummary"

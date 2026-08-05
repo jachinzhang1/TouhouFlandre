@@ -32,6 +32,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code: string = "INTERNAL",
   ) {
     super(message);
   }
@@ -42,7 +43,7 @@ const getCurrentCatalog = async () => {
     where: { id: "current" },
     include: { snapshot: true },
   });
-  if (!state) throw new ApiError(503, "题库尚未初始化，请先运行 seed。");
+  if (!state) throw new ApiError(503, "题库尚未初始化，请先运行 seed。", "CATALOG_NOT_READY");
   return {
     version: state.currentVersion,
     characters: parseCatalogCharacters(state.snapshot.charactersJson),
@@ -117,7 +118,7 @@ const contentHandlers: Record<GameContentType, ContentHandler> = {
     compareGuess: (characters, answerId, guessId) => {
       const guess = characters.find((character) => character.id === guessId);
       if (!guess || !guess.enabledAsGuess) {
-        throw new ApiError(400, "请选择本局题库中的角色。");
+        throw new ApiError(400, "请选择本局题库中的角色。", "INVALID_GUESS");
       }
       const answer = characters.find((character) => character.id === answerId);
       if (!answer) throw new ApiError(500, "本局题库快照中缺少答案角色。");
@@ -127,14 +128,17 @@ const contentHandlers: Record<GameContentType, ContentHandler> = {
   },
 };
 
-export const getCatalogSummary = async (): Promise<CatalogSummary> => ({
-  dailyDateKey: getPuzzleDateKey(),
-  contents: await Promise.all(
-    GAME_CONTENT_TYPES.map((contentType) =>
-      contentHandlers[contentType].getSummary(),
+export const getCatalogSummary = async (): Promise<CatalogSummary> => {
+  await getCurrentCatalog(); // 题库未初始化时抛 503
+  return {
+    dailyDateKey: getPuzzleDateKey(),
+    contents: await Promise.all(
+      GAME_CONTENT_TYPES.map((contentType) =>
+        contentHandlers[contentType].getSummary(),
+      ),
     ),
-  ),
-});
+  };
+};
 
 const createSession = async (
   mode: SinglePlayerGameMode,
@@ -233,7 +237,7 @@ export const getPublicSession = async (sessionId: string) => {
   const session = await prisma.gameSession.findUnique({
     where: { id: sessionId },
   });
-  if (!session) throw new ApiError(404, "没有找到这一局游戏。");
+  if (!session) throw new ApiError(404, "没有找到这一局游戏。", "SESSION_NOT_FOUND");
   return toPublicSession(session);
 };
 
@@ -242,19 +246,23 @@ export const submitGuess = async (sessionId: string, guessId: string) => {
     const session = await prisma.gameSession.findUnique({
       where: { id: sessionId },
     });
-    if (!session) throw new ApiError(404, "没有找到这一局游戏。");
+    if (!session) throw new ApiError(404, "没有找到这一局游戏。", "SESSION_NOT_FOUND");
     if (session.status !== "playing")
-      throw new ApiError(409, "这一局已经结束。");
+      throw new ApiError(409, "这一局已经结束。", "SESSION_CLOSED");
 
     const guesses = parseGuesses(session.guessesJson);
     if (guesses.some((entry) => entry.guessId === guessId)) {
-      throw new ApiError(409, "这个角色已经猜过了。");
+      throw new ApiError(409, "这个角色已经猜过了。", "DUPLICATE_GUESS");
     }
 
     const characters = await getCatalogCharacters(session.catalogVersion);
     const handler = contentHandlers[session.contentType as GameContentType];
     if (!handler) {
-      throw new ApiError(501, `暂不支持 ${session.contentType} 类型的猜测。`);
+      throw new ApiError(
+        501,
+        `暂不支持 ${session.contentType} 类型的猜测。`,
+        "UNSUPPORTED_CONTENT_TYPE",
+      );
     }
     const result = handler.compareGuess(characters, session.answerId, guessId);
     const nextGuesses = [...guesses, result];
@@ -285,5 +293,5 @@ export const submitGuess = async (sessionId: string, guessId: string) => {
     return toPublicSession(saved, characters);
   }
 
-  throw new ApiError(409, "会话刚刚发生变化，请重新提交。");
+  throw new ApiError(409, "会话刚刚发生变化，请重新提交。", "CONCURRENT_UPDATE");
 };

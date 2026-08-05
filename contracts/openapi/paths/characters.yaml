@@ -1,0 +1,61 @@
+# GET /api/characters/search
+get:
+  operationId: characters_search
+  tags:
+    - characters
+  summary: 搜索角色
+  parameters:
+    - name: q
+      in: query
+      required: false
+      description: 规范化后的查询词（可为空，返回全部可猜角色）。
+      schema:
+        type: string
+    - name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 250
+    - name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+    - name: sort
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - name
+          - appearance
+    - name: direction
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+  responses:
+    "200":
+      description: 搜索结果
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/character.yaml#/CharacterSearchResponse"
+    "400":
+      description: 请求参数不合法
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "503":
+      description: 题库未初始化
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

@@ -17,25 +17,18 @@ import {
   HAIR_COLOR_LABELS,
 } from "@touhoufriberg/shared";
 import type {
-  CatalogSummary,
   FieldFeedback,
   PublicGameSession,
   SinglePlayerGameMode,
 } from "@touhoufriberg/shared";
-import { requestJson } from "../api";
 import { CharacterAvatar } from "../components/CharacterAvatar";
 import { modeConfig, SINGLE_PLAYER_MODE_IDS } from "../gameModes";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
+import { api } from "../lib/api";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
 
-type PuzzleResponse = {
-  puzzleLabel: string;
-  session: PublicGameSession;
-};
-
-type GuessResponse = { session: PublicGameSession };
 type StoredSession = { id: string; puzzleKey?: string };
 
 const parseStoredSession = (value: string): StoredSession => {
@@ -117,25 +110,23 @@ export function SingleGamePage({
     try {
       const dailyDateKey =
         nextMode === "daily"
-          ? (await requestJson<CatalogSummary>("/api/catalog")).dailyDateKey
+          ? (await api.catalog()).dailyDateKey
           : undefined;
       const storedValue = localStorage.getItem(modeConfig[nextMode].storageKey);
       if (storedValue) {
         try {
           const storedSession = parseStoredSession(storedValue);
-          const restored = await requestJson<GuessResponse>(
-            `/api/sessions/${storedSession.id}`,
-          );
+          const restored = await api.getSession(storedSession.id);
           if (
             nextMode === "daily" &&
-            restored.session.puzzleKey !== dailyDateKey
+            restored.puzzleKey !== dailyDateKey
           ) {
             throw new Error("每日题日期已经更新。");
           }
-          setSession(restored.session);
+          setSession(restored);
           setPuzzleLabel(
             nextMode === "daily"
-              ? `${modeConfig[nextMode].label} ${restored.session.puzzleKey}`
+              ? `${modeConfig[nextMode].label} ${restored.puzzleKey}`
               : modeConfig[nextMode].puzzleLabel,
           );
           return;
@@ -144,10 +135,7 @@ export function SingleGamePage({
         }
       }
 
-      const created = await requestJson<PuzzleResponse>(
-        modeConfig[nextMode].createPath,
-        { method: "POST" },
-      );
+      const created = await api.createPuzzle(nextMode);
       setSession(created.session);
       setPuzzleLabel(created.puzzleLabel);
       persistSession(nextMode, created.session);
@@ -174,15 +162,9 @@ export function SingleGamePage({
     setShareMessage("");
 
     try {
-      const payload = await requestJson<GuessResponse>(
-        `/api/sessions/${session.id}/guess`,
-        {
-          method: "POST",
-          body: JSON.stringify({ guessId }),
-        },
-      );
-      setSession(payload.session);
-      persistSession(mode, payload.session);
+      const payload = await api.submitGuess(session.id, guessId);
+      setSession(payload);
+      persistSession(mode, payload);
       setQuery("");
       setSelectedId("");
     } catch (error) {

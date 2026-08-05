@@ -1,0 +1,22 @@
+# 通用 schema：错误模型与跨领域约定
+ErrorResponse:
+  type: object
+  description: 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。
+  required:
+    - code
+    - error
+  properties:
+    code:
+      type: string
+      enum:
+        - INVALID_REQUEST
+        - INVALID_GUESS
+        - SESSION_NOT_FOUND
+        - SESSION_CLOSED
+        - DUPLICATE_GUESS
+        - CONCURRENT_UPDATE
+        - UNSUPPORTED_CONTENT_TYPE
+        - CATALOG_NOT_READY
+        - INTERNAL
+    error:
+      type: string

@@ -1,0 +1,66 @@
+# POST /api/sessions/:sessionId/guess
+post:
+  operationId: sessions_submitGuess
+  tags:
+    - sessions
+  summary: 提交猜测
+  parameters:
+    - name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guessId
+          properties:
+            guessId:
+              type: string
+              description: 被猜角色 id。
+  responses:
+    "200":
+      description: 猜测已记录
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - session
+            properties:
+              session:
+                $ref: "../schemas/session.yaml#/PublicGameSession"
+    "400":
+      description: 请求格式不正确或猜测不在本局题库中
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 会话不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 会话已结束、重复猜测或并发冲突
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "501":
+      description: 暂不支持的内容类型
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

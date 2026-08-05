@@ -1,0 +1,140 @@
+# 会话 schema：PublicGameSession 及猜测结果结构
+# 对应 packages/shared/src/types.ts
+
+FeedbackStatus:
+  type: string
+  enum:
+    - exact
+    - partial
+    - miss
+    - higher
+    - lower
+    - unknown
+
+SessionStatus:
+  type: string
+  enum:
+    - playing
+    - won
+    - lost
+
+GameMode:
+  type: string
+  enum:
+    - daily
+    - random
+    - multiplayer
+
+GameContentType:
+  type: string
+  enum:
+    - character
+
+FeedbackSymbol:
+  type: string
+  description: 反馈符号（O / ~ / X / ↑ / ↓ / ?）。
+  enum:
+    - "O"
+    - "~"
+    - "X"
+    - "↑"
+    - "↓"
+    - "?"
+
+FieldFeedback:
+  type: object
+  required:
+    - field
+    - label
+    - status
+    - symbol
+    - displayValue
+  properties:
+    field:
+      $ref: "./guess.yaml#/GuessFieldKey"
+    label:
+      type: string
+    status:
+      $ref: "#/FeedbackStatus"
+    symbol:
+      $ref: "#/FeedbackSymbol"
+    displayValue:
+      type: array
+      items:
+        type: string
+
+GuessResult:
+  type: object
+  required:
+    - guessId
+    - guessName
+    - isCorrect
+    - feedback
+  properties:
+    guessId:
+      type: string
+    guessName:
+      type: string
+    guessAvatarUrl:
+      type: string
+      description: 旧记录可能缺少该字段。
+    isCorrect:
+      type: boolean
+    feedback:
+      type: array
+      items:
+        $ref: "#/FieldFeedback"
+
+PublicGameSession:
+  type: object
+  description: 公开会话视图。answer 仅在会话结束后返回。
+  required:
+    - id
+    - mode
+    - contentType
+    - status
+    - maxGuesses
+    - guesses
+    - startedAt
+  properties:
+    id:
+      type: string
+    mode:
+      $ref: "#/GameMode"
+    contentType:
+      $ref: "#/GameContentType"
+    status:
+      $ref: "#/SessionStatus"
+    maxGuesses:
+      type: integer
+      minimum: 1
+    puzzleKey:
+      type: string
+    guesses:
+      type: array
+      items:
+        $ref: "#/GuessResult"
+    startedAt:
+      type: string
+      format: date-time
+    endedAt:
+      type: string
+      format: date-time
+      description: 会话结束后才返回。
+    answer:
+      type: object
+      description: 答案角色，仅在会话结束后返回。
+      allOf:
+        - $ref: "./character.yaml#/Character"
+
+PuzzleResponse:
+  type: object
+  description: 创建题局的响应。
+  required:
+    - puzzleLabel
+    - session
+  properties:
+    puzzleLabel:
+      type: string
+    session:
+      $ref: "#/PublicGameSession"

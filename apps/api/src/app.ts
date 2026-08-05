@@ -118,19 +118,17 @@ export const createApp = () => {
       _next: express.NextFunction,
     ) => {
       if (error instanceof ApiError) {
-        res.status(error.status).json({ error: error.message });
+        res.status(error.status).json({ code: error.code, error: error.message });
         return;
       }
 
       if (error instanceof z.ZodError) {
-        res
-          .status(400)
-          .json({ error: "请求格式不正确。", details: error.issues });
+        res.status(400).json({ code: "INVALID_REQUEST", error: "请求格式不正确。" });
         return;
       }
 
       console.error(error);
-      res.status(500).json({ error: "服务器暂时无法处理请求。" });
+      res.status(500).json({ code: "INTERNAL", error: "服务器暂时无法处理请求。" });
     },
   );
 

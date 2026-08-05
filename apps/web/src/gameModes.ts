@@ -18,7 +18,6 @@ export const modeConfig: Record<
     stateClass: string;
     icon: typeof CalendarDays;
     storageKey: string;
-    createPath: string;
   }
 > = {
   daily: {
@@ -29,7 +28,6 @@ export const modeConfig: Record<
     stateClass: "live",
     icon: CalendarDays,
     storageKey: "touhoufriberg:daily-session",
-    createPath: "/api/puzzles/daily",
   },
   random: {
     ...SINGLE_PLAYER_MODE_DEFINITIONS.random,
@@ -39,6 +37,5 @@ export const modeConfig: Record<
     stateClass: "",
     icon: Shuffle,
     storageKey: "touhoufriberg:random-session",
-    createPath: "/api/puzzles/random",
   },
 };

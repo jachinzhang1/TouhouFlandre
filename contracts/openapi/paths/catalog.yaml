@@ -1,0 +1,19 @@
+# GET /api/catalog
+get:
+  operationId: catalog_get
+  tags:
+    - catalog
+  summary: 获取题库摘要
+  responses:
+    "200":
+      description: 题库摘要
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/character.yaml#/CatalogSummary"
+    "503":
+      description: 题库未初始化
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

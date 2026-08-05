@@ -6,19 +6,22 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:api": "openapi-typescript ../../contracts/openapi/openapi.yaml -o src/generated/api.ts"
   },
   "dependencies": {
     "@touhoufriberg/shared": "workspace:*",
     "@vitejs/plugin-react": "^5.0.0",
-    "vite": "^7.1.2",
-    "typescript": "^5.9.2",
+    "lucide-react": "^0.539.0",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "lucide-react": "^0.539.0"
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7"
+    "@types/react-dom": "^19.1.7",
+    "openapi-typescript": "^7.13.0"
   }
 }

@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: TouhouFlandre API
+  version: 1.0.0
+  description: |
+    东方角色芙一把（TouhouFlandre）API 契约。多文件拆分，本文件是唯一入口，
+    所有生成器只读取本文件；paths 与 schemas 通过本地 $ref 引用。
+  license:
+    name: MIT
+    url: https://github.com/TouhouFlandre/touhouflandre/blob/main/LICENSE
+servers:
+  - url: /
+security: []
+tags:
+  - name: health
+    description: 服务健康检查
+  - name: characters
+    description: 角色搜索
+  - name: catalog
+    description: 题库摘要
+  - name: puzzles
+    description: 题局创建
+  - name: sessions
+    description: 会话与猜测
+paths:
+  /api/health:
+    $ref: ./paths/health.yaml
+  /api/characters/search:
+    $ref: ./paths/characters.yaml
+  /api/catalog:
+    $ref: ./paths/catalog.yaml
+  /api/puzzles/{mode}:
+    $ref: ./paths/puzzles.yaml
+  /api/sessions/{sessionId}/guess:
+    $ref: ./paths/sessions-guess.yaml
+  /api/sessions/{sessionId}:
+    $ref: ./paths/sessions.yaml
+components:
+  schemas:
+    ErrorResponse:
+      $ref: ./schemas/common.yaml#/ErrorResponse
+    HairColor:
+      $ref: ./schemas/character.yaml#/HairColor
+    DifficultyTier:
+      $ref: ./schemas/character.yaml#/DifficultyTier
+    Era:
+      $ref: ./schemas/character.yaml#/Era
+    LocalizedNames:
+      $ref: ./schemas/character.yaml#/LocalizedNames
+    FirstAppearance:
+      $ref: ./schemas/character.yaml#/FirstAppearance
+    Character:
+      $ref: ./schemas/character.yaml#/Character
+    CharacterSearchResult:
+      $ref: ./schemas/character.yaml#/CharacterSearchResult
+    CharacterSearchResponse:
+      $ref: ./schemas/character.yaml#/CharacterSearchResponse
+    CatalogContentSummary:
+      $ref: ./schemas/character.yaml#/CatalogContentSummary
+    CatalogSummary:
+      $ref: ./schemas/character.yaml#/CatalogSummary
+    WorkType:
+      $ref: ./schemas/work.yaml#/WorkType
+    Work:
+      $ref: ./schemas/work.yaml#/Work
+    FeedbackStatus:
+      $ref: ./schemas/session.yaml#/FeedbackStatus
+    SessionStatus:
+      $ref: ./schemas/session.yaml#/SessionStatus
+    GameMode:
+      $ref: ./schemas/session.yaml#/GameMode
+    GameContentType:
+      $ref: ./schemas/session.yaml#/GameContentType
+    FeedbackSymbol:
+      $ref: ./schemas/session.yaml#/FeedbackSymbol
+    FieldFeedback:
+      $ref: ./schemas/session.yaml#/FieldFeedback
+    GuessResult:
+      $ref: ./schemas/session.yaml#/GuessResult
+    PublicGameSession:
+      $ref: ./schemas/session.yaml#/PublicGameSession
+    PuzzleResponse:
+      $ref: ./schemas/session.yaml#/PuzzleResponse
+    GuessFieldKey:
+      $ref: ./schemas/guess.yaml#/GuessFieldKey
+    GuessField:
+      $ref: ./schemas/guess.yaml#/GuessField

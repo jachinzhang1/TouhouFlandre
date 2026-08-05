@@ -1,0 +1,21 @@
+# GET /api/health
+get:
+  operationId: health_check
+  tags:
+    - health
+  summary: 服务健康检查
+  responses:
+    "200":
+      description: 服务正常
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - ok
+              - service
+            properties:
+              ok:
+                type: boolean
+              service:
+                type: string
