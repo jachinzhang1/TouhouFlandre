@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	oapimiddleware "github.com/oapi-codegen/echo-middleware"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 )
@@ -23,6 +24,9 @@ func New(pool *pgxpool.Pool) *echo.Echo {
 	e.HideBanner = true
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: config.WebOrigins(),
+	}))
 
 	swagger, err := openapi.GetSwagger()
 	if err != nil {

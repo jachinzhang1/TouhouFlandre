@@ -1,7 +1,7 @@
 # Phase 3 开发计划 — 切换后端入口
 
 > 依据：[`05_tech_stack_migration.md`](../05_tech_stack_migration.md) §13 Phase 3；[`07_productization_plan.md`](../07_productization_plan.md) §4.1；[`phase02.md`](./phase02.md) §9
-> 状态：待评审（规划完成，未开始执行）
+> 状态：已完成（执行记录见 §10）
 > 影响范围：`apps/api`（删除 Express 部分）、`prisma/`（删除）、root `package.json`、`pnpm-workspace.yaml`、`.env`、`Taskfile.yml`、`internal/config`、文档
 > 原则：**Go 接替 4000，前端零改动；删除是提交即回滚（git 历史完整）**
 
@@ -156,3 +156,56 @@
 
 - **Phase 4（前端迁移）**：Go 已是唯一后端，前端 `apps/web` 迁移 Next.js 时 API 契约与 `src/lib/api.ts` 直接复用，无后端联动。
 - **07 Stage 1（数据完整性）**：SQLite 已下线，运行时数据处置（D3）落地为最终决策。
+
+---
+
+## 10. 执行记录（2026-08-05）
+
+> 执行人：接手上一会话（session 丢失后恢复执行）。提交见 `635602a` 之后的 phase03 提交。
+
+### T1 — 端口与入口切换 ✅
+
+- `internal/config/config.go`：`APIPort()` 改读 `API_PORT`（默认 `4000`），删除 `API_PORT_GO` 分支。
+- `.env`：已按 D7 收敛（无 `API_PORT_GO`、无 SQLite `DATABASE_URL`），无需再改。
+- 验证：`/livez` `/readyz` `/api/health` `/api/catalog`（29 角色）`/api/puzzles/{daily,random}` `/api/characters/search` `/api/sessions/{id}`（含 guess、404、400）全部通过；Express 无进程存活。
+- **偏差（补充 CORS）**：浏览器直连 `VITE_API_BASE_URL=http://localhost:4000` 为跨源请求，新增 `config.WebOrigins()` 与 Echo CORS middleware。前端代码与 `.env` 未改动（保持"前端零改动"）。
+
+### T2 — Taskfile dev 与 root dev ✅
+
+- `Taskfile.yml`：新增 `dev`（`deps: [db:up]` + `task --parallel dev:api dev:web`）、`dev:api`（source `.env` 后 `go run ./cmd/server`）、`dev:web`。
+- root `package.json`：`"dev": "task dev"`，移除 `concurrently`；lockfile 同步；`.pnpm` 中孤儿目录手动清理。
+- 验证：`task dev` 一键启动 Go（4000）+ Vite（5173），`5173/api/*` 代理转发到 Go 正常。
+
+### T3 — 前端功能回归 ✅
+
+headless Chromium（playwright-core + ms-playwright 缓存浏览器）驱动，全部通过，前端代码零改动：
+
+- 首页：29 角色摘要、每日题/随机题/角色资料入口、今日题已开放。
+- 每日题：创建 → 猜测（反馈 6 字段符号齐全）→ 猜中（答案 `patchouli_knowledge`）→ 分享文本「答案是 帕秋莉·诺蕾姬，共使用 1 次猜测。」。
+- 随机题：创建 → 猜测（雾雨魔理沙）。
+- 搜索：关键词（博丽）、别名（红白 → 灵梦）、罗马字（reimu/marisa）均命中。
+- 会话恢复：刷新后进度 1/8 保留；伪造旧 localStorage id → 404 → 前端自动重建新会话（D4 验证通过）。
+- 每日题同日幂等：两次创建均返回 `puzzleKey=2026-08-05`。
+
+### T4 — 删除 Express/Prisma/SQLite ✅
+
+- 删除：`apps/api/src/`、`apps/api/tests/`（含 `contract.test.ts`，D6）、`apps/api/package.json`、`apps/api/tsconfig.json`、`prisma/`。
+- root `package.json`：删除 `db:generate`/`db:push`/`seed`/`postinstall` 与 `@prisma/client`/`prisma` 依赖（保留 `check:openapi-refs`，CI 依赖）。
+- `pnpm-workspace.yaml`：`packages` 收窄为 `["apps/web", "packages/*"]`；构建脚本白名单仅保留 `esbuild`。
+- **偏差（配置键）**：pnpm 11 弃用 `pnpm.onlyBuiltDependencies`，构建脚本审批键为顶层 `allowBuilds`；`esbuild` 需放行否则 `pnpm run` 的依赖状态检查失败。
+- 验证：非 docs、非 node_modules 目录 grep `prisma|express` 零命中；`pnpm test`、`pnpm typecheck`、`pnpm build`、`go test ./...`（真实 Postgres）、`go vet ./...` 全绿。
+
+### T5 — CI 与文档 ✅
+
+- CI（`.github/workflows/ci.yml`）：无 prisma/express 引用，无需改动；`pnpm -r --if-present` 自动跳过无 package.json 的 `apps/api`。
+- `README.md`、`docs/04_local_demo_development.md`：开发命令改为 `task dev`/`task db:*`，数据库流程改为 compose + goose + Go seed。
+- `docs/05_tech_stack_migration.md`：§13 Phase 3 标记完成。
+- `.env.example`：对齐 D7（删除 SQLite `DATABASE_URL`，保留 `API_PORT`/`DATABASE_URL_PG`/`GOOSE_*`/`POSTGRES_PASSWORD`）。
+
+### 偏差汇总
+
+| 偏差 | 原因 | 影响 |
+|---|---|---|
+| 新增 CORS（`WebOrigins`） | 前端跨源直连 4000 | 必要改动，前端/`.env` 未动 |
+| `allowBuilds` 而非 `onlyBuiltDependencies` | pnpm 11 配置键迁移 | workspace 配置 |
+| 手动清理孤儿 node_modules | pnpm 不回收无引用包目录 | 无功能影响 |

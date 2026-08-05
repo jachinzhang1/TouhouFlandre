@@ -5,16 +5,12 @@
   "description": "A local playable Touhou Project themed Friberg guessing game demo.",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n api,web -c cyan,magenta \"pnpm --filter @touhoufriberg/api dev\" \"pnpm --filter @touhoufriberg/web dev\"",
+    "dev": "task dev",
     "build": "pnpm -r build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "seed": "tsx prisma/seed.ts",
     "lint:openapi": "redocly lint contracts/openapi/openapi.yaml",
-    "check:openapi-refs": "node scripts/check-openapi-refs.mjs",
-    "postinstall": "prisma generate"
+    "check:openapi-refs": "node scripts/check-openapi-refs.mjs"
   },
   "keywords": [
     "touhou",
@@ -25,16 +21,13 @@
   "license": "MIT",
   "packageManager": "pnpm@11.9.0",
   "dependencies": {
-    "@prisma/client": "^6.13.0",
     "@touhoufriberg/data": "workspace:*",
     "@touhoufriberg/shared": "workspace:*"
   },
   "devDependencies": {
     "@redocly/cli": "^2.43.3",
-    "concurrently": "^9.2.1",
     "eslint": "^9.33.0",
     "prettier": "^3.6.2",
-    "prisma": "^6.13.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

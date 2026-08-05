@@ -406,10 +406,11 @@ volumes:
 - 搜索沿用 `search_text` SQL 查询映射为 sqlc；内存索引属后期优化，不在本阶段（见产品化规划 4.4）。
 - 使用真实 Postgres 完成集成测试；一次性实现全部 6 个端点，用黄金用例验证与现有行为一致。
 
-### Phase 3 — 切换后端
+### Phase 3 — 切换后端（已完成，2026-08-05）
 
 - 将 API 入口切换到 Go，删除 Express、Prisma 和 SQLite 依赖。
 - 旧实现保留在 git 历史中，确认稳定后不再维护双后端。
+- 执行记录见 [`develop_plan/phase03.md`](./develop_plan/phase03.md) §10。
 
 ### Phase 4 — 迁移前端
 
