@@ -1,0 +1,43 @@
+# 作品 schema：Work 及共用枚举
+# 对应 packages/shared/src/types.ts
+
+WorkType:
+  type: string
+  enum:
+    - game
+    - print
+    - music_cd
+    - other
+
+Work:
+  type: object
+  required:
+    - id
+    - titleZh
+    - titleJa
+    - shortName
+    - type
+    - releaseYear
+  properties:
+    id:
+      type: string
+      minLength: 1
+    titleZh:
+      type: string
+      minLength: 1
+    titleJa:
+      type: string
+      minLength: 1
+    titleEn:
+      type: string
+    shortName:
+      type: string
+      minLength: 1
+    type:
+      $ref: "#/WorkType"
+    releaseYear:
+      type: integer
+    mainlineIndex:
+      type: integer
+    era:
+      $ref: "./character.yaml#/Era"

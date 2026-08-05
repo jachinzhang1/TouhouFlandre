@@ -1,0 +1,6 @@
+extends:
+  - recommended
+rules:
+  # health/catalog 是只读、无参数端点，当前实现没有 4XX 分支；
+  # 未来引入鉴权或参数后再评估是否恢复该规则。
+  operation-4xx-response: off

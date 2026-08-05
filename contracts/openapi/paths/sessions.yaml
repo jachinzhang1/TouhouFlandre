@@ -1,0 +1,30 @@
+# GET /api/sessions/:sessionId
+get:
+  operationId: sessions_get
+  tags:
+    - sessions
+  summary: 恢复会话
+  parameters:
+    - name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: 会话详情
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - session
+            properties:
+              session:
+                $ref: "../schemas/session.yaml#/PublicGameSession"
+    "404":
+      description: 会话不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

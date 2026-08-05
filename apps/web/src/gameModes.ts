@@ -1,4 +1,5 @@
 import { CalendarDays, Shuffle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   SINGLE_PLAYER_GAME_MODES,
   SINGLE_PLAYER_MODE_DEFINITIONS,
@@ -16,9 +17,8 @@ export const modeConfig: Record<
     description: string;
     stateLabel: string;
     stateClass: string;
-    icon: typeof CalendarDays;
+    icon: LucideIcon;
     storageKey: string;
-    createPath: string;
   }
 > = {
   daily: {
@@ -29,7 +29,6 @@ export const modeConfig: Record<
     stateClass: "live",
     icon: CalendarDays,
     storageKey: "touhoufriberg:daily-session",
-    createPath: "/api/puzzles/daily",
   },
   random: {
     ...SINGLE_PLAYER_MODE_DEFINITIONS.random,
@@ -39,6 +38,5 @@ export const modeConfig: Record<
     stateClass: "",
     icon: Shuffle,
     storageKey: "touhoufriberg:random-session",
-    createPath: "/api/puzzles/random",
   },
 };

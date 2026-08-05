@@ -1,0 +1,40 @@
+# POST /api/puzzles/:mode
+post:
+  operationId: puzzles_create
+  tags:
+    - puzzles
+  summary: 创建题局
+  parameters:
+    - name: mode
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - daily
+          - random
+  responses:
+    "200":
+      description: 题局创建成功
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/session.yaml#/PuzzleResponse"
+    "400":
+      description: 模式不合法
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 题库中没有可作为答案的角色
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "503":
+      description: 题库未初始化
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

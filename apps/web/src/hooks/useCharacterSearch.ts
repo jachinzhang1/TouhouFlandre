@@ -1,11 +1,12 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import type {
-  CharacterSort,
-  CharacterSearchResponse,
   CharacterSearchResult,
+  CharacterSort,
   SortDirection,
 } from "@touhoufriberg/shared";
-import { requestJson } from "../api";
+import { api } from "../lib/api";
 
 export function useCharacterSearch(
   query: string,
@@ -29,16 +30,16 @@ export function useCharacterSearch(
     setError("");
 
     const timeout = window.setTimeout(async () => {
-      const params = new URLSearchParams({ q: query });
-      if (limit !== undefined) params.set("limit", String(limit));
-      if (offset !== undefined) params.set("offset", String(offset));
-      if (sort !== undefined) params.set("sort", sort);
-      if (direction !== undefined) params.set("direction", direction);
-
       try {
-        const payload = await requestJson<CharacterSearchResponse>(
-          `/api/characters/search?${params.toString()}`,
-          { signal: controller.signal },
+        const payload = await api.searchCharacters(
+          {
+            q: query,
+            limit,
+            offset,
+            sort,
+            direction,
+          },
+          controller.signal,
         );
         setResults(payload.results);
         setTotal(payload.total);

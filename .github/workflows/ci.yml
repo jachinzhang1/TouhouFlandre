@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: OpenAPI lint
+        run: pnpm lint:openapi
+
+      - name: OpenAPI refs & orphan check
+        run: pnpm check:openapi-refs
+
+      - name: Generated types are up to date
+        run: |
+          pnpm --filter @touhoufriberg/web gen:api
+          git diff --exit-code -- apps/web/src/generated
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  go:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_DB: touhouflandre
+          POSTGRES_USER: touhouflandre
+          POSTGRES_PASSWORD: touhouflandre-ci
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U touhouflandre -d touhouflandre"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: arduino/setup-task@v2
+
+      - uses: sqlc-dev/setup-sqlc@v2
+        with:
+          sqlc-version: "1.31.1"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Go vet & build
+        working-directory: apps/api
+        run: go vet ./... && go build ./...
+
+      - name: Go test (integration, real Postgres)
+        working-directory: apps/api
+        env:
+          DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
+        run: go test ./...
+
+      - name: Generated Go code is up to date
+        working-directory: apps/api
+        env:
+          DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
+        run: |
+          task gen
+          git diff --exit-code -- apps/api/internal/generated

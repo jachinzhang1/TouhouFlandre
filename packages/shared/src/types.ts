@@ -79,18 +79,6 @@ export type Character = {
   sourceRefs: string[];
 };
 
-export type Work = {
-  id: string;
-  titleZh: string;
-  titleJa: string;
-  titleEn?: string;
-  shortName: string;
-  type: WorkType;
-  releaseYear: number;
-  mainlineIndex?: number;
-  era?: "pc98" | "windows" | "other";
-};
-
 export const GUESS_FIELD_KEYS = [
   "firstAppearance",
   "releaseYear",

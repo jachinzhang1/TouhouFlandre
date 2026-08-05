@@ -1,0 +1,46 @@
+# 猜测字段 schema：GuessFieldKey 与 GuessField
+# 对应 packages/shared/src/types.ts
+
+GuessFieldKey:
+  type: string
+  enum:
+    - firstAppearance
+    - releaseYear
+    - species
+    - abilityTags
+    - affiliations
+    - locations
+    - roles
+    - hairColors
+
+GuessField:
+  type: object
+  required:
+    - key
+    - label
+    - type
+    - visible
+    - compareStrategy
+  properties:
+    key:
+      $ref: "#/GuessFieldKey"
+    label:
+      type: string
+    type:
+      type: string
+      enum:
+        - string
+        - enum
+        - multi_enum
+        - number
+        - hierarchy
+    visible:
+      type: boolean
+    compareStrategy:
+      type: string
+      enum:
+        - firstAppearance
+        - numberDirection
+        - multiSet
+    helpText:
+      type: string

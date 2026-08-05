@@ -4,10 +4,8 @@ dist
 coverage
 .env
 .env.local
-dev.db
-dev.db-journal
 *.log
 *.tsbuildinfo
 apps/web/.vite
-apps/api/dist
-packages/*/dist
+apps/api/.openapi.bundled.yaml
+apps/api/server
