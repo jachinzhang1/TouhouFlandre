@@ -53,10 +53,15 @@ tasks:
     cmds:
       - sqlc generate
 
+  gen:web:
+    cmds:
+      - pnpm --filter @touhoufriberg/web gen:api
+
   gen:
     cmds:
       - task: gen:openapi
       - task: gen:repo
+      - task: gen:web
 
   check:generated:
     cmds:
