@@ -1,7 +1,8 @@
 import createClient from "openapi-fetch";
 import type { paths } from "../generated/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+// 默认同源（Next rewrites /api → Go 4000）；可被 NEXT_PUBLIC_API_BASE_URL 覆盖为直连。
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const client = createClient<paths>({ baseUrl: API_BASE_URL });
 

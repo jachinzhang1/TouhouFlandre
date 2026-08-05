@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import type { CatalogSummary } from "@touhoufriberg/shared";
 import { api } from "../lib/api";
@@ -7,10 +9,10 @@ export function useCatalogSummary() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void api
+    api
       .catalog(controller.signal)
       .then(setSummary)
-      .catch(() => undefined);
+      .catch(() => setSummary(null));
     return () => controller.abort();
   }, []);
 
