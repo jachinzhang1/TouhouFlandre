@@ -6,7 +6,7 @@ This repository is organized as a standard open-source web project with a pnpm w
 
 - `apps/web`: Next.js 16 App Router, React, TypeScript, and Tailwind CSS v4 frontend.
 - `apps/api`: Go + Echo API server (OpenAPI-validated, Postgres-backed).
-- `packages/shared`: shared game types, field definitions, comparators, daily puzzle logic, and sharing utilities.
+- `packages/shared`: shared game types, field definitions, mode configs, and sharing utilities (authoritative game rules live in the Go `apps/api` package).
 - `packages/data`: validated Touhou character, portrait metadata, and work data.
 - `docs`: gameplay and product planning documents.
 
@@ -38,7 +38,7 @@ The web app runs on `http://localhost:5173`.
 - `task db:up` / `db:down`: start/stop the local Postgres container.
 - `task db:migrate`: apply goose migrations.
 - `task db:seed`: validate the catalog and seed it into Postgres.
-- `task gen`: regenerate OpenAPI types and sqlc queries.
+- `task gen`: regenerate OpenAPI types, sqlc queries, and the web API client (`gen:openapi` + `gen:repo` + `gen:web`).
 
 ## Demo Scope
 
