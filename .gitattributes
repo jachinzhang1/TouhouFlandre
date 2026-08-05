@@ -1,0 +1,5 @@
+# 生成文件：由 `task gen`（oapi-codegen / sqlc / openapi-typescript / redocly）产出，
+# 禁止手改；修改契约后必须重新生成并保持提交零 diff（CI `git diff --exit-code` 校验）。
+apps/api/internal/generated/** linguist-generated=true
+apps/web/src/generated/** linguist-generated=true
+apps/api/.openapi.bundled.yaml linguist-generated=true
