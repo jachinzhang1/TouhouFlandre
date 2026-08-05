@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* 阶段一（D5）：不引入 preflight，保留 styles.css 原始基线（行高/默认样式与 Vite 一致）。
+   仅取 theme 变量与 utilities，供阶段二 utility 化使用。 */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
 
 /* Phase 4 D5: Tailwind v4 theme tokens, same values as styles.css :root */
 @theme {
