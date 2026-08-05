@@ -241,7 +241,7 @@
 
 | 偏差 | 原因 | 影响 |
 |---|---|---|
-| 跳过 Tailwind preflight | 保持 Vite 基线行高/默认样式 | globals.css 头部 import 方式 |
+| 跳过 Tailwind preflight | 保持 Vite 基线行高/默认样式（已修订：2026-08-05 收敛为完整 `@import "tailwindcss"`，并在 globals.css 末尾加 `html { line-height: normal }` 兼容覆盖；全路由视觉对比 <1.6% 与 Phase 4 同级） | globals.css import 方式 + 末尾覆盖段 |
 | 游戏页/共享类保留语义类 | 复杂状态/动画（05 §5） | styles.css 保留约 600 行 |
 | 以旧应用实际渲染为视觉基线 | Vite CSS 排序与源文件不一致 | 搜索页 mobile 细节 |
 | vitest localStorage 注入 | jsdom 30 + vitest 组合问题 | test setup 文件 |

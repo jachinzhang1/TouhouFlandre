@@ -1,7 +1,6 @@
-/* 阶段一（D5）：不引入 preflight，保留 styles.css 原始基线（行高/默认样式与 Vite 一致）。
-   仅取 theme 变量与 utilities，供阶段二 utility 化使用。 */
-@import "tailwindcss/theme.css";
-@import "tailwindcss/utilities.css";
+/* Tailwind v4 完整入口（含 preflight）。2026-08-05 起从「仅 theme+utilities」
+   收敛为标准配置：一次修复语义类与 preflight 的冲突，后续新代码走标准 Tailwind。 */
+@import "tailwindcss";
 
 /* Phase 4 D5: Tailwind v4 theme tokens, same values as styles.css :root */
 @theme {
@@ -1117,4 +1116,9 @@ input:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+/* ── preflight 兼容覆盖：恢复 styles.css 语义类的旧基线（无 preflight 时代）──
+   2026-08-05 收敛到标准 Tailwind（含 preflight）时加入；新代码无需依赖此段。 */
+html {
+  line-height: normal;
 }
