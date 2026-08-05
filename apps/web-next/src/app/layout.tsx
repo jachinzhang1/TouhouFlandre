@@ -20,10 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-Hans">
-      <body>
-        <div className="app-shell">
+      <body className="max-[680px]:pb-[68px]">
+        <div className="mx-auto w-[min(1240px,calc(100%-40px))] min-h-screen max-[680px]:w-full">
           <SiteNav />
-          <main className="page-content">{children}</main>
+          <main className="pb-11 pt-[22px] min-h-[calc(100vh-142px)] max-[680px]:min-h-[calc(100vh-128px)] max-[680px]:pb-7 max-[680px]:pt-3">
+            {children}
+          </main>
           <SiteFooter />
         </div>
       </body>

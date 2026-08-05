@@ -17,12 +17,16 @@ export function CharacterAvatar({
   const showImage = avatarUrl && failedUrl !== avatarUrl;
 
   return (
-    <span className={`avatar ${className}`.trim()} aria-hidden="true">
+    <span
+      className={`inline-flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#e7edeb] text-white font-black ${className}`.trim()}
+      aria-hidden="true"
+    >
       {showImage ? (
         <img
           src={avatarUrl}
           alt=""
           title={name}
+          className="size-full object-cover [image-rendering:pixelated]"
           onError={() => setFailedUrl(avatarUrl)}
         />
       ) : (

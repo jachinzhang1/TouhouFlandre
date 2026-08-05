@@ -48,23 +48,34 @@ export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="site-nav" aria-label="站点导航">
-      <Link className="brand-button" href="/" aria-label="返回首页">
-        <span className="brand-mark" aria-hidden="true">
+    <nav
+      className="relative z-20 flex h-[76px] items-center justify-between gap-7 border-b border-line max-[680px]:mx-[14px] max-[680px]:h-[62px]"
+      aria-label="站点导航"
+    >
+      <Link
+        className="inline-flex items-center gap-[11px] whitespace-nowrap text-left no-underline text-ink"
+        href="/"
+        aria-label="返回首页"
+      >
+        <span className="inline-flex size-[38px] items-center justify-center rounded-[4px] bg-vermilion text-white shadow-[4px_4px_0_#e1c1bb] max-[680px]:size-[34px]">
           <Flower2 size={18} />
         </span>
-        <span className="brand-copy">
-          <strong>TouhouFlandre</strong>
-          <small>东方芙一把</small>
+        <span className="grid gap-px">
+          <strong className="font-brand text-[1.05rem]">TouhouFlandre</strong>
+          <small className="text-[0.68rem] text-ink-soft">东方芙一把</small>
         </span>
       </Link>
-      <div className="nav-links">
+      <div className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-6 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[rgba(251,252,251,0.96)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[0_-8px_24px_rgba(25,46,39,0.08)] max-[680px]:backdrop-blur-[14px]">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
           return (
             <Link
-              className={active ? "nav-link active" : "nav-link"}
+              className={
+                active
+                  ? "nav-link active"
+                  : "nav-link"
+              }
               key={item.label}
               href={item.href}
               aria-current={active ? "page" : undefined}
