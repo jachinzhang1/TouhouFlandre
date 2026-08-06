@@ -6,9 +6,44 @@
 package multi
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"time"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
+
+// NewID 生成 25 位小写字母数字 id（同单人 newSessionID 模式，08 §9.1）。
+func NewID() string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+	raw := make([]byte, 25)
+	if _, err := rand.Read(raw); err != nil {
+		panic("multi: crypto/rand unavailable: " + err.Error())
+	}
+	id := make([]byte, 25)
+	for i, b := range raw {
+		id[i] = alphabet[int(b)%len(alphabet)]
+	}
+	return string(id)
+}
+
+// GameMaxGuesses 每局每人猜测上限（08 §4.2：沿用单人 GameContentDefinition.MaxGuesses = 8）。
+var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
+
+// MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。
+func MemberViews(rows []repo.MultiMember) []MemberView {
+	views := make([]MemberView, 0, len(rows))
+	for _, m := range rows {
+		views = append(views, MemberView{
+			Slot:        int(m.Slot),
+			DisplayName: m.DisplayName,
+			Status:      MemberStatus(m.Status),
+			Ready:       m.Ready,
+		})
+	}
+	return views
+}
 
 // 房间/成员/局/对局状态与结果枚举（与 protocol.yaml 与 OpenAPI schema 对齐）。
 
@@ -30,6 +65,14 @@ const (
 	RoomStatusPlaying  RoomStatus = "playing"
 	RoomStatusFinished RoomStatus = "finished"
 	RoomStatusClosed   RoomStatus = "closed"
+)
+
+// MatchStatus 场次状态。
+type MatchStatus string
+
+const (
+	MatchStatusPlaying  MatchStatus = "playing"
+	MatchStatusFinished MatchStatus = "finished"
 )
 
 // MemberStatus 成员连接状态。
@@ -218,6 +261,39 @@ type MatchEndedPayload struct {
 // RoomClosedPayload room.closed：房间关闭（终态）。
 type RoomClosedPayload struct {
 	Reason RoomCloseReason `json:"reason"`
+}
+
+// ---- 规范形态事件 payload（入库；与 wire 形状的差异见各注释） ----
+
+// RoundGuessPayload 猜测事件规范形态（入库）：真实列序 + 猜测者 slot + roundID（投影种子/水合用）。
+// 投影为 wire 的 round.opponent.guess（按观察者列置换、仅推对手、剥离 memberSlot/roundID）。
+type RoundGuessPayload struct {
+	RoundID    string   `json:"roundId"`
+	MatchIndex int      `json:"matchIndex"`
+	RoundIndex int      `json:"roundIndex"`
+	MemberSlot int      `json:"memberSlot"`
+	RowIndex   int      `json:"rowIndex"`
+	Statuses   []string `json:"statuses"`
+}
+
+// RoundEndedEventPayload 局结束事件规范形态（入库，最小化）：
+// roundID + winnerSlot + 比分 + answerId；wire 的 answer/boards/result（观察者视角）由投影按快照水合/推导。
+type RoundEndedEventPayload struct {
+	RoundID    string     `json:"roundId"`
+	MatchIndex int        `json:"matchIndex"`
+	RoundIndex int        `json:"roundIndex"`
+	WinnerSlot *int       `json:"winnerSlot"`
+	AnswerID   string     `json:"answerId"`
+	Scores     ScoresView `json:"scores"`
+}
+
+// MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；
+// wire 的 result（观察者视角）由投影按 winnerSlot 推导。
+type MatchEndedEventPayload struct {
+	MatchIndex int            `json:"matchIndex"`
+	WinnerSlot *int           `json:"winnerSlot"`
+	Scores     ScoresView     `json:"scores"`
+	Reason     MatchEndReason `json:"reason"`
 }
 
 // ---- 服务端控制帧（非事件，无 sequence） ----
