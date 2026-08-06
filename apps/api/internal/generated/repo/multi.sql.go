@@ -170,36 +170,37 @@ const createRound = `-- name: CreateRound :one
 WITH incremented AS (
     UPDATE multi_match
     SET round_count = round_count + 1
-    WHERE id = $1 AND round_count < target_wins * $2
+    WHERE id = $1 AND round_count < $7
     RETURNING id
 )
 INSERT INTO multi_round (id, match_id, round_index, answer_id, status, starts_at, deadline)
-SELECT $3, $1, $4, $5, 'countdown', $6, $7
+SELECT $2, $1, $3, $4, 'countdown', $5, $6
 FROM incremented
 RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at
 `
 
 type CreateRoundParams struct {
 	MatchID    string             `json:"match_id"`
-	TargetWins int32              `json:"target_wins"`
 	ID         string             `json:"id"`
 	RoundIndex int32              `json:"round_index"`
 	AnswerID   string             `json:"answer_id"`
 	StartsAt   pgtype.Timestamptz `json:"starts_at"`
 	Deadline   pgtype.Timestamptz `json:"deadline"`
+	MaxRounds  int32              `json:"max_rounds"`
 }
 
-// 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做）。
-// 达到上限（round_count >= target_wins * factor）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
+// 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做；
+// max_rounds = factor × N，按赛制计算，bo3 为 9 而非 target_wins×factor=6）。
+// 达到上限（round_count >= max_rounds）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
 func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (MultiRound, error) {
 	row := q.db.QueryRow(ctx, createRound,
 		arg.MatchID,
-		arg.TargetWins,
 		arg.ID,
 		arg.RoundIndex,
 		arg.AnswerID,
 		arg.StartsAt,
 		arg.Deadline,
+		arg.MaxRounds,
 	)
 	var i MultiRound
 	err := row.Scan(
@@ -343,6 +344,33 @@ func (q *Queries) GetActiveRoundForUpdate(ctx context.Context, matchID string) (
 	return i, err
 }
 
+const getCurrentRoundForUpdateByRoom = `-- name: GetCurrentRoundForUpdateByRoom :one
+SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at FROM multi_round r
+JOIN multi_match m ON m.id = r.match_id
+WHERE m.room_id = $1 AND m.status = 'playing'
+ORDER BY r.round_index DESC
+LIMIT 1
+FOR UPDATE OF r
+`
+
+// 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
+func (q *Queries) GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID string) (MultiRound, error) {
+	row := q.db.QueryRow(ctx, getCurrentRoundForUpdateByRoom, roomID)
+	var i MultiRound
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.RoundIndex,
+		&i.AnswerID,
+		&i.Status,
+		&i.WinnerSlot,
+		&i.StartsAt,
+		&i.Deadline,
+		&i.EndedAt,
+	)
+	return i, err
+}
+
 const getGuessByIdempotencyKey = `-- name: GetGuessByIdempotencyKey :one
 SELECT id, round_id, member_id, sequence, guess_id, statuses, is_correct, idempotency_key, created_at FROM multi_guess WHERE round_id = $1 AND member_id = $2 AND idempotency_key = $3
 `
@@ -366,6 +394,35 @@ func (q *Queries) GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessById
 		&i.IsCorrect,
 		&i.IdempotencyKey,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getMatchByIndex = `-- name: GetMatchByIndex :one
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE room_id = $1 AND match_index = $2
+`
+
+type GetMatchByIndexParams struct {
+	RoomID     string `json:"room_id"`
+	MatchIndex int32  `json:"match_index"`
+}
+
+// 按 (room, match_index) 取场（快照事件水合用）。
+func (q *Queries) GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error) {
+	row := q.db.QueryRow(ctx, getMatchByIndex, arg.RoomID, arg.MatchIndex)
+	var i MultiMatch
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.MatchIndex,
+		&i.CatalogVersion,
+		&i.TargetWins,
+		&i.ScoreSlot1,
+		&i.ScoreSlot2,
+		&i.RoundCount,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
 	)
 	return i, err
 }
@@ -521,6 +578,27 @@ func (q *Queries) GetRoomSnapshotState(ctx context.Context, id string) ([]byte, 
 	var snapshot []byte
 	err := row.Scan(&snapshot)
 	return snapshot, err
+}
+
+const getRound = `-- name: GetRound :one
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at FROM multi_round WHERE id = $1
+`
+
+func (q *Queries) GetRound(ctx context.Context, id string) (MultiRound, error) {
+	row := q.db.QueryRow(ctx, getRound, id)
+	var i MultiRound
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.RoundIndex,
+		&i.AnswerID,
+		&i.Status,
+		&i.WinnerSlot,
+		&i.StartsAt,
+		&i.Deadline,
+		&i.EndedAt,
+	)
+	return i, err
 }
 
 const getRoundForUpdate = `-- name: GetRoundForUpdate :one
@@ -954,6 +1032,67 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 	return items, nil
 }
 
+const listRoundsAwaitingAdvance = `-- name: ListRoundsAwaitingAdvance :many
+SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, m.room_id AS room_id
+FROM multi_round r
+JOIN multi_match m ON m.id = r.match_id
+WHERE m.status = 'playing'
+  AND r.status = 'ended'
+  AND r.ended_at IS NOT NULL
+  AND r.ended_at + $1::interval <= now()
+  AND r.round_index = (SELECT MAX(r3.round_index) FROM multi_round r3 WHERE r3.match_id = m.id)
+  AND NOT EXISTS (
+      SELECT 1 FROM multi_round r2
+      WHERE r2.match_id = m.id AND r2.status IN ('countdown', 'playing')
+  )
+ORDER BY r.ended_at
+`
+
+type ListRoundsAwaitingAdvanceRow struct {
+	ID         string             `json:"id"`
+	MatchID    string             `json:"match_id"`
+	RoundIndex int32              `json:"round_index"`
+	AnswerID   string             `json:"answer_id"`
+	Status     string             `json:"status"`
+	WinnerSlot pgtype.Int4        `json:"winner_slot"`
+	StartsAt   pgtype.Timestamptz `json:"starts_at"`
+	Deadline   pgtype.Timestamptz `json:"deadline"`
+	EndedAt    pgtype.Timestamptz `json:"ended_at"`
+	RoomID     string             `json:"room_id"`
+}
+
+// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
+func (q *Queries) ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error) {
+	rows, err := q.db.Query(ctx, listRoundsAwaitingAdvance, intermission)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRoundsAwaitingAdvanceRow{}
+	for rows.Next() {
+		var i ListRoundsAwaitingAdvanceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.RoundIndex,
+			&i.AnswerID,
+			&i.Status,
+			&i.WinnerSlot,
+			&i.StartsAt,
+			&i.Deadline,
+			&i.EndedAt,
+			&i.RoomID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoundsForMatch = `-- name: ListRoundsForMatch :many
 SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at FROM multi_round WHERE match_id = $1 ORDER BY round_index
 `
@@ -1097,6 +1236,28 @@ func (q *Queries) SetMemberRematchReady(ctx context.Context, arg SetMemberRematc
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
+	)
+	return i, err
+}
+
+const startRound = `-- name: StartRound :one
+UPDATE multi_round SET status = 'playing' WHERE id = $1 AND status = 'countdown' RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at
+`
+
+// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
+func (q *Queries) StartRound(ctx context.Context, id string) (MultiRound, error) {
+	row := q.db.QueryRow(ctx, startRound, id)
+	var i MultiRound
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.RoundIndex,
+		&i.AnswerID,
+		&i.Status,
+		&i.WinnerSlot,
+		&i.StartsAt,
+		&i.Deadline,
+		&i.EndedAt,
 	)
 	return i, err
 }

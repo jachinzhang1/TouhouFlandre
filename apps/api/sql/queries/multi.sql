@@ -107,21 +107,58 @@ SELECT * FROM multi_match WHERE status = 'playing' ORDER BY started_at;
 UPDATE multi_match SET status = 'finished', ended_at = $2 WHERE id = $1 RETURNING *;
 
 -- name: CreateRound :one
--- 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做）。
--- 达到上限（round_count >= target_wins * factor）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
+-- 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做；
+-- max_rounds = factor × N，按赛制计算，bo3 为 9 而非 target_wins×factor=6）。
+-- 达到上限（round_count >= max_rounds）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
 WITH incremented AS (
     UPDATE multi_match
     SET round_count = round_count + 1
-    WHERE id = $1 AND round_count < target_wins * $2
+    WHERE id = $1 AND round_count < sqlc.arg(max_rounds)
     RETURNING id
 )
 INSERT INTO multi_round (id, match_id, round_index, answer_id, status, starts_at, deadline)
-SELECT $3, $1, $4, $5, 'countdown', $6, $7
+SELECT $2, $1, $3, $4, 'countdown', $5, $6
 FROM incremented
 RETURNING *;
 
+-- name: GetRound :one
+SELECT * FROM multi_round WHERE id = $1;
+
 -- name: GetRoundForUpdate :one
 SELECT * FROM multi_round WHERE id = $1 FOR UPDATE;
+
+-- name: GetCurrentRoundForUpdateByRoom :one
+-- 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
+SELECT r.* FROM multi_round r
+JOIN multi_match m ON m.id = r.match_id
+WHERE m.room_id = $1 AND m.status = 'playing'
+ORDER BY r.round_index DESC
+LIMIT 1
+FOR UPDATE OF r;
+
+-- name: GetMatchByIndex :one
+-- 按 (room, match_index) 取场（快照事件水合用）。
+SELECT * FROM multi_match WHERE room_id = $1 AND match_index = $2;
+
+-- name: StartRound :one
+-- countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
+UPDATE multi_round SET status = 'playing' WHERE id = $1 AND status = 'countdown' RETURNING *;
+
+-- name: ListRoundsAwaitingAdvance :many
+-- 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
+SELECT r.*, m.room_id AS room_id
+FROM multi_round r
+JOIN multi_match m ON m.id = r.match_id
+WHERE m.status = 'playing'
+  AND r.status = 'ended'
+  AND r.ended_at IS NOT NULL
+  AND r.ended_at + sqlc.arg(intermission)::interval <= now()
+  AND r.round_index = (SELECT MAX(r3.round_index) FROM multi_round r3 WHERE r3.match_id = m.id)
+  AND NOT EXISTS (
+      SELECT 1 FROM multi_round r2
+      WHERE r2.match_id = m.id AND r2.status IN ('countdown', 'playing')
+  )
+ORDER BY r.ended_at;
 
 -- name: GetActiveRoundForUpdate :one
 -- 房间当前进行中的局（countdown|playing；对局中 leave/sweeper 结算取当前局）。

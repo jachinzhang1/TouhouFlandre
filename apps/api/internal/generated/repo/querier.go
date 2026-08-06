@@ -6,6 +6,8 @@ package repo
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -19,8 +21,9 @@ type Querier interface {
 	// 多人模式查询（docs/08_multiplayer_mode_design.md §9.3 清单 + 实施所需补充）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error)
-	// 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做）。
-	// 达到上限（round_count >= target_wins * factor）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
+	// 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做；
+	// max_rounds = factor × N，按赛制计算，bo3 为 9 而非 target_wins×factor=6）。
+	// 达到上限（round_count >= max_rounds）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
 	CreateRound(ctx context.Context, arg CreateRoundParams) (MultiRound, error)
 	// 会话：创建、查询、乐观锁更新
 	CreateSession(ctx context.Context, arg CreateSessionParams) (GameSession, error)
@@ -37,9 +40,13 @@ type Querier interface {
 	GetCatalogCounts(ctx context.Context) (GetCatalogCountsRow, error)
 	// 题库快照与当前版本
 	GetCatalogState(ctx context.Context) (CatalogState, error)
+	// 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
+	GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID string) (MultiRound, error)
 	// 每日题
 	GetDailyPuzzle(ctx context.Context, dateKey string) (DailyPuzzle, error)
 	GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessByIdempotencyKeyParams) (MultiGuess, error)
+	// 按 (room, match_index) 取场（快照事件水合用）。
+	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
 	GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
@@ -51,6 +58,7 @@ type Querier interface {
 	// 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，
 	// 展示组装（名称/头像/标签/列置换）在 Go 投影层按场 catalog_version 快照水合。
 	GetRoomSnapshotState(ctx context.Context, id string) ([]byte, error)
+	GetRound(ctx context.Context, id string) (MultiRound, error)
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
@@ -72,6 +80,8 @@ type Querier interface {
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
+	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
+	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
 	ListTimedOutMembers(ctx context.Context) ([]MultiMember, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
@@ -80,6 +90,8 @@ type Querier interface {
 	SearchCharactersByName(ctx context.Context, arg SearchCharactersByNameParams) ([]Character, error)
 	SetMemberReady(ctx context.Context, arg SetMemberReadyParams) (MultiMember, error)
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
+	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
+	StartRound(ctx context.Context, id string) (MultiRound, error)
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
