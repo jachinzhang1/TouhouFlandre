@@ -1,7 +1,8 @@
 "use client";
 
-// 局结果弹窗（08 §4.4）：胜负 + 答案揭示 + 「查看对局」按钮；
-// 点击仅本地关闭弹窗，不暂停下一局倒计时（到点 round.playing 强制开新局）。
+// 局结果弹窗（08 §4.4/§局末交互）：胜负 + 答案揭示 + 「查看对局」按钮；
+// 点击仅本地关闭弹窗（露出局末完整棋盘），不暂停下一局倒计时
+// （nextRoundStartsAt 由 round.ended 载荷携带，服务端 startsAt 驱动）。
 import { Check, X } from "lucide-react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useEffect, useState } from "react";
@@ -10,12 +11,10 @@ export function RoundResultOverlay({
   result,
   mySlot,
   nextRoundStartsAt,
-  onView,
 }: {
   result: RoundEndedPayload;
   mySlot: 1 | 2;
   nextRoundStartsAt: string | null;
-  onView: () => void;
 }) {
   const [dismissed, setDismissed] = useState(false);
   const won = result.result === "win";
@@ -49,7 +48,7 @@ export function RoundResultOverlay({
         </p>
         <button
           type="button"
-          onClick={onView}
+          onClick={() => setDismissed(true)}
           className="w-full rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark"
         >
           查看对局

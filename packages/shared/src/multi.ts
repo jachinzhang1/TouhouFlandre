@@ -89,6 +89,8 @@ export interface RoundEndedPayload {
   answer: { id: string; name: string; avatarUrl: string };
   boards: { slot1: GuessResult[]; slot2: GuessResult[] };
   scores: { slot1: number; slot2: number };
+  /** 下一局 startsAt（本局 ended_at + INTERMISSION，服务端驱动；对局结束则为空）。 */
+  nextStartsAt?: string;
 }
 
 export interface MatchEndedPayload {

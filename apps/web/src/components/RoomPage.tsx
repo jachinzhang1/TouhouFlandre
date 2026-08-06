@@ -104,10 +104,7 @@ export function RoomView({ code }: { code: string }) {
           <RoundResultOverlay
             result={state.roundResult}
             mySlot={mySlot}
-            nextRoundStartsAt={
-              state.round?.status === "countdown" ? state.round.startsAt : null
-            }
-            onView={() => undefined}
+            nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
           />
         )}
         <GuessErrorToast message={guessError} />
