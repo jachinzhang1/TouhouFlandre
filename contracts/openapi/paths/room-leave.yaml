@@ -1,0 +1,39 @@
+# POST /api/rooms/{roomId}/leave — 离开
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+post:
+  operationId: rooms_leave
+  tags:
+    - rooms
+  summary: 离开房间
+  description: |
+    大厅：加入者删除成员行释放 slot，房主离开则房间关闭（reason=host_left）；
+    对局中：弃赛判对方胜（reason=forfeit）；对局结束后离开 → 房间关闭。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "204":
+      description: 已离开
+    "401":
+      description: 令牌无效（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 房间已关闭（ROOM_CLOSED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

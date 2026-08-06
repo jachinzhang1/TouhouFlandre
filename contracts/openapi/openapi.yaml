@@ -22,6 +22,8 @@ tags:
     description: 题局创建
   - name: sessions
     description: 会话与猜测
+  - name: rooms
+    description: 多人房间（创建/加入/就绪/猜测/对局/再来一局）
 paths:
   /api/health:
     $ref: ./paths/health.yaml
@@ -35,6 +37,26 @@ paths:
     $ref: ./paths/sessions-guess.yaml
   /api/sessions/{sessionId}:
     $ref: ./paths/sessions.yaml
+  /api/rooms:
+    $ref: ./paths/rooms.yaml
+  /api/rooms/{roomCode}:
+    $ref: ./paths/room-info.yaml
+  /api/rooms/{roomCode}/join:
+    $ref: ./paths/room-join.yaml
+  /api/rooms/{roomId}/snapshot:
+    $ref: ./paths/room-snapshot.yaml
+  /api/rooms/{roomId}/ready:
+    $ref: ./paths/room-ready.yaml
+  /api/rooms/{roomId}/rematch:
+    $ref: ./paths/room-rematch.yaml
+  /api/rooms/{roomId}/leave:
+    $ref: ./paths/room-leave.yaml
+  /api/rooms/{roomId}:
+    $ref: ./paths/room-close.yaml
+  /api/rooms/{roomId}/ws:
+    $ref: ./paths/room-ws.yaml
+  /api/rooms/{roomId}/rounds/{roundIndex}/guess:
+    $ref: ./paths/room-rounds.yaml
 components:
   schemas:
     ErrorResponse:
@@ -85,3 +107,47 @@ components:
       $ref: ./schemas/guess.yaml#/GuessFieldKey
     GuessField:
       $ref: ./schemas/guess.yaml#/GuessField
+    RoomFormat:
+      $ref: ./schemas/multi-common.yaml#/RoomFormat
+    RoomStatus:
+      $ref: ./schemas/multi-common.yaml#/RoomStatus
+    MemberStatus:
+      $ref: ./schemas/multi-common.yaml#/MemberStatus
+    RoundStatus:
+      $ref: ./schemas/multi-common.yaml#/RoundStatus
+    MatchResult:
+      $ref: ./schemas/multi-common.yaml#/MatchResult
+    MatchEndReason:
+      $ref: ./schemas/multi-common.yaml#/MatchEndReason
+    RoomCloseReason:
+      $ref: ./schemas/multi-common.yaml#/RoomCloseReason
+    GuestToken:
+      $ref: ./schemas/multi-common.yaml#/GuestToken
+    RoomEventEnvelope:
+      $ref: ./schemas/multi-common.yaml#/RoomEventEnvelope
+    MemberView:
+      $ref: ./schemas/multi-room.yaml#/MemberView
+    RoomInfo:
+      $ref: ./schemas/multi-room.yaml#/RoomInfo
+    CreateRoomResponse:
+      $ref: ./schemas/multi-room.yaml#/CreateRoomResponse
+    JoinRoomResponse:
+      $ref: ./schemas/multi-room.yaml#/JoinRoomResponse
+    RoomSnapshot:
+      $ref: ./schemas/multi-room.yaml#/RoomSnapshot
+    MatchView:
+      $ref: ./schemas/multi-match.yaml#/MatchView
+    RoundView:
+      $ref: ./schemas/multi-round.yaml#/RoundView
+    OpponentRow:
+      $ref: ./schemas/multi-round.yaml#/OpponentRow
+    GuessResponse:
+      $ref: ./schemas/multi-round.yaml#/GuessResponse
+  securitySchemes:
+    GuestBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: "guest:{token}"
+      description: |
+        游客令牌鉴权。Authorization: Bearer guest:{token}；
+        令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存，类型不匹配 → GUEST_UNAUTHORIZED。

@@ -1,0 +1,37 @@
+# POST /api/rooms/{roomId}/ready — 就绪（幂等）
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+post:
+  operationId: rooms_setReady
+  tags:
+    - rooms
+  summary: 就绪
+  description: 幂等置位。双方就绪 → 对局开始（事件驱动，客户端经 WS/快照获知）。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "204":
+      description: 已就绪
+    "401":
+      description: 令牌无效（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 房间状态不允许（ROOM_CLOSED）或对局已开始（MATCH_ALREADY_STARTED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

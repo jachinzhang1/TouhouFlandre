@@ -1,0 +1,99 @@
+# 多人模式通用 schema：枚举、令牌约定与事件信封
+# 对应 docs/08_multiplayer_mode_design.md §5（游客令牌）、§7.2（错误码）、§8.2（事件信封）
+
+RoomFormat:
+  type: string
+  description: 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
+  enum:
+    - bo1
+    - bo3
+    - bo5
+    - bo7
+
+RoomStatus:
+  type: string
+  description: 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
+  enum:
+    - lobby
+    - playing
+    - finished
+    - closed
+
+MemberStatus:
+  type: string
+  description: 成员连接状态。
+  enum:
+    - connected
+    - disconnected
+    - left
+
+RoundStatus:
+  type: string
+  description: 单局状态：countdown（倒计时）→ playing → ended。
+  enum:
+    - countdown
+    - playing
+    - ended
+
+MatchResult:
+  type: string
+  description: 观察者视角的局/场结果（win = 观察者胜）。
+  enum:
+    - win
+    - loss
+    - draw
+
+MatchEndReason:
+  type: string
+  description: 对局结束原因。
+  enum:
+    - normal
+    - forfeit
+    - disconnect
+    - server_restart
+    - round_cap
+
+RoomCloseReason:
+  type: string
+  description: 房间关闭原因。
+  enum:
+    - host_left
+    - member_left
+    - ttl
+    - retention
+
+GuestToken:
+  type: string
+  description: |
+    游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
+    传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
+    令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存（令牌类型不匹配 → GUEST_UNAUTHORIZED）。
+    库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
+
+RoomEventEnvelope:
+  type: object
+  description: 房间事件信封（与 contracts/ws/protocol.yaml 一致）。payload 形状以协议规范为准。
+  required:
+    - type
+    - eventId
+    - roomId
+    - sequence
+    - occurredAt
+    - payload
+  properties:
+    type:
+      type: string
+      description: 事件类型（room.updated / match.started / round.started 等，见 contracts/ws/protocol.yaml）。
+    eventId:
+      type: string
+    roomId:
+      type: string
+    sequence:
+      type: integer
+      description: 房间内单调递增事件序号（客户端恢复游标）。
+    occurredAt:
+      type: string
+      format: date-time
+    payload:
+      type: object
+      additionalProperties: true

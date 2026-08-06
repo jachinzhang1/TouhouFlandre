@@ -4,3 +4,12 @@ rules:
   # health/catalog 是只读、无参数端点，当前实现没有 4XX 分支；
   # 未来引入鉴权或参数后再评估是否恢复该规则。
   operation-4xx-response: off
+  # 08 §7.1 端点表：GET /api/rooms/{roomCode}（公开预检）与
+  # DELETE /api/rooms/{roomId}（房主关闭）同路径模板、按方法分派，仅参数名不同；
+  # no-identical-paths 是启发式规则，与本设计冲突，关闭。
+  no-identical-paths: off
+ignore:
+  # WebSocket 升级端点无 2XX 成功响应（101 Switching Protocols），
+  # operation-2xx-response 忽略该 operation。
+  - rule-id: operation-2xx-response
+    path: "#/paths/~1api~1rooms~1{roomId}~1ws/get"

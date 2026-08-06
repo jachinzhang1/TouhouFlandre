@@ -1,0 +1,37 @@
+# POST /api/rooms/{roomId}/rematch — 确认再来一局（幂等，仅 finished 态）
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+post:
+  operationId: rooms_rematch
+  tags:
+    - rooms
+  summary: 确认再来一局
+  description: 幂等。仅 finished 态可用；双方确认且都 connected 时开新对局（事件驱动）。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "204":
+      description: 已确认
+    "401":
+      description: 令牌无效（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 非 finished 态/成员已离开（REMATCH_NOT_AVAILABLE）或房间已关闭（ROOM_CLOSED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

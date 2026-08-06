@@ -1,0 +1,51 @@
+# POST /api/rooms/{roomCode}/join — 加入房间（入座 slot 2）
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+post:
+  operationId: rooms_join
+  tags:
+    - rooms
+  summary: 加入房间
+  description: |
+    无鉴权。校验：房间存在且处于 lobby、未满 2 人，否则 ROOM_NOT_FOUND / ROOM_FULL / ROOM_CLOSED。
+    房间号输入归一化（去空格/连字符、转大写）。与公开预检共用按 IP 速率限制。
+  parameters:
+    - name: roomCode
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            displayName:
+              type: string
+              description: 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。
+  responses:
+    "201":
+      description: 已加入（返回一次性游客令牌）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-room.yaml#/JoinRoomResponse"
+    "404":
+      description: 房间不存在/已关闭/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 房间已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "429":
+      description: 触发按 IP 速率限制（RATE_LIMITED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
