@@ -403,6 +403,18 @@ func TestDuplicateGuessConflict(t *testing.T) {
 	}
 }
 
+// TestUnknownRouteIs404 回归：echo v5 内建 ErrNotFound 为未导出 httpError 类型，
+// 只实现 StatusCode()（非 *echo.HTTPError）——错误映射必须按状态码处理，不得落入 500 兜底。
+func TestUnknownRouteIs404(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/no-such-path", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unknown route status %d: %s", resp.StatusCode, payload)
+	}
+	if apiErr := decodeError(t, payload); apiErr.Code != "INVALID_REQUEST" {
+		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
 func TestSessionNotFound(t *testing.T) {
 	resp, payload := request(http.MethodGet, "/api/sessions/missing", nil)
 	if resp.StatusCode != http.StatusNotFound {

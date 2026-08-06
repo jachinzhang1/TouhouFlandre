@@ -114,6 +114,20 @@ func errorHandler(c *echo.Context, err error) {
 		return
 	}
 
+	// echo v5 内建错误（ErrNotFound/ErrMethodNotAllowed/ErrBadRequest…）为未导出
+	// httpError 类型，仅实现 StatusCode()；按状态码映射，避免 404 落入 500 兜底。
+	if sc, ok := err.(interface{ StatusCode() int }); ok {
+		code := openapi.ErrorResponseCode("INVALID_REQUEST")
+		if sc.StatusCode() >= http.StatusInternalServerError {
+			code = "INTERNAL"
+		}
+		_ = c.JSON(sc.StatusCode(), openapi.ErrorResponse{
+			Code:  code,
+			Error: err.Error(),
+		})
+		return
+	}
+
 	_ = c.JSON(http.StatusInternalServerError, openapi.ErrorResponse{
 		Code:  "INTERNAL",
 		Error: "服务器暂时无法处理请求。",
@@ -133,7 +147,7 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 		slog.String("user_agent", v.UserAgent),
 	}
 	if v.Error != nil {
-		attrs = append(attrs, slog.Any("error", v.Error))
+		attrs = append(attrs, slog.String("error_code", requestErrorCode(v.Error)), slog.Any("error", v.Error))
 		slog.Default().LogAttrs(context.Background(), slog.LevelError, "request failed", attrs...)
 		return nil
 	}
@@ -143,4 +157,27 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 	}
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, "request", attrs...)
 	return nil
+}
+
+
+// requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。
+func requestErrorCode(err error) string {
+	var apiErr *handler.ApiError
+	if errors.As(err, &apiErr) {
+		return string(apiErr.Code)
+	}
+	var httpErr *echo.HTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.Code >= http.StatusInternalServerError {
+			return "INTERNAL"
+		}
+		return "INVALID_REQUEST"
+	}
+	if sc, ok := err.(interface{ StatusCode() int }); ok {
+		if sc.StatusCode() >= http.StatusInternalServerError {
+			return "INTERNAL"
+		}
+		return "INVALID_REQUEST"
+	}
+	return ""
 }
