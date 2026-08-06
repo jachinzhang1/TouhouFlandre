@@ -10,7 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"math/rand/v2"
 	"time"
 
@@ -67,7 +67,7 @@ func (s *Sweeper) Run(ctx context.Context) {
 
 func (s *Sweeper) tick(ctx context.Context) {
 	if err := s.SweepOnce(ctx); err != nil && ctx.Err() == nil {
-		log.Printf("multi sweeper: sweep error: %v", err)
+		slog.Error("multi sweeper: sweep error", "error", err)
 	}
 }
 

@@ -5,7 +5,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
@@ -67,14 +67,14 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 	defer cancel()
 	tx, err := h.pool.Begin(ctx)
 	if err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
 	room, err := q.GetRoomForUpdate(ctx, roomID)
 	if err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
@@ -82,23 +82,23 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		Status:     string(multi.MemberStatusDisconnected),
 		GraceUntil: pgtype.Timestamptz{Time: time.Now().Add(h.grace), Valid: true},
 	}); err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	members, err := q.ListMembers(ctx, roomID)
 	if err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
 		Format:  multi.RoomFormat(room.Format),
 		Members: multi.MemberViews(members),
 	}); err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {
-		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
 	h.Publish(roomID)
@@ -128,7 +128,7 @@ func (h *Hub) Publish(roomID string) {
 	}
 	events, err := h.q.ListEventsAfterSeq(ctx, repo.ListEventsAfterSeqParams{RoomID: roomID, Sequence: last})
 	if err != nil {
-		log.Printf("hub publish: list events for %s: %v", roomID, err)
+		slog.Error("hub publish: list events", "room_id", roomID, "error", err)
 		return
 	}
 	if len(events) == 0 {
@@ -136,7 +136,7 @@ func (h *Hub) Publish(roomID string) {
 	}
 	members, err := h.q.ListMembers(ctx, roomID)
 	if err != nil {
-		log.Printf("hub publish: list members for %s: %v", roomID, err)
+		slog.Error("hub publish: list members", "room_id", roomID, "error", err)
 		return
 	}
 	memberSlotByID := map[string]int32{}
@@ -152,7 +152,7 @@ func (h *Hub) Publish(roomID string) {
 			}
 			payload, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
 			if err != nil {
-				log.Printf("hub publish: project event %d for %s: %v", event.Sequence, c.member.ID, err)
+				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
 				continue
 			}
 			if skip {
@@ -160,7 +160,7 @@ func (h *Hub) Publish(roomID string) {
 			}
 			frame, err := envelopeFrame(event, payload)
 			if err != nil {
-				log.Printf("hub publish: marshal event %d: %v", event.Sequence, err)
+				slog.Error("hub publish: marshal event", "room_id", roomID, "sequence", event.Sequence, "error", err)
 				continue
 			}
 			if !c.enqueue(frame) {
