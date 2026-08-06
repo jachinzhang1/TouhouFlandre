@@ -9,6 +9,18 @@ RETURNING *;
 -- name: GetRoomByCode :one
 SELECT * FROM multi_room WHERE code = $1;
 
+-- name: GetRoomByCodeForUpdate :one
+-- 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
+SELECT * FROM multi_room WHERE code = $1 FOR UPDATE;
+
+-- name: GetRoomForUpdate :one
+-- 大厅命令（ready/leave/close）锁房间行。
+SELECT * FROM multi_room WHERE id = $1 FOR UPDATE;
+
+-- name: IncrementRoomEventSeq :one
+-- 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
+UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_seq;
+
 -- name: GetRoom :one
 SELECT * FROM multi_room WHERE id = $1;
 

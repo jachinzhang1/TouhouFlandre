@@ -453,6 +453,46 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (MultiRoom, er
 	return i, err
 }
 
+const getRoomByCodeForUpdate = `-- name: GetRoomByCodeForUpdate :one
+SELECT id, code, format, status, event_seq, created_at, expires_at FROM multi_room WHERE code = $1 FOR UPDATE
+`
+
+// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
+func (q *Queries) GetRoomByCodeForUpdate(ctx context.Context, code string) (MultiRoom, error) {
+	row := q.db.QueryRow(ctx, getRoomByCodeForUpdate, code)
+	var i MultiRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Format,
+		&i.Status,
+		&i.EventSeq,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const getRoomForUpdate = `-- name: GetRoomForUpdate :one
+SELECT id, code, format, status, event_seq, created_at, expires_at FROM multi_room WHERE id = $1 FOR UPDATE
+`
+
+// 大厅命令（ready/leave/close）锁房间行。
+func (q *Queries) GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, error) {
+	row := q.db.QueryRow(ctx, getRoomForUpdate, id)
+	var i MultiRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Format,
+		&i.Status,
+		&i.EventSeq,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
 const getRoomSnapshotState = `-- name: GetRoomSnapshotState :one
 WITH latest_match AS (
     SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
@@ -502,6 +542,18 @@ func (q *Queries) GetRoundForUpdate(ctx context.Context, id string) (MultiRound,
 		&i.EndedAt,
 	)
 	return i, err
+}
+
+const incrementRoomEventSeq = `-- name: IncrementRoomEventSeq :one
+UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_seq
+`
+
+// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
+func (q *Queries) IncrementRoomEventSeq(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRow(ctx, incrementRoomEventSeq, id)
+	var event_seq int64
+	err := row.Scan(&event_seq)
+	return event_seq, err
 }
 
 const insertGuess = `-- name: InsertGuess :one

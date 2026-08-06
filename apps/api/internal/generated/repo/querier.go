@@ -44,12 +44,18 @@ type Querier interface {
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)
+	// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
+	GetRoomByCodeForUpdate(ctx context.Context, code string) (MultiRoom, error)
+	// 大厅命令（ready/leave/close）锁房间行。
+	GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, error)
 	// 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，
 	// 展示组装（名称/头像/标签/列置换）在 Go 投影层按场 catalog_version 快照水合。
 	GetRoomSnapshotState(ctx context.Context, id string) ([]byte, error)
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
+	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
+	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 幂等：ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING；
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
