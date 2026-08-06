@@ -1,7 +1,7 @@
 # Phase 2 开发计划 — 房间与大厅（无实时）
 
 > 依据：[`08_multiplayer_mode_design.md`](../08_multiplayer_mode_design.md) §13 M2、§4.1（创建与加入）、§4.6（大厅离开/TTL）、§5（游客令牌）、§6.1（房间状态机 lobby 段）、§6.2（成员状态机）；[`07_productization_plan.md`](../07_productization_plan.md) §7.1（REST 命令）
-> 状态：📋 待执行（执行记录见 §10）
+> 状态：✅ 已完成（执行记录见 §10）
 > 影响范围：`apps/api/internal/handler/`（rooms 相关）、`apps/api/internal/multi/`（新包：房间/成员领域逻辑）、`apps/api/internal/config/`、`apps/api/cmd/server/`、`apps/api/internal/server/`（路由注册）、集成测试
 > 原则：**先有可玩的房间生命周期，再接实时**。本阶段只做 REST 命令 + 快照端点 + 游客令牌 + 大厅 TTL 的 sweeper 骨架，不建 WS、不开始对局。
 
@@ -222,6 +222,40 @@ goroutine（1s tick，context 控制，跟随 server 生命周期）：
 
 ---
 
-## 10. 执行记录
+## 10. 执行记录（2026-08-06，分支 feature/multipalyer_mode_backend）
 
-> 状态：待执行。完成后按仓库惯例记录完成情况、真实问题与修复、与计划的偏差（参照 `migration_to_go/phase01.md` §10 格式）。
+### 完成情况
+
+- T1-T6 全部完成；总验收 5 条全部满足：创建/预检/加入/就绪/离开/关闭/快照 7 端点可用且错误码与 08 §7.2 一致；游客令牌签发/鉴权闭环（缺失/伪造/跨房/left/类型不匹配各路径）；大厅状态机（lobby 段）与成员状态一致；sweeper 骨架（TTL + closed 清理）集成测试验证、`event_seq` 取号正确；单人六端点集成测试无回归、生成物零 diff。
+- 全量回归：`cd apps/api && go vet/build/test ./...` ✅（多人单元 + 集成 13 用例 + 单人回归）、`pnpm test` ✅、`pnpm typecheck` ✅、`task gen` 零 diff ✅、`lint:openapi`/`check:openapi-refs`/`check:ws-protocol` ✅。
+- 冒烟等价：集成测试覆盖创建→预检→加入→就绪→离开→关闭→TTL→清理全链路（httptest 真实 server + 真实 Postgres）。
+
+### 执行中发现的真实问题与修复
+
+| 问题 | 修复 |
+|---|---|
+| **kin-openapi gorillamux 路由限制**：08 §7.1 的 `/api/rooms/{roomCode}`(GET) 与 `/api/rooms/{roomId}`(DELETE) 同形路径，gorillamux 按「路径形状」注册，先注册的同形路由在方法不匹配时 `ErrMethodNotAllowed` 短路，导致 GET 预检一律 405 | `/api/rooms*` 路径跳过 OpenAPI 请求校验（server.go 注释说明，与 redocly 例外同根因）；参数/body 校验由 oapi-codegen wrapper + handler 层等价完成（format 枚举、body 必填、roundIndex 解析等均有 handler 断言，集成测试覆盖） |
+| **OpenAPI `security` 声明与鉴权模型冲突**：oapi validator 对带 security 的操作要求 `AuthenticationFunc`，未配置时所有请求 403（含带合法 Bearer 的请求）；且 WS 升级请求本身无 Authorization 头（hello 首帧鉴权），无法走 AuthenticationFunc | 移除全部房间操作的 `security:` 声明（`GuestBearer` securityScheme 保留作契约文档并注明由 handler 中间件执行）；鉴权统一由 `RoomGuardMiddleware`（strict middleware）负责：缺失/伪造/跨房/left/类型不匹配 → 401，非房主关闭 → 403 |
+| **strict middleware 的 operationID 是 Go 方法名**（`RoomsJoin`）而非 OpenAPI operationId（`rooms_join`），导致中间件 switch 全部失配、限流与鉴权从未生效 | switch 改为 Go 方法名；限流/鉴权经调试确认生效 |
+| `RoomsGetInfo` 的 closed 检查写在 `err != nil` 分支内，已存在房间（err==nil）时永不触发 → 已关闭房间预检返回 200 | 检查移到 err 处理之后（已关闭 → 404 ROOM_NOT_FOUND，集成测试覆盖） |
+| 保留期清理后成员行随 CASCADE 消失，令牌查询 ErrNoRows → 401（测试原期望 404） | 修正测试期望为 401（符合 §6.2「行没了撤销令牌」语义），并直接断言 `multi_room` 行已删除 |
+| 集成测试共用 server 实例时，按 IP 限流（10/min）会被正常流程用例累计打满，导致测试互相干扰 | `handler.Option`（`WithJoinRateLimit`）+ `server.NewWithOptions`：共享测试 server 放宽限流；限流专项测试用独立 server（limit=2）验证 429 |
+| join 请求体 required 语义：无 body 时 oapi validator 报 400「value is required but missing」（验证器被跳过前）；handler 层等价校验 `Body == nil` → 400 | 行为一致，测试覆盖（JoinRoom 带 `{}` body） |
+
+### 与计划的偏差
+
+- **OpenAPI 请求校验豁免 `/api/rooms*`**：见上表（gorillamux 同形路径限制）。这不是绕过校验：wrapper 生成的参数绑定 + handler 层业务校验 + 集成测试构成等价保障。
+- **operation 级 `security` 移除**：鉴权完全由 handler 中间件执行（计划 T2 本就是中间件方案）；契约 securityScheme 保留为文档。
+- **`join` 状态码**：按契约定为 201（Phase 1 已定义）。
+- **`event_seq` 取号**：新增 `IncrementRoomEventSeq` 查询（08 §9.2 步骤 9），sweeper 与 handler 共用 `multi.AppendEvent`。
+- **handler.Server 选项**：`NewServer(pool, opts...)` + `server.NewWithOptions`（仅测试注入限流参数，生产默认 10/min 不变）。
+- **成员 id**：复用 `newSessionID`（25 位）模式，非独立生成器。
+- 无 WS 连接/广播（非目标，Phase 4）；`rematch`/`guess`/`ws` 三个端点保持 501 占位。
+
+### Phase 3 输入（明确交接）
+
+- `ready` 双就绪事务已在 handler 置位并写 `room.updated`（Phase 3 在此接入对局开始：锁房间行 → 绑 `catalog_version` → 抽题 → 建 round 1）。
+- 事件入库链路（`event_seq` 取号 + `room_event` 写规范形态）就绪；sweeper goroutine 就绪（`multi.Sweeper` 注入配置，main.go 已接线）。
+- 锁序纪律基础：大厅命令只锁房间行（`GetRoomForUpdate`/`GetRoomByCodeForUpdate`）已落地。
+- `multi_round`/`multi_guess`/`multi_match` 相关查询（`CreateMatch`/`CreateRound`/`InsertGuess`/`GetRoundForUpdate` 等）Phase 1 已生成，可复用。
+
