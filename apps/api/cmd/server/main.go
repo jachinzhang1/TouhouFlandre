@@ -27,9 +27,19 @@ func main() {
 
 	e := server.New(pool)
 
-	// 唯一后台调度器（08 §6.3）：大厅 TTL / closed 清理；对局职责 Phase 3 扩展。
+	// 服务重启明确终止（08 §4.6）：启动时对进行中对局（含 countdown 态局）判平终止，不静默丢失。
+	timing := multi.DefaultTimingConfig() // Phase 6 统一接 internal/config
+	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
+	if err != nil {
+		fatal("terminate active matches:", err)
+	}
+	if terminated > 0 {
+		fmt.Printf("server: terminated %d active match(es) after restart\n", terminated)
+	}
+
+	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
 	sweeper := multi.NewSweeper(pool, multi.SweeperConfig{
-		LobbyTTL:       config.MultiLobbyTTL(),
+		Timing:         timing,
 		EventRetention: config.MultiEventRetention(),
 		Interval:       time.Second,
 	})
