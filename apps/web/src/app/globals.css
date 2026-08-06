@@ -486,7 +486,8 @@ input:focus-visible {
 }
 
 .game-surface {
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--paper);
@@ -500,6 +501,7 @@ input:focus-visible {
   gap: 26px;
   min-height: 116px;
   padding: 24px 28px;
+  border-radius: 5px 5px 0 0;
   color: #ffffff;
   background: #183e37;
 }
@@ -609,11 +611,13 @@ input:focus-visible {
 
 .suggestion-list {
   position: absolute;
+  z-index: 30;
   top: calc(100% + 7px);
   right: 0;
   left: 0;
   max-height: 320px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   background: #ffffff;
@@ -998,6 +1002,7 @@ input:focus-visible {
     display: grid;
     gap: 20px;
     padding: 22px 18px;
+    border-radius: 0;
   }
 
   .game-emblem {

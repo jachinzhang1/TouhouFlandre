@@ -3,3 +3,7 @@
 apps/api/internal/generated/** linguist-generated=true
 apps/web/src/generated/** linguist-generated=true
 apps/api/.openapi.bundled.yaml linguist-generated=true
+
+# Files sourced or executed by POSIX shells must keep LF line endings.
+.env.example text eol=lf
+Taskfile.yml text eol=lf
