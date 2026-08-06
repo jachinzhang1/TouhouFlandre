@@ -12,7 +12,13 @@ import (
 
 type Querier interface {
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
+	// 指标采集（active_rounds）。
+	CountActiveRounds(ctx context.Context) (int32, error)
 	CountGuessesForRoundMember(ctx context.Context, arg CountGuessesForRoundMemberParams) (int64, error)
+	// 指标采集（members{status}）。
+	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
+	// 指标采集（sweeper 定时聚合 rooms{status}）。
+	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
 	CountSearchCharacters(ctx context.Context, q_ string) (int64, error)
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。

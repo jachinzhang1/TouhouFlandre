@@ -35,6 +35,18 @@ func (q *Queries) CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom
 	return i, err
 }
 
+const countActiveRounds = `-- name: CountActiveRounds :one
+SELECT count(*)::int FROM multi_round WHERE status IN ('countdown', 'playing')
+`
+
+// 指标采集（active_rounds）。
+func (q *Queries) CountActiveRounds(ctx context.Context) (int32, error) {
+	row := q.db.QueryRow(ctx, countActiveRounds)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countGuessesForRoundMember = `-- name: CountGuessesForRoundMember :one
 SELECT COUNT(*) FROM multi_guess WHERE round_id = $1 AND member_id = $2
 `
@@ -49,6 +61,66 @@ func (q *Queries) CountGuessesForRoundMember(ctx context.Context, arg CountGuess
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const countMemberStatuses = `-- name: CountMemberStatuses :many
+SELECT status, count(*)::int AS count FROM multi_member GROUP BY status
+`
+
+type CountMemberStatusesRow struct {
+	Status string `json:"status"`
+	Count  int32  `json:"count"`
+}
+
+// 指标采集（members{status}）。
+func (q *Queries) CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error) {
+	rows, err := q.db.Query(ctx, countMemberStatuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountMemberStatusesRow{}
+	for rows.Next() {
+		var i CountMemberStatusesRow
+		if err := rows.Scan(&i.Status, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countRoomStatuses = `-- name: CountRoomStatuses :many
+SELECT status, count(*)::int AS count FROM multi_room GROUP BY status
+`
+
+type CountRoomStatusesRow struct {
+	Status string `json:"status"`
+	Count  int32  `json:"count"`
+}
+
+// 指标采集（sweeper 定时聚合 rooms{status}）。
+func (q *Queries) CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error) {
+	rows, err := q.db.Query(ctx, countRoomStatuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountRoomStatusesRow{}
+	for rows.Next() {
+		var i CountRoomStatusesRow
+		if err := rows.Scan(&i.Status, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const createMatch = `-- name: CreateMatch :one

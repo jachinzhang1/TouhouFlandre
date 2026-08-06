@@ -228,3 +228,15 @@ ORDER BY m.ended_at;
 
 -- name: ListExpiredClosedRooms :many
 SELECT * FROM multi_room WHERE status = 'closed' AND expires_at <= now() ORDER BY expires_at;
+
+-- name: CountRoomStatuses :many
+-- 指标采集（sweeper 定时聚合 rooms{status}）。
+SELECT status, count(*)::int AS count FROM multi_room GROUP BY status;
+
+-- name: CountMemberStatuses :many
+-- 指标采集（members{status}）。
+SELECT status, count(*)::int AS count FROM multi_member GROUP BY status;
+
+-- name: CountActiveRounds :one
+-- 指标采集（active_rounds）。
+SELECT count(*)::int FROM multi_round WHERE status IN ('countdown', 'playing');
