@@ -22,6 +22,17 @@
     "era": "pc98"
   },
   {
+    "id": "th04_lls",
+    "titleZh": "东方幻想乡",
+    "titleJa": "東方幻想郷",
+    "titleEn": "Lotus Land Story",
+    "shortName": "TH04",
+    "type": "game",
+    "releaseYear": 1998,
+    "mainlineIndex": 4,
+    "era": "pc98"
+  },
+  {
     "id": "th05_ms",
     "titleZh": "东方怪绮谈",
     "titleJa": "東方怪綺談",
@@ -96,6 +107,105 @@
     "type": "game",
     "releaseYear": 2008,
     "mainlineIndex": 11,
+    "era": "windows"
+  },
+  {
+    "id": "th12_ufo",
+    "titleZh": "东方星莲船",
+    "titleJa": "東方星蓮船",
+    "titleEn": "Undefined Fantastic Object",
+    "shortName": "TH12",
+    "type": "game",
+    "releaseYear": 2009,
+    "mainlineIndex": 12,
+    "era": "windows"
+  },
+  {
+    "id": "th13_td",
+    "titleZh": "东方神灵庙",
+    "titleJa": "東方神霊廟",
+    "titleEn": "Ten Desires",
+    "shortName": "TH13",
+    "type": "game",
+    "releaseYear": 2011,
+    "mainlineIndex": 13,
+    "era": "windows"
+  },
+  {
+    "id": "th14_ddc",
+    "titleZh": "东方辉针城",
+    "titleJa": "東方輝針城",
+    "titleEn": "Double Dealing Character",
+    "shortName": "TH14",
+    "type": "game",
+    "releaseYear": 2013,
+    "mainlineIndex": 14,
+    "era": "windows"
+  },
+  {
+    "id": "th15_lolk",
+    "titleZh": "东方绀珠传",
+    "titleJa": "東方紺珠伝",
+    "titleEn": "Legacy of Lunatic Kingdom",
+    "shortName": "TH15",
+    "type": "game",
+    "releaseYear": 2015,
+    "mainlineIndex": 15,
+    "era": "windows"
+  },
+  {
+    "id": "th16_hsifs",
+    "titleZh": "东方天空璋",
+    "titleJa": "東方天空璋",
+    "titleEn": "Hidden Star in Four Seasons",
+    "shortName": "TH16",
+    "type": "game",
+    "releaseYear": 2017,
+    "mainlineIndex": 16,
+    "era": "windows"
+  },
+  {
+    "id": "th17_wbawc",
+    "titleZh": "东方鬼形兽",
+    "titleJa": "東方鬼形獣",
+    "titleEn": "Wily Beast and Weakest Creature",
+    "shortName": "TH17",
+    "type": "game",
+    "releaseYear": 2019,
+    "mainlineIndex": 17,
+    "era": "windows"
+  },
+  {
+    "id": "th18_um",
+    "titleZh": "东方虹龙洞",
+    "titleJa": "東方虹龍洞",
+    "titleEn": "Unconnected Marketeers",
+    "shortName": "TH18",
+    "type": "game",
+    "releaseYear": 2021,
+    "mainlineIndex": 18,
+    "era": "windows"
+  },
+  {
+    "id": "th19_udoalg",
+    "titleZh": "东方兽王园",
+    "titleJa": "東方獣王園",
+    "titleEn": "Unfinished Dream of All Living Ghost",
+    "shortName": "TH19",
+    "type": "game",
+    "releaseYear": 2023,
+    "mainlineIndex": 19,
+    "era": "windows"
+  },
+  {
+    "id": "th20_fw",
+    "titleZh": "东方锦上京",
+    "titleJa": "東方錦上京",
+    "titleEn": "Fossilized Wonders",
+    "shortName": "TH20",
+    "type": "game",
+    "releaseYear": 2025,
+    "mainlineIndex": 20,
     "era": "windows"
   }
 ]
