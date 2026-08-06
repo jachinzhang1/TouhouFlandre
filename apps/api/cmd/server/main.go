@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
@@ -25,8 +27,6 @@ func main() {
 	}
 	defer pool.Close()
 
-	e := server.New(pool)
-
 	// 服务重启明确终止（08 §4.6）：启动时对进行中对局（含 countdown 态局）判平终止，不静默丢失。
 	timing := multi.DefaultTimingConfig() // Phase 6 统一接 internal/config
 	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
@@ -37,11 +37,16 @@ func main() {
 		fmt.Printf("server: terminated %d active match(es) after restart\n", terminated)
 	}
 
+	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
+	h := hub.New(pool, timing.DisconnectGrace)
+	e := server.NewWithOptions(pool, handler.WithHub(h))
+
 	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
 	sweeper := multi.NewSweeper(pool, multi.SweeperConfig{
 		Timing:         timing,
 		EventRetention: config.MultiEventRetention(),
 		Interval:       time.Second,
+		Broadcaster:    h,
 	})
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
 	defer stopSweeper()
@@ -58,8 +63,9 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	// 排空：先停 sweeper（不再产生新事件），再优雅关停 Echo。
-	// 完整排空链（终止对局 → 关 WS(1012) → 停 sweeper → shutdown）Phase 4/6 扩展。
+	// 优雅排空（08 §11.2）：终止进行中对局 → 关 WS(1012) → 停 sweeper → shutdown。
+	_, _ = multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
+	h.CloseAll()
 	stopSweeper()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

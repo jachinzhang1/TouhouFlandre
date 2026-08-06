@@ -23,6 +23,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/seed"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
@@ -37,6 +38,7 @@ var (
 	fastBaseURL string
 	fastClient  *http.Client
 	fastTiming  multi.TimingConfig
+	fastHub     *hub.Hub
 )
 
 const testDBName = "touhouflandre_test"
@@ -148,9 +150,11 @@ func TestMain(m *testing.M) {
 		MaxRoundsFactor:   3,
 		FinishedRetention: time.Hour,
 	}
+	fastHub = hub.New(pool, fastTiming.DisconnectGrace)
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
 		handler.WithJoinRateLimit(10000, time.Minute),
-		handler.WithMultiTiming(fastTiming)))
+		handler.WithMultiTiming(fastTiming),
+		handler.WithHub(fastHub)))
 	fastBaseURL = fastTS.URL
 	fastClient = fastTS.Client()
 

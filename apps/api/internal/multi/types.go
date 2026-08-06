@@ -296,16 +296,18 @@ type MatchEndedEventPayload struct {
 	Reason     MatchEndReason `json:"reason"`
 }
 
-// ---- 服务端控制帧（非事件，无 sequence） ----
+// ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----
 
-// HelloOkPayload hello-ok：鉴权通过，随后从 lastSequence+1 重放事件。
-type HelloOkPayload struct {
-	RoomID       string `json:"roomId"`
+// HelloOkMessage hello-ok：鉴权通过，随后从 lastSequence+1 重放事件。
+type HelloOkMessage struct {
+	Type         string `json:"type"`
+	RoomId       string `json:"roomId"`
 	NextSequence int64  `json:"nextSequence"`
 }
 
-// ReplacedPayload replaced：同成员新连接注册，本连接被替换。
-type ReplacedPayload struct {
+// ReplacedMessage replaced：同成员新连接注册，本连接被替换。
+type ReplacedMessage struct {
+	Type   string `json:"type"`
 	Reason string `json:"reason"`
 }
 

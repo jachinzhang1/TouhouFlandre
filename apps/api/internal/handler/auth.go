@@ -22,6 +22,14 @@ import (
 
 type guestMemberKey struct{}
 
+type echoContextKey struct{}
+
+// echoContextFrom 返回中间件为 WS 操作注入的 echo.Context（升级连接用）。
+func echoContextFrom(ctx context.Context) (echo.Context, bool) {
+	eCtx, ok := ctx.Value(echoContextKey{}).(echo.Context)
+	return eCtx, ok
+}
+
 func guestUnauthorized(message string) *ApiError {
 	return &ApiError{Status: http.StatusUnauthorized, Code: codeGuestUnauthorized, Message: message}
 }
@@ -60,6 +68,11 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
+			case "RoomsConnectWs":
+				// WS 鉴权走 hello 首帧（08 §8.1，令牌不进 URL/日志）；此处把 echo.Context 注入
+				// 请求上下文，handler 升级连接用（升级校验 Origin/子协议 + 首帧 hello）。
+				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), echoContextKey{}, ctx))
+				ctx.SetRequest(req)
 			}
 			return f(ctx, request)
 		}
@@ -80,6 +93,14 @@ func (s *Server) authenticateGuest(ctx context.Context, authorization string) (*
 		return nil, guestUnauthorized("令牌类型不匹配（期望 guest: 前缀）。")
 	}
 	token := strings.TrimPrefix(credential, multi.GuestTokenPrefix)
+	if token == "" {
+		return nil, guestUnauthorized("令牌为空。")
+	}
+	return s.authenticateToken(ctx, token)
+}
+
+// authenticateToken 按令牌哈希查询成员（REST/WS 共用；WS hello 携带的即冒号后的原始 token）。
+func (s *Server) authenticateToken(ctx context.Context, token string) (*repo.MultiMember, *ApiError) {
 	if token == "" {
 		return nil, guestUnauthorized("令牌为空。")
 	}

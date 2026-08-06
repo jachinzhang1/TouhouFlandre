@@ -17,6 +17,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 // New 构建 Echo 应用。
@@ -25,7 +27,10 @@ func New(pool *pgxpool.Pool) *echo.Echo {
 }
 
 // NewWithOptions 构建 Echo 应用（opts 透传 handler.NewServer，测试注入用）。
+// 默认创建实时 hub（Phase 6 接 MULTI_DISCONNECT_GRACE）；显式 WithHub 可覆盖（与 sweeper 共享单实例）。
 func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
+	h := hub.New(pool, multi.DefaultTimingConfig().DisconnectGrace)
+	opts = append([]handler.Option{handler.WithHub(h)}, opts...)
 	e := echo.New()
 	e.HideBanner = true
 	e.Use(middleware.Logger())

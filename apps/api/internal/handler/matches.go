@@ -166,6 +166,7 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 			if err := tx.Commit(ctx); err != nil {
 				return nil, internalError(err)
 			}
+			s.publish(request.RoomId)
 			return nil, roundNotActiveError("本局已超时（按平局结算）。")
 		}
 		if s.now().Before(round.StartsAt.Time) {
@@ -330,6 +331,7 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
+	s.publish(request.RoomId)
 	return response, nil
 }
 
@@ -463,7 +465,11 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 			}
 		}
 	}
-	return openapi.RoomsRematch204Response{}, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	s.publish(request.RoomId)
+	return openapi.RoomsRematch204Response{}, nil
 }
 
 func roundNotActiveError(message string) *ApiError {

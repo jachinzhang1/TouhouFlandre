@@ -17,6 +17,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
@@ -30,6 +31,7 @@ type Server struct {
 	eventRetention time.Duration  // closed 保留期（关闭时 expires_at）
 	joinLimiter    *ipRateLimiter // 加入/预检按 IP 限流（08 §8.5）
 	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	hub            *hub.Hub       // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 }
 
 // Option 定制 Server（测试注入用）。
@@ -46,6 +48,20 @@ func WithJoinRateLimit(limit int, window time.Duration) Option {
 func WithMultiTiming(timing multi.TimingConfig) Option {
 	return func(s *Server) {
 		s.timing = timing
+	}
+}
+
+// WithHub 注入实时通道（server.NewWithOptions 默认创建；单实例共享给 sweeper 时显式传入）。
+func WithHub(h *hub.Hub) Option {
+	return func(s *Server) {
+		s.hub = h
+	}
+}
+
+// publish 事件事务提交后广播（先入库后广播，07 §7.2；hub 未注入时空转）。
+func (s *Server) publish(roomID string) {
+	if s.hub != nil {
+		s.hub.Publish(roomID)
 	}
 }
 

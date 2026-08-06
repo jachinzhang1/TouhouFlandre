@@ -64,9 +64,9 @@ func fastRequestAuth(method, path, token string, body any) (*http.Response, []by
 	return resp, payload
 }
 
-// fastSweeper 与 fast server 同时间常量的 sweeper（测试手动驱动）。
+// fastSweeper 与 fast server 同时间常量、同 hub 的 sweeper（测试手动驱动；事件入库即广播）。
 func fastSweeper() *multi.Sweeper {
-	return multi.NewSweeper(pool, multi.SweeperConfig{Timing: fastTiming, EventRetention: time.Hour})
+	return multi.NewSweeper(pool, multi.SweeperConfig{Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub})
 }
 
 // advanceRounds 推进局间时序：间歇创建下一局（countdown）+ 倒计时到 playing。

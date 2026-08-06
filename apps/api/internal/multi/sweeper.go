@@ -23,9 +23,10 @@ import (
 
 // SweeperConfig sweeper 配置。
 type SweeperConfig struct {
-	Timing         TimingConfig // 对局时间常量（Phase 6 由 internal/config 注入）
-	EventRetention time.Duration // closed 到删除的保留时长（MULTI_EVENT_RETENTION）
-	Interval       time.Duration // tick 间隔（默认 1s）
+	Timing         TimingConfig     // 对局时间常量（Phase 6 由 internal/config 注入）
+	EventRetention time.Duration    // closed 到删除的保留时长（MULTI_EVENT_RETENTION）
+	Interval       time.Duration    // tick 间隔（默认 1s）
+	Broadcaster    EventBroadcaster // 事件入库后广播（先入库后广播，07 §7.2；nil 时空转）
 }
 
 // Sweeper 后台调度器（唯一）。
@@ -67,6 +68,13 @@ func (s *Sweeper) Run(ctx context.Context) {
 func (s *Sweeper) tick(ctx context.Context) {
 	if err := s.SweepOnce(ctx); err != nil && ctx.Err() == nil {
 		log.Printf("multi sweeper: sweep error: %v", err)
+	}
+}
+
+// notify 事件事务提交后广播（先入库后广播）。
+func (s *Sweeper) notify(roomID string) {
+	if s.cfg.Broadcaster != nil {
+		s.cfg.Broadcaster.Publish(roomID)
 	}
 }
 
@@ -137,7 +145,11 @@ func (s *Sweeper) startRound(ctx context.Context, roundID string) error {
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(match.RoomID)
+	return nil
 }
 
 // settleTimedOutRounds playing 超时 → 平局（round.ended；场级推进由 advanceRounds 完成）。
@@ -192,7 +204,11 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(match.RoomID)
+	return nil
 }
 
 // advanceRounds 局间推进：间歇过后开下一局（round_count+1 与 3×N 上限检查在开局事务内）；
@@ -275,7 +291,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 			if err := s.endMatchByCap(ctx, q, match, s.now()); err != nil {
 				return err
 			}
-			return tx.Commit(ctx)
+			if err := tx.Commit(ctx); err != nil {
+				return err
+			}
+			s.notify(roomID)
+			return nil
 		}
 		return err
 	}
@@ -288,7 +308,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(roomID)
+	return nil
 }
 
 // endMatchByCap 3×N 上限判平：场次与房间 finished + match.ended(reason=round_cap, draw)。
@@ -370,7 +394,11 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 		if err := AppendEvent(ctx, q, room.ID, EventRoomClosed, RoomClosedPayload{Reason: RoomCloseReasonHostLeft}); err != nil {
 			return err
 		}
-		return tx.Commit(ctx)
+		if err := tx.Commit(ctx); err != nil {
+			return err
+		}
+		s.notify(room.ID)
+		return nil
 	}
 	if err := q.DeleteMember(ctx, member.ID); err != nil {
 		return err
@@ -385,7 +413,11 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(room.ID)
+	return nil
 }
 
 // closeExpiredFinishedRooms finished 展示期到期 → 房间关闭（reason=retention，08 §9.1）。
@@ -425,7 +457,11 @@ func (s *Sweeper) closeFinishedRoomByMatch(ctx context.Context, match repo.Multi
 	if err := AppendEvent(ctx, q, room.ID, EventRoomClosed, RoomClosedPayload{Reason: RoomCloseReasonRetention}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(room.ID)
+	return nil
 }
 
 // closeFinishedRoom 成员在 finished 房间逾期 → 关闭（host → host_left，加入者 → member_left）。
@@ -456,7 +492,11 @@ func (s *Sweeper) closeFinishedRoom(ctx context.Context, roomID string, member r
 	if err := AppendEvent(ctx, q, room.ID, EventRoomClosed, RoomClosedPayload{Reason: reason}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(room.ID)
+	return nil
 }
 
 func (s *Sweeper) closeExpiredLobbies(ctx context.Context) error {
@@ -496,7 +536,11 @@ func (s *Sweeper) closeLobbyRoom(ctx context.Context, roomID string) error {
 	if err := AppendEvent(ctx, q, roomID, EventRoomClosed, RoomClosedPayload{Reason: RoomCloseReasonTTL}); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.notify(roomID)
+	return nil
 }
 
 func (s *Sweeper) deleteExpiredClosedRooms(ctx context.Context) error {

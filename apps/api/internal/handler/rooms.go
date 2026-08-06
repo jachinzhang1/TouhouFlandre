@@ -124,6 +124,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, disp
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
+	s.publish(roomID)
 	return openapi.RoomsCreate201JSONResponse{
 		RoomId:     roomID,
 		RoomCode:   room.Code,
@@ -228,6 +229,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
+	s.publish(room.ID)
 	return openapi.RoomsJoin201JSONResponse{
 		RoomId:     room.ID,
 		GuestToken: openapi.GuestToken(token),
@@ -300,7 +302,11 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	}); err != nil {
 		return nil, internalError(err)
 	}
-	return openapi.RoomsSetReady204Response{}, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	s.publish(request.RoomId)
+	return openapi.RoomsSetReady204Response{}, nil
 }
 
 // ---- RoomsLeave：离开（大厅释放 slot / 房主关闭房间） ----
@@ -326,6 +332,7 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		if err := multi.ForfeitMemberMatch(ctx, s.pool, *member, multi.MatchEndReasonForfeit, s.now(), s.timing); err != nil {
 			return nil, internalError(err)
 		}
+		s.publish(request.RoomId)
 		return openapi.RoomsLeave204Response{}, nil
 	}
 
@@ -357,7 +364,11 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		if err := s.closeFinishedRoomByLeave(ctx, q, lockedRoom, member); err != nil {
 			return nil, err
 		}
-		return openapi.RoomsLeave204Response{}, tx.Commit(ctx)
+		if err := tx.Commit(ctx); err != nil {
+			return nil, internalError(err)
+		}
+		s.publish(request.RoomId)
+		return openapi.RoomsLeave204Response{}, nil
 	case string(multi.RoomStatusClosed):
 		return nil, roomClosed()
 	}
@@ -374,7 +385,11 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		}); err != nil {
 			return nil, internalError(err)
 		}
-		return openapi.RoomsLeave204Response{}, tx.Commit(ctx)
+		if err := tx.Commit(ctx); err != nil {
+			return nil, internalError(err)
+		}
+		s.publish(request.RoomId)
+		return openapi.RoomsLeave204Response{}, nil
 	}
 	// 加入者离开 → 删除成员行释放 slot（房主 ready 保留），room.updated 全量刷新。
 	if err := q.DeleteMember(ctx, member.ID); err != nil {
@@ -390,7 +405,11 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 	}); err != nil {
 		return nil, internalError(err)
 	}
-	return openapi.RoomsLeave204Response{}, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	s.publish(request.RoomId)
+	return openapi.RoomsLeave204Response{}, nil
 }
 
 // closeFinishedRoomByLeave 对局结束后离开 → 房间关闭（host → host_left，加入者 → member_left）。
@@ -450,24 +469,14 @@ func (s *Server) RoomsClose(ctx context.Context, request openapi.RoomsCloseReque
 	}); err != nil {
 		return nil, internalError(err)
 	}
-	return openapi.RoomsClose204Response{}, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	s.publish(request.RoomId)
+	return openapi.RoomsClose204Response{}, nil
 }
 
 // ---- Phase 4 占位（契约先行，见 Phase 1 说明） ----
-
-// roomsNotImplemented 返回多人端点占位错误（未到落地阶段的端点）。
-func roomsNotImplemented() *ApiError {
-	return &ApiError{
-		Status:  http.StatusNotImplemented,
-		Code:    codeUnsupportedContentType,
-		Message: "该多人端点尚未实现（见 docs/develop_plan/multiplayer_mode）。",
-	}
-}
-
-// RoomsConnectWs WebSocket 事件通道（Phase 4 落地）。
-func (s *Server) RoomsConnectWs(ctx context.Context, _ openapi.RoomsConnectWsRequestObject) (openapi.RoomsConnectWsResponseObject, error) {
-	return nil, roomsNotImplemented()
-}
 
 // ---- 辅助 ----
 

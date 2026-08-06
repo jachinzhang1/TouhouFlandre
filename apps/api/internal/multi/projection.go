@@ -3,11 +3,19 @@
 package multi
 
 import (
+	"context"
+	"encoding/json"
 	"hash/fnv"
 	"math/rand/v2"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
+
+// EventBroadcaster 事件广播器（Phase 4 hub 实现；sweeper 事件入库后调用，先入库后广播，07 §7.2）。
+type EventBroadcaster interface {
+	Publish(roomID string)
+}
 
 // ColumnPermutation 对 n 列做确定性 Fisher–Yates 置换（08 §4.5）。
 // 种子 = FNV-1a(roundID + "\x00" + observerMemberID)：同一 (round, observer) 恒定，
@@ -66,4 +74,147 @@ func HydrateGuessResult(guess game.Character, statuses []string, isCorrect bool)
 		IsCorrect:      isCorrect,
 		Feedback:       feedback,
 	}
+}
+
+// ProjectEvent 按观察者投影单个事件为 wire 形状（快照/重放/实时三路径共用）。
+// - round.opponent.guess：仅对手可见（memberSlot == observer 跳过）、列置换、剥离内部字段；
+// - round.ended：result 按观察者推导 + 答案与双方完整棋盘水合（按快照）；
+// - match.ended：result 按观察者推导；
+// - 其余事件原样返回（payload map）。
+// charsCache 跨事件共享角色索引（避免重复读快照）；memberSlotByID 用于棋盘按 slot 分组。
+func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, roomID string,
+	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (any, bool, error) {
+
+	switch EventType(event.Type) {
+	case EventRoundOpponentGuess:
+		var payload RoundGuessPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return nil, false, err
+		}
+		if payload.MemberSlot == int(observer.Slot) {
+			return nil, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
+		}
+		perm := ColumnPermutation(payload.RoundID, observer.ID, len(game.CharacterGuessFields))
+		return RoundOpponentGuessPayload{
+			MatchIndex: payload.MatchIndex,
+			RoundIndex: payload.RoundIndex,
+			RowIndex:   payload.RowIndex,
+			Statuses:   PermuteStatuses(payload.Statuses, perm),
+		}, false, nil
+
+	case EventRoundEnded:
+		var payload RoundEndedEventPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return nil, false, err
+		}
+		round, err := q.GetRound(ctx, payload.RoundID)
+		if err != nil {
+			return nil, false, err
+		}
+		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
+		if err != nil {
+			return nil, false, err
+		}
+		chars, err := charactersForVersionCached(ctx, q, match.CatalogVersion, charsCache)
+		if err != nil {
+			return nil, false, err
+		}
+		guesses, err := q.ListGuessesForRound(ctx, round.ID)
+		if err != nil {
+			return nil, false, err
+		}
+		answer := chars[payload.AnswerID]
+		return RoundEndedPayload{
+			MatchIndex: payload.MatchIndex,
+			RoundIndex: payload.RoundIndex,
+			Result:     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+			WinnerSlot: payload.WinnerSlot,
+			Answer:     AnswerView{ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL},
+			Boards:     hydrateBoards(guesses, chars, memberSlotByID),
+			Scores:     payload.Scores,
+		}, false, nil
+
+	case EventMatchEnded:
+		var payload MatchEndedEventPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return nil, false, err
+		}
+		return MatchEndedPayload{
+			MatchIndex: payload.MatchIndex,
+			Result:     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+			WinnerSlot: payload.WinnerSlot,
+			Scores:     payload.Scores,
+			Reason:     payload.Reason,
+		}, false, nil
+
+	default:
+		var payload map[string]any
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return nil, false, err
+		}
+		return payload, false, nil
+	}
+}
+
+// charactersForVersionCached 读取并缓存版本角色索引。
+func charactersForVersionCached(ctx context.Context, q *repo.Queries, version string, cache map[string]map[string]game.Character) (map[string]game.Character, error) {
+	if chars, ok := cache[version]; ok {
+		return chars, nil
+	}
+	characters, err := CharactersForVersion(ctx, q, version)
+	if err != nil {
+		return nil, err
+	}
+	chars := CharactersByID(characters)
+	cache[version] = chars
+	return chars, nil
+}
+
+// hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
+func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32) BoardsView {
+	var boards BoardsView
+	for _, guess := range guesses {
+		var statuses []string
+		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
+			continue
+		}
+		guessChar, ok := chars[guess.GuessID]
+		if !ok {
+			continue
+		}
+		hydrated := GuessResultView{
+			GuessID:        guessChar.ID,
+			GuessName:      guessChar.Names.ZhHans,
+			GuessAvatarURL: guessChar.AvatarURL,
+			IsCorrect:      guess.IsCorrect,
+		}
+		feedback := HydrateGuessResult(guessChar, statuses, guess.IsCorrect)
+		hydrated.Feedback = make([]FieldFeedbackView, len(feedback.Feedback))
+		for i, fb := range feedback.Feedback {
+			hydrated.Feedback[i] = FieldFeedbackView{
+				Field:        string(fb.Field),
+				Label:        fb.Label,
+				Status:       string(fb.Status),
+				Symbol:       fb.Symbol,
+				DisplayValue: fb.DisplayValue,
+			}
+		}
+		if memberSlotByID[guess.MemberID] == 1 {
+			boards.Slot1 = append(boards.Slot1, hydrated)
+		} else {
+			boards.Slot2 = append(boards.Slot2, hydrated)
+		}
+	}
+	return boards
+}
+
+// resultForObserver 由 winnerSlot 推导观察者视角结果（win/loss/draw）。
+func resultForObserver(winnerSlot *int, observerSlot int) MatchResult {
+	if winnerSlot == nil {
+		return MatchResultDraw
+	}
+	if *winnerSlot == observerSlot {
+		return MatchResultWin
+	}
+	return MatchResultLoss
 }
