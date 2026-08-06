@@ -132,8 +132,8 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	byID := multi.CharactersByID(characters)
 	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(game.CharacterGuessFields))
 
-	var self []openapi.GuessResult
-	var opponentRows []openapi.OpponentRow
+	self := []openapi.GuessResult{}
+	opponentRows := []openapi.OpponentRow{} // 空对手矩阵序列化为 []（前端按数组消费）
 	for _, guess := range state.Guesses {
 		statuses := guess.Statuses
 		guessChar, ok := byID[guess.GuessID]

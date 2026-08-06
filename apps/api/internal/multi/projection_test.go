@@ -1,6 +1,7 @@
 package multi
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -65,5 +66,19 @@ func TestPermuteStatuses(t *testing.T) {
 		if out[i] != statuses[p] {
 			t.Fatalf("out[%d] = %s, want statuses[%d]=%s", i, out[i], p, statuses[p])
 		}
+	}
+}
+
+// TestHydrateBoardsEmptySlots 回归：空槽必须是非 nil 空切片（JSON 序列化为 []，前端按数组消费）。
+func TestHydrateBoardsEmptySlots(t *testing.T) {
+	boards := hydrateBoards(nil, nil, nil)
+	if boards.Slot1 == nil || len(boards.Slot1) != 0 {
+		t.Fatalf("Slot1 = %#v, want 非 nil 空切片", boards.Slot1)
+	}
+	if boards.Slot2 == nil || len(boards.Slot2) != 0 {
+		t.Fatalf("Slot2 = %#v, want 非 nil 空切片", boards.Slot2)
+	}
+	if data, err := json.Marshal(boards); err != nil || string(data) != `{"slot1":[],"slot2":[]}` {
+		t.Fatalf("marshal = %s (%v), want {\"slot1\":[],\"slot2\":[]}", data, err)
 	}
 }

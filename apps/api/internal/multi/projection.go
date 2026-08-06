@@ -172,7 +172,11 @@ func charactersForVersionCached(ctx context.Context, q *repo.Queries, version st
 
 // hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
 func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32) BoardsView {
-	var boards BoardsView
+	// 空槽必须序列化为 []（JSON 数组），不能是 nil（null）——前端按数组消费。
+	boards := BoardsView{
+		Slot1: []GuessResultView{},
+		Slot2: []GuessResultView{},
+	}
 	for _, guess := range guesses {
 		var statuses []string
 		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {

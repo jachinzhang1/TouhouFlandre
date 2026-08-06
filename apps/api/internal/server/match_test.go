@@ -476,6 +476,42 @@ func TestMultiSnapshotWithGuesses(t *testing.T) {
 	}
 }
 
+// TestRoundEndedBoardsNotNull 回归：单方猜中即结束，对手 0 猜测时
+// round.ended 投影的 boards 空槽必须是 []（曾为 null，前端 opponentBoard.length 崩溃）。
+func TestRoundEndedBoardsNotNull(t *testing.T) {
+	fixture := createMatchFixture(t)
+	startMatch(t, fixture)
+	answer := currentAnswer(t, fixture.roomID)
+	if resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, answer, "winning-guess"); resp.StatusCode != http.StatusOK {
+		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
+	}
+	snap := startMatchSnapshot(t, fixture)
+	var ended *openapi.RoomEventEnvelope
+	for i := range snap.Events {
+		if snap.Events[i].Type == "round.ended" {
+			ended = &snap.Events[i]
+			break
+		}
+	}
+	if ended == nil {
+		t.Fatalf("round.ended 事件缺失: %+v", snap.Events)
+	}
+	boards, ok := ended.Payload["boards"].(map[string]any)
+	if !ok {
+		t.Fatalf("boards 缺失: %+v", ended.Payload)
+	}
+	slot2, ok := boards["slot2"].([]any)
+	if !ok || slot2 == nil {
+		t.Fatalf("slot2 = %#v, want 非 nil 空数组（对手 0 猜测）", boards["slot2"])
+	}
+	if len(slot2) != 0 {
+		t.Fatalf("slot2 len = %d, want 0", len(slot2))
+	}
+	if slot1, ok := boards["slot1"].([]any); !ok || len(slot1) != 1 {
+		t.Fatalf("slot1 = %#v, want 1 条（我方猜测）", boards["slot1"])
+	}
+}
+
 func TestMultiGuessTimeout(t *testing.T) {
 	fixture := createMatchFixture(t)
 	startMatch(t, fixture)
