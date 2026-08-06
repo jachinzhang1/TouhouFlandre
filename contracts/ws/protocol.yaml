@@ -1,0 +1,690 @@
+# touhouflandre-multi.v1 WebSocket 子协议规范
+#
+# 依据：docs/08_multiplayer_mode_design.md §8（WebSocket 协议全节）
+# 校验：scripts/check-ws-protocol.mjs（`task check:ws-protocol` / CI）
+#   - examples.valid 逐一通过 schema 校验与连接时序校验
+#   - examples.invalid 必须失败（正反例双测）
+#   - TS 类型（packages/shared/src/multi.ts）payload 字段名集合与 events/clientMessages 对齐
+
+info:
+  version: "1.0"
+  description: |
+    touhouflandre-multi.v1：多人房间实时事件协议。
+    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v1）。
+    鉴权：建连后第一条消息必须是 hello{token, lastSequence}；鉴权前不收发房间事件。
+    令牌只在首帧出现，不进 URL/查询参数/日志。
+
+# 事件信封（08 §8.2）。sequence 由 room_event.sequence 持久化，房间内单调递增；
+# 客户端按 sequence 去重、排序，发现缺口时 GET /api/rooms/{roomId}/snapshot?after=<seq> 补齐。
+envelope:
+  type: object
+  additionalProperties: false
+  required: [type, eventId, roomId, sequence, occurredAt, payload]
+  properties:
+    type:
+      type: string
+      description: 事件类型，见 events 表。
+    eventId:
+      type: string
+    roomId:
+      type: string
+    sequence:
+      type: integer
+      description: 房间内单调递增事件序号。
+    occurredAt:
+      type: string
+      format: date-time
+    payload:
+      type: object
+
+# 握手流程（08 §8.1）：升级校验 → hello → hello-ok → 重放缺口 → 实时流
+handshake:
+  - step: upgrade
+    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v1；不符拒绝升级。"
+  - step: hello
+    detail: 第一条消息必须是 hello{token, lastSequence}；鉴权失败/非首帧 → 关闭连接。
+  - step: hello-ok
+    detail: 鉴权通过 → 下发 hello-ok{roomId, nextSequence}。
+  - step: replay
+    detail: 从 lastSequence+1 起重放缺口事件（逐观察者投影后），再进入实时流。
+  - step: replace
+    detail: 同成员新连接注册时，旧连接收到 replaced 帧后关闭（每成员单活跃连接）。
+
+# 服务端 → 客户端事件（08 §8.3 全表）
+# observer: all = 全体成员；opponent = 仅对手（逐观察者投影，唯一例外）
+events:
+  - type: room.updated
+    observer: all
+    summary: 大厅任何成员变化/就绪（成员列表全量视图，无独立 join/leave 事件）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [format, members]
+      properties:
+        format:
+          type: string
+          enum: [bo1, bo3, bo5, bo7]
+        members:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [slot, displayName, status, ready]
+            properties:
+              slot:
+                type: integer
+                minimum: 1
+                maximum: 2
+              displayName:
+                type: string
+              status:
+                type: string
+                enum: [connected, disconnected, left]
+              ready:
+                type: boolean
+
+  - type: match.started
+    observer: all
+    summary: 双方就绪 / 双方确认再来一局（新场次开始，比分与抽题池自然重置）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [format, targetWins, catalogVersion, matchIndex]
+      properties:
+        format:
+          type: string
+          enum: [bo1, bo3, bo5, bo7]
+        targetWins:
+          type: integer
+          minimum: 1
+        catalogVersion:
+          type: string
+          description: 本场绑定的题库版本（07 §2 快照不变量按每场对局界定）。
+        matchIndex:
+          type: integer
+          minimum: 0
+
+  - type: match.rematch
+    observer: all
+    summary: 成员点击「再来一局」确认（等待对方）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [memberSlot]
+      properties:
+        memberSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+
+  - type: round.started
+    observer: all
+    summary: 每局创建（countdown 态）。首局 startsAt = 就绪 + ROUND_COUNTDOWN；后续局 = 上局 ended_at + INTERMISSION。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, startsAt, deadline, maxGuesses]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        startsAt:
+          type: string
+          format: date-time
+          description: 本局可开猜时刻（倒计时结束）。
+        deadline:
+          type: string
+          format: date-time
+          description: 整局超时平局时刻。
+        maxGuesses:
+          type: integer
+          minimum: 1
+
+  - type: round.playing
+    observer: all
+    summary: 倒计时结束，双方可开猜。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+
+  - type: round.opponent.guess
+    observer: opponent
+    summary: |
+      对手每次被接受的猜测（唯一逐观察者事件）。
+      statuses 为 6 个字段位置的状态，已按观察者 (roundId, observerMemberId) 种子列置换；
+      不含角色名/字段标签/值（08 §4.5 数据最小化）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, rowIndex, statuses]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        rowIndex:
+          type: integer
+          minimum: 1
+          description: 该成员局内猜测序号（1 起）。
+        statuses:
+          type: array
+          minItems: 6
+          maxItems: 6
+          items:
+            $ref: "#/definitions/FeedbackStatus"
+
+  - type: round.ended
+    observer: all
+    summary: 局结束（猜中/双方用尽/超时/对局被终止）。result 为观察者视角；揭示答案与双方完整棋盘。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, result, winnerSlot, answer, boards, scores]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        result:
+          type: string
+          enum: [win, loss, draw]
+        winnerSlot:
+          oneOf:
+            - type: integer
+              minimum: 1
+              maximum: 2
+            - type: "null"
+          description: 平局为 null。
+        answer:
+          type: object
+          additionalProperties: false
+          required: [id, name, avatarUrl]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            avatarUrl:
+              type: string
+        boards:
+          $ref: "#/definitions/Boards"
+        scores:
+          type: object
+          additionalProperties: false
+          required: [slot1, slot2]
+          properties:
+            slot1:
+              type: integer
+              minimum: 0
+            slot2:
+              type: integer
+              minimum: 0
+
+  - type: match.ended
+    observer: all
+    summary: 对局结束（达到 targetWins / 弃赛 / 断线判负 / 服务重启 / 局数上限）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, result, winnerSlot, scores, reason]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        result:
+          type: string
+          enum: [win, loss, draw]
+        winnerSlot:
+          oneOf:
+            - type: integer
+              minimum: 1
+              maximum: 2
+            - type: "null"
+          description: 平局为 null。
+        scores:
+          type: object
+          additionalProperties: false
+          required: [slot1, slot2]
+          properties:
+            slot1:
+              type: integer
+              minimum: 0
+            slot2:
+              type: integer
+              minimum: 0
+        reason:
+          type: string
+          enum: [normal, forfeit, disconnect, server_restart, round_cap]
+
+  - type: room.closed
+    observer: all
+    summary: 房间关闭（终态；事件保留期后整树删除）。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          enum: [host_left, member_left, ttl, retention]
+
+# 服务端控制帧（非事件，无 sequence；平铺消息含 type）
+control:
+  - type: hello-ok
+    summary: 鉴权通过。之后从 lastSequence+1 重放事件。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, roomId, nextSequence]
+      properties:
+        type:
+          type: string
+          const: hello-ok
+        roomId:
+          type: string
+        nextSequence:
+          type: integer
+          minimum: 0
+  - type: replaced
+    summary: 同成员新连接注册，本连接被替换。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, reason]
+      properties:
+        type:
+          type: string
+          const: replaced
+        reason:
+          type: string
+          enum: [replaced]
+
+# 客户端 → 服务端消息（仅两类；均为平铺消息，无信封）
+clientMessages:
+  - type: hello
+    summary: 首帧必发；鉴权前不收发任何房间事件。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, token, lastSequence]
+      properties:
+        type:
+          type: string
+          const: hello
+        token:
+          type: string
+          description: 游客令牌（Bearer guest:{token} 中冒号后的部分）。
+        lastSequence:
+          type: integer
+          minimum: 0
+          description: 本地最后已应用的事件序号（首连为 0）。
+  - type: ack
+    summary: 水位推进；服务端据此检测慢消费者。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, lastSequence]
+      properties:
+        type:
+          type: string
+          const: ack
+        lastSequence:
+          type: integer
+          minimum: 0
+
+definitions:
+  FeedbackStatus:
+    type: string
+    enum: [exact, partial, miss, higher, lower, unknown]
+  GuessResult:
+    type: object
+    additionalProperties: false
+    required: [guessId, guessName, isCorrect, feedback]
+    properties:
+      guessId:
+        type: string
+      guessName:
+        type: string
+      guessAvatarUrl:
+        type: string
+      isCorrect:
+        type: boolean
+      feedback:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [field, label, status, symbol, displayValue]
+          properties:
+            field:
+              type: string
+            label:
+              type: string
+            status:
+              $ref: "#/definitions/FeedbackStatus"
+            symbol:
+              type: string
+            displayValue:
+              type: array
+              items:
+                type: string
+  GuessList:
+    type: array
+    items:
+      $ref: "#/definitions/GuessResult"
+  Boards:
+    type: object
+    additionalProperties: false
+    required: [slot1, slot2]
+    properties:
+      slot1:
+        $ref: "#/definitions/GuessList"
+      slot2:
+        $ref: "#/definitions/GuessList"
+
+# 有效示例：每个事件 1 个 + hello/ack/hello-ok/replaced 各 1 个
+examples:
+  valid:
+    - label: room.updated（加入者入座）
+      message:
+        type: room.updated
+        eventId: evt_01J8YZ
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 2
+        occurredAt: "2026-08-06T12:00:01Z"
+        payload:
+          format: bo3
+          members:
+            - slot: 1
+              displayName: 房主
+              status: connected
+              ready: false
+            - slot: 2
+              displayName: 匿名玩家
+              status: connected
+              ready: false
+
+    - label: match.started（双方就绪）
+      message:
+        type: match.started
+        eventId: evt_01J8Z0
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 7
+        occurredAt: "2026-08-06T12:00:07Z"
+        payload:
+          format: bo3
+          targetWins: 2
+          catalogVersion: 66b0a79b
+          matchIndex: 0
+
+    - label: match.rematch（成员确认再来一局）
+      message:
+        type: match.rematch
+        eventId: evt_01J8Z5
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 30
+        occurredAt: "2026-08-06T12:30:00Z"
+        payload:
+          memberSlot: 1
+
+    - label: round.started（首局 countdown）
+      message:
+        type: round.started
+        eventId: evt_01J8Z1
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 8
+        occurredAt: "2026-08-06T12:00:08Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          startsAt: "2026-08-06T12:00:11Z"
+          deadline: "2026-08-06T12:15:11Z"
+          maxGuesses: 8
+
+    - label: round.playing（倒计时结束）
+      message:
+        type: round.playing
+        eventId: evt_01J8Z2
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 9
+        occurredAt: "2026-08-06T12:00:11Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+
+    - label: round.opponent.guess（对手匿名行，已列置换）
+      message:
+        type: round.opponent.guess
+        eventId: evt_01J8Z3
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 10
+        occurredAt: "2026-08-06T12:00:12Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          rowIndex: 1
+          statuses: [miss, exact, partial, lower, miss, unknown]
+
+    - label: round.ended（玩家1猜中）
+      message:
+        type: round.ended
+        eventId: evt_01J8Z4
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 11
+        occurredAt: "2026-08-06T12:00:13Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          result: win
+          winnerSlot: 1
+          answer:
+            id: reimu_hakurei
+            name: 博丽灵梦
+            avatarUrl: https://example.com/avatars/reimu.png
+          boards:
+            slot1:
+              - guessId: marisa_kirisame
+                guessName: 雾雨魔理沙
+                isCorrect: false
+                feedback:
+                  - field: firstAppearance
+                    label: 初登场作品
+                    status: partial
+                    symbol: "~"
+                    displayValue: [游戏]
+              - guessId: reimu_hakurei
+                guessName: 博丽灵梦
+                isCorrect: true
+                feedback:
+                  - field: firstAppearance
+                    label: 初登场作品
+                    status: exact
+                    symbol: "O"
+                    displayValue: [东方灵异传]
+            slot2:
+              - guessId: remilia_scarlet
+                guessName: 蕾米莉亚·斯卡蕾特
+                isCorrect: false
+                feedback:
+                  - field: firstAppearance
+                    label: 初登场作品
+                    status: miss
+                    symbol: "X"
+                    displayValue: [东方红魔乡]
+          scores:
+            slot1: 1
+            slot2: 0
+
+    - label: match.ended（达到 targetWins）
+      message:
+        type: match.ended
+        eventId: evt_01J8Z6
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 21
+        occurredAt: "2026-08-06T12:20:00Z"
+        payload:
+          matchIndex: 0
+          result: win
+          winnerSlot: 1
+          scores:
+            slot1: 2
+            slot2: 0
+          reason: normal
+
+    - label: room.closed（房主离开）
+      message:
+        type: room.closed
+        eventId: evt_01J8Z7
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 22
+        occurredAt: "2026-08-06T12:20:01Z"
+        payload:
+          reason: host_left
+
+    - label: hello-ok（鉴权通过）
+      message:
+        type: hello-ok
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        nextSequence: 23
+
+    - label: replaced（旧连接被替换）
+      message:
+        type: replaced
+        reason: replaced
+
+    - label: hello（首帧）
+      message:
+        type: hello
+        token: 9qZtXw2yR4vB7nM1pLk8jH3
+        lastSequence: 0
+
+    - label: ack（水位推进）
+      message:
+        type: ack
+        lastSequence: 21
+
+  # 无效示例：expectFail 为预期失败类别
+  #   schema        —— 消息不满足 schema/枚举/信封要求
+  #   unknown-type  —— type 不在已知集合
+  #   first-frame   —— 首帧不是 hello
+  #   ordering      —— ack 先于 hello 等时序违规
+  invalid:
+    - label: hello 缺 token
+      expectFail: schema
+      message:
+        type: hello
+        lastSequence: 0
+
+    - label: hello token 非字符串
+      expectFail: schema
+      message:
+        type: hello
+        token: 12345
+        lastSequence: 0
+
+    - label: 首帧不是 hello（ack 先行）
+      expectFail: first-frame
+      message:
+        type: ack
+        lastSequence: 0
+
+    - label: 未知事件类型
+      expectFail: unknown-type
+      message:
+        type: room.guess.accepted
+        eventId: evt_01J8YZ
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 2
+        occurredAt: "2026-08-06T12:00:01Z"
+        payload: {}
+
+    - label: sequence 非整数
+      expectFail: schema
+      message:
+        type: room.updated
+        eventId: evt_01J8YZ
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: "2"
+        occurredAt: "2026-08-06T12:00:01Z"
+        payload:
+          format: bo3
+          members: []
+
+    - label: round.opponent.guess 缺 statuses
+      expectFail: schema
+      message:
+        type: round.opponent.guess
+        eventId: evt_01J8Z3
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 10
+        occurredAt: "2026-08-06T12:00:12Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          rowIndex: 1
+
+    - label: round.ended result 非法枚举
+      expectFail: schema
+      message:
+        type: round.ended
+        eventId: evt_01J8Z4
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 11
+        occurredAt: "2026-08-06T12:00:13Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          result: timeout
+          winnerSlot: null
+          answer:
+            id: reimu_hakurei
+            name: 博丽灵梦
+            avatarUrl: https://example.com/avatars/reimu.png
+          boards:
+            slot1: []
+            slot2: []
+          scores:
+            slot1: 0
+            slot2: 0
+
+    - label: match.ended reason 非法枚举
+      expectFail: schema
+      message:
+        type: match.ended
+        eventId: evt_01J8Z6
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 21
+        occurredAt: "2026-08-06T12:20:00Z"
+        payload:
+          matchIndex: 0
+          result: draw
+          winnerSlot: null
+          scores:
+            slot1: 0
+            slot2: 0
+          reason: host_left
+
+    - label: 信封缺 occurredAt
+      expectFail: schema
+      message:
+        type: room.closed
+        eventId: evt_01J8Z7
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 22
+        payload:
+          reason: host_left

@@ -68,6 +68,10 @@ tasks:
       - task: gen
       - git diff --exit-code -- apps/api/internal/generated
 
+  check:ws-protocol:
+    cmds:
+      - pnpm check:ws-protocol
+
   test:go:
     dir: apps/api
     cmds:

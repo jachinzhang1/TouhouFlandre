@@ -29,6 +29,9 @@ jobs:
       - name: OpenAPI refs & orphan check
         run: pnpm check:openapi-refs
 
+      - name: WS protocol schema & examples check
+        run: pnpm check:ws-protocol
+
       - name: Generated types are up to date
         run: |
           pnpm --filter @touhoufriberg/web gen:api
