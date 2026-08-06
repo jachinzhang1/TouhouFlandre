@@ -4,6 +4,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,9 @@ type Conn struct {
 	aliveMu   sync.Mutex
 	isAlive   bool
 	afterReplaced atomic.Bool // replaced 帧已入队（写出后关闭连接）
+
+	reasonMu    sync.Mutex
+	closeReason string // 断开原因（cleanup 统一记录；首个设置者生效）
 }
 
 // NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。发送队列长度取自 hub 配置。
@@ -59,6 +63,22 @@ func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMembe
 		closed:       make(chan struct{}),
 		isAlive:      true,
 	}
+}
+
+// setCloseReason 记录断开原因（first-wins：具体路径先设置，通用关闭不覆盖）。
+func (c *Conn) setCloseReason(reason string) {
+	c.reasonMu.Lock()
+	if c.closeReason == "" {
+		c.closeReason = reason
+	}
+	c.reasonMu.Unlock()
+}
+
+// closeReasonValue 读取断开原因。
+func (c *Conn) closeReasonValue() string {
+	c.reasonMu.Lock()
+	defer c.reasonMu.Unlock()
+	return c.closeReason
 }
 
 // alive 连接是否仍可推送。
@@ -87,9 +107,13 @@ func (c *Conn) Serve() {
 		old.sendReplacedAndClose()
 	}
 	if err := c.writeText(multi.HelloOkMessage{Type: "hello-ok", RoomId: c.roomID, NextSequence: c.hub.roomEventSeq(c.roomID)}); err != nil {
+		c.setCloseReason("hello_ok_failed")
+		slog.Error("ws: hello-ok write failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
 		return
 	}
 	if err := c.replay(); err != nil {
+		c.setCloseReason("replay_failed")
+		slog.Error("ws: replay failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
 		return
 	}
 	c.hub.Publish(c.roomID) // 注册与重放间隙产生的事件立即补推（水位已被 Register 校准）
@@ -161,6 +185,7 @@ func (c *Conn) writeLoop() {
 			err := c.ws.Write(ctx, websocket.MessageText, frame)
 			cancel()
 			if err != nil {
+				c.setCloseReason("write_error")
 				c.closeQuietly()
 				return
 			}
@@ -173,6 +198,7 @@ func (c *Conn) writeLoop() {
 			err := c.ws.Ping(ctx)
 			cancel()
 			if err != nil {
+				c.setCloseReason("heartbeat_dead")
 				c.closeQuietly()
 				return
 			}
@@ -195,7 +221,8 @@ func (c *Conn) readLoop() {
 			Type string `json:"type"`
 		}
 		if err := json.Unmarshal(data, &msg); err != nil || msg.Type != "ack" {
-			c.closeQuietly() // 未知客户端消息 → 关闭（协议最小集）
+			c.setCloseReason("bad_message") // 未知客户端消息 → 关闭（协议最小集）
+			c.closeQuietly()
 			return
 		}
 	}
@@ -215,6 +242,7 @@ func (c *Conn) writeText(v any) error {
 // sendReplacedAndClose 被替换：replaced 帧入队（FIFO，排在未写队列之后）；
 // writeLoop 写出该帧（队列随之排空）后自行关闭连接（08 §8.1「旧连接入队 replaced 关闭帧后断开」）。
 func (c *Conn) sendReplacedAndClose() {
+	c.setCloseReason("replaced")
 	frame, _ := json.Marshal(multi.ReplacedMessage{Type: "replaced", Reason: "replaced"})
 	select {
 	case c.send <- frame:
@@ -226,15 +254,18 @@ func (c *Conn) sendReplacedAndClose() {
 
 // closeSlow 慢消费者：发送队列写满 → 1013（08 §8.5），不阻塞房间广播。
 func (c *Conn) closeSlow() {
+	c.setCloseReason("slow_consumer")
 	c.closeWith(websocket.StatusTryAgainLater, "slow consumer")
 }
 
 // closeServiceRestart 优雅排空：1012（08 §11.2）。
 func (c *Conn) closeServiceRestart() {
+	c.setCloseReason("server_restart")
 	c.closeWith(websocket.StatusServiceRestart, "server restart")
 }
 
 func (c *Conn) closeWith(status websocket.StatusCode, reason string) {
+	c.setCloseReason(reason)
 	c.closeOnce.Do(func() {
 		c.aliveMu.Lock()
 		c.isAlive = false
@@ -244,8 +275,9 @@ func (c *Conn) closeWith(status websocket.StatusCode, reason string) {
 	})
 }
 
-// closeQuietly 不指定状态的关闭（读错误路径）。
+// closeQuietly 不指定状态的关闭（读错误路径；原因已由调用路径先行设置）。
 func (c *Conn) closeQuietly() {
+	c.setCloseReason("peer_closed")
 	c.closeOnce.Do(func() {
 		c.aliveMu.Lock()
 		c.isAlive = false
@@ -260,4 +292,15 @@ func (c *Conn) cleanup() {
 	c.closeQuietly()
 	c.hub.Unregister(c)
 	c.hub.markDisconnected(c.member.ID, c.roomID)
+	reason := c.closeReasonValue()
+	if reason == "" {
+		reason = "unknown"
+	}
+	level := slog.LevelInfo
+	switch reason {
+	case "slow_consumer", "heartbeat_dead", "write_error", "bad_message", "hello_ok_failed", "replay_failed":
+		level = slog.LevelWarn
+	}
+	slog.Log(context.Background(), level, "ws: connection closed",
+		"room_id", c.roomID, "member_id", c.member.ID, "reason", reason)
 }

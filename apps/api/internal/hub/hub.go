@@ -191,6 +191,7 @@ func (h *Hub) Register(c *Conn) *Conn {
 	if c.lastSequence > 0 {
 		multi.DefaultMetrics.IncReconnects()
 	}
+	slog.Info("ws: member connected", "room_id", c.roomID, "member_id", c.member.ID, "reconnect", c.lastSequence > 0)
 	// 广播水位推进到当前事件序号（新连接经 hello 重放补齐自身缺口；发布在后的新事件才会推给它）
 	if current := h.roomEventSeq(c.roomID); current > rh.lastSeq {
 		rh.lastSeq = current

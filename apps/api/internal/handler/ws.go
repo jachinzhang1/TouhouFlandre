@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -50,10 +51,12 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		Subprotocols:   []string{wsSubprotocol},
 	})
 	if err != nil {
+		slog.Warn("ws: upgrade rejected", "room_id", request.RoomId, "error", err)
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "WebSocket 升级校验失败（Origin/子协议不符）。"}
 	}
 	if ws.Subprotocol() != wsSubprotocol {
 		// coder/websocket：客户端未请求子协议时 Accept 也会成功；协议版本协商要求必须匹配
+		slog.Warn("ws: subprotocol mismatch", "room_id", request.RoomId, "got", ws.Subprotocol())
 		_ = ws.Close(websocket.StatusPolicyViolation, "subprotocol required: "+wsSubprotocol)
 		return nil, nil
 	}
@@ -65,11 +68,13 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	defer cancel()
 	_, data, err := ws.Read(readCtx)
 	if err != nil {
+		slog.Warn("ws: hello read failed", "room_id", request.RoomId, "error", err)
 		_ = ws.Close(websocket.StatusPolicyViolation, "hello required")
 		return nil, nil
 	}
 	var hello multi.HelloMessage
 	if err := json.Unmarshal(data, &hello); err != nil || hello.Type != "hello" {
+		slog.Warn("ws: invalid hello frame", "room_id", request.RoomId)
 		_ = ws.Close(websocket.StatusPolicyViolation, "first frame must be hello")
 		return nil, nil
 	}
@@ -77,6 +82,11 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	// 令牌鉴权（房间归属 + 成员状态；left 拒绝）
 	member, apiErr := s.authenticateToken(ctx, hello.Token)
 	if apiErr != nil || member.RoomID != request.RoomId {
+		reason := "authentication failed"
+		if apiErr == nil {
+			reason = "token not bound to room"
+		}
+		slog.Warn("ws: hello auth rejected", "room_id", request.RoomId, "reason", reason)
 		_ = ws.Close(websocket.StatusPolicyViolation, "unauthorized")
 		return nil, nil
 	}

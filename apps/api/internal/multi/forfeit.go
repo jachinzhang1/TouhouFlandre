@@ -5,6 +5,7 @@ package multi
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -19,6 +20,7 @@ import (
 // → 成员行置 left。判对方胜不要求对方在线（双方离线先逾期者触发，确定性优先，08 §4.6）。
 func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig) error {
 	DefaultMetrics.IncForfeits(string(reason))
+	slog.Info("match forfeited", "room_id", member.RoomID, "member_id", member.ID, "reason", string(reason))
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err

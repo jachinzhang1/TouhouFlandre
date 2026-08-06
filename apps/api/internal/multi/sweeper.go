@@ -589,6 +589,12 @@ func AppendEvent(ctx context.Context, q *repo.Queries, roomID string, eventType 
 	if err != nil {
 		return err
 	}
+	// 对局/房间裁决事件留痕（不含 payload：规范事件含答案/对手视图，禁入日志防剧透）。
+	switch eventType {
+	case EventMatchStarted, EventMatchRematch, EventRoundStarted, EventRoundPlaying,
+		EventRoundEnded, EventMatchEnded, EventRoomClosed:
+		slog.Info("multi lifecycle event", "room_id", roomID, "type", string(eventType), "sequence", seq)
+	}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
