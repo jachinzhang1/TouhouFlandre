@@ -8,23 +8,45 @@
       "ja": "博麗霊夢",
       "en": "Reimu Hakurei",
       "romaji": "Hakurei Reimu",
-      "aliases": ["灵梦", "红白", "博丽巫女"]
+      "aliases": [
+        "灵梦",
+        "红白",
+        "博丽巫女",
+        "bllm"
+      ]
     },
     "firstAppearance": {
       "workId": "th01_hrtp"
     },
-    "species": ["人类"],
+    "species": [
+      "人类"
+    ],
     "abilityDisplay": "在空中飞翔程度的能力",
-    "abilityTags": ["飞行", "灵力"],
-    "affiliations": ["博丽神社"],
-    "locations": ["博丽神社", "幻想乡"],
-    "roles": ["自机", "主角组"],
-    "hairColors": ["brown"],
+    "abilityTags": [
+      "飞行",
+      "灵力"
+    ],
+    "affiliations": [
+      "博丽神社"
+    ],
+    "locations": [
+      "博丽神社",
+      "幻想乡"
+    ],
+    "roles": [
+      "自机",
+      "主角组"
+    ],
+    "hairColors": [
+      "brown"
+    ],
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Reimu_Hakurei"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Reimu_Hakurei"
+    ]
   },
   {
     "id": "marisa_kirisame",
@@ -35,590 +57,45 @@
       "ja": "霧雨魔理沙",
       "en": "Marisa Kirisame",
       "romaji": "Kirisame Marisa",
-      "aliases": ["魔理沙", "黑白", "普通的魔法使"]
+      "aliases": [
+        "魔理沙",
+        "黑白",
+        "普通的魔法使",
+        "wymls"
+      ]
     },
     "firstAppearance": {
       "workId": "th02_soew"
     },
-    "species": ["人类"],
+    "species": [
+      "人类"
+    ],
     "abilityDisplay": "使用魔法程度的能力",
-    "abilityTags": ["魔法", "光"],
-    "affiliations": ["主角组"],
-    "locations": ["魔法之森", "幻想乡"],
-    "roles": ["自机", "主角组"],
-    "hairColors": ["blonde"],
+    "abilityTags": [
+      "魔法",
+      "光"
+    ],
+    "affiliations": [
+      "主角组"
+    ],
+    "locations": [
+      "魔法之森",
+      "幻想乡"
+    ],
+    "roles": [
+      "自机",
+      "主角组"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Marisa_Kirisame"]
-  },
-  {
-    "id": "rumia",
-    "avatarUrl": "/characters/0601-露米娅.png",
-    "names": {
-      "zhHans": "露米娅",
-      "zhHant": "露米婭",
-      "ja": "ルーミア",
-      "en": "Rumia",
-      "romaji": "Rumia",
-      "aliases": ["十进制", "宵暗的妖怪"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["妖怪"],
-    "abilityDisplay": "操纵黑暗程度的能力",
-    "abilityTags": ["操纵", "黑暗"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["幻想乡"],
-    "roles": ["Boss"],
-    "hairColors": ["blonde"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Rumia"]
-  },
-  {
-    "id": "cirno",
-    "avatarUrl": "/characters/0603-琪露诺.png",
-    "names": {
-      "zhHans": "琪露诺",
-      "zhHant": "琪露諾",
-      "ja": "チルノ",
-      "en": "Cirno",
-      "romaji": "Chiruno",
-      "aliases": ["⑨", "冰之妖精"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["妖精"],
-    "abilityDisplay": "操纵冷气程度的能力",
-    "abilityTags": ["操纵", "冷气", "冰"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["雾之湖", "幻想乡"],
-    "roles": ["Boss", "自机"],
-    "hairColors": ["blue"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Cirno"]
-  },
-  {
-    "id": "hong_meiling",
-    "avatarUrl": "/characters/0604-红美铃.png",
-    "names": {
-      "zhHans": "红美铃",
-      "zhHant": "紅美鈴",
-      "ja": "紅美鈴",
-      "en": "Hong Meiling",
-      "romaji": "Hon Meirin",
-      "aliases": ["美铃", "门番", "中国"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["妖怪"],
-    "abilityDisplay": "使用气程度的能力",
-    "abilityTags": ["气", "武术"],
-    "affiliations": ["红魔馆"],
-    "locations": ["红魔馆", "幻想乡"],
-    "roles": ["Boss", "门卫"],
-    "hairColors": ["red"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Hong_Meiling"]
-  },
-  {
-    "id": "patchouli_knowledge",
-    "avatarUrl": "/characters/0606-帕秋莉.png",
-    "names": {
-      "zhHans": "帕秋莉·诺蕾姬",
-      "zhHant": "帕秋莉·諾蕾姬",
-      "ja": "パチュリー・ノーレッジ",
-      "en": "Patchouli Knowledge",
-      "romaji": "Pachurii Noorejji",
-      "aliases": ["帕秋莉", "姆Q", "不动的大图书馆"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["魔法使"],
-    "abilityDisplay": "操纵火水木金土日月程度的能力",
-    "abilityTags": ["操纵", "魔法", "元素"],
-    "affiliations": ["红魔馆"],
-    "locations": ["红魔馆", "幻想乡"],
-    "roles": ["Boss"],
-    "hairColors": ["purple"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Patchouli_Knowledge"]
-  },
-  {
-    "id": "sakuya_izayoi",
-    "avatarUrl": "/characters/0607-十六夜咲夜.png",
-    "names": {
-      "zhHans": "十六夜咲夜",
-      "zhHant": "十六夜咲夜",
-      "ja": "十六夜咲夜",
-      "en": "Sakuya Izayoi",
-      "romaji": "Izayoi Sakuya",
-      "aliases": ["咲夜", "女仆长", "PAD长"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["人类"],
-    "abilityDisplay": "操纵时间程度的能力",
-    "abilityTags": ["操纵", "时间"],
-    "affiliations": ["红魔馆"],
-    "locations": ["红魔馆", "幻想乡"],
-    "roles": ["Boss", "自机", "女仆"],
-    "hairColors": ["silver"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Sakuya_Izayoi"]
-  },
-  {
-    "id": "remilia_scarlet",
-    "avatarUrl": "/characters/0608-蕾米莉亚.png",
-    "names": {
-      "zhHans": "蕾米莉亚·斯卡蕾特",
-      "zhHant": "蕾米莉亞·斯卡蕾特",
-      "ja": "レミリア・スカーレット",
-      "en": "Remilia Scarlet",
-      "romaji": "Remiria Sukaretto",
-      "aliases": ["蕾米", "大小姐", "蕾咪"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["吸血鬼"],
-    "abilityDisplay": "操纵命运程度的能力",
-    "abilityTags": ["操纵", "命运"],
-    "affiliations": ["红魔馆"],
-    "locations": ["红魔馆", "幻想乡"],
-    "roles": ["Boss", "EX Midboss"],
-    "hairColors": ["blue"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Remilia_Scarlet"]
-  },
-  {
-    "id": "flandre_scarlet",
-    "avatarUrl": "/characters/0609-芙兰朵露.png",
-    "names": {
-      "zhHans": "芙兰朵露·斯卡蕾特",
-      "zhHant": "芙蘭朵露·斯卡蕾特",
-      "ja": "フランドール・スカーレット",
-      "en": "Flandre Scarlet",
-      "romaji": "Furandooru Sukaretto",
-      "aliases": ["芙兰", "二小姐", "妹样"]
-    },
-    "firstAppearance": {
-      "workId": "th06_eosd"
-    },
-    "species": ["吸血鬼"],
-    "abilityDisplay": "破坏一切事物程度的能力",
-    "abilityTags": ["破坏"],
-    "affiliations": ["红魔馆"],
-    "locations": ["红魔馆", "幻想乡"],
-    "roles": ["EX Boss"],
-    "hairColors": ["blonde"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Flandre_Scarlet"]
-  },
-  {
-    "id": "youmu_konpaku",
-    "avatarUrl": "/characters/0708-魂魄妖梦.png",
-    "names": {
-      "zhHans": "魂魄妖梦",
-      "zhHant": "魂魄妖夢",
-      "ja": "魂魄妖夢",
-      "en": "Youmu Konpaku",
-      "romaji": "Konpaku Youmu",
-      "aliases": ["妖梦", "半人半灵", "庭师"]
-    },
-    "firstAppearance": {
-      "workId": "th07_pcb"
-    },
-    "species": ["半人半灵"],
-    "abilityDisplay": "使用剑术程度的能力",
-    "abilityTags": ["剑术"],
-    "affiliations": ["白玉楼"],
-    "locations": ["冥界", "白玉楼"],
-    "roles": ["Boss", "自机", "庭师"],
-    "hairColors": ["silver"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Youmu_Konpaku"]
-  },
-  {
-    "id": "yuyuko_saigyouji",
-    "avatarUrl": "/characters/0709-西行寺幽幽子.png",
-    "names": {
-      "zhHans": "西行寺幽幽子",
-      "zhHant": "西行寺幽幽子",
-      "ja": "西行寺幽々子",
-      "en": "Yuyuko Saigyouji",
-      "romaji": "Saigyouji Yuyuko",
-      "aliases": ["幽幽子", "亡灵公主"]
-    },
-    "firstAppearance": {
-      "workId": "th07_pcb"
-    },
-    "species": ["亡灵"],
-    "abilityDisplay": "操纵死亡程度的能力",
-    "abilityTags": ["操纵", "死亡"],
-    "affiliations": ["白玉楼"],
-    "locations": ["冥界", "白玉楼"],
-    "roles": ["Boss"],
-    "hairColors": ["pink"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Yuyuko_Saigyouji"]
-  },
-  {
-    "id": "yukari_yakumo",
-    "avatarUrl": "/characters/0711-八云紫.png",
-    "names": {
-      "zhHans": "八云紫",
-      "zhHant": "八雲紫",
-      "ja": "八雲紫",
-      "en": "Yukari Yakumo",
-      "romaji": "Yakumo Yukari",
-      "aliases": ["紫", "妖怪贤者", "境界妖怪"]
-    },
-    "firstAppearance": {
-      "workId": "th07_pcb"
-    },
-    "species": ["妖怪"],
-    "abilityDisplay": "操纵境界程度的能力",
-    "abilityTags": ["操纵", "境界", "空间"],
-    "affiliations": ["妖怪贤者"],
-    "locations": ["幻想乡"],
-    "roles": ["Phantasm Boss"],
-    "hairColors": ["blonde"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Yukari_Yakumo"]
-  },
-  {
-    "id": "reisen_udongein_inaba",
-    "avatarUrl": "/characters/0806-铃仙.png",
-    "names": {
-      "zhHans": "铃仙·优昙华院·因幡",
-      "zhHant": "鈴仙·優曇華院·因幡",
-      "ja": "鈴仙・優曇華院・イナバ",
-      "en": "Reisen Udongein Inaba",
-      "romaji": "Reisen Udongein Inaba",
-      "aliases": ["铃仙", "兔子", "狂气之瞳"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["月兔"],
-    "abilityDisplay": "操纵狂气程度的能力",
-    "abilityTags": ["操纵", "狂气", "波长"],
-    "affiliations": ["永远亭"],
-    "locations": ["永远亭", "幻想乡"],
-    "roles": ["Boss", "自机"],
-    "hairColors": ["purple"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Reisen_Udongein_Inaba"]
-  },
-  {
-    "id": "kaguya_houraisan",
-    "avatarUrl": "/characters/0808-蓬莱山辉夜.png",
-    "names": {
-      "zhHans": "蓬莱山辉夜",
-      "zhHant": "蓬萊山輝夜",
-      "ja": "蓬莱山輝夜",
-      "en": "Kaguya Houraisan",
-      "romaji": "Houraisan Kaguya",
-      "aliases": ["辉夜", "公主"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["月人"],
-    "abilityDisplay": "操纵永远与须臾程度的能力",
-    "abilityTags": ["操纵", "永远", "须臾"],
-    "affiliations": ["永远亭"],
-    "locations": ["永远亭", "幻想乡"],
-    "roles": ["Boss"],
-    "hairColors": ["black"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Kaguya_Houraisan"]
-  },
-  {
-    "id": "sanae_kochiya",
-    "avatarUrl": "/characters/1006-东风谷早苗.png",
-    "names": {
-      "zhHans": "东风谷早苗",
-      "zhHant": "東風谷早苗",
-      "ja": "東風谷早苗",
-      "en": "Sanae Kochiya",
-      "romaji": "Kochiya Sanae",
-      "aliases": ["早苗", "风祝", "现人神"]
-    },
-    "firstAppearance": {
-      "workId": "th10_mof"
-    },
-    "species": ["人类", "现人神"],
-    "abilityDisplay": "引发奇迹程度的能力",
-    "abilityTags": ["奇迹", "神德"],
-    "affiliations": ["守矢神社"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["Boss", "自机", "风祝"],
-    "hairColors": ["green"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Sanae_Kochiya"]
-  },
-  {
-    "id": "koishi_komeiji",
-    "avatarUrl": "/characters/1108-古明地恋.png",
-    "names": {
-      "zhHans": "古明地恋",
-      "zhHant": "古明地戀",
-      "ja": "古明地こいし",
-      "en": "Koishi Komeiji",
-      "romaji": "Komeiji Koishi",
-      "aliases": ["恋恋", "小五萝妹", "无意识"]
-    },
-    "firstAppearance": {
-      "workId": "th11_sa"
-    },
-    "species": ["觉"],
-    "abilityDisplay": "操纵无意识程度的能力",
-    "abilityTags": ["操纵", "无意识"],
-    "affiliations": ["地灵殿"],
-    "locations": ["旧地狱", "地灵殿"],
-    "roles": ["EX Boss"],
-    "hairColors": ["green"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Koishi_Komeiji"]
-  },
-  {
-    "id": "alice_margatroid",
-    "avatarUrl": "/characters/0703-爱丽丝.png",
-    "names": {
-      "zhHans": "爱丽丝·玛格特洛依德",
-      "zhHant": "愛麗絲·瑪格特洛依德",
-      "ja": "アリス・マーガトロイド",
-      "en": "Alice Margatroid",
-      "romaji": "Arisu Maagatoroido",
-      "aliases": ["爱丽丝", "七色的人偶使", "人偶使"]
-    },
-    "firstAppearance": {
-      "workId": "th05_ms"
-    },
-    "species": ["魔法使"],
-    "abilityDisplay": "操纵人偶程度的能力",
-    "abilityTags": ["操纵", "人偶", "魔法"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["魔法之森", "幻想乡"],
-    "roles": ["Boss", "自机"],
-    "hairColors": ["blonde"],
-    "playable": true,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Alice_Margatroid"]
-  },
-  {
-    "id": "chen",
-    "avatarUrl": "/characters/0702-橙.png",
-    "names": {
-      "zhHans": "橙",
-      "zhHant": "橙",
-      "ja": "橙",
-      "en": "Chen",
-      "romaji": "Chen",
-      "aliases": ["式神猫", "猫又"]
-    },
-    "firstAppearance": {
-      "workId": "th07_pcb"
-    },
-    "species": ["妖怪", "猫又"],
-    "abilityDisplay": "使用妖术程度的能力",
-    "abilityTags": ["妖术", "速度"],
-    "affiliations": ["八云家"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["Boss", "式神"],
-    "hairColors": ["brown"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Chen"]
-  },
-  {
-    "id": "ran_yakumo",
-    "avatarUrl": "/characters/0710-八云蓝.png",
-    "names": {
-      "zhHans": "八云蓝",
-      "zhHant": "八雲藍",
-      "ja": "八雲藍",
-      "en": "Ran Yakumo",
-      "romaji": "Yakumo Ran",
-      "aliases": ["蓝", "九尾狐", "紫的式神"]
-    },
-    "firstAppearance": {
-      "workId": "th07_pcb"
-    },
-    "species": ["妖怪", "九尾狐"],
-    "abilityDisplay": "使用式神程度的能力",
-    "abilityTags": ["式神", "计算"],
-    "affiliations": ["八云家"],
-    "locations": ["幻想乡"],
-    "roles": ["EX Boss", "式神"],
-    "hairColors": ["blonde"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Ran_Yakumo"]
-  },
-  {
-    "id": "wriggle_nightbug",
-    "avatarUrl": "/characters/0801-莉格露.png",
-    "names": {
-      "zhHans": "莉格露·奈特巴格",
-      "zhHant": "莉格露·奈特巴格",
-      "ja": "リグル・ナイトバグ",
-      "en": "Wriggle Nightbug",
-      "romaji": "Riguru Naitobagu",
-      "aliases": ["莉格露", "虫子", "萤火虫妖怪"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["妖怪", "虫"],
-    "abilityDisplay": "操纵虫子程度的能力",
-    "abilityTags": ["操纵", "虫"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["幻想乡"],
-    "roles": ["Boss"],
-    "hairColors": ["blue"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Wriggle_Nightbug"]
-  },
-  {
-    "id": "mystia_lorelei",
-    "avatarUrl": "/characters/0802-米斯蒂娅.png",
-    "names": {
-      "zhHans": "米斯蒂娅·萝蕾拉",
-      "zhHant": "米斯蒂婭·蘿蕾拉",
-      "ja": "ミスティア・ローレライ",
-      "en": "Mystia Lorelei",
-      "romaji": "Misutia Roorerai",
-      "aliases": ["米斯蒂娅", "夜雀", "烧八目鳗"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["妖怪", "夜雀"],
-    "abilityDisplay": "用歌声迷惑人程度的能力",
-    "abilityTags": ["歌声", "迷惑"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["幻想乡"],
-    "roles": ["Boss", "商人"],
-    "hairColors": ["pink"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Mystia_Lorelei"]
-  },
-  {
-    "id": "keine_kamishirasawa",
-    "avatarUrl": "/characters/0803-上白泽慧音.png",
-    "names": {
-      "zhHans": "上白泽慧音",
-      "zhHant": "上白澤慧音",
-      "ja": "上白沢慧音",
-      "en": "Keine Kamishirasawa",
-      "romaji": "Kamishirasawa Keine",
-      "aliases": ["慧音", "老师", "白泽"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["半兽", "白泽"],
-    "abilityDisplay": "吞噬历史程度的能力",
-    "abilityTags": ["历史", "知识"],
-    "affiliations": ["人类村落"],
-    "locations": ["人类村落", "幻想乡"],
-    "roles": ["Boss", "教师"],
-    "hairColors": ["silver"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Keine_Kamishirasawa"]
-  },
-  {
-    "id": "mokou_fujiwara",
-    "avatarUrl": "/characters/0809-藤原妹红.png",
-    "names": {
-      "zhHans": "藤原妹红",
-      "zhHant": "藤原妹紅",
-      "ja": "藤原妹紅",
-      "en": "Fujiwara no Mokou",
-      "romaji": "Fujiwara no Mokou",
-      "aliases": ["妹红", "不死人", "蓬莱人"]
-    },
-    "firstAppearance": {
-      "workId": "th08_in"
-    },
-    "species": ["人类", "蓬莱人"],
-    "abilityDisplay": "不老不死程度的能力",
-    "abilityTags": ["不死", "火"],
-    "affiliations": ["无明确阵营"],
-    "locations": ["迷途竹林", "幻想乡"],
-    "roles": ["EX Boss"],
-    "hairColors": ["white"],
-    "playable": false,
-    "enabledAsAnswer": true,
-    "enabledAsGuess": true,
-    "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Fujiwara_no_Mokou"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Marisa_Kirisame"
+    ]
   },
   {
     "id": "aya_shameimaru",
@@ -629,23 +106,1684 @@
       "ja": "射命丸文",
       "en": "Aya Shameimaru",
       "romaji": "Shameimaru Aya",
-      "aliases": ["文文", "鸦天狗", "记者"]
+      "aliases": [
+        "文文",
+        "鸦天狗",
+        "记者",
+        "smww"
+      ]
     },
     "firstAppearance": {
       "workId": "th09_pofv"
     },
-    "species": ["天狗", "妖怪"],
+    "species": [
+      "天狗",
+      "妖怪"
+    ],
     "abilityDisplay": "操纵风程度的能力",
-    "abilityTags": ["操纵", "风", "速度"],
-    "affiliations": ["妖怪之山"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["自机", "新闻记者"],
-    "hairColors": ["black"],
+    "abilityTags": [
+      "操纵",
+      "风",
+      "速度"
+    ],
+    "affiliations": [
+      "妖怪之山"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "自机",
+      "新闻记者"
+    ],
+    "hairColors": [
+      "black"
+    ],
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Aya_Shameimaru"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Aya_Shameimaru"
+    ]
+  },
+  {
+    "id": "rumia",
+    "avatarUrl": "/characters/0601-露米娅.png",
+    "names": {
+      "zhHans": "露米娅",
+      "zhHant": "露米婭",
+      "ja": "ルーミア",
+      "en": "Rumia",
+      "romaji": "Rumia",
+      "aliases": [
+        "十进制",
+        "宵暗的妖怪",
+        "lmy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "妖怪"
+    ],
+    "abilityDisplay": "操纵黑暗程度的能力",
+    "abilityTags": [
+      "操纵",
+      "黑暗"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Rumia"
+    ]
+  },
+  {
+    "id": "daiyousei",
+    "avatarUrl": "/characters/0602-大妖精.png",
+    "names": {
+      "zhHans": "大妖精",
+      "ja": "大妖精",
+      "en": "Daiyousei",
+      "romaji": "Daiyousei",
+      "aliases": [
+        "dyj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "拥有妖精力量程度的能力",
+    "abilityTags": [
+      "妖精",
+      "自然"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "雾之湖",
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Daiyousei"
+    ]
+  },
+  {
+    "id": "cirno",
+    "avatarUrl": "/characters/0603-琪露诺.png",
+    "names": {
+      "zhHans": "琪露诺",
+      "zhHant": "琪露諾",
+      "ja": "チルノ",
+      "en": "Cirno",
+      "romaji": "Chiruno",
+      "aliases": [
+        "⑨",
+        "冰之妖精",
+        "qln"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "操纵冷气程度的能力",
+    "abilityTags": [
+      "操纵",
+      "冷气",
+      "冰"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "雾之湖",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Cirno"
+    ]
+  },
+  {
+    "id": "hong_meiling",
+    "avatarUrl": "/characters/0604-红美铃.png",
+    "names": {
+      "zhHans": "红美铃",
+      "zhHant": "紅美鈴",
+      "ja": "紅美鈴",
+      "en": "Hong Meiling",
+      "romaji": "Hon Meirin",
+      "aliases": [
+        "美铃",
+        "门番",
+        "中国",
+        "hml"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "妖怪"
+    ],
+    "abilityDisplay": "使用气程度的能力",
+    "abilityTags": [
+      "气",
+      "武术"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "门卫"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hong_Meiling"
+    ]
+  },
+  {
+    "id": "koakuma",
+    "avatarUrl": "/characters/0605-小恶魔.png",
+    "names": {
+      "zhHans": "小恶魔",
+      "ja": "小悪魔",
+      "en": "Koakuma",
+      "romaji": "Koakuma",
+      "aliases": [
+        "xem"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "恶魔"
+    ],
+    "abilityDisplay": "使用魔法程度的能力",
+    "abilityTags": [
+      "魔法"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss",
+      "图书馆助手"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Koakuma"
+    ]
+  },
+  {
+    "id": "patchouli_knowledge",
+    "avatarUrl": "/characters/0606-帕秋莉.png",
+    "names": {
+      "zhHans": "帕秋莉·诺蕾姬",
+      "zhHant": "帕秋莉·諾蕾姬",
+      "ja": "パチュリー・ノーレッジ",
+      "en": "Patchouli Knowledge",
+      "romaji": "Pachurii Noorejji",
+      "aliases": [
+        "帕秋莉",
+        "姆Q",
+        "不动的大图书馆",
+        "pqlnlj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "魔法使"
+    ],
+    "abilityDisplay": "操纵火水木金土日月程度的能力",
+    "abilityTags": [
+      "操纵",
+      "魔法",
+      "元素"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Patchouli_Knowledge"
+    ]
+  },
+  {
+    "id": "sakuya_izayoi",
+    "avatarUrl": "/characters/0607-十六夜咲夜.png",
+    "names": {
+      "zhHans": "十六夜咲夜",
+      "zhHant": "十六夜咲夜",
+      "ja": "十六夜咲夜",
+      "en": "Sakuya Izayoi",
+      "romaji": "Izayoi Sakuya",
+      "aliases": [
+        "咲夜",
+        "女仆长",
+        "PAD长",
+        "slyxy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "操纵时间程度的能力",
+    "abilityTags": [
+      "操纵",
+      "时间"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机",
+      "女仆"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sakuya_Izayoi"
+    ]
+  },
+  {
+    "id": "remilia_scarlet",
+    "avatarUrl": "/characters/0608-蕾米莉亚.png",
+    "names": {
+      "zhHans": "蕾米莉亚·斯卡蕾特",
+      "zhHant": "蕾米莉亞·斯卡蕾特",
+      "ja": "レミリア・スカーレット",
+      "en": "Remilia Scarlet",
+      "romaji": "Remiria Sukaretto",
+      "aliases": [
+        "蕾米",
+        "大小姐",
+        "蕾咪",
+        "lmlysklt"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "吸血鬼"
+    ],
+    "abilityDisplay": "操纵命运程度的能力",
+    "abilityTags": [
+      "操纵",
+      "命运"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "EX Midboss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Remilia_Scarlet"
+    ]
+  },
+  {
+    "id": "flandre_scarlet",
+    "avatarUrl": "/characters/0609-芙兰朵露.png",
+    "names": {
+      "zhHans": "芙兰朵露·斯卡蕾特",
+      "zhHant": "芙蘭朵露·斯卡蕾特",
+      "ja": "フランドール・スカーレット",
+      "en": "Flandre Scarlet",
+      "romaji": "Furandooru Sukaretto",
+      "aliases": [
+        "芙兰",
+        "二小姐",
+        "妹样",
+        "fldlsklt"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th06_eosd"
+    },
+    "species": [
+      "吸血鬼"
+    ],
+    "abilityDisplay": "破坏一切事物程度的能力",
+    "abilityTags": [
+      "破坏"
+    ],
+    "affiliations": [
+      "红魔馆"
+    ],
+    "locations": [
+      "红魔馆",
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Flandre_Scarlet"
+    ]
+  },
+  {
+    "id": "letty_whiterock",
+    "avatarUrl": "/characters/0701-蕾蒂.png",
+    "names": {
+      "zhHans": "蕾蒂·霍瓦特洛克",
+      "ja": "レティ・ホワイトロック",
+      "en": "Letty Whiterock",
+      "romaji": "Retii Howaitorokku",
+      "aliases": [
+        "ldhwtlk"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "妖怪",
+      "雪女"
+    ],
+    "abilityDisplay": "操纵寒气程度的能力",
+    "abilityTags": [
+      "操纵",
+      "寒气",
+      "冬"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Letty_Whiterock"
+    ]
+  },
+  {
+    "id": "chen",
+    "avatarUrl": "/characters/0702-橙.png",
+    "names": {
+      "zhHans": "橙",
+      "zhHant": "橙",
+      "ja": "橙",
+      "en": "Chen",
+      "romaji": "Chen",
+      "aliases": [
+        "式神猫",
+        "猫又",
+        "c"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "妖怪",
+      "猫又"
+    ],
+    "abilityDisplay": "使用妖术程度的能力",
+    "abilityTags": [
+      "妖术",
+      "速度"
+    ],
+    "affiliations": [
+      "八云家"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "式神"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Chen"
+    ]
+  },
+  {
+    "id": "alice_margatroid",
+    "avatarUrl": "/characters/0703-爱丽丝.png",
+    "names": {
+      "zhHans": "爱丽丝·玛格特洛依德",
+      "zhHant": "愛麗絲·瑪格特洛依德",
+      "ja": "アリス・マーガトロイド",
+      "en": "Alice Margatroid",
+      "romaji": "Arisu Maagatoroido",
+      "aliases": [
+        "爱丽丝",
+        "七色的人偶使",
+        "人偶使",
+        "alsmgtlyd"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th05_ms"
+    },
+    "species": [
+      "魔法使"
+    ],
+    "abilityDisplay": "操纵人偶程度的能力",
+    "abilityTags": [
+      "操纵",
+      "人偶",
+      "魔法"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "魔法之森",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Alice_Margatroid"
+    ]
+  },
+  {
+    "id": "lily_white",
+    "avatarUrl": "/characters/0704-莉莉白.png",
+    "names": {
+      "zhHans": "莉莉白",
+      "ja": "リリーホワイト",
+      "en": "Lily White",
+      "romaji": "Ririi Howaito",
+      "aliases": [
+        "llb"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "告知春天到来程度的能力",
+    "abilityTags": [
+      "春",
+      "季节",
+      "宣告"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Lily_White"
+    ]
+  },
+  {
+    "id": "lunasa_prismriver",
+    "avatarUrl": "/characters/0705-露娜萨.png",
+    "names": {
+      "zhHans": "露娜萨·普莉兹姆利巴",
+      "ja": "ルナサ・プリズムリバー",
+      "en": "Lunasa Prismriver",
+      "romaji": "Runasa Purizumuribaa",
+      "aliases": [
+        "lnsplzmlb"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "骚灵"
+    ],
+    "abilityDisplay": "不用手演奏乐器程度的能力",
+    "abilityTags": [
+      "演奏",
+      "音乐",
+      "忧郁"
+    ],
+    "affiliations": [
+      "普莉兹姆利巴乐团"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "演奏者"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Lunasa_Prismriver"
+    ]
+  },
+  {
+    "id": "merlin_prismriver",
+    "avatarUrl": "/characters/0706-梅露兰.png",
+    "names": {
+      "zhHans": "梅露兰·普莉兹姆利巴",
+      "ja": "メルラン・プリズムリバー",
+      "en": "Merlin Prismriver",
+      "romaji": "Meruran Purizumuribaa",
+      "aliases": [
+        "mllplzmlb"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "骚灵"
+    ],
+    "abilityDisplay": "不用手演奏乐器程度的能力",
+    "abilityTags": [
+      "演奏",
+      "音乐",
+      "狂躁"
+    ],
+    "affiliations": [
+      "普莉兹姆利巴乐团"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "演奏者"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Merlin_Prismriver"
+    ]
+  },
+  {
+    "id": "lyrica_prismriver",
+    "avatarUrl": "/characters/0707-莉莉卡.png",
+    "names": {
+      "zhHans": "莉莉卡·普莉兹姆利巴",
+      "ja": "リリカ・プリズムリバー",
+      "en": "Lyrica Prismriver",
+      "romaji": "Ririka Purizumuribaa",
+      "aliases": [
+        "llkplzmlb"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "骚灵"
+    ],
+    "abilityDisplay": "不用手演奏乐器程度的能力",
+    "abilityTags": [
+      "演奏",
+      "音乐",
+      "幻想"
+    ],
+    "affiliations": [
+      "普莉兹姆利巴乐团"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "演奏者"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Lyrica_Prismriver"
+    ]
+  },
+  {
+    "id": "youmu_konpaku",
+    "avatarUrl": "/characters/0708-魂魄妖梦.png",
+    "names": {
+      "zhHans": "魂魄妖梦",
+      "zhHant": "魂魄妖夢",
+      "ja": "魂魄妖夢",
+      "en": "Youmu Konpaku",
+      "romaji": "Konpaku Youmu",
+      "aliases": [
+        "妖梦",
+        "半人半灵",
+        "庭师",
+        "hpym"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "半人半灵"
+    ],
+    "abilityDisplay": "使用剑术程度的能力",
+    "abilityTags": [
+      "剑术"
+    ],
+    "affiliations": [
+      "白玉楼"
+    ],
+    "locations": [
+      "冥界",
+      "白玉楼"
+    ],
+    "roles": [
+      "Boss",
+      "自机",
+      "庭师"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Youmu_Konpaku"
+    ]
+  },
+  {
+    "id": "yuyuko_saigyouji",
+    "avatarUrl": "/characters/0709-西行寺幽幽子.png",
+    "names": {
+      "zhHans": "西行寺幽幽子",
+      "zhHant": "西行寺幽幽子",
+      "ja": "西行寺幽々子",
+      "en": "Yuyuko Saigyouji",
+      "romaji": "Saigyouji Yuyuko",
+      "aliases": [
+        "幽幽子",
+        "亡灵公主",
+        "xxsyyz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "亡灵"
+    ],
+    "abilityDisplay": "操纵死亡程度的能力",
+    "abilityTags": [
+      "操纵",
+      "死亡"
+    ],
+    "affiliations": [
+      "白玉楼"
+    ],
+    "locations": [
+      "冥界",
+      "白玉楼"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yuyuko_Saigyouji"
+    ]
+  },
+  {
+    "id": "ran_yakumo",
+    "avatarUrl": "/characters/0710-八云蓝.png",
+    "names": {
+      "zhHans": "八云蓝",
+      "zhHant": "八雲藍",
+      "ja": "八雲藍",
+      "en": "Ran Yakumo",
+      "romaji": "Yakumo Ran",
+      "aliases": [
+        "蓝",
+        "九尾狐",
+        "紫的式神",
+        "byl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "妖怪",
+      "九尾狐"
+    ],
+    "abilityDisplay": "使用式神程度的能力",
+    "abilityTags": [
+      "式神",
+      "计算"
+    ],
+    "affiliations": [
+      "八云家"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss",
+      "式神"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Ran_Yakumo"
+    ]
+  },
+  {
+    "id": "yukari_yakumo",
+    "avatarUrl": "/characters/0711-八云紫.png",
+    "names": {
+      "zhHans": "八云紫",
+      "zhHant": "八雲紫",
+      "ja": "八雲紫",
+      "en": "Yukari Yakumo",
+      "romaji": "Yakumo Yukari",
+      "aliases": [
+        "紫",
+        "妖怪贤者",
+        "境界妖怪",
+        "byz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th07_pcb"
+    },
+    "species": [
+      "妖怪"
+    ],
+    "abilityDisplay": "操纵境界程度的能力",
+    "abilityTags": [
+      "操纵",
+      "境界",
+      "空间"
+    ],
+    "affiliations": [
+      "妖怪贤者"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Phantasm Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yukari_Yakumo"
+    ]
+  },
+  {
+    "id": "wriggle_nightbug",
+    "avatarUrl": "/characters/0801-莉格露.png",
+    "names": {
+      "zhHans": "莉格露·奈特巴格",
+      "zhHant": "莉格露·奈特巴格",
+      "ja": "リグル・ナイトバグ",
+      "en": "Wriggle Nightbug",
+      "romaji": "Riguru Naitobagu",
+      "aliases": [
+        "莉格露",
+        "虫子",
+        "萤火虫妖怪",
+        "lglnbtg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "妖怪",
+      "虫"
+    ],
+    "abilityDisplay": "操纵虫子程度的能力",
+    "abilityTags": [
+      "操纵",
+      "虫"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Wriggle_Nightbug"
+    ]
+  },
+  {
+    "id": "mystia_lorelei",
+    "avatarUrl": "/characters/0802-米斯蒂娅.png",
+    "names": {
+      "zhHans": "米斯蒂娅·萝蕾拉",
+      "zhHant": "米斯蒂婭·蘿蕾拉",
+      "ja": "ミスティア・ローレライ",
+      "en": "Mystia Lorelei",
+      "romaji": "Misutia Roorerai",
+      "aliases": [
+        "米斯蒂娅",
+        "夜雀",
+        "烧八目鳗",
+        "msdylll"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "妖怪",
+      "夜雀"
+    ],
+    "abilityDisplay": "用歌声迷惑人程度的能力",
+    "abilityTags": [
+      "歌声",
+      "迷惑"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "商人"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mystia_Lorelei"
+    ]
+  },
+  {
+    "id": "keine_kamishirasawa",
+    "avatarUrl": "/characters/0803-上白泽慧音.png",
+    "names": {
+      "zhHans": "上白泽慧音",
+      "zhHant": "上白澤慧音",
+      "ja": "上白沢慧音",
+      "en": "Keine Kamishirasawa",
+      "romaji": "Kamishirasawa Keine",
+      "aliases": [
+        "慧音",
+        "老师",
+        "白泽",
+        "sbzhy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "半兽",
+      "白泽"
+    ],
+    "abilityDisplay": "吞噬历史程度的能力",
+    "abilityTags": [
+      "历史",
+      "知识"
+    ],
+    "affiliations": [
+      "人类村落"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "教师"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Keine_Kamishirasawa"
+    ]
+  },
+  {
+    "id": "tewi_inaba",
+    "avatarUrl": "/characters/0805-因幡天为.png",
+    "names": {
+      "zhHans": "因幡天为",
+      "ja": "因幡てゐ",
+      "en": "Tewi Inaba",
+      "romaji": "Inaba Tewi",
+      "aliases": [
+        "yftw"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "妖怪兔"
+    ],
+    "abilityDisplay": "赋予人类幸运程度的能力",
+    "abilityTags": [
+      "幸运",
+      "兔"
+    ],
+    "affiliations": [
+      "永远亭"
+    ],
+    "locations": [
+      "迷途竹林",
+      "永远亭"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Tewi_Inaba"
+    ]
+  },
+  {
+    "id": "reisen_udongein_inaba",
+    "avatarUrl": "/characters/0806-铃仙.png",
+    "names": {
+      "zhHans": "铃仙·优昙华院·因幡",
+      "zhHant": "鈴仙·優曇華院·因幡",
+      "ja": "鈴仙・優曇華院・イナバ",
+      "en": "Reisen Udongein Inaba",
+      "romaji": "Reisen Udongein Inaba",
+      "aliases": [
+        "铃仙",
+        "兔子",
+        "狂气之瞳",
+        "lxythyyf"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "月兔"
+    ],
+    "abilityDisplay": "操纵狂气程度的能力",
+    "abilityTags": [
+      "操纵",
+      "狂气",
+      "波长"
+    ],
+    "affiliations": [
+      "永远亭"
+    ],
+    "locations": [
+      "永远亭",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Reisen_Udongein_Inaba"
+    ]
+  },
+  {
+    "id": "eirin_yagokoro",
+    "avatarUrl": "/characters/0807-八意永琳.png",
+    "names": {
+      "zhHans": "八意永琳",
+      "ja": "八意永琳",
+      "en": "Eirin Yagokoro",
+      "romaji": "Yagokoro Eirin",
+      "aliases": [
+        "byyl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "月人"
+    ],
+    "abilityDisplay": "制作任何药物程度的能力",
+    "abilityTags": [
+      "制药",
+      "医学",
+      "智慧"
+    ],
+    "affiliations": [
+      "永远亭"
+    ],
+    "locations": [
+      "迷途竹林",
+      "永远亭"
+    ],
+    "roles": [
+      "Boss",
+      "药师"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Eirin_Yagokoro"
+    ]
+  },
+  {
+    "id": "kaguya_houraisan",
+    "avatarUrl": "/characters/0808-蓬莱山辉夜.png",
+    "names": {
+      "zhHans": "蓬莱山辉夜",
+      "zhHant": "蓬萊山輝夜",
+      "ja": "蓬莱山輝夜",
+      "en": "Kaguya Houraisan",
+      "romaji": "Houraisan Kaguya",
+      "aliases": [
+        "辉夜",
+        "公主",
+        "plshy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "月人"
+    ],
+    "abilityDisplay": "操纵永远与须臾程度的能力",
+    "abilityTags": [
+      "操纵",
+      "永远",
+      "须臾"
+    ],
+    "affiliations": [
+      "永远亭"
+    ],
+    "locations": [
+      "永远亭",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kaguya_Houraisan"
+    ]
+  },
+  {
+    "id": "mokou_fujiwara",
+    "avatarUrl": "/characters/0809-藤原妹红.png",
+    "names": {
+      "zhHans": "藤原妹红",
+      "zhHant": "藤原妹紅",
+      "ja": "藤原妹紅",
+      "en": "Fujiwara no Mokou",
+      "romaji": "Fujiwara no Mokou",
+      "aliases": [
+        "妹红",
+        "不死人",
+        "蓬莱人",
+        "tymh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "人类",
+      "蓬莱人"
+    ],
+    "abilityDisplay": "不老不死程度的能力",
+    "abilityTags": [
+      "不死",
+      "火"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "迷途竹林",
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "white"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Fujiwara_no_Mokou"
+    ]
+  },
+  {
+    "id": "medicine_melancholy",
+    "avatarUrl": "/characters/0901-梅蒂欣.png",
+    "names": {
+      "zhHans": "梅蒂欣·梅兰可莉",
+      "ja": "メディスン・メランコリー",
+      "en": "Medicine Melancholy",
+      "romaji": "Medisun Merankorii",
+      "aliases": [
+        "mdxmlkl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th09_pofv"
+    },
+    "species": [
+      "人偶"
+    ],
+    "abilityDisplay": "操纵毒程度的能力",
+    "abilityTags": [
+      "操纵",
+      "毒"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "无名之丘",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Medicine_Melancholy"
+    ]
+  },
+  {
+    "id": "yuuka_kazami",
+    "avatarUrl": "/characters/0902-风见幽香.png",
+    "names": {
+      "zhHans": "风见幽香",
+      "ja": "風見幽香",
+      "en": "Yuuka Kazami",
+      "romaji": "Kazami Yuuka",
+      "aliases": [
+        "fjyx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th04_lls"
+    },
+    "species": [
+      "妖怪"
+    ],
+    "abilityDisplay": "操纵花程度的能力",
+    "abilityTags": [
+      "操纵",
+      "花"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "太阳花田",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yuuka_Kazami"
+    ]
+  },
+  {
+    "id": "komachi_onozuka",
+    "avatarUrl": "/characters/0903-小野塚小町.png",
+    "names": {
+      "zhHans": "小野塚小町",
+      "ja": "小野塚小町",
+      "en": "Komachi Onozuka",
+      "romaji": "Onozuka Komachi",
+      "aliases": [
+        "xyzxm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th09_pofv"
+    },
+    "species": [
+      "死神"
+    ],
+    "abilityDisplay": "操纵距离程度的能力",
+    "abilityTags": [
+      "操纵",
+      "距离",
+      "三途川"
+    ],
+    "affiliations": [
+      "彼岸"
+    ],
+    "locations": [
+      "三途川",
+      "彼岸"
+    ],
+    "roles": [
+      "Boss",
+      "死神"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Komachi_Onozuka"
+    ]
+  },
+  {
+    "id": "eiki_shiki_yamaxanadu",
+    "avatarUrl": "/characters/0904-四季映姬.png",
+    "names": {
+      "zhHans": "四季映姬·夜摩仙那度",
+      "ja": "四季映姫・ヤマザナドゥ",
+      "en": "Eiki Shiki, Yamaxanadu",
+      "romaji": "Shiki Eiki Yamazanadu",
+      "aliases": [
+        "sjyjymxnd"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th09_pofv"
+    },
+    "species": [
+      "阎魔"
+    ],
+    "abilityDisplay": "判断是非黑白程度的能力",
+    "abilityTags": [
+      "审判",
+      "善恶"
+    ],
+    "affiliations": [
+      "彼岸"
+    ],
+    "locations": [
+      "彼岸"
+    ],
+    "roles": [
+      "Boss",
+      "审判官"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Eiki_Shiki,_Yamaxanadu"
+    ]
+  },
+  {
+    "id": "shizuha_aki",
+    "avatarUrl": "/characters/1001-秋静叶.png",
+    "names": {
+      "zhHans": "秋静叶",
+      "ja": "秋静葉",
+      "en": "Shizuha Aki",
+      "romaji": "Aki Shizuha",
+      "aliases": [
+        "qjy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th10_mof"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "司掌红叶程度的能力",
+    "abilityTags": [
+      "红叶",
+      "秋"
+    ],
+    "affiliations": [
+      "秋姐妹"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Shizuha_Aki"
+    ]
+  },
+  {
+    "id": "minoriko_aki",
+    "avatarUrl": "/characters/1002-秋穰子.png",
+    "names": {
+      "zhHans": "秋穰子",
+      "ja": "秋穣子",
+      "en": "Minoriko Aki",
+      "romaji": "Aki Minoriko",
+      "aliases": [
+        "qrz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th10_mof"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "司掌丰收程度的能力",
+    "abilityTags": [
+      "丰收",
+      "秋"
+    ],
+    "affiliations": [
+      "秋姐妹"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "orange"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Minoriko_Aki"
+    ]
+  },
+  {
+    "id": "hina_kagiyama",
+    "avatarUrl": "/characters/1003-键山雏.png",
+    "names": {
+      "zhHans": "键山雏",
+      "ja": "鍵山雛",
+      "en": "Hina Kagiyama",
+      "romaji": "Kagiyama Hina",
+      "aliases": [
+        "jsc"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th10_mof"
+    },
+    "species": [
+      "厄神"
+    ],
+    "abilityDisplay": "储存厄运程度的能力",
+    "abilityTags": [
+      "厄运",
+      "净化"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hina_Kagiyama"
+    ]
   },
   {
     "id": "nitori_kawashiro",
@@ -656,23 +1794,143 @@
       "ja": "河城にとり",
       "en": "Nitori Kawashiro",
       "romaji": "Kawashiro Nitori",
-      "aliases": ["荷取", "河童", "工程师"]
+      "aliases": [
+        "荷取",
+        "河童",
+        "工程师",
+        "hchq"
+      ]
     },
     "firstAppearance": {
       "workId": "th10_mof"
     },
-    "species": ["河童", "妖怪"],
+    "species": [
+      "河童",
+      "妖怪"
+    ],
     "abilityDisplay": "操纵水程度的能力",
-    "abilityTags": ["操纵", "水", "机械"],
-    "affiliations": ["妖怪之山"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["Boss", "工程师"],
-    "hairColors": ["blue"],
+    "abilityTags": [
+      "操纵",
+      "水",
+      "机械"
+    ],
+    "affiliations": [
+      "妖怪之山"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "工程师"
+    ],
+    "hairColors": [
+      "blue"
+    ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Nitori_Kawashiro"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Nitori_Kawashiro"
+    ]
+  },
+  {
+    "id": "momiji_inubashiri",
+    "avatarUrl": "/characters/1005-犬走椛.png",
+    "names": {
+      "zhHans": "犬走椛",
+      "ja": "犬走椛",
+      "en": "Momiji Inubashiri",
+      "romaji": "Inubashiri Momiji",
+      "aliases": [
+        "qzh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th10_mof"
+    },
+    "species": [
+      "白狼天狗"
+    ],
+    "abilityDisplay": "看穿千里程度的能力",
+    "abilityTags": [
+      "千里眼",
+      "警戒"
+    ],
+    "affiliations": [
+      "妖怪之山"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss",
+      "哨戒天狗"
+    ],
+    "hairColors": [
+      "white"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Momiji_Inubashiri"
+    ]
+  },
+  {
+    "id": "sanae_kochiya",
+    "avatarUrl": "/characters/1006-东风谷早苗.png",
+    "names": {
+      "zhHans": "东风谷早苗",
+      "zhHant": "東風谷早苗",
+      "ja": "東風谷早苗",
+      "en": "Sanae Kochiya",
+      "romaji": "Kochiya Sanae",
+      "aliases": [
+        "早苗",
+        "风祝",
+        "现人神",
+        "dfgzm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th10_mof"
+    },
+    "species": [
+      "人类",
+      "现人神"
+    ],
+    "abilityDisplay": "引发奇迹程度的能力",
+    "abilityTags": [
+      "奇迹",
+      "神德"
+    ],
+    "affiliations": [
+      "守矢神社"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机",
+      "风祝"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sanae_Kochiya"
+    ]
   },
   {
     "id": "kanako_yasaka",
@@ -683,23 +1941,43 @@
       "ja": "八坂神奈子",
       "en": "Kanako Yasaka",
       "romaji": "Yasaka Kanako",
-      "aliases": ["神奈子", "山坂与湖水的化身"]
+      "aliases": [
+        "神奈子",
+        "山坂与湖水的化身",
+        "bssnz"
+      ]
     },
     "firstAppearance": {
       "workId": "th10_mof"
     },
-    "species": ["神明"],
+    "species": [
+      "神明"
+    ],
     "abilityDisplay": "创造乾程度的能力",
-    "abilityTags": ["乾", "神德"],
-    "affiliations": ["守矢神社"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["Boss"],
-    "hairColors": ["purple"],
+    "abilityTags": [
+      "乾",
+      "神德"
+    ],
+    "affiliations": [
+      "守矢神社"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "purple"
+    ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Kanako_Yasaka"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kanako_Yasaka"
+    ]
   },
   {
     "id": "suwako_moriya",
@@ -710,23 +1988,216 @@
       "ja": "洩矢諏訪子",
       "en": "Suwako Moriya",
       "romaji": "Moriya Suwako",
-      "aliases": ["诹访子", "青蛙子", "土著神"]
+      "aliases": [
+        "诹访子",
+        "青蛙子",
+        "土著神",
+        "xszfz"
+      ]
     },
     "firstAppearance": {
       "workId": "th10_mof"
     },
-    "species": ["神明"],
+    "species": [
+      "神明"
+    ],
     "abilityDisplay": "创造坤程度的能力",
-    "abilityTags": ["坤", "神德"],
-    "affiliations": ["守矢神社"],
-    "locations": ["妖怪之山", "幻想乡"],
-    "roles": ["EX Boss"],
-    "hairColors": ["blonde"],
+    "abilityTags": [
+      "坤",
+      "神德"
+    ],
+    "affiliations": [
+      "守矢神社"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Suwako_Moriya"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Suwako_Moriya"
+    ]
+  },
+  {
+    "id": "kisume",
+    "avatarUrl": "/characters/1101-琪斯美.png",
+    "names": {
+      "zhHans": "琪斯美",
+      "ja": "キスメ",
+      "en": "Kisume",
+      "romaji": "Kisume",
+      "aliases": [
+        "qsm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "钓瓶落"
+    ],
+    "abilityDisplay": "使鬼火落下程度的能力",
+    "abilityTags": [
+      "鬼火",
+      "落下"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "旧地狱"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kisume"
+    ]
+  },
+  {
+    "id": "yamame_kurodani",
+    "avatarUrl": "/characters/1102-黑谷山女.png",
+    "names": {
+      "zhHans": "黑谷山女",
+      "ja": "黒谷ヤマメ",
+      "en": "Yamame Kurodani",
+      "romaji": "Kurodani Yamame",
+      "aliases": [
+        "hgsn"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "土蜘蛛"
+    ],
+    "abilityDisplay": "操纵疾病程度的能力",
+    "abilityTags": [
+      "操纵",
+      "疾病"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "旧地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yamame_Kurodani"
+    ]
+  },
+  {
+    "id": "parsee_mizuhashi",
+    "avatarUrl": "/characters/1103-水桥帕露西.png",
+    "names": {
+      "zhHans": "水桥帕露西",
+      "ja": "水橋パルスィ",
+      "en": "Parsee Mizuhashi",
+      "romaji": "Mizuhashi Parsee",
+      "aliases": [
+        "sqplx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "桥姬"
+    ],
+    "abilityDisplay": "操纵嫉妒心程度的能力",
+    "abilityTags": [
+      "操纵",
+      "嫉妒"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "旧地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Parsee_Mizuhashi"
+    ]
+  },
+  {
+    "id": "yuugi_hoshiguma",
+    "avatarUrl": "/characters/1104-星熊勇仪.png",
+    "names": {
+      "zhHans": "星熊勇仪",
+      "ja": "星熊勇儀",
+      "en": "Yuugi Hoshiguma",
+      "romaji": "Hoshiguma Yuugi",
+      "aliases": [
+        "xxyy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "鬼"
+    ],
+    "abilityDisplay": "拥有怪力乱神程度的能力",
+    "abilityTags": [
+      "怪力",
+      "鬼"
+    ],
+    "affiliations": [
+      "旧地狱"
+    ],
+    "locations": [
+      "旧地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yuugi_Hoshiguma"
+    ]
   },
   {
     "id": "satori_komeiji",
@@ -737,23 +2208,91 @@
       "ja": "古明地さとり",
       "en": "Satori Komeiji",
       "romaji": "Komeiji Satori",
-      "aliases": ["觉", "小五萝", "读心妖怪"]
+      "aliases": [
+        "觉",
+        "小五萝",
+        "读心妖怪",
+        "gmdj"
+      ]
     },
     "firstAppearance": {
       "workId": "th11_sa"
     },
-    "species": ["觉"],
+    "species": [
+      "觉"
+    ],
     "abilityDisplay": "读取心灵程度的能力",
-    "abilityTags": ["读心", "记忆"],
-    "affiliations": ["地灵殿"],
-    "locations": ["旧地狱", "地灵殿"],
-    "roles": ["Boss"],
-    "hairColors": ["purple"],
+    "abilityTags": [
+      "读心",
+      "记忆"
+    ],
+    "affiliations": [
+      "地灵殿"
+    ],
+    "locations": [
+      "旧地狱",
+      "地灵殿"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "purple"
+    ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Satori_Komeiji"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Satori_Komeiji"
+    ]
+  },
+  {
+    "id": "rin_kaenbyou",
+    "avatarUrl": "/characters/1106-火焰猫燐.png",
+    "names": {
+      "zhHans": "火焰猫燐",
+      "ja": "火焔猫燐",
+      "en": "Rin Kaenbyou",
+      "romaji": "Kaenbyou Rin",
+      "aliases": [
+        "hyml"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "火车",
+      "妖怪猫"
+    ],
+    "abilityDisplay": "搬运尸体程度的能力",
+    "abilityTags": [
+      "尸体",
+      "火焰",
+      "猫"
+    ],
+    "affiliations": [
+      "地灵殿"
+    ],
+    "locations": [
+      "旧地狱",
+      "地灵殿"
+    ],
+    "roles": [
+      "Boss",
+      "宠物"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Rin_Kaenbyou"
+    ]
   },
   {
     "id": "utsuho_reiuji",
@@ -764,22 +2303,2844 @@
       "ja": "霊烏路空",
       "en": "Utsuho Reiuji",
       "romaji": "Reiuji Utsuho",
-      "aliases": ["阿空", "空", "核融合鸦"]
+      "aliases": [
+        "阿空",
+        "空",
+        "核融合鸦",
+        "lwlk"
+      ]
     },
     "firstAppearance": {
       "workId": "th11_sa"
     },
-    "species": ["地狱鸦", "妖怪"],
+    "species": [
+      "地狱鸦",
+      "妖怪"
+    ],
     "abilityDisplay": "操纵核融合程度的能力",
-    "abilityTags": ["操纵", "核融合", "火"],
-    "affiliations": ["地灵殿"],
-    "locations": ["旧地狱", "地灵殿"],
-    "roles": ["Boss"],
-    "hairColors": ["black"],
+    "abilityTags": [
+      "操纵",
+      "核融合",
+      "火"
+    ],
+    "affiliations": [
+      "地灵殿"
+    ],
+    "locations": [
+      "旧地狱",
+      "地灵殿"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "black"
+    ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "normal",
-    "sourceRefs": ["https://en.touhouwiki.net/wiki/Utsuho_Reiuji"]
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Utsuho_Reiuji"
+    ]
+  },
+  {
+    "id": "koishi_komeiji",
+    "avatarUrl": "/characters/1108-古明地恋.png",
+    "names": {
+      "zhHans": "古明地恋",
+      "zhHant": "古明地戀",
+      "ja": "古明地こいし",
+      "en": "Koishi Komeiji",
+      "romaji": "Komeiji Koishi",
+      "aliases": [
+        "恋恋",
+        "小五萝妹",
+        "无意识",
+        "gmdl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th11_sa"
+    },
+    "species": [
+      "觉"
+    ],
+    "abilityDisplay": "操纵无意识程度的能力",
+    "abilityTags": [
+      "操纵",
+      "无意识"
+    ],
+    "affiliations": [
+      "地灵殿"
+    ],
+    "locations": [
+      "旧地狱",
+      "地灵殿"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Koishi_Komeiji"
+    ]
+  },
+  {
+    "id": "nazrin",
+    "avatarUrl": "/characters/1201-娜兹玲.png",
+    "names": {
+      "zhHans": "娜兹玲",
+      "ja": "ナズーリン",
+      "en": "Nazrin",
+      "romaji": "Nazurin",
+      "aliases": [
+        "nzl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "鼠妖怪"
+    ],
+    "abilityDisplay": "搜寻东西程度的能力",
+    "abilityTags": [
+      "搜寻",
+      "探测"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "探宝者"
+    ],
+    "hairColors": [
+      "gray"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Nazrin"
+    ]
+  },
+  {
+    "id": "kogasa_tatara",
+    "avatarUrl": "/characters/1202-多多良小伞.png",
+    "names": {
+      "zhHans": "多多良小伞",
+      "ja": "多々良小傘",
+      "en": "Kogasa Tatara",
+      "romaji": "Tatara Kogasa",
+      "aliases": [
+        "ddlxs"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "付丧神"
+    ],
+    "abilityDisplay": "惊吓人类程度的能力",
+    "abilityTags": [
+      "惊吓",
+      "伞"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "EX Midboss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kogasa_Tatara"
+    ]
+  },
+  {
+    "id": "ichirin_kumoi_unzan",
+    "avatarUrl": "/characters/1203-云居一轮·云山.png",
+    "names": {
+      "zhHans": "云居一轮·云山",
+      "ja": "雲居一輪＆雲山",
+      "en": "Ichirin Kumoi & Unzan",
+      "romaji": "Kumoi Ichirin to Unzan",
+      "aliases": [
+        "yjylys"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "人类",
+      "入道"
+    ],
+    "abilityDisplay": "使用入道程度的能力",
+    "abilityTags": [
+      "入道",
+      "拳"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "僧侣"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Ichirin_Kumoi",
+      "https://en.touhouwiki.net/wiki/Unzan"
+    ]
+  },
+  {
+    "id": "minamitsu_murasa",
+    "avatarUrl": "/characters/1204-村纱水蜜.png",
+    "names": {
+      "zhHans": "村纱水蜜",
+      "ja": "村紗水蜜",
+      "en": "Minamitsu Murasa",
+      "romaji": "Murasa Minamitsu",
+      "aliases": [
+        "cssm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "船幽灵"
+    ],
+    "abilityDisplay": "引发水难程度的能力",
+    "abilityTags": [
+      "水难",
+      "船"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "船长"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Minamitsu_Murasa"
+    ]
+  },
+  {
+    "id": "shou_toramaru",
+    "avatarUrl": "/characters/1205-寅丸星.png",
+    "names": {
+      "zhHans": "寅丸星",
+      "ja": "寅丸星",
+      "en": "Shou Toramaru",
+      "romaji": "Toramaru Shou",
+      "aliases": [
+        "ymx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "妖怪",
+      "虎"
+    ],
+    "abilityDisplay": "收集财宝程度的能力",
+    "abilityTags": [
+      "财宝",
+      "法力"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "毘沙门天代理"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Shou_Toramaru"
+    ]
+  },
+  {
+    "id": "byakuren_hijiri",
+    "avatarUrl": "/characters/1206-圣白莲.png",
+    "names": {
+      "zhHans": "圣白莲",
+      "ja": "聖白蓮",
+      "en": "Byakuren Hijiri",
+      "romaji": "Hijiri Byakuren",
+      "aliases": [
+        "sbl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "魔法使"
+    ],
+    "abilityDisplay": "使用魔法程度的能力",
+    "abilityTags": [
+      "魔法",
+      "身体强化"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "住持"
+    ],
+    "hairColors": [
+      "blonde",
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Byakuren_Hijiri"
+    ]
+  },
+  {
+    "id": "nue_houjuu",
+    "avatarUrl": "/characters/1207-封兽鵺.png",
+    "names": {
+      "zhHans": "封兽鵺",
+      "ja": "封獣ぬえ",
+      "en": "Nue Houjuu",
+      "romaji": "Houjuu Nue",
+      "aliases": [
+        "fsn"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th12_ufo"
+    },
+    "species": [
+      "鵺",
+      "妖怪"
+    ],
+    "abilityDisplay": "使物体正体不明程度的能力",
+    "abilityTags": [
+      "正体不明",
+      "变形"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Nue_Houjuu"
+    ]
+  },
+  {
+    "id": "kyouko_kasodani",
+    "avatarUrl": "/characters/1301-幽谷响子.png",
+    "names": {
+      "zhHans": "幽谷响子",
+      "ja": "幽谷響子",
+      "en": "Kyouko Kasodani",
+      "romaji": "Kasodani Kyouko",
+      "aliases": [
+        "ygxz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "山彦"
+    ],
+    "abilityDisplay": "反射声音程度的能力",
+    "abilityTags": [
+      "声音",
+      "反射"
+    ],
+    "affiliations": [
+      "命莲寺"
+    ],
+    "locations": [
+      "命莲寺",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "僧侣"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kyouko_Kasodani"
+    ]
+  },
+  {
+    "id": "yoshika_miyako",
+    "avatarUrl": "/characters/1302-宫古芳香.png",
+    "names": {
+      "zhHans": "宫古芳香",
+      "ja": "宮古芳香",
+      "en": "Yoshika Miyako",
+      "romaji": "Miyako Yoshika",
+      "aliases": [
+        "ggfx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "僵尸"
+    ],
+    "abilityDisplay": "什么都吃程度的能力",
+    "abilityTags": [
+      "吞食",
+      "尸体"
+    ],
+    "affiliations": [
+      "神灵庙"
+    ],
+    "locations": [
+      "神灵庙",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "守卫"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yoshika_Miyako"
+    ]
+  },
+  {
+    "id": "seiga_kaku",
+    "avatarUrl": "/characters/1303-霍青娥.png",
+    "names": {
+      "zhHans": "霍青娥",
+      "ja": "霍青娥",
+      "en": "Seiga Kaku",
+      "romaji": "Kaku Seiga",
+      "aliases": [
+        "hqe"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "邪仙"
+    ],
+    "abilityDisplay": "穿越墙壁程度的能力",
+    "abilityTags": [
+      "穿墙",
+      "仙术"
+    ],
+    "affiliations": [
+      "神灵庙"
+    ],
+    "locations": [
+      "神灵庙",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "仙人"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Seiga_Kaku"
+    ]
+  },
+  {
+    "id": "soga_no_tojiko",
+    "avatarUrl": "/characters/1304-苏我屠自古.png",
+    "names": {
+      "zhHans": "苏我屠自古",
+      "ja": "蘇我屠自古",
+      "en": "Soga no Tojiko",
+      "romaji": "Soga no Tojiko",
+      "aliases": [
+        "swtzg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "亡灵"
+    ],
+    "abilityDisplay": "引发雷电程度的能力",
+    "abilityTags": [
+      "雷电",
+      "怨灵"
+    ],
+    "affiliations": [
+      "神灵庙"
+    ],
+    "locations": [
+      "神灵庙",
+      "幻想乡"
+    ],
+    "roles": [
+      "Midboss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Soga_no_Tojiko"
+    ]
+  },
+  {
+    "id": "mononobe_no_futo",
+    "avatarUrl": "/characters/1305-物部布都.png",
+    "names": {
+      "zhHans": "物部布都",
+      "ja": "物部布都",
+      "en": "Mononobe no Futo",
+      "romaji": "Mononobe no Futo",
+      "aliases": [
+        "wbbd"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "尸解仙"
+    ],
+    "abilityDisplay": "操纵风水程度的能力",
+    "abilityTags": [
+      "操纵",
+      "风水",
+      "皿"
+    ],
+    "affiliations": [
+      "神灵庙"
+    ],
+    "locations": [
+      "神灵庙",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mononobe_no_Futo"
+    ]
+  },
+  {
+    "id": "toyosatomimi_no_miko",
+    "avatarUrl": "/characters/1306-丰聪耳神子.png",
+    "names": {
+      "zhHans": "丰聪耳神子",
+      "ja": "豊聡耳神子",
+      "en": "Toyosatomimi no Miko",
+      "romaji": "Toyosatomimi no Miko",
+      "aliases": [
+        "fcesz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "圣人"
+    ],
+    "abilityDisplay": "听取十人欲望程度的能力",
+    "abilityTags": [
+      "听觉",
+      "欲望"
+    ],
+    "affiliations": [
+      "神灵庙"
+    ],
+    "locations": [
+      "神灵庙",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Toyosatomimi_no_Miko"
+    ]
+  },
+  {
+    "id": "mamizou_futatsuiwa",
+    "avatarUrl": "/characters/1307-二岩猯藏.png",
+    "names": {
+      "zhHans": "二岩猯藏",
+      "ja": "二ッ岩マミゾウ",
+      "en": "Mamizou Futatsuiwa",
+      "romaji": "Futatsuiwa Mamizou",
+      "aliases": [
+        "eytz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th13_td"
+    },
+    "species": [
+      "化狸",
+      "妖怪"
+    ],
+    "abilityDisplay": "变化程度的能力",
+    "abilityTags": [
+      "变化",
+      "狸"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡",
+      "外界"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mamizou_Futatsuiwa"
+    ]
+  },
+  {
+    "id": "wakasagihime",
+    "avatarUrl": "/characters/1401-若鹭姬.png",
+    "names": {
+      "zhHans": "若鹭姬",
+      "ja": "わかさぎ姫",
+      "en": "Wakasagihime",
+      "romaji": "Wakasagihime",
+      "aliases": [
+        "rlj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "人鱼"
+    ],
+    "abilityDisplay": "在水中增强力量程度的能力",
+    "abilityTags": [
+      "水",
+      "力量"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "雾之湖",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Wakasagihime"
+    ]
+  },
+  {
+    "id": "sekibanki",
+    "avatarUrl": "/characters/1402-赤蛮奇.png",
+    "names": {
+      "zhHans": "赤蛮奇",
+      "ja": "赤蛮奇",
+      "en": "Sekibanki",
+      "romaji": "Sekibanki",
+      "aliases": [
+        "cmq"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "轱辘首"
+    ],
+    "abilityDisplay": "让头飞出去程度的能力",
+    "abilityTags": [
+      "分离",
+      "飞头"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sekibanki"
+    ]
+  },
+  {
+    "id": "kagerou_imaizumi",
+    "avatarUrl": "/characters/1403-今泉影狼.png",
+    "names": {
+      "zhHans": "今泉影狼",
+      "ja": "今泉影狼",
+      "en": "Kagerou Imaizumi",
+      "romaji": "Imaizumi Kagerou",
+      "aliases": [
+        "jqyl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "狼女"
+    ],
+    "abilityDisplay": "在满月之夜变成狼程度的能力",
+    "abilityTags": [
+      "变身",
+      "月"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "迷途竹林",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kagerou_Imaizumi"
+    ]
+  },
+  {
+    "id": "benben_tsukumo",
+    "avatarUrl": "/characters/1404-九十九弁弁.png",
+    "names": {
+      "zhHans": "九十九弁弁",
+      "ja": "九十九弁々",
+      "en": "Benben Tsukumo",
+      "romaji": "Tsukumo Benben",
+      "aliases": [
+        "jsjbb"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "付丧神"
+    ],
+    "abilityDisplay": "不用手演奏乐器程度的能力",
+    "abilityTags": [
+      "演奏",
+      "琵琶"
+    ],
+    "affiliations": [
+      "付丧神"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Benben_Tsukumo"
+    ]
+  },
+  {
+    "id": "yatsuhashi_tsukumo",
+    "avatarUrl": "/characters/1405-九十九八桥.png",
+    "names": {
+      "zhHans": "九十九八桥",
+      "ja": "九十九八橋",
+      "en": "Yatsuhashi Tsukumo",
+      "romaji": "Tsukumo Yatsuhashi",
+      "aliases": [
+        "jsjbq"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "付丧神"
+    ],
+    "abilityDisplay": "不用手演奏乐器程度的能力",
+    "abilityTags": [
+      "演奏",
+      "古琴"
+    ],
+    "affiliations": [
+      "付丧神"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yatsuhashi_Tsukumo"
+    ]
+  },
+  {
+    "id": "seija_kijin",
+    "avatarUrl": "/characters/1406-鬼人正邪.png",
+    "names": {
+      "zhHans": "鬼人正邪",
+      "ja": "鬼人正邪",
+      "en": "Seija Kijin",
+      "romaji": "Kijin Seija",
+      "aliases": [
+        "grzx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "天邪鬼"
+    ],
+    "abilityDisplay": "颠倒万物程度的能力",
+    "abilityTags": [
+      "反转",
+      "下克上"
+    ],
+    "affiliations": [
+      "辉针城"
+    ],
+    "locations": [
+      "辉针城",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Seija_Kijin"
+    ]
+  },
+  {
+    "id": "shinmyoumaru_sukuna",
+    "avatarUrl": "/characters/1407-少名针妙丸.png",
+    "names": {
+      "zhHans": "少名针妙丸",
+      "ja": "少名針妙丸",
+      "en": "Shinmyoumaru Sukuna",
+      "romaji": "Sukuna Shinmyoumaru",
+      "aliases": [
+        "snzmw"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "小人"
+    ],
+    "abilityDisplay": "使用万宝槌程度的能力",
+    "abilityTags": [
+      "万宝槌",
+      "小人"
+    ],
+    "affiliations": [
+      "辉针城"
+    ],
+    "locations": [
+      "辉针城",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Shinmyoumaru_Sukuna"
+    ]
+  },
+  {
+    "id": "raiko_horikawa",
+    "avatarUrl": "/characters/1408-堀川雷鼓.png",
+    "names": {
+      "zhHans": "堀川雷鼓",
+      "ja": "堀川雷鼓",
+      "en": "Raiko Horikawa",
+      "romaji": "Horikawa Raiko",
+      "aliases": [
+        "kclg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th14_ddc"
+    },
+    "species": [
+      "付丧神"
+    ],
+    "abilityDisplay": "让任何东西配合节奏程度的能力",
+    "abilityTags": [
+      "节奏",
+      "鼓"
+    ],
+    "affiliations": [
+      "付丧神"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Raiko_Horikawa"
+    ]
+  },
+  {
+    "id": "seiran",
+    "avatarUrl": "/characters/1501-清兰.png",
+    "names": {
+      "zhHans": "清兰",
+      "ja": "清蘭",
+      "en": "Seiran",
+      "romaji": "Seiran",
+      "aliases": [
+        "ql"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "月兔"
+    ],
+    "abilityDisplay": "从异次元射击弹幕程度的能力",
+    "abilityTags": [
+      "异次元",
+      "弹幕"
+    ],
+    "affiliations": [
+      "月之都"
+    ],
+    "locations": [
+      "月之都"
+    ],
+    "roles": [
+      "Boss",
+      "士兵"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Seiran"
+    ]
+  },
+  {
+    "id": "ringo",
+    "avatarUrl": "/characters/1502-铃瑚.png",
+    "names": {
+      "zhHans": "铃瑚",
+      "ja": "鈴瑚",
+      "en": "Ringo",
+      "romaji": "Ringo",
+      "aliases": [
+        "lh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "月兔"
+    ],
+    "abilityDisplay": "通过吃团子变强程度的能力",
+    "abilityTags": [
+      "团子",
+      "强化"
+    ],
+    "affiliations": [
+      "月之都"
+    ],
+    "locations": [
+      "月之都"
+    ],
+    "roles": [
+      "Boss",
+      "士兵"
+    ],
+    "hairColors": [
+      "orange"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Ringo"
+    ]
+  },
+  {
+    "id": "doremy_sweet",
+    "avatarUrl": "/characters/1503-哆来咪.png",
+    "names": {
+      "zhHans": "哆来咪·苏伊特",
+      "ja": "ドレミー・スイート",
+      "en": "Doremy Sweet",
+      "romaji": "Doremii Suiito",
+      "aliases": [
+        "dlmsyt"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "貘"
+    ],
+    "abilityDisplay": "食用并创造梦境程度的能力",
+    "abilityTags": [
+      "梦",
+      "创造"
+    ],
+    "affiliations": [
+      "梦境世界"
+    ],
+    "locations": [
+      "梦境世界"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Doremy_Sweet"
+    ]
+  },
+  {
+    "id": "sagume_kishin",
+    "avatarUrl": "/characters/1504-稀神探女.png",
+    "names": {
+      "zhHans": "稀神探女",
+      "ja": "稀神サグメ",
+      "en": "Sagume Kishin",
+      "romaji": "Kishin Sagume",
+      "aliases": [
+        "xstn"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "月人",
+      "神灵"
+    ],
+    "abilityDisplay": "用话语逆转局势程度的能力",
+    "abilityTags": [
+      "言语",
+      "逆转"
+    ],
+    "affiliations": [
+      "月之都"
+    ],
+    "locations": [
+      "月之都"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sagume_Kishin"
+    ]
+  },
+  {
+    "id": "clownpiece",
+    "avatarUrl": "/characters/1505-克劳恩皮斯.png",
+    "names": {
+      "zhHans": "克劳恩皮斯",
+      "ja": "クラウンピース",
+      "en": "Clownpiece",
+      "romaji": "Kuraunpiisu",
+      "aliases": [
+        "kleps"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "使人发狂程度的能力",
+    "abilityTags": [
+      "疯狂",
+      "火"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Clownpiece"
+    ]
+  },
+  {
+    "id": "junko",
+    "avatarUrl": "/characters/1506-纯狐.png",
+    "names": {
+      "zhHans": "纯狐",
+      "ja": "純狐",
+      "en": "Junko",
+      "romaji": "Junko",
+      "aliases": [
+        "ch"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "神灵"
+    ],
+    "abilityDisplay": "纯化程度的能力",
+    "abilityTags": [
+      "纯化",
+      "怨恨"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "月之都"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Junko"
+    ]
+  },
+  {
+    "id": "hecatia_lapislazuli",
+    "avatarUrl": "/characters/1507-赫卡提亚.png",
+    "names": {
+      "zhHans": "赫卡提亚·拉碧斯拉祖利",
+      "ja": "ヘカーティア・ラピスラズリ",
+      "en": "Hecatia Lapislazuli",
+      "romaji": "Hekaathia Rapisurazuri",
+      "aliases": [
+        "hktylbslzl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "女神"
+    ],
+    "abilityDisplay": "拥有三个身体程度的能力",
+    "abilityTags": [
+      "身体",
+      "地狱",
+      "月"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "月之都",
+      "地球"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "multicolor"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hecatia_Lapislazuli"
+    ]
+  },
+  {
+    "id": "eternity_larva",
+    "avatarUrl": "/characters/1601-拉尔瓦.png",
+    "names": {
+      "zhHans": "爱塔妮缇拉尔瓦",
+      "ja": "エタニティラルバ",
+      "en": "Eternity Larva",
+      "romaji": "Etanitiraruva",
+      "aliases": [
+        "atntlew"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "散布鳞粉程度的能力",
+    "abilityTags": [
+      "鳞粉",
+      "生命"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Eternity_Larva"
+    ]
+  },
+  {
+    "id": "nemuno_sakata",
+    "avatarUrl": "/characters/1602-坂田合欢.png",
+    "names": {
+      "zhHans": "坂田合欢",
+      "ja": "坂田ネムノ",
+      "en": "Nemuno Sakata",
+      "romaji": "Sakata Nemuno",
+      "aliases": [
+        "bthh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "山姥"
+    ],
+    "abilityDisplay": "创造圣域程度的能力",
+    "abilityTags": [
+      "圣域",
+      "山"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Nemuno_Sakata"
+    ]
+  },
+  {
+    "id": "aunn_komano",
+    "avatarUrl": "/characters/1603-高丽野阿吽.png",
+    "names": {
+      "zhHans": "高丽野阿吽",
+      "ja": "高麗野あうん",
+      "en": "Aunn Komano",
+      "romaji": "Komano Aunn",
+      "aliases": [
+        "glyah"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "狛犬"
+    ],
+    "abilityDisplay": "发现神佛程度的能力",
+    "abilityTags": [
+      "神佛",
+      "守护"
+    ],
+    "affiliations": [
+      "博丽神社"
+    ],
+    "locations": [
+      "博丽神社",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "守护者"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Aunn_Komano"
+    ]
+  },
+  {
+    "id": "narumi_yatadera",
+    "avatarUrl": "/characters/1604-矢田寺成美.png",
+    "names": {
+      "zhHans": "矢田寺成美",
+      "ja": "矢田寺成美",
+      "en": "Narumi Yatadera",
+      "romaji": "Yatadera Narumi",
+      "aliases": [
+        "stscm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "魔法地藏"
+    ],
+    "abilityDisplay": "使用魔法程度的能力",
+    "abilityTags": [
+      "魔法",
+      "地藏"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "魔法之森",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "gray"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Narumi_Yatadera"
+    ]
+  },
+  {
+    "id": "satono_nishida",
+    "avatarUrl": "/characters/1605-尔子田里乃.png",
+    "names": {
+      "zhHans": "尔子田里乃",
+      "ja": "爾子田里乃",
+      "en": "Satono Nishida",
+      "romaji": "Nishida Satono",
+      "aliases": [
+        "ezdln"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "通过后方之舞引出精神力程度的能力",
+    "abilityTags": [
+      "舞蹈",
+      "精神"
+    ],
+    "affiliations": [
+      "后户之国"
+    ],
+    "locations": [
+      "后户之国"
+    ],
+    "roles": [
+      "Boss",
+      "童子"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Satono_Nishida"
+    ]
+  },
+  {
+    "id": "mai_teireida",
+    "avatarUrl": "/characters/1606-丁礼田舞.png",
+    "names": {
+      "zhHans": "丁礼田舞",
+      "ja": "丁礼田舞",
+      "en": "Mai Teireida",
+      "romaji": "Teireida Mai",
+      "aliases": [
+        "dltw"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "通过后方之舞引出生命力程度的能力",
+    "abilityTags": [
+      "舞蹈",
+      "生命"
+    ],
+    "affiliations": [
+      "后户之国"
+    ],
+    "locations": [
+      "后户之国"
+    ],
+    "roles": [
+      "Boss",
+      "童子"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mai_Teireida"
+    ]
+  },
+  {
+    "id": "okina_matara",
+    "avatarUrl": "/characters/1607-摩多罗隐崎奈.png",
+    "names": {
+      "zhHans": "摩多罗隐岐奈",
+      "ja": "摩多羅隠岐奈",
+      "en": "Okina Matara",
+      "romaji": "Matara Okina",
+      "aliases": [
+        "摩多罗隐崎奈",
+        "mdlyqn"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th16_hsifs"
+    },
+    "species": [
+      "秘神"
+    ],
+    "abilityDisplay": "在万物背上制作门程度的能力",
+    "abilityTags": [
+      "门",
+      "后户",
+      "季节"
+    ],
+    "affiliations": [
+      "后户之国"
+    ],
+    "locations": [
+      "后户之国",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "EX Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Okina_Matara"
+    ]
+  },
+  {
+    "id": "eika_ebisu",
+    "avatarUrl": "/characters/1701-戎璎花.png",
+    "names": {
+      "zhHans": "戎璎花",
+      "ja": "戎瓔花",
+      "en": "Eika Ebisu",
+      "romaji": "Ebisu Eika",
+      "aliases": [
+        "ryh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "水子"
+    ],
+    "abilityDisplay": "擅长堆石程度的能力",
+    "abilityTags": [
+      "堆石",
+      "灵"
+    ],
+    "affiliations": [
+      "赛之河原"
+    ],
+    "locations": [
+      "赛之河原",
+      "地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Eika_Ebisu"
+    ]
+  },
+  {
+    "id": "urumi_ushizaki",
+    "avatarUrl": "/characters/1702-牛崎润美.png",
+    "names": {
+      "zhHans": "牛崎润美",
+      "ja": "牛崎潤美",
+      "en": "Urumi Ushizaki",
+      "romaji": "Ushizaki Urumi",
+      "aliases": [
+        "nqrm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "牛鬼"
+    ],
+    "abilityDisplay": "改变身边物体重量程度的能力",
+    "abilityTags": [
+      "重量",
+      "操纵"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "三途川",
+      "地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Urumi_Ushizaki"
+    ]
+  },
+  {
+    "id": "kutaka_niwatari",
+    "avatarUrl": "/characters/1703-庭渡久侘歌.png",
+    "names": {
+      "zhHans": "庭渡久侘歌",
+      "ja": "庭渡久侘歌",
+      "en": "Kutaka Niwatari",
+      "romaji": "Niwatari Kutaka",
+      "aliases": [
+        "tdjtg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "鸡神"
+    ],
+    "abilityDisplay": "治愈喉咙疾病程度的能力",
+    "abilityTags": [
+      "治愈",
+      "喉咙"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "妖怪之山"
+    ],
+    "roles": [
+      "Boss",
+      "关卡守卫"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kutaka_Niwatari"
+    ]
+  },
+  {
+    "id": "yachie_kicchou",
+    "avatarUrl": "/characters/1704-吉吊八千慧.png",
+    "names": {
+      "zhHans": "吉吊八千慧",
+      "ja": "吉弔八千慧",
+      "en": "Yachie Kicchou",
+      "romaji": "Kicchou Yachie",
+      "aliases": [
+        "jdbqh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "吉吊"
+    ],
+    "abilityDisplay": "使人失去反抗心程度的能力",
+    "abilityTags": [
+      "支配",
+      "畜生界"
+    ],
+    "affiliations": [
+      "鬼杰组"
+    ],
+    "locations": [
+      "畜生界"
+    ],
+    "roles": [
+      "Boss",
+      "组长"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yachie_Kicchou"
+    ]
+  },
+  {
+    "id": "mayumi_joutouguu",
+    "avatarUrl": "/characters/1705-杖刀偶磨弓.png",
+    "names": {
+      "zhHans": "杖刀偶磨弓",
+      "ja": "杖刀偶磨弓",
+      "en": "Mayumi Joutouguu",
+      "romaji": "Joutouguu Mayumi",
+      "aliases": [
+        "zdomg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "埴轮"
+    ],
+    "abilityDisplay": "把忠诚心转化为实力程度的能力",
+    "abilityTags": [
+      "忠诚",
+      "埴轮",
+      "战斗"
+    ],
+    "affiliations": [
+      "埴轮兵团"
+    ],
+    "locations": [
+      "畜生界"
+    ],
+    "roles": [
+      "Boss",
+      "将领"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mayumi_Joutouguu"
+    ]
+  },
+  {
+    "id": "keiki_haniyasushin",
+    "avatarUrl": "/characters/1706-埴安神袿姬.png",
+    "names": {
+      "zhHans": "埴安神袿姬",
+      "ja": "埴安神袿姫",
+      "en": "Keiki Haniyasushin",
+      "romaji": "Haniyasushin Keiki",
+      "aliases": [
+        "zasgj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "创造偶像程度的能力",
+    "abilityTags": [
+      "创造",
+      "偶像",
+      "造形"
+    ],
+    "affiliations": [
+      "埴轮兵团"
+    ],
+    "locations": [
+      "畜生界"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Keiki_Haniyasushin"
+    ]
+  },
+  {
+    "id": "saki_kurokoma",
+    "avatarUrl": "/characters/1707-骊驹早鬼.png",
+    "names": {
+      "zhHans": "骊驹早鬼",
+      "ja": "驪駒早鬼",
+      "en": "Saki Kurokoma",
+      "romaji": "Kurokoma Saki",
+      "aliases": [
+        "ljzg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th17_wbawc"
+    },
+    "species": [
+      "天马"
+    ],
+    "abilityDisplay": "拥有无与伦比脚力程度的能力",
+    "abilityTags": [
+      "脚力",
+      "速度"
+    ],
+    "affiliations": [
+      "劲牙组"
+    ],
+    "locations": [
+      "畜生界"
+    ],
+    "roles": [
+      "EX Boss",
+      "组长"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Saki_Kurokoma"
+    ]
+  },
+  {
+    "id": "mike_goutokuji",
+    "avatarUrl": "/characters/1801-豪德寺三花.png",
+    "names": {
+      "zhHans": "豪德寺三花",
+      "ja": "豪徳寺ミケ",
+      "en": "Mike Goutokuji",
+      "romaji": "Goutokuji Mike",
+      "aliases": [
+        "hdssh"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "招财猫"
+    ],
+    "abilityDisplay": "招来钱财或客人程度的能力",
+    "abilityTags": [
+      "招财",
+      "交易"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "商人"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mike_Goutokuji"
+    ]
+  },
+  {
+    "id": "takane_yamashiro",
+    "avatarUrl": "/characters/1802-山城高岭.png",
+    "names": {
+      "zhHans": "山城高岭",
+      "ja": "山城たかね",
+      "en": "Takane Yamashiro",
+      "romaji": "Yamashiro Takane",
+      "aliases": [
+        "scgl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "山童"
+    ],
+    "abilityDisplay": "操纵森林气程度的能力",
+    "abilityTags": [
+      "操纵",
+      "森林气",
+      "商业"
+    ],
+    "affiliations": [
+      "山童"
+    ],
+    "locations": [
+      "妖怪之山",
+      "虹龙洞"
+    ],
+    "roles": [
+      "Boss",
+      "商人"
+    ],
+    "hairColors": [
+      "green"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Takane_Yamashiro"
+    ]
+  },
+  {
+    "id": "sannyo_komakusa",
+    "avatarUrl": "/characters/1803-驹草山如.png",
+    "names": {
+      "zhHans": "驹草山如",
+      "ja": "駒草山如",
+      "en": "Sannyo Komakusa",
+      "romaji": "Komakusa Sannyo",
+      "aliases": [
+        "jcsr"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "山女郎"
+    ],
+    "abilityDisplay": "用烟草烟操纵精神程度的能力",
+    "abilityTags": [
+      "烟草",
+      "精神",
+      "操纵"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "虹龙洞"
+    ],
+    "roles": [
+      "Boss",
+      "商人"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sannyo_Komakusa"
+    ]
+  },
+  {
+    "id": "misumaru_tamatsukuri",
+    "avatarUrl": "/characters/1804-玉造魅须丸.png",
+    "names": {
+      "zhHans": "玉造魅须丸",
+      "ja": "玉造魅須丸",
+      "en": "Misumaru Tamatsukuri",
+      "romaji": "Tamatsukuri Misumaru",
+      "aliases": [
+        "yzmxw"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "制作勾玉程度的能力",
+    "abilityTags": [
+      "勾玉",
+      "制作"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "虹龙洞",
+      "妖怪之山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Misumaru_Tamatsukuri"
+    ]
+  },
+  {
+    "id": "tsukasa_kudamaki",
+    "avatarUrl": "/characters/1805-菅牧典.png",
+    "names": {
+      "zhHans": "菅牧典",
+      "ja": "菅牧典",
+      "en": "Tsukasa Kudamaki",
+      "romaji": "Kudamaki Tsukasa",
+      "aliases": [
+        "jmd"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "管狐"
+    ],
+    "abilityDisplay": "潜入灵魂空隙程度的能力",
+    "abilityTags": [
+      "灵魂",
+      "诱导"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "中间管理"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Tsukasa_Kudamaki"
+    ]
+  },
+  {
+    "id": "megumu_iizunamaru",
+    "avatarUrl": "/characters/1806-饭纲丸龙.png",
+    "names": {
+      "zhHans": "饭纲丸龙",
+      "ja": "飯綱丸龍",
+      "en": "Megumu Iizunamaru",
+      "romaji": "Iizunamaru Megumu",
+      "aliases": [
+        "fgwl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "大天狗"
+    ],
+    "abilityDisplay": "操纵星空程度的能力",
+    "abilityTags": [
+      "星空",
+      "操纵",
+      "组织"
+    ],
+    "affiliations": [
+      "天狗社会"
+    ],
+    "locations": [
+      "妖怪之山"
+    ],
+    "roles": [
+      "Boss",
+      "大天狗"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Megumu_Iizunamaru"
+    ]
+  },
+  {
+    "id": "chimata_tenkyuu",
+    "avatarUrl": "/characters/1807-天弓千亦.png",
+    "names": {
+      "zhHans": "天弓千亦",
+      "ja": "天弓千亦",
+      "en": "Chimata Tenkyuu",
+      "romaji": "Tenkyuu Chimata",
+      "aliases": [
+        "tgqy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "让所有权归于无主程度的能力",
+    "abilityTags": [
+      "所有权",
+      "市场"
+    ],
+    "affiliations": [
+      "月虹市场"
+    ],
+    "locations": [
+      "妖怪之山",
+      "虹龙洞"
+    ],
+    "roles": [
+      "Boss",
+      "市场神"
+    ],
+    "hairColors": [
+      "multicolor"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Chimata_Tenkyuu"
+    ]
+  },
+  {
+    "id": "momoyo_himemushi",
+    "avatarUrl": "/characters/1808-姬虫百百世.png",
+    "names": {
+      "zhHans": "姬虫百百世",
+      "ja": "姫虫百々世",
+      "en": "Momoyo Himemushi",
+      "romaji": "Himemushi Momoyo",
+      "aliases": [
+        "jcbbs"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th18_um"
+    },
+    "species": [
+      "大蜈蚣"
+    ],
+    "abilityDisplay": "吃龙程度的能力",
+    "abilityTags": [
+      "龙",
+      "矿石",
+      "食欲"
+    ],
+    "affiliations": [
+      "虹龙洞"
+    ],
+    "locations": [
+      "虹龙洞",
+      "妖怪之山"
+    ],
+    "roles": [
+      "EX Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Momoyo_Himemushi"
+    ]
+  },
+  {
+    "id": "son_biten",
+    "avatarUrl": "/characters/1901-孙美天.png",
+    "names": {
+      "zhHans": "孙美天",
+      "ja": "孫美天",
+      "en": "Son Biten",
+      "romaji": "Son Biten",
+      "aliases": [
+        "smt"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th19_udoalg"
+    },
+    "species": [
+      "妖怪",
+      "猿猴"
+    ],
+    "abilityDisplay": "操纵野生猴子程度的能力",
+    "abilityTags": [
+      "猴",
+      "操纵"
+    ],
+    "affiliations": [
+      "劲牙组"
+    ],
+    "locations": [
+      "畜生界",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Son_Biten"
+    ]
+  },
+  {
+    "id": "enoko_mitsugashira",
+    "avatarUrl": "/characters/1902-三头慧之子.png",
+    "names": {
+      "zhHans": "三头慧之子",
+      "ja": "三頭慧ノ子",
+      "en": "Enoko Mitsugashira",
+      "romaji": "Mitsugashira Enoko",
+      "aliases": [
+        "sthzz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th19_udoalg"
+    },
+    "species": [
+      "山犬"
+    ],
+    "abilityDisplay": "使用陷阱程度的能力",
+    "abilityTags": [
+      "陷阱",
+      "狩猎"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Enoko_Mitsugashira"
+    ]
+  },
+  {
+    "id": "chiyari_tenkajin",
+    "avatarUrl": "/characters/1903-天火人血枪.png",
+    "names": {
+      "zhHans": "天火人血枪",
+      "ja": "天火人ちやり",
+      "en": "Chiyari Tenkajin",
+      "romaji": "Tenkajin Chiyari",
+      "aliases": [
+        "thrxq"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th19_udoalg"
+    },
+    "species": [
+      "天火人"
+    ],
+    "abilityDisplay": "操纵血和火程度的能力",
+    "abilityTags": [
+      "血",
+      "火"
+    ],
+    "affiliations": [
+      "旧地狱"
+    ],
+    "locations": [
+      "旧地狱",
+      "血之池地狱"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Chiyari_Tenkajin"
+    ]
+  },
+  {
+    "id": "hisami_yomotsu",
+    "avatarUrl": "/characters/1904-豫母都日狭美.png",
+    "names": {
+      "zhHans": "豫母都日狭美",
+      "ja": "豫母都日狭美",
+      "en": "Hisami Yomotsu",
+      "romaji": "Yomotsu Hisami",
+      "aliases": [
+        "ymdrxm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th19_udoalg"
+    },
+    "species": [
+      "黄泉丑女"
+    ],
+    "abilityDisplay": "把目标引向地狱程度的能力",
+    "abilityTags": [
+      "引导",
+      "地狱"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱"
+    ],
+    "roles": [
+      "Boss",
+      "案内人"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hisami_Yomotsu"
+    ]
+  },
+  {
+    "id": "zanmu_nippaku",
+    "avatarUrl": "/characters/1905-日白残无.png",
+    "names": {
+      "zhHans": "日白残无",
+      "ja": "日白残無",
+      "en": "Zanmu Nippaku",
+      "romaji": "Nippaku Zanmu",
+      "aliases": [
+        "rbzw"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th19_udoalg"
+    },
+    "species": [
+      "鬼"
+    ],
+    "abilityDisplay": "操纵无程度的能力",
+    "abilityTags": [
+      "无",
+      "支配"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱"
+    ],
+    "roles": [
+      "Boss",
+      "僧侣"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Zanmu_Nippaku"
+    ]
+  },
+  {
+    "id": "ubame_chirizuka",
+    "avatarUrl": "/characters/2001-尘塚姥芽.png",
+    "names": {
+      "zhHans": "尘塚姥芽",
+      "ja": "塵塚姥芽",
+      "en": "Ubame Chirizuka",
+      "romaji": "Chirizuka Ubame",
+      "aliases": [
+        "czly"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "山姥"
+    ],
+    "abilityDisplay": "破坏圣域程度的能力",
+    "abilityTags": [
+      "圣域",
+      "破坏"
+    ],
+    "affiliations": [
+      "浅间净山"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "gray"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Ubame_Chirizuka"
+    ]
+  },
+  {
+    "id": "chimi_houjuu",
+    "avatarUrl": "/characters/2002-封兽魑魅.png",
+    "names": {
+      "zhHans": "封兽魑魅",
+      "ja": "封獣魑魅",
+      "en": "Chimi Houjuu",
+      "romaji": "Houjuu Chimi",
+      "aliases": [
+        "fscm"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "魑魅"
+    ],
+    "abilityDisplay": "操纵山河之气程度的能力",
+    "abilityTags": [
+      "山河",
+      "气"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "white"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Chimi_Houjuu"
+    ]
+  },
+  {
+    "id": "nareko_michigami",
+    "avatarUrl": "/characters/2003-道神驯子.png",
+    "names": {
+      "zhHans": "道神驯子",
+      "ja": "道神馴子",
+      "en": "Nareko Michigami",
+      "romaji": "Michigami Nareko",
+      "aliases": [
+        "dsxz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "道祖神"
+    ],
+    "abilityDisplay": "阻断道路程度的能力",
+    "abilityTags": [
+      "道路",
+      "阻断"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Nareko_Michigami"
+    ]
+  },
+  {
+    "id": "yuiman_asama",
+    "avatarUrl": "/characters/2004-维缦·浅间.png",
+    "names": {
+      "zhHans": "维缦·浅间",
+      "ja": "維曼・浅間",
+      "en": "Yuiman Asama",
+      "romaji": "Asama Yuiman",
+      "aliases": [
+        "wmqj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "神人"
+    ],
+    "abilityDisplay": "让蛇吞食后重生程度的能力",
+    "abilityTags": [
+      "蛇",
+      "重生"
+    ],
+    "affiliations": [
+      "浅间净山"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "black"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Yuiman_Asama"
+    ]
+  },
+  {
+    "id": "ariya_iwanaga",
+    "avatarUrl": "/characters/2005-磐永阿梨夜.png",
+    "names": {
+      "zhHans": "磐永阿梨夜",
+      "ja": "磐永阿梨夜",
+      "en": "Ariya Iwanaga",
+      "romaji": "Iwanaga Ariya",
+      "aliases": [
+        "pyaly"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "石之女神"
+    ],
+    "abilityDisplay": "令人放弃变化程度的能力",
+    "abilityTags": [
+      "变化",
+      "石"
+    ],
+    "affiliations": [
+      "浅间净山"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "gray"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Ariya_Iwanaga"
+    ]
+  },
+  {
+    "id": "nina_watari",
+    "avatarUrl": "/characters/2006-渡里贝子.png",
+    "names": {
+      "zhHans": "渡里贝子",
+      "ja": "渡里ニナ",
+      "en": "Nina Watari",
+      "romaji": "Watari Nina",
+      "aliases": [
+        "dlbz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th20_fw"
+    },
+    "species": [
+      "蜃"
+    ],
+    "abilityDisplay": "显示海市蜃楼程度的能力",
+    "abilityTags": [
+      "海市蜃楼",
+      "幻象"
+    ],
+    "affiliations": [
+      "浅间净山"
+    ],
+    "locations": [
+      "浅间净山"
+    ],
+    "roles": [
+      "Boss"
+    ],
+    "hairColors": [
+      "white",
+      "orange"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://touhou.fandom.com/wiki/Nina_Watari"
+    ]
   }
 ]
