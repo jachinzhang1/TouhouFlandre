@@ -122,6 +122,7 @@ export type PublicGameSession = {
   contentType: GameContentType;
   status: SessionStatus;
   maxGuesses: number;
+  catalogVersion?: string;
   puzzleKey?: string;
   guesses: GuessResult[];
   startedAt: string;
@@ -136,6 +137,8 @@ export type CharacterSearchResult = {
   initials: string;
   avatarUrl: string;
   appearanceOrder: number;
+  searchText: string;
+  nameSortKey: string;
   firstAppearance: Pick<FirstAppearance, "workTitle" | "releaseYear">;
   species: string[];
   locations: string[];

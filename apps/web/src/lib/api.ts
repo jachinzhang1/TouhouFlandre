@@ -37,13 +37,6 @@ export function roomWsUrl(roomId: string): string {
 }
 
 export const api = {
-  searchCharacters: (
-    params: NonNullable<paths["/api/characters/search"]["get"]["parameters"]>["query"],
-    signal?: AbortSignal,
-  ) =>
-    requestApi(
-      client.GET("/api/characters/search", { params: { query: params }, signal }),
-    ),
   catalog: (signal?: AbortSignal) =>
     requestApi(client.GET("/api/catalog", { signal })),
   createPuzzle: (mode: "daily" | "random") =>
