@@ -127,7 +127,7 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		if err != nil {
 			return nil, internalError(err)
 		}
-		results = append(results, toSearchResult(character))
+		results = append(results, toSearchResult(character, row.SearchText, row.NameSortKey))
 	}
 
 	total, err := s.q.CountSearchCharacters(ctx, query)
@@ -172,6 +172,34 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 		}},
 	}
 	return openapi.CatalogGet200JSONResponse(summary), nil
+}
+
+// CatalogCharacters 完整可猜角色表 + 当前版本（客户端本地搜索缓存源，08 §10.x）。
+// 行表与猜测校验同一来源（enabled_as_guess）；version 供客户端检测表更新（seed 后变化）。
+func (s *Server) CatalogCharacters(ctx context.Context, _ openapi.CatalogCharactersRequestObject) (openapi.CatalogCharactersResponseObject, error) {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusServiceUnavailable, Code: codeCatalogNotReady, Message: "题库尚未初始化，请先运行 seed。"}
+		}
+		return nil, internalError(err)
+	}
+	rows, err := s.q.ListGuessCharacters(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	characters := make([]openapi.CharacterSearchResult, 0, len(rows))
+	for _, row := range rows {
+		character, err := characterFromRow(row)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		characters = append(characters, toSearchResult(character, row.SearchText, row.NameSortKey))
+	}
+	return openapi.CatalogCharacters200JSONResponse{
+		Version:    state.CurrentVersion,
+		Characters: characters,
+	}, nil
 }
 
 // PuzzlesCreate 创建题局（每日题或随机）。

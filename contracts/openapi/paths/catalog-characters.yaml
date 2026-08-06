@@ -1,0 +1,19 @@
+# GET /api/catalog/characters — 完整可猜角色表（本地搜索缓存源）
+get:
+  operationId: catalog_characters
+  summary: 获取完整可猜角色表与当前题库版本
+  tags:
+    - catalog
+  responses:
+    "200":
+      description: 完整角色表（enabled_as_guess；searchText/nameSortKey 供客户端本地搜索与排序）。
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/character.yaml#/CatalogCharacters"
+    "503":
+      description: 题库未初始化
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

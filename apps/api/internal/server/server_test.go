@@ -415,6 +415,40 @@ func TestUnknownRouteIs404(t *testing.T) {
 	}
 }
 
+// TestCatalogCharacters 完整可猜角色表：版本 + 全量 + 本地搜索字段齐全。
+func TestCatalogCharacters(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/catalog/characters", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var table openapi.CatalogCharacters
+	if err := json.Unmarshal(payload, &table); err != nil {
+		t.Fatal(err)
+	}
+	if table.Version == "" {
+		t.Fatal("version 为空")
+	}
+	if len(table.Characters) < 100 {
+		t.Fatalf("角色数 %d < 100（TH20 目录应全量返回）", len(table.Characters))
+	}
+	for _, ch := range table.Characters {
+		if ch.SearchText == "" {
+			t.Fatalf("%s 缺 searchText", ch.Id)
+		}
+		if ch.NameSortKey == "" {
+			t.Fatalf("%s 缺 nameSortKey", ch.Id)
+		}
+	}
+	// version 与 CatalogState.currentVersion 一致（seed 后变化即可检测表更新）
+	var dbVersion string
+	if err := pool.QueryRow(ctx, "SELECT current_version FROM catalog_state WHERE id = 'current'").Scan(&dbVersion); err != nil {
+		t.Fatal(err)
+	}
+	if table.Version != dbVersion {
+		t.Fatalf("version %s != db %s", table.Version, dbVersion)
+	}
+}
+
 func TestSessionNotFound(t *testing.T) {
 	resp, payload := request(http.MethodGet, "/api/sessions/missing", nil)
 	if resp.StatusCode != http.StatusNotFound {

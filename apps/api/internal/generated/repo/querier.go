@@ -83,6 +83,9 @@ type Querier interface {
 	ListExpiredRounds(ctx context.Context) ([]MultiRound, error)
 	// finished 展示期（FINISHED_RETENTION）到期的场次 → 关闭房间（room.closed reason=retention）。
 	ListFinishedMatches(ctx context.Context) ([]MultiMatch, error)
+	// 完整可猜角色表（客户端本地搜索缓存源）：与猜测校验集一致（enabled_as_guess），
+	// 按名称排序键输出（名称排序与服务器 ILIKE 搜索一致）。
+	ListGuessCharacters(ctx context.Context) ([]Character, error)
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)

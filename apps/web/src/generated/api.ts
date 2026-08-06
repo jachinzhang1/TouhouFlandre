@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog/characters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取完整可猜角色表与当前题库版本 */
+        get: operations["catalog_characters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/puzzles/{mode}": {
         parameters: {
             query?: never;
@@ -374,6 +391,10 @@ export interface components {
             initials: string;
             avatarUrl: string;
             appearanceOrder: number;
+            /** @description 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。 */
+            searchText: string;
+            /** @description 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。 */
+            nameSortKey: string;
             firstAppearance: {
                 workTitle: string;
                 releaseYear: number;
@@ -449,6 +470,8 @@ export interface components {
             contentType: components["schemas"]["GameContentType"];
             status: components["schemas"]["SessionStatus"];
             maxGuesses: number;
+            /** @description 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。 */
+            catalogVersion?: string;
             puzzleKey?: string;
             guesses: components["schemas"]["GuessResult"][];
             /** Format: date-time */
@@ -639,6 +662,12 @@ export interface components {
             roundIndex: number;
             guess: components["schemas"]["GuessResult"];
         };
+        /** @description 完整可猜角色表（客户端本地搜索用；version 为 CatalogState.currentVersion）。 */
+        CatalogCharacters: {
+            /** @description 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。 */
+            version: string;
+            characters: components["schemas"]["CharacterSearchResult"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -732,6 +761,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogSummary"];
+                };
+            };
+            /** @description 题库未初始化 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    catalog_characters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完整角色表（enabled_as_guess；searchText/nameSortKey 供客户端本地搜索与排序）。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogCharacters"];
                 };
             };
             /** @description 题库未初始化 */

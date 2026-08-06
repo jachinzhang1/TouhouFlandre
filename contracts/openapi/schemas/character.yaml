@@ -182,6 +182,8 @@ CharacterSearchResult:
     - locations
     - affiliations
     - hairColors
+    - searchText
+    - nameSortKey
   properties:
     id:
       type: string
@@ -195,6 +197,12 @@ CharacterSearchResult:
       type: string
     appearanceOrder:
       type: integer
+    searchText:
+      type: string
+      description: 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。
+    nameSortKey:
+      type: string
+      description: 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。
     firstAppearance:
       type: object
       required:
@@ -280,3 +288,18 @@ CatalogSummary:
       type: array
       items:
         $ref: "#/CatalogContentSummary"
+
+CatalogCharacters:
+  type: object
+  description: 完整可猜角色表（客户端本地搜索用；version 为 CatalogState.currentVersion）。
+  required:
+    - version
+    - characters
+  properties:
+    version:
+      type: string
+      description: 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。
+    characters:
+      type: array
+      items:
+        $ref: "#/CharacterSearchResult"

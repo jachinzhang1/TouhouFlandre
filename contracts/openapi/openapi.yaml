@@ -31,6 +31,8 @@ paths:
     $ref: ./paths/characters.yaml
   /api/catalog:
     $ref: ./paths/catalog.yaml
+  /api/catalog/characters:
+    $ref: ./paths/catalog-characters.yaml
   /api/puzzles/{mode}:
     $ref: ./paths/puzzles.yaml
   /api/sessions/{sessionId}/guess:

@@ -32,6 +32,56 @@ func (q *Queries) GetSnapshot(ctx context.Context, version string) (CatalogSnaps
 	return i, err
 }
 
+const listGuessCharacters = `-- name: ListGuessCharacters :many
+SELECT id, avatar_url, display_name, name_sort_key, search_text, appearance_order, first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags, affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess, difficulty_tier, source_refs, created_at, updated_at FROM character WHERE enabled_as_guess ORDER BY name_sort_key, id ASC
+`
+
+// 完整可猜角色表（客户端本地搜索缓存源）：与猜测校验集一致（enabled_as_guess），
+// 按名称排序键输出（名称排序与服务器 ILIKE 搜索一致）。
+func (q *Queries) ListGuessCharacters(ctx context.Context) ([]Character, error) {
+	rows, err := q.db.Query(ctx, listGuessCharacters)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Character{}
+	for rows.Next() {
+		var i Character
+		if err := rows.Scan(
+			&i.ID,
+			&i.AvatarUrl,
+			&i.DisplayName,
+			&i.NameSortKey,
+			&i.SearchText,
+			&i.AppearanceOrder,
+			&i.FirstAppearanceWorkID,
+			&i.Names,
+			&i.FirstAppearance,
+			&i.Species,
+			&i.AbilityDisplay,
+			&i.AbilityTags,
+			&i.Affiliations,
+			&i.Locations,
+			&i.Roles,
+			&i.HairColors,
+			&i.Playable,
+			&i.EnabledAsAnswer,
+			&i.EnabledAsGuess,
+			&i.DifficultyTier,
+			&i.SourceRefs,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertCatalogState = `-- name: UpsertCatalogState :exec
 INSERT INTO catalog_state (id, current_version)
 VALUES ('current', $1)
