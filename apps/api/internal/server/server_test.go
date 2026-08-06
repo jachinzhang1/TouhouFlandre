@@ -204,7 +204,8 @@ func TestCatalog(t *testing.T) {
 		t.Fatalf("expected 1 content, got %d", len(summary.Contents))
 	}
 	content := summary.Contents[0]
-	if content.Total != 29 || content.Guessable != 29 || content.Answerable != 29 {
+	// 计数随题库扩展（TH06–TH20 共 113 角色）；08 设计文档 §4.2 亦以 113 为基线。
+	if content.Total != 113 || content.Guessable != 113 || content.Answerable != 113 {
 		t.Fatalf("unexpected counts: %+v", content)
 	}
 	if content.MaxGuesses != 8 || content.VisibleFieldCount != 6 {
