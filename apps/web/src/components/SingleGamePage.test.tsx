@@ -9,6 +9,7 @@ const playingSession = {
   status: "playing",
   puzzleKey: "2026-08-05",
   maxGuesses: 8,
+  startedAt: new Date(Date.now() - 65_000).toISOString(),
   guesses: [],
 } as unknown as PublicGameSession;
 
@@ -40,6 +41,17 @@ const nextDailySession = {
   puzzleKey: "2026-08-06",
 } as unknown as PublicGameSession;
 
+const forfeitedSession = {
+  ...playingSession,
+  status: "lost",
+  endedAt: new Date().toISOString(),
+  guesses: sessionWithGuess.guesses,
+  answer: {
+    names: { zhHans: "帕秋莉·诺蕾姬" },
+    avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
+  },
+} as unknown as PublicGameSession;
+
 const { searchHookMock } = vi.hoisted(() => ({
   searchHookMock: vi.fn(),
 }));
@@ -54,6 +66,7 @@ vi.mock("../lib/api", () => ({
     getSession: vi.fn(),
     createPuzzle: vi.fn(),
     submitGuess: vi.fn(),
+    forfeitSession: vi.fn(),
   },
 }));
 
@@ -69,6 +82,7 @@ describe("SingleGamePage", () => {
     vi.mocked(api.getSession).mockReset();
     vi.mocked(api.createPuzzle).mockReset();
     vi.mocked(api.submitGuess).mockReset();
+    vi.mocked(api.forfeitSession).mockReset();
     searchHookMock.mockReset();
     searchHookMock.mockReturnValue({
       results: [
@@ -102,6 +116,7 @@ describe("SingleGamePage", () => {
     render(<SingleGamePage mode="daily" />);
 
     expect(await screen.findByText("每日题 2026-08-05")).toBeTruthy();
+    expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(screen.getByText("进行中")).toBeTruthy();
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
@@ -132,6 +147,29 @@ describe("SingleGamePage", () => {
     expect(screen.getByText(/共使用 1 次猜测/)).toBeTruthy();
     expect(screen.queryByText("复制分享")).toBeNull();
     expect(screen.queryByText("再来一局")).toBeNull();
+  });
+
+  it("forfeits the current session and reveals the answer", async () => {
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+    vi.mocked(api.forfeitSession).mockResolvedValue(forfeitedSession as never);
+
+    render(<SingleGamePage mode="daily" />);
+    await screen.findByText("每日题 2026-08-05");
+
+    await userEvent.click(screen.getByLabelText("放弃本局"));
+
+    expect(await screen.findByText("本次游戏结束")).toBeTruthy();
+    expect(screen.getByText("帕秋莉·诺蕾姬", { selector: "strong" })).toBeTruthy();
+    expect(
+      screen.getByText(/^01:0[45]$/, { selector: ".guess-duration" }),
+    ).toBeTruthy();
   });
 
   it("restores the same daily session and keeps its guesses", async () => {

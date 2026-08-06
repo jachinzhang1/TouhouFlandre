@@ -374,39 +374,75 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 			nextStatus = game.SessionLost
 		}
 
-		var endedAt *time.Time
-		if nextStatus != game.SessionPlaying {
-			now := s.now().UTC()
-			endedAt = &now
-		}
-		guessesJSON, err := jsonMarshal(nextGuesses)
-		if err != nil {
-			return nil, internalError(err)
-		}
-		var endedAtValue pgtype.Timestamptz
-		if endedAt != nil {
-			endedAtValue = pgtype.Timestamptz{Time: *endedAt, Valid: true}
-		}
-
-		updated, err := s.q.UpdateSessionGuess(ctx, repo.UpdateSessionGuessParams{
-			ID:      session.ID,
-			Version: session.Version,
-			Guesses: guessesJSON,
-			Status:  string(nextStatus),
-			EndedAt: endedAtValue,
-		})
+		public, err := s.updateSessionState(ctx, session, nextGuesses, nextStatus, characters)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				continue // 版本冲突，重试
 			}
 			return nil, internalError(err)
 		}
-		public, err := toPublicSession(updated, characters)
-		if err != nil {
-			return nil, internalError(err)
-		}
 		return openapi.SessionsSubmitGuess200JSONResponse{Session: public}, nil
 	}
 
 	return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "会话刚刚发生变化，请重新提交。"}
+}
+
+// SessionsForfeit 放弃本局并直接结算为失败。
+func (s *Server) SessionsForfeit(ctx context.Context, request openapi.SessionsForfeitRequestObject) (openapi.SessionsForfeitResponseObject, error) {
+	session, err := s.q.GetSession(ctx, request.SessionId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusNotFound, Code: codeSessionNotFound, Message: "没有找到这一局游戏。"}
+		}
+		return nil, internalError(err)
+	}
+	if session.Status != string(game.SessionPlaying) {
+		return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
+	}
+	characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
+	if err != nil {
+		return nil, err
+	}
+	var guesses []game.GuessResult
+	if err := jsonUnmarshal(session.Guesses, &guesses); err != nil {
+		return nil, internalError(err)
+	}
+	public, err := s.updateSessionState(ctx, session, guesses, game.SessionLost, characters)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "会话刚刚发生变化，请重新执行。"}
+		}
+		return nil, internalError(err)
+	}
+	return openapi.SessionsForfeit200JSONResponse{Session: public}, nil
+}
+
+func (s *Server) updateSessionState(
+	ctx context.Context,
+	session repo.GameSession,
+	guesses []game.GuessResult,
+	nextStatus game.SessionStatus,
+	characters []game.Character,
+) (openapi.PublicGameSession, error) {
+	guessesJSON, err := jsonMarshal(guesses)
+	if err != nil {
+		return openapi.PublicGameSession{}, internalError(err)
+	}
+	var endedAtValue pgtype.Timestamptz
+	if nextStatus != game.SessionPlaying {
+		now := s.now().UTC()
+		endedAtValue = pgtype.Timestamptz{Time: now, Valid: true}
+	}
+
+	updated, err := s.q.UpdateSessionGuess(ctx, repo.UpdateSessionGuessParams{
+		ID:      session.ID,
+		Version: session.Version,
+		Guesses: guessesJSON,
+		Status:  string(nextStatus),
+		EndedAt: endedAtValue,
+	})
+	if err != nil {
+		return openapi.PublicGameSession{}, err
+	}
+	return toPublicSession(updated, characters)
 }

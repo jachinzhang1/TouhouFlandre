@@ -85,6 +85,14 @@ export const api = {
     );
     return session;
   },
+  forfeitSession: async (sessionId: string) => {
+    const { session } = await requestApi(
+      client.POST("/api/sessions/{sessionId}/forfeit", {
+        params: { path: { sessionId } },
+      }),
+    );
+    return session;
+  },
   getSession: async (sessionId: string) => {
     const { session } = await requestApi(
       client.GET("/api/sessions/{sessionId}", {

@@ -37,6 +37,8 @@ paths:
     $ref: ./paths/puzzles.yaml
   /api/sessions/{sessionId}/guess:
     $ref: ./paths/sessions-guess.yaml
+  /api/sessions/{sessionId}/forfeit:
+    $ref: ./paths/sessions-forfeit.yaml
   /api/sessions/{sessionId}:
     $ref: ./paths/sessions.yaml
   /api/rooms:

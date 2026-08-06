@@ -454,6 +454,40 @@ func TestGuessLifecycle(t *testing.T) {
 	}
 }
 
+func TestForfeitSessionRevealsAnswer(t *testing.T) {
+	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+	sessionID := created.Session.Id
+
+	var answerID string
+	if err := pool.QueryRow(ctx,
+		`SELECT answer_id FROM game_session WHERE id = $1`, sessionID,
+	).Scan(&answerID); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, payload := request(http.MethodPost, "/api/sessions/"+sessionID+"/forfeit", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("forfeit status %d: %s", resp.StatusCode, payload)
+	}
+	var wrapper struct {
+		Session openapi.PublicGameSession `json:"session"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		t.Fatal(err)
+	}
+	session := wrapper.Session
+	if session.Status != "lost" || session.Answer == nil || session.Answer.Id != answerID {
+		t.Fatalf("unexpected forfeited state: %+v", session)
+	}
+	if session.EndedAt == nil {
+		t.Fatal("endedAt missing after forfeit")
+	}
+}
+
 func TestDuplicateGuessConflict(t *testing.T) {
 	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
 	var created openapi.PuzzleResponse

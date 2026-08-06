@@ -19,8 +19,9 @@
   --shadow-sm: 0 8px 24px rgba(25, 46, 39, 0.07);
   --shadow-lg: 0 20px 52px rgba(25, 46, 39, 0.1);
   --font-brand: "Iowan Old Style", "Noto Serif SC", "Songti SC", serif;
-  --font-ui: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui,
-    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-ui:
+    Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root {
@@ -619,7 +620,7 @@ input:focus-visible {
 
 .status-strip {
   display: grid;
-  grid-template-columns: minmax(210px, 1fr) 110px 112px 44px;
+  grid-template-columns: minmax(210px, 1fr) 96px 96px 112px auto;
   gap: 18px;
   align-items: center;
   padding: 17px 24px;
@@ -628,7 +629,7 @@ input:focus-visible {
 }
 
 .status-strip.daily {
-  grid-template-columns: minmax(210px, 1fr) 110px 112px;
+  grid-template-columns: minmax(210px, 1fr) 96px 96px 112px auto;
 }
 
 .label {
@@ -669,6 +670,12 @@ input:focus-visible {
 
 .session-state.lost {
   color: var(--vermilion);
+}
+
+.status-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .guess-form {
@@ -814,7 +821,7 @@ input:focus-visible {
 
 .guess-table {
   width: 100%;
-  min-width: 820px;
+  min-width: 940px;
   border-collapse: collapse;
 }
 
@@ -850,6 +857,15 @@ input:focus-visible {
 .guess-character > span:last-child {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.guess-duration {
+  display: inline-flex;
+  min-width: 60px;
+  justify-content: flex-start;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .guess-avatar {
@@ -1158,17 +1174,22 @@ input:focus-visible {
   }
 
   .status-strip {
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 14px;
     padding: 15px 18px;
   }
 
   .status-strip.daily {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
   .puzzle-status {
     grid-column: 1 / -1;
+  }
+
+  .status-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 
   .progress-track {
@@ -1194,7 +1215,7 @@ input:focus-visible {
   }
 
   .guess-table {
-    min-width: 790px;
+    min-width: 900px;
   }
 
   .guess-table thead th:first-child,
