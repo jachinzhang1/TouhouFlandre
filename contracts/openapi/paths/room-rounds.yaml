@@ -11,8 +11,6 @@ post:
     成员令牌鉴权。实时竞速：无回合交替，任何时刻（局处于 playing）双方都可提交。
     携带 idempotencyKey（客户端 UUID），重试返回首次结果。
     响应为自视角完整反馈；局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影）。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path

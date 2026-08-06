@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -20,19 +21,39 @@ import (
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool *pgxpool.Pool
-	q    *repo.Queries
-	now  func() time.Time
-	rng  *rand.Rand
+	pool           *pgxpool.Pool
+	q              *repo.Queries
+	now            func() time.Time
+	rng            *rand.Rand
+	lobbyTTL       time.Duration    // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention time.Duration    // closed 保留期（关闭时 expires_at）
+	joinLimiter    *ipRateLimiter   // 加入/预检按 IP 限流（08 §8.5）
 }
 
-func NewServer(pool *pgxpool.Pool) *Server {
-	return &Server{
-		pool: pool,
-		q:    repo.New(pool),
-		now:  time.Now,
-		rng:  rand.New(rand.NewSource(time.Now().UnixNano())),
+// Option 定制 Server（测试注入用）。
+type Option func(*Server)
+
+// WithJoinRateLimit 覆盖加入/预检限流参数（默认每分钟 10 次，进程内计数）。
+func WithJoinRateLimit(limit int, window time.Duration) Option {
+	return func(s *Server) {
+		s.joinLimiter = newIPRateLimiter(limit, window)
 	}
+}
+
+func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
+	s := &Server{
+		pool:           pool,
+		q:              repo.New(pool),
+		now:            time.Now,
+		rng:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		lobbyTTL:       config.MultiLobbyTTL(),
+		eventRetention: config.MultiEventRetention(),
+		joinLimiter:    newIPRateLimiter(10, time.Minute),
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // HealthCheck 健康检查。

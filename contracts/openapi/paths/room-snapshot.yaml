@@ -8,8 +8,6 @@ get:
   description: |
     成员令牌鉴权。返回房间状态 + 成员列表 + after 游标之后的事件（逐观察者投影），
     同一端点承担「状态快照」与「事件补齐」两个职责。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path

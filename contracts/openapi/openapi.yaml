@@ -149,5 +149,6 @@ components:
       scheme: bearer
       bearerFormat: "guest:{token}"
       description: |
-        游客令牌鉴权。Authorization: Bearer guest:{token}；
+        游客令牌鉴权（08 §5.1）。Authorization: Bearer guest:{token}；
         令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存，类型不匹配 → GUEST_UNAUTHORIZED。
+        实际鉴权由 Go handler 中间件（RoomGuardMiddleware）逐请求执行，本声明仅作契约文档。

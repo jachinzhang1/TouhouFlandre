@@ -6,8 +6,6 @@ delete:
     - rooms
   summary: 关闭大厅房间
   description: 仅房主（slot 1 成员）令牌、仅 lobby 态。关闭后房间进入 closed（事件保留期后清理）。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path

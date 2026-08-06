@@ -15,12 +15,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/seed"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
@@ -128,7 +130,7 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("integration: seeded catalog %s\n", version)
 
-	ts := httptest.NewServer(server.New(pool))
+	ts := httptest.NewServer(server.NewWithOptions(pool, handler.WithJoinRateLimit(10000, time.Minute)))
 	baseURL = ts.URL
 	client = ts.Client()
 

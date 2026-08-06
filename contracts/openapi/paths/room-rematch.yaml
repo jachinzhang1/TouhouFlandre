@@ -6,8 +6,6 @@ post:
     - rooms
   summary: 确认再来一局
   description: 幂等。仅 finished 态可用；双方确认且都 connected 时开新对局（事件驱动）。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path

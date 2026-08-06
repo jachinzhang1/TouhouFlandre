@@ -29,6 +29,19 @@ const (
 	codeUnsupportedContentType openapi.ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
 	codeCatalogNotReady        openapi.ErrorResponseCode = "CATALOG_NOT_READY"
 	codeInternal               openapi.ErrorResponseCode = "INTERNAL"
+
+	// 多人模式（08 §7.2）
+	codeRoomNotFound        openapi.ErrorResponseCode = "ROOM_NOT_FOUND"
+	codeRoomFull            openapi.ErrorResponseCode = "ROOM_FULL"
+	codeRoomClosed          openapi.ErrorResponseCode = "ROOM_CLOSED"
+	codeGuestUnauthorized   openapi.ErrorResponseCode = "GUEST_UNAUTHORIZED"
+	codeInvalidFormat       openapi.ErrorResponseCode = "INVALID_FORMAT"
+	codeMatchAlreadyStarted openapi.ErrorResponseCode = "MATCH_ALREADY_STARTED"
+	codeRematchNotAvailable openapi.ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
+	codeRoundNotActive      openapi.ErrorResponseCode = "ROUND_NOT_ACTIVE"
+	codeRoundEnded          openapi.ErrorResponseCode = "ROUND_ENDED"
+	codeGuessLimitReached   openapi.ErrorResponseCode = "GUESS_LIMIT_REACHED"
+	codeRateLimited         openapi.ErrorResponseCode = "RATE_LIMITED"
 )
 
 func internalError(err error) *ApiError {

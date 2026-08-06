@@ -6,8 +6,6 @@ post:
     - rooms
   summary: 就绪
   description: 幂等置位。双方就绪 → 对局开始（事件驱动，客户端经 WS/快照获知）。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path

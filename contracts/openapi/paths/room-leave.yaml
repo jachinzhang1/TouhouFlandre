@@ -8,8 +8,6 @@ post:
   description: |
     大厅：加入者删除成员行释放 slot，房主离开则房间关闭（reason=host_left）；
     对局中：弃赛判对方胜（reason=forfeit）；对局结束后离开 → 房间关闭。
-  security:
-    - GuestBearer: []
   parameters:
     - name: roomId
       in: path
