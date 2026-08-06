@@ -2,7 +2,7 @@
 
 // 整场结果弹窗（08 §10.3）：胜者/比分/原因 + 再来一局 + 返回大厅。
 import { RotateCcw, Trophy } from "lucide-react";
-import type { MatchEndedPayload } from "@touhoufriberg/shared";
+import type { MatchEndedPayload } from "@touhouflandre/shared";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
 
 const REASON_LABEL: Record<string, string> = {

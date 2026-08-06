@@ -16,7 +16,7 @@ import type {
   RoundStartedPayload,
   RoomClosedPayload,
   RoomUpdatedPayload,
-} from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type GuessResult = components["schemas"]["GuessResult"];

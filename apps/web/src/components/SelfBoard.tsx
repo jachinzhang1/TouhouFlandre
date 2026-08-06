@@ -4,7 +4,7 @@
 // 猜测必须从搜索结果选择；反馈全部来自 API/事件，客户端不自行计算。
 import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { FeedbackStatus, GuessResult } from "@touhoufriberg/shared";
+import type { FeedbackStatus, GuessResult } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
 

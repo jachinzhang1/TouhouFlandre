@@ -18,12 +18,12 @@ import {
   createShareText,
   GAME_CONTENT_DEFINITIONS,
   HAIR_COLOR_LABELS,
-} from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
 import type {
   FieldFeedback,
   PublicGameSession,
   SinglePlayerGameMode,
-} from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { modeConfig, SINGLE_PLAYER_MODE_IDS } from "../gameModes";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";

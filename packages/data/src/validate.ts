@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { demoCharacters, demoWorks } from ".";
-import { normalizeSearchText } from "@touhoufriberg/shared";
+import { normalizeSearchText } from "@touhouflandre/shared";
 
 const characterIds = new Set(demoCharacters.map((character) => character.id));
 const characterAvatarUrls = new Set(

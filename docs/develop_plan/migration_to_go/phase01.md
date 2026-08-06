@@ -29,7 +29,7 @@
 
 - [ ] 记录当前 6 个端点、6 个 Prisma 模型的基线清单（对照 05 §13 Phase 0）。
 - [ ] 固定工具版本：Node、pnpm、TypeScript 主版本；`openapi-typescript`、`openapi-fetch`、规范校验器版本写入 `package.json`（精确版本，锁 `pnpm-lock.yaml`）。
-- [ ] 现有测试基线通过（`pnpm test`、`pnpm --filter @touhoufriberg/api` 现有检查），作为本阶段回归对照。
+- [ ] 现有测试基线通过（`pnpm test`、`pnpm --filter @touhouflandre/api` 现有检查），作为本阶段回归对照。
 - [ ] 题库 seed 后本地环境可运行（`pnpm dev` 可用）。
 
 ---
@@ -184,7 +184,7 @@ contracts/openapi/
 
 **验收**：
 
-- [ ] `pnpm --filter @touhoufriberg/web gen:api` 能生成 `apps/web/src/generated/api.ts`（当前为空规范也须成功）。
+- [ ] `pnpm --filter @touhouflandre/web gen:api` 能生成 `apps/web/src/generated/api.ts`（当前为空规范也须成功）。
 - [ ] `task gen:web` 可执行。
 
 ### T2 — 编写 schemas（common/character/work/session/guess）
@@ -228,7 +228,7 @@ contracts/openapi/
 3. CI job（新增）：
    - `redocly lint` 通过；
    - `$ref`/孤儿检查通过；
-   - `pnpm --filter @touhoufriberg/web gen:api` 重新生成后 `git diff --exit-code` 无差异（生成代码入库，防漂移，照 05 §7.4）。
+   - `pnpm --filter @touhouflandre/web gen:api` 重新生成后 `git diff --exit-code` 无差异（生成代码入库，防漂移，照 05 §7.4）。
 
 **验收**：
 
@@ -247,7 +247,7 @@ contracts/openapi/
 
 **验收**：
 
-- [ ] `pnpm --filter @touhoufriberg/web typecheck` 通过。
+- [ ] `pnpm --filter @touhouflandre/web typecheck` 通过。
 - [ ] 所有端点调用走生成类型；`npm run dev` 下 6 个端点在浏览器/接口层功能无回归（对照 Phase 0 基线截图与请求记录）。
 - [ ] 错误处理行为不变（错误消息仍来自 `error` 字段）。
 

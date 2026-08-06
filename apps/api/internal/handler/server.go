@@ -84,7 +84,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 
 // HealthCheck 健康检查。
 func (s *Server) HealthCheck(ctx context.Context, _ openapi.HealthCheckRequestObject) (openapi.HealthCheckResponseObject, error) {
-	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhoufriberg-api"}, nil
+	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhouflandre-api"}, nil
 }
 
 // CharactersSearch 搜索角色（行表 + ILIKE）。

@@ -195,7 +195,7 @@ sequenceDiagram
 - 令牌房间级有效：不能用于其他房间，无跨房间身份、无过期时间（生命周期受房间 TTL 约束）。
 - 传输约定：REST 用 `Authorization: Bearer guest:{token}`；WS 在 `hello` 首帧携带（**不放 URL 查询参数**，避免进日志，符合 07 §5.3）。
 - 扩展性：令牌带 `guest:` 前缀，未来账号（Stage 2）以 `Bearer jwt:{accessToken}` 共存，协议无需改动；令牌类型不匹配 → `GUEST_UNAUTHORIZED`。
-- 前端持久化：`localStorage["touhoufriberg:multi-room"] = {roomId, roomCode, guestToken}`，用于刷新/重连恢复；一个浏览器同时只活跃一个房间（v1）。
+- 前端持久化：`localStorage["touhouflandre:multi-room"] = {roomId, roomCode, guestToken}`，用于刷新/重连恢复；一个浏览器同时只活跃一个房间（v1）。
 
 ### 5.2 昵称与展示
 
@@ -559,7 +559,7 @@ COMMIT;  -- 提交后 hub 才向连接扇出（07 §7.2）
 | `/multi/room/[code]` | 房间页（替换占位页） | lobby → 对局 → 结果的完整状态机；`[code]` 校验非法值 → `notFound()` |
 
 - 传输：同源 `/api/…/ws` 经 Next rewrites 代理——`next.config.ts` 的 `/api/:path*` rewrite 增加 `ws: true`（Next 13.2+ 支持，`next dev` 与 `next start` 均可用；**standalone 部署有历史问题**，生产若用 standalone 需走反向代理或直连）。直连模式：`NEXT_PUBLIC_API_BASE_URL` 非空时由该地址推导 ws(s) URL。
-- 持久化：`localStorage["touhoufriberg:multi-room"]`（与单人 storageKey 并列，不冲突）；刷新后凭 roomId+token 重连；无匹配成员资格访问 `/multi/room/[code]` → 重定向 `/multi` 提示加入。
+- 持久化：`localStorage["touhouflandre:multi-room"]`（与单人 storageKey 并列，不冲突）；刷新后凭 roomId+token 重连；无匹配成员资格访问 `/multi/room/[code]` → 重定向 `/multi` 提示加入。
 - 分享：房主复制房间号文本即可（v1 不做邀请链接）。
 
 ### 10.2 组件与复用

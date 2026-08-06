@@ -3,8 +3,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   SINGLE_PLAYER_GAME_MODES,
   SINGLE_PLAYER_MODE_DEFINITIONS,
-} from "@touhoufriberg/shared";
-import type { SinglePlayerGameMode } from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
+import type { SinglePlayerGameMode } from "@touhouflandre/shared";
 
 export const SINGLE_PLAYER_MODE_IDS = SINGLE_PLAYER_GAME_MODES;
 
@@ -28,7 +28,7 @@ export const modeConfig: Record<
     stateLabel: "今日可玩",
     stateClass: "live",
     icon: CalendarDays,
-    storageKey: "touhoufriberg:daily-session",
+    storageKey: "touhouflandre:daily-session",
   },
   random: {
     ...SINGLE_PLAYER_MODE_DEFINITIONS.random,
@@ -37,6 +37,6 @@ export const modeConfig: Record<
     stateLabel: "不限次数",
     stateClass: "",
     icon: Shuffle,
-    storageKey: "touhoufriberg:random-session",
+    storageKey: "touhouflandre:random-session",
   },
 };

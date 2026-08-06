@@ -108,8 +108,8 @@
 
 提交题库更新前应完成以下检查：
 
-1. 运行 `pnpm --filter @touhoufriberg/data typecheck`；
-2. 运行 `pnpm --filter @touhoufriberg/data validate`；
+1. 运行 `pnpm --filter @touhouflandre/data typecheck`；
+2. 运行 `pnpm --filter @touhouflandre/data validate`；
 3. 确认角色记录引用的 `workId` 已存在；
 4. 确认 ID、名称和别名没有重复；
 5. 确认 `avatarUrl` 指向 `apps/web/public/characters` 中存在的文件；

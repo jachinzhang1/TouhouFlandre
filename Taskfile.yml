@@ -13,7 +13,7 @@ tasks:
 
   dev:web:
     cmds:
-      - pnpm --filter @touhoufriberg/web dev
+      - pnpm --filter @touhouflandre/web dev
 
   db:up:
     cmds:
@@ -40,7 +40,7 @@ tasks:
 
   catalog:check:
     cmds:
-      - pnpm --filter @touhoufriberg/data validate
+      - pnpm --filter @touhouflandre/data validate
 
   gen:openapi:
     dir: apps/api
@@ -55,7 +55,7 @@ tasks:
 
   gen:web:
     cmds:
-      - pnpm --filter @touhoufriberg/web gen:api
+      - pnpm --filter @touhouflandre/web gen:api
 
   gen:
     cmds:

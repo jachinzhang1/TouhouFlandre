@@ -17,7 +17,7 @@
 4. 棋盘：`SelfBoard`（复用单人反馈表 + 搜索）、`OpponentBoard`（匿名矩阵：无列头/名称/标签/值，只渲染颜色 + `aria-label` 状态名）、图例。
 5. 遮罩：倒计时/间歇（`CountdownOverlay`）、局结果弹窗（胜负 + 答案 + 「查看对局」+ 下一局倒计时，倒计时不因查看而暂停）、整场结果（比分 + 再来一局 + 等待对方确认）。
 6. 再来一局交互：`POST /rematch` → `match.rematch` → 双方确认 → `match.started`（新 matchIndex）自动回对局。
-7. `next.config.ts` 增加 `ws: true`；localStorage `touhoufriberg:multi-room` 恢复。
+7. `next.config.ts` 增加 `ws: true`；localStorage `touhouflandre:multi-room` 恢复。
 8. Vitest + Playwright（双 context）覆盖。
 
 ### 非目标（本阶段明确不做）
@@ -45,7 +45,7 @@
 | hooks | `apps/web/src/hooks/useRoom.ts`、`useRoomClock.ts` | WS 生命周期/reducer/重连/补齐；剩余时间渲染 |
 | 棋盘/遮罩 | `components/RoomLobby/MatchBoard/SelfBoard/OpponentBoard/CountdownOverlay/RoundResultOverlay/MatchResultOverlay.tsx` | 10.2 清单 |
 | 传输 | `apps/web/next.config.ts`（`ws: true`）、`lib/api.ts`（WS 客户端 + 房间 REST） | 同源 rewrite / 直连模式（`NEXT_PUBLIC_API_BASE_URL` 推导 ws(s)） |
-| 持久化 | `apps/web/src/domain/` 或 `lib/`（localStorage 恢复逻辑） | `touhoufriberg:multi-room`，与单人 key 并列 |
+| 持久化 | `apps/web/src/domain/` 或 `lib/`（localStorage 恢复逻辑） | `touhouflandre:multi-room`，与单人 key 并列 |
 | 测试 | `apps/web/src/**/*.test.ts(x)` + `apps/web/e2e/` | Vitest（jsdom）+ Playwright（双 context） |
 
 ---
@@ -82,7 +82,7 @@
 
 ### 4.6 持久化与恢复
 
-- `localStorage["touhoufriberg:multi-room"] = {roomId, roomCode, guestToken}`（与单人 storageKey 并列不冲突）；刷新后凭 roomId+token 重连；恢复失败（房间关闭/404）删 key 重建/重定向 `/multi`（参照单人 `loadSession` 模式）。
+- `localStorage["touhouflandre:multi-room"] = {roomId, roomCode, guestToken}`（与单人 storageKey 并列不冲突）；刷新后凭 roomId+token 重连；恢复失败（房间关闭/404）删 key 重建/重定向 `/multi`（参照单人 `loadSession` 模式）。
 - 一个浏览器同时只活跃一个房间（v1）；双标签页互顶由「新连接替换旧连接」语义兜底（§8.1）。
 
 ---
@@ -215,7 +215,7 @@ hooks/
 
 **动作**：
 
-1. 全量：`pnpm typecheck`、`pnpm test`（Vitest）、`pnpm --filter @touhoufriberg/web test:e2e`（需 `task dev`）、`pnpm build`。
+1. 全量：`pnpm typecheck`、`pnpm test`（Vitest）、`pnpm --filter @touhouflandre/web test:e2e`（需 `task dev`）、`pnpm build`。
 2. 更新 §10 执行记录；明确 Phase 6 输入（页面清单、需要收口的体验细节）。
 
 **验收**：

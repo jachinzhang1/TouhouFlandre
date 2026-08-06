@@ -47,7 +47,7 @@
 | D5 | **样式两阶段**：阶段一 T1-T4 将 styles.css **原样平移**为全局 CSS（视觉零回归，页面迁移只做行为平移），Tailwind v4 同时接入 `@theme` 映射同一组 `:root` token（`--ink`/`--paper`/`--vermilion`/`--jade`/`--amber`/`--shadow-*` 等 17 个）；阶段二（样式改造任务）按页面把语义类改写为 Tailwind utility，每页截图对比确认，全部完成后删除 styles.css 页面部分，仅保留 reset/字体/焦点可见/动画 | 05 §5「按页面迁移、保留 reset 与动画」；直接 utility 化则 1738 行一次性重写，旧页面已删、截图基线无从建立 |
 | D6 | **数据与逻辑边界**：API 层平移 `lib/api.ts`（openapi-fetch + `generated/api.ts`，契约唯一源）；搜索归一化在 `packages/shared`（不动）；游戏规则在 Go（前端不重复）；前端展示格式化落 `src/domain/` | 05 §7/§11；避免形成第二个后端（05 §14） |
 | D7 | **测试**：Vitest + RTL 覆盖 domain 纯函数、hooks、Client Components；Playwright 覆盖路由/404/游戏全流程/键盘/移动端/视觉截图对比（新旧应用同页面截图 diff） | 05 §10；不引入 Jest/Cypress |
-| D8 | **会话延续**：localStorage key（`touhoufriberg:daily-session`/`random-session`）不变；迁移期新应用在同一 origin 可直接恢复进行中会话 | D2 推论；Phase 3 的 404 重建逻辑兜底（07 §2 匿名可玩） |
+| D8 | **会话延续**：localStorage key（`touhouflandre:daily-session`/`random-session`）不变；迁移期新应用在同一 origin 可直接恢复进行中会话 | D2 推论；Phase 3 的 404 重建逻辑兜底（07 §2 匿名可玩） |
 | D9 | **行为平移优先**：本阶段所有页面沿用客户端数据获取（平移 `useCatalogSummary`/`useCharacterSearch`），不做服务端取数 | 生产拓扑未定（07 Stage 5），服务端 fetch 地址不可配置；收益（SEO/性能）无基线不宣称（07 §3） |
 | D10 | **替换与回滚**：全部路由迁移 + 测试绿后，`git rm` 旧 `apps/web` 源文件并 `git mv apps/web-next apps/web`，同步 Taskfile/CI/package.json；旧实现保留 git 历史 | 05 §4.3「稳定后替换」；提交即回滚 |
 
@@ -233,7 +233,7 @@
 ### T6 — 替换 ✅
 
 - `git rm` 旧 `apps/web` 源（App.tsx/main.tsx/index.html/vite.config.ts/tsconfig/src/public）后 `git mv apps/web-next apps/web`（shell 移动 + `git add -A` 保留 rename 历史）。
-- package.json 名称改回 `@touhoufriberg/web`；Taskfile 删除 `dev:web-next`；workspace/lockfile 清理。
+- package.json 名称改回 `@touhouflandre/web`；Taskfile 删除 `dev:web-next`；workspace/lockfile 清理。
 - CI：曾尝试在 go job 增加 Playwright E2E 步骤（起 Go + Postgres），随后**放弃 CI E2E**——E2E 仅本地运行（`task dev` + `pnpm test:e2e`），CI 保留 `pnpm test`（Vitest）与 Go 集成测试。
 - 全量验证：`task dev` 一键启动；`pnpm test`（21 用例）、`typecheck`、`build`（Next 16 静态+动态 12 路由）、`go test`、`go vet` 全绿；`NEXT_PUBLIC_API_BASE_URL` 替代 `VITE_API_BASE_URL`。
 

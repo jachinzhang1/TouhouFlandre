@@ -1,6 +1,6 @@
 // useRoom reducer 单测（08 §10.3）：乱序/重复去重、事件应用、局/场流转。
 import { describe, expect, it } from "vitest";
-import type { Envelope } from "@touhoufriberg/shared";
+import type { Envelope } from "@touhouflandre/shared";
 import type { RoomUiState } from "../hooks/useRoom";
 import { applySnapshot, initialRoomState, roomReducer } from "../hooks/useRoom";
 

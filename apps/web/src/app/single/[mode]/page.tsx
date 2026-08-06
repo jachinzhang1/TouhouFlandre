@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { isSinglePlayerGameMode } from "@touhoufriberg/shared";
-import type { SinglePlayerGameMode } from "@touhoufriberg/shared";
+import { isSinglePlayerGameMode } from "@touhouflandre/shared";
+import type { SinglePlayerGameMode } from "@touhouflandre/shared";
 import { SingleGamePage } from "../../../components/SingleGamePage";
 
 export default async function SingleGameRoute({

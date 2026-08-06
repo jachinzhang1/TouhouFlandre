@@ -3,7 +3,7 @@
 // 局结果弹窗（08 §4.4）：胜负 + 答案揭示 + 「查看对局」按钮；
 // 点击仅本地关闭弹窗，不暂停下一局倒计时（到点 round.playing 强制开新局）。
 import { Check, X } from "lucide-react";
-import type { RoundEndedPayload } from "@touhoufriberg/shared";
+import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useEffect, useState } from "react";
 
 export function RoundResultOverlay({

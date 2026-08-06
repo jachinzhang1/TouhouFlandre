@@ -34,7 +34,7 @@ jobs:
 
       - name: Generated types are up to date
         run: |
-          pnpm --filter @touhoufriberg/web gen:api
+          pnpm --filter @touhouflandre/web gen:api
           git diff --exit-code -- apps/web/src/generated
 
       - name: Typecheck

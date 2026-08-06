@@ -1,6 +1,6 @@
 import createClient from "openapi-fetch";
 import type { paths } from "../generated/api";
-import type { MultiRoomFormat } from "@touhoufriberg/shared";
+import type { MultiRoomFormat } from "@touhouflandre/shared";
 
 // 默认同源（Next rewrites /api → Go 4000）；可被 NEXT_PUBLIC_API_BASE_URL 覆盖为直连。
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CatalogSummary } from "@touhoufriberg/shared";
+import type { CatalogSummary } from "@touhouflandre/shared";
 import { api } from "../lib/api";
 
 export function useCatalogSummary() {

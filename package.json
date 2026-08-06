@@ -1,8 +1,8 @@
 {
-  "name": "touhoufriberg",
+  "name": "touhouflandre",
   "version": "0.1.0",
   "private": true,
-  "description": "A local playable Touhou Project themed Friberg guessing game demo.",
+  "description": "A local playable Touhou Project themed Flandre guessing game demo.",
   "type": "module",
   "scripts": {
     "dev": "task dev",
@@ -15,7 +15,7 @@
   },
   "keywords": [
     "touhou",
-    "friberg",
+    "flandre",
     "wordle",
     "game"
   ],
@@ -25,8 +25,8 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@touhoufriberg/data": "workspace:*",
-    "@touhoufriberg/shared": "workspace:*"
+    "@touhouflandre/data": "workspace:*",
+    "@touhouflandre/shared": "workspace:*"
   },
   "devDependencies": {
     "@redocly/cli": "^2.43.3",

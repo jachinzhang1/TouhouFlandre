@@ -4,7 +4,7 @@
 import { useRouter } from "next/navigation";
 import { DoorOpen, Plus, Users } from "lucide-react";
 import { useState } from "react";
-import type { MultiRoomFormat } from "@touhoufriberg/shared";
+import type { MultiRoomFormat } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];

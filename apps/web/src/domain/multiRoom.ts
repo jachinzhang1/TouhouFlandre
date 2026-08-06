@@ -1,7 +1,7 @@
 // 多人房间持久化与展示工具（08 §10.1）。
-import type { MultiRoomFormat } from "@touhoufriberg/shared";
+import type { MultiRoomFormat } from "@touhouflandre/shared";
 
-export const MULTI_ROOM_STORAGE_KEY = "touhoufriberg:multi-room";
+export const MULTI_ROOM_STORAGE_KEY = "touhouflandre:multi-room";
 
 export interface StoredMultiRoom {
   roomId: string;

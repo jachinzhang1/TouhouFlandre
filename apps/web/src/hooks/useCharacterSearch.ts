@@ -5,7 +5,7 @@ import type {
   CharacterSearchResult,
   CharacterSort,
   SortDirection,
-} from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
 import { api } from "../lib/api";
 
 export function useCharacterSearch(

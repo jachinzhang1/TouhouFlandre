@@ -65,7 +65,7 @@ test.describe("每日题游戏流程", () => {
     // 伪造旧会话 id → 404 → 自动重建
     await page.evaluate(() => {
       localStorage.setItem(
-        "touhoufriberg:daily-session",
+        "touhouflandre:daily-session",
         JSON.stringify({ id: "stale-session-from-vite", puzzleKey: "2026-08-05" }),
       );
     });

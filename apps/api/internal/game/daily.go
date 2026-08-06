@@ -52,8 +52,8 @@ func GetDailyAnswer(characters []Character, dateKey string) (Character, error) {
 
 	selected := pool[0]
 	for _, character := range pool[1:] {
-		selectedScore := HashString("touhoufriberg:" + dateKey + ":" + selected.ID)
-		score := HashString("touhoufriberg:" + dateKey + ":" + character.ID)
+		selectedScore := HashString("touhouflandre:" + dateKey + ":" + selected.ID)
+		score := HashString("touhouflandre:" + dateKey + ":" + character.ID)
 		if score > selectedScore {
 			selected = character
 		}

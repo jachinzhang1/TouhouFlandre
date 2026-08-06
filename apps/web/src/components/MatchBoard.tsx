@@ -5,7 +5,7 @@ import type { components } from "../generated/api";
 
 type MatchView = components["schemas"]["MatchView"];
 type RoundView = components["schemas"]["RoundView"];
-import type { RoundEndedPayload } from "@touhoufriberg/shared";
+import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
 import { OpponentBoard } from "./OpponentBoard";

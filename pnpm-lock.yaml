@@ -8,10 +8,10 @@ importers:
 
   .:
     dependencies:
-      '@touhoufriberg/data':
+      '@touhouflandre/data':
         specifier: workspace:*
         version: link:packages/data
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:packages/shared
     devDependencies:
@@ -39,7 +39,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       lucide-react:
@@ -100,7 +100,7 @@ importers:
 
   packages/data:
     dependencies:
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:../shared
       zod:

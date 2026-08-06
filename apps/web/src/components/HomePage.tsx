@@ -7,7 +7,7 @@ import {
   Search,
   Shuffle,
 } from "lucide-react";
-import { GAME_CONTENT_DEFINITIONS } from "@touhoufriberg/shared";
+import { GAME_CONTENT_DEFINITIONS } from "@touhouflandre/shared";
 import { useCatalogSummary } from "../hooks/useCatalogSummary";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
