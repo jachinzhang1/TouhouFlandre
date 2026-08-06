@@ -4,7 +4,18 @@ package config
 import (
 	"os"
 	"strings"
+	"time"
 )
+
+// durationFromEnv 读取时长环境变量，非法/缺失时回退默认值。
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	if raw := os.Getenv(key); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			return d
+		}
+	}
+	return fallback
+}
 
 // DatabaseURL 返回 Postgres 连接串（.env 的 DATABASE_URL_PG）。
 func DatabaseURL() string {
@@ -40,4 +51,14 @@ func WebOrigins() []string {
 		}
 	}
 	return origins
+}
+
+// MultiLobbyTTL 大厅无人加入的房间过期时长（MULTI_LOBBY_TTL，默认 30min，08 §4.7）。
+func MultiLobbyTTL() time.Duration {
+	return durationFromEnv("MULTI_LOBBY_TTL", 30*time.Minute)
+}
+
+// MultiEventRetention closed 到删除的保留时长（MULTI_EVENT_RETENTION，默认 24h，08 §4.7/§9.1）。
+func MultiEventRetention() time.Duration {
+	return durationFromEnv("MULTI_EVENT_RETENTION", 24*time.Hour)
 }
