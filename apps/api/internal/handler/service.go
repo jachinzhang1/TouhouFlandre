@@ -14,6 +14,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 func jsonUnmarshal(data []byte, target any) error {
@@ -61,17 +62,13 @@ func (s *Server) getCurrentCatalog(ctx context.Context) (string, []game.Characte
 	return state.CurrentVersion, characters, nil
 }
 
-// charactersForVersion 按版本读取快照角色。
+// charactersForVersion 按版本读取快照角色（解析逻辑在 multi.CharactersForVersion）。
 func (s *Server) charactersForVersion(ctx context.Context, version string) ([]game.Character, error) {
-	snapshot, err := s.q.GetSnapshot(ctx, version)
+	characters, err := multi.CharactersForVersion(ctx, s.q, version)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库快照缺失：" + version}
 		}
-		return nil, internalError(err)
-	}
-	characters, err := snapshotCharacters(snapshot)
-	if err != nil {
 		return nil, internalError(err)
 	}
 	return characters, nil
@@ -154,7 +151,7 @@ func (s *Server) selectAnswer(ctx context.Context, mode string, definition game.
 	if len(pool) == 0 {
 		return answerSelection{}, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
 	}
-	answer := pool[s.rng.Intn(len(pool))]
+	answer := pool[s.rng.IntN(len(pool))]
 	return answerSelection{answer: answer, catalogVersion: version}, nil
 }
 

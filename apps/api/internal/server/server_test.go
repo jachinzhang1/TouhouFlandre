@@ -23,6 +23,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/seed"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
@@ -32,6 +33,10 @@ var (
 	baseURL string
 	pool    *pgxpool.Pool
 	ctx     = context.Background()
+
+	fastBaseURL string
+	fastClient  *http.Client
+	fastTiming  multi.TimingConfig
 )
 
 const testDBName = "touhouflandre_test"
@@ -134,9 +139,25 @@ func TestMain(m *testing.M) {
 	baseURL = ts.URL
 	client = ts.Client()
 
+	// 对局引擎测试专用：短时间常量 + 独立进程内限流器（sweeper 由测试手动驱动）。
+	fastTiming = multi.TimingConfig{
+		RoundCountdown:    5 * time.Millisecond,
+		Intermission:      5 * time.Millisecond,
+		RoundSeconds:      30 * time.Second,
+		DisconnectGrace:   1 * time.Second,
+		MaxRoundsFactor:   3,
+		FinishedRetention: time.Hour,
+	}
+	fastTS := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithMultiTiming(fastTiming)))
+	fastBaseURL = fastTS.URL
+	fastClient = fastTS.Client()
+
 	code := m.Run()
 
 	ts.Close()
+	fastTS.Close()
 	pool.Close()
 	os.Exit(code)
 }

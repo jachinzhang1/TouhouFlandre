@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -17,6 +17,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 // Server 实现 StrictServerInterface。
@@ -25,9 +26,10 @@ type Server struct {
 	q              *repo.Queries
 	now            func() time.Time
 	rng            *rand.Rand
-	lobbyTTL       time.Duration    // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention time.Duration    // closed 保留期（关闭时 expires_at）
-	joinLimiter    *ipRateLimiter   // 加入/预检按 IP 限流（08 §8.5）
+	lobbyTTL       time.Duration  // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention time.Duration  // closed 保留期（关闭时 expires_at）
+	joinLimiter    *ipRateLimiter // 加入/预检按 IP 限流（08 §8.5）
+	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
 }
 
 // Option 定制 Server（测试注入用）。
@@ -40,15 +42,23 @@ func WithJoinRateLimit(limit int, window time.Duration) Option {
 	}
 }
 
+// WithMultiTiming 覆盖对局时间常量（集成测试注入短值）。
+func WithMultiTiming(timing multi.TimingConfig) Option {
+	return func(s *Server) {
+		s.timing = timing
+	}
+}
+
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	s := &Server{
 		pool:           pool,
 		q:              repo.New(pool),
 		now:            time.Now,
-		rng:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		rng:            rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
 		lobbyTTL:       config.MultiLobbyTTL(),
 		eventRetention: config.MultiEventRetention(),
 		joinLimiter:    newIPRateLimiter(10, time.Minute),
+		timing:         multi.DefaultTimingConfig(),
 	}
 	for _, opt := range opts {
 		opt(s)
