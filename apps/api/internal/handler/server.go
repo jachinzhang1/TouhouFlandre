@@ -73,7 +73,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 		rng:            rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
 		lobbyTTL:       config.MultiLobbyTTL(),
 		eventRetention: config.MultiEventRetention(),
-		joinLimiter:    newIPRateLimiter(10, time.Minute),
+		joinLimiter:    newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
 		timing:         multi.DefaultTimingConfig(),
 	}
 	for _, opt := range opts {

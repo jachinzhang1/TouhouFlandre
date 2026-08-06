@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -61,4 +62,15 @@ func MultiLobbyTTL() time.Duration {
 // MultiEventRetention closed 到删除的保留时长（MULTI_EVENT_RETENTION，默认 24h，08 §4.7/§9.1）。
 func MultiEventRetention() time.Duration {
 	return durationFromEnv("MULTI_EVENT_RETENTION", 24*time.Hour)
+}
+
+// MultiJoinRateLimit 加入/预检按 IP 限流次数（MULTI_JOIN_RATE_LIMIT，默认 10 次/分，08 §8.5）。
+// dev/E2E 并行场景需要更高额度，提供环境覆盖（Phase 2 曾定「不进配置」，见执行记录偏差）。
+func MultiJoinRateLimit() int {
+	if raw := os.Getenv("MULTI_JOIN_RATE_LIMIT"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 10
 }

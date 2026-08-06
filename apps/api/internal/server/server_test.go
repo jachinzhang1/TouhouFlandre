@@ -306,9 +306,15 @@ func TestGuessLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 错误猜测：保持 playing。
+	// 错误猜测（排除答案角色，避免随机题答案恰好命中）：保持 playing。
+	var missGuessID string
+	if err := pool.QueryRow(ctx,
+		`SELECT id FROM character WHERE enabled_as_guess = true AND id <> $1 ORDER BY id LIMIT 1`, answerID,
+	).Scan(&missGuessID); err != nil {
+		t.Fatal(err)
+	}
 	miss, missPayload := request(http.MethodPost, "/api/sessions/"+sessionID+"/guess",
-		map[string]string{"guessId": "reimu_hakurei"})
+		map[string]string{"guessId": missGuessID})
 	if miss.StatusCode != http.StatusOK {
 		t.Fatalf("miss guess status %d: %s", miss.StatusCode, missPayload)
 	}
@@ -322,8 +328,8 @@ func TestGuessLifecycle(t *testing.T) {
 	if afterMiss.Status != "playing" || len(afterMiss.Guesses) != 1 {
 		t.Fatalf("unexpected after miss: %+v", afterMiss)
 	}
-	if afterMiss.Guesses[0].GuessName != "博丽灵梦" {
-		t.Fatalf("unexpected guess name: %+v", afterMiss.Guesses[0])
+	if afterMiss.Guesses[0].GuessId != missGuessID {
+		t.Fatalf("unexpected guess id: %+v", afterMiss.Guesses[0])
 	}
 	if afterMiss.Guesses[0].GuessAvatarUrl == nil {
 		t.Fatal("avatar hydration failed")
