@@ -12,6 +12,7 @@ import {
 import type { StoredMultiRoom } from "../domain/multiRoom";
 import { useRoom } from "../hooks/useRoom";
 import { CountdownOverlay } from "./CountdownOverlay";
+import { GuessInputBar } from "./GuessInputBar";
 import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
 import { RoomLobby } from "./RoomLobby";
@@ -97,6 +98,16 @@ export function RoomView({ code }: { code: string }) {
           disabled={!hasOpponent}
         />
         <RoundHistoryBar history={state.history} />
+        {state.round?.status === "playing" && (
+          <GuessInputBar
+            onGuess={actions.submitGuess}
+            disabled={!hasOpponent}
+            catalogVersion={state.catalogVersion ?? undefined}
+            guessedIds={
+              new Set(state.round?.self.guesses.map((g) => g.guessId) ?? [])
+            }
+          />
+        )}
         {inCountdown && state.round && !state.roundResult && (
           <CountdownOverlay startsAt={state.round.startsAt} />
         )}

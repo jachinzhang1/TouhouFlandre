@@ -821,6 +821,26 @@ input:focus-visible {
   background: #697873;
 }
 
+/* 联机对局表反馈单元格（08 §10.2 布局调整）：半宽列内紧凑、固定高度，
+   左右两表（我/对手）行高严格一致；值最多 2-3 行，超长裁剪。 */
+.match-feedback {
+  min-height: 0;
+  height: 66px;
+  overflow: hidden;
+  padding: 5px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.match-feedback b {
+  width: 16px;
+  height: 16px;
+  font-size: 0.6rem;
+}
+
 .empty-state {
   height: 150px;
   color: #71807a;
