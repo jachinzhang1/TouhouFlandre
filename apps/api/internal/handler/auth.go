@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -24,9 +24,9 @@ type guestMemberKey struct{}
 
 type echoContextKey struct{}
 
-// echoContextFrom 返回中间件为 WS 操作注入的 echo.Context（升级连接用）。
-func echoContextFrom(ctx context.Context) (echo.Context, bool) {
-	eCtx, ok := ctx.Value(echoContextKey{}).(echo.Context)
+// echoContextFrom 返回中间件为 WS 操作注入的 *echo.Context（升级连接用）。
+func echoContextFrom(ctx context.Context) (*echo.Context, bool) {
+	eCtx, ok := ctx.Value(echoContextKey{}).(*echo.Context)
 	return eCtx, ok
 }
 
@@ -49,7 +49,7 @@ func GuestMemberFromContext(ctx context.Context) (*repo.MultiMember, bool) {
 //   - 其余操作（health/sessions/rooms_create）直通。
 func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 	return func(f openapi.StrictHandlerFunc, operationID string) openapi.StrictHandlerFunc {
-		return func(ctx echo.Context, request any) (any, error) {
+		return func(ctx *echo.Context, request any) (any, error) {
 			switch operationID {
 			// 注意：strict middleware 收到的是 Go handler 方法名（如 RoomsJoin），
 			// 不是 OpenAPI operationId（如 rooms_join）。
@@ -137,7 +137,7 @@ func roomIDFromRequest(request any) (string, bool) {
 }
 
 // clientIP 提取客户端 IP（进程内限流键；测试环境为 127.0.0.1）。
-func clientIP(ctx echo.Context) string {
+func clientIP(ctx *echo.Context) string {
 	addr := ctx.Request().RemoteAddr
 	if host, _, err := net.SplitHostPort(addr); err == nil {
 		return host

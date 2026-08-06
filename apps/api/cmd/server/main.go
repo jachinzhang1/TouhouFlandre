@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,10 +20,13 @@ import (
 )
 
 func main() {
+	// 全进程统一 slog（JSON 输出，级别 LOG_LEVEL；echo v5 的 e.Logger 即此默认实例）。
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: config.LogLevel()})))
+
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, config.DatabaseURL())
 	if err != nil {
-		fatal("connect database:", err)
+		fatal("connect database", err)
 	}
 	defer pool.Close()
 
@@ -31,10 +34,10 @@ func main() {
 	timing := config.MultiTiming()
 	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
 	if err != nil {
-		fatal("terminate active matches:", err)
+		fatal("terminate active matches", err)
 	}
 	if terminated > 0 {
-		fmt.Printf("server: terminated %d active match(es) after restart\n", terminated)
+		slog.Info("terminated active matches after restart", "count", terminated)
 	}
 
 	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
@@ -52,12 +55,16 @@ func main() {
 	defer stopSweeper()
 	go sweeper.Run(sweeperCtx)
 
+	// echo v5 把优雅关闭收进 Start 的信号机制，但本服务需要自定义排空顺序
+	// （终止对局 → 关 WS → 停 sweeper → HTTP shutdown），故自建 http.Server。
 	port := config.APIPort()
+	srv := &http.Server{Addr: ":" + port, Handler: e}
 	go func() {
-		if err := e.Start(":" + port); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fatal("start server:", err)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fatal("start server", err)
 		}
 	}()
+	slog.Info("http server started", "address", srv.Addr)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -69,12 +76,13 @@ func main() {
 	stopSweeper()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := e.Shutdown(shutdownCtx); err != nil {
-		fatal("shutdown:", err)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		fatal("shutdown", err)
 	}
+	slog.Info("server shut down")
 }
 
 func fatal(prefix string, err error) {
-	fmt.Fprintln(os.Stderr, prefix, err)
+	slog.Error(prefix, "error", err)
 	os.Exit(1)
 }

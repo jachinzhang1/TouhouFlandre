@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -929,52 +929,52 @@ type SessionsSubmitGuessJSONRequestBody SessionsSubmitGuessJSONBody
 type ServerInterface interface {
 	// CatalogGet 获取题库摘要
 	// (GET /api/catalog)
-	CatalogGet(ctx echo.Context) error
+	CatalogGet(ctx *echo.Context) error
 	// CharactersSearch 搜索角色
 	// (GET /api/characters/search)
-	CharactersSearch(ctx echo.Context, params CharactersSearchParams) error
+	CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error
 	// HealthCheck 服务健康检查
 	// (GET /api/health)
-	HealthCheck(ctx echo.Context) error
+	HealthCheck(ctx *echo.Context) error
 	// PuzzlesCreate 创建题局
 	// (POST /api/puzzles/{mode})
-	PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParamsMode) error
+	PuzzlesCreate(ctx *echo.Context, mode PuzzlesCreateParamsMode) error
 	// RoomsCreate 创建房间
 	// (POST /api/rooms)
-	RoomsCreate(ctx echo.Context) error
+	RoomsCreate(ctx *echo.Context) error
 	// RoomsGetInfo 公开房间预检
 	// (GET /api/rooms/{roomCode})
-	RoomsGetInfo(ctx echo.Context, roomCode string) error
+	RoomsGetInfo(ctx *echo.Context, roomCode string) error
 	// RoomsJoin 加入房间
 	// (POST /api/rooms/{roomCode}/join)
-	RoomsJoin(ctx echo.Context, roomCode string) error
+	RoomsJoin(ctx *echo.Context, roomCode string) error
 	// RoomsClose 关闭大厅房间
 	// (DELETE /api/rooms/{roomId})
-	RoomsClose(ctx echo.Context, roomId string) error
+	RoomsClose(ctx *echo.Context, roomId string) error
 	// RoomsLeave 离开房间
 	// (POST /api/rooms/{roomId}/leave)
-	RoomsLeave(ctx echo.Context, roomId string) error
+	RoomsLeave(ctx *echo.Context, roomId string) error
 	// RoomsSetReady 就绪
 	// (POST /api/rooms/{roomId}/ready)
-	RoomsSetReady(ctx echo.Context, roomId string) error
+	RoomsSetReady(ctx *echo.Context, roomId string) error
 	// RoomsRematch 确认再来一局
 	// (POST /api/rooms/{roomId}/rematch)
-	RoomsRematch(ctx echo.Context, roomId string) error
+	RoomsRematch(ctx *echo.Context, roomId string) error
 	// RoomsSubmitGuess 提交猜测
 	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/guess)
-	RoomsSubmitGuess(ctx echo.Context, roomId string, roundIndex int) error
+	RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error
 	// RoomsGetSnapshot 房间快照与事件重放
 	// (GET /api/rooms/{roomId}/snapshot)
-	RoomsGetSnapshot(ctx echo.Context, roomId string, params RoomsGetSnapshotParams) error
+	RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error
 	// RoomsConnectWs WebSocket 事件通道
 	// (GET /api/rooms/{roomId}/ws)
-	RoomsConnectWs(ctx echo.Context, roomId string) error
+	RoomsConnectWs(ctx *echo.Context, roomId string) error
 	// SessionsGet 恢复会话
 	// (GET /api/sessions/{sessionId})
-	SessionsGet(ctx echo.Context, sessionId string) error
+	SessionsGet(ctx *echo.Context, sessionId string) error
 	// SessionsSubmitGuess 提交猜测
 	// (POST /api/sessions/{sessionId}/guess)
-	SessionsSubmitGuess(ctx echo.Context, sessionId string) error
+	SessionsSubmitGuess(ctx *echo.Context, sessionId string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -983,7 +983,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // CatalogGet converts echo context to params.
-func (w *ServerInterfaceWrapper) CatalogGet(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) CatalogGet(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -992,7 +992,7 @@ func (w *ServerInterfaceWrapper) CatalogGet(ctx echo.Context) error {
 }
 
 // CharactersSearch converts echo context to params.
-func (w *ServerInterfaceWrapper) CharactersSearch(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) CharactersSearch(ctx *echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
@@ -1038,7 +1038,7 @@ func (w *ServerInterfaceWrapper) CharactersSearch(ctx echo.Context) error {
 }
 
 // HealthCheck converts echo context to params.
-func (w *ServerInterfaceWrapper) HealthCheck(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) HealthCheck(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -1047,7 +1047,7 @@ func (w *ServerInterfaceWrapper) HealthCheck(ctx echo.Context) error {
 }
 
 // PuzzlesCreate converts echo context to params.
-func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "mode" -------------
 	var mode PuzzlesCreateParamsMode
@@ -1063,7 +1063,7 @@ func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx echo.Context) error {
 }
 
 // RoomsCreate converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsCreate(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsCreate(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -1072,7 +1072,7 @@ func (w *ServerInterfaceWrapper) RoomsCreate(ctx echo.Context) error {
 }
 
 // RoomsGetInfo converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsGetInfo(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsGetInfo(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomCode" -------------
 	var roomCode string
@@ -1088,7 +1088,7 @@ func (w *ServerInterfaceWrapper) RoomsGetInfo(ctx echo.Context) error {
 }
 
 // RoomsJoin converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsJoin(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsJoin(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomCode" -------------
 	var roomCode string
@@ -1104,7 +1104,7 @@ func (w *ServerInterfaceWrapper) RoomsJoin(ctx echo.Context) error {
 }
 
 // RoomsClose converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsClose(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsClose(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1120,7 +1120,7 @@ func (w *ServerInterfaceWrapper) RoomsClose(ctx echo.Context) error {
 }
 
 // RoomsLeave converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsLeave(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsLeave(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1136,7 +1136,7 @@ func (w *ServerInterfaceWrapper) RoomsLeave(ctx echo.Context) error {
 }
 
 // RoomsSetReady converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsSetReady(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsSetReady(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1152,7 +1152,7 @@ func (w *ServerInterfaceWrapper) RoomsSetReady(ctx echo.Context) error {
 }
 
 // RoomsRematch converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsRematch(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsRematch(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1168,7 +1168,7 @@ func (w *ServerInterfaceWrapper) RoomsRematch(ctx echo.Context) error {
 }
 
 // RoomsSubmitGuess converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1192,7 +1192,7 @@ func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx echo.Context) error {
 }
 
 // RoomsGetSnapshot converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsGetSnapshot(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsGetSnapshot(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1217,7 +1217,7 @@ func (w *ServerInterfaceWrapper) RoomsGetSnapshot(ctx echo.Context) error {
 }
 
 // RoomsConnectWs converts echo context to params.
-func (w *ServerInterfaceWrapper) RoomsConnectWs(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) RoomsConnectWs(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "roomId" -------------
 	var roomId string
@@ -1233,7 +1233,7 @@ func (w *ServerInterfaceWrapper) RoomsConnectWs(ctx echo.Context) error {
 }
 
 // SessionsGet converts echo context to params.
-func (w *ServerInterfaceWrapper) SessionsGet(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) SessionsGet(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "sessionId" -------------
 	var sessionId string
@@ -1249,7 +1249,7 @@ func (w *ServerInterfaceWrapper) SessionsGet(ctx echo.Context) error {
 }
 
 // SessionsSubmitGuess converts echo context to params.
-func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "sessionId" -------------
 	var sessionId string
@@ -1268,15 +1268,15 @@ func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -2290,7 +2290,7 @@ type StrictServerInterface interface {
 	SessionsSubmitGuess(ctx context.Context, request SessionsSubmitGuessRequestObject) (SessionsSubmitGuessResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -2303,10 +2303,10 @@ type strictHandler struct {
 }
 
 // CatalogGet operation middleware
-func (sh *strictHandler) CatalogGet(ctx echo.Context) error {
+func (sh *strictHandler) CatalogGet(ctx *echo.Context) error {
 	var request CatalogGetRequestObject
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.CatalogGet(ctx.Request().Context(), request.(CatalogGetRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2326,12 +2326,12 @@ func (sh *strictHandler) CatalogGet(ctx echo.Context) error {
 }
 
 // CharactersSearch operation middleware
-func (sh *strictHandler) CharactersSearch(ctx echo.Context, params CharactersSearchParams) error {
+func (sh *strictHandler) CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error {
 	var request CharactersSearchRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.CharactersSearch(ctx.Request().Context(), request.(CharactersSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2351,10 +2351,10 @@ func (sh *strictHandler) CharactersSearch(ctx echo.Context, params CharactersSea
 }
 
 // HealthCheck operation middleware
-func (sh *strictHandler) HealthCheck(ctx echo.Context) error {
+func (sh *strictHandler) HealthCheck(ctx *echo.Context) error {
 	var request HealthCheckRequestObject
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.HealthCheck(ctx.Request().Context(), request.(HealthCheckRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2374,12 +2374,12 @@ func (sh *strictHandler) HealthCheck(ctx echo.Context) error {
 }
 
 // PuzzlesCreate operation middleware
-func (sh *strictHandler) PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParamsMode) error {
+func (sh *strictHandler) PuzzlesCreate(ctx *echo.Context, mode PuzzlesCreateParamsMode) error {
 	var request PuzzlesCreateRequestObject
 
 	request.Mode = mode
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PuzzlesCreate(ctx.Request().Context(), request.(PuzzlesCreateRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2399,15 +2399,15 @@ func (sh *strictHandler) PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParam
 }
 
 // RoomsCreate operation middleware
-func (sh *strictHandler) RoomsCreate(ctx echo.Context) error {
+func (sh *strictHandler) RoomsCreate(ctx *echo.Context) error {
 	var request RoomsCreateRequestObject
 
 	var body RoomsCreateJSONRequestBody
 	var err error
-	if binder, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
 		// Bind only the request body, so that path and query parameters
 		// are not also bound into the body struct.
-		err = binder.BindBody(ctx, &body)
+		err = echo.BindBody(ctx, &body)
 	} else {
 		// A custom binder is installed on the Echo instance; defer to it
 		// entirely, since echo.Binder does not expose body-only binding.
@@ -2418,7 +2418,7 @@ func (sh *strictHandler) RoomsCreate(ctx echo.Context) error {
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsCreate(ctx.Request().Context(), request.(RoomsCreateRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2438,12 +2438,12 @@ func (sh *strictHandler) RoomsCreate(ctx echo.Context) error {
 }
 
 // RoomsGetInfo operation middleware
-func (sh *strictHandler) RoomsGetInfo(ctx echo.Context, roomCode string) error {
+func (sh *strictHandler) RoomsGetInfo(ctx *echo.Context, roomCode string) error {
 	var request RoomsGetInfoRequestObject
 
 	request.RoomCode = roomCode
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsGetInfo(ctx.Request().Context(), request.(RoomsGetInfoRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2463,17 +2463,17 @@ func (sh *strictHandler) RoomsGetInfo(ctx echo.Context, roomCode string) error {
 }
 
 // RoomsJoin operation middleware
-func (sh *strictHandler) RoomsJoin(ctx echo.Context, roomCode string) error {
+func (sh *strictHandler) RoomsJoin(ctx *echo.Context, roomCode string) error {
 	var request RoomsJoinRequestObject
 
 	request.RoomCode = roomCode
 
 	var body RoomsJoinJSONRequestBody
 	var err error
-	if binder, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
 		// Bind only the request body, so that path and query parameters
 		// are not also bound into the body struct.
-		err = binder.BindBody(ctx, &body)
+		err = echo.BindBody(ctx, &body)
 	} else {
 		// A custom binder is installed on the Echo instance; defer to it
 		// entirely, since echo.Binder does not expose body-only binding.
@@ -2484,7 +2484,7 @@ func (sh *strictHandler) RoomsJoin(ctx echo.Context, roomCode string) error {
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsJoin(ctx.Request().Context(), request.(RoomsJoinRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2504,12 +2504,12 @@ func (sh *strictHandler) RoomsJoin(ctx echo.Context, roomCode string) error {
 }
 
 // RoomsClose operation middleware
-func (sh *strictHandler) RoomsClose(ctx echo.Context, roomId string) error {
+func (sh *strictHandler) RoomsClose(ctx *echo.Context, roomId string) error {
 	var request RoomsCloseRequestObject
 
 	request.RoomId = roomId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsClose(ctx.Request().Context(), request.(RoomsCloseRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2529,12 +2529,12 @@ func (sh *strictHandler) RoomsClose(ctx echo.Context, roomId string) error {
 }
 
 // RoomsLeave operation middleware
-func (sh *strictHandler) RoomsLeave(ctx echo.Context, roomId string) error {
+func (sh *strictHandler) RoomsLeave(ctx *echo.Context, roomId string) error {
 	var request RoomsLeaveRequestObject
 
 	request.RoomId = roomId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsLeave(ctx.Request().Context(), request.(RoomsLeaveRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2554,12 +2554,12 @@ func (sh *strictHandler) RoomsLeave(ctx echo.Context, roomId string) error {
 }
 
 // RoomsSetReady operation middleware
-func (sh *strictHandler) RoomsSetReady(ctx echo.Context, roomId string) error {
+func (sh *strictHandler) RoomsSetReady(ctx *echo.Context, roomId string) error {
 	var request RoomsSetReadyRequestObject
 
 	request.RoomId = roomId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsSetReady(ctx.Request().Context(), request.(RoomsSetReadyRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2579,12 +2579,12 @@ func (sh *strictHandler) RoomsSetReady(ctx echo.Context, roomId string) error {
 }
 
 // RoomsRematch operation middleware
-func (sh *strictHandler) RoomsRematch(ctx echo.Context, roomId string) error {
+func (sh *strictHandler) RoomsRematch(ctx *echo.Context, roomId string) error {
 	var request RoomsRematchRequestObject
 
 	request.RoomId = roomId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsRematch(ctx.Request().Context(), request.(RoomsRematchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2604,7 +2604,7 @@ func (sh *strictHandler) RoomsRematch(ctx echo.Context, roomId string) error {
 }
 
 // RoomsSubmitGuess operation middleware
-func (sh *strictHandler) RoomsSubmitGuess(ctx echo.Context, roomId string, roundIndex int) error {
+func (sh *strictHandler) RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error {
 	var request RoomsSubmitGuessRequestObject
 
 	request.RoomId = roomId
@@ -2612,10 +2612,10 @@ func (sh *strictHandler) RoomsSubmitGuess(ctx echo.Context, roomId string, round
 
 	var body RoomsSubmitGuessJSONRequestBody
 	var err error
-	if binder, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
 		// Bind only the request body, so that path and query parameters
 		// are not also bound into the body struct.
-		err = binder.BindBody(ctx, &body)
+		err = echo.BindBody(ctx, &body)
 	} else {
 		// A custom binder is installed on the Echo instance; defer to it
 		// entirely, since echo.Binder does not expose body-only binding.
@@ -2626,7 +2626,7 @@ func (sh *strictHandler) RoomsSubmitGuess(ctx echo.Context, roomId string, round
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsSubmitGuess(ctx.Request().Context(), request.(RoomsSubmitGuessRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2646,13 +2646,13 @@ func (sh *strictHandler) RoomsSubmitGuess(ctx echo.Context, roomId string, round
 }
 
 // RoomsGetSnapshot operation middleware
-func (sh *strictHandler) RoomsGetSnapshot(ctx echo.Context, roomId string, params RoomsGetSnapshotParams) error {
+func (sh *strictHandler) RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error {
 	var request RoomsGetSnapshotRequestObject
 
 	request.RoomId = roomId
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsGetSnapshot(ctx.Request().Context(), request.(RoomsGetSnapshotRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2672,12 +2672,12 @@ func (sh *strictHandler) RoomsGetSnapshot(ctx echo.Context, roomId string, param
 }
 
 // RoomsConnectWs operation middleware
-func (sh *strictHandler) RoomsConnectWs(ctx echo.Context, roomId string) error {
+func (sh *strictHandler) RoomsConnectWs(ctx *echo.Context, roomId string) error {
 	var request RoomsConnectWsRequestObject
 
 	request.RoomId = roomId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsConnectWs(ctx.Request().Context(), request.(RoomsConnectWsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2697,12 +2697,12 @@ func (sh *strictHandler) RoomsConnectWs(ctx echo.Context, roomId string) error {
 }
 
 // SessionsGet operation middleware
-func (sh *strictHandler) SessionsGet(ctx echo.Context, sessionId string) error {
+func (sh *strictHandler) SessionsGet(ctx *echo.Context, sessionId string) error {
 	var request SessionsGetRequestObject
 
 	request.SessionId = sessionId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.SessionsGet(ctx.Request().Context(), request.(SessionsGetRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -2722,17 +2722,17 @@ func (sh *strictHandler) SessionsGet(ctx echo.Context, sessionId string) error {
 }
 
 // SessionsSubmitGuess operation middleware
-func (sh *strictHandler) SessionsSubmitGuess(ctx echo.Context, sessionId string) error {
+func (sh *strictHandler) SessionsSubmitGuess(ctx *echo.Context, sessionId string) error {
 	var request SessionsSubmitGuessRequestObject
 
 	request.SessionId = sessionId
 
 	var body SessionsSubmitGuessJSONRequestBody
 	var err error
-	if binder, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
 		// Bind only the request body, so that path and query parameters
 		// are not also bound into the body struct.
-		err = binder.BindBody(ctx, &body)
+		err = echo.BindBody(ctx, &body)
 	} else {
 		// A custom binder is installed on the Echo instance; defer to it
 		// entirely, since echo.Binder does not expose body-only binding.
@@ -2743,7 +2743,7 @@ func (sh *strictHandler) SessionsSubmitGuess(ctx echo.Context, sessionId string)
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.SessionsSubmitGuess(ctx.Request().Context(), request.(SessionsSubmitGuessRequestObject))
 	}
 	for _, middleware := range sh.middlewares {

@@ -2,6 +2,7 @@
 package config
 
 import (
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -141,5 +142,20 @@ func MultiTiming() multi.TimingConfig {
 		DisconnectGrace:   MultiDisconnectGrace(),
 		MaxRoundsFactor:   MultiMaxRoundsFactor(),
 		FinishedRetention: MultiFinishedRetention(),
+	}
+}
+
+
+// LogLevel 应用日志级别（LOG_LEVEL: debug/info/warn/error，默认 info）。
+func LogLevel() slog.Level {
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
