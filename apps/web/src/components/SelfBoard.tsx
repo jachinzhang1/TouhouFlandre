@@ -48,15 +48,19 @@ export function SelfBoard({
   playing,
   onGuess,
   disabled,
+  catalogVersion,
 }: {
   guesses: GuessResult[];
   playing: boolean;
   onGuess: (guessId: string) => void;
   disabled?: boolean;
+  /** 本局绑定题库版本（match.started 载荷）；变化时本地表按版本键刷新。 */
+  catalogVersion?: string;
 }) {
   const [query, setQuery] = useState("");
   const { results, loading, error } = useCharacterSearch(query, {
     limit: GAME_SEARCH_RESULT_LIMIT,
+    version: catalogVersion,
   });
 
   const filtered = useMemo(() => {
@@ -104,10 +108,10 @@ export function SelfBoard({
           {loading && (
             <p className="mt-1 text-[0.75rem] text-ink-soft">搜索中……</p>
           )}
-          {query && !loading && filtered.length === 0 && (
+          {query.trim().length > 0 && !loading && filtered.length === 0 && (
             <p className="mt-1 text-[0.75rem] text-ink-soft">没有匹配的角色。</p>
           )}
-          {filtered.length > 0 && (
+          {query.trim().length > 0 && !loading && filtered.length > 0 && (
             <ul className="mt-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted">
               {filtered.map((result) => (
                 <li key={result.id}>

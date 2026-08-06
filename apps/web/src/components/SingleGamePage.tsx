@@ -68,6 +68,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [query, setQuery] = useState("");
   const { error: searchError, results } = useCharacterSearch(query, {
     limit: GAME_SEARCH_RESULT_LIMIT,
+    version: session?.catalogVersion ?? undefined,
   });
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);

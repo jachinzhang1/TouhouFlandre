@@ -92,6 +92,7 @@ export function RoomView({ code }: { code: string }) {
           round={state.round}
           mySlot={mySlot}
           roundResult={state.roundResult}
+          catalogVersion={state.catalogVersion ?? undefined}
           onGuess={actions.submitGuess}
           disabled={!hasOpponent}
         />

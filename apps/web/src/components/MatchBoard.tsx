@@ -17,6 +17,7 @@ export function MatchBoard({
   round,
   mySlot,
   roundResult,
+  catalogVersion,
   onGuess,
   disabled,
 }: {
@@ -25,6 +26,7 @@ export function MatchBoard({
   round: RoundView | null;
   mySlot: 1 | 2;
   roundResult: RoundEndedPayload | null;
+  catalogVersion?: string;
   onGuess: (guessId: string) => void;
   disabled?: boolean;
 }) {
@@ -62,6 +64,7 @@ export function MatchBoard({
               playing={round?.status === "playing"}
               onGuess={onGuess}
               disabled={disabled}
+              catalogVersion={catalogVersion}
             />
             <OpponentBoard rows={round?.opponent.rows ?? []} />
           </>

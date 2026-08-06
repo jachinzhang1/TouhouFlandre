@@ -39,6 +39,8 @@ export interface RoomUiState {
   members: MemberView[];
   match: MatchView | null;
   round: RoundView | null;
+  /** 本局绑定题库版本（match.started 载荷；本地角色表按版本键缓存）。 */
+  catalogVersion: string | null;
   /** 局末弹窗数据（round.ended 事件）。 */
   roundResult: RoundEndedPayload | null;
   /** 整场结果弹窗数据（match.ended 事件）。 */
@@ -56,6 +58,7 @@ export const initialRoomState: RoomUiState = {
   members: [],
   match: null,
   round: null,
+  catalogVersion: null,
   roundResult: null,
   matchResult: null,
   rematchReady: [false, false],
@@ -87,6 +90,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       // 新场：比分/抽题池自然重置（服务端新场行），本地同步清零并清空历史
       return {
         ...state,
+        catalogVersion: payload.catalogVersion ?? null,
         room: state.room ? { ...state.room, status: "playing" } : state.room,
         match: {
           matchIndex: payload.matchIndex,
