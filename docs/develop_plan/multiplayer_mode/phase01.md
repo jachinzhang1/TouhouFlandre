@@ -1,7 +1,7 @@
 # Phase 1 开发计划 — 多人契约与数据层
 
 > 依据：[`08_multiplayer_mode_design.md`](../08_multiplayer_mode_design.md) §13 M1、§7（API 设计）、§8（WS 协议）、§9（数据模型）；[`07_productization_plan.md`](../07_productization_plan.md) §7.3（`contracts/ws/protocol.yaml`）
-> 状态：📋 待执行（执行记录见 §10）
+> 状态：✅ 已完成（执行记录见 §10）
 > 影响范围：`contracts/`（新增 `ws/`）、`apps/api/migrations/`（新增 `0002_multiplayer.sql`）、`apps/api/sql/queries/`（新增 `multi.sql`）、`apps/api/internal/generated/`、`packages/shared/src/`、Taskfile、CI
 > 原则：**契约与数据先行**。本阶段只建立 OpenAPI/WS 契约、数据库迁移与 sqlc 查询，不实现任何房间/对局业务逻辑。
 
@@ -248,6 +248,39 @@ CI 校验：schema 可解析（redocly 或等价）、示例逐一通过 JSON Sc
 
 ---
 
-## 10. 执行记录
+## 10. 执行记录（2026-08-06，分支 feature/multipalyer_mode_backend）
 
-> 状态：待执行。完成后按仓库惯例在此记录完成情况、真实问题与修复、与计划的偏差（参照 `migration_to_go/phase01.md` §10 格式）。
+### 完成情况
+
+- T1-T5 全部完成；总验收 5 条全部满足：OpenAPI 10 端点 + 多人 schema 入库且 `task gen` 零 diff、`contracts/ws/protocol.yaml` 正反例校验进 CI、`0002_multiplayer.sql` 干净库迁移成功 + sqlc 全量查询生成、WS Go/TS 类型与协议一致且 typecheck 通过、单人路径契约零改动。
+- 全量回归：`pnpm test` ✅、`pnpm typecheck` ✅、`pnpm lint:openapi`（2 warning 可接受）✅、`check:openapi-refs` ✅、`task check:ws-protocol` ✅（含故意改坏 TS 字段验证必红）、`cd apps/api && go vet/build/test ./...` ✅、`task gen` 后生成物零 diff ✅。
+- 迁移：开发库 goose 到 version 2（`0002_multiplayer.sql`）；集成测试库在 TestMain 自动迁移到 version 2 后全绿。
+
+### 执行中发现的真实问题与修复
+
+| 问题 | 修复 |
+|---|---|
+| OpenAPI 路径模板冲突：`GET /api/rooms/{roomCode}`（公开预检）与 `DELETE /api/rooms/{roomId}`（房主关闭）同路径模板、仅参数名不同，redocly `no-identical-paths` 报错 | 设计（08 §7.1）按方法分派属有意为之；`redocly.yaml` 关闭该启发式规则并注释理由（沿用既有 `operation-4xx-response: off` 模式），另以 `ignore` 豁免 ws 端点的 `operation-2xx-response`（101 升级） |
+| 单人回归测试 `TestCatalog` 断言 29 角色，而题库已随 TH20 扩展至 113（08 §4.2 亦以 113 为基线）；旧 Go 构建缓存掩盖了该漂移 | 测试断言更新为 113（仅测试代码，单人契约与行为零改动）——该问题先于本阶段存在（`feat(data): expand character catalog through TH20` 未同步测试） |
+| oapi-codegen strict interface 要求 Server 实现全部 10 个房间方法，Phase 1 不实现业务逻辑导致 `go build` 失败 | `internal/handler/rooms.go` 提供 10 个 501 占位（`UNSUPPORTED_CONTENT_TYPE`，明确注释 Phase 2 逐个替换）；这是阶段内契约先行与「go test 必须过」两条验收的交点，非交付替身 |
+| 计划建议的 `paths/rooms.yaml`/`room.yaml` 多路径文件与仓库「一路径一文件」惯例冲突（多 operation 文件也是非法 YAML——重复顶层 `post:` 键） | 拆分为 10 个单路径文件（`rooms`/`room-info`/`room-join`/`room-snapshot`/`room-ready`/`room-rematch`/`room-leave`/`room-close`/`room-ws`/`room-rounds`），`openapi.yaml` 整文件 `$ref`，与既有 sessions 系列一致 |
+| 加入/预检按 IP 限流需要契约状态码（Phase 2 T3 验收「限流触发后 429/403（按契约定义）」），08 §7.2 错误码表无限流码 | 错误码枚举新增 `RATE_LIMITED`(429)，加入与预检端点声明 429 分支；`common.yaml` 错误码枚举直接扩展（保持 ErrorResponse 单一来源，而非计划建议的拆到 multi-common） |
+| js-yaml 不在根依赖（仅 pnpm store 传递存在），`check-ws-protocol.mjs` 无法解析 | `pnpm add -D js-yaml -w`（v4 ESM，脚本用 `import { load }` 具名导出） |
+| 手写迷你 JSON Schema 校验器初版缺 `enum` 校验、`oneOf` 分支测试会清空同级错误，导致两个反例漏检 | 补 `enum` 校验；`oneOf` 改用错误快照隔离（`errors.splice(before)`） |
+| 控制帧（hello-ok/replaced）与客户端消息的 schema 形态不一致（type 字段归属） | 统一为平铺消息 schema 含 `type`（`const` 限定），TS 一致性比对规则统一 |
+
+### 与计划的偏差
+
+- **路径文件拆分**：计划 §5.1 建议 3 个 paths 文件；按仓库既有惯例拆为 10 个单路径文件（见上表）。
+- **错误码位置**：`RATE_LIMITED` 与全部多人错误码直接扩展 `schemas/common.yaml#/ErrorResponse` 枚举（计划建议 multi-common.yaml 承载错误码枚举）。
+- **查询清单补充**：`multi.sql` 在 08 §9.3 清单之外补充 `ListMembers`（大厅全量成员视图）、`DeleteMember`（大厅加入者离开删行）、`GetGuessByIdempotencyKey`（幂等重读首次结果）、`ListActiveMatches`（重启终止扫描全部进行中场）、`DeleteRoom`（sweeper CASCADE 删除）；`GetActiveMatchForUpdate` 定义为按房间取当前进行中场（forfeit 路径），重启终止走 `ListActiveMatches`。
+- **`CreateRound` 实现**：round_count+1 与 `round_count < target_wins * factor` 上限检查合一（数据修改 CTE：UPDATE 0 行 → 无 INSERT → `ErrNoRows`），满足「上限检查在开局事务内」的锁序纪律。
+- **handler 占位**：10 个 501 占位方法（见上表），Phase 2 逐个替换为真实实现。
+- 本阶段未触碰 `Taskfile gen`/CI 的既有 check job 结构，仅新增 `check:ws-protocol` 独立任务与 CI 步骤。
+
+### Phase 2 输入（明确交接）
+
+- REST 契约：OpenAPI 10 端点 schema 已就绪（含 `RATE_LIMITED`），`openapi.gen.go` strict interface 已含 10 个房间方法（当前 501 占位）。
+- 迁移与查询：`0002_multiplayer.sql` 已迁移；`multi.sql` 38 个查询已生成（含锁序需要的 `FOR UPDATE` 查询与快照聚合）。
+- WS 协议与类型：`contracts/ws/protocol.yaml` 定稿并由 CI 校验；Go 类型 `internal/multi/types.go`、TS 类型 `packages/shared/src/multi.ts` 已入库（Phase 4 直接消费）。
+
