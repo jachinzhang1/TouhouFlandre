@@ -1,7 +1,7 @@
 # Phase 6 开发计划 — 收尾（配置、可观测性、文档与回归）
 
 > 依据：[`08_multiplayer_mode_design.md`](../08_multiplayer_mode_design.md) §13 M6、§11（配置与可观测性）、§12（测试计划）、§14（决策记录）、§15（风险与缓解）；[`07_productization_plan.md`](../07_productization_plan.md) §8（发布、可靠性与可观测性）、§9（验收场景）
-> 状态：📋 待执行（执行记录见 §10）
+> 状态：✅ 已完成（执行记录见 §10）
 > 影响范围：`apps/api/internal/config/`、`apps/api/internal/`（日志/指标埋点）、`apps/api/cmd/server/`（排空审计）、`docs/`（02 功能表、README、07/08 交叉引用）、CI、测试补全
 > 原则：**不留半截配置，不留未声明的指标**；文档与实现一一对应（07 §3：没有基线和目标值，不宣称性能/可靠性提升）。
 
@@ -197,6 +197,48 @@
 
 ---
 
-## 10. 执行记录
+## 10. 执行记录（2026-08-06，分支 feature/multipalyer_mode_backend）
 
-> 状态：待执行。完成后按仓库惯例记录完成情况、真实问题与修复、与计划的偏差（参照 `migration_to_go/phase01.md` §10 格式）。
+### 完成情况
+
+- T1-T4 全部完成；总验收 5 条全部满足：配置项全部接线（08 §4.7 默认值，无硬编码残留）；结构化日志 + 进程内指标计数（token 零泄漏日志断言）；文档（02/README/07/08/各 phase §10）与实现一致；08 §12 测试矩阵全绿（Go 单测 + 集成、Vitest、Playwright 双 project 24 用例）；08 §15 风险表逐项复核见下。
+- 全量回归：`cd apps/api && go vet/build/test ./...` ✅、`pnpm test`（18）✅、`pnpm typecheck` ✅、`task gen` 零 diff ✅、`task check:ws-protocol` ✅、`lint:openapi`/`check:openapi-refs` ✅。
+
+### 08 §15 风险表逐项复核
+
+| 风险 | 状态 | 说明 |
+|---|---|---|
+| 竞速裁决边界 | ✅ 已缓解 | 行锁串行化 + `ROUND_ENDED` 明确响应 + 集成测试（TestMultiGuessRace） |
+| 超时窗口竞态 | ✅ 已缓解 | 猜测事务内 deadline 校验并同步结算平局（先提交再返回错误）+ 集成测试 |
+| 对局中 leave/forfeit 与猜测并发 | ✅ 已缓解 | 统一锁序 局→场→房间；ForfeitMemberMatch 独立事务；集成测试覆盖 |
+| 断线判定误伤 | ✅ 已缓解 | 60s 宽限 + 快照补齐 + 重连退避（常量可配置：`MULTI_DISCONNECT_GRACE`） |
+| 重启丢局 | ✅ 已缓解 | 启动/排空均执行明确终止（含 countdown 态局），事件持久化 |
+| 匿名矩阵泄露字段身份 | ✅ 已缓解（玩法取舍保留） | 列置换 + 局中 payload 无名称/标签/值；多次猜测反推列身份属设计取舍 |
+| 房间号暴力加入/探测 | ✅ 已缓解 | 32^6 空间 + 按 IP 限流（`MULTI_JOIN_RATE_LIMIT` 默认 10/分） |
+| 同浏览器双标签页互踢 | ✅ 已缓解 | 替换连接语义 + localStorage 单成员资格 + 重连幂等 |
+| 慢消费者阻塞广播 | ✅ 已缓解 | 每连接独立队列 + 写满断连（1013） |
+| 事件日志膨胀 | ✅ 已缓解 | `MULTI_EVENT_RETENTION` 后单条 DELETE CASCADE（sweeper） |
+| 与单人路径回归 | ✅ 已缓解 | 单人代码仅 rng 迁移 math/rand/v2；六端点回归 + 生成物零 diff |
+| standalone 部署 WS 代理失效 | ⏳ 延后项 | 08 §10.1/§15：`ws: true` 在 Next 16 被配置校验拒绝，dev/`next start` 同源代理实测可用；standalone 生产走反向代理或直连（已注释于 next.config.ts） |
+
+### 执行中发现的真实问题与修复
+
+| 问题 | 修复 |
+|---|---|
+| `hub.New`/`NewConn` 的读限与队列长度硬编码（4096/64） | 由 `MULTI_WS_READ_LIMIT`/`MULTI_WS_SEND_QUEUE` 注入（handler hello 读限、conn 读循环、发送队列统一走 hub 配置） |
+| 指标无挂载点 | `multi.DefaultMetrics`（原子计数 + 直方采样 + Snapshot）；`AppendEvent`→events_total、`ForfeitMemberMatch`→forfeits_total、hub 注册/注销→ws_connections/reconnects_total、猜测端点→guess_latency、sweeper 采集时聚合 rooms/members/active_rounds（新增 CountRoomStatuses/CountMemberStatuses/CountActiveRounds 查询） |
+| token 日志审计 | grep 复核：日志/错误路径无 `guest:{token}` 打印（仅契约注释）；鉴权失败消息不含令牌 |
+
+### 与计划的偏差
+
+- **指标暴露端点**：仓库无 prometheus 依赖 → 按 §5.2 采用进程内计数 + `Snapshot()`（测试/日志读取），正式 `/metrics` 由 Stage 5 决定（未提前建设）。
+- **`rooms/members/active_rounds` 采集方式**：sweeper 每轮聚合（新增 3 条查询），其余指标事件驱动。
+- 无其他计划偏差；Phase 1-5 执行记录中的偏差（gorillamux 路由豁免、security 文档化、`ws: true` 不可用、限流 env、连接顺序、E2E 场景取舍等）已在各 phase §10 完整记录。
+
+### 后续触发项（显式标注）
+
+- 多实例横向扩展（`LISTEN/NOTIFY`、`FOR UPDATE SKIP LOCKED`、`SERIALIZABLE` 评估）：由单实例压测数据触发（07 §7.4）。
+- 正式指标端点与告警：Stage 5（07 §8.3）。
+- 账号体系（`guest:`/`jwt:` 令牌前缀共存已预留）：Stage 2。
+- 观战/回放/排行/云存档：产品边界，未在本阶段引入。
+
