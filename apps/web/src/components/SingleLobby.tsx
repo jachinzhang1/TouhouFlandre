@@ -9,7 +9,7 @@ export function SingleLobby() {
         <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
           PLAY
         </p>
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] leading-[1.15] max-[680px]:text-[2.05rem]">
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
           游戏模式
         </h1>
         <p className="mt-3 mb-0 leading-[1.75] text-ink-soft">

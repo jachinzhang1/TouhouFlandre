@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -105,6 +107,9 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.Direction != nil {
 		direction = string(*request.Params.Direction)
 	}
+	if request.Params.SessionId != nil {
+		return s.searchSessionCharacters(ctx, *request.Params.SessionId, query, request.Params.Sort, direction, int(offset), int(limit))
+	}
 
 	var rows []repo.Character
 	var err error
@@ -138,6 +143,68 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		Results: results,
 		Total:   int(total),
 	}, nil
+}
+
+func (s *Server) searchSessionCharacters(
+	ctx context.Context,
+	sessionID string,
+	query string,
+	sortBy *openapi.CharactersSearchParamsSort,
+	direction string,
+	offset int,
+	limit int,
+) (openapi.CharactersSearchResponseObject, error) {
+	session, err := s.q.GetSession(ctx, sessionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusNotFound, Code: codeSessionNotFound, Message: "没有找到这一局游戏。"}
+		}
+		return nil, internalError(err)
+	}
+	characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	normalizedQuery := game.NormalizeSearchText(query)
+	matches := make([]game.Character, 0, len(characters))
+	for _, character := range characters {
+		if !character.EnabledAsGuess {
+			continue
+		}
+		searchText := game.NormalizeSearchText(game.CharacterSearchText(character))
+		if normalizedQuery == "" || strings.Contains(searchText, normalizedQuery) {
+			matches = append(matches, character)
+		}
+	}
+
+	sort.Slice(matches, func(i, j int) bool {
+		left, right := matches[i], matches[j]
+		comparison := 0
+		if sortBy != nil && *sortBy == openapi.Appearance {
+			comparison = left.AppearanceOrder - right.AppearanceOrder
+		} else {
+			comparison = strings.Compare(game.CharacterNameSortKey(left), game.CharacterNameSortKey(right))
+		}
+		if comparison == 0 {
+			return left.ID < right.ID
+		}
+		if direction == "desc" {
+			return comparison > 0
+		}
+		return comparison < 0
+	})
+
+	total := len(matches)
+	if offset > total {
+		offset = total
+	}
+	end := min(offset+limit, total)
+	results := make([]openapi.CharacterSearchResult, 0, end-offset)
+	for _, character := range matches[offset:end] {
+		results = append(results, toSearchResult(character))
+	}
+	return openapi.CharactersSearch200JSONResponse{Results: results, Total: total}, nil
 }
 
 // CatalogGet 题库摘要；题库未初始化时返回 503。

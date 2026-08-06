@@ -7,15 +7,36 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 const client = createClient<paths>({ baseUrl: API_BASE_URL });
 
-type ApiResult<T> = { data?: T; error?: { error?: string }; response: Response };
+type ApiResult<T> = {
+  data?: T;
+  error?: { code?: string; error?: string };
+  response: Response;
+};
 
-const requestApi = async <T>(
-  promise: Promise<ApiResult<T>>,
-): Promise<T> => {
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
+const requestApi = async <T>(promise: Promise<ApiResult<T>>): Promise<T> => {
   const { data, error, response } = await promise;
-  if (error) throw new Error(error.error ?? "请求失败。");
-  if (!response.ok) throw new Error("请求失败。");
-  // 204 无 body：data 为 undefined 属正常（ready/rematch/leave/close）
+  if (error) {
+    throw new ApiRequestError(
+      error.error ?? "请求失败。",
+      response.status,
+      error.code,
+    );
+  }
+  if (!response.ok) {
+    throw new ApiRequestError("请求失败。", response.status);
+  }
+  // 204 无 body：data 为 undefined 属正常（ready/rematch/leave/close）。
   return data as T;
 };
 
@@ -37,6 +58,18 @@ export function roomWsUrl(roomId: string): string {
 }
 
 export const api = {
+  searchCharacters: (
+    params: NonNullable<
+      paths["/api/characters/search"]["get"]["parameters"]
+    >["query"],
+    signal?: AbortSignal,
+  ) =>
+    requestApi(
+      client.GET("/api/characters/search", {
+        params: { query: params },
+        signal,
+      }),
+    ),
   catalog: (signal?: AbortSignal) =>
     requestApi(client.GET("/api/catalog", { signal })),
   createPuzzle: (mode: "daily" | "random") =>

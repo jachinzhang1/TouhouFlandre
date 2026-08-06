@@ -29,18 +29,24 @@ export function HomePage() {
             />
             今日题已开放
           </p>
-          <h1 className="m-0 font-brand text-[4.5rem] leading-none text-[#172b26] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
+          <h1 className="m-0 font-brand text-[4.5rem] font-bold leading-none text-[#172b26] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
             东方芙一把
           </h1>
           <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[#354b44] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
             从初登场作品、年份、种族、阵营、地点和头发颜色里一点点缩小范围，猜出今天的东方角色。
           </p>
           <div className="mt-7 flex flex-wrap gap-[9px] max-[420px]:grid">
-            <Link className="primary-button max-[420px]:w-full" href="/single/daily">
+            <Link
+              className="primary-button max-[420px]:w-full"
+              href="/single/daily"
+            >
               <CalendarDays size={18} aria-hidden="true" />
               <span>开始每日题</span>
             </Link>
-            <Link className="secondary-button max-[420px]:w-full" href="/single">
+            <Link
+              className="secondary-button max-[420px]:w-full"
+              href="/single"
+            >
               <Shuffle size={18} aria-hidden="true" />
               <span>其他模式</span>
             </Link>
@@ -57,10 +63,7 @@ export function HomePage() {
             </span>
             <span className="flex items-baseline gap-[5px] max-[420px]:grid max-[420px]:gap-0">
               <strong className="font-brand text-[1.08rem] text-ink">
-                {
-                  CHARACTER_GAME.fields.filter((field) => field.visible)
-                    .length
-                }
+                {CHARACTER_GAME.fields.filter((field) => field.visible).length}
               </strong>{" "}
               项线索
             </span>

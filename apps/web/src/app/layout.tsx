@@ -6,7 +6,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "东方芙一把 · TouhouFlandre",
   description: "东方芙一把（TouhouFlandre）- 东方 Project 角色推理游戏",
-  icons: { icon: "/favicon.png" },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

@@ -34,18 +34,11 @@ export default function SearchPage() {
   const [view, setView] = useState<CharacterView>(initialView);
   const [sort, setSort] = useState<CharacterSort>(initialSort);
   const [direction, setDirection] = useState<SortDirection>(initialDirection);
-  const { error, loading, results, total } = useCharacterSearch(query, {
+  const { error, loading, results, retry, total } = useCharacterSearch(query, {
     limit: 250,
     sort,
     direction,
   });
-
-  const nextView = view === "grid" ? "list" : "grid";
-  const nextSort = sort === "name" ? "appearance" : "name";
-  const nextDirection = direction === "asc" ? "desc" : "asc";
-  const ViewIcon = nextView === "list" ? List : LayoutGrid;
-  const SortIcon = sort === "name" ? ArrowDownAZ : ListOrdered;
-  const DirectionIcon = direction === "asc" ? ArrowUp : ArrowDown;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -68,7 +61,7 @@ export default function SearchPage() {
         <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
           ARCHIVE
         </p>
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] leading-[1.15] max-[680px]:text-[2.05rem]">
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
           角色搜索
         </h1>
         <p className="mt-3 mb-0 leading-[1.75] text-ink-soft">
@@ -77,60 +70,111 @@ export default function SearchPage() {
       </div>
 
       <div className="mt-[26px] flex items-center justify-between gap-3 max-[680px]:mt-0 max-[680px]:grid max-[680px]:gap-[9px]">
-        <label className="flex min-h-[48px] min-w-0 flex-1 items-center gap-[11px] rounded-[4px] border border-line-strong bg-white px-[14px] text-[#64726d] transition-[border-color,box-shadow] duration-150 focus-within:border-jade focus-within:text-jade focus-within:shadow-[0_0_0_4px_rgba(36,117,104,0.11)] max-[680px]:mt-[26px]">
+        <label className="catalog-search-box flex min-h-[48px] min-w-0 flex-1 items-center gap-[11px] rounded-[4px] border border-line-strong bg-white px-[14px] text-[#64726d] transition-[border-color,box-shadow] duration-150 focus-within:border-jade focus-within:text-jade focus-within:shadow-[0_0_0_4px_rgba(36,117,104,0.11)] max-[680px]:mt-[26px]">
           <Search size={18} aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="例如 灵梦 / Reimu / 红白"
             aria-label="搜索角色"
-            className="w-full min-w-0 border-0 bg-transparent text-ink placeholder:text-[#87938e] focus:outline-none"
+            className="catalog-search-input w-full min-w-0 border-0 bg-transparent text-ink placeholder:text-[#87938e]"
           />
         </label>
-        <div
-          className="flex gap-[7px] max-[680px]:grid max-[680px]:grid-cols-3"
-          aria-label="角色目录显示设置"
-        >
-          <button
-            className="catalog-tool"
-            type="button"
-            onClick={() => setView(nextView)}
-            title={`切换到${nextView === "list" ? "列表" : "图标"}视图`}
-          >
-            <ViewIcon size={17} aria-hidden="true" />
-            <span>{view === "grid" ? "图标" : "列表"}</span>
-          </button>
-          <button
-            className="catalog-tool"
-            type="button"
-            onClick={() => setSort(nextSort)}
-            title={`改为按${nextSort === "name" ? "名称" : "登场作品顺序"}排序`}
-          >
-            <SortIcon size={17} aria-hidden="true" />
-            <span>{sort === "name" ? "名称" : "登场顺序"}</span>
-          </button>
-          <button
-            className="catalog-tool"
-            type="button"
-            onClick={() => setDirection(nextDirection)}
-            title={`改为${nextDirection === "asc" ? "正序" : "倒序"}`}
-          >
-            <DirectionIcon size={17} aria-hidden="true" />
-            <span>{direction === "asc" ? "正序" : "倒序"}</span>
-          </button>
+        <div className="catalog-controls" aria-label="角色目录显示设置">
+          <div className="catalog-segment" role="group" aria-label="显示方式">
+            <button
+              className={`catalog-segment-button${view === "grid" ? " active" : ""}`}
+              type="button"
+              onClick={() => setView("grid")}
+              title="图标视图"
+              aria-label="图标视图"
+              aria-pressed={view === "grid"}
+            >
+              <LayoutGrid size={17} aria-hidden="true" />
+            </button>
+            <button
+              className={`catalog-segment-button${view === "list" ? " active" : ""}`}
+              type="button"
+              onClick={() => setView("list")}
+              title="列表视图"
+              aria-label="列表视图"
+              aria-pressed={view === "list"}
+            >
+              <List size={17} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="catalog-segment" role="group" aria-label="排序字段">
+            <button
+              className={`catalog-segment-button${sort === "appearance" ? " active" : ""}`}
+              type="button"
+              onClick={() => setSort("appearance")}
+              aria-pressed={sort === "appearance"}
+            >
+              <ListOrdered size={17} aria-hidden="true" />
+              <span>登场</span>
+            </button>
+            <button
+              className={`catalog-segment-button${sort === "name" ? " active" : ""}`}
+              type="button"
+              onClick={() => setSort("name")}
+              aria-pressed={sort === "name"}
+            >
+              <ArrowDownAZ size={17} aria-hidden="true" />
+              <span>名称</span>
+            </button>
+          </div>
+          <div className="catalog-segment" role="group" aria-label="排序方向">
+            <button
+              className={`catalog-segment-button${direction === "asc" ? " active" : ""}`}
+              type="button"
+              onClick={() => setDirection("asc")}
+              title="正序"
+              aria-label="正序"
+              aria-pressed={direction === "asc"}
+            >
+              <ArrowUp size={17} aria-hidden="true" />
+            </button>
+            <button
+              className={`catalog-segment-button${direction === "desc" ? " active" : ""}`}
+              type="button"
+              onClick={() => setDirection("desc")}
+              title="倒序"
+              aria-label="倒序"
+              aria-pressed={direction === "desc"}
+            >
+              <ArrowDown size={17} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {error ? <p className="message error">{error}</p> : null}
-      <div className="mt-[30px] flex items-baseline gap-[5px] text-[0.76rem] text-ink-soft" aria-live="polite">
-        <strong className="font-[Georgia,serif] text-[1.4rem] text-ink">{total}</strong>
+      {error ? (
+        <div className="catalog-feedback" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={retry}>
+            重新加载
+          </button>
+        </div>
+      ) : null}
+      <div
+        className="mt-[30px] flex items-baseline gap-[5px] text-[0.76rem] text-ink-soft"
+        aria-live="polite"
+      >
+        <strong className="font-[Georgia,serif] text-[1.4rem] text-ink">
+          {total}
+        </strong>
         <span>条结果</span>
         {loading ? (
           <Loader2 className="spin" size={15} aria-label="加载中" />
         ) : null}
       </div>
 
-      {!loading && !results.length ? (
+      {loading ? (
+        <div className="catalog-state" role="status">
+          <Loader2 className="spin" size={20} aria-hidden="true" />
+          <span>正在加载题库</span>
+        </div>
+      ) : error ? null : !results.length ? (
         <div className="mt-[10px] grid min-h-[180px] place-items-center rounded-[4px] border border-line bg-paper text-ink-soft">
           没有找到匹配的角色。
         </div>
@@ -163,12 +207,24 @@ export default function SearchPage() {
                 <th className="h-11 w-[62px] px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
                   <span className="sr-only">角色头像</span>
                 </th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">名称</th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">初登场作品</th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">初登场年份</th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">种族</th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">地点</th>
-                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">阵营</th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  名称
+                </th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  初登场作品
+                </th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  初登场年份
+                </th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  种族
+                </th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  地点
+                </th>
+                <th className="h-11 px-[13px] py-[11px] text-[0.72rem] font-bold text-ink-soft">
+                  阵营
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -182,14 +238,27 @@ export default function SearchPage() {
                       className="catalog-avatar"
                     />
                   </td>
-                  <th scope="row" className="whitespace-nowrap border-b border-line px-[13px] py-[11px] text-[0.86rem]">
+                  <th
+                    scope="row"
+                    className="whitespace-nowrap border-b border-line px-[13px] py-[11px] text-[0.86rem]"
+                  >
                     {result.name}
                   </th>
-                  <td className="border-b border-line px-[13px] py-[11px]">{result.firstAppearance.workTitle}</td>
-                  <td className="border-b border-line px-[13px] py-[11px]">{result.firstAppearance.releaseYear}</td>
-                  <td className="border-b border-line px-[13px] py-[11px]">{joinValues(result.species)}</td>
-                  <td className="border-b border-line px-[13px] py-[11px]">{joinValues(result.locations)}</td>
-                  <td className="border-b border-line px-[13px] py-[11px]">{joinValues(result.affiliations)}</td>
+                  <td className="border-b border-line px-[13px] py-[11px]">
+                    {result.firstAppearance.workTitle}
+                  </td>
+                  <td className="border-b border-line px-[13px] py-[11px]">
+                    {result.firstAppearance.releaseYear}
+                  </td>
+                  <td className="border-b border-line px-[13px] py-[11px]">
+                    {joinValues(result.species)}
+                  </td>
+                  <td className="border-b border-line px-[13px] py-[11px]">
+                    {joinValues(result.locations)}
+                  </td>
+                  <td className="border-b border-line px-[13px] py-[11px]">
+                    {joinValues(result.affiliations)}
+                  </td>
                 </tr>
               ))}
             </tbody>

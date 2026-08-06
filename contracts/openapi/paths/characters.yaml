@@ -11,6 +11,12 @@ get:
       description: 规范化后的查询词（可为空，返回全部可猜角色）。
       schema:
         type: string
+    - name: sessionId
+      in: query
+      required: false
+      description: 游戏会话 id；提供后按该会话绑定的题库快照搜索。
+      schema:
+        type: string
     - name: limit
       in: query
       required: false
@@ -49,6 +55,12 @@ get:
             $ref: "../schemas/character.yaml#/CharacterSearchResponse"
     "400":
       description: 请求参数不合法
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 游戏会话不存在
       content:
         application/json:
           schema:

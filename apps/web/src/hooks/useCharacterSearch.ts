@@ -3,7 +3,7 @@
 // 本地角色搜索：浏览器一次性拉取完整可猜角色表（经 Next 缓存路由），
 // 过滤/排序/分页全部在前端执行（08 §10.x；匹配复用 seed 的 search_text 与
 // normalizeSearchText，与服务器 ILIKE 语义一致；名称排序复用 nameSortKey）。
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type {
   CharacterSearchResult,
   CharacterSort,
@@ -11,6 +11,7 @@ import type {
 } from "@touhouflandre/shared";
 import { normalizeSearchText } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
+import { api } from "../lib/api";
 
 type CatalogCharacters = components["schemas"]["CatalogCharacters"];
 type TableEntry = { version: string; characters: CharacterSearchResult[] };
@@ -77,45 +78,99 @@ export function useCharacterSearch(
     limit?: number;
     offset?: number;
     delay?: number;
+    enabled?: boolean;
+    sessionId?: string;
     sort?: CharacterSort;
     direction?: SortDirection;
     /** 期望题库版本（局/会话绑定版本）；变化时按新键重拉，处理 seed 后表更新。 */
     version?: string;
   } = {},
 ) {
-  const { delay = 120, direction = "asc", limit, offset, sort = "appearance", version } = options;
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const {
+    delay = 120,
+    direction = "asc",
+    enabled = true,
+    limit,
+    offset,
+    sessionId,
+    sort = "appearance",
+    version,
+  } = options;
   const [results, setResults] = useState<CharacterSearchResult[]>([]);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  const retry = useCallback(() => {
+    setRequestVersion((current) => current + 1);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!enabled) {
+      setLoading(false);
+      setResults([]);
+      setTotal(0);
+      setError("");
+      return;
+    }
+    const controller = new AbortController();
     setLoading(true);
     setError("");
-    const timeout = window.setTimeout(() => {
-      loadTable(version)
-        .then((loaded) => {
-          if (cancelled) return;
-          const { results: r, total: t } = searchLocal(
-            loaded, query, sort, direction, limit, offset,
-          );
-          setResults(r);
-          setTotal(t);
-          setLoading(false);
-        })
-        .catch((caught) => {
-          if (!cancelled) {
-            setError(caught instanceof Error ? caught.message : "角色表加载失败。");
-            setLoading(false);
-          }
-        });
+    setResults([]);
+    setTotal(0);
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        const payload = sessionId
+          ? await api.searchCharacters(
+              {
+                q: query,
+                sessionId,
+                limit,
+                offset,
+                sort,
+                direction,
+              },
+              controller.signal,
+            )
+          : searchLocal(
+              await loadTable(version),
+              query,
+              sort,
+              direction,
+              limit,
+              offset,
+            );
+        if (controller.signal.aborted) return;
+        setResults(payload.results);
+        setTotal(payload.total);
+      } catch (caught) {
+        if (!controller.signal.aborted) {
+          setResults([]);
+          setTotal(0);
+          setError(caught instanceof Error ? caught.message : "搜索失败。");
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
     }, delay);
     return () => {
-      cancelled = true;
       window.clearTimeout(timeout);
+      controller.abort();
     };
-  }, [delay, direction, limit, offset, query, sort, version]);
+  }, [
+    delay,
+    direction,
+    enabled,
+    limit,
+    offset,
+    query,
+    requestVersion,
+    sessionId,
+    sort,
+    version,
+  ]);
 
-  return { results, total, error, loading };
+  return { results, total, error, loading, retry };
 }

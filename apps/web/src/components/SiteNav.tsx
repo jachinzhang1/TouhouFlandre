@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarDays,
-  Flower2,
   Home,
   Megaphone,
   Search,
   Trophy,
 } from "lucide-react";
+import { YinYangMark } from "./YinYangMark";
 
 const NAV_ITEMS: {
   label: string;
@@ -24,12 +24,20 @@ const NAV_ITEMS: {
     href: "/single",
     icon: CalendarDays,
     isActive: (p) =>
-      p === "/single" ||
-      p.startsWith("/single/") ||
-      p.startsWith("/multi"),
+      p === "/single" || p.startsWith("/single/") || p.startsWith("/multi"),
   },
-  { label: "搜索", href: "/search", icon: Search, isActive: (p) => p === "/search" },
-  { label: "统计", href: "/stats", icon: BarChart3, isActive: (p) => p === "/stats" },
+  {
+    label: "搜索",
+    href: "/search",
+    icon: Search,
+    isActive: (p) => p === "/search",
+  },
+  {
+    label: "统计",
+    href: "/stats",
+    icon: BarChart3,
+    isActive: (p) => p === "/stats",
+  },
   {
     label: "排行",
     href: "/leaderboard",
@@ -58,7 +66,7 @@ export function SiteNav() {
         aria-label="返回首页"
       >
         <span className="inline-flex size-[38px] items-center justify-center rounded-[4px] bg-vermilion text-white shadow-[4px_4px_0_#e1c1bb] max-[680px]:size-[34px]">
-          <Flower2 size={18} />
+          <YinYangMark className="size-[23px]" />
         </span>
         <span className="grid gap-px">
           <strong className="font-brand text-[1.05rem]">TouhouFlandre</strong>
@@ -71,11 +79,7 @@ export function SiteNav() {
           const active = item.isActive(pathname);
           return (
             <Link
-              className={
-                active
-                  ? "nav-link active"
-                  : "nav-link"
-              }
+              className={active ? "nav-link active" : "nav-link"}
               key={item.label}
               href={item.href}
               aria-current={active ? "page" : undefined}

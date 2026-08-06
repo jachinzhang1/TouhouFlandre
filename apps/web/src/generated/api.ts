@@ -705,6 +705,8 @@ export interface operations {
             query?: {
                 /** @description 规范化后的查询词（可为空，返回全部可猜角色）。 */
                 q?: string;
+                /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
+                sessionId?: string;
                 limit?: number;
                 offset?: number;
                 sort?: "name" | "appearance";
@@ -727,6 +729,15 @@ export interface operations {
             };
             /** @description 请求参数不合法 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 游戏会话不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -18,7 +18,7 @@ export function CharacterAvatar({
 
   return (
     <span
-      className={`inline-flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#e7edeb] text-white font-black ${className}`.trim()}
+      className={`inline-flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#e7edeb] text-ink font-black ${className}`.trim()}
       aria-hidden="true"
     >
       {showImage ? (
@@ -26,6 +26,8 @@ export function CharacterAvatar({
           src={avatarUrl}
           alt=""
           title={name}
+          loading="lazy"
+          decoding="async"
           className="size-full object-cover [image-rendering:pixelated]"
           onError={() => setFailedUrl(avatarUrl)}
         />
