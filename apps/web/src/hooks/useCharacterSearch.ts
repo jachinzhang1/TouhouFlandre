@@ -54,12 +54,18 @@ export function searchLocal(
   direction: SortDirection,
   limit: number | undefined,
   offset: number | undefined,
+  workIds?: string,
 ): { results: CharacterSearchResult[]; total: number } {
   const normalized = normalizeSearchText(query);
-  const matched =
-    normalized === ""
-      ? entry.characters
-      : entry.characters.filter((c) => c.searchText.includes(normalized));
+  const filterByWork = workIds !== undefined;
+  const selectedWorkIds = new Set(
+    workIds?.split(",").filter((workId) => workId.length > 0) ?? [],
+  );
+  const matched = entry.characters.filter(
+    (character) =>
+      (!filterByWork || selectedWorkIds.has(character.workId)) &&
+      (normalized === "" || character.searchText.includes(normalized)),
+  );
   const sorted = [...matched].sort((a, b) => {
     const cmp =
       sort === "name"
@@ -80,6 +86,7 @@ export function useCharacterSearch(
     delay?: number;
     enabled?: boolean;
     sessionId?: string;
+    workIds?: string;
     sort?: CharacterSort;
     direction?: SortDirection;
     /** 期望题库版本（局/会话绑定版本）；变化时按新键重拉，处理 seed 后表更新。 */
@@ -93,6 +100,7 @@ export function useCharacterSearch(
     limit,
     offset,
     sessionId,
+    workIds,
     sort = "appearance",
     version,
   } = options;
@@ -127,6 +135,7 @@ export function useCharacterSearch(
               {
                 q: query,
                 sessionId,
+                workIds,
                 limit,
                 offset,
                 sort,
@@ -141,6 +150,7 @@ export function useCharacterSearch(
               direction,
               limit,
               offset,
+              workIds,
             );
         if (controller.signal.aborted) return;
         setResults(payload.results);
@@ -170,6 +180,7 @@ export function useCharacterSearch(
     sessionId,
     sort,
     version,
+    workIds,
   ]);
 
   return { results, total, error, loading, retry };

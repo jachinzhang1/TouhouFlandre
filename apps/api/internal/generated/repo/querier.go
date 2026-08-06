@@ -19,7 +19,7 @@ type Querier interface {
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
-	CountSearchCharacters(ctx context.Context, q_ string) (int64, error)
+	CountSearchCharacters(ctx context.Context, arg CountSearchCharactersParams) (int64, error)
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
@@ -94,6 +94,7 @@ type Querier interface {
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
 	ListTimedOutMembers(ctx context.Context) ([]MultiMember, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
+	ListWorks(ctx context.Context) ([]Work, error)
 	SearchCharactersByAppearance(ctx context.Context, arg SearchCharactersByAppearanceParams) ([]Character, error)
 	// 角色搜索与目录摘要
 	SearchCharactersByName(ctx context.Context, arg SearchCharactersByNameParams) ([]Character, error)

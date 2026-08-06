@@ -92,6 +92,7 @@ describe("SingleGamePage", () => {
           subtitle: "Patchouli Knowledge · 东方红魔乡",
           avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
           initials: "帕秋",
+          workId: "th06_eosd",
           hairColors: ["purple"],
         },
       ],

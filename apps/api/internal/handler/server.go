@@ -95,6 +95,11 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.Q != nil {
 		query = *request.Params.Q
 	}
+	workIDs := ""
+	filterByWork := request.Params.WorkIds != nil
+	if request.Params.WorkIds != nil {
+		workIDs = *request.Params.WorkIds
+	}
 	limit := int32(50)
 	if request.Params.Limit != nil {
 		limit = int32(*request.Params.Limit)
@@ -108,18 +113,18 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		direction = string(*request.Params.Direction)
 	}
 	if request.Params.SessionId != nil {
-		return s.searchSessionCharacters(ctx, *request.Params.SessionId, query, request.Params.Sort, direction, int(offset), int(limit))
+		return s.searchSessionCharacters(ctx, *request.Params.SessionId, query, workIDs, filterByWork, request.Params.Sort, direction, int(offset), int(limit))
 	}
 
 	var rows []repo.Character
 	var err error
 	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
 		rows, err = s.q.SearchCharactersByAppearance(ctx, repo.SearchCharactersByAppearanceParams{
-			Q: query, Direction: direction, PageOffset: offset, MaxResults: limit,
+			Q: query, WorkIds: workIDs, FilterByWork: filterByWork, Direction: direction, PageOffset: offset, MaxResults: limit,
 		})
 	} else {
 		rows, err = s.q.SearchCharactersByName(ctx, repo.SearchCharactersByNameParams{
-			Q: query, Direction: direction, PageOffset: offset, MaxResults: limit,
+			Q: query, WorkIds: workIDs, FilterByWork: filterByWork, Direction: direction, PageOffset: offset, MaxResults: limit,
 		})
 	}
 	if err != nil {
@@ -135,7 +140,9 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		results = append(results, toSearchResult(character, row.SearchText, row.NameSortKey))
 	}
 
-	total, err := s.q.CountSearchCharacters(ctx, query)
+	total, err := s.q.CountSearchCharacters(ctx, repo.CountSearchCharactersParams{
+		Q: query, WorkIds: workIDs, FilterByWork: filterByWork,
+	})
 	if err != nil {
 		return nil, internalError(err)
 	}
@@ -149,6 +156,8 @@ func (s *Server) searchSessionCharacters(
 	ctx context.Context,
 	sessionID string,
 	query string,
+	workIDs string,
+	filterByWork bool,
 	sortBy *openapi.CharactersSearchParamsSort,
 	direction string,
 	offset int,
@@ -167,10 +176,24 @@ func (s *Server) searchSessionCharacters(
 	}
 
 	normalizedQuery := game.NormalizeSearchText(query)
+	allowedWorkIDs := map[string]struct{}{}
+	if filterByWork {
+		for _, workID := range strings.Split(workIDs, ",") {
+			workID = strings.TrimSpace(workID)
+			if workID != "" {
+				allowedWorkIDs[workID] = struct{}{}
+			}
+		}
+	}
 	matches := make([]game.Character, 0, len(characters))
 	for _, character := range characters {
 		if !character.EnabledAsGuess {
 			continue
+		}
+		if filterByWork {
+			if _, ok := allowedWorkIDs[character.FirstAppearance.WorkID]; !ok {
+				continue
+			}
 		}
 		searchText := game.NormalizeSearchText(game.CharacterSearchText(character))
 		if normalizedQuery == "" || strings.Contains(searchText, normalizedQuery) {
@@ -219,6 +242,10 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 	if err != nil {
 		return nil, internalError(err)
 	}
+	works, err := s.q.ListWorks(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
 	definition := game.GameContentDefinition
 	visibleFieldCount := 0
 	for _, field := range definition.Fields {
@@ -237,6 +264,10 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 			MaxGuesses:        definition.MaxGuesses,
 			VisibleFieldCount: visibleFieldCount,
 		}},
+		Works: make([]openapi.Work, 0, len(works)),
+	}
+	for _, work := range works {
+		summary.Works = append(summary.Works, toOpenAPIWork(work))
 	}
 	return openapi.CatalogGet200JSONResponse(summary), nil
 }

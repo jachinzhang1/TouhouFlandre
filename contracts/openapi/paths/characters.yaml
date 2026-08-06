@@ -17,6 +17,12 @@ get:
       description: 游戏会话 id；提供后按该会话绑定的题库快照搜索。
       schema:
         type: string
+    - name: workIds
+      in: query
+      required: false
+      description: 逗号分隔的作品 id 列表；仅用于收窄搜索结果。
+      schema:
+        type: string
     - name: limit
       in: query
       required: false

@@ -103,6 +103,30 @@ func toOpenAPICharacter(character game.Character) openapi.Character {
 	}
 }
 
+func toOpenAPIWork(work repo.Work) openapi.Work {
+	result := openapi.Work{
+		Id:          work.ID,
+		TitleZh:     work.TitleZh,
+		TitleJa:     work.TitleJa,
+		ShortName:   work.ShortName,
+		Type:        openapi.WorkType(work.Type),
+		ReleaseYear: int(work.ReleaseYear),
+	}
+	if work.TitleEn.Valid {
+		titleEn := work.TitleEn.String
+		result.TitleEn = &titleEn
+	}
+	if work.MainlineIndex.Valid {
+		index := int(work.MainlineIndex.Int32)
+		result.MainlineIndex = &index
+	}
+	if work.Era.Valid {
+		era := openapi.Era(work.Era.String)
+		result.Era = &era
+	}
+	return result
+}
+
 // toSearchResult 对应 shared 的 toSearchResult。
 func toSearchResult(character game.Character, searchText, nameSortKey string) openapi.CharacterSearchResult {
 	hairColors := make([]openapi.HairColor, 0, len(character.HairColors))
@@ -121,6 +145,7 @@ func toSearchResult(character game.Character, searchText, nameSortKey string) op
 		Initials:        initials,
 		AvatarUrl:       character.AvatarURL,
 		AppearanceOrder: character.AppearanceOrder,
+		WorkId:          character.FirstAppearance.WorkID,
 		SearchText:      searchText,
 		NameSortKey:     nameSortKey,
 		FirstAppearance: struct {

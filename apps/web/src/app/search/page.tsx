@@ -4,15 +4,23 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowDownAZ,
+  ChevronDown,
+  ChevronUp,
+  Filter,
   LayoutGrid,
   List,
   ListOrdered,
   Loader2,
   Search,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { CharacterSort, SortDirection } from "@touhouflandre/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  CharacterSort,
+  SortDirection,
+  Work,
+} from "@touhouflandre/shared";
 import { CharacterAvatar } from "../../components/CharacterAvatar";
+import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { joinValues } from "../../domain/format";
 
@@ -29,15 +37,47 @@ const initialSort: CharacterSort =
 const initialDirection: SortDirection =
   initialParams.get("direction") === "desc" ? "desc" : "asc";
 
+const compareWorks = (left: Work, right: Work) =>
+  left.releaseYear - right.releaseYear ||
+  (left.mainlineIndex ?? Number.MAX_SAFE_INTEGER) -
+    (right.mainlineIndex ?? Number.MAX_SAFE_INTEGER) ||
+  left.shortName.localeCompare(right.shortName) ||
+  left.id.localeCompare(right.id);
+
 export default function SearchPage() {
+  const catalog = useCatalogSummary();
   const [query, setQuery] = useState("");
   const [view, setView] = useState<CharacterView>(initialView);
   const [sort, setSort] = useState<CharacterSort>(initialSort);
   const [direction, setDirection] = useState<SortDirection>(initialDirection);
+  const [filterExpanded, setFilterExpanded] = useState(false);
+  const [selectedWorkIds, setSelectedWorkIds] = useState<string[]>([]);
+  const initializedWorkFilterRef = useRef(false);
+  const works = useMemo(
+    () => [...(catalog?.works ?? [])].sort(compareWorks),
+    [catalog?.works],
+  );
+  const workIds = useMemo(() => works.map((work) => work.id), [works]);
+  const selectedWorkIdSet = useMemo(
+    () => new Set(selectedWorkIds),
+    [selectedWorkIds],
+  );
+
+  useEffect(() => {
+    if (initializedWorkFilterRef.current || workIds.length === 0) return;
+    initializedWorkFilterRef.current = true;
+    setSelectedWorkIds(workIds);
+  }, [workIds]);
+
+  const selectedWorkIdsParam = initializedWorkFilterRef.current
+    ? selectedWorkIds.join(",")
+    : undefined;
+
   const { error, loading, results, retry, total } = useCharacterSearch(query, {
     limit: 250,
     sort,
     direction,
+    workIds: selectedWorkIdsParam,
   });
 
   useEffect(() => {
@@ -146,6 +186,89 @@ export default function SearchPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="mt-[12px] rounded-[4px] border border-line bg-paper">
+        <button
+          type="button"
+          className="flex min-h-[50px] w-full items-center justify-between gap-3 px-[14px] text-left"
+          onClick={() => setFilterExpanded((current) => !current)}
+          aria-expanded={filterExpanded}
+        >
+          <span className="flex min-w-0 items-center gap-2 text-[0.78rem] font-extrabold text-ink">
+            <Filter size={16} aria-hidden="true" />
+            <span>作品筛选</span>
+          </span>
+          <span className="flex items-center gap-2 text-[0.76rem] font-bold text-ink-soft">
+            <span>
+              {works.length > 0
+                ? `${selectedWorkIds.length}/${works.length}`
+                : "加载中"}
+            </span>
+            {filterExpanded ? (
+              <ChevronUp size={16} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={16} aria-hidden="true" />
+            )}
+          </span>
+        </button>
+        {filterExpanded ? (
+          <div className="border-t border-line px-[14px] py-[14px]">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-white px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[#8fa29a] hover:bg-[#f8faf9]"
+                onClick={() => setSelectedWorkIds(workIds)}
+                disabled={workIds.length === 0}
+              >
+                全选
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-white px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[#8fa29a] hover:bg-[#f8faf9]"
+                onClick={() => setSelectedWorkIds([])}
+                disabled={workIds.length === 0}
+              >
+                全不选
+              </button>
+            </div>
+            <div className="mt-[12px] grid gap-2 max-[680px]:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+              {works.length > 0 ? (
+                works.map((work) => (
+                  <label
+                    key={work.id}
+                    className="flex min-h-[48px] items-center gap-3 rounded-[4px] border border-line bg-white px-[12px] py-[10px] text-[0.84rem] text-ink"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedWorkIdSet.has(work.id)}
+                      onChange={() => {
+                        setSelectedWorkIds((current) =>
+                          current.includes(work.id)
+                            ? current.filter((id) => id !== work.id)
+                            : [...current, work.id],
+                        );
+                      }}
+                      className="size-4 shrink-0 accent-jade"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate font-bold">
+                        {work.titleZh}
+                      </strong>
+                      <span className="mt-1 block text-[0.74rem] text-ink-soft">
+                        {work.shortName} · {work.releaseYear}
+                      </span>
+                    </span>
+                  </label>
+                ))
+              ) : (
+                <div className="rounded-[4px] border border-dashed border-line bg-white px-[12px] py-[14px] text-[0.82rem] text-ink-soft">
+                  正在读取作品列表。
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {error ? (

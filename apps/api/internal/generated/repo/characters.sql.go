@@ -11,11 +11,19 @@ import (
 
 const countSearchCharacters = `-- name: CountSearchCharacters :one
 SELECT COUNT(*)::bigint AS total FROM character
-WHERE enabled_as_guess AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+WHERE enabled_as_guess
+  AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+  AND (NOT $2::boolean OR first_appearance_work_id = ANY(string_to_array($3::text, ',')::text[]))
 `
 
-func (q *Queries) CountSearchCharacters(ctx context.Context, q_ string) (int64, error) {
-	row := q.db.QueryRow(ctx, countSearchCharacters, q_)
+type CountSearchCharactersParams struct {
+	Q            string `json:"q"`
+	FilterByWork bool   `json:"filter_by_work"`
+	WorkIds      string `json:"work_ids"`
+}
+
+func (q *Queries) CountSearchCharacters(ctx context.Context, arg CountSearchCharactersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchCharacters, arg.Q, arg.FilterByWork, arg.WorkIds)
 	var total int64
 	err := row.Scan(&total)
 	return total, err
@@ -44,24 +52,30 @@ func (q *Queries) GetCatalogCounts(ctx context.Context) (GetCatalogCountsRow, er
 
 const searchCharactersByAppearance = `-- name: SearchCharactersByAppearance :many
 SELECT id, avatar_url, display_name, name_sort_key, search_text, appearance_order, first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags, affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess, difficulty_tier, source_refs, created_at, updated_at FROM character
-WHERE enabled_as_guess AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+WHERE enabled_as_guess
+  AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+  AND (NOT $2::boolean OR first_appearance_work_id = ANY(string_to_array($3::text, ',')::text[]))
 ORDER BY
-    CASE WHEN $2::text = 'desc' THEN appearance_order END DESC NULLS LAST,
-    CASE WHEN $2::text <> 'desc' THEN appearance_order END ASC NULLS LAST,
+    CASE WHEN $4::text = 'desc' THEN appearance_order END DESC NULLS LAST,
+    CASE WHEN $4::text <> 'desc' THEN appearance_order END ASC NULLS LAST,
     id ASC
-LIMIT $4 OFFSET $3
+LIMIT $6 OFFSET $5
 `
 
 type SearchCharactersByAppearanceParams struct {
-	Q          string `json:"q"`
-	Direction  string `json:"direction"`
-	PageOffset int32  `json:"page_offset"`
-	MaxResults int32  `json:"max_results"`
+	Q            string `json:"q"`
+	FilterByWork bool   `json:"filter_by_work"`
+	WorkIds      string `json:"work_ids"`
+	Direction    string `json:"direction"`
+	PageOffset   int32  `json:"page_offset"`
+	MaxResults   int32  `json:"max_results"`
 }
 
 func (q *Queries) SearchCharactersByAppearance(ctx context.Context, arg SearchCharactersByAppearanceParams) ([]Character, error) {
 	rows, err := q.db.Query(ctx, searchCharactersByAppearance,
 		arg.Q,
+		arg.FilterByWork,
+		arg.WorkIds,
 		arg.Direction,
 		arg.PageOffset,
 		arg.MaxResults,
@@ -110,25 +124,31 @@ func (q *Queries) SearchCharactersByAppearance(ctx context.Context, arg SearchCh
 
 const searchCharactersByName = `-- name: SearchCharactersByName :many
 SELECT id, avatar_url, display_name, name_sort_key, search_text, appearance_order, first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags, affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess, difficulty_tier, source_refs, created_at, updated_at FROM character
-WHERE enabled_as_guess AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+WHERE enabled_as_guess
+  AND ($1::text = '' OR search_text ILIKE '%' || $1::text || '%')
+  AND (NOT $2::boolean OR first_appearance_work_id = ANY(string_to_array($3::text, ',')::text[]))
 ORDER BY
-    CASE WHEN $2::text = 'desc' THEN name_sort_key END DESC NULLS LAST,
-    CASE WHEN $2::text <> 'desc' THEN name_sort_key END ASC NULLS LAST,
+    CASE WHEN $4::text = 'desc' THEN name_sort_key END DESC NULLS LAST,
+    CASE WHEN $4::text <> 'desc' THEN name_sort_key END ASC NULLS LAST,
     id ASC
-LIMIT $4 OFFSET $3
+LIMIT $6 OFFSET $5
 `
 
 type SearchCharactersByNameParams struct {
-	Q          string `json:"q"`
-	Direction  string `json:"direction"`
-	PageOffset int32  `json:"page_offset"`
-	MaxResults int32  `json:"max_results"`
+	Q            string `json:"q"`
+	FilterByWork bool   `json:"filter_by_work"`
+	WorkIds      string `json:"work_ids"`
+	Direction    string `json:"direction"`
+	PageOffset   int32  `json:"page_offset"`
+	MaxResults   int32  `json:"max_results"`
 }
 
 // 角色搜索与目录摘要
 func (q *Queries) SearchCharactersByName(ctx context.Context, arg SearchCharactersByNameParams) ([]Character, error) {
 	rows, err := q.db.Query(ctx, searchCharactersByName,
 		arg.Q,
+		arg.FilterByWork,
+		arg.WorkIds,
 		arg.Direction,
 		arg.PageOffset,
 		arg.MaxResults,

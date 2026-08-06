@@ -1,7 +1,9 @@
 -- 角色搜索与目录摘要
 -- name: SearchCharactersByName :many
 SELECT * FROM character
-WHERE enabled_as_guess AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%')
+WHERE enabled_as_guess
+  AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%')
+  AND (NOT @filter_by_work::boolean OR first_appearance_work_id = ANY(string_to_array(@work_ids::text, ',')::text[]))
 ORDER BY
     CASE WHEN @direction::text = 'desc' THEN name_sort_key END DESC NULLS LAST,
     CASE WHEN @direction::text <> 'desc' THEN name_sort_key END ASC NULLS LAST,
@@ -10,7 +12,9 @@ LIMIT @max_results OFFSET @page_offset;
 
 -- name: SearchCharactersByAppearance :many
 SELECT * FROM character
-WHERE enabled_as_guess AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%')
+WHERE enabled_as_guess
+  AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%')
+  AND (NOT @filter_by_work::boolean OR first_appearance_work_id = ANY(string_to_array(@work_ids::text, ',')::text[]))
 ORDER BY
     CASE WHEN @direction::text = 'desc' THEN appearance_order END DESC NULLS LAST,
     CASE WHEN @direction::text <> 'desc' THEN appearance_order END ASC NULLS LAST,
@@ -19,7 +23,9 @@ LIMIT @max_results OFFSET @page_offset;
 
 -- name: CountSearchCharacters :one
 SELECT COUNT(*)::bigint AS total FROM character
-WHERE enabled_as_guess AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%');
+WHERE enabled_as_guess
+  AND (@q::text = '' OR search_text ILIKE '%' || @q::text || '%')
+  AND (NOT @filter_by_work::boolean OR first_appearance_work_id = ANY(string_to_array(@work_ids::text, ',')::text[]));
 
 -- name: GetCatalogCounts :one
 SELECT

@@ -400,7 +400,7 @@ export interface components {
             difficultyTier: components["schemas"]["DifficultyTier"];
             sourceRefs: string[];
         };
-        /** @description 搜索卡片视图模型（firstAppearance 仅含 workTitle 与 releaseYear）。 */
+        /** @description 搜索卡片视图模型（附带 workId 以便按作品筛选）。 */
         CharacterSearchResult: {
             id: string;
             name: string;
@@ -408,6 +408,7 @@ export interface components {
             initials: string;
             avatarUrl: string;
             appearanceOrder: number;
+            workId: string;
             /** @description 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。 */
             searchText: string;
             /** @description 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。 */
@@ -438,6 +439,7 @@ export interface components {
             /** @description 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。 */
             dailyDateKey: string;
             contents: components["schemas"]["CatalogContentSummary"][];
+            works: components["schemas"]["Work"][];
         };
         /** @enum {string} */
         WorkType: "game" | "print" | "music_cd" | "other";
@@ -724,6 +726,8 @@ export interface operations {
                 q?: string;
                 /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
                 sessionId?: string;
+                /** @description 逗号分隔的作品 id 列表；仅用于收窄搜索结果。 */
+                workIds?: string;
                 limit?: number;
                 offset?: number;
                 sort?: "name" | "appearance";

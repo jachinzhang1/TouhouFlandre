@@ -238,6 +238,12 @@ func TestCatalog(t *testing.T) {
 	if content.MaxGuesses != 8 || content.VisibleFieldCount != 6 {
 		t.Fatalf("unexpected definition: %+v", content)
 	}
+	if len(summary.Works) == 0 {
+		t.Fatalf("expected works in catalog summary: %+v", summary)
+	}
+	if summary.Works[0].ReleaseYear > summary.Works[len(summary.Works)-1].ReleaseYear {
+		t.Fatalf("works are not ordered by release year: %+v", summary.Works[:2])
+	}
 }
 
 func TestSearchReimu(t *testing.T) {
@@ -254,6 +260,35 @@ func TestSearchReimu(t *testing.T) {
 	}
 	if search.Results[0].Id != "reimu_hakurei" {
 		t.Fatalf("unexpected result: %+v", search.Results[0])
+	}
+}
+
+func TestSearchFiltersByWorkIDs(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/characters/search?workIds=th01_hrtp&q=%E7%81%B5%E6%A2%A6", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if search.Total != 1 || len(search.Results) != 1 {
+		t.Fatalf("expected 1 filtered result, got %+v", search)
+	}
+	if search.Results[0].WorkId != "th01_hrtp" {
+		t.Fatalf("unexpected work id: %+v", search.Results[0])
+	}
+
+	emptyResp, emptyPayload := request(http.MethodGet, "/api/characters/search?workIds=th07_pcb&q=%E7%81%B5%E6%A2%A6", nil)
+	if emptyResp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", emptyResp.StatusCode, emptyPayload)
+	}
+	var emptySearch openapi.CharacterSearchResponse
+	if err := json.Unmarshal(emptyPayload, &emptySearch); err != nil {
+		t.Fatal(err)
+	}
+	if emptySearch.Total != 0 || len(emptySearch.Results) != 0 {
+		t.Fatalf("expected empty filtered result, got %+v", emptySearch)
 	}
 }
 

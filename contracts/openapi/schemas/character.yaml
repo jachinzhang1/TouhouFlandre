@@ -169,7 +169,7 @@ Character:
 
 CharacterSearchResult:
   type: object
-  description: 搜索卡片视图模型（firstAppearance 仅含 workTitle 与 releaseYear）。
+  description: 搜索卡片视图模型（附带 workId 以便按作品筛选）。
   required:
     - id
     - name
@@ -177,6 +177,7 @@ CharacterSearchResult:
     - initials
     - avatarUrl
     - appearanceOrder
+    - workId
     - firstAppearance
     - species
     - locations
@@ -197,6 +198,8 @@ CharacterSearchResult:
       type: string
     appearanceOrder:
       type: integer
+    workId:
+      type: string
     searchText:
       type: string
       description: 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。
@@ -280,6 +283,7 @@ CatalogSummary:
   required:
     - dailyDateKey
     - contents
+    - works
   properties:
     dailyDateKey:
       type: string
@@ -288,6 +292,10 @@ CatalogSummary:
       type: array
       items:
         $ref: "#/CatalogContentSummary"
+    works:
+      type: array
+      items:
+        $ref: "./work.yaml#/Work"
 
 CatalogCharacters:
   type: object

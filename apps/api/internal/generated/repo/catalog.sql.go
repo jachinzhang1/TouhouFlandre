@@ -82,6 +82,55 @@ func (q *Queries) ListGuessCharacters(ctx context.Context) ([]Character, error) 
 	return items, nil
 }
 
+const listWorks = `-- name: ListWorks :many
+SELECT
+    id,
+    title_zh,
+    title_ja,
+    title_en,
+    short_name,
+    type,
+    release_year,
+    mainline_index,
+    era,
+    created_at,
+    updated_at
+FROM work
+ORDER BY release_year ASC, mainline_index ASC NULLS LAST, short_name ASC, id ASC
+`
+
+func (q *Queries) ListWorks(ctx context.Context) ([]Work, error) {
+	rows, err := q.db.Query(ctx, listWorks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Work{}
+	for rows.Next() {
+		var i Work
+		if err := rows.Scan(
+			&i.ID,
+			&i.TitleZh,
+			&i.TitleJa,
+			&i.TitleEn,
+			&i.ShortName,
+			&i.Type,
+			&i.ReleaseYear,
+			&i.MainlineIndex,
+			&i.Era,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertCatalogState = `-- name: UpsertCatalogState :exec
 INSERT INTO catalog_state (id, current_version)
 VALUES ('current', $1)

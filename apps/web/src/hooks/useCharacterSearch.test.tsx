@@ -15,6 +15,7 @@ const result = (id: string) => ({
   initials: id.slice(0, 2),
   avatarUrl: "",
   appearanceOrder: 1,
+  workId: "th06_eosd",
   firstAppearance: { workTitle: "test", releaseYear: 1996 },
   species: [],
   locations: [],
@@ -40,6 +41,23 @@ describe("useCharacterSearch", () => {
     await waitFor(() => expect(hook.current.loading).toBe(false));
     expect(api.searchCharacters).toHaveBeenCalledWith(
       expect.objectContaining({ q: "灵梦", sessionId: "session-1" }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("passes work filters to character search", async () => {
+    vi.mocked(api.searchCharacters).mockResolvedValue({
+      results: [result("reimu")],
+      total: 1,
+    });
+
+    const { result: hook } = renderHook(() =>
+      useCharacterSearch("灵梦", { delay: 0, workIds: "th06_eosd" }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(api.searchCharacters).toHaveBeenCalledWith(
+      expect.objectContaining({ q: "灵梦", workIds: "th06_eosd" }),
       expect.any(AbortSignal),
     );
   });
