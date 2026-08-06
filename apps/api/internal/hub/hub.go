@@ -20,9 +20,11 @@ import (
 
 // Hub 房间事件广播器（单实例，进程内）。
 type Hub struct {
-	pool  *pgxpool.Pool
-	q     *repo.Queries
-	grace time.Duration // 断线宽限（08 §4.7 DISCONNECT_GRACE）
+	pool      *pgxpool.Pool
+	q         *repo.Queries
+	grace     time.Duration // 断线宽限（08 §4.7 DISCONNECT_GRACE）
+	readLimit int64         // 客户端消息读限（08 §8.5）
+	sendQueue int           // 发送队列长度（08 §8.5）
 
 	mu    sync.Mutex
 	rooms map[string]*roomHub // roomID → 连接与广播水位
@@ -34,15 +36,20 @@ type roomHub struct {
 	conns   map[string]*Conn // memberID → conn
 }
 
-// New 构造 hub（grace 为断线宽限期，Phase 6 接 config）。
-func New(pool *pgxpool.Pool, grace time.Duration) *Hub {
+// New 构造 hub（grace/readLimit/sendQueue 由 internal/config 注入，08 §4.7/§8.5）。
+func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int) *Hub {
 	return &Hub{
-		pool:  pool,
-		q:     repo.New(pool),
-		grace: grace,
-		rooms: map[string]*roomHub{},
+		pool:      pool,
+		q:         repo.New(pool),
+		grace:     grace,
+		readLimit: readLimit,
+		sendQueue: sendQueue,
+		rooms:     map[string]*roomHub{},
 	}
 }
+
+// ReadLimit 客户端消息读限（handler hello 首帧与 conn 读循环共用）。
+func (h *Hub) ReadLimit() int64 { return h.readLimit }
 
 // markDisconnected 连接断开：成员置 disconnected + grace_until + room.updated 事件
 // （对端可见离线，08 §4.6；宽限逾期由 sweeper 判负）。
@@ -180,6 +187,10 @@ func (h *Hub) Register(c *Conn) *Conn {
 	}
 	old := rh.conns[c.member.ID]
 	rh.conns[c.member.ID] = c
+	multi.DefaultMetrics.AddWsConnections(1)
+	if c.lastSequence > 0 {
+		multi.DefaultMetrics.IncReconnects()
+	}
 	// 广播水位推进到当前事件序号（新连接经 hello 重放补齐自身缺口；发布在后的新事件才会推给它）
 	if current := h.roomEventSeq(c.roomID); current > rh.lastSeq {
 		rh.lastSeq = current
@@ -194,6 +205,7 @@ func (h *Hub) Unregister(c *Conn) {
 	if rh, ok := h.rooms[c.roomID]; ok {
 		if rh.conns[c.member.ID] == c {
 			delete(rh.conns, c.member.ID)
+			multi.DefaultMetrics.AddWsConnections(-1)
 		}
 		if len(rh.conns) == 0 {
 			delete(h.rooms, c.roomID)

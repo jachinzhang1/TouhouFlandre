@@ -59,8 +59,8 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	}
 	defer func() { _ = ws.CloseNow() }()
 
-	// 首帧必须是 hello（读限 4KB；超时关闭）
-	ws.SetReadLimit(4096)
+	// 首帧必须是 hello（读限配置；超时关闭）
+	ws.SetReadLimit(s.hub.ReadLimit())
 	readCtx, cancel := context.WithTimeout(context.Background(), helloTimeout)
 	defer cancel()
 	_, data, err := ws.Read(readCtx)

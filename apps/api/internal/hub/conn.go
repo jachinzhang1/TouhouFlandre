@@ -43,15 +43,19 @@ type Conn struct {
 	afterReplaced atomic.Bool // replaced 帧已入队（写出后关闭连接）
 }
 
-// NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。
+// NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。发送队列长度取自 hub 配置。
 func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMember, lastSequence int64) *Conn {
+	queue := hub.sendQueue
+	if queue <= 0 {
+		queue = SendQueueSize
+	}
 	return &Conn{
 		hub:          hub,
 		ws:           ws,
 		roomID:       roomID,
 		member:       member,
 		lastSequence: lastSequence,
-		send:         make(chan []byte, SendQueueSize),
+		send:         make(chan []byte, queue),
 		closed:       make(chan struct{}),
 		isAlive:      true,
 	}
@@ -181,7 +185,7 @@ func (c *Conn) writeLoop() {
 // readLoop 读取客户端消息（仅 hello 之后的 ack）。
 // 死亡连接检测走心跳 Ping（writeLoop 30s 间隔）；连接关闭会解除 Read 阻塞。
 func (c *Conn) readLoop() {
-	c.ws.SetReadLimit(4096)
+	c.ws.SetReadLimit(c.hub.readLimit)
 	for {
 		_, data, err := c.ws.Read(context.Background())
 		if err != nil {

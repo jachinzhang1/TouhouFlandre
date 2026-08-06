@@ -18,6 +18,7 @@ import (
 // 结束当前局（对方胜，若有 countdown/playing 局）→ 场次与房间 finished（reason=forfeit/disconnect）
 // → 成员行置 left。判对方胜不要求对方在线（双方离线先逾期者触发，确定性优先，08 §4.6）。
 func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig) error {
+	DefaultMetrics.IncForfeits(string(reason))
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err

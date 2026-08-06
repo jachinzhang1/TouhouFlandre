@@ -88,11 +88,37 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 		s.closeExpiredLobbies,
 		s.closeExpiredFinishedRooms,
 		s.deleteExpiredClosedRooms,
+		s.updateStatusMetrics,
 	}
 	for _, step := range steps {
 		if err := step(ctx); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// updateStatusMetrics 采集时聚合 rooms{status}/members{status}/active_rounds（08 §11.2；失败静默）。
+func (s *Sweeper) updateStatusMetrics(ctx context.Context) error {
+	q := repo.New(s.pool)
+	rooms, err := q.CountRoomStatuses(ctx)
+	if err == nil {
+		roomCounts := map[string]int64{}
+		for _, r := range rooms {
+			roomCounts[r.Status] = int64(r.Count)
+		}
+		DefaultMetrics.SetRoomStatuses(roomCounts)
+	}
+	members, err := q.CountMemberStatuses(ctx)
+	if err == nil {
+		memberCounts := map[string]int64{}
+		for _, m := range members {
+			memberCounts[m.Status] = int64(m.Count)
+		}
+		DefaultMetrics.SetMemberStatuses(memberCounts)
+	}
+	if active, err := q.CountActiveRounds(ctx); err == nil {
+		DefaultMetrics.SetActiveRounds(int64(active))
 	}
 	return nil
 }
@@ -558,6 +584,7 @@ func (s *Sweeper) deleteExpiredClosedRooms(ctx context.Context) error {
 
 // AppendEvent 事务内取号并写入 room_event（规范形态 payload）。供 sweeper 与 handler 复用。
 func AppendEvent(ctx context.Context, q *repo.Queries, roomID string, eventType EventType, payload any) error {
+	DefaultMetrics.IncEvents(string(eventType))
 	seq, err := q.IncrementRoomEventSeq(ctx, roomID)
 	if err != nil {
 		return err

@@ -95,6 +95,8 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 // RoomsSubmitGuess 提交猜测（08 §9.2 猜测事务全流程）。
 // 响应为自视角完整反馈；局中不返回答案与对手信息。
 func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubmitGuessRequestObject) (openapi.RoomsSubmitGuessResponseObject, error) {
+	started := time.Now()
+	defer func() { multi.DefaultMetrics.RecordGuessLatency(time.Since(started)) }()
 	member, ok := GuestMemberFromContext(ctx)
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
