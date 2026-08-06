@@ -637,12 +637,12 @@ CI 沿用现有 gate（OpenAPI lint/refs、gen diff、typecheck、`pnpm test`、
 
 > 执行记录按仓库惯例写入 `docs/develop_plan/multiplayer_mode/phaseNN.md` §10。
 
-- **M1 契约与数据**：OpenAPI 新增端点 + schema；`0002_multiplayer.sql` + sqlc 查询；`contracts/ws/protocol.yaml`（07 §7.3 要求，含有效/无效示例，CI 校验）；WS 事件 Go/TS 类型（TS 放 `packages/shared`，手写维护，与 protocol.yaml 一致性由 CI 校验）。
-- **M2 房间与大厅（无实时）**：创建/加入/就绪/离开/关闭 + 房间状态机 + 快照端点 + sweeper 骨架（大厅 TTL / closed 清理，对局职责 Phase 3 扩展同一 goroutine）+ 全部集成测试。
-- **M3 对局引擎**：抽题、猜测事务（行锁 + 幂等）、局结束判定、sweeper（倒计时/超时/宽限/TTL/展示期）、比分与 `match.ended`、**再来一局转移（`finished→playing`，INSERT 新场行）**。
-- **M4 实时通道**：hub（升级校验、hello 鉴权、逐观察者投影扇出、序列重放、慢消费者、单连接替换）、优雅排空。
-- **M5 前端**：`/multi` 与 `/multi/room/[code]`、`useRoom`、匿名矩阵与图例、倒计时/结果遮罩、再来一局交互、Playwright 双人流程（含 rematch）。
-- **M6 收尾**：配置项、指标/日志字段、文档（02 功能表、README 命令）、测试补全。
+- [x] **M1 契约与数据**：OpenAPI 新增端点 + schema；`0002_multiplayer.sql` + sqlc 查询；`contracts/ws/protocol.yaml`（07 §7.3 要求，含有效/无效示例，CI 校验）；WS 事件 Go/TS 类型（TS 放 `packages/shared`，手写维护，与 protocol.yaml 一致性由 CI 校验）。
+- [x] **M2 房间与大厅（无实时）**：创建/加入/就绪/离开/关闭 + 房间状态机 + 快照端点 + sweeper 骨架（大厅 TTL / closed 清理，对局职责 Phase 3 扩展同一 goroutine）+ 全部集成测试。
+- [x] **M3 对局引擎**：抽题、猜测事务（行锁 + 幂等）、局结束判定、sweeper（倒计时/超时/宽限/TTL/展示期）、比分与 `match.ended`、**再来一局转移（`finished→playing`，INSERT 新场行）**。
+- [x] **M4 实时通道**：hub（升级校验、hello 鉴权、逐观察者投影扇出、序列重放、慢消费者、单连接替换）、优雅排空。
+- [x] **M5 前端**：`/multi` 与 `/multi/room/[code]`、`useRoom`、匿名矩阵与图例、倒计时/结果遮罩、再来一局交互、Playwright 双人流程（含 rematch）。
+- [x] **M6 收尾**：配置项、指标/日志字段、文档（02 功能表、README 命令）、测试补全。
 
 ---
 
