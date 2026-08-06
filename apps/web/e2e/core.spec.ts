@@ -4,7 +4,7 @@ test.describe("站点骨架", () => {
   test("首页展示目录摘要与导航", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "东方芙一把" })).toBeVisible();
-    await expect(page.getByText("29", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("113", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("navigation", { name: "站点导航" })).toBeVisible();
   });
 
@@ -37,7 +37,7 @@ test.describe("搜索", () => {
     await page.goto("/search");
     await page.locator(".catalog-tool", { hasText: "图标" }).click();
     await expect(page).toHaveURL(/view=list/);
-    await expect(page.locator("table tbody tr")).toHaveCount(29);
+    await expect(page.locator("table tbody tr")).toHaveCount(113);
   });
 });
 
