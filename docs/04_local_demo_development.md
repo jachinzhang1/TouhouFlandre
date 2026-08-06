@@ -18,14 +18,17 @@
 先将 `.env.example` 复制为 `.env`，再执行：
 
 ```bash
+cp .env.example .env
 pnpm install
 task db:up        # docker compose up -d --wait postgres（端口 5433）
-task db:migrate   # goose -dir migrations up
+task db:migrate   # go tool goose -dir migrations up
 task db:seed      # 校验题库并写入 Postgres（版本化快照）
 pnpm dev          # task dev：并行启动 Go API 与 Web
 ```
 
-`task db:up` 会启动一个可丢弃的 Postgres 容器（`touhouflandre-postgres-1`）。运行时数据（每日题、会话）不跨全新数据库保留，题库由 `task db:seed` 重建。
+请确认 `.env` 包含 `.env.example` 中的 Postgres 配置。API 读取 `DATABASE_URL_PG`，goose 读取 `GOOSE_DBSTRING` 与 `GOOSE_DRIVER`。
+
+`task db:up` 会启动 Postgres 容器并使用 Docker volume `pgdata` 保存数据。运行时数据（每日题、会话）会随该 volume 保留；使用全新数据库时，需要重新执行 `task db:migrate` 与 `task db:seed`。
 
 默认服务地址：
 
@@ -33,11 +36,11 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 - API：`http://localhost:4000`
 - 健康检查：`http://localhost:4000/api/health`、`/livez`、`/readyz`
 
-`pnpm dev` 会同时启动 API 与 Web。Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API（4000）；设置 `NEXT_PUBLIC_API_BASE_URL` 可改为直连。
+`pnpm dev` 会先确保 Postgres 已启动，再同时启动 API 与 Web。Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API（4000）；`NEXT_PUBLIC_API_BASE_URL=http://localhost:4000` 用于浏览器直连。
 
 ## 环境变量
 
-将 `.env.example` 复制为 `.env` 后按需修改：
+将 `.env.example` 复制为 `.env` 后按需调整：
 
 | 变量                | 作用                                 | 默认值                              |
 | ------------------- | ------------------------------------ | ----------------------------------- |
@@ -63,7 +66,6 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 | `pnpm test`                                  | 运行共享、数据与 Web（Vitest）测试 |
 | `pnpm typecheck`                             | 对所有包执行 TypeScript 检查        |
 | `pnpm test:e2e`（在 `apps/web`）              | Playwright E2E（需 `task dev` 运行中） |
-| `pnpm typecheck`                             | 对所有包执行 TypeScript 检查     |
 | `go test ./...`（在 `apps/api`）              | Go 单元与集成测试（需 Postgres） |
 | `go vet ./...`（在 `apps/api`）               | Go 静态检查                      |
 | `task gen`                                   | 重新生成 OpenAPI 类型与 sqlc 查询 |
@@ -101,8 +103,6 @@ apps/api/
   migrations/                goose 版本化迁移
   sql/queries/               sqlc 查询源
 packages/shared/src/
-  compare.ts        字段比较规则
-  daily.ts          每日题选择
   fields.ts         当前启用的反馈字段
   modes.ts          可玩模式与内容类型定义
   search.ts         搜索归一化逻辑
@@ -124,39 +124,39 @@ packages/data/src/
 - API 默认同源 `/api`（`next.config.ts` rewrites 代理到 Go），直连用 `NEXT_PUBLIC_API_BASE_URL`；
 - 样式以 Tailwind utility 为主，设计 token 定义在 `globals.css` 的 `@theme`；复杂动画/伪元素类保留为组件类；
 - 交互必须覆盖加载、空、错误、禁用和完成状态；
-- 样式修改需要检查窄屏布局和减少动态效果设置（`prefers-reduced-motion`）。
+- 样式相关工作需要检查窄屏布局和减少动态效果设置（`prefers-reduced-motion`）。
 
 ### API（Go）
 
 - 请求校验由 OpenAPI middleware 承担，不维护第二套 API schema；
 - 进行中的会话不得返回隐藏答案；
 - 可预期的业务错误返回统一 `ErrorResponse`（稳定错误码）；
-- handler 实现 oapi-codegen 生成的 strict server interface；生成代码禁止手工修改；
+- handler 实现 oapi-codegen 生成的 strict server interface；生成代码保持由工具产出；
 - 游戏规则与答案选择逻辑位于 `internal/game`，与 handler 分离。
 
 ### 共享逻辑
 
-- 比较、搜索、每日题和分享逻辑应保持无框架依赖；
-- 修改反馈规则时必须添加覆盖边界情况的测试；
-- 客户端与服务端共享的结构统一定义在 `packages/shared`。
-- 猜测内容的字段与次数从 `GAME_CONTENT_DEFINITIONS` 读取；扩展内容类型时建立独立定义与比较器。
+- `packages/shared` 只保留前端展示和数据校验需要的类型、字段、模式、搜索归一化与分享文本；
+- 比较、每日题、随机题、会话和并发写入规则以 Go `internal/game` 与 handler 实现为准；
+- 反馈规则相关工作必须添加覆盖边界情况的 Go 测试；
+- 猜测内容的字段与次数从共享模式定义读取；扩展内容类型时同步更新 OpenAPI、Go 规则、前端展示和测试。
 
 ### 题库
 
-题库字段与来源要求见[东方内容与数据规范](./03_touhou_integration.md)。数据变更必须通过 schema 和跨记录校验（`task db:seed` 前置的 `catalog:check`）。
+题库字段与来源要求见[东方内容与数据规范](./03_touhou_integration.md)。数据更新必须通过 schema 和跨记录校验（`task db:seed` 前置的 `catalog:check`）。
 
-## 数据库变更
+## 数据库迁移
 
-修改 `apps/api/migrations` 新增迁移后：
+新增 `apps/api/migrations` 迁移后：
 
 1. 新建 `apps/api/migrations/00NN_<change_name>.sql`，遵循 expand/contract 原则（加列可空、回填、再收紧）；
 2. 运行 `task db:migrate` 应用迁移；
-3. 若迁移变更了查询涉及的结构，运行 `task gen:repo`（sqlc generate）并提交生成的 Go 代码；
+3. 若迁移影响查询涉及的结构，运行 `task gen:repo`（sqlc generate）并提交生成的 Go 代码；
 4. 运行 `task db:seed` 同步题库并建立新的版本化快照；
 5. 运行 Go 测试（`go test ./...`）与前端回归；
 6. 验证历史会话继续引用原题库快照（按 `catalog_version` 读取），持久化记录能兼容读取。
 
-不要在开发机提交数据库文件。迁移一旦应用即不可变：如需修改，追加新迁移而非编辑已应用的迁移。
+不要在开发机提交数据库文件。迁移一旦应用即不可变：如需调整，追加新迁移而非编辑已应用的迁移。
 
 ## 故障排查
 
@@ -168,7 +168,7 @@ packages/data/src/
 
 确认 `docker compose ps` 中 Postgres 容器健康，且 `.env` 的 `DATABASE_URL_PG` 端口（默认 5433）与 compose 一致。
 
-### 题库修改后页面仍显示旧数据
+### 题库同步后页面仍显示先前数据
 
 重新运行 `task db:seed`。搜索页会使用最新题库；已开始的游戏会话则按设计继续使用创建时的冻结快照。要在随机题中使用新题库，请重新开始一局。当天的每日题映射不会因 seed 改变，需要等到下一个 `Asia/Shanghai` 自然日。
 

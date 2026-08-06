@@ -2,34 +2,47 @@
 
 TouhouFlandre（东方芙一把）is a playable Touhou Project themed character guessing game. Players guess a hidden character and use structured tag feedback to narrow down the answer.
 
-This repository is organized as a standard open-source web project with a pnpm workspace:
+This repository is organized as a pnpm workspace plus one Go module:
 
 - `apps/web`: Next.js 16 App Router, React, TypeScript, and Tailwind CSS v4 frontend.
 - `apps/api`: Go + Echo API server (OpenAPI-validated, Postgres-backed).
-- `packages/shared`: shared game types, field definitions, mode configs, and sharing utilities (authoritative game rules live in the Go `apps/api` package).
+- `packages/shared`: frontend/shared types, field definitions, mode configs, search normalization, and sharing utilities. Authoritative game rules live in Go.
 - `packages/data`: validated Touhou character, portrait metadata, and work data.
-- `docs`: gameplay and product planning documents.
+- `contracts/openapi`: the HTTP API contract and source for generated API types.
+- `docs`: gameplay, local development, and product planning documents.
 
 ## Local Development
 
-Prerequisites: Node.js 24 (LTS) or later, pnpm 11, Go 1.26+, Docker (for Postgres), and [Task](https://taskfile.dev/). Copy `.env.example` to `.env`, then run:
+Prerequisites:
+
+- Node.js 24 or later
+- pnpm 11
+- Go 1.26 or later
+- Docker with Compose
+- [Task](https://taskfile.dev/)
+
+From the repository root:
 
 ```bash
+cp .env.example .env
 pnpm install
 task db:up        # start Postgres via Docker Compose
 task db:migrate   # apply goose migrations
 task db:seed      # validate catalog and seed it into Postgres
-pnpm dev          # = task dev: start Go API and web app together
+pnpm dev          # same as task dev: start Go API and web app together
 ```
 
-`task db:up` starts a disposable Postgres container on port `5433`. Runtime data (daily puzzles, sessions) is not preserved across a fresh database; the catalog is rebuilt from `packages/data` by `task db:seed`.
+Ensure `.env` contains the Postgres settings from `.env.example`: the API requires `DATABASE_URL_PG`, and migrations require `GOOSE_DBSTRING` plus `GOOSE_DRIVER`.
 
-The API runs on `http://localhost:4000`.
-The web app runs on `http://localhost:5173`.
+Open the web app at `http://localhost:5173`. The API listens on `http://localhost:4000`.
+
+`task db:up` starts Postgres on host port `5433` and stores data in the Docker volume `pgdata`. Runtime data such as daily puzzles and sessions persists while that volume exists; for a fresh database, rerun `task db:migrate` and `task db:seed`.
+
+The frontend defaults to same-origin API calls through Next.js rewrites (`/api/*` to the Go API). To bypass the rewrite and call the API directly from the browser, set `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000` in `.env`; `WEB_ORIGINS` already allows the local web origins.
 
 ## Scripts
 
-- `pnpm dev` / `task dev`: start the Go API and web app together.
+- `pnpm dev` / `task dev`: start Postgres, then start the Go API and web app together.
 - `pnpm build`: build all workspace packages.
 - `pnpm test`: run shared, data, and web (Vitest + RTL) tests.
 - `pnpm typecheck`: type-check all workspace packages.
@@ -38,7 +51,7 @@ The web app runs on `http://localhost:5173`.
 - `task db:up` / `db:down`: start/stop the local Postgres container.
 - `task db:migrate`: apply goose migrations.
 - `task db:seed`: validate the catalog and seed it into Postgres.
-- `task gen`: regenerate OpenAPI types, sqlc queries, and the web API client (`gen:openapi` + `gen:repo` + `gen:web`).
+- `task gen`: regenerate OpenAPI types, sqlc queries, and the web API client. This requires `sqlc` 1.31.1 on `PATH`.
 
 ## Demo Scope
 
@@ -59,6 +72,12 @@ The enabled guess tags for the demo are first appearance, release year, species,
 Character cards and portraits are generated from the database. Add or update the character record and its `avatarUrl` in `packages/data/src/characters.demo.json`, then run `task db:seed`; no frontend mapping needs to be maintained.
 
 The four-digit portrait filename prefix is also the character appearance order. For example, `0801` sorts before `0802`, while `0751` is placed between seventh- and eighth-title characters. Portraits without catalog records are intentionally retained for future expansion.
+
+## Development Notes
+
+`contracts/openapi/openapi.yaml` is the single source of truth for HTTP endpoints. Contract updates should be followed by `task gen`, with the generated Go and web API types committed together.
+
+Generated files under `apps/api/internal/generated` and `apps/web/src/generated` should not be edited by hand. Database schema changes belong in `apps/api/migrations`; apply them with `task db:migrate`, regenerate sqlc output with `task gen:repo`, then reseed the catalog with `task db:seed`.
 
 ## Content Notice
 
