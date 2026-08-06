@@ -70,6 +70,76 @@ type GameSession struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
+type MultiGuess struct {
+	ID             string             `json:"id"`
+	RoundID        string             `json:"round_id"`
+	MemberID       string             `json:"member_id"`
+	Sequence       int32              `json:"sequence"`
+	GuessID        string             `json:"guess_id"`
+	Statuses       []byte             `json:"statuses"`
+	IsCorrect      bool               `json:"is_correct"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type MultiMatch struct {
+	ID             string             `json:"id"`
+	RoomID         string             `json:"room_id"`
+	MatchIndex     int32              `json:"match_index"`
+	CatalogVersion string             `json:"catalog_version"`
+	TargetWins     int32              `json:"target_wins"`
+	ScoreSlot1     int32              `json:"score_slot1"`
+	ScoreSlot2     int32              `json:"score_slot2"`
+	RoundCount     int32              `json:"round_count"`
+	Status         string             `json:"status"`
+	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+}
+
+type MultiMember struct {
+	ID           string             `json:"id"`
+	RoomID       string             `json:"room_id"`
+	Slot         int32              `json:"slot"`
+	DisplayName  string             `json:"display_name"`
+	TokenHash    string             `json:"token_hash"`
+	Status       string             `json:"status"`
+	Ready        bool               `json:"ready"`
+	RematchReady bool               `json:"rematch_ready"`
+	GraceUntil   pgtype.Timestamptz `json:"grace_until"`
+	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
+}
+
+type MultiRoom struct {
+	ID        string             `json:"id"`
+	Code      string             `json:"code"`
+	Format    string             `json:"format"`
+	Status    string             `json:"status"`
+	EventSeq  int64              `json:"event_seq"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+type MultiRound struct {
+	ID         string             `json:"id"`
+	MatchID    string             `json:"match_id"`
+	RoundIndex int32              `json:"round_index"`
+	AnswerID   string             `json:"answer_id"`
+	Status     string             `json:"status"`
+	WinnerSlot pgtype.Int4        `json:"winner_slot"`
+	StartsAt   pgtype.Timestamptz `json:"starts_at"`
+	Deadline   pgtype.Timestamptz `json:"deadline"`
+	EndedAt    pgtype.Timestamptz `json:"ended_at"`
+}
+
+type RoomEvent struct {
+	ID         int64              `json:"id"`
+	RoomID     string             `json:"room_id"`
+	Sequence   int64              `json:"sequence"`
+	Type       string             `json:"type"`
+	Payload    []byte             `json:"payload"`
+	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
+}
+
 type Work struct {
 	ID            string             `json:"id"`
 	TitleZh       string             `json:"title_zh"`
