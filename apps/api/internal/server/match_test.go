@@ -726,6 +726,46 @@ func TestMultiRestartTermination(t *testing.T) {
 	}
 }
 
+func TestMultiMetrics(t *testing.T) {
+	// 指标计数随事件/连接/猜测正确变化（进程内读取验证，08 §11.2）
+	before := multi.DefaultMetrics.Snapshot()
+	fixture := createMatchFixture(t)
+	startMatch(t, fixture)
+	answer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, answer, 1)[0]
+	if resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, wrong, "metrics-guess"); resp.StatusCode != http.StatusOK {
+		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
+	}
+	after := multi.DefaultMetrics.Snapshot()
+	events := after["eventsTotal"].(map[string]int64)
+	for _, typ := range []string{"room.updated", "match.started", "round.started", "round.opponent.guess"} {
+		if events[typ] <= before["eventsTotal"].(map[string]int64)[typ] {
+			t.Fatalf("events_total[%s] 未增长: %d", typ, events[typ])
+		}
+	}
+	latency, ok := after["guessLatency"].(map[string]time.Duration)
+	if !ok || latency["count"] == 0 {
+		t.Fatalf("guess_latency 未采样: %+v", after["guessLatency"])
+	}
+	rooms := after["roomsByStatus"].(map[string]int64)
+	if rooms["playing"] == 0 {
+		t.Fatalf("rooms{status=playing} 为 0: %+v", rooms)
+	}
+}
+
+func TestMultiMetricsForfeit(t *testing.T) {
+	fixture := createMatchFixture(t)
+	startMatch(t, fixture)
+	if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", fixture.hostToken, nil); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("leave: %d %s", resp.StatusCode, payload)
+	}
+	after := multi.DefaultMetrics.Snapshot()
+	forfeits := after["forfeitsTotal"].(map[string]int64)
+	if forfeits["forfeit"] == 0 {
+		t.Fatalf("forfeits_total{reason=forfeit} 为 0: %+v", forfeits)
+	}
+}
+
 func TestMultiRematch(t *testing.T) {
 	fixture := createMatchFixture(t)
 	startMatch(t, fixture)
