@@ -220,13 +220,15 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	}); err != nil {
 		return err
 	}
+	nextStarts := s.now().Add(s.cfg.Timing.Intermission)
 	if err := AppendEvent(ctx, q, match.RoomID, EventRoundEnded, RoundEndedEventPayload{
-		RoundID:    round.ID,
-		MatchIndex: int(match.MatchIndex),
-		RoundIndex: int(round.RoundIndex),
-		WinnerSlot: nil,
-		AnswerID:   round.AnswerID,
-		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		RoundID:      round.ID,
+		MatchIndex:   int(match.MatchIndex),
+		RoundIndex:   int(round.RoundIndex),
+		WinnerSlot:   nil,
+		AnswerID:     round.AnswerID,
+		Scores:       ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		NextStartsAt: &nextStarts,
 	}); err != nil {
 		return err
 	}

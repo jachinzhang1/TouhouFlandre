@@ -125,13 +125,14 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		}
 		answer := chars[payload.AnswerID]
 		return RoundEndedPayload{
-			MatchIndex: payload.MatchIndex,
-			RoundIndex: payload.RoundIndex,
-			Result:     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-			WinnerSlot: payload.WinnerSlot,
-			Answer:     AnswerView{ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL},
-			Boards:     hydrateBoards(guesses, chars, memberSlotByID),
-			Scores:     payload.Scores,
+			MatchIndex:     payload.MatchIndex,
+			RoundIndex:     payload.RoundIndex,
+			Result:         resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+			WinnerSlot:     payload.WinnerSlot,
+			Answer:         AnswerView{ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL},
+			Boards:         hydrateBoards(guesses, chars, memberSlotByID),
+			Scores:         payload.Scores,
+			NextStartsAt:   payload.NextStartsAt,
 		}, false, nil
 
 	case EventMatchEnded:

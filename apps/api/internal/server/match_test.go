@@ -510,6 +510,23 @@ func TestRoundEndedBoardsNotNull(t *testing.T) {
 	if slot1, ok := boards["slot1"].([]any); !ok || len(slot1) != 1 {
 		t.Fatalf("slot1 = %#v, want 1 条（我方猜测）", boards["slot1"])
 	}
+	// 弹窗倒计时：nextStartsAt = 本局 ended_at + INTERMISSION（服务端驱动，08 §局末交互）。
+	next, ok := ended.Payload["nextStartsAt"].(string)
+	if !ok {
+		t.Fatalf("nextStartsAt 缺失: %+v", ended.Payload)
+	}
+	nextTime, err := time.Parse(time.RFC3339Nano, next)
+	if err != nil {
+		t.Fatalf("nextStartsAt 解析失败: %v", err)
+	}
+	endedAt, err := time.Parse(time.RFC3339Nano, ended.OccurredAt.Format(time.RFC3339Nano))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// nextStartsAt = 事务内 now + INTERMISSION；occurredAt 为 DB 落库时刻，允许事务延迟。
+	if delta := nextTime.Sub(endedAt); delta < 0 || delta > 5*time.Second {
+		t.Fatalf("nextStartsAt - endedAt = %v, 应为 INTERMISSION 附近的小值", delta)
+	}
 }
 
 func TestMultiGuessTimeout(t *testing.T) {

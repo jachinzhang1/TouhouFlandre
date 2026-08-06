@@ -66,13 +66,15 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		}); err != nil {
 			return err
 		}
+		nextStarts := now.Add(timing.Intermission)
 		if err := AppendEvent(ctx, q, match.RoomID, EventRoundEnded, RoundEndedEventPayload{
-			RoundID:   round.ID,
-			MatchIndex: int(match.MatchIndex),
-			RoundIndex: int(round.RoundIndex),
-			WinnerSlot: nil,
-			AnswerID:   round.AnswerID,
-			Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+			RoundID:      round.ID,
+			MatchIndex:   int(match.MatchIndex),
+			RoundIndex:   int(round.RoundIndex),
+			WinnerSlot:   nil,
+			AnswerID:     round.AnswerID,
+			Scores:       ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+			NextStartsAt: &nextStarts,
 		}); err != nil {
 			return err
 		}

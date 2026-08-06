@@ -203,13 +203,14 @@ type RoundOpponentGuessPayload struct {
 
 // RoundEndedPayload round.ended：局结束（result 为观察者视角；揭示答案与双方完整棋盘）。
 type RoundEndedPayload struct {
-	MatchIndex  int          `json:"matchIndex"`
-	RoundIndex  int          `json:"roundIndex"`
-	Result      MatchResult  `json:"result"`
-	WinnerSlot  *int         `json:"winnerSlot"`
-	Answer      AnswerView   `json:"answer"`
-	Boards      BoardsView   `json:"boards"`
-	Scores      ScoresView   `json:"scores"`
+	MatchIndex   int          `json:"matchIndex"`
+	RoundIndex   int          `json:"roundIndex"`
+	Result       MatchResult  `json:"result"`
+	WinnerSlot   *int         `json:"winnerSlot"`
+	Answer       AnswerView   `json:"answer"`
+	Boards       BoardsView   `json:"boards"`
+	Scores       ScoresView   `json:"scores"`
+	NextStartsAt *time.Time   `json:"nextStartsAt,omitempty"`
 }
 
 // AnswerView 揭示的答案角色（名称/头像）。
@@ -285,6 +286,9 @@ type RoundEndedEventPayload struct {
 	WinnerSlot *int       `json:"winnerSlot"`
 	AnswerID   string     `json:"answerId"`
 	Scores     ScoresView `json:"scores"`
+	// NextStartsAt 下一局 startsAt = 本局 ended_at + INTERMISSION（08 §4.3/§4.7 弹窗倒计时，
+	// 服务端驱动；对局结束/无下一局时仍携带，客户端仅等待 round.started 期间使用）。
+	NextStartsAt *time.Time `json:"nextStartsAt,omitempty"`
 }
 
 // MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；

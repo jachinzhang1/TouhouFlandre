@@ -61,13 +61,15 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 			return err
 		}
 		scores := ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)}
+		nextStarts := now.Add(timing.Intermission)
 		if err := AppendEvent(ctx, q, member.RoomID, EventRoundEnded, RoundEndedEventPayload{
-			RoundID:   round.ID,
-			MatchIndex: int(match.MatchIndex),
-			RoundIndex: int(round.RoundIndex),
-			WinnerSlot: &opponentSlot,
-			AnswerID:   round.AnswerID,
-			Scores:     scores,
+			RoundID:      round.ID,
+			MatchIndex:   int(match.MatchIndex),
+			RoundIndex:   int(round.RoundIndex),
+			WinnerSlot:   &opponentSlot,
+			AnswerID:     round.AnswerID,
+			Scores:       scores,
+			NextStartsAt: &nextStarts,
 		}); err != nil {
 			return err
 		}

@@ -294,13 +294,15 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 			slot := roundEnd.WinnerSlot
 			roundWinnerSlot = &slot
 		}
+		nextStarts := s.now().Add(s.timing.Intermission)
 		if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundEnded, multi.RoundEndedEventPayload{
-			RoundID:    round.ID,
-			MatchIndex: int(match.MatchIndex),
-			RoundIndex: int(round.RoundIndex),
-			WinnerSlot: roundWinnerSlot,
-			AnswerID:   round.AnswerID,
-			Scores:     multi.ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
+			RoundID:      round.ID,
+			MatchIndex:   int(match.MatchIndex),
+			RoundIndex:   int(round.RoundIndex),
+			WinnerSlot:   roundWinnerSlot,
+			AnswerID:     round.AnswerID,
+			Scores:       multi.ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
+			NextStartsAt: &nextStarts,
 		}); err != nil {
 			return nil, internalError(err)
 		}

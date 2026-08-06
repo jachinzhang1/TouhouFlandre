@@ -228,13 +228,14 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 			}
 			answer := chars[payload.AnswerID]
 			wire := map[string]any{
-				"matchIndex": payload.MatchIndex,
-				"roundIndex": payload.RoundIndex,
-				"result":     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-				"winnerSlot": payload.WinnerSlot,
-				"answer":     map[string]any{"id": answer.ID, "name": answer.Names.ZhHans, "avatarUrl": answer.AvatarURL},
-				"boards":     hydrateBoards(guesses, chars, memberSlotByID),
-				"scores":     map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
+				"matchIndex":     payload.MatchIndex,
+				"roundIndex":     payload.RoundIndex,
+				"result":         resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+				"winnerSlot":     payload.WinnerSlot,
+				"answer":         map[string]any{"id": answer.ID, "name": answer.Names.ZhHans, "avatarUrl": answer.AvatarURL},
+				"boards":         hydrateBoards(guesses, chars, memberSlotByID),
+				"scores":         map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
+				"nextStartsAt":   payload.NextStartsAt,
 			}
 			out = append(out, openapi.RoomEventEnvelope{
 				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
