@@ -11,9 +11,11 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
@@ -79,8 +81,49 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		return nil, nil
 	}
 
+	// 连接生效：成员 connected（清宽限）+ room.updated 事件广播（对端可见在线，08 §4.6）
+	if err := s.markMemberConnected(ctx, request.RoomId, member.ID); err != nil {
+		return nil, internalError(err)
+	}
+
 	// 注册/重放/实时流（阻塞直到断开；返回 nil 由 strict handler 正常结束）
 	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastSequence)
 	conn.Serve()
 	return nil, nil
+}
+
+// markMemberConnected 成员连接状态落地 + room.updated 事件（事务内取号入库）。
+func (s *Server) markMemberConnected(ctx context.Context, roomID, memberID string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return internalError(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
+		ID:         memberID,
+		Status:     string(multi.MemberStatusConnected),
+		GraceUntil: pgtype.Timestamptz{},
+	}); err != nil {
+		return internalError(err)
+	}
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		return internalError(err)
+	}
+	members, err := q.ListMembers(ctx, roomID)
+	if err != nil {
+		return internalError(err)
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
+		Format:  multi.RoomFormat(room.Format),
+		Members: multi.MemberViews(members),
+	}); err != nil {
+		return internalError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return internalError(err)
+	}
+	s.publish(roomID)
+	return nil
 }

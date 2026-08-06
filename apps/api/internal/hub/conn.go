@@ -255,5 +255,5 @@ func (c *Conn) closeQuietly() {
 func (c *Conn) cleanup() {
 	c.closeQuietly()
 	c.hub.Unregister(c)
-	c.hub.markDisconnected(c.member.ID)
+	c.hub.markDisconnected(c.member.ID, c.roomID)
 }

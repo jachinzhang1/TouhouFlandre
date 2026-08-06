@@ -44,18 +44,57 @@ func New(pool *pgxpool.Pool, grace time.Duration) *Hub {
 	}
 }
 
-// markDisconnected 连接断开：成员置 disconnected + grace_until（08 §4.6；宽限逾期由 sweeper 判负）。
-func (h *Hub) markDisconnected(memberID string) {
+// markDisconnected 连接断开：成员置 disconnected + grace_until + room.updated 事件
+// （对端可见离线，08 §4.6；宽限逾期由 sweeper 判负）。
+func (h *Hub) markDisconnected(memberID, roomID string) {
+	// 替换场景：新连接已注册（同成员），旧连接退出时不得标记断开
+	h.mu.Lock()
+	rh := h.rooms[roomID]
+	if rh != nil && rh.conns[memberID] != nil {
+		h.mu.Unlock()
+		return
+	}
+	h.mu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	_, err := h.q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
+	tx, err := h.pool.Begin(ctx)
+	if err != nil {
+		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
+	}
+	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
 		ID:         memberID,
 		Status:     string(multi.MemberStatusDisconnected),
 		GraceUntil: pgtype.Timestamptz{Time: time.Now().Add(h.grace), Valid: true},
-	})
+	}); err != nil {
+		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
+	}
+	members, err := q.ListMembers(ctx, roomID)
 	if err != nil {
 		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
 	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
+		Format:  multi.RoomFormat(room.Format),
+		Members: multi.MemberViews(members),
+	}); err != nil {
+		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("hub: mark member %s disconnected: %v", memberID, err)
+		return
+	}
+	h.Publish(roomID)
 }
 
 // Publish 读取房间新事件（lastSeq 之后）并按观察者投影扇出（08 §8.3）。
