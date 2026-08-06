@@ -1,7 +1,7 @@
 # Phase 3 开发计划 — 对局引擎
 
 > 依据：[`08_multiplayer_mode_design.md`](../08_multiplayer_mode_design.md) §13 M3、§4.2（赛制与胜场）、§4.3（单局流程）、§4.4（单局结束判定）、§4.6（对局中离开/断线/重启）、§6.1（playing/finished 段）、§6.3（单局状态）、§9.2（猜测事务与锁序纪律）
-> 状态：📋 待执行（执行记录见 §10）
+> 状态：✅ 已完成（执行记录见 §10）
 > 影响范围：`apps/api/internal/multi/`（对局/猜测/结算纯逻辑）、`apps/api/internal/handler/`（ready 双就绪、guess、rematch、对局中 leave）、`apps/api/internal/server/`、`internal/game/`（如需扩展答案池选取）、集成测试
 > 原则：**对局正确性优先于实时性**。本阶段所有对局推进都是事务+事件入库，不依赖 WS 推送；Phase 4 才把事件广播出去。
 
@@ -251,6 +251,38 @@ COMMIT → 提交后 hub 才广播（本阶段仅入库）
 
 ---
 
-## 10. 执行记录
+## 10. 执行记录（2026-08-06，分支 feature/multipalyer_mode_backend）
 
-> 状态：待执行。完成后按仓库惯例记录完成情况、真实问题与修复、与计划的偏差（参照 `migration_to_go/phase01.md` §10 格式）。
+### 完成情况
+
+- T1-T7 全部完成；总验收 5 条全部满足：双 ready 开局、猜测全分支（竞速/平局/超时/迟到分流）、比分与 `match.ended` 正确；锁序三条路径均为 局→场→房间（集成测试覆盖并发路径）；sweeper 覆盖 countdown/超时/间歇/宽限/展示期/上限；rematch 新场行语义正确（match_index 递增、版本重绑、比分清零）；事件以规范形态入库且逐观察者投影（列置换/result 推导/仅对手过滤）。
+- 全量回归：`cd apps/api && go vet/build/test ./...` ✅（multi 单元 + server 集成 25+ 用例）、`pnpm test` ✅、`pnpm typecheck` ✅、`task gen` 零 diff ✅、`lint:openapi`/`check:openapi-refs`/`check:ws-protocol` ✅。
+
+### 执行中发现的真实问题与修复
+
+| 问题 | 修复 |
+|---|---|
+| **sqlc 参数类型推断错误**：`CreateRound` 的上限检查 `round_count < $2` 被命名为 `RoundCount`（语义混淆）、`ListRoundsAwaitingAdvance` 的 `ended_at + $1` 被推断为 timestamptz（运行时会报 `operator does not exist: timestamptz + timestamptz`） | 用 `sqlc.arg(max_rounds)` 显式命名；间歇参数加 `::interval` 显式类型，生成 `pgtype.Interval` 参数 |
+| **上限公式错误（设计陷阱）**：Phase 1 的 CreateRound 写成 `round_count < target_wins * factor`（bo3 → 6），而 08 §4.2 是 `3 × N`（bo3 → 9，N = 赛制数字） | `multi.MaxRounds = factor × FormatNumber(format)`；cap 以参数传入（Go 侧按赛制计算） |
+| **猜测事务 4b 超时结算被回滚**：handler 在超时结算后返回错误，deferred `tx.Rollback` 丢弃了平局结算 → 局停留在 playing | 4b 分支先 `tx.Commit` 再返回 `ROUND_NOT_ACTIVE`（谁先发现超时谁结算，状态一致） |
+| **规范事件 payload 缺 roundID**：列置换种子与棋盘水合都需要 round id，wire 形状（protocol.yaml）不含它 | 规范形态（入库）的 `RoundGuessPayload`/`RoundEndedEventPayload` 增加 `roundId`，投影时剥离（与 memberSlot 同处理）；三路径投影共用 `ColumnPermutation(roundID, observerID)` |
+| **弃赛后成员令牌撤销**（§6.2 left 拒绝鉴权）：测试原先用弃赛者 token 拉快照 → 401 | 测试改用对方 token 观察结果；弃赛者 token 断言 401（符合设计） |
+| **guessing 事务内对手计数**：需要对手成员 id | 锁局后 `ListMembers` 找对手；由局行锁串行化，无双写风险 |
+| **双 SweepOnce 推进**：间歇后开新局（countdown）与倒计时到 playing 是同一轮 sweep 内的两个步骤（advance 在 startCountdown 之后），测试需两次 sweep | `advanceRounds` 测试辅助（sleep + 两次 SweepOnce） |
+
+### 与计划的偏差
+
+- **快照 round/match 视图与事件投影提前落地**（计划归 Phase 4 的「投影函数」在 Phase 3 即实现 `multi.ColumnPermutation`/`HydrateGuessResult` 与 handler 快照投影）：因为快照端点（Phase 2 交付物）在对局数据产生后必须呈现 round/match，且集成测试需要断言匿名矩阵语义；Phase 4 hub 直接复用同一投影函数，三路径一致。
+- **`GetCurrentRoundForUpdateByRoom`**（新查询）：按房间取当前场最新局并锁局行——猜测/弃赛/结算的统一入口，避免「先锁场再锁局」的顺序违约。
+- **`ForfeitMemberMatch` 放 multi 包**：REST leave 与 sweeper 宽限逾期共用同一实现（锁序 局→场→房间），handler 只做错误映射；弃赛路径在持锁前先预检房间状态，避免外层房间锁与内层事务房间锁死锁。
+- **`TerminateActiveMatches` 幂等**：`ListActiveMatches` 按 `match.status='playing'` 过滤 + 锁场后复核，重启后再重启不重复终止（集成测试断言事件数不变）。
+- **`math/rand` → `math/rand/v2`**（handler rng）：`DrawAnswer` 需要 v2 的 `*rand.Rand`；顺带落实仓库规则，单人路径随机选取改用 `IntN`。
+- **事件顺序**：每轮 sweep 顺序 = startCountdown → settleTimeout → advance → grace → lobby TTL → finished 展示期 → closed 清理。
+- 未实现 WS 推送（Phase 4）；rematch 的「重连后触发开局检查」在 Phase 4 接 WS 重连时补齐（ready/rematch 命令已覆盖正常路径）。
+
+### Phase 4 输入（明确交接）
+
+- 事件以规范形态入库（含 `roundId`/`memberSlot` 的内部字段），`room_event` 是唯一广播数据源；投影函数（列置换/匿名矩阵/棋盘水合/result 推导/仅对手过滤）已在 `multi` 与 handler 快照层实现，hub 直接复用。
+- `GetRoomSnapshotState` 快照数据源已接入（jsonb_agg 单查询 + Go 水合）。
+- 断线状态（`disconnected` + `grace_until`）由 Phase 4 hub 写入；sweeper 宽限逾期判负（`ForfeitMemberMatch reason=disconnect`）已就绪。
+
