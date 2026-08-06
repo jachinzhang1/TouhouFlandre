@@ -1,7 +1,7 @@
 # Phase 4 开发计划 — 实时通道（hub 与事件广播）
 
 > 依据：[`08_multiplayer_mode_design.md`](../08_multiplayer_mode_design.md) §13 M4、§8（WebSocket 协议全节）、§4.5（逐观察者投影与列置换）、§4.6（断线/重连/服务重启）、§11.2（优雅排空）
-> 状态：📋 待执行（执行记录见 §10）
+> 状态：✅ 已完成（执行记录见 §10）
 > 影响范围：`apps/api/internal/hub/`（新包：连接管理、投影、扇出）、`apps/api/internal/server/`（WS 升级路由）、`apps/api/cmd/server/`（排空顺序）、`apps/api/internal/multi/`（投影纯函数）、集成测试
 > 原则：**事件先入库后广播**（07 §7.2）；Go 内存只保存活动连接与热点投影，不是房间状态真实来源（07 §7.1）。
 
@@ -228,6 +228,37 @@ hub.Publish(roomID, event) ──► 逐连接投影（project.go）──► �
 
 ---
 
-## 10. 执行记录
+## 10. 执行记录（2026-08-06，分支 feature/multipalyer_mode_backend）
 
-> 状态：待执行。完成后按仓库惯例记录完成情况、真实问题与修复、与计划的偏差（参照 `migration_to_go/phase01.md` §10 格式）。
+### 完成情况
+
+- T1-T6 全部完成；总验收 5 条全部满足：WS 升级/鉴权/单连接替换/心跳/慢消费者/1013/1012 全链路可测（集成测试 8 用例）；事件先入库后广播成立、`round.opponent.guess` 逐观察者列置换与快照/重放三路径一致（同一 `multi.ProjectEvent`）；重放与补齐（断线重连无缺口、缺口拉快照契约已定）；优雅排空顺序落地（终止对局 → 1012 → 停 sweeper → shutdown）；单人路径与 Phase 2/3 行为无回归。
+- 全量回归：`cd apps/api && go vet/build/test ./...` ✅（hub 集成 8 用例 + 前阶段全部）、`pnpm test` ✅、`pnpm typecheck` ✅、`task gen` 零 diff ✅、`lint:openapi`/`check:ws-protocol` ✅。
+- coder/websocket 由 `// indirect` 转为直接依赖（go mod tidy）。
+
+### 执行中发现的真实问题与修复
+
+| 问题 | 修复 |
+|---|---|
+| **strict handler 只有 `context.Context`，无 echo.Context**：WS 升级需要 ResponseWriter/Request（hijack），ssi 方法拿不到 | RoomGuardMiddleware 对 `RoomsConnectWs` 把 echo.Context 注入请求上下文；ssi 方法取出后 `websocket.Accept` + 首帧 hello + 鉴权，随后 `conn.Serve()` 阻塞直到断开，返回 `(nil, nil)`（strict handler 对 nil 响应不写 101 头，避免 hijack 后写头报错） |
+| **coder/websocket Accept 对「未请求子协议」不拒绝**：客户端不带 `Sec-WebSocket-Protocol` 时升级成功，违背「协议版本协商，不符拒绝」 | Accept 后校验 `ws.Subprotocol() == touhouflandre-multi.v1`，不符以策略违规关闭（升级请求本身成功，读侧收到 close） |
+| **coder/websocket 无 per-read deadline API**：`SetReadDeadline` 不存在；「读超时 60s」需换实现 | 死亡连接检测走心跳：writeLoop 每 30s `Ping`（10s 写超时），pong 缺失 → 关闭连接；`Read` 阻塞由连接关闭解除（实现细节偏离设计字面，语义等价：死连接 ≤40s 内被清除） |
+| **replaced 帧竞态**：直写 replaced 帧与 writeLoop 并发写乱序；「队列排空后关闭」的轮询方案与 in-flight 写竞态（len==0 误判 → CloseNow 截断帧） | replaced 帧入队（FIFO，保证最后）+ `afterReplaced` 原子标志；writeLoop 写出后见队列为空即自行关闭（08 §8.1「入队 replaced 关闭帧后断开」语义） |
+| **事件广播三路径不一致风险**：Phase 3 快照投影（handler）与 hub 广播各写一套 | 投影收敛为 `multi.ProjectEvent`（快照/重放/实时共用；列置换种子 = `(roundID, observerMemberID)`，Phase 3 快照同源）；handler 快照层改为调用同一函数 |
+| **sweeper 事件未广播**：对局推进（round.playing 等）由 sweeper 写事件，测试期发现连接收不到 | `multi.EventBroadcaster` 接口（`Publish(roomID)`，hub 实现），SweeperConfig 注入；main.go 与 fast 测试 server 共享同一 hub 实例（handler 与 sweeper 单实例） |
+| **广播水位竞态**：新连接注册时若房间已推进，会漏推注册间隙事件 | Register 把水位校准到当前 `event_seq`；新连接的 hello 重放覆盖 `lastSequence+1` 起全部事件（含水位前的），实时流只推水位后的——客户端仍按 §8.4 拉快照兜底 |
+
+### 与计划的偏差
+
+- **无独立 hub 调度 goroutine**：`hub.Publish` 由 REST/sweeper 在事务提交后同步调用（读库 + 扇出 ≤5s 超时）；慢消费者不阻塞（非阻塞入队 + 1013），符合「先入库后广播」且省去生命周期管理。
+- **`Publish(roomID string)` 签名**（接口与实现均为单参数）：无 ctx（内部 `context.WithTimeout` 兜底），避免请求 ctx 取消时广播中断。
+- **读超时实现**：见上表（心跳 Ping 检测替代 per-read deadline）。
+- **`hub.New(pool, grace)`**：宽限时长由调用方注入（Phase 6 接 `MULTI_DISCONNECT_GRACE`）。
+- WS 升级校验的 Origin/子协议不符 → 400（OpenAPI 契约 400 分支），升级成功后的协议违规 → 连接关闭（无 REST 响应）。
+
+### Phase 5 输入（明确交接）
+
+- WS 地址推导：同源 `/api/rooms/{roomId}/ws`（next.config.ts `ws: true` 代理）或 `NEXT_PUBLIC_API_BASE_URL` http→ws；升级需要 Origin ∈ WEB_ORIGINS + 子协议 `touhouflandre-multi.v1`。
+- 首帧 `hello{token, lastSequence}` → `hello-ok{roomId, nextSequence}` → 重放 → 实时流；客户端只发 `ack{lastSequence}`。
+- 事件类型与投影语义已稳定（protocol.yaml + TS 类型在 packages/shared）；`round.opponent.guess` 只达对手且列置换；断线后成员 `disconnected`（宽限 60s），重连带 `lastSequence` 补缺口。
+
