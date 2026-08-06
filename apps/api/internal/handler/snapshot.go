@@ -16,12 +16,25 @@ import (
 )
 
 // snapshotState GetRoomSnapshotState 的解析形态（键为 jsonb_build_object 的键名）。
+// 注意：to_jsonb 把 multi_guess.statuses（jsonb 数组）渲染为 JSON 数组，不能直接
+// unmarshal 进 repo.MultiGuess.Statuses（[]byte）——用快照专用形态承接。
 type snapshotState struct {
 	Room    repo.MultiRoom     `json:"room"`
 	Members []repo.MultiMember `json:"members"`
 	Match   *repo.MultiMatch   `json:"match"`
 	Round   *repo.MultiRound   `json:"round"`
-	Guesses []repo.MultiGuess  `json:"guesses"`
+	Guesses []snapshotGuess    `json:"guesses"`
+}
+
+// snapshotGuess 快照猜测行（statuses 为数组形态）。
+type snapshotGuess struct {
+	ID        string   `json:"id"`
+	RoundID   string   `json:"round_id"`
+	MemberID  string   `json:"member_id"`
+	Sequence  int32    `json:"sequence"`
+	GuessID   string   `json:"guess_id"`
+	Statuses  []string `json:"statuses"`
+	IsCorrect bool     `json:"is_correct"`
 }
 
 // RoomsGetSnapshot 房间快照与事件重放（成员令牌；中间件已鉴权）。
@@ -122,10 +135,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	var self []openapi.GuessResult
 	var opponentRows []openapi.OpponentRow
 	for _, guess := range state.Guesses {
-		var statuses []string
-		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
-			return nil, internalError(err)
-		}
+		statuses := guess.Statuses
 		guessChar, ok := byID[guess.GuessID]
 		if !ok {
 			return nil, internalError(errors.New("guess character missing from snapshot"))

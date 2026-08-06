@@ -455,6 +455,27 @@ func TestMultiGuessLimitAndDraw(t *testing.T) {
 	}
 }
 
+func TestMultiSnapshotWithGuesses(t *testing.T) {
+	// 回归：局中有猜测时快照端点必须 200（statuses 数组形态解码，曾 500）
+	fixture := createMatchFixture(t)
+	startMatch(t, fixture)
+	answer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, answer, 1)[0]
+	if resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, wrong, "snap-guess"); resp.StatusCode != http.StatusOK {
+		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
+	}
+	snap := startMatchSnapshot(t, fixture)
+	if snap.Round == nil {
+		t.Fatal("round view missing from snapshot")
+	}
+	if len(snap.Round.Self.Guesses) != 1 {
+		t.Fatalf("self guesses = %d, want 1", len(snap.Round.Self.Guesses))
+	}
+	if len(snap.Round.Self.Guesses[0].Feedback) != 6 {
+		t.Fatalf("feedback fields = %d, want 6", len(snap.Round.Self.Guesses[0].Feedback))
+	}
+}
+
 func TestMultiGuessTimeout(t *testing.T) {
 	fixture := createMatchFixture(t)
 	startMatch(t, fixture)
