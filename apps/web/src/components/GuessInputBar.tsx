@@ -3,7 +3,7 @@
 // 底部固定搜索条（对局中）：输入框 fixed 于页面底部、水平居中；
 // 建议下拉向上展开（不遮挡棋盘）；猜测随建议点击提交（与单人一致）。
 import { Search, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
 
@@ -29,6 +29,33 @@ export function GuessInputBar({
   const showSuggestions =
     query.trim().length > 0 && !loading && filtered.length > 0;
 
+  // 键盘指针：默认指向第一项；查询/结果变化时回到第一项
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  useEffect(() => {
+    setHighlightIndex(0);
+  }, [query, results]);
+
+  const submit = (guessId: string) => {
+    onGuess(guessId);
+    setQuery("");
+    setHighlightIndex(0);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || disabled) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setHighlightIndex((i) => (i + 1) % filtered.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightIndex((i) => (i - 1 + filtered.length) % filtered.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const item = filtered[highlightIndex];
+      if (item) submit(item.id);
+    }
+  };
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur">
       <div className="relative mx-auto w-full max-w-[560px]">
@@ -40,8 +67,12 @@ export function GuessInputBar({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜索角色并选择提交……"
+          onKeyDown={handleKeyDown}
+          placeholder="搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
           aria-label="搜索角色"
+          aria-activedescendant={showSuggestions ? `suggestion-${highlightIndex}` : undefined}
+          aria-expanded={showSuggestions}
+          role="combobox"
           className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion"
         />
         {query && (
@@ -57,16 +88,17 @@ export function GuessInputBar({
         {error && <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>}
         {showSuggestions && (
           <ul className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
-            {filtered.map((result) => (
+            {filtered.map((result, index) => (
               <li key={result.id}>
                 <button
                   type="button"
+                  id={`suggestion-${index}`}
                   disabled={disabled}
-                  onClick={() => {
-                    onGuess(result.id);
-                    setQuery("");
-                  }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.82rem] hover:bg-vermilion-soft disabled:opacity-50"
+                  onClick={() => submit(result.id)}
+                  onMouseEnter={() => setHighlightIndex(index)}
+                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.82rem] disabled:opacity-50 ${
+                    highlightIndex === index ? "bg-vermilion-soft" : "hover:bg-vermilion-soft"
+                  }`}
                 >
                   <CharacterAvatar
                     avatarUrl={result.avatarUrl}
