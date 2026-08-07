@@ -5142,5 +5142,1394 @@
     "sourceRefs": [
       "https://touhou.fandom.com/wiki/Nina_Watari"
     ]
+  },
+  {
+    "id": "renko_usami",
+    "avatarUrl": "/characters/0003-宇佐见莲子.png",
+    "names": {
+      "zhHans": "宇佐见莲子",
+      "zhHant": "宇佐見蓮子",
+      "ja": "宇佐見蓮子",
+      "en": "Renko Usami",
+      "romaji": "Usami Renko",
+      "aliases": [
+        "莲子",
+        "ysjlz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "cd02_gfc"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "看星星知时间、看月亮知地点程度的能力",
+    "abilityTags": [
+      "时间",
+      "位置"
+    ],
+    "affiliations": [
+      "秘封俱乐部"
+    ],
+    "locations": [
+      "外界",
+      "京都"
+    ],
+    "roles": [
+      "秘封俱乐部",
+      "音乐CD角色"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Renko_Usami"
+    ]
+  },
+  {
+    "id": "maribel_hearn",
+    "avatarUrl": "/characters/0004-梅莉.png",
+    "names": {
+      "zhHans": "梅莉",
+      "zhHant": "梅莉",
+      "ja": "マエリベリー・ハーン",
+      "en": "Maribel Hearn",
+      "romaji": "Maeriberii Haan",
+      "aliases": [
+        "玛艾露贝莉·赫恩",
+        "Merry",
+        "ml"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "cd02_gfc"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "看见结界程度的能力",
+    "abilityTags": [
+      "结界",
+      "感知"
+    ],
+    "affiliations": [
+      "秘封俱乐部"
+    ],
+    "locations": [
+      "外界",
+      "京都"
+    ],
+    "roles": [
+      "秘封俱乐部",
+      "音乐CD角色"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Maribel_Hearn"
+    ]
+  },
+  {
+    "id": "rinnosuke_morichika",
+    "avatarUrl": "/characters/0005-森近霖之助.png",
+    "names": {
+      "zhHans": "森近霖之助",
+      "zhHant": "森近霖之助",
+      "ja": "森近霖之助",
+      "en": "Rinnosuke Morichika",
+      "romaji": "Morichika Rinnosuke",
+      "aliases": [
+        "霖之助",
+        "香霖",
+        "店主",
+        "sjlzz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "cola"
+    },
+    "species": [
+      "半人半妖"
+    ],
+    "abilityDisplay": "知道道具名称和用途程度的能力",
+    "abilityTags": [
+      "道具",
+      "鉴定"
+    ],
+    "affiliations": [
+      "香霖堂"
+    ],
+    "locations": [
+      "香霖堂",
+      "幻想乡"
+    ],
+    "roles": [
+      "店主",
+      "书籍角色"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Rinnosuke_Morichika"
+    ]
+  },
+  {
+    "id": "tokiko",
+    "avatarUrl": "/characters/0006-朱鹭子.png",
+    "names": {
+      "zhHans": "朱鹭子",
+      "zhHant": "朱鷺子",
+      "ja": "朱鷺子",
+      "en": "Tokiko",
+      "romaji": "Tokiko",
+      "aliases": [
+        "读书妖怪",
+        "书妖",
+        "zlz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "cola"
+    },
+    "species": [
+      "妖怪"
+    ],
+    "abilityDisplay": "能力不明",
+    "abilityTags": [
+      "未知"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Tokiko"
+    ]
+  },
+  {
+    "id": "sunny_milk",
+    "avatarUrl": "/characters/0007-桑尼米尔克.png",
+    "names": {
+      "zhHans": "桑尼米尔克",
+      "zhHant": "桑尼米爾克",
+      "ja": "サニーミルク",
+      "en": "Sunny Milk",
+      "romaji": "Sanii Miruku",
+      "aliases": [
+        "桑尼",
+        "snmek"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "eolnd"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "折射光线程度的能力",
+    "abilityTags": [
+      "光",
+      "折射"
+    ],
+    "affiliations": [
+      "光之三妖精"
+    ],
+    "locations": [
+      "魔法森林",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sunny_Milk"
+    ]
+  },
+  {
+    "id": "luna_child",
+    "avatarUrl": "/characters/0008-露娜切露德.png",
+    "names": {
+      "zhHans": "露娜切露德",
+      "zhHant": "露娜切露德",
+      "ja": "ルナチャイルド",
+      "en": "Luna Child",
+      "romaji": "Runa Chairudo",
+      "aliases": [
+        "露娜",
+        "lnqld"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "eolnd"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "消除周围声音程度的能力",
+    "abilityTags": [
+      "声音",
+      "静音"
+    ],
+    "affiliations": [
+      "光之三妖精"
+    ],
+    "locations": [
+      "魔法森林",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "Boss"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Luna_Child"
+    ]
+  },
+  {
+    "id": "star_sapphire",
+    "avatarUrl": "/characters/0009-斯塔萨菲雅.png",
+    "names": {
+      "zhHans": "斯塔萨菲雅",
+      "zhHant": "斯塔薩菲雅",
+      "ja": "スターサファイア",
+      "en": "Star Sapphire",
+      "romaji": "Sutaa Safaia",
+      "aliases": [
+        "斯塔",
+        "stsfy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "eolnd"
+    },
+    "species": [
+      "妖精"
+    ],
+    "abilityDisplay": "探测活动物体程度的能力",
+    "abilityTags": [
+      "探测",
+      "生命"
+    ],
+    "affiliations": [
+      "光之三妖精"
+    ],
+    "locations": [
+      "魔法森林",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "Boss"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Star_Sapphire"
+    ]
+  },
+  {
+    "id": "hieda_no_akyuu",
+    "avatarUrl": "/characters/0011-稗田阿求.png",
+    "names": {
+      "zhHans": "稗田阿求",
+      "zhHant": "稗田阿求",
+      "ja": "稗田阿求",
+      "en": "Hieda no Akyuu",
+      "romaji": "Hieda no Akyuu",
+      "aliases": [
+        "阿求",
+        "幻想乡缘起",
+        "bd aq"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "pmiss"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "一度见过就不会忘记程度的能力",
+    "abilityTags": [
+      "记忆",
+      "记录"
+    ],
+    "affiliations": [
+      "稗田家"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "记录者"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hieda_no_Akyuu"
+    ]
+  },
+  {
+    "id": "watatsuki_no_toyohime",
+    "avatarUrl": "/characters/0012-绵月丰姬.png",
+    "names": {
+      "zhHans": "绵月丰姬",
+      "zhHant": "綿月豐姬",
+      "ja": "綿月豊姫",
+      "en": "Watatsuki no Toyohime",
+      "romaji": "Watatsuki no Toyohime",
+      "aliases": [
+        "丰姬",
+        "myfj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "ssib"
+    },
+    "species": [
+      "月之民"
+    ],
+    "abilityDisplay": "连结海与山程度的能力",
+    "abilityTags": [
+      "空间",
+      "海山"
+    ],
+    "affiliations": [
+      "月都"
+    ],
+    "locations": [
+      "月都",
+      "月之都"
+    ],
+    "roles": [
+      "书籍角色",
+      "月之公主"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Watatsuki_no_Toyohime"
+    ]
+  },
+  {
+    "id": "watatsuki_no_yorihime",
+    "avatarUrl": "/characters/0013-绵月依姬.png",
+    "names": {
+      "zhHans": "绵月依姬",
+      "zhHant": "綿月依姬",
+      "ja": "綿月依姫",
+      "en": "Watatsuki no Yorihime",
+      "romaji": "Watatsuki no Yorihime",
+      "aliases": [
+        "依姬",
+        "myyj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "ssib"
+    },
+    "species": [
+      "月之民"
+    ],
+    "abilityDisplay": "召唤神灵程度的能力",
+    "abilityTags": [
+      "神灵",
+      "召唤"
+    ],
+    "affiliations": [
+      "月都"
+    ],
+    "locations": [
+      "月都",
+      "月之都"
+    ],
+    "roles": [
+      "书籍角色",
+      "月之公主"
+    ],
+    "hairColors": [
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Watatsuki_no_Yorihime"
+    ]
+  },
+  {
+    "id": "reisen_ssib",
+    "avatarUrl": "/characters/0014-Reisen.png",
+    "names": {
+      "zhHans": "Reisen",
+      "zhHant": "Reisen",
+      "ja": "レイセン",
+      "en": "Reisen",
+      "romaji": "Reisen",
+      "aliases": [
+        "铃仙二号",
+        "月兔Reisen",
+        "reisen2"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "ssib"
+    },
+    "species": [
+      "月兔"
+    ],
+    "abilityDisplay": "能力不明",
+    "abilityTags": [
+      "未知"
+    ],
+    "affiliations": [
+      "月都",
+      "绵月姐妹"
+    ],
+    "locations": [
+      "月都",
+      "月之都"
+    ],
+    "roles": [
+      "书籍角色",
+      "月兔"
+    ],
+    "hairColors": [
+      "purple"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Reisen_(Silent_Sinner_in_Blue)"
+    ]
+  },
+  {
+    "id": "kasen_ibaraki",
+    "avatarUrl": "/characters/0018-茨木华扇.png",
+    "names": {
+      "zhHans": "茨木华扇",
+      "zhHant": "茨木華扇",
+      "ja": "茨木華扇",
+      "en": "Kasen Ibaraki",
+      "romaji": "Ibaraki Kasen",
+      "aliases": [
+        "华扇",
+        "片臂有角的仙人",
+        "cmhs"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "wahh"
+    },
+    "species": [
+      "仙人",
+      "鬼"
+    ],
+    "abilityDisplay": "引导动物程度的能力",
+    "abilityTags": [
+      "动物",
+      "引导"
+    ],
+    "affiliations": [
+      "妖怪之山"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "仙人"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kasen_Ibaraki"
+    ]
+  },
+  {
+    "id": "shadow_kasen",
+    "avatarUrl": "/characters/0019-影华扇.png",
+    "names": {
+      "zhHans": "影华扇",
+      "zhHant": "影華扇",
+      "ja": "影華扇",
+      "en": "Shadow Kasen",
+      "romaji": "Kage Kasen",
+      "aliases": [
+        "华扇的右臂",
+        "茨华仙右臂",
+        "yhs"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "wahh"
+    },
+    "species": [
+      "鬼"
+    ],
+    "abilityDisplay": "拥有怪力程度的能力",
+    "abilityTags": [
+      "怪力",
+      "鬼力"
+    ],
+    "affiliations": [
+      "茨木华扇"
+    ],
+    "locations": [
+      "地狱"
+    ],
+    "roles": [
+      "书籍角色",
+      "形态"
+    ],
+    "hairColors": [
+      "pink",
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": false,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Ibaraki-douji%27s_Arm"
+    ]
+  },
+  {
+    "id": "oni_kasen",
+    "avatarUrl": "/characters/0020-鬼华扇.png",
+    "names": {
+      "zhHans": "鬼华扇",
+      "zhHant": "鬼華扇",
+      "ja": "鬼華扇",
+      "en": "Oni Kasen",
+      "romaji": "Oni Kasen",
+      "aliases": [
+        "鬼形态华扇",
+        "茨木童子之臂",
+        "ghs"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "wahh"
+    },
+    "species": [
+      "鬼"
+    ],
+    "abilityDisplay": "使用鬼之力程度的能力",
+    "abilityTags": [
+      "鬼力"
+    ],
+    "affiliations": [
+      "茨木华扇"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "形态"
+    ],
+    "hairColors": [
+      "pink",
+      "red"
+    ],
+    "playable": false,
+    "enabledAsAnswer": false,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kasen_Ibaraki"
+    ]
+  },
+  {
+    "id": "kosuzu_motoori",
+    "avatarUrl": "/characters/0021-本居小铃.png",
+    "names": {
+      "zhHans": "本居小铃",
+      "zhHant": "本居小鈴",
+      "ja": "本居小鈴",
+      "en": "Kosuzu Motoori",
+      "romaji": "Motoori Kosuzu",
+      "aliases": [
+        "小铃",
+        "铃奈庵",
+        "bjxl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "fs"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "读懂任何文字程度的能力",
+    "abilityTags": [
+      "文字",
+      "阅读"
+    ],
+    "affiliations": [
+      "铃奈庵"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "店员"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Kosuzu_Motoori"
+    ]
+  },
+  {
+    "id": "mizuchi_miyadeguchi",
+    "avatarUrl": "/characters/0022-宫出口瑞灵.png",
+    "names": {
+      "zhHans": "宫出口瑞灵",
+      "zhHant": "宮出口瑞靈",
+      "ja": "宮出口瑞霊",
+      "en": "Mizuchi Miyadeguchi",
+      "romaji": "Miyadeguchi Mizuchi",
+      "aliases": [
+        "瑞灵",
+        "怨灵",
+        "gckrl"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "cds"
+    },
+    "species": [
+      "怨灵"
+    ],
+    "abilityDisplay": "夺取身心程度的能力",
+    "abilityTags": [
+      "夺取身心",
+      "怨灵"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "异变黑幕"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Mizuchi_Miyadeguchi"
+    ]
+  },
+  {
+    "id": "miyoi_okunoda",
+    "avatarUrl": "/characters/0023-奥野田美宵.png",
+    "names": {
+      "zhHans": "奥野田美宵",
+      "zhHant": "奧野田美宵",
+      "ja": "奥野田美宵",
+      "en": "Miyoi Okunoda",
+      "romaji": "Okunoda Miyoi",
+      "aliases": [
+        "美宵",
+        "鲵吞亭",
+        "aytmy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "lotus_eaters"
+    },
+    "species": [
+      "座敷童子"
+    ],
+    "abilityDisplay": "能力不明",
+    "abilityTags": [
+      "未知"
+    ],
+    "affiliations": [
+      "鲵吞亭"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "书籍角色",
+      "看板娘"
+    ],
+    "hairColors": [
+      "pink"
+    ],
+    "playable": false,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Miyoi_Okunoda"
+    ]
+  },
+  {
+    "id": "suika_ibuki",
+    "avatarUrl": "/characters/0751-伊吹萃香.png",
+    "names": {
+      "zhHans": "伊吹萃香",
+      "zhHant": "伊吹萃香",
+      "ja": "伊吹萃香",
+      "en": "Suika Ibuki",
+      "romaji": "Ibuki Suika",
+      "aliases": [
+        "萃香",
+        "鬼王",
+        "yccx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th075_iamp"
+    },
+    "species": [
+      "鬼"
+    ],
+    "abilityDisplay": "操纵密度程度的能力",
+    "abilityTags": [
+      "密度",
+      "聚散"
+    ],
+    "affiliations": [
+      "鬼族"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blonde",
+      "orange"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Suika_Ibuki"
+    ]
+  },
+  {
+    "id": "hakutaku_keine",
+    "avatarUrl": "/characters/0804-上白泽慧音.png",
+    "names": {
+      "zhHans": "上白泽慧音（白泽）",
+      "zhHant": "上白澤慧音（白澤）",
+      "ja": "上白沢慧音（白沢）",
+      "en": "Keine Kamishirasawa (Hakutaku)",
+      "romaji": "Kamishirasawa Keine (Hakutaku)",
+      "aliases": [
+        "白泽慧音",
+        "EX慧音",
+        "sbzhybz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th08_in"
+    },
+    "species": [
+      "白泽",
+      "半兽"
+    ],
+    "abilityDisplay": "创造历史程度的能力",
+    "abilityTags": [
+      "历史",
+      "创造"
+    ],
+    "affiliations": [
+      "人类村落"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "形态"
+    ],
+    "hairColors": [
+      "green",
+      "silver"
+    ],
+    "playable": false,
+    "enabledAsAnswer": false,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Keine_Kamishirasawa"
+    ]
+  },
+  {
+    "id": "iku_nagae",
+    "avatarUrl": "/characters/1051-永江衣玖.png",
+    "names": {
+      "zhHans": "永江衣玖",
+      "zhHant": "永江衣玖",
+      "ja": "永江衣玖",
+      "en": "Iku Nagae",
+      "romaji": "Nagae Iku",
+      "aliases": [
+        "衣玖",
+        "龙宫使",
+        "yjyj"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th105_swr"
+    },
+    "species": [
+      "妖怪",
+      "龙宫使者"
+    ],
+    "abilityDisplay": "读取空气程度的能力",
+    "abilityTags": [
+      "空气",
+      "感知"
+    ],
+    "affiliations": [
+      "天界"
+    ],
+    "locations": [
+      "天界",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Iku_Nagae"
+    ]
+  },
+  {
+    "id": "tenshi_hinanawi",
+    "avatarUrl": "/characters/1052-比那名居天子.png",
+    "names": {
+      "zhHans": "比那名居天子",
+      "zhHant": "比那名居天子",
+      "ja": "比那名居天子",
+      "en": "Tenshi Hinanawi",
+      "romaji": "Hinanawi Tenshi",
+      "aliases": [
+        "天子",
+        "有顶天人",
+        "bnmjtz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th105_swr"
+    },
+    "species": [
+      "天人"
+    ],
+    "abilityDisplay": "操纵大地程度的能力",
+    "abilityTags": [
+      "大地",
+      "要石"
+    ],
+    "affiliations": [
+      "天界"
+    ],
+    "locations": [
+      "天界",
+      "有顶天"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Tenshi_Hinanawi"
+    ]
+  },
+  {
+    "id": "hatate_himekaidou",
+    "avatarUrl": "/characters/1251-姬海棠果.png",
+    "names": {
+      "zhHans": "姬海棠果",
+      "zhHant": "姬海棠果",
+      "ja": "姫海棠はたて",
+      "en": "Hatate Himekaidou",
+      "romaji": "Himekaidou Hatate",
+      "aliases": [
+        "果",
+        "念写记者",
+        "jhtg"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th125_ds"
+    },
+    "species": [
+      "天狗",
+      "妖怪"
+    ],
+    "abilityDisplay": "念写程度的能力",
+    "abilityTags": [
+      "念写",
+      "摄影"
+    ],
+    "affiliations": [
+      "妖怪之山"
+    ],
+    "locations": [
+      "妖怪之山",
+      "幻想乡"
+    ],
+    "roles": [
+      "自机",
+      "新闻记者"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hatate_Himekaidou"
+    ]
+  },
+  {
+    "id": "hata_no_kokoro",
+    "avatarUrl": "/characters/1351-秦心.png",
+    "names": {
+      "zhHans": "秦心",
+      "zhHant": "秦心",
+      "ja": "秦こころ",
+      "en": "Hata no Kokoro",
+      "romaji": "Hata no Kokoro",
+      "aliases": [
+        "心",
+        "面灵气",
+        "qx"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th135_hm"
+    },
+    "species": [
+      "面灵气",
+      "付丧神"
+    ],
+    "abilityDisplay": "操纵感情程度的能力",
+    "abilityTags": [
+      "感情",
+      "面具"
+    ],
+    "affiliations": [
+      "无明确阵营"
+    ],
+    "locations": [
+      "人类村落",
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hata_no_Kokoro"
+    ]
+  },
+  {
+    "id": "sumireko_usami",
+    "avatarUrl": "/characters/1451-宇佐见堇子.png",
+    "names": {
+      "zhHans": "宇佐见堇子",
+      "zhHant": "宇佐見堇子",
+      "ja": "宇佐見菫子",
+      "en": "Sumireko Usami",
+      "romaji": "Usami Sumireko",
+      "aliases": [
+        "堇子",
+        "秘封俱乐部初代会长",
+        "ysjjz"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th145_ulil"
+    },
+    "species": [
+      "人类"
+    ],
+    "abilityDisplay": "操纵超能力程度的能力",
+    "abilityTags": [
+      "超能力",
+      "念力"
+    ],
+    "affiliations": [
+      "秘封俱乐部"
+    ],
+    "locations": [
+      "外界",
+      "幻想乡"
+    ],
+    "roles": [
+      "自机",
+      "学生"
+    ],
+    "hairColors": [
+      "brown"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "easy",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Sumireko_Usami"
+    ]
+  },
+  {
+    "id": "hecatia_lapislazuli_earth_body",
+    "avatarUrl": "/characters/1508-赫卡提亚.png",
+    "names": {
+      "zhHans": "赫卡提亚·拉碧斯拉祖利（地球身体）",
+      "zhHant": "赫卡提亞·拉碧斯拉祖利（地球身體）",
+      "ja": "ヘカーティア・ラピスラズリ（地球の身体）",
+      "en": "Hecatia Lapislazuli (Earth body)",
+      "romaji": "Hecatia Lapislazuli (Earth body)",
+      "aliases": [
+        "蓝发赫卡提亚",
+        "地球赫卡提亚",
+        "hktydqst"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "拥有三个身体程度的能力",
+    "abilityTags": [
+      "身体",
+      "异界"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "异界"
+    ],
+    "roles": [
+      "Boss",
+      "形态"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": false,
+    "enabledAsAnswer": false,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hecatia_Lapislazuli"
+    ]
+  },
+  {
+    "id": "hecatia_lapislazuli_moon_body",
+    "avatarUrl": "/characters/1509-赫卡提亚.png",
+    "names": {
+      "zhHans": "赫卡提亚·拉碧斯拉祖利（月球身体）",
+      "zhHant": "赫卡提亞·拉碧斯拉祖利（月球身體）",
+      "ja": "ヘカーティア・ラピスラズリ（月の身体）",
+      "en": "Hecatia Lapislazuli (Moon body)",
+      "romaji": "Hecatia Lapislazuli (Moon body)",
+      "aliases": [
+        "金发赫卡提亚",
+        "月球赫卡提亚",
+        "hktyyqst"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th15_lolk"
+    },
+    "species": [
+      "神明"
+    ],
+    "abilityDisplay": "拥有三个身体程度的能力",
+    "abilityTags": [
+      "身体",
+      "异界"
+    ],
+    "affiliations": [
+      "地狱"
+    ],
+    "locations": [
+      "地狱",
+      "异界"
+    ],
+    "roles": [
+      "Boss",
+      "形态"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": false,
+    "enabledAsAnswer": false,
+    "enabledAsGuess": true,
+    "difficultyTier": "lunatic",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Hecatia_Lapislazuli"
+    ]
+  },
+  {
+    "id": "joon_yorigami",
+    "avatarUrl": "/characters/1551-依神女苑.png",
+    "names": {
+      "zhHans": "依神女苑",
+      "zhHant": "依神女苑",
+      "ja": "依神女苑",
+      "en": "Joon Yorigami",
+      "romaji": "Yorigami Joon",
+      "aliases": [
+        "女苑",
+        "疫病神",
+        "ysny"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th155_aocf"
+    },
+    "species": [
+      "疫病神",
+      "神明"
+    ],
+    "abilityDisplay": "使人消费财产程度的能力",
+    "abilityTags": [
+      "财运",
+      "消费"
+    ],
+    "affiliations": [
+      "依神姐妹"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blonde"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Joon_Yorigami"
+    ]
+  },
+  {
+    "id": "shion_yorigami",
+    "avatarUrl": "/characters/1552-依神紫苑.png",
+    "names": {
+      "zhHans": "依神紫苑",
+      "zhHant": "依神紫苑",
+      "ja": "依神紫苑",
+      "en": "Shion Yorigami",
+      "romaji": "Yorigami Shion",
+      "aliases": [
+        "紫苑",
+        "贫穷神",
+        "yszy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th155_aocf"
+    },
+    "species": [
+      "贫穷神",
+      "神明"
+    ],
+    "abilityDisplay": "使人不幸程度的能力",
+    "abilityTags": [
+      "不幸",
+      "贫穷"
+    ],
+    "affiliations": [
+      "依神姐妹"
+    ],
+    "locations": [
+      "幻想乡"
+    ],
+    "roles": [
+      "Boss",
+      "自机"
+    ],
+    "hairColors": [
+      "blue"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "normal",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Shion_Yorigami"
+    ]
+  },
+  {
+    "id": "yuuma_toutetsu",
+    "avatarUrl": "/characters/1751-饕餮尤魇.png",
+    "names": {
+      "zhHans": "饕餮尤魇",
+      "zhHant": "饕餮尤魔",
+      "ja": "饕餮尤魔",
+      "en": "Yuuma Toutetsu",
+      "romaji": "Toutetsu Yuuma",
+      "aliases": [
+        "尤魇",
+        "饕餮",
+        "ttyy"
+      ]
+    },
+    "firstAppearance": {
+      "workId": "th175_gi"
+    },
+    "species": [
+      "饕餮"
+    ],
+    "abilityDisplay": "吸收一切程度的能力",
+    "abilityTags": [
+      "吸收",
+      "贪欲"
+    ],
+    "affiliations": [
+      "刚欲同盟",
+      "畜生界"
+    ],
+    "locations": [
+      "畜生界",
+      "旧地狱"
+    ],
+    "roles": [
+      "Boss",
+      "组织首领"
+    ],
+    "hairColors": [
+      "white"
+    ],
+    "playable": true,
+    "enabledAsAnswer": true,
+    "enabledAsGuess": true,
+    "difficultyTier": "hard",
+    "sourceRefs": [
+      "https://en.touhouwiki.net/wiki/Yuuma_Toutetsu"
+    ]
   }
 ]

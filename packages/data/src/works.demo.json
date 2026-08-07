@@ -207,5 +207,165 @@
     "releaseYear": 2025,
     "mainlineIndex": 20,
     "era": "windows"
+  },
+  {
+    "id": "cd02_gfc",
+    "titleZh": "莲台野夜行",
+    "titleJa": "蓮台野夜行　～ Ghostly Field Club",
+    "titleEn": "Ghostly Field Club",
+    "shortName": "莲台野夜行",
+    "type": "music_cd",
+    "releaseYear": 2003,
+    "era": "other"
+  },
+  {
+    "id": "cola",
+    "titleZh": "东方香霖堂",
+    "titleJa": "東方香霖堂　～ Curiosities of Lotus Asia",
+    "titleEn": "Curiosities of Lotus Asia",
+    "shortName": "香霖堂",
+    "type": "print",
+    "releaseYear": 2004,
+    "era": "other"
+  },
+  {
+    "id": "th075_iamp",
+    "titleZh": "东方萃梦想",
+    "titleJa": "東方萃夢想　～ Immaterial and Missing Power",
+    "titleEn": "Immaterial and Missing Power",
+    "shortName": "TH7.5",
+    "type": "game",
+    "releaseYear": 2004,
+    "era": "windows"
+  },
+  {
+    "id": "eolnd",
+    "titleZh": "东方三月精",
+    "titleJa": "東方三月精　～ Eastern and Little Nature Deity",
+    "titleEn": "Eastern and Little Nature Deity",
+    "shortName": "三月精",
+    "type": "print",
+    "releaseYear": 2005,
+    "era": "other"
+  },
+  {
+    "id": "pmiss",
+    "titleZh": "东方求闻史纪",
+    "titleJa": "東方求聞史紀　～ Perfect Memento in Strict Sense",
+    "titleEn": "Perfect Memento in Strict Sense",
+    "shortName": "求闻史纪",
+    "type": "print",
+    "releaseYear": 2006,
+    "era": "other"
+  },
+  {
+    "id": "ssib",
+    "titleZh": "东方儚月抄",
+    "titleJa": "東方儚月抄　～ Silent Sinner in Blue",
+    "titleEn": "Silent Sinner in Blue",
+    "shortName": "儚月抄",
+    "type": "print",
+    "releaseYear": 2007,
+    "era": "other"
+  },
+  {
+    "id": "th105_swr",
+    "titleZh": "东方绯想天",
+    "titleJa": "東方緋想天　～ Scarlet Weather Rhapsody",
+    "titleEn": "Scarlet Weather Rhapsody",
+    "shortName": "TH10.5",
+    "type": "game",
+    "releaseYear": 2008,
+    "era": "windows"
+  },
+  {
+    "id": "th125_ds",
+    "titleZh": "东方文花帖DS",
+    "titleJa": "ダブルスポイラー　～ 東方文花帖",
+    "titleEn": "Double Spoiler",
+    "shortName": "TH12.5",
+    "type": "game",
+    "releaseYear": 2010,
+    "era": "windows"
+  },
+  {
+    "id": "wahh",
+    "titleZh": "东方茨歌仙",
+    "titleJa": "東方茨歌仙　～ Wild and Horned Hermit",
+    "titleEn": "Wild and Horned Hermit",
+    "shortName": "茨歌仙",
+    "type": "print",
+    "releaseYear": 2010,
+    "era": "other"
+  },
+  {
+    "id": "fs",
+    "titleZh": "东方铃奈庵",
+    "titleJa": "東方鈴奈庵　～ Forbidden Scrollery",
+    "titleEn": "Forbidden Scrollery",
+    "shortName": "铃奈庵",
+    "type": "print",
+    "releaseYear": 2012,
+    "era": "other"
+  },
+  {
+    "id": "th135_hm",
+    "titleZh": "东方心绮楼",
+    "titleJa": "東方心綺楼　～ Hopeless Masquerade",
+    "titleEn": "Hopeless Masquerade",
+    "shortName": "TH13.5",
+    "type": "game",
+    "releaseYear": 2013,
+    "era": "windows"
+  },
+  {
+    "id": "th145_ulil",
+    "titleZh": "东方深秘录",
+    "titleJa": "東方深秘録　～ Urban Legend in Limbo",
+    "titleEn": "Urban Legend in Limbo",
+    "shortName": "TH14.5",
+    "type": "game",
+    "releaseYear": 2015,
+    "era": "windows"
+  },
+  {
+    "id": "th155_aocf",
+    "titleZh": "东方凭依华",
+    "titleJa": "東方憑依華　～ Antinomy of Common Flowers",
+    "titleEn": "Antinomy of Common Flowers",
+    "shortName": "TH15.5",
+    "type": "game",
+    "releaseYear": 2017,
+    "era": "windows"
+  },
+  {
+    "id": "cds",
+    "titleZh": "东方智灵奇传",
+    "titleJa": "東方智霊奇伝　反則探偵さとり",
+    "titleEn": "Cheating Detective Satori",
+    "shortName": "智灵奇传",
+    "type": "print",
+    "releaseYear": 2019,
+    "era": "other"
+  },
+  {
+    "id": "lotus_eaters",
+    "titleZh": "东方醉蝶华",
+    "titleJa": "東方酔蝶華　～ ロータスイーター達の酔醒",
+    "titleEn": "Lotus Eaters",
+    "shortName": "醉蝶华",
+    "type": "print",
+    "releaseYear": 2019,
+    "era": "other"
+  },
+  {
+    "id": "th175_gi",
+    "titleZh": "东方刚欲异闻",
+    "titleJa": "東方剛欲異聞　～ 水没した沈愁地獄",
+    "titleEn": "Sunken Fossil World",
+    "shortName": "TH17.5",
+    "type": "game",
+    "releaseYear": 2021,
+    "era": "windows"
   }
 ]
