@@ -175,7 +175,7 @@ describe("SingleGamePage", () => {
 
   it("restores the same daily session and keeps its guesses", async () => {
     localStorage.setItem(
-      "touhoufriberg:daily-session",
+      "touhouflandre:daily-session",
       JSON.stringify({ id: "sess-1", puzzleKey: "2026-08-05" }),
     );
     vi.mocked(api.catalog).mockResolvedValue({
@@ -193,7 +193,7 @@ describe("SingleGamePage", () => {
 
   it("creates a clean daily session after the date changes", async () => {
     localStorage.setItem(
-      "touhoufriberg:daily-session",
+      "touhouflandre:daily-session",
       JSON.stringify({ id: "sess-1", puzzleKey: "2026-08-05" }),
     );
     vi.mocked(api.catalog).mockResolvedValue({
@@ -210,7 +210,7 @@ describe("SingleGamePage", () => {
 
     expect(await screen.findByText("每日题 2026-08-06")).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
-    expect(localStorage.getItem("touhoufriberg:daily-session")).toContain(
+    expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-next-day",
     );
   });

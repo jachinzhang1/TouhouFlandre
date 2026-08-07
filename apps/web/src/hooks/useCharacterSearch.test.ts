@@ -12,6 +12,7 @@ const CHARS: CharacterSearchResult[] = [
     initials: "博丽",
     avatarUrl: "/c.png",
     appearanceOrder: 1,
+    workId: "th01_hrtp",
     searchText: "博丽灵梦reimu_hakurei东方灵异传touhou1",
     nameSortKey: "bolilingmeng",
     firstAppearance: { workTitle: "东方灵异传", releaseYear: 1996 },
@@ -27,6 +28,7 @@ const CHARS: CharacterSearchResult[] = [
     initials: "雾雨",
     avatarUrl: "/c.png",
     appearanceOrder: 2,
+    workId: "th06_eosd",
     searchText: "雾雨魔理沙marisa_kirisame东方红魔乡touhou6",
     nameSortKey: "wuyumolisha",
     firstAppearance: { workTitle: "东方红魔乡", releaseYear: 2002 },
@@ -42,6 +44,7 @@ const CHARS: CharacterSearchResult[] = [
     initials: "上白",
     avatarUrl: "/c.png",
     appearanceOrder: 10,
+    workId: "th08_in",
     searchText: "上白泽慧音keine_kamishirasawa东方永夜抄touhou8",
     nameSortKey: "shangbaizehuiyin",
     firstAppearance: { workTitle: "东方永夜抄", releaseYear: 2004 },
@@ -76,6 +79,20 @@ describe("searchLocal", () => {
     const { results, total } = searchLocal(TABLE, "", "appearance", "asc", undefined, undefined);
     expect(total).toBe(3);
     expect(results).toHaveLength(3);
+  });
+
+  it("按初登场作品过滤", () => {
+    const { results, total } = searchLocal(
+      TABLE,
+      "",
+      "appearance",
+      "asc",
+      undefined,
+      undefined,
+      "th06_eosd",
+    );
+    expect(total).toBe(1);
+    expect(results.map((result) => result.id)).toEqual(["marisa_kirisame"]);
   });
 
   it("按登场顺序/名称排序 + 方向", () => {

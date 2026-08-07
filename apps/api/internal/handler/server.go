@@ -29,11 +29,11 @@ type Server struct {
 	q              *repo.Queries
 	now            func() time.Time
 	rng            *rand.Rand
-	lobbyTTL       time.Duration  // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention time.Duration  // closed 保留期（关闭时 expires_at）
-	joinLimiter    *ipRateLimiter // 加入/预检按 IP 限流（08 §8.5）
+	lobbyTTL       time.Duration      // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention time.Duration      // closed 保留期（关闭时 expires_at）
+	joinLimiter    *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
 	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	hub            *hub.Hub       // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	hub            *hub.Hub           // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 }
 
 // Option 定制 Server（测试注入用）。
@@ -225,7 +225,11 @@ func (s *Server) searchSessionCharacters(
 	end := min(offset+limit, total)
 	results := make([]openapi.CharacterSearchResult, 0, end-offset)
 	for _, character := range matches[offset:end] {
-		results = append(results, toSearchResult(character))
+		results = append(results, toSearchResult(
+			character,
+			game.NormalizeSearchText(game.CharacterSearchText(character)),
+			game.CharacterNameSortKey(character),
+		))
 	}
 	return openapi.CharactersSearch200JSONResponse{Results: results, Total: total}, nil
 }

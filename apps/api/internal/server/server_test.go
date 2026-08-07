@@ -370,7 +370,7 @@ func TestSessionSearchPaginationAndMissingSession(t *testing.T) {
 	if err := json.Unmarshal(payload, &search); err != nil {
 		t.Fatal(err)
 	}
-	if search.Total != 29 || len(search.Results) != 2 {
+	if search.Total != 113 || len(search.Results) != 2 {
 		t.Fatalf("unexpected page: %+v", search)
 	}
 	if search.Results[0].AppearanceOrder < search.Results[1].AppearanceOrder {

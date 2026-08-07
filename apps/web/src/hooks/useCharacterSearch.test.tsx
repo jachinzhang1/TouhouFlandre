@@ -45,19 +45,27 @@ describe("useCharacterSearch", () => {
     );
   });
 
-  it("passes work filters to character search", async () => {
+  it("passes work filters to session character search", async () => {
     vi.mocked(api.searchCharacters).mockResolvedValue({
       results: [result("reimu")],
       total: 1,
     });
 
     const { result: hook } = renderHook(() =>
-      useCharacterSearch("灵梦", { delay: 0, workIds: "th06_eosd" }),
+      useCharacterSearch("灵梦", {
+        delay: 0,
+        sessionId: "session-1",
+        workIds: "th06_eosd",
+      }),
     );
 
     await waitFor(() => expect(hook.current.loading).toBe(false));
     expect(api.searchCharacters).toHaveBeenCalledWith(
-      expect.objectContaining({ q: "灵梦", workIds: "th06_eosd" }),
+      expect.objectContaining({
+        q: "灵梦",
+        sessionId: "session-1",
+        workIds: "th06_eosd",
+      }),
       expect.any(AbortSignal),
     );
   });
