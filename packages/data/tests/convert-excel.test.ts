@@ -4,9 +4,17 @@ import charactersJson from "../src/characters.demo.json";
 import { charactersSchema } from "../src/schema";
 import {
   buildWorkbook,
+  flatten,
   mergeCatalogs,
   readCharactersFromWorkbook,
 } from "../src/convert-excel";
+
+const workbookFromRows = (rows: Record<string, unknown>[]) => {
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "characters");
+  return workbook;
+};
 
 describe("excel catalog conversion", () => {
   const characters = charactersSchema.parse(charactersJson);
@@ -16,6 +24,54 @@ describe("excel catalog conversion", () => {
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
     const restored = XLSX.read(buffer, { type: "buffer" });
     expect(readCharactersFromWorkbook(restored)).toEqual(characters);
+  });
+
+  it("normalizes boolean columns from varied textual forms", () => {
+    const row = flatten(characters[0]);
+    row.playable = "yes";
+    row.enabledAsAnswer = "1";
+    row.enabledAsGuess = "是";
+    const restored = readCharactersFromWorkbook(workbookFromRows([row]));
+    expect(restored[0].playable).toBe(true);
+    expect(restored[0].enabledAsAnswer).toBe(true);
+    expect(restored[0].enabledAsGuess).toBe(true);
+
+    const falseRow = flatten(characters[0]);
+    falseRow.playable = "no";
+    falseRow.enabledAsAnswer = "0";
+    falseRow.enabledAsGuess = "否";
+    const restoredFalse = readCharactersFromWorkbook(workbookFromRows([falseRow]));
+    expect(restoredFalse[0].playable).toBe(false);
+    expect(restoredFalse[0].enabledAsAnswer).toBe(false);
+    expect(restoredFalse[0].enabledAsGuess).toBe(false);
+  });
+
+  it("trims array cells and drops empty segments", () => {
+    const row = flatten(characters[0]);
+    row.species = " 人类 | 妖怪 || 神灵 ";
+    row.abilityTags = " 飞行 | 灵力 ";
+    const restored = readCharactersFromWorkbook(workbookFromRows([row]));
+    expect(restored[0].species).toEqual(["人类", "妖怪", "神灵"]);
+    expect(restored[0].abilityTags).toEqual(["飞行", "灵力"]);
+  });
+
+  it("maps blank optional strings to undefined and keeps non-blank ones", () => {
+    const row = flatten(characters[0]);
+    row["names.zhHant"] = "";
+    row["names.romaji"] = "Hakurei Reimu";
+    const restored = readCharactersFromWorkbook(workbookFromRows([row]));
+    expect(restored[0].names.zhHant).toBeUndefined();
+    expect(restored[0].names.romaji).toBe("Hakurei Reimu");
+  });
+
+  it("fails clearly when the characters worksheet is missing", () => {
+    const emptyBook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      emptyBook,
+      XLSX.utils.json_to_sheet([]),
+      "other",
+    );
+    expect(() => readCharactersFromWorkbook(emptyBook)).toThrow(/characters/);
   });
 
   it("flattens every character to one row with a header", () => {
@@ -80,6 +136,36 @@ describe("three-way catalog merge", () => {
     expect(mergedFirst?.names.ja).toBe(characters[0].names.ja);
     expect(merged[1]).toEqual(characters[1]);
     expect(merged.slice(113)).toEqual(upstreamAdded);
+  });
+
+  it("does not mutate the current catalog input", () => {
+    const base = characters.slice(0, 113);
+    const edited = clone(base);
+    edited[0] = {
+      ...edited[0],
+      names: { ...edited[0].names, zhHans: "改过的名字" },
+    };
+    const snapshot = JSON.stringify(characters);
+    mergeCatalogs(base, characters, edited);
+    expect(JSON.stringify(characters)).toBe(snapshot);
+  });
+
+  it("keeps current when base lacks an id present in both current and xlsx", () => {
+    const base = characters.slice(0, 112); // 113th character missing from base
+    const edited = clone(characters.slice(0, 113));
+    const shared = edited[112];
+    edited[112] = {
+      ...shared,
+      names: { ...shared.names, zhHans: "xlsx 的修改" },
+    };
+    const { merged, editedIds, warnings } = mergeCatalogs(base, characters, edited);
+    const target = characters[112];
+    const mergedTarget = merged.find((character) => character.id === target.id);
+    expect(mergedTarget).toEqual(target); // xlsx edit NOT applied
+    expect(editedIds).not.toContain(target.id);
+    expect(warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining(target.id)]),
+    );
   });
 
   it("reports xlsx-only characters and skips them", () => {

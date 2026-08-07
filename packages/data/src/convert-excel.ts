@@ -83,7 +83,7 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown) 
   cursor[keys[keys.length - 1]] = value;
 }
 
-function flatten(character: CharacterSource): Record<Column, string> {
+export function flatten(character: CharacterSource): Record<Column, string> {
   const row = {} as Record<Column, string>;
   for (const column of COLUMNS) {
     const value = getPath(character, column);
@@ -154,7 +154,10 @@ export function buildWorkbook(characters: CharacterSource[]): XLSX.WorkBook {
 export function readCharactersFromWorkbook(
   workbook: XLSX.WorkBook,
 ): CharacterSource[] {
-  const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+  const worksheet = workbook.Sheets["characters"];
+  if (!worksheet) {
+    throw new Error('Expected a worksheet named "characters" in the workbook.');
+  }
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
     raw: true,
     defval: "",
@@ -197,20 +200,21 @@ export function mergeCatalogs(
       );
       return character;
     }
-    let changed = false;
+    // Apply edits to a clone so the `current` input is never mutated.
+    let mergedCharacter: CharacterSource | undefined;
     for (const column of COLUMNS) {
       if (
         JSON.stringify(getPath(baseCharacter, column)) !==
         JSON.stringify(getPath(edit, column))
       ) {
-        setPath(character, column, getPath(edit, column));
-        changed = true;
+        mergedCharacter ??= structuredClone(character);
+        setPath(mergedCharacter, column, getPath(edit, column));
       }
     }
-    if (changed) {
+    if (mergedCharacter) {
       editedIds.push(character.id);
     }
-    return character;
+    return mergedCharacter ?? character;
   });
 
   const currentIds = new Set(current.map((character) => character.id));
