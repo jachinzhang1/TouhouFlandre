@@ -162,6 +162,68 @@ export function readCharactersFromWorkbook(
   return rows.map(unflatten);
 }
 
+/**
+ * Three-way merge for the common workflow: the xlsx was exported from an older
+ * catalog (`base`), the working JSON has since moved on (`current`), and the
+ * xlsx holds manual edits to pre-existing characters only.
+ *
+ * - Characters in `current` but absent from the xlsx (newly added upstream)
+ *   are preserved untouched.
+ * - For characters present in both, only the cells that differ between `base`
+ *   and the xlsx are applied onto `current` — stale columns never clobber
+ *   upstream changes to the same character.
+ * - Characters in the xlsx but missing from `current` are reported as warnings
+ *   and skipped (current version wins on existence).
+ */
+export function mergeCatalogs(
+  base: CharacterSource[],
+  current: CharacterSource[],
+  edited: CharacterSource[],
+): { merged: CharacterSource[]; editedIds: string[]; warnings: string[] } {
+  const baseById = new Map(base.map((character) => [character.id, character]));
+  const editedById = new Map(edited.map((character) => [character.id, character]));
+  const editedIds: string[] = [];
+  const warnings: string[] = [];
+
+  const merged = current.map((character) => {
+    const edit = editedById.get(character.id);
+    if (!edit) {
+      return character; // upstream-only character — keep as-is
+    }
+    const baseCharacter = baseById.get(character.id);
+    if (!baseCharacter) {
+      warnings.push(
+        `${character.id} is in both the xlsx and current JSON but not in base; kept as-is.`,
+      );
+      return character;
+    }
+    let changed = false;
+    for (const column of COLUMNS) {
+      if (
+        JSON.stringify(getPath(baseCharacter, column)) !==
+        JSON.stringify(getPath(edit, column))
+      ) {
+        setPath(character, column, getPath(edit, column));
+        changed = true;
+      }
+    }
+    if (changed) {
+      editedIds.push(character.id);
+    }
+    return character;
+  });
+
+  const currentIds = new Set(current.map((character) => character.id));
+  for (const edit of edited) {
+    if (!currentIds.has(edit.id) && !baseById.has(edit.id)) {
+      warnings.push(
+        `${edit.id} is in the xlsx but missing from current JSON; skipped (deleted upstream?).`,
+      );
+    }
+  }
+  return { merged, editedIds, warnings };
+}
+
 function jsonToExcel() {
   const characters = charactersSchema.parse(
     JSON.parse(fs.readFileSync(SOURCE_JSON, "utf8")),
@@ -188,6 +250,39 @@ function excelToJson() {
   );
 }
 
+function mergeJson() {
+  const basePath = process.argv[3];
+  if (!basePath) {
+    console.error("Usage: tsx src/convert-excel.ts merge <base.json>");
+    process.exit(1);
+  }
+  const base = charactersSchema.parse(
+    JSON.parse(fs.readFileSync(basePath, "utf8")),
+  );
+  const current = charactersSchema.parse(
+    JSON.parse(fs.readFileSync(SOURCE_JSON, "utf8")),
+  );
+  const workbook = XLSX.read(fs.readFileSync(DEFAULT_XLSX), { type: "buffer" });
+  const edited = readCharactersFromWorkbook(workbook);
+  const { merged, editedIds, warnings } = mergeCatalogs(base, current, edited);
+  for (const warning of warnings) {
+    console.warn(`WARN: ${warning}`);
+  }
+  charactersSchema.parse(merged);
+  fs.writeFileSync(
+    SOURCE_JSON,
+    `${JSON.stringify(merged, null, 2)}\n`,
+    "utf8",
+  );
+  const editedIdSet = new Set(edited.map((character) => character.id));
+  const upstreamNew = current.filter(
+    (character) => !editedIdSet.has(character.id),
+  ).length;
+  console.log(
+    `Merged ${editedIds.length} edited characters (${upstreamNew} upstream-only preserved) into ${merged.length} total.`,
+  );
+}
+
 function main() {
   const [command] = process.argv.slice(2);
   switch (command) {
@@ -197,8 +292,13 @@ function main() {
     case "excel2json":
       excelToJson();
       break;
+    case "merge":
+      mergeJson();
+      break;
     default:
-      console.error("Usage: tsx src/convert-excel.ts <json2excel|excel2json>");
+      console.error(
+        "Usage: tsx src/convert-excel.ts <json2excel|excel2json|merge <base.json>>",
+      );
       process.exit(1);
   }
 }
