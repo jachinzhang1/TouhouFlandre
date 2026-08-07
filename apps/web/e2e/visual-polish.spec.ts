@@ -71,6 +71,51 @@ test.describe("visual polish", () => {
     });
   });
 
+  test("appearance switcher toggles mode and persists color", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+    });
+    await page.goto("/");
+
+    const root = page.locator("html");
+    const toggle = page.locator(".appearance-toggle");
+    const palette = page.locator(".appearance-palette");
+    const swatches = page.locator(".appearance-swatch");
+
+    await expect(root).toHaveAttribute("data-theme-color", "scarlet");
+    await toggle.hover();
+    await expect(palette).toBeVisible();
+    await expect(swatches.first()).toHaveCSS(
+      "background-color",
+      "rgb(173, 51, 52)",
+    );
+
+    await toggle.click();
+    await expect(root).toHaveAttribute("data-theme-mode", "dark");
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(15, 20, 19)",
+    );
+
+    await swatches.nth(1).click();
+    await expect(root).toHaveAttribute("data-theme-color", "sakura");
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          JSON.parse(
+            window.localStorage.getItem("touhoufriberg:appearance") ?? "{}",
+          ),
+        ),
+      )
+      .toEqual({ color: "sakura", mode: "dark" });
+
+    await page.reload();
+    await expect(root).toHaveAttribute("data-theme-mode", "dark");
+    await expect(root).toHaveAttribute("data-theme-color", "sakura");
+  });
+
   test("daily result uses yin-yang marks and a neutral answer avatar", async ({
     page,
   }) => {

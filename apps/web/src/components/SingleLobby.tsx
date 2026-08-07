@@ -22,7 +22,7 @@ export function SingleLobby() {
           const Icon = config.icon;
           return (
             <Link
-              className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[#af7a72] hover:shadow-lg max-[680px]:min-h-[185px]"
+              className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[var(--accent-hover-border)] hover:shadow-lg max-[680px]:min-h-[185px]"
               key={modeId}
               href={`/single/${modeId}`}
             >
@@ -33,7 +33,7 @@ export function SingleLobby() {
                 <small
                   className={`inline-flex min-h-[25px] items-center rounded-full border border-line bg-paper-muted px-[9px] text-[0.68rem] font-extrabold ${
                     config.stateClass === "live"
-                      ? "border-[#b7d9d1] bg-jade-soft text-[#176256]"
+                      ? "border-[var(--jade-border)] bg-jade-soft text-[var(--jade-strong)]"
                       : "text-ink-soft"
                   }`}
                 >
@@ -57,14 +57,14 @@ export function SingleLobby() {
           );
         })}
         <Link
-          className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[#af7a72] hover:shadow-lg max-[680px]:min-h-[185px]"
+          className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[var(--accent-hover-border)] hover:shadow-lg max-[680px]:min-h-[185px]"
           href="/multi"
         >
           <span className="flex items-center justify-between gap-3">
             <span className="inline-flex size-[46px] shrink-0 items-center justify-center rounded-[4px] bg-vermilion-soft text-vermilion">
               <Users size={22} aria-hidden="true" />
             </span>
-            <small className="inline-flex min-h-[25px] items-center rounded-full border border-line bg-paper-muted px-[9px] text-[0.68rem] font-extrabold text-[#727d79]">
+            <small className="inline-flex min-h-[25px] items-center rounded-full border border-line bg-paper-muted px-[9px] text-[0.68rem] font-extrabold text-[var(--subtle-text)]">
               暂未开放
             </small>
           </span>
@@ -83,14 +83,14 @@ export function SingleLobby() {
           </span>
         </Link>
         <Link
-          className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[#af7a72] hover:shadow-lg max-[680px]:min-h-[185px]"
+          className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[var(--accent-hover-border)] hover:shadow-lg max-[680px]:min-h-[185px]"
           href="/multi"
         >
           <span className="flex items-center justify-between gap-3">
             <span className="inline-flex size-[46px] shrink-0 items-center justify-center rounded-[4px] bg-vermilion-soft text-vermilion">
               <Shield size={22} aria-hidden="true" />
             </span>
-            <small className="inline-flex min-h-[25px] items-center rounded-full border border-line bg-paper-muted px-[9px] text-[0.68rem] font-extrabold text-[#727d79]">
+            <small className="inline-flex min-h-[25px] items-center rounded-full border border-line bg-paper-muted px-[9px] text-[0.68rem] font-extrabold text-[var(--subtle-text)]">
               暂未开放
             </small>
           </span>

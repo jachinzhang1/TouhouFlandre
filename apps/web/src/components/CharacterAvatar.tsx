@@ -18,7 +18,7 @@ export function CharacterAvatar({
 
   return (
     <span
-      className={`inline-flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[#e7edeb] text-ink font-black ${className}`.trim()}
+      className={`inline-flex size-[42px] shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-[var(--surface-strong)] text-ink font-black ${className}`.trim()}
       aria-hidden="true"
     >
       {showImage ? (

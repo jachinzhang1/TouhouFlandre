@@ -20,19 +20,19 @@ export function HomePage() {
 
   return (
     <>
-      <section className="relative isolate flex min-h-[550px] items-center overflow-hidden bg-[#e8eeeb] bg-[url('/hero-touhou-collage.jpg')] bg-cover bg-[position:48%_top] before:absolute before:inset-0 before:z-[-1] before:bg-[linear-gradient(90deg,rgba(244,247,245,0.96)_0%,rgba(244,247,245,0.82)_36%,rgba(244,247,245,0.32)_58%,rgba(244,247,245,0)_78%)] max-[900px]:min-h-[510px] max-[900px]:bg-[position:47%_top] max-[900px]:before:bg-[linear-gradient(90deg,rgba(244,247,245,0.96)_0%,rgba(244,247,245,0.86)_55%,rgba(244,247,245,0.08)_100%)] max-[680px]:min-h-[420px] max-[680px]:bg-[position:46%_top] max-[680px]:before:bg-[linear-gradient(90deg,rgba(244,247,245,0.96)_0%,rgba(244,247,245,0.84)_76%,rgba(244,247,245,0.16)_100%)]">
+      <section className="home-hero relative isolate flex min-h-[550px] items-center overflow-hidden max-[900px]:min-h-[510px] max-[680px]:min-h-[420px]">
         <div className="w-[min(610px,58%)] py-[58px] pl-[56px] animate-[hero-enter_650ms_cubic-bezier(0.2,0.75,0.25,1)_both] max-[900px]:w-[68%] max-[900px]:pl-[34px] max-[680px]:w-full max-[680px]:px-[22px] max-[680px]:py-[38px]">
           <p className="mt-0 mb-[18px] inline-flex items-center gap-2 text-[0.78rem] font-extrabold text-jade">
             <span
-              className="size-[7px] rounded-full bg-jade shadow-[0_0_0_5px_rgba(36,117,104,0.12)] animate-[status-pulse_2.6s_ease-in-out_infinite]"
+              className="size-[7px] rounded-full bg-jade shadow-[0_0_0_5px_var(--jade-focus-soft)] animate-[status-pulse_2.6s_ease-in-out_infinite]"
               aria-hidden="true"
             />
             今日题已开放
           </p>
-          <h1 className="m-0 font-brand text-[4.5rem] font-bold leading-none text-[#172b26] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
+          <h1 className="m-0 font-brand text-[4.5rem] font-bold leading-none text-[var(--hero-title)] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
             东方芙一把
           </h1>
-          <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[#354b44] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
+          <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[var(--hero-copy)] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
             从初登场作品、年份、种族、阵营、地点和头发颜色里一点点缩小范围，猜出今天的东方角色。
           </p>
           <div className="mt-7 flex flex-wrap gap-[9px] max-[420px]:grid">
@@ -52,7 +52,7 @@ export function HomePage() {
             </Link>
           </div>
           <div
-            className="mt-7 flex gap-[22px] text-[0.78rem] text-[#52635d] max-[680px]:gap-[14px] max-[420px]:justify-between max-[420px]:gap-[6px]"
+            className="mt-7 flex gap-[22px] text-[0.78rem] text-[var(--hero-meta)] max-[680px]:gap-[14px] max-[420px]:justify-between max-[420px]:gap-[6px]"
             aria-label="今日题信息"
           >
             <span className="flex items-baseline gap-[5px] max-[420px]:grid max-[420px]:gap-0">

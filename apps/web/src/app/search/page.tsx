@@ -110,14 +110,14 @@ export default function SearchPage() {
       </div>
 
       <div className="mt-[26px] flex items-center justify-between gap-3 max-[680px]:mt-0 max-[680px]:grid max-[680px]:gap-[9px]">
-        <label className="catalog-search-box flex min-h-[48px] min-w-0 flex-1 items-center gap-[11px] rounded-[4px] border border-line-strong bg-white px-[14px] text-[#64726d] transition-[border-color,box-shadow] duration-150 focus-within:border-jade focus-within:text-jade focus-within:shadow-[0_0_0_4px_rgba(36,117,104,0.11)] max-[680px]:mt-[26px]">
+        <label className="catalog-search-box flex min-h-[48px] min-w-0 flex-1 items-center gap-[11px] rounded-[4px] border border-line-strong bg-[var(--surface)] px-[14px] text-[var(--muted-text)] transition-[border-color,box-shadow] duration-150 focus-within:border-jade focus-within:text-jade focus-within:shadow-[0_0_0_4px_var(--jade-focus-soft)] max-[680px]:mt-[26px]">
           <Search size={18} aria-hidden="true" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="例如 灵梦 / Reimu / 红白"
             aria-label="搜索角色"
-            className="catalog-search-input w-full min-w-0 border-0 bg-transparent text-ink placeholder:text-[#87938e]"
+            className="catalog-search-input w-full min-w-0 border-0 bg-transparent text-ink placeholder:text-[var(--placeholder-text)]"
           />
         </label>
         <div className="catalog-controls" aria-label="角色目录显示设置">
@@ -217,7 +217,7 @@ export default function SearchPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-white px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[#8fa29a] hover:bg-[#f8faf9]"
+                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-[var(--surface)] px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[var(--control-border-hover)] hover:bg-[var(--surface-hover)]"
                 onClick={() => setSelectedWorkIds(workIds)}
                 disabled={workIds.length === 0}
               >
@@ -225,7 +225,7 @@ export default function SearchPage() {
               </button>
               <button
                 type="button"
-                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-white px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[#8fa29a] hover:bg-[#f8faf9]"
+                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-[var(--surface)] px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[var(--control-border-hover)] hover:bg-[var(--surface-hover)]"
                 onClick={() => setSelectedWorkIds([])}
                 disabled={workIds.length === 0}
               >
@@ -237,7 +237,7 @@ export default function SearchPage() {
                 works.map((work) => (
                   <label
                     key={work.id}
-                    className="flex min-h-[48px] items-center gap-3 rounded-[4px] border border-line bg-white px-[12px] py-[10px] text-[0.84rem] text-ink"
+                    className="flex min-h-[48px] items-center gap-3 rounded-[4px] border border-line bg-[var(--surface)] px-[12px] py-[10px] text-[0.84rem] text-ink"
                   >
                     <input
                       type="checkbox"
@@ -262,7 +262,7 @@ export default function SearchPage() {
                   </label>
                 ))
               ) : (
-                <div className="rounded-[4px] border border-dashed border-line bg-white px-[12px] py-[14px] text-[0.82rem] text-ink-soft">
+                <div className="rounded-[4px] border border-dashed border-line bg-[var(--surface)] px-[12px] py-[14px] text-[0.82rem] text-ink-soft">
                   正在读取作品列表。
                 </div>
               )}
@@ -305,7 +305,7 @@ export default function SearchPage() {
         <div className="mt-[10px] grid grid-cols-[repeat(auto-fit,minmax(255px,1fr))] gap-[9px]">
           {results.map((result) => (
             <article
-              className="grid min-h-[64px] cursor-default grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-[11px] rounded-[4px] border border-line bg-paper p-[10px] text-ink transition-[border-color,background] duration-150 hover:border-[#bd8179] hover:bg-white"
+              className="grid min-h-[64px] cursor-default grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-[11px] rounded-[4px] border border-line bg-paper p-[10px] text-ink transition-[border-color,background] duration-150 hover:border-[var(--accent-hover-border)] hover:bg-[var(--surface-hover)]"
               key={result.id}
             >
               <CharacterAvatar
@@ -352,7 +352,7 @@ export default function SearchPage() {
             </thead>
             <tbody>
               {results.map((result) => (
-                <tr key={result.id} className="hover:bg-[#f8faf9]">
+                <tr key={result.id} className="hover:bg-[var(--surface-hover)]">
                   <td className="border-b border-line px-[13px] py-[11px]">
                     <CharacterAvatar
                       avatarUrl={result.avatarUrl}

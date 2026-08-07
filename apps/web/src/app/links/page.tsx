@@ -17,7 +17,7 @@ export default function LinksPage() {
       </div>
       <div className="mt-[30px] grid grid-cols-[repeat(auto-fit,minmax(280px,420px))] gap-3">
         <a
-          className="grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] rounded-[6px] border border-line bg-paper p-4 text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[2px] hover:border-[#af7a72] hover:shadow-lg"
+          className="grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] rounded-[6px] border border-line bg-paper p-4 text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[2px] hover:border-[var(--accent-hover-border)] hover:shadow-lg"
           href="https://space.bilibili.com/152309938"
           target="_blank"
           rel="noreferrer"
