@@ -12,6 +12,9 @@ rules:
   # WebSocket 升级端点（/api/rooms/{roomId}/ws）无 2XX 成功响应（101 Switching Protocols）；
   # 全契约唯一无 2XX 的 operation，全局关闭。
   operation-2xx-response: off
-  # GuestBearer 仅作文档（08 §5.1：游客鉴权在 handler 中间件执行，
-  # 契约 security 不在 OpenAPI 校验器强制执行，见 phase02 §10 偏差记录）。
+  # GuestBearer 仅作文档（08 §5.1：游客鉴权由 RoomGuardMiddleware 中间件执行）。
+  # 不把 security 加回房间操作的原因（phase02 §10 偏差记录）：kin-openapi 校验器对带
+  # security 的操作要求 AuthenticationFunc，未配置时所有请求 403（含合法 Bearer）；
+  # 当前 /api/rooms* 因同形路径问题绕过校验器才未触发。保留 scheme 作文档 + 关此规则，
+  # 比加回 security 声明（日后放开校验即成 403 地雷）更安全。
   no-unused-components: off
