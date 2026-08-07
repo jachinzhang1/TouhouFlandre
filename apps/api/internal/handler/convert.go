@@ -63,15 +63,6 @@ func characterFromRow(row repo.Character) (game.Character, error) {
 	}, nil
 }
 
-// snapshotCharacters 从快照 jsonb 还原角色列表。
-func snapshotCharacters(snapshot repo.CatalogSnapshot) ([]game.Character, error) {
-	var characters []game.Character
-	if err := json.Unmarshal(snapshot.Characters, &characters); err != nil {
-		return nil, fmt.Errorf("decode snapshot %s: %w", snapshot.Version, err)
-	}
-	return characters, nil
-}
-
 func toOpenAPICharacter(character game.Character) openapi.Character {
 	hairColors := make([]openapi.HairColor, 0, len(character.HairColors))
 	for _, color := range character.HairColors {
@@ -113,7 +104,7 @@ func toOpenAPICharacter(character game.Character) openapi.Character {
 }
 
 // toSearchResult 对应 shared 的 toSearchResult。
-func toSearchResult(character game.Character) openapi.CharacterSearchResult {
+func toSearchResult(character game.Character, searchText, nameSortKey string) openapi.CharacterSearchResult {
 	hairColors := make([]openapi.HairColor, 0, len(character.HairColors))
 	for _, color := range character.HairColors {
 		hairColors = append(hairColors, openapi.HairColor(color))
@@ -130,6 +121,8 @@ func toSearchResult(character game.Character) openapi.CharacterSearchResult {
 		Initials:        initials,
 		AvatarUrl:       character.AvatarURL,
 		AppearanceOrder: character.AppearanceOrder,
+		SearchText:      searchText,
+		NameSortKey:     nameSortKey,
 		FirstAppearance: struct {
 			ReleaseYear int    `json:"releaseYear"`
 			WorkTitle   string `json:"workTitle"`

@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# 同一 PR/分支连续 push 时取消旧运行（省额度）
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -29,9 +34,12 @@ jobs:
       - name: OpenAPI refs & orphan check
         run: pnpm check:openapi-refs
 
+      - name: WS protocol schema & examples check
+        run: pnpm check:ws-protocol
+
       - name: Generated types are up to date
         run: |
-          pnpm --filter @touhoufriberg/web gen:api
+          pnpm --filter @touhouflandre/web gen:api
           git diff --exit-code -- apps/web/src/generated
 
       - name: Typecheck
@@ -62,6 +70,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
+          cache: true
+          cache-dependency-path: apps/api/go.sum
 
       - uses: pnpm/action-setup@v4
         with:

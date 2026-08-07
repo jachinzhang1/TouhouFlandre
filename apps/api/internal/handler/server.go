@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -13,31 +13,78 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool *pgxpool.Pool
-	q    *repo.Queries
-	now  func() time.Time
-	rng  *rand.Rand
+	pool           *pgxpool.Pool
+	q              *repo.Queries
+	now            func() time.Time
+	rng            *rand.Rand
+	lobbyTTL       time.Duration  // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention time.Duration  // closed 保留期（关闭时 expires_at）
+	joinLimiter    *ipRateLimiter // 加入/预检按 IP 限流（08 §8.5）
+	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	hub            *hub.Hub       // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 }
 
-func NewServer(pool *pgxpool.Pool) *Server {
-	return &Server{
-		pool: pool,
-		q:    repo.New(pool),
-		now:  time.Now,
-		rng:  rand.New(rand.NewSource(time.Now().UnixNano())),
+// Option 定制 Server（测试注入用）。
+type Option func(*Server)
+
+// WithJoinRateLimit 覆盖加入/预检限流参数（默认每分钟 10 次，进程内计数）。
+func WithJoinRateLimit(limit int, window time.Duration) Option {
+	return func(s *Server) {
+		s.joinLimiter = newIPRateLimiter(limit, window)
 	}
+}
+
+// WithMultiTiming 覆盖对局时间常量（集成测试注入短值）。
+func WithMultiTiming(timing multi.TimingConfig) Option {
+	return func(s *Server) {
+		s.timing = timing
+	}
+}
+
+// WithHub 注入实时通道（server.NewWithOptions 默认创建；单实例共享给 sweeper 时显式传入）。
+func WithHub(h *hub.Hub) Option {
+	return func(s *Server) {
+		s.hub = h
+	}
+}
+
+// publish 事件事务提交后广播（先入库后广播，07 §7.2；hub 未注入时空转）。
+func (s *Server) publish(roomID string) {
+	if s.hub != nil {
+		s.hub.Publish(roomID)
+	}
+}
+
+func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
+	s := &Server{
+		pool:           pool,
+		q:              repo.New(pool),
+		now:            time.Now,
+		rng:            rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
+		lobbyTTL:       config.MultiLobbyTTL(),
+		eventRetention: config.MultiEventRetention(),
+		joinLimiter:    newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		timing:         multi.DefaultTimingConfig(),
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // HealthCheck 健康检查。
 func (s *Server) HealthCheck(ctx context.Context, _ openapi.HealthCheckRequestObject) (openapi.HealthCheckResponseObject, error) {
-	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhoufriberg-api"}, nil
+	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhouflandre-api"}, nil
 }
 
 // CharactersSearch 搜索角色（行表 + ILIKE）。
@@ -80,7 +127,7 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		if err != nil {
 			return nil, internalError(err)
 		}
-		results = append(results, toSearchResult(character))
+		results = append(results, toSearchResult(character, row.SearchText, row.NameSortKey))
 	}
 
 	total, err := s.q.CountSearchCharacters(ctx, query)
@@ -125,6 +172,34 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 		}},
 	}
 	return openapi.CatalogGet200JSONResponse(summary), nil
+}
+
+// CatalogCharacters 完整可猜角色表 + 当前版本（客户端本地搜索缓存源，08 §10.x）。
+// 行表与猜测校验同一来源（enabled_as_guess）；version 供客户端检测表更新（seed 后变化）。
+func (s *Server) CatalogCharacters(ctx context.Context, _ openapi.CatalogCharactersRequestObject) (openapi.CatalogCharactersResponseObject, error) {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusServiceUnavailable, Code: codeCatalogNotReady, Message: "题库尚未初始化，请先运行 seed。"}
+		}
+		return nil, internalError(err)
+	}
+	rows, err := s.q.ListGuessCharacters(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	characters := make([]openapi.CharacterSearchResult, 0, len(rows))
+	for _, row := range rows {
+		character, err := characterFromRow(row)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		characters = append(characters, toSearchResult(character, row.SearchText, row.NameSortKey))
+	}
+	return openapi.CatalogCharacters200JSONResponse{
+		Version:    state.CurrentVersion,
+		Characters: characters,
+	}, nil
 }
 
 // PuzzlesCreate 创建题局（每日题或随机）。

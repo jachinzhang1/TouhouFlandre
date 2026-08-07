@@ -13,7 +13,7 @@ tasks:
 
   dev:web:
     cmds:
-      - pnpm --filter @touhoufriberg/web dev
+      - pnpm --filter @touhouflandre/web dev
 
   db:up:
     cmds:
@@ -40,13 +40,14 @@ tasks:
 
   catalog:check:
     cmds:
-      - pnpm --filter @touhoufriberg/data validate
+      - pnpm --filter @touhouflandre/data validate
 
   gen:openapi:
     dir: apps/api
     cmds:
       - pnpm exec redocly bundle ../../contracts/openapi/openapi.yaml -o .openapi.bundled.yaml
-      - go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -config oapi-codegen.yaml .openapi.bundled.yaml
+      # oapi-codegen 版本固定于 go.mod tool 指令（go tool；随 Go 模块缓存复用，CI 免重复下载）
+      - go tool oapi-codegen -config oapi-codegen.yaml .openapi.bundled.yaml
 
   gen:repo:
     dir: apps/api
@@ -55,7 +56,7 @@ tasks:
 
   gen:web:
     cmds:
-      - pnpm --filter @touhoufriberg/web gen:api
+      - pnpm --filter @touhouflandre/web gen:api
 
   gen:
     cmds:
@@ -67,6 +68,10 @@ tasks:
     cmds:
       - task: gen
       - git diff --exit-code -- apps/api/internal/generated
+
+  check:ws-protocol:
+    cmds:
+      - pnpm check:ws-protocol
 
   test:go:
     dir: apps/api

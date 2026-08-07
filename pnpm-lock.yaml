@@ -8,10 +8,10 @@ importers:
 
   .:
     dependencies:
-      '@touhoufriberg/data':
+      '@touhouflandre/data':
         specifier: workspace:*
         version: link:packages/data
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:packages/shared
     devDependencies:
@@ -21,6 +21,9 @@ importers:
       eslint:
         specifier: ^9.33.0
         version: 9.39.5(jiti@2.7.0)(supports-color@10.2.2)
+      js-yaml:
+        specifier: ^5.2.3
+        version: 5.2.3
       prettier:
         specifier: ^3.6.2
         version: 3.9.6
@@ -36,7 +39,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       lucide-react:
@@ -97,7 +100,7 @@ importers:
 
   packages/data:
     dependencies:
-      '@touhoufriberg/shared':
+      '@touhouflandre/shared':
         specifier: workspace:*
         version: link:../shared
       zod:
@@ -1346,6 +1349,10 @@ packages:
 
   js-yaml@4.3.1:
     resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
+    hasBin: true
+
+  js-yaml@5.2.3:
+    resolution: {integrity: sha512-n+mUVyUX5bVv7G/G2zyIHOhdxfuU1dY2NOFzTQUWiMUbFss8b57NFlgCCaggU78wSw5KVS9cllzeLyzyR+n5nw==}
     hasBin: true
 
   jsdom@30.0.1:
@@ -2904,6 +2911,10 @@ snapshots:
       argparse: 2.0.1
 
   js-yaml@4.3.1:
+    dependencies:
+      argparse: 2.0.1
+
+  js-yaml@5.2.3:
     dependencies:
       argparse: 2.0.1
 

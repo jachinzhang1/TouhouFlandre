@@ -69,7 +69,7 @@ pnpm dev          # task dev：并行启动 Go API 与 Web
 | `go test ./...`（在 `apps/api`）              | Go 单元与集成测试（需 Postgres） |
 | `go vet ./...`（在 `apps/api`）               | Go 静态检查                      |
 | `task gen`                                   | 重新生成 OpenAPI 类型与 sqlc 查询 |
-| `pnpm --filter @touhoufriberg/data validate` | 校验角色与作品数据               |
+| `pnpm --filter @touhouflandre/data validate` | 校验角色与作品数据               |
 
 提交改动前至少运行 `pnpm typecheck`、`pnpm test` 和 `go test ./...`。涉及构建配置或前端资源时还应运行 `pnpm build`。
 

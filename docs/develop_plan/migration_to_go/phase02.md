@@ -164,7 +164,7 @@ apps/api/                        # 单 Go module + 并存 TS/Express
 
 1. `cmd/seed` 读取两个 JSON（路径经 env `CATALOG_DATA_DIR` 或相对仓库根解析），定义与源结构对应的 Go struct（含 `appearanceOrder` 派生、`firstAppearance` 展开——对齐 `packages/data/src/index.ts` 的组装逻辑）。
 2. 复算 FNV-1a 版本（对齐 `hashString`/`demoCatalogVersion`）；事务写入：行表 upsert + 快照 upsert + `CatalogState.currentVersion` 更新。
-3. `Taskfile` 的 `db:seed` = `pnpm --filter @touhoufriberg/data validate`（Zod 前置）→ `go run ./cmd/seed`。
+3. `Taskfile` 的 `db:seed` = `pnpm --filter @touhouflandre/data validate`（Zod 前置）→ `go run ./cmd/seed`。
 
 **验收**：
 

@@ -1,0 +1,76 @@
+# 猜测提交（成员令牌鉴权）
+# 对应 docs/08_multiplayer_mode_design.md §7.1 guess 端点与 §9.2 猜测事务分流
+
+# POST /api/rooms/{roomId}/rounds/{roundIndex}/guess
+post:
+  operationId: rooms_submitGuess
+  tags:
+    - rooms
+  summary: 提交猜测
+  description: |
+    成员令牌鉴权。实时竞速：无回合交替，任何时刻（局处于 playing）双方都可提交。
+    携带 idempotencyKey（客户端 UUID），重试返回首次结果。
+    响应为自视角完整反馈；局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影）。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: roundIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: 目标局号（须匹配当前局，否则按局态返回 ROUND_NOT_ACTIVE / ROUND_ENDED）。
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - guessId
+            - idempotencyKey
+          properties:
+            guessId:
+              type: string
+              description: 被猜角色 id（须在场次绑定的题库版本快照且 EnabledAsGuess，否则 INVALID_GUESS）。
+            idempotencyKey:
+              type: string
+              description: 客户端 UUID；同一 (round, member, key) 重试返回首次结果。
+  responses:
+    "200":
+      description: 猜测被接受（自视角完整反馈）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-round.yaml#/GuessResponse"
+    "400":
+      description: 请求格式不正确或角色不在本局题库（INVALID_GUESS / INVALID_REQUEST）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "401":
+      description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: |
+        房间/对局/局状态不允许本次猜测：
+        ROOM_CLOSED / MATCH_ALREADY_STARTED / ROUND_NOT_ACTIVE（countdown/已结束/已超时，猜测不写入）/
+        ROUND_ENDED（正确猜测迟到，携带局结果，不写入）/ GUESS_LIMIT_REACHED / DUPLICATE_GUESS。
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

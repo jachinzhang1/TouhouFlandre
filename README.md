@@ -46,7 +46,7 @@ The frontend defaults to same-origin API calls through Next.js rewrites (`/api/*
 - `pnpm build`: build all workspace packages.
 - `pnpm test`: run shared, data, and web (Vitest + RTL) tests.
 - `pnpm typecheck`: type-check all workspace packages.
-- `pnpm test:e2e` (in `apps/web`): run Playwright E2E (needs `task dev` running).
+- `pnpm test:e2e` (in `apps/web`): run Playwright E2E (needs `task dev` running; 多人场景为双 context 双玩家流程，E2E 自动放宽加入限流额度)。
 - `go test ./...` (in `apps/api`): run Go unit and integration tests (needs a reachable Postgres).
 - `task db:up` / `db:down`: start/stop the local Postgres container.
 - `task db:migrate`: apply goose migrations.
@@ -55,7 +55,7 @@ The frontend defaults to same-origin API calls through Next.js rewrites (`/api/*
 
 ## Demo Scope
 
-The current release includes a project home page, nested routes, daily puzzles, random puzzles, sortable character search with icon and list views, guess feedback, result sharing, and local session persistence through the API. Login, leaderboards, multiplayer rooms, and an admin panel are intentionally left as future modules.
+The current release includes a project home page, nested routes, daily puzzles, random puzzles, sortable character search with icon and list views, guess feedback, result sharing, local session persistence through the API, and multiplayer rooms (create/join by 6-character code, BO1/3/5/7 formats, realtime racing, anonymous opponent matrix, rematch; guest identity is room-scoped with no leaderboards or cloud saves). Login, leaderboards, and an admin panel are intentionally left as future modules.
 
 Playable routes:
 

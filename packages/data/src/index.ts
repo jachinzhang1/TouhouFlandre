@@ -1,7 +1,7 @@
 import charactersJson from "./characters.demo.json";
 import worksJson from "./works.demo.json";
 import { charactersSchema, worksSchema } from "./schema";
-import type { Character } from "@touhoufriberg/shared";
+import type { Character } from "@touhouflandre/shared";
 
 export const getAppearanceOrder = (avatarUrl: string) => {
   const match = avatarUrl.match(/^\/characters\/(\d{4})-[^/]+\.png$/u);

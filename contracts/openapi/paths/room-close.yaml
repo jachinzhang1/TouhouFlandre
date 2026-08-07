@@ -1,0 +1,41 @@
+# DELETE /api/rooms/{roomId} — 房主关闭大厅房间
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+delete:
+  operationId: rooms_close
+  tags:
+    - rooms
+  summary: 关闭大厅房间
+  description: 仅房主（slot 1 成员）令牌、仅 lobby 态。关闭后房间进入 closed（事件保留期后清理）。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "204":
+      description: 已关闭
+    "401":
+      description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: 令牌有效但非房主（GUEST_UNAUTHORIZED，权限不足）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 房间状态不允许关闭（ROOM_CLOSED，非 lobby）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

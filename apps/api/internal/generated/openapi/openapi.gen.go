@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -71,9 +71,20 @@ const (
 	CATALOGNOTREADY        ErrorResponseCode = "CATALOG_NOT_READY"
 	CONCURRENTUPDATE       ErrorResponseCode = "CONCURRENT_UPDATE"
 	DUPLICATEGUESS         ErrorResponseCode = "DUPLICATE_GUESS"
+	GUESSLIMITREACHED      ErrorResponseCode = "GUESS_LIMIT_REACHED"
+	GUESTUNAUTHORIZED      ErrorResponseCode = "GUEST_UNAUTHORIZED"
 	INTERNAL               ErrorResponseCode = "INTERNAL"
+	INVALIDFORMAT          ErrorResponseCode = "INVALID_FORMAT"
 	INVALIDGUESS           ErrorResponseCode = "INVALID_GUESS"
 	INVALIDREQUEST         ErrorResponseCode = "INVALID_REQUEST"
+	MATCHALREADYSTARTED    ErrorResponseCode = "MATCH_ALREADY_STARTED"
+	RATELIMITED            ErrorResponseCode = "RATE_LIMITED"
+	REMATCHNOTAVAILABLE    ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
+	ROOMCLOSED             ErrorResponseCode = "ROOM_CLOSED"
+	ROOMFULL               ErrorResponseCode = "ROOM_FULL"
+	ROOMNOTFOUND           ErrorResponseCode = "ROOM_NOT_FOUND"
+	ROUNDENDED             ErrorResponseCode = "ROUND_ENDED"
+	ROUNDNOTACTIVE         ErrorResponseCode = "ROUND_NOT_ACTIVE"
 	SESSIONCLOSED          ErrorResponseCode = "SESSION_CLOSED"
 	SESSIONNOTFOUND        ErrorResponseCode = "SESSION_NOT_FOUND"
 	UNSUPPORTEDCONTENTTYPE ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
@@ -88,11 +99,33 @@ func (e ErrorResponseCode) Valid() bool {
 		return true
 	case DUPLICATEGUESS:
 		return true
+	case GUESSLIMITREACHED:
+		return true
+	case GUESTUNAUTHORIZED:
+		return true
 	case INTERNAL:
+		return true
+	case INVALIDFORMAT:
 		return true
 	case INVALIDGUESS:
 		return true
 	case INVALIDREQUEST:
+		return true
+	case MATCHALREADYSTARTED:
+		return true
+	case RATELIMITED:
+		return true
+	case REMATCHNOTAVAILABLE:
+		return true
+	case ROOMCLOSED:
+		return true
+	case ROOMFULL:
+		return true
+	case ROOMNOTFOUND:
+		return true
+	case ROUNDENDED:
+		return true
+	case ROUNDNOTACTIVE:
 		return true
 	case SESSIONCLOSED:
 		return true
@@ -291,21 +324,111 @@ func (e HairColor) Valid() bool {
 	}
 }
 
+// Defines values for MemberStatus.
+const (
+	Connected    MemberStatus = "connected"
+	Disconnected MemberStatus = "disconnected"
+	Left         MemberStatus = "left"
+)
+
+// Valid indicates whether the value is a known member of the MemberStatus enum.
+func (e MemberStatus) Valid() bool {
+	switch e {
+	case Connected:
+		return true
+	case Disconnected:
+		return true
+	case Left:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomFormat.
+const (
+	Bo1 RoomFormat = "bo1"
+	Bo3 RoomFormat = "bo3"
+	Bo5 RoomFormat = "bo5"
+	Bo7 RoomFormat = "bo7"
+)
+
+// Valid indicates whether the value is a known member of the RoomFormat enum.
+func (e RoomFormat) Valid() bool {
+	switch e {
+	case Bo1:
+		return true
+	case Bo3:
+		return true
+	case Bo5:
+		return true
+	case Bo7:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomStatus.
+const (
+	RoomStatusClosed   RoomStatus = "closed"
+	RoomStatusFinished RoomStatus = "finished"
+	RoomStatusLobby    RoomStatus = "lobby"
+	RoomStatusPlaying  RoomStatus = "playing"
+)
+
+// Valid indicates whether the value is a known member of the RoomStatus enum.
+func (e RoomStatus) Valid() bool {
+	switch e {
+	case RoomStatusClosed:
+		return true
+	case RoomStatusFinished:
+		return true
+	case RoomStatusLobby:
+		return true
+	case RoomStatusPlaying:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoundStatus.
+const (
+	RoundStatusCountdown RoundStatus = "countdown"
+	RoundStatusEnded     RoundStatus = "ended"
+	RoundStatusPlaying   RoundStatus = "playing"
+)
+
+// Valid indicates whether the value is a known member of the RoundStatus enum.
+func (e RoundStatus) Valid() bool {
+	switch e {
+	case RoundStatusCountdown:
+		return true
+	case RoundStatusEnded:
+		return true
+	case RoundStatusPlaying:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SessionStatus.
 const (
-	Lost    SessionStatus = "lost"
-	Playing SessionStatus = "playing"
-	Won     SessionStatus = "won"
+	SessionStatusLost    SessionStatus = "lost"
+	SessionStatusPlaying SessionStatus = "playing"
+	SessionStatusWon     SessionStatus = "won"
 )
 
 // Valid indicates whether the value is a known member of the SessionStatus enum.
 func (e SessionStatus) Valid() bool {
 	switch e {
-	case Lost:
+	case SessionStatusLost:
 		return true
-	case Playing:
+	case SessionStatusPlaying:
 		return true
-	case Won:
+	case SessionStatusWon:
 		return true
 	default:
 		return false
@@ -390,6 +513,14 @@ func (e PuzzlesCreateParamsMode) Valid() bool {
 	}
 }
 
+// CatalogCharacters 完整可猜角色表（客户端本地搜索用；version 为 CatalogState.currentVersion）。
+type CatalogCharacters struct {
+	Characters []CharacterSearchResult `json:"characters"`
+
+	// Version 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。
+	Version string `json:"version"`
+}
+
 // CatalogContentSummary defines model for CatalogContentSummary.
 type CatalogContentSummary struct {
 	Answerable        int             `json:"answerable"`
@@ -450,8 +581,28 @@ type CharacterSearchResult struct {
 	Initials   string      `json:"initials"`
 	Locations  []string    `json:"locations"`
 	Name       string      `json:"name"`
-	Species    []string    `json:"species"`
-	Subtitle   string      `json:"subtitle"`
+
+	// NameSortKey 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。
+	NameSortKey string `json:"nameSortKey"`
+
+	// SearchText 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。
+	SearchText string   `json:"searchText"`
+	Species    []string `json:"species"`
+	Subtitle   string   `json:"subtitle"`
+}
+
+// CreateRoomResponse 创建房间响应。guestToken 明文仅此一次返回。
+type CreateRoomResponse struct {
+	// GuestToken 游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
+	// 传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
+	// 令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存（令牌类型不匹配 → GUEST_UNAUTHORIZED）。
+	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
+	GuestToken GuestToken `json:"guestToken"`
+
+	// Member 房间成员视图。
+	Member   MemberView `json:"member"`
+	RoomCode string     `json:"roomCode"`
+	RoomId   string     `json:"roomId"`
 }
 
 // DifficultyTier defines model for DifficultyTier.
@@ -505,6 +656,12 @@ type GameMode string
 // GuessFieldKey defines model for GuessFieldKey.
 type GuessFieldKey string
 
+// GuessResponse 猜测被接受的自视角响应（完整反馈；局中不返回答案与对手信息）。
+type GuessResponse struct {
+	Guess      GuessResult `json:"guess"`
+	RoundIndex int         `json:"roundIndex"`
+}
+
 // GuessResult defines model for GuessResult.
 type GuessResult struct {
 	Feedback []FieldFeedback `json:"feedback"`
@@ -516,8 +673,27 @@ type GuessResult struct {
 	IsCorrect      bool    `json:"isCorrect"`
 }
 
+// GuestToken 游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
+// 传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
+// 令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存（令牌类型不匹配 → GUEST_UNAUTHORIZED）。
+// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
+type GuestToken = string
+
 // HairColor defines model for HairColor.
 type HairColor string
+
+// JoinRoomResponse 加入房间响应。guestToken 明文仅此一次返回。
+type JoinRoomResponse struct {
+	// GuestToken 游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
+	// 传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
+	// 令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存（令牌类型不匹配 → GUEST_UNAUTHORIZED）。
+	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
+	GuestToken GuestToken `json:"guestToken"`
+
+	// Member 房间成员视图。
+	Member MemberView `json:"member"`
+	RoomId string     `json:"roomId"`
+}
 
 // LocalizedNames defines model for LocalizedNames.
 type LocalizedNames struct {
@@ -529,11 +705,65 @@ type LocalizedNames struct {
 	ZhHant  *string  `json:"zhHant,omitempty"`
 }
 
+// MatchView 场次视图。场次自包含：比分、题库版本绑定（catalogVersion 见事件）、round_count 归场行。
+type MatchView struct {
+	// MatchIndex 场次序号；0 = 首场，1 = 第一次再来一局……
+	MatchIndex int `json:"matchIndex"`
+
+	// MaxRounds 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。
+	MaxRounds int `json:"maxRounds"`
+
+	// RematchReady 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。
+	RematchReady []bool `json:"rematchReady"`
+
+	// RoundIndex 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。
+	RoundIndex int `json:"roundIndex"`
+
+	// ScoreSlot1 slot 1 已胜局数（平局不计入）。
+	ScoreSlot1 int `json:"scoreSlot1"`
+
+	// ScoreSlot2 slot 2 已胜局数（平局不计入）。
+	ScoreSlot2 int `json:"scoreSlot2"`
+
+	// TargetWins 目标胜场 = (N+1)/2。
+	TargetWins int `json:"targetWins"`
+}
+
+// MemberStatus 成员连接状态。
+type MemberStatus string
+
+// MemberView 房间成员视图。
+type MemberView struct {
+	// DisplayName 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。
+	DisplayName string `json:"displayName"`
+
+	// Ready 大厅就绪态（仅 lobby 态使用）。
+	Ready bool `json:"ready"`
+
+	// Slot 席位；slot 1 = 房主（DELETE 权限判定）。
+	Slot int `json:"slot"`
+
+	// Status 成员连接状态。
+	Status MemberStatus `json:"status"`
+}
+
+// OpponentRow 对手一行猜测（匿名矩阵行）。局中只含状态颜色序列，不含角色名/字段标签/值。
+type OpponentRow struct {
+	// Index 该成员局内猜测序号（1 起）。
+	Index int `json:"index"`
+
+	// Statuses 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+	Statuses []FeedbackStatus `json:"statuses"`
+}
+
 // PublicGameSession 公开会话视图。answer 仅在会话结束后返回。
 type PublicGameSession struct {
 	// Answer 答案角色，仅在会话结束后返回。
-	Answer      *Character      `json:"answer,omitempty"`
-	ContentType GameContentType `json:"contentType"`
+	Answer *Character `json:"answer,omitempty"`
+
+	// CatalogVersion 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。
+	CatalogVersion *string         `json:"catalogVersion,omitempty"`
+	ContentType    GameContentType `json:"contentType"`
 
 	// EndedAt 会话结束后才返回。
 	EndedAt    *time.Time    `json:"endedAt,omitempty"`
@@ -552,6 +782,91 @@ type PuzzleResponse struct {
 
 	// Session 公开会话视图。answer 仅在会话结束后返回。
 	Session PublicGameSession `json:"session"`
+}
+
+// RoomEventEnvelope 房间事件信封（与 contracts/ws/protocol.yaml 一致）。payload 形状以协议规范为准。
+type RoomEventEnvelope struct {
+	EventId    string                 `json:"eventId"`
+	OccurredAt time.Time              `json:"occurredAt"`
+	Payload    map[string]interface{} `json:"payload"`
+	RoomId     string                 `json:"roomId"`
+
+	// Sequence 房间内单调递增事件序号（客户端恢复游标）。
+	Sequence int `json:"sequence"`
+
+	// Type 事件类型（room.updated / match.started / round.started 等，见 contracts/ws/protocol.yaml）。
+	Type string `json:"type"`
+}
+
+// RoomFormat 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
+type RoomFormat string
+
+// RoomInfo 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
+type RoomInfo struct {
+	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
+	Format      RoomFormat `json:"format"`
+	MemberCount int        `json:"memberCount"`
+
+	// RoomCode 6 位房间号。
+	RoomCode string `json:"roomCode"`
+
+	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
+	Status RoomStatus `json:"status"`
+}
+
+// RoomSnapshot 逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
+// events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+// round 仅在局处于 countdown/playing 时存在。
+type RoomSnapshot struct {
+	// Events after 游标之后的事件（逐观察者投影后）。
+	Events []RoomEventEnvelope `json:"events"`
+
+	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
+	Format RoomFormat `json:"format"`
+
+	// Match 当前场次（lobby 态不存在；含 finished 等待再来一局）。
+	Match    *MatchView   `json:"match,omitempty"`
+	Members  []MemberView `json:"members"`
+	RoomCode string       `json:"roomCode"`
+	RoomId   string       `json:"roomId"`
+
+	// Round 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。
+	Round *RoundView `json:"round,omitempty"`
+
+	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
+	Status RoomStatus `json:"status"`
+}
+
+// RoomStatus 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
+type RoomStatus string
+
+// RoundStatus 单局状态：countdown（倒计时）→ playing → ended。
+type RoundStatus string
+
+// RoundView 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
+// opponent 为匿名矩阵（只含状态颜色序列）。
+type RoundView struct {
+	// Deadline 整局超时平局时刻（默认 startsAt + 15min）。
+	Deadline time.Time `json:"deadline"`
+
+	// MaxGuesses 每局每人猜测上限（沿用单人 GameContentDefinition.MaxGuesses = 8）。
+	MaxGuesses int `json:"maxGuesses"`
+
+	// Opponent 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。
+	Opponent struct {
+		Rows []OpponentRow `json:"rows"`
+	} `json:"opponent"`
+
+	// Self 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。
+	Self struct {
+		Guesses []GuessResult `json:"guesses"`
+	} `json:"self"`
+
+	// StartsAt 本局可开猜时刻（倒计时结束；局间间歇兼作倒计时）。
+	StartsAt time.Time `json:"startsAt"`
+
+	// Status 单局状态：countdown（倒计时）→ playing → ended。
+	Status RoundStatus `json:"status"`
 }
 
 // SessionStatus defines model for SessionStatus.
@@ -579,11 +894,50 @@ type CharactersSearchParamsDirection string
 // PuzzlesCreateParamsMode defines parameters for PuzzlesCreate.
 type PuzzlesCreateParamsMode string
 
+// RoomsCreateJSONBody defines parameters for RoomsCreate.
+type RoomsCreateJSONBody struct {
+	// DisplayName 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。
+	DisplayName *string `json:"displayName,omitempty"`
+
+	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
+	Format RoomFormat `json:"format"`
+}
+
+// RoomsJoinJSONBody defines parameters for RoomsJoin.
+type RoomsJoinJSONBody struct {
+	// DisplayName 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。
+	DisplayName *string `json:"displayName,omitempty"`
+}
+
+// RoomsSubmitGuessJSONBody defines parameters for RoomsSubmitGuess.
+type RoomsSubmitGuessJSONBody struct {
+	// GuessId 被猜角色 id（须在场次绑定的题库版本快照且 EnabledAsGuess，否则 INVALID_GUESS）。
+	GuessId string `json:"guessId"`
+
+	// IdempotencyKey 客户端 UUID；同一 (round, member, key) 重试返回首次结果。
+	IdempotencyKey string `json:"idempotencyKey"`
+}
+
+// RoomsGetSnapshotParams defines parameters for RoomsGetSnapshot.
+type RoomsGetSnapshotParams struct {
+	// After 仅返回该游标之后的事件（缺省 0 = 全量）。
+	After *int `form:"after,omitempty" json:"after,omitempty"`
+}
+
 // SessionsSubmitGuessJSONBody defines parameters for SessionsSubmitGuess.
 type SessionsSubmitGuessJSONBody struct {
 	// GuessId 被猜角色 id。
 	GuessId string `json:"guessId"`
 }
+
+// RoomsCreateJSONRequestBody defines body for RoomsCreate for application/json ContentType.
+type RoomsCreateJSONRequestBody RoomsCreateJSONBody
+
+// RoomsJoinJSONRequestBody defines body for RoomsJoin for application/json ContentType.
+type RoomsJoinJSONRequestBody RoomsJoinJSONBody
+
+// RoomsSubmitGuessJSONRequestBody defines body for RoomsSubmitGuess for application/json ContentType.
+type RoomsSubmitGuessJSONRequestBody RoomsSubmitGuessJSONBody
 
 // SessionsSubmitGuessJSONRequestBody defines body for SessionsSubmitGuess for application/json ContentType.
 type SessionsSubmitGuessJSONRequestBody SessionsSubmitGuessJSONBody
@@ -592,22 +946,55 @@ type SessionsSubmitGuessJSONRequestBody SessionsSubmitGuessJSONBody
 type ServerInterface interface {
 	// CatalogGet 获取题库摘要
 	// (GET /api/catalog)
-	CatalogGet(ctx echo.Context) error
+	CatalogGet(ctx *echo.Context) error
+	// CatalogCharacters 获取完整可猜角色表与当前题库版本
+	// (GET /api/catalog/characters)
+	CatalogCharacters(ctx *echo.Context) error
 	// CharactersSearch 搜索角色
 	// (GET /api/characters/search)
-	CharactersSearch(ctx echo.Context, params CharactersSearchParams) error
+	CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error
 	// HealthCheck 服务健康检查
 	// (GET /api/health)
-	HealthCheck(ctx echo.Context) error
+	HealthCheck(ctx *echo.Context) error
 	// PuzzlesCreate 创建题局
 	// (POST /api/puzzles/{mode})
-	PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParamsMode) error
+	PuzzlesCreate(ctx *echo.Context, mode PuzzlesCreateParamsMode) error
+	// RoomsCreate 创建房间
+	// (POST /api/rooms)
+	RoomsCreate(ctx *echo.Context) error
+	// RoomsGetInfo 公开房间预检
+	// (GET /api/rooms/{roomCode})
+	RoomsGetInfo(ctx *echo.Context, roomCode string) error
+	// RoomsJoin 加入房间
+	// (POST /api/rooms/{roomCode}/join)
+	RoomsJoin(ctx *echo.Context, roomCode string) error
+	// RoomsClose 关闭大厅房间
+	// (DELETE /api/rooms/{roomId})
+	RoomsClose(ctx *echo.Context, roomId string) error
+	// RoomsLeave 离开房间
+	// (POST /api/rooms/{roomId}/leave)
+	RoomsLeave(ctx *echo.Context, roomId string) error
+	// RoomsSetReady 就绪
+	// (POST /api/rooms/{roomId}/ready)
+	RoomsSetReady(ctx *echo.Context, roomId string) error
+	// RoomsRematch 确认再来一局
+	// (POST /api/rooms/{roomId}/rematch)
+	RoomsRematch(ctx *echo.Context, roomId string) error
+	// RoomsSubmitGuess 提交猜测
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/guess)
+	RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error
+	// RoomsGetSnapshot 房间快照与事件重放
+	// (GET /api/rooms/{roomId}/snapshot)
+	RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error
+	// RoomsConnectWs WebSocket 事件通道
+	// (GET /api/rooms/{roomId}/ws)
+	RoomsConnectWs(ctx *echo.Context, roomId string) error
 	// SessionsGet 恢复会话
 	// (GET /api/sessions/{sessionId})
-	SessionsGet(ctx echo.Context, sessionId string) error
+	SessionsGet(ctx *echo.Context, sessionId string) error
 	// SessionsSubmitGuess 提交猜测
 	// (POST /api/sessions/{sessionId}/guess)
-	SessionsSubmitGuess(ctx echo.Context, sessionId string) error
+	SessionsSubmitGuess(ctx *echo.Context, sessionId string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -616,7 +1003,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // CatalogGet converts echo context to params.
-func (w *ServerInterfaceWrapper) CatalogGet(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) CatalogGet(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -624,8 +1011,17 @@ func (w *ServerInterfaceWrapper) CatalogGet(ctx echo.Context) error {
 	return err
 }
 
+// CatalogCharacters converts echo context to params.
+func (w *ServerInterfaceWrapper) CatalogCharacters(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CatalogCharacters(ctx)
+	return err
+}
+
 // CharactersSearch converts echo context to params.
-func (w *ServerInterfaceWrapper) CharactersSearch(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) CharactersSearch(ctx *echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
@@ -671,7 +1067,7 @@ func (w *ServerInterfaceWrapper) CharactersSearch(ctx echo.Context) error {
 }
 
 // HealthCheck converts echo context to params.
-func (w *ServerInterfaceWrapper) HealthCheck(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) HealthCheck(ctx *echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
@@ -680,7 +1076,7 @@ func (w *ServerInterfaceWrapper) HealthCheck(ctx echo.Context) error {
 }
 
 // PuzzlesCreate converts echo context to params.
-func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "mode" -------------
 	var mode PuzzlesCreateParamsMode
@@ -695,8 +1091,178 @@ func (w *ServerInterfaceWrapper) PuzzlesCreate(ctx echo.Context) error {
 	return err
 }
 
+// RoomsCreate converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsCreate(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsCreate(ctx)
+	return err
+}
+
+// RoomsGetInfo converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsGetInfo(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomCode" -------------
+	var roomCode string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomCode", ctx.Param("roomCode"), &roomCode, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomCode: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsGetInfo(ctx, roomCode)
+	return err
+}
+
+// RoomsJoin converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsJoin(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomCode" -------------
+	var roomCode string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomCode", ctx.Param("roomCode"), &roomCode, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomCode: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsJoin(ctx, roomCode)
+	return err
+}
+
+// RoomsClose converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsClose(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsClose(ctx, roomId)
+	return err
+}
+
+// RoomsLeave converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsLeave(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsLeave(ctx, roomId)
+	return err
+}
+
+// RoomsSetReady converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsSetReady(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsSetReady(ctx, roomId)
+	return err
+}
+
+// RoomsRematch converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsRematch(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsRematch(ctx, roomId)
+	return err
+}
+
+// RoomsSubmitGuess converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// ------------- Path parameter "roundIndex" -------------
+	var roundIndex int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roundIndex", ctx.Param("roundIndex"), &roundIndex, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roundIndex: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsSubmitGuess(ctx, roomId, roundIndex)
+	return err
+}
+
+// RoomsGetSnapshot converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsGetSnapshot(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RoomsGetSnapshotParams
+	// ------------- Optional query parameter "after" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", ctx.QueryParams(), &params.After, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsGetSnapshot(ctx, roomId, params)
+	return err
+}
+
+// RoomsConnectWs converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsConnectWs(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsConnectWs(ctx, roomId)
+	return err
+}
+
 // SessionsGet converts echo context to params.
-func (w *ServerInterfaceWrapper) SessionsGet(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) SessionsGet(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "sessionId" -------------
 	var sessionId string
@@ -712,7 +1278,7 @@ func (w *ServerInterfaceWrapper) SessionsGet(ctx echo.Context) error {
 }
 
 // SessionsSubmitGuess converts echo context to params.
-func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx *echo.Context) error {
 	var err error
 	// ------------- Path parameter "sessionId" -------------
 	var sessionId string
@@ -731,15 +1297,15 @@ func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx echo.Context) error {
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
 type EchoRouter interface {
-	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
+	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	HEAD(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	OPTIONS(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PATCH(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
+	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) echo.RouteInfo
 }
 
 // RegisterHandlersOptions configures RegisterHandlersWithOptions.
@@ -777,9 +1343,20 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/api/health", wrapper.HealthCheck, options.OperationMiddlewares["health_check"]...)
 	router.GET(options.BaseURL+"/api/characters/search", wrapper.CharactersSearch, options.OperationMiddlewares["characters_search"]...)
 	router.GET(options.BaseURL+"/api/catalog", wrapper.CatalogGet, options.OperationMiddlewares["catalog_get"]...)
+	router.GET(options.BaseURL+"/api/catalog/characters", wrapper.CatalogCharacters, options.OperationMiddlewares["catalog_characters"]...)
 	router.POST(options.BaseURL+"/api/puzzles/:mode", wrapper.PuzzlesCreate, options.OperationMiddlewares["puzzles_create"]...)
 	router.POST(options.BaseURL+"/api/sessions/:sessionId/guess", wrapper.SessionsSubmitGuess, options.OperationMiddlewares["sessions_submitGuess"]...)
 	router.GET(options.BaseURL+"/api/sessions/:sessionId", wrapper.SessionsGet, options.OperationMiddlewares["sessions_get"]...)
+	router.POST(options.BaseURL+"/api/rooms", wrapper.RoomsCreate, options.OperationMiddlewares["rooms_create"]...)
+	router.GET(options.BaseURL+"/api/rooms/:roomCode", wrapper.RoomsGetInfo, options.OperationMiddlewares["rooms_getInfo"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomCode/join", wrapper.RoomsJoin, options.OperationMiddlewares["rooms_join"]...)
+	router.GET(options.BaseURL+"/api/rooms/:roomId/snapshot", wrapper.RoomsGetSnapshot, options.OperationMiddlewares["rooms_getSnapshot"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/ready", wrapper.RoomsSetReady, options.OperationMiddlewares["rooms_setReady"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/rematch", wrapper.RoomsRematch, options.OperationMiddlewares["rooms_rematch"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/leave", wrapper.RoomsLeave, options.OperationMiddlewares["rooms_leave"]...)
+	router.DELETE(options.BaseURL+"/api/rooms/:roomId", wrapper.RoomsClose, options.OperationMiddlewares["rooms_close"]...)
+	router.GET(options.BaseURL+"/api/rooms/:roomId/ws", wrapper.RoomsConnectWs, options.OperationMiddlewares["rooms_connectWs"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/guess", wrapper.RoomsSubmitGuess, options.OperationMiddlewares["rooms_submitGuess"]...)
 
 }
 
@@ -807,6 +1384,41 @@ func (response CatalogGet200JSONResponse) VisitCatalogGetResponse(w http.Respons
 type CatalogGet503JSONResponse ErrorResponse
 
 func (response CatalogGet503JSONResponse) VisitCatalogGetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CatalogCharactersRequestObject struct {
+}
+
+type CatalogCharactersResponseObject interface {
+	VisitCatalogCharactersResponse(w http.ResponseWriter) error
+}
+
+type CatalogCharacters200JSONResponse CatalogCharacters
+
+func (response CatalogCharacters200JSONResponse) VisitCatalogCharactersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CatalogCharacters503JSONResponse ErrorResponse
+
+func (response CatalogCharacters503JSONResponse) VisitCatalogCharactersResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -956,6 +1568,606 @@ func (response PuzzlesCreate503JSONResponse) VisitPuzzlesCreateResponse(w http.R
 	return err
 }
 
+type RoomsCreateRequestObject struct {
+	Body *RoomsCreateJSONRequestBody
+}
+
+type RoomsCreateResponseObject interface {
+	VisitRoomsCreateResponse(w http.ResponseWriter) error
+}
+
+type RoomsCreate201JSONResponse CreateRoomResponse
+
+func (response RoomsCreate201JSONResponse) VisitRoomsCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsCreate400JSONResponse ErrorResponse
+
+func (response RoomsCreate400JSONResponse) VisitRoomsCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsCreate500JSONResponse ErrorResponse
+
+func (response RoomsCreate500JSONResponse) VisitRoomsCreateResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetInfoRequestObject struct {
+	RoomCode string `json:"roomCode"`
+}
+
+type RoomsGetInfoResponseObject interface {
+	VisitRoomsGetInfoResponse(w http.ResponseWriter) error
+}
+
+type RoomsGetInfo200JSONResponse RoomInfo
+
+func (response RoomsGetInfo200JSONResponse) VisitRoomsGetInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetInfo404JSONResponse ErrorResponse
+
+func (response RoomsGetInfo404JSONResponse) VisitRoomsGetInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetInfo429JSONResponse ErrorResponse
+
+func (response RoomsGetInfo429JSONResponse) VisitRoomsGetInfoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsJoinRequestObject struct {
+	RoomCode string `json:"roomCode"`
+	Body     *RoomsJoinJSONRequestBody
+}
+
+type RoomsJoinResponseObject interface {
+	VisitRoomsJoinResponse(w http.ResponseWriter) error
+}
+
+type RoomsJoin201JSONResponse JoinRoomResponse
+
+func (response RoomsJoin201JSONResponse) VisitRoomsJoinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsJoin404JSONResponse ErrorResponse
+
+func (response RoomsJoin404JSONResponse) VisitRoomsJoinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsJoin409JSONResponse ErrorResponse
+
+func (response RoomsJoin409JSONResponse) VisitRoomsJoinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsJoin429JSONResponse ErrorResponse
+
+func (response RoomsJoin429JSONResponse) VisitRoomsJoinResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsCloseRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsCloseResponseObject interface {
+	VisitRoomsCloseResponse(w http.ResponseWriter) error
+}
+
+type RoomsClose204Response struct {
+}
+
+func (response RoomsClose204Response) VisitRoomsCloseResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsClose401JSONResponse ErrorResponse
+
+func (response RoomsClose401JSONResponse) VisitRoomsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClose403JSONResponse ErrorResponse
+
+func (response RoomsClose403JSONResponse) VisitRoomsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClose404JSONResponse ErrorResponse
+
+func (response RoomsClose404JSONResponse) VisitRoomsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClose409JSONResponse ErrorResponse
+
+func (response RoomsClose409JSONResponse) VisitRoomsCloseResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsLeaveRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsLeaveResponseObject interface {
+	VisitRoomsLeaveResponse(w http.ResponseWriter) error
+}
+
+type RoomsLeave204Response struct {
+}
+
+func (response RoomsLeave204Response) VisitRoomsLeaveResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsLeave401JSONResponse ErrorResponse
+
+func (response RoomsLeave401JSONResponse) VisitRoomsLeaveResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsLeave404JSONResponse ErrorResponse
+
+func (response RoomsLeave404JSONResponse) VisitRoomsLeaveResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsLeave409JSONResponse ErrorResponse
+
+func (response RoomsLeave409JSONResponse) VisitRoomsLeaveResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSetReadyRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsSetReadyResponseObject interface {
+	VisitRoomsSetReadyResponse(w http.ResponseWriter) error
+}
+
+type RoomsSetReady204Response struct {
+}
+
+func (response RoomsSetReady204Response) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsSetReady401JSONResponse ErrorResponse
+
+func (response RoomsSetReady401JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSetReady404JSONResponse ErrorResponse
+
+func (response RoomsSetReady404JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSetReady409JSONResponse ErrorResponse
+
+func (response RoomsSetReady409JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsRematchRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsRematchResponseObject interface {
+	VisitRoomsRematchResponse(w http.ResponseWriter) error
+}
+
+type RoomsRematch204Response struct {
+}
+
+func (response RoomsRematch204Response) VisitRoomsRematchResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsRematch401JSONResponse ErrorResponse
+
+func (response RoomsRematch401JSONResponse) VisitRoomsRematchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsRematch404JSONResponse ErrorResponse
+
+func (response RoomsRematch404JSONResponse) VisitRoomsRematchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsRematch409JSONResponse ErrorResponse
+
+func (response RoomsRematch409JSONResponse) VisitRoomsRematchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSubmitGuessRequestObject struct {
+	RoomId     string `json:"roomId"`
+	RoundIndex int    `json:"roundIndex"`
+	Body       *RoomsSubmitGuessJSONRequestBody
+}
+
+type RoomsSubmitGuessResponseObject interface {
+	VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error
+}
+
+type RoomsSubmitGuess200JSONResponse GuessResponse
+
+func (response RoomsSubmitGuess200JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSubmitGuess400JSONResponse ErrorResponse
+
+func (response RoomsSubmitGuess400JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSubmitGuess401JSONResponse ErrorResponse
+
+func (response RoomsSubmitGuess401JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSubmitGuess404JSONResponse ErrorResponse
+
+func (response RoomsSubmitGuess404JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSubmitGuess409JSONResponse ErrorResponse
+
+func (response RoomsSubmitGuess409JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetSnapshotRequestObject struct {
+	RoomId string `json:"roomId"`
+	Params RoomsGetSnapshotParams
+}
+
+type RoomsGetSnapshotResponseObject interface {
+	VisitRoomsGetSnapshotResponse(w http.ResponseWriter) error
+}
+
+type RoomsGetSnapshot200JSONResponse RoomSnapshot
+
+func (response RoomsGetSnapshot200JSONResponse) VisitRoomsGetSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetSnapshot401JSONResponse ErrorResponse
+
+func (response RoomsGetSnapshot401JSONResponse) VisitRoomsGetSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsGetSnapshot404JSONResponse ErrorResponse
+
+func (response RoomsGetSnapshot404JSONResponse) VisitRoomsGetSnapshotResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsConnectWsRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsConnectWsResponseObject interface {
+	VisitRoomsConnectWsResponse(w http.ResponseWriter) error
+}
+
+type RoomsConnectWs101Response struct {
+}
+
+func (response RoomsConnectWs101Response) VisitRoomsConnectWsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(101)
+	return nil
+}
+
+type RoomsConnectWs400JSONResponse ErrorResponse
+
+func (response RoomsConnectWs400JSONResponse) VisitRoomsConnectWsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsConnectWs401JSONResponse ErrorResponse
+
+func (response RoomsConnectWs401JSONResponse) VisitRoomsConnectWsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsConnectWs404JSONResponse ErrorResponse
+
+func (response RoomsConnectWs404JSONResponse) VisitRoomsConnectWsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SessionsGetRequestObject struct {
 	SessionId string `json:"sessionId"`
 }
@@ -1096,6 +2308,9 @@ type StrictServerInterface interface {
 	// CatalogGet 获取题库摘要
 	// (GET /api/catalog)
 	CatalogGet(ctx context.Context, request CatalogGetRequestObject) (CatalogGetResponseObject, error)
+	// CatalogCharacters 获取完整可猜角色表与当前题库版本
+	// (GET /api/catalog/characters)
+	CatalogCharacters(ctx context.Context, request CatalogCharactersRequestObject) (CatalogCharactersResponseObject, error)
 	// CharactersSearch 搜索角色
 	// (GET /api/characters/search)
 	CharactersSearch(ctx context.Context, request CharactersSearchRequestObject) (CharactersSearchResponseObject, error)
@@ -1105,6 +2320,36 @@ type StrictServerInterface interface {
 	// PuzzlesCreate 创建题局
 	// (POST /api/puzzles/{mode})
 	PuzzlesCreate(ctx context.Context, request PuzzlesCreateRequestObject) (PuzzlesCreateResponseObject, error)
+	// RoomsCreate 创建房间
+	// (POST /api/rooms)
+	RoomsCreate(ctx context.Context, request RoomsCreateRequestObject) (RoomsCreateResponseObject, error)
+	// RoomsGetInfo 公开房间预检
+	// (GET /api/rooms/{roomCode})
+	RoomsGetInfo(ctx context.Context, request RoomsGetInfoRequestObject) (RoomsGetInfoResponseObject, error)
+	// RoomsJoin 加入房间
+	// (POST /api/rooms/{roomCode}/join)
+	RoomsJoin(ctx context.Context, request RoomsJoinRequestObject) (RoomsJoinResponseObject, error)
+	// RoomsClose 关闭大厅房间
+	// (DELETE /api/rooms/{roomId})
+	RoomsClose(ctx context.Context, request RoomsCloseRequestObject) (RoomsCloseResponseObject, error)
+	// RoomsLeave 离开房间
+	// (POST /api/rooms/{roomId}/leave)
+	RoomsLeave(ctx context.Context, request RoomsLeaveRequestObject) (RoomsLeaveResponseObject, error)
+	// RoomsSetReady 就绪
+	// (POST /api/rooms/{roomId}/ready)
+	RoomsSetReady(ctx context.Context, request RoomsSetReadyRequestObject) (RoomsSetReadyResponseObject, error)
+	// RoomsRematch 确认再来一局
+	// (POST /api/rooms/{roomId}/rematch)
+	RoomsRematch(ctx context.Context, request RoomsRematchRequestObject) (RoomsRematchResponseObject, error)
+	// RoomsSubmitGuess 提交猜测
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/guess)
+	RoomsSubmitGuess(ctx context.Context, request RoomsSubmitGuessRequestObject) (RoomsSubmitGuessResponseObject, error)
+	// RoomsGetSnapshot 房间快照与事件重放
+	// (GET /api/rooms/{roomId}/snapshot)
+	RoomsGetSnapshot(ctx context.Context, request RoomsGetSnapshotRequestObject) (RoomsGetSnapshotResponseObject, error)
+	// RoomsConnectWs WebSocket 事件通道
+	// (GET /api/rooms/{roomId}/ws)
+	RoomsConnectWs(ctx context.Context, request RoomsConnectWsRequestObject) (RoomsConnectWsResponseObject, error)
 	// SessionsGet 恢复会话
 	// (GET /api/sessions/{sessionId})
 	SessionsGet(ctx context.Context, request SessionsGetRequestObject) (SessionsGetResponseObject, error)
@@ -1113,7 +2358,7 @@ type StrictServerInterface interface {
 	SessionsSubmitGuess(ctx context.Context, request SessionsSubmitGuessRequestObject) (SessionsSubmitGuessResponseObject, error)
 }
 
-type StrictHandlerFunc func(ctx echo.Context, request any) (any, error)
+type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
 type StrictMiddlewareFunc func(f StrictHandlerFunc, operationID string) StrictHandlerFunc
 
 func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
@@ -1126,10 +2371,10 @@ type strictHandler struct {
 }
 
 // CatalogGet operation middleware
-func (sh *strictHandler) CatalogGet(ctx echo.Context) error {
+func (sh *strictHandler) CatalogGet(ctx *echo.Context) error {
 	var request CatalogGetRequestObject
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.CatalogGet(ctx.Request().Context(), request.(CatalogGetRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1148,13 +2393,36 @@ func (sh *strictHandler) CatalogGet(ctx echo.Context) error {
 	return nil
 }
 
+// CatalogCharacters operation middleware
+func (sh *strictHandler) CatalogCharacters(ctx *echo.Context) error {
+	var request CatalogCharactersRequestObject
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CatalogCharacters(ctx.Request().Context(), request.(CatalogCharactersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CatalogCharacters")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CatalogCharactersResponseObject); ok {
+		return validResponse.VisitCatalogCharactersResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // CharactersSearch operation middleware
-func (sh *strictHandler) CharactersSearch(ctx echo.Context, params CharactersSearchParams) error {
+func (sh *strictHandler) CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error {
 	var request CharactersSearchRequestObject
 
 	request.Params = params
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.CharactersSearch(ctx.Request().Context(), request.(CharactersSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1174,10 +2442,10 @@ func (sh *strictHandler) CharactersSearch(ctx echo.Context, params CharactersSea
 }
 
 // HealthCheck operation middleware
-func (sh *strictHandler) HealthCheck(ctx echo.Context) error {
+func (sh *strictHandler) HealthCheck(ctx *echo.Context) error {
 	var request HealthCheckRequestObject
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.HealthCheck(ctx.Request().Context(), request.(HealthCheckRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1197,12 +2465,12 @@ func (sh *strictHandler) HealthCheck(ctx echo.Context) error {
 }
 
 // PuzzlesCreate operation middleware
-func (sh *strictHandler) PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParamsMode) error {
+func (sh *strictHandler) PuzzlesCreate(ctx *echo.Context, mode PuzzlesCreateParamsMode) error {
 	var request PuzzlesCreateRequestObject
 
 	request.Mode = mode
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PuzzlesCreate(ctx.Request().Context(), request.(PuzzlesCreateRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1221,13 +2489,311 @@ func (sh *strictHandler) PuzzlesCreate(ctx echo.Context, mode PuzzlesCreateParam
 	return nil
 }
 
+// RoomsCreate operation middleware
+func (sh *strictHandler) RoomsCreate(ctx *echo.Context) error {
+	var request RoomsCreateRequestObject
+
+	var body RoomsCreateJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsCreate(ctx.Request().Context(), request.(RoomsCreateRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsCreate")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsCreateResponseObject); ok {
+		return validResponse.VisitRoomsCreateResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsGetInfo operation middleware
+func (sh *strictHandler) RoomsGetInfo(ctx *echo.Context, roomCode string) error {
+	var request RoomsGetInfoRequestObject
+
+	request.RoomCode = roomCode
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsGetInfo(ctx.Request().Context(), request.(RoomsGetInfoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsGetInfo")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsGetInfoResponseObject); ok {
+		return validResponse.VisitRoomsGetInfoResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsJoin operation middleware
+func (sh *strictHandler) RoomsJoin(ctx *echo.Context, roomCode string) error {
+	var request RoomsJoinRequestObject
+
+	request.RoomCode = roomCode
+
+	var body RoomsJoinJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsJoin(ctx.Request().Context(), request.(RoomsJoinRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsJoin")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsJoinResponseObject); ok {
+		return validResponse.VisitRoomsJoinResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsClose operation middleware
+func (sh *strictHandler) RoomsClose(ctx *echo.Context, roomId string) error {
+	var request RoomsCloseRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsClose(ctx.Request().Context(), request.(RoomsCloseRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsClose")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsCloseResponseObject); ok {
+		return validResponse.VisitRoomsCloseResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsLeave operation middleware
+func (sh *strictHandler) RoomsLeave(ctx *echo.Context, roomId string) error {
+	var request RoomsLeaveRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsLeave(ctx.Request().Context(), request.(RoomsLeaveRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsLeave")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsLeaveResponseObject); ok {
+		return validResponse.VisitRoomsLeaveResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsSetReady operation middleware
+func (sh *strictHandler) RoomsSetReady(ctx *echo.Context, roomId string) error {
+	var request RoomsSetReadyRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsSetReady(ctx.Request().Context(), request.(RoomsSetReadyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsSetReady")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsSetReadyResponseObject); ok {
+		return validResponse.VisitRoomsSetReadyResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsRematch operation middleware
+func (sh *strictHandler) RoomsRematch(ctx *echo.Context, roomId string) error {
+	var request RoomsRematchRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsRematch(ctx.Request().Context(), request.(RoomsRematchRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsRematch")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsRematchResponseObject); ok {
+		return validResponse.VisitRoomsRematchResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsSubmitGuess operation middleware
+func (sh *strictHandler) RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error {
+	var request RoomsSubmitGuessRequestObject
+
+	request.RoomId = roomId
+	request.RoundIndex = roundIndex
+
+	var body RoomsSubmitGuessJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsSubmitGuess(ctx.Request().Context(), request.(RoomsSubmitGuessRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsSubmitGuess")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsSubmitGuessResponseObject); ok {
+		return validResponse.VisitRoomsSubmitGuessResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsGetSnapshot operation middleware
+func (sh *strictHandler) RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error {
+	var request RoomsGetSnapshotRequestObject
+
+	request.RoomId = roomId
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsGetSnapshot(ctx.Request().Context(), request.(RoomsGetSnapshotRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsGetSnapshot")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsGetSnapshotResponseObject); ok {
+		return validResponse.VisitRoomsGetSnapshotResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsConnectWs operation middleware
+func (sh *strictHandler) RoomsConnectWs(ctx *echo.Context, roomId string) error {
+	var request RoomsConnectWsRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsConnectWs(ctx.Request().Context(), request.(RoomsConnectWsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsConnectWs")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsConnectWsResponseObject); ok {
+		return validResponse.VisitRoomsConnectWsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // SessionsGet operation middleware
-func (sh *strictHandler) SessionsGet(ctx echo.Context, sessionId string) error {
+func (sh *strictHandler) SessionsGet(ctx *echo.Context, sessionId string) error {
 	var request SessionsGetRequestObject
 
 	request.SessionId = sessionId
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.SessionsGet(ctx.Request().Context(), request.(SessionsGetRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1247,17 +2813,17 @@ func (sh *strictHandler) SessionsGet(ctx echo.Context, sessionId string) error {
 }
 
 // SessionsSubmitGuess operation middleware
-func (sh *strictHandler) SessionsSubmitGuess(ctx echo.Context, sessionId string) error {
+func (sh *strictHandler) SessionsSubmitGuess(ctx *echo.Context, sessionId string) error {
 	var request SessionsSubmitGuessRequestObject
 
 	request.SessionId = sessionId
 
 	var body SessionsSubmitGuessJSONRequestBody
 	var err error
-	if binder, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
 		// Bind only the request body, so that path and query parameters
 		// are not also bound into the body struct.
-		err = binder.BindBody(ctx, &body)
+		err = echo.BindBody(ctx, &body)
 	} else {
 		// A custom binder is installed on the Echo instance; defer to it
 		// entirely, since echo.Binder does not expose body-only binding.
@@ -1268,7 +2834,7 @@ func (sh *strictHandler) SessionsSubmitGuess(ctx echo.Context, sessionId string)
 	}
 	request.Body = &body
 
-	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.SessionsSubmitGuess(ctx.Request().Context(), request.(SessionsSubmitGuessRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
@@ -1292,59 +2858,143 @@ func (sh *strictHandler) SessionsSubmitGuess(ctx echo.Context, sessionId string)
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"bVe/7tjHG+E1kDuZ+28AAAD//w==",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

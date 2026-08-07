@@ -3,7 +3,7 @@ import {
   DIFFICULTY_TIERS,
   HAIR_COLORS,
   WORK_TYPES,
-} from "@touhoufriberg/shared";
+} from "@touhouflandre/shared";
 
 export const hairColorSchema = z.enum(HAIR_COLORS);
 const uniqueStringArray = z

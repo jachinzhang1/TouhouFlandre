@@ -1,5 +1,5 @@
 {
-  "name": "@touhoufriberg/data",
+  "name": "@touhouflandre/data",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@touhoufriberg/shared": "workspace:*",
+    "@touhouflandre/shared": "workspace:*",
     "zod": "^4.0.17"
   },
   "devDependencies": {

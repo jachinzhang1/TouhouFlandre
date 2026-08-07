@@ -1,0 +1,121 @@
+# 多人房间 schema：MemberView / RoomInfo / 创建加入响应 / RoomSnapshot
+# 对应 docs/08_multiplayer_mode_design.md §7.1（端点响应）与 §7.3（快照形状）
+
+MemberView:
+  type: object
+  description: 房间成员视图。
+  required:
+    - slot
+    - displayName
+    - status
+    - ready
+  properties:
+    slot:
+      type: integer
+      minimum: 1
+      maximum: 2
+      description: 席位；slot 1 = 房主（DELETE 权限判定）。
+    displayName:
+      type: string
+      description: 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。
+    status:
+      $ref: "./multi-common.yaml#/MemberStatus"
+    ready:
+      type: boolean
+      description: 大厅就绪态（仅 lobby 态使用）。
+
+RoomInfo:
+  type: object
+  description: 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
+  required:
+    - roomCode
+    - format
+    - status
+    - memberCount
+  properties:
+    roomCode:
+      type: string
+      description: 6 位房间号。
+    format:
+      $ref: "./multi-common.yaml#/RoomFormat"
+    status:
+      $ref: "./multi-common.yaml#/RoomStatus"
+    memberCount:
+      type: integer
+      minimum: 0
+      maximum: 2
+
+CreateRoomResponse:
+  type: object
+  description: 创建房间响应。guestToken 明文仅此一次返回。
+  required:
+    - roomId
+    - roomCode
+    - guestToken
+    - member
+  properties:
+    roomId:
+      type: string
+    roomCode:
+      type: string
+    guestToken:
+      $ref: "./multi-common.yaml#/GuestToken"
+    member:
+      $ref: "#/MemberView"
+
+JoinRoomResponse:
+  type: object
+  description: 加入房间响应。guestToken 明文仅此一次返回。
+  required:
+    - roomId
+    - guestToken
+    - member
+  properties:
+    roomId:
+      type: string
+    guestToken:
+      $ref: "./multi-common.yaml#/GuestToken"
+    member:
+      $ref: "#/MemberView"
+
+RoomSnapshot:
+  type: object
+  description: |
+    逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
+    events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+    round 仅在局处于 countdown/playing 时存在。
+  required:
+    - roomId
+    - roomCode
+    - format
+    - status
+    - members
+    - events
+  properties:
+    roomId:
+      type: string
+    roomCode:
+      type: string
+    format:
+      $ref: "./multi-common.yaml#/RoomFormat"
+    status:
+      $ref: "./multi-common.yaml#/RoomStatus"
+    members:
+      type: array
+      items:
+        $ref: "#/MemberView"
+    match:
+      type: object
+      description: 当前场次（lobby 态不存在；含 finished 等待再来一局）。
+      allOf:
+        - $ref: "./multi-match.yaml#/MatchView"
+    round:
+      type: object
+      description: 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。
+      allOf:
+        - $ref: "./multi-round.yaml#/RoundView"
+    events:
+      type: array
+      description: after 游标之后的事件（逐观察者投影后）。
+      items:
+        $ref: "./multi-common.yaml#/RoomEventEnvelope"

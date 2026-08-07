@@ -216,7 +216,7 @@ LocalStorage access token 可被同源 JavaScript 读取，XSS 仍是主要风�
 }
 ```
 
-`contracts/ws/protocol.yaml` 记录消息方向、payload、权限、错误和时序，并提供有效与无效示例。早期可手写 Go/TypeScript 类型，但 CI 必须校验 schema 和示例。
+`contracts/ws/protocol.yaml` 记录消息方向、payload、权限、错误和时序，并提供有效与无效示例。已落地（08 §8 事件表：room.updated/match.started/round.started/round.playing/round.opponent.guess/round.ended/match.ended/room.closed + match.rematch；唯一逐观察者事件 round.opponent.guess 按 (round, observer) 列置换）。Go/TS 类型手写维护（internal/multi、packages/shared），CI 校验 schema 正反例与 TS 字段集合一致性（`task check:ws-protocol`）。
 
 ### 7.4 连接与重连
 

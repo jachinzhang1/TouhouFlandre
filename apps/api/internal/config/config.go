@@ -2,9 +2,24 @@
 package config
 
 import (
+	"log/slog"
 	"os"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
+
+// durationFromEnv 读取时长环境变量，非法/缺失时回退默认值。
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	if raw := os.Getenv(key); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			return d
+		}
+	}
+	return fallback
+}
 
 // DatabaseURL 返回 Postgres 连接串（.env 的 DATABASE_URL_PG）。
 func DatabaseURL() string {
@@ -40,4 +55,107 @@ func WebOrigins() []string {
 		}
 	}
 	return origins
+}
+
+// MultiLobbyTTL 大厅无人加入的房间过期时长（MULTI_LOBBY_TTL，默认 30min，08 §4.7）。
+func MultiLobbyTTL() time.Duration {
+	return durationFromEnv("MULTI_LOBBY_TTL", 30*time.Minute)
+}
+
+// MultiEventRetention closed 到删除的保留时长（MULTI_EVENT_RETENTION，默认 24h，08 §4.7/§9.1）。
+func MultiEventRetention() time.Duration {
+	return durationFromEnv("MULTI_EVENT_RETENTION", 24*time.Hour)
+}
+
+// MultiJoinRateLimit 加入/预检按 IP 限流次数（MULTI_JOIN_RATE_LIMIT，默认 10 次/分，08 §8.5）。
+// dev/E2E 并行场景需要更高额度，提供环境覆盖（Phase 2 曾定「不进配置」，见执行记录偏差）。
+func MultiJoinRateLimit() int {
+	if raw := os.Getenv("MULTI_JOIN_RATE_LIMIT"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 10
+}
+
+// MultiRoundCountdown 首局倒计时（MULTI_ROUND_COUNTDOWN，默认 3s，08 §4.7）。
+func MultiRoundCountdown() time.Duration {
+	return durationFromEnv("MULTI_ROUND_COUNTDOWN", 3*time.Second)
+}
+
+// MultiIntermission 局间间歇（MULTI_INTERMISSION，默认 5s，08 §4.7；兼作下一局倒计时）。
+func MultiIntermission() time.Duration {
+	return durationFromEnv("MULTI_INTERMISSION", 5*time.Second)
+}
+
+// MultiRoundSeconds 单局整局时限（MULTI_ROUND_SECONDS，默认 900s，08 §4.7；超时平局）。
+func MultiRoundSeconds() time.Duration {
+	return durationFromEnv("MULTI_ROUND_SECONDS", 900*time.Second)
+}
+
+// MultiDisconnectGrace 断线宽限期（MULTI_DISCONNECT_GRACE，默认 60s，08 §4.7）。
+func MultiDisconnectGrace() time.Duration {
+	return durationFromEnv("MULTI_DISCONNECT_GRACE", 60*time.Second)
+}
+
+// MultiMaxRoundsFactor 总局数安全上限系数（MULTI_MAX_ROUNDS_FACTOR，默认 3，08 §4.7；maxRounds = factor × N）。
+func MultiMaxRoundsFactor() int {
+	if raw := os.Getenv("MULTI_MAX_ROUNDS_FACTOR"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 3
+}
+
+// MultiFinishedRetention 对局结束展示期（MULTI_FINISHED_RETENTION，默认 30min，08 §4.7）。
+func MultiFinishedRetention() time.Duration {
+	return durationFromEnv("MULTI_FINISHED_RETENTION", 30*time.Minute)
+}
+
+// MultiWSReadLimit 客户端 WS 消息读限（MULTI_WS_READ_LIMIT，默认 4096，08 §8.5）。
+func MultiWSReadLimit() int64 {
+	if raw := os.Getenv("MULTI_WS_READ_LIMIT"); raw != "" {
+		if n, err := strconv.ParseInt(raw, 10, 64); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 4096
+}
+
+// MultiWSSendQueue 发送队列长度（MULTI_WS_SEND_QUEUE，默认 64，08 §8.5）。
+func MultiWSSendQueue() int {
+	if raw := os.Getenv("MULTI_WS_SEND_QUEUE"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 64
+}
+
+// MultiTiming 组装对局时间常量（08 §4.7 全量，env 可覆盖）。
+func MultiTiming() multi.TimingConfig {
+	return multi.TimingConfig{
+		RoundCountdown:    MultiRoundCountdown(),
+		Intermission:      MultiIntermission(),
+		RoundSeconds:      MultiRoundSeconds(),
+		DisconnectGrace:   MultiDisconnectGrace(),
+		MaxRoundsFactor:   MultiMaxRoundsFactor(),
+		FinishedRetention: MultiFinishedRetention(),
+	}
+}
+
+
+// LogLevel 应用日志级别（LOG_LEVEL: debug/info/warn/error，默认 info）。
+func LogLevel() slog.Level {
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }

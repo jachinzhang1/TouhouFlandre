@@ -1,0 +1,35 @@
+# GET /api/rooms/{roomCode} — 公开预检（加入前可见赛制）
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+get:
+  operationId: rooms_getInfo
+  tags:
+    - rooms
+  summary: 公开房间预检
+  description: |
+    无鉴权只读：房间存在性 + 赛制 + 状态 + 人数；不含成员名/token。
+    与 join 共用按 IP 速率限制（默认每分钟 10 次）。房间号输入归一化（去空格/连字符、转大写）。
+  parameters:
+    - name: roomCode
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: 房间信息
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-room.yaml#/RoomInfo"
+    "404":
+      description: 房间不存在/已关闭/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "429":
+      description: 触发按 IP 速率限制（RATE_LIMITED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

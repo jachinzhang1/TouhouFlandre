@@ -1,8 +1,8 @@
 {
-  "name": "touhoufriberg",
+  "name": "touhouflandre",
   "version": "0.1.0",
   "private": true,
-  "description": "A local playable Touhou Project themed Friberg guessing game demo.",
+  "description": "A local playable Touhou Project themed Flandre guessing game demo.",
   "type": "module",
   "scripts": {
     "dev": "task dev",
@@ -10,11 +10,12 @@
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck",
     "lint:openapi": "redocly lint contracts/openapi/openapi.yaml",
-    "check:openapi-refs": "node scripts/check-openapi-refs.mjs"
+    "check:openapi-refs": "node scripts/check-openapi-refs.mjs",
+    "check:ws-protocol": "node scripts/check-ws-protocol.mjs"
   },
   "keywords": [
     "touhou",
-    "friberg",
+    "flandre",
     "wordle",
     "game"
   ],
@@ -24,12 +25,13 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
-    "@touhoufriberg/data": "workspace:*",
-    "@touhoufriberg/shared": "workspace:*"
+    "@touhouflandre/data": "workspace:*",
+    "@touhouflandre/shared": "workspace:*"
   },
   "devDependencies": {
     "@redocly/cli": "^2.43.3",
     "eslint": "^9.33.0",
+    "js-yaml": "^5.2.3",
     "prettier": "^3.6.2",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",

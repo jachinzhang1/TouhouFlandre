@@ -43,7 +43,7 @@ var GameContentDefinition = struct {
 	Fields:     CharacterGuessFields,
 }
 
-func statusToSymbol(status FeedbackStatus) string {
+func StatusToSymbol(status FeedbackStatus) string {
 	switch status {
 	case FeedbackExact:
 		return "O"
@@ -103,7 +103,7 @@ func compareMultiSet(guessValues, answerValues []string) FeedbackStatus {
 }
 
 // displayValuesForField 返回展示用值（发色为中文标签，年份为字符串）。
-func displayValuesForField(character Character, field GuessFieldKey) []string {
+func DisplayValuesForField(character Character, field GuessFieldKey) []string {
 	switch field {
 	case FieldFirstAppearance:
 		return []string{character.FirstAppearance.WorkTitle}
@@ -189,8 +189,8 @@ func CompareField(guess, answer Character, field GuessField) FieldFeedback {
 		Field:        field.Key,
 		Label:        field.Label,
 		Status:       status,
-		Symbol:       statusToSymbol(status),
-		DisplayValue: displayValuesForField(guess, field.Key),
+		Symbol:       StatusToSymbol(status),
+		DisplayValue: DisplayValuesForField(guess, field.Key),
 	}
 }
 

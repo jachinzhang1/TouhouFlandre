@@ -1,0 +1,102 @@
+// 服务重启明确终止（08 §4.6/§6.3）：启动时对进行中对局（含 countdown 态局）执行
+// round.ended(平局) + match.ended(reason=server_restart, result=draw)，不静默丢失。
+package multi
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+)
+
+// TerminateActiveMatches 终止全部进行中场次（幂等：match 已 finished 的不再处理）。
+// 返回终止的场次数。锁序 局→场→房间。
+func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Time, timing TimingConfig) (int, error) {
+	matches, err := repo.New(pool).ListActiveMatches(ctx)
+	if err != nil {
+		return 0, err
+	}
+	terminated := 0
+	for _, match := range matches {
+		if err := terminateMatch(ctx, pool, match, now, timing); err != nil {
+			return terminated, err
+		}
+		terminated++
+	}
+	return terminated, nil
+}
+
+func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMatch, now time.Time, timing TimingConfig) error {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+
+	// 1. 锁局行（局→场→房间）
+	round, err := q.GetActiveRoundForUpdate(ctx, match.ID)
+	hasRound := true
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			hasRound = false
+		} else {
+			return err
+		}
+	}
+	// 2. 锁场行并复核仍 playing（幂等：重启后再重启不重复终止）
+	locked, err := q.GetMatchForUpdate(ctx, match.ID)
+	if err != nil {
+		return err
+	}
+	if locked.Status != string(MatchStatusPlaying) {
+		return tx.Commit(ctx)
+	}
+	// 3. 终止当前局（平局；含 countdown 态局）
+	if hasRound {
+		if _, err := q.EndRound(ctx, repo.EndRoundParams{
+			ID:        round.ID,
+			WinnerSlot: pgtype.Int4{},
+			EndedAt:   pgtypeTimestamptz(now),
+		}); err != nil {
+			return err
+		}
+		nextStarts := now.Add(timing.Intermission)
+		if err := AppendEvent(ctx, q, match.RoomID, EventRoundEnded, RoundEndedEventPayload{
+			RoundID:      round.ID,
+			MatchIndex:   int(match.MatchIndex),
+			RoundIndex:   int(round.RoundIndex),
+			WinnerSlot:   nil,
+			AnswerID:     round.AnswerID,
+			Scores:       ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+			NextStartsAt: &nextStarts,
+		}); err != nil {
+			return err
+		}
+	}
+	// 4. 场次与房间 finished
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+		return err
+	}
+	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
+		ID:        match.RoomID,
+		Status:    string(RoomStatusFinished),
+		ExpiresAt: pgtypeTimestamptz(now.Add(timing.FinishedRetention)),
+	}); err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, match.RoomID, EventMatchEnded, MatchEndedEventPayload{
+		MatchIndex: int(match.MatchIndex),
+		WinnerSlot: nil,
+		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		Reason:     MatchEndReasonServerRestart,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

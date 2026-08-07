@@ -11,7 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { CharacterSort, SortDirection } from "@touhoufriberg/shared";
+import type { CharacterSort, SortDirection } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../../components/CharacterAvatar";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { joinValues } from "../../domain/format";

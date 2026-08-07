@@ -108,6 +108,9 @@ PublicGameSession:
     maxGuesses:
       type: integer
       minimum: 1
+    catalogVersion:
+      type: string
+      description: 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。
     puzzleKey:
       type: string
     guesses:

@@ -3,7 +3,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,24 +13,26 @@ import (
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: config.LogLevel()})))
+
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, config.DatabaseURL())
 	if err != nil {
-		fatal("connect database:", err)
+		fatal("connect database", err)
 	}
 	defer pool.Close()
 	if err := pool.Ping(ctx); err != nil {
-		fatal("ping database:", err)
+		fatal("ping database", err)
 	}
 
 	version, err := seed.Run(ctx, pool, config.CatalogDataDir())
 	if err != nil {
-		fatal("seed:", err)
+		fatal("seed", err)
 	}
-	fmt.Printf("Seeded catalog %s.\n", version)
+	slog.Info("seeded catalog", "version", version)
 }
 
 func fatal(prefix string, err error) {
-	fmt.Fprintln(os.Stderr, prefix, err)
+	slog.Error(prefix, "error", err)
 	os.Exit(1)
 }

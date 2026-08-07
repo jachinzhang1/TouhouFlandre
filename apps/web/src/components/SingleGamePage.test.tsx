@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { PublicGameSession } from "@touhoufriberg/shared";
+import type { PublicGameSession } from "@touhouflandre/shared";
 import { SingleGamePage } from "./SingleGamePage";
 
 const playingSession = {
@@ -85,7 +85,7 @@ describe("SingleGamePage", () => {
     expect(await screen.findByText("每日题 2026-08-05")).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(screen.getByText("进行中")).toBeTruthy();
-    expect(localStorage.getItem("touhoufriberg:daily-session")).toContain(
+    expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-1",
     );
   });

@@ -1,0 +1,43 @@
+# GET /api/rooms/{roomId}/snapshot?after=<seq> — 快照 + 事件重放
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+get:
+  operationId: rooms_getSnapshot
+  tags:
+    - rooms
+  summary: 房间快照与事件重放
+  description: |
+    成员令牌鉴权。返回房间状态 + 成员列表 + after 游标之后的事件（逐观察者投影），
+    同一端点承担「状态快照」与「事件补齐」两个职责。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: after
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: 仅返回该游标之后的事件（缺省 0 = 全量）。
+  responses:
+    "200":
+      description: 逐观察者投影的房间快照
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-room.yaml#/RoomSnapshot"
+    "401":
+      description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

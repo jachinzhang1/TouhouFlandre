@@ -70,7 +70,7 @@
 **输入**：Taskfile.yml；root package.json。
 **动作**：
 
-1. Taskfile 新增 `dev`（`task --parallel dev:api dev:web`）、`dev:api`（`bash -c 'set -a && . ../../.env && set +a && go run ./cmd/server'`）、`dev:web`（`pnpm --filter @touhoufriberg/web dev`）。
+1. Taskfile 新增 `dev`（`task --parallel dev:api dev:web`）、`dev:api`（`bash -c 'set -a && . ../../.env && set +a && go run ./cmd/server'`）、`dev:web`（`pnpm --filter @touhouflandre/web dev`）。
 2. root `package.json`：`"dev": "task dev"`；移除 `concurrently` 依赖。
 3. `pnpm install` 更新 lockfile。
 

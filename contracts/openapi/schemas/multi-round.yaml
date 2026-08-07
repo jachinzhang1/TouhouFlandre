@@ -1,0 +1,81 @@
+# 多人单局 schema：RoundView 与猜测响应
+# 对应 docs/08_multiplayer_mode_design.md §7.3 快照形状中的 round 段与 §7.1 guess 端点响应
+
+OpponentRow:
+  type: object
+  description: 对手一行猜测（匿名矩阵行）。局中只含状态颜色序列，不含角色名/字段标签/值。
+  required:
+    - index
+    - statuses
+  properties:
+    index:
+      type: integer
+      description: 该成员局内猜测序号（1 起）。
+    statuses:
+      type: array
+      description: 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+      items:
+        $ref: "./session.yaml#/FeedbackStatus"
+      minItems: 6
+      maxItems: 6
+
+RoundView:
+  type: object
+  description: |
+    逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
+    opponent 为匿名矩阵（只含状态颜色序列）。
+  required:
+    - status
+    - startsAt
+    - deadline
+    - maxGuesses
+    - self
+    - opponent
+  properties:
+    status:
+      $ref: "./multi-common.yaml#/RoundStatus"
+    startsAt:
+      type: string
+      format: date-time
+      description: 本局可开猜时刻（倒计时结束；局间间歇兼作倒计时）。
+    deadline:
+      type: string
+      format: date-time
+      description: 整局超时平局时刻（默认 startsAt + 15min）。
+    maxGuesses:
+      type: integer
+      minimum: 1
+      description: 每局每人猜测上限（沿用单人 GameContentDefinition.MaxGuesses = 8）。
+    self:
+      type: object
+      description: 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。
+      required:
+        - guesses
+      properties:
+        guesses:
+          type: array
+          items:
+            $ref: "./session.yaml#/GuessResult"
+    opponent:
+      type: object
+      description: 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。
+      required:
+        - rows
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/OpponentRow"
+
+GuessResponse:
+  type: object
+  description: 猜测被接受的自视角响应（完整反馈；局中不返回答案与对手信息）。
+  required:
+    - roundIndex
+    - guess
+  properties:
+    roundIndex:
+      type: integer
+      minimum: 1
+    guess:
+      $ref: "./session.yaml#/GuessResult"

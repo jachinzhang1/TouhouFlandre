@@ -1,0 +1,38 @@
+# GET /api/rooms/{roomId}/ws — WebSocket 事件通道
+# 对应 docs/08_multiplayer_mode_design.md §7.1 / §8
+get:
+  operationId: rooms_connectWs
+  tags:
+    - rooms
+  summary: WebSocket 事件通道
+  description: |
+    WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v1；
+    建连后第一条消息必须是 hello{token, lastSequence}（鉴权前不收发房间事件）。
+    事件协议与有效/无效示例见 contracts/ws/protocol.yaml。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "101":
+      description: Switching Protocols：升级成功，进入事件流（见 contracts/ws/protocol.yaml）
+    "400":
+      description: 升级校验失败（Origin/子协议不符）或首帧非法
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "401":
+      description: 令牌无效（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

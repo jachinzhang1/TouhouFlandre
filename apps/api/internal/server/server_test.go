@@ -15,12 +15,16 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/seed"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
@@ -30,6 +34,11 @@ var (
 	baseURL string
 	pool    *pgxpool.Pool
 	ctx     = context.Background()
+
+	fastBaseURL string
+	fastClient  *http.Client
+	fastTiming  multi.TimingConfig
+	fastHub     *hub.Hub
 )
 
 const testDBName = "touhouflandre_test"
@@ -128,13 +137,31 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("integration: seeded catalog %s\n", version)
 
-	ts := httptest.NewServer(server.New(pool))
+	ts := httptest.NewServer(server.NewWithOptions(pool, handler.WithJoinRateLimit(10000, time.Minute)))
 	baseURL = ts.URL
 	client = ts.Client()
+
+	// 对局引擎测试专用：短时间常量 + 独立进程内限流器（sweeper 由测试手动驱动）。
+	fastTiming = multi.TimingConfig{
+		RoundCountdown:    5 * time.Millisecond,
+		Intermission:      5 * time.Millisecond,
+		RoundSeconds:      30 * time.Second,
+		DisconnectGrace:   1 * time.Second,
+		MaxRoundsFactor:   3,
+		FinishedRetention: time.Hour,
+	}
+	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64)
+	fastTS := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithMultiTiming(fastTiming),
+		handler.WithHub(fastHub)))
+	fastBaseURL = fastTS.URL
+	fastClient = fastTS.Client()
 
 	code := m.Run()
 
 	ts.Close()
+	fastTS.Close()
 	pool.Close()
 	os.Exit(code)
 }
@@ -204,7 +231,8 @@ func TestCatalog(t *testing.T) {
 		t.Fatalf("expected 1 content, got %d", len(summary.Contents))
 	}
 	content := summary.Contents[0]
-	if content.Total != 29 || content.Guessable != 29 || content.Answerable != 29 {
+	// 计数随题库扩展（TH06–TH20 共 113 角色）；08 设计文档 §4.2 亦以 113 为基线。
+	if content.Total != 113 || content.Guessable != 113 || content.Answerable != 113 {
 		t.Fatalf("unexpected counts: %+v", content)
 	}
 	if content.MaxGuesses != 8 || content.VisibleFieldCount != 6 {
@@ -278,9 +306,15 @@ func TestGuessLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 错误猜测：保持 playing。
+	// 错误猜测（排除答案角色，避免随机题答案恰好命中）：保持 playing。
+	var missGuessID string
+	if err := pool.QueryRow(ctx,
+		`SELECT id FROM character WHERE enabled_as_guess = true AND id <> $1 ORDER BY id LIMIT 1`, answerID,
+	).Scan(&missGuessID); err != nil {
+		t.Fatal(err)
+	}
 	miss, missPayload := request(http.MethodPost, "/api/sessions/"+sessionID+"/guess",
-		map[string]string{"guessId": "reimu_hakurei"})
+		map[string]string{"guessId": missGuessID})
 	if miss.StatusCode != http.StatusOK {
 		t.Fatalf("miss guess status %d: %s", miss.StatusCode, missPayload)
 	}
@@ -294,8 +328,8 @@ func TestGuessLifecycle(t *testing.T) {
 	if afterMiss.Status != "playing" || len(afterMiss.Guesses) != 1 {
 		t.Fatalf("unexpected after miss: %+v", afterMiss)
 	}
-	if afterMiss.Guesses[0].GuessName != "博丽灵梦" {
-		t.Fatalf("unexpected guess name: %+v", afterMiss.Guesses[0])
+	if afterMiss.Guesses[0].GuessId != missGuessID {
+		t.Fatalf("unexpected guess id: %+v", afterMiss.Guesses[0])
 	}
 	if afterMiss.Guesses[0].GuessAvatarUrl == nil {
 		t.Fatal("avatar hydration failed")
@@ -366,6 +400,52 @@ func TestDuplicateGuessConflict(t *testing.T) {
 	}
 	if apiErr := decodeError(t, dupPayload); apiErr.Code != "DUPLICATE_GUESS" {
 		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
+// TestUnknownRouteIs404 回归：echo v5 内建 ErrNotFound 为未导出 httpError 类型，
+// 只实现 StatusCode()（非 *echo.HTTPError）——错误映射必须按状态码处理，不得落入 500 兜底。
+func TestUnknownRouteIs404(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/no-such-path", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unknown route status %d: %s", resp.StatusCode, payload)
+	}
+	if apiErr := decodeError(t, payload); apiErr.Code != "INVALID_REQUEST" {
+		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
+// TestCatalogCharacters 完整可猜角色表：版本 + 全量 + 本地搜索字段齐全。
+func TestCatalogCharacters(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/catalog/characters", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var table openapi.CatalogCharacters
+	if err := json.Unmarshal(payload, &table); err != nil {
+		t.Fatal(err)
+	}
+	if table.Version == "" {
+		t.Fatal("version 为空")
+	}
+	if len(table.Characters) < 100 {
+		t.Fatalf("角色数 %d < 100（TH20 目录应全量返回）", len(table.Characters))
+	}
+	for _, ch := range table.Characters {
+		if ch.SearchText == "" {
+			t.Fatalf("%s 缺 searchText", ch.Id)
+		}
+		if ch.NameSortKey == "" {
+			t.Fatalf("%s 缺 nameSortKey", ch.Id)
+		}
+	}
+	// version 与 CatalogState.currentVersion 一致（seed 后变化即可检测表更新）
+	var dbVersion string
+	if err := pool.QueryRow(ctx, "SELECT current_version FROM catalog_state WHERE id = 'current'").Scan(&dbVersion); err != nil {
+		t.Fatal(err)
+	}
+	if table.Version != dbVersion {
+		t.Fatalf("version %s != db %s", table.Version, dbVersion)
 	}
 }
 

@@ -1,0 +1,41 @@
+# POST /api/rooms — 创建房间（房主入座 slot 1）
+# 对应 docs/08_multiplayer_mode_design.md §7.1
+post:
+  operationId: rooms_create
+  tags:
+    - rooms
+  summary: 创建房间
+  description: 无鉴权。校验赛制，生成 6 位房间号（32 字符集，冲突重试），签发游客令牌。
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          required:
+            - format
+          properties:
+            format:
+              $ref: "../schemas/multi-common.yaml#/RoomFormat"
+            displayName:
+              type: string
+              description: 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。
+  responses:
+    "201":
+      description: 房间已创建（含房间号与一次性游客令牌）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-room.yaml#/CreateRoomResponse"
+    "400":
+      description: 非法赛制（INVALID_FORMAT）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

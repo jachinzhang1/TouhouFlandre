@@ -84,7 +84,7 @@ export function SingleLobby() {
         </Link>
         <Link
           className="group grid min-h-[205px] gap-4 rounded-[6px] border border-line bg-paper p-[23px] text-left text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-180 hover:-translate-y-[3px] hover:border-[#af7a72] hover:shadow-lg max-[680px]:min-h-[185px]"
-          href="/multi/room"
+          href="/multi"
         >
           <span className="flex items-center justify-between gap-3">
             <span className="inline-flex size-[46px] shrink-0 items-center justify-center rounded-[4px] bg-vermilion-soft text-vermilion">
