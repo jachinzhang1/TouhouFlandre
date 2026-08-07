@@ -8,6 +8,8 @@
   },
   "scripts": {
     "validate": "tsx src/validate.ts",
+    "xlsx:out": "tsx src/convert-excel.ts json2excel",
+    "xlsx:in": "tsx src/convert-excel.ts excel2json",
     "test": "vitest run",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
@@ -20,6 +22,7 @@
     "@types/node": "^24.2.1",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "xlsx": "^0.18.5"
   }
 }
