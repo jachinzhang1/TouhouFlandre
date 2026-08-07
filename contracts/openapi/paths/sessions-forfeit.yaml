@@ -1,0 +1,42 @@
+# POST /api/sessions/:sessionId/forfeit
+post:
+  operationId: sessions_forfeit
+  tags:
+    - sessions
+  summary: 放弃本局
+  parameters:
+    - name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: 会话已结束
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - session
+            properties:
+              session:
+                $ref: "../schemas/session.yaml#/PublicGameSession"
+    "404":
+      description: 会话不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 会话已经结束
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

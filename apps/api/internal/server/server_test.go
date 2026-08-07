@@ -238,6 +238,12 @@ func TestCatalog(t *testing.T) {
 	if content.MaxGuesses != 8 || content.VisibleFieldCount != 6 {
 		t.Fatalf("unexpected definition: %+v", content)
 	}
+	if len(summary.Works) == 0 {
+		t.Fatalf("expected works in catalog summary: %+v", summary)
+	}
+	if summary.Works[0].ReleaseYear > summary.Works[len(summary.Works)-1].ReleaseYear {
+		t.Fatalf("works are not ordered by release year: %+v", summary.Works[:2])
+	}
 }
 
 func TestSearchReimu(t *testing.T) {
@@ -257,12 +263,129 @@ func TestSearchReimu(t *testing.T) {
 	}
 }
 
+func TestSearchFiltersByWorkIDs(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/characters/search?workIds=th01_hrtp&q=%E7%81%B5%E6%A2%A6", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if search.Total != 1 || len(search.Results) != 1 {
+		t.Fatalf("expected 1 filtered result, got %+v", search)
+	}
+	if search.Results[0].WorkId != "th01_hrtp" {
+		t.Fatalf("unexpected work id: %+v", search.Results[0])
+	}
+
+	emptyResp, emptyPayload := request(http.MethodGet, "/api/characters/search?workIds=th07_pcb&q=%E7%81%B5%E6%A2%A6", nil)
+	if emptyResp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", emptyResp.StatusCode, emptyPayload)
+	}
+	var emptySearch openapi.CharacterSearchResponse
+	if err := json.Unmarshal(emptyPayload, &emptySearch); err != nil {
+		t.Fatal(err)
+	}
+	if emptySearch.Total != 0 || len(emptySearch.Results) != 0 {
+		t.Fatalf("expected empty filtered result, got %+v", emptySearch)
+	}
+}
+
 func TestSearchRejectsInvalidSort(t *testing.T) {
 	resp, payload := request(http.MethodGet, "/api/characters/search?sort=bad", nil)
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status %d: %s", resp.StatusCode, payload)
 	}
 	if apiErr := decodeError(t, payload); apiErr.Code != "INVALID_REQUEST" {
+		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
+func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
+	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := pool.Exec(ctx,
+		`UPDATE character SET enabled_as_guess = false WHERE id = 'reimu_hakurei'`,
+	); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if _, err := pool.Exec(ctx,
+			`UPDATE character SET enabled_as_guess = true WHERE id = 'reimu_hakurei'`,
+		); err != nil {
+			t.Errorf("restore current catalog: %v", err)
+		}
+	}()
+
+	_, currentPayload := request(http.MethodGet, "/api/characters/search?q=%E7%81%B5%E6%A2%A6", nil)
+	var current openapi.CharacterSearchResponse
+	if err := json.Unmarshal(currentPayload, &current); err != nil {
+		t.Fatal(err)
+	}
+	if current.Total != 0 {
+		t.Fatalf("current catalog should exclude Reimu: %+v", current)
+	}
+
+	path := "/api/characters/search?q=%E7%81%B5%E6%A2%A6&sessionId=" + created.Session.Id
+	resp, snapshotPayload := request(http.MethodGet, path, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("snapshot search status %d: %s", resp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.CharacterSearchResponse
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Total != 1 || snapshot.Results[0].Id != "reimu_hakurei" {
+		t.Fatalf("session snapshot should include Reimu: %+v", snapshot)
+	}
+
+	guessResp, guessPayload := request(
+		http.MethodPost,
+		"/api/sessions/"+created.Session.Id+"/guess",
+		map[string]string{"guessId": "reimu_hakurei"},
+	)
+	if guessResp.StatusCode != http.StatusOK {
+		t.Fatalf("snapshot guess status %d: %s", guessResp.StatusCode, guessPayload)
+	}
+}
+
+func TestSessionSearchPaginationAndMissingSession(t *testing.T) {
+	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+
+	path := "/api/characters/search?sessionId=" + created.Session.Id + "&sort=appearance&direction=desc&limit=2&offset=1"
+	resp, payload := request(http.MethodGet, path, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if search.Total != 113 || len(search.Results) != 2 {
+		t.Fatalf("unexpected page: %+v", search)
+	}
+	if search.Results[0].AppearanceOrder < search.Results[1].AppearanceOrder {
+		t.Fatalf("results are not descending: %+v", search.Results)
+	}
+
+	missingResp, missingPayload := request(
+		http.MethodGet,
+		"/api/characters/search?sessionId=missing",
+		nil,
+	)
+	if missingResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing session status %d: %s", missingResp.StatusCode, missingPayload)
+	}
+	if apiErr := decodeError(t, missingPayload); apiErr.Code != "SESSION_NOT_FOUND" {
 		t.Fatalf("unexpected error: %+v", apiErr)
 	}
 }
@@ -363,6 +486,40 @@ func TestGuessLifecycle(t *testing.T) {
 	}
 	if apiErr := decodeError(t, closedPayload); apiErr.Code != "SESSION_CLOSED" {
 		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
+func TestForfeitSessionRevealsAnswer(t *testing.T) {
+	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+	sessionID := created.Session.Id
+
+	var answerID string
+	if err := pool.QueryRow(ctx,
+		`SELECT answer_id FROM game_session WHERE id = $1`, sessionID,
+	).Scan(&answerID); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, payload := request(http.MethodPost, "/api/sessions/"+sessionID+"/forfeit", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("forfeit status %d: %s", resp.StatusCode, payload)
+	}
+	var wrapper struct {
+		Session openapi.PublicGameSession `json:"session"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		t.Fatal(err)
+	}
+	session := wrapper.Session
+	if session.Status != "lost" || session.Answer == nil || session.Answer.Id != answerID {
+		t.Fatalf("unexpected forfeited state: %+v", session)
+	}
+	if session.EndedAt == nil {
+		t.Fatal("endedAt missing after forfeit")
 	}
 }
 

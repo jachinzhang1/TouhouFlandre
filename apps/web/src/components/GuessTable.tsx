@@ -3,19 +3,11 @@
 // 联机对局棋盘表格（左右双栏：左自己 / 右对手，手机端上下堆叠）：
 // 列标签只出现一次（表头，复用单人模式字段序）；单元格统一 feedback feedback-{status}
 // 语义类（两边同色同高）；对手匿名行只渲染状态色块，永不含名称/标签/值（08 §4.5）。
+import type { ReactNode } from "react";
 import type { FeedbackStatus } from "@touhouflandre/shared";
 import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
-
-/** 状态符号与标签（两端共用同一套颜色/符号/无障碍语义）。 */
-export const STATUS_SYMBOL: Record<FeedbackStatus, string> = {
-  exact: "O",
-  partial: "~",
-  miss: "X",
-  higher: "↑",
-  lower: "↓",
-  unknown: "?",
-};
+import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 
 export const STATUS_LABEL: Record<FeedbackStatus, string> = {
   exact: "命中",
@@ -28,7 +20,6 @@ export const STATUS_LABEL: Record<FeedbackStatus, string> = {
 
 export type GuessCell = {
   status: FeedbackStatus;
-  symbol?: string;
   /** 匿名行不传（只渲染状态色块，不泄露值）。 */
   value?: string;
 };
@@ -42,30 +33,49 @@ export type GuessRow = {
   cells: GuessCell[];
 };
 
+export type GuessTableVariant = "self" | "opponent";
+
 export function GuessTable({
   title,
   subtitle,
+  headerExtra,
   rows,
   emptyLabel,
+  variant = "self",
 }: {
   title?: string;
   subtitle?: string;
+  headerExtra?: ReactNode;
   rows: GuessRow[];
   emptyLabel: string;
+  variant?: GuessTableVariant;
 }) {
+  const isOpponent = variant === "opponent";
+
   return (
     <div className="rounded-[6px] border border-line bg-paper p-3 shadow-sm">
-      {(title || subtitle) && (
+      {(title || subtitle || headerExtra) && (
         <div className="mb-2 flex items-center justify-between gap-3">
-          {title && <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">{title}</h3>}
-          {subtitle && <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>}
+          <div className="flex min-w-0 items-center gap-3">
+            {title && <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">{title}</h3>}
+            {subtitle && <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>}
+          </div>
+          {headerExtra}
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-[0.78rem]">
+        <table
+          className={`w-full border-collapse text-[0.78rem] ${
+            isOpponent ? "min-w-[430px]" : "min-w-[560px]"
+          }`}
+        >
           <thead>
             <tr>
-              <th className="w-24 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
+              <th
+                className={`border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft ${
+                  isOpponent ? "w-16" : "w-24"
+                }`}
+              >
                 角色
               </th>
               {CHARACTER_GUESS_FIELDS.map((field) => (
@@ -122,13 +132,20 @@ export function GuessTable({
                       className="border-b border-line p-1.5 align-top"
                     >
                       <span
-                        className={`feedback match-feedback feedback-${cell.status}`}
+                        className={`feedback match-feedback ${
+                          isOpponent ? "match-feedback-compact" : ""
+                        } feedback-${cell.status}`}
                         title={cell.status ? STATUS_LABEL[cell.status] : undefined}
                         role={row.name ? undefined : "img"}
                         aria-label={row.name ? undefined : STATUS_LABEL[cell.status]}
                       >
-                        <b>{cell.symbol ?? STATUS_SYMBOL[cell.status]}</b>
-                        {cell.value && <span>{cell.value}</span>}
+                        <b>
+                          <FeedbackStatusIcon
+                            status={cell.status}
+                            decorative={!row.name}
+                          />
+                        </b>
+                        {!isOpponent && cell.value && <span>{cell.value}</span>}
                       </span>
                     </td>
                   ))}

@@ -106,6 +106,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sessions/{sessionId}/forfeit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 放弃本局 */
+        post: operations["sessions_forfeit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{sessionId}": {
         parameters: {
             query?: never;
@@ -383,7 +400,7 @@ export interface components {
             difficultyTier: components["schemas"]["DifficultyTier"];
             sourceRefs: string[];
         };
-        /** @description 搜索卡片视图模型（firstAppearance 仅含 workTitle 与 releaseYear）。 */
+        /** @description 搜索卡片视图模型（附带 workId 以便按作品筛选）。 */
         CharacterSearchResult: {
             id: string;
             name: string;
@@ -391,6 +408,7 @@ export interface components {
             initials: string;
             avatarUrl: string;
             appearanceOrder: number;
+            workId: string;
             /** @description 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。 */
             searchText: string;
             /** @description 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。 */
@@ -421,6 +439,7 @@ export interface components {
             /** @description 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。 */
             dailyDateKey: string;
             contents: components["schemas"]["CatalogContentSummary"][];
+            works: components["schemas"]["Work"][];
         };
         /** @enum {string} */
         WorkType: "game" | "print" | "music_cd" | "other";
@@ -705,6 +724,10 @@ export interface operations {
             query?: {
                 /** @description 规范化后的查询词（可为空，返回全部可猜角色）。 */
                 q?: string;
+                /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
+                sessionId?: string;
+                /** @description 逗号分隔的作品 id 列表；仅用于收窄搜索结果。 */
+                workIds?: string;
                 limit?: number;
                 offset?: number;
                 sort?: "name" | "appearance";
@@ -727,6 +750,15 @@ export interface operations {
             };
             /** @description 请求参数不合法 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 游戏会话不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -919,6 +951,57 @@ export interface operations {
             };
             /** @description 暂不支持的内容类型 */
             501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    sessions_forfeit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 会话已结束 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        session: components["schemas"]["PublicGameSession"];
+                    };
+                };
+            };
+            /** @description 会话不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 会话已经结束 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 服务器内部错误 */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

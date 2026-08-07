@@ -8,7 +8,7 @@ export default function LinksPage() {
         <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
           LINKS & CREDITS
         </p>
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] leading-[1.15] max-[680px]:text-[2.05rem]">
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
           友链与鸣谢
         </h1>
         <p className="mt-3 mb-0 leading-[1.75] text-ink-soft">
@@ -17,7 +17,7 @@ export default function LinksPage() {
       </div>
       <div className="mt-[30px] grid grid-cols-[repeat(auto-fit,minmax(280px,420px))] gap-3">
         <a
-          className="grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] rounded-[6px] border border-line bg-paper p-4 text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[2px] hover:border-[#af7a72] hover:shadow-lg"
+          className="grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] rounded-[6px] border border-line bg-paper p-4 text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[2px] hover:border-[var(--accent-hover-border)] hover:shadow-lg"
           href="https://space.bilibili.com/152309938"
           target="_blank"
           rel="noreferrer"

@@ -59,6 +59,18 @@ export type FirstAppearance = {
   era?: "pc98" | "windows" | "other";
 };
 
+export type Work = {
+  id: string;
+  titleZh: string;
+  titleJa: string;
+  titleEn?: string;
+  shortName: string;
+  type: WorkType;
+  releaseYear: number;
+  mainlineIndex?: number;
+  era?: "pc98" | "windows" | "other";
+};
+
 export type Character = {
   id: string;
   avatarUrl: string;
@@ -137,6 +149,7 @@ export type CharacterSearchResult = {
   initials: string;
   avatarUrl: string;
   appearanceOrder: number;
+  workId: string;
   searchText: string;
   nameSortKey: string;
   firstAppearance: Pick<FirstAppearance, "workTitle" | "releaseYear">;
@@ -164,4 +177,5 @@ export type CatalogContentSummary = {
 export type CatalogSummary = {
   dailyDateKey: string;
   contents: CatalogContentSummary[];
+  works: Work[];
 };

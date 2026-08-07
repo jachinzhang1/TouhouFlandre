@@ -35,7 +35,7 @@ export const modeConfig: Record<
     eyebrow: "RANDOM PUZZLE",
     description: "从当前题库中随机抽取角色。",
     stateLabel: "不限次数",
-    stateClass: "",
+    stateClass: "live",
     icon: Shuffle,
     storageKey: "touhouflandre:random-session",
   },

@@ -22,7 +22,6 @@ export function SelfBoard({
         isCorrect: guess.isCorrect,
         cells: guess.feedback.map((field) => ({
           status: field.status,
-          symbol: field.symbol,
           value: field.displayValue.join("、"),
         })),
       })),

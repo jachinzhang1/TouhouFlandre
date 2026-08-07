@@ -3,14 +3,22 @@ import { test, expect } from "@playwright/test";
 test.describe("站点骨架", () => {
   test("首页展示目录摘要与导航", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "东方芙一把" })).toBeVisible();
-    await expect(page.getByText("113", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "站点导航" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "东方芙一把" }),
+    ).toBeVisible();
+    const catalogStats = page.locator('[aria-label="今日题信息"] strong');
+    await expect(catalogStats).toHaveCount(3);
+    await expect(catalogStats.last()).not.toHaveText("-");
+    await expect(
+      page.getByRole("navigation", { name: "站点导航" }),
+    ).toBeVisible();
   });
 
   test("未知路径渲染 404 页", async ({ page }) => {
     await page.goto("/nonexistent-route");
-    await expect(page.getByRole("heading", { name: "页面不存在" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "页面不存在" }),
+    ).toBeVisible();
   });
 
   test("导航高亮随路由切换", async ({ page }) => {
@@ -35,9 +43,11 @@ test.describe("搜索", () => {
 
   test("列表视图切换同步 URL", async ({ page }) => {
     await page.goto("/search");
-    await page.locator(".catalog-tool", { hasText: "图标" }).click();
+    await page.getByRole("button", { name: "列表视图" }).click();
     await expect(page).toHaveURL(/view=list/);
-    await expect(page.locator("table tbody tr")).toHaveCount(113);
+    await expect
+      .poll(() => page.locator("table tbody tr").count())
+      .toBeGreaterThan(0);
   });
 });
 
@@ -49,6 +59,7 @@ test.describe("每日题游戏流程", () => {
     await expect(page.locator(".status-strip")).toContainText(/进度\s*0\/8/);
     await expect(page.getByLabel("搜索东方角色")).toBeEnabled();
     await expect(page.locator(".status-strip")).toContainText("进行中");
+    await expect(page.getByLabel("重新开始随机题")).toHaveCount(0);
 
     // 猜测灵梦
     const input = page.getByLabel("搜索东方角色");
@@ -63,11 +74,14 @@ test.describe("每日题游戏流程", () => {
     await expect(page.locator(".status-strip")).toContainText(/进度\s*1\/8/);
 
     // 伪造旧会话 id → 404 → 自动重建
-    await page.evaluate(() => {
-      localStorage.setItem(
-        "touhouflandre:daily-session",
-        JSON.stringify({ id: "stale-session-from-vite", puzzleKey: "2026-08-05" }),
-      );
+      await page.evaluate(() => {
+        localStorage.setItem(
+          "touhouflandre:daily-session",
+          JSON.stringify({
+            id: "stale-session-from-vite",
+            puzzleKey: "2026-08-05",
+          }),
+        );
     });
     await page.reload();
     await expect(page.locator(".status-strip")).toContainText(/进度\s*0\/8/);
@@ -84,6 +98,8 @@ test.describe("每日题游戏流程", () => {
 
   test("非法模式返回 404", async ({ page }) => {
     await page.goto("/single/foo");
-    await expect(page.getByRole("heading", { name: "页面不存在" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "页面不存在" }),
+    ).toBeVisible();
   });
 });

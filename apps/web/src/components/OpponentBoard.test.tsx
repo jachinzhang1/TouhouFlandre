@@ -24,6 +24,21 @@ describe("OpponentBoard", () => {
       (el) => el.getAttribute("aria-label"),
     );
     expect(labels).toEqual(["命中", "部分", "未中", "更高", "更低", "未知"]);
+    const compactCells = Array.from(
+      container.querySelectorAll(".match-feedback-compact"),
+    );
+    expect(compactCells).toHaveLength(6);
+    expect(
+      compactCells.map((cell) => cell.querySelector("svg")?.getAttribute("class")),
+    ).toEqual([
+      "lucide lucide-check",
+      "lucide lucide-minus",
+      "lucide lucide-x",
+      "lucide lucide-chevrons-up",
+      "lucide lucide-chevrons-down",
+      "lucide lucide-x",
+    ]);
+    for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）
     for (const header of ["初登场作品", "初登场年份", "种族", "阵营", "地点", "头发颜色"]) {
       const matches = container.textContent?.match(new RegExp(header, "g")) ?? [];

@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarDays,
-  Flower2,
   Home,
   Megaphone,
   Search,
-  Trophy,
 } from "lucide-react";
+import { YinYangMark } from "./YinYangMark";
 
 const NAV_ITEMS: {
   label: string;
@@ -24,17 +23,19 @@ const NAV_ITEMS: {
     href: "/single",
     icon: CalendarDays,
     isActive: (p) =>
-      p === "/single" ||
-      p.startsWith("/single/") ||
-      p.startsWith("/multi"),
+      p === "/single" || p.startsWith("/single/") || p.startsWith("/multi"),
   },
-  { label: "搜索", href: "/search", icon: Search, isActive: (p) => p === "/search" },
-  { label: "统计", href: "/stats", icon: BarChart3, isActive: (p) => p === "/stats" },
   {
-    label: "排行",
-    href: "/leaderboard",
-    icon: Trophy,
-    isActive: (p) => p === "/leaderboard",
+    label: "搜索",
+    href: "/search",
+    icon: Search,
+    isActive: (p) => p === "/search",
+  },
+  {
+    label: "统计",
+    href: "/stats",
+    icon: BarChart3,
+    isActive: (p) => p === "/stats",
   },
   {
     label: "公告",
@@ -57,25 +58,21 @@ export function SiteNav() {
         href="/"
         aria-label="返回首页"
       >
-        <span className="inline-flex size-[38px] items-center justify-center rounded-[4px] bg-vermilion text-white shadow-[4px_4px_0_#e1c1bb] max-[680px]:size-[34px]">
-          <Flower2 size={18} />
+        <span className="inline-flex size-[38px] items-center justify-center rounded-[4px] bg-vermilion text-[var(--accent-contrast)] shadow-[4px_4px_0_var(--brand-shadow)] max-[680px]:size-[34px]">
+          <YinYangMark className="size-[23px]" />
         </span>
         <span className="grid gap-px">
           <strong className="font-brand text-[1.05rem]">TouhouFlandre</strong>
           <small className="text-[0.68rem] text-ink-soft">东方芙一把</small>
         </span>
       </Link>
-      <div className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-6 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[rgba(251,252,251,0.96)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[0_-8px_24px_rgba(25,46,39,0.08)] max-[680px]:backdrop-blur-[14px]">
+      <div className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--mobile-nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[14px]">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
           return (
             <Link
-              className={
-                active
-                  ? "nav-link active"
-                  : "nav-link"
-              }
+              className={active ? "nav-link active" : "nav-link"}
               key={item.label}
               href={item.href}
               aria-current={active ? "page" : undefined}

@@ -15,6 +15,7 @@ const catalogSummary = {
       visibleFieldCount: 6,
     },
   ],
+  works: [],
 };
 
 vi.mock("../lib/api", () => ({
