@@ -1371,6 +1371,22 @@ html[data-theme-mode="dark"] .appearance-swatch {
   font-size: 0.6rem;
 }
 
+.match-feedback-compact {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  grid-template-columns: 1fr;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.match-feedback-compact b {
+  width: 18px;
+  height: 18px;
+  font-size: 0.58rem;
+}
+
 .empty-state {
   height: 150px;
   color: var(--subtle-text);

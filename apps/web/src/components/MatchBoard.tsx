@@ -56,7 +56,13 @@ export function MatchBoard({
         )}
       </div>
 
-      <div className="grid grid-cols-2 items-start gap-3 max-[680px]:grid-cols-1">
+      <div
+        className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
+          ended
+            ? "grid-cols-2"
+            : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+        }`}
+      >
         {ended && roundResult ? (
           <EndedBoards roundResult={roundResult} mySlot={mySlot} />
         ) : (
@@ -91,7 +97,6 @@ function EndedBoards({
       isCorrect: guess.isCorrect,
       cells: guess.feedback.map((field) => ({
         status: field.status,
-        symbol: field.symbol,
         value: field.displayValue.join("、"),
       })),
     }));

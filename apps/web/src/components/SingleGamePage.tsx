@@ -1,12 +1,8 @@
 "use client";
 
 import {
-  Check,
-  ChevronsDown,
-  ChevronsUp,
   Flag,
   Loader2,
-  Minus,
   RotateCcw,
   Search,
   X,
@@ -31,6 +27,7 @@ import type {
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
+import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { modeConfig } from "../gameModes";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
 import { api } from "../lib/api";
@@ -97,18 +94,6 @@ const formatGuessDuration = (timings: number[], index: number) => {
   if (index > 0 && !Number.isFinite(previousCompletedAt)) return "--:--";
   return formatDuration(completedAt - previousCompletedAt);
 };
-
-function FeedbackIcon({ feedback }: { feedback: FieldFeedback }) {
-  if (feedback.status === "exact")
-    return <Check size={14} aria-label="完全匹配" />;
-  if (feedback.status === "partial")
-    return <Minus size={14} aria-label="部分匹配" />;
-  if (feedback.status === "higher")
-    return <ChevronsUp size={14} aria-label="答案更晚" />;
-  if (feedback.status === "lower")
-    return <ChevronsDown size={14} aria-label="答案更早" />;
-  return <X size={14} aria-label="不匹配" />;
-}
 
 function SuggestionPopover({
   anchor,
@@ -711,7 +696,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                           title={`${feedback.label}: ${feedback.status}`}
                         >
                           <b>
-                            <FeedbackIcon feedback={feedback} />
+                            <FeedbackStatusIcon status={feedback.status} />
                           </b>
                           <span>{formatFeedbackValue(feedback)}</span>
                         </span>

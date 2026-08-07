@@ -97,16 +97,18 @@ export function MultiLobby() {
 
   return (
     <section className="px-[18px] pt-12 pb-8">
-      <div className="mx-auto max-w-[720px]">
-        <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
-          MULTIPLAYER
-        </p>
-        <h1 className="mt-0 mb-1 font-brand text-[2.6rem] leading-[1.15] max-[680px]:text-[2.05rem]">
-          多人大厅
-        </h1>
-        <p className="mt-0 mb-8 text-[0.9rem] leading-[1.75] text-ink-soft">
-          创建房间或输入房间号加入，与好友实时竞猜同一个隐藏角色。
-        </p>
+      <div className="max-w-[1000px]">
+        <div className="max-w-[720px]">
+          <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
+            MULTIPLAYER
+          </p>
+          <h1 className="mt-0 mb-1 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
+            多人大厅
+          </h1>
+          <p className="mt-0 mb-8 text-[0.9rem] leading-[1.75] text-ink-soft">
+            创建房间或输入房间号加入，与好友实时竞猜同一个隐藏角色。
+          </p>
+        </div>
 
         {error && (
           <p className="mb-4 rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-3 py-2 text-[0.82rem] text-vermilion" role="alert">
@@ -115,7 +117,7 @@ export function MultiLobby() {
         )}
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div className="rounded-[10px] border border-line bg-paper p-5 shadow-sm">
+          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
             <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
               <Plus size={17} className="text-vermilion" aria-hidden="true" />
               创建房间
@@ -165,14 +167,14 @@ export function MultiLobby() {
               type="button"
               disabled={busy !== null}
               onClick={handleCreate}
-              className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:opacity-50"
+              className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:opacity-50"
             >
               <Users size={16} aria-hidden="true" />
               {busy === "create" ? "创建中……" : "创建房间"}
             </button>
           </div>
 
-          <div className="rounded-[10px] border border-line bg-paper p-5 shadow-sm">
+          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
             <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
               <DoorOpen size={17} className="text-jade" aria-hidden="true" />
               加入房间
@@ -191,7 +193,7 @@ export function MultiLobby() {
                 }}
                 onBlur={precheck}
                 placeholder="如 ABC123（自动忽略空格/连字符）"
-                className="w-full rounded-[6px] border border-line-strong bg-paper px-3 py-2 font-mono text-[0.9rem] uppercase tracking-[0.2em] outline-none focus:border-vermilion"
+                className="w-full rounded-[6px] border border-line-strong bg-paper px-3 py-2 font-mono text-[0.9rem] uppercase outline-none focus:border-vermilion"
                 maxLength={12}
               />
             </label>
@@ -220,7 +222,7 @@ export function MultiLobby() {
               type="button"
               disabled={busy !== null || !codeValid}
               onClick={handleJoin}
-              className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <DoorOpen size={16} aria-hidden="true" />
               {busy === "join" ? "加入中……" : "加入房间"}
