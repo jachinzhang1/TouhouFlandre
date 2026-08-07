@@ -1703,7 +1703,7 @@
       "Midboss"
     ],
     "hairColors": [
-      "orange"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -1747,7 +1747,7 @@
       "Boss"
     ],
     "hairColors": [
-      "orange"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3489,7 +3489,7 @@
       "士兵"
     ],
     "hairColors": [
-      "orange"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5198,7 +5198,7 @@
     ],
     "hairColors": [
       "white",
-      "orange"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -6052,8 +6052,7 @@
       "自机"
     ],
     "hairColors": [
-      "blonde",
-      "orange"
+      "blonde"
     ],
     "playable": true,
     "enabledAsAnswer": true,
