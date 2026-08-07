@@ -234,6 +234,10 @@ events:
             slot2:
               type: integer
               minimum: 0
+        nextStartsAt:
+          type: string
+          format: date-time
+          description: 下一局 startsAt（= 本局 ended_at + INTERMISSION，服务端驱动倒计时；对局结束或旧事件可缺失）。
 
   - type: match.ended
     observer: all
@@ -529,6 +533,7 @@ examples:
           scores:
             slot1: 1
             slot2: 0
+          nextStartsAt: "2026-08-06T12:00:18Z"
 
     - label: match.ended（达到 targetWins）
       message:
