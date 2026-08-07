@@ -38,7 +38,8 @@
       "主角组"
     ],
     "hairColors": [
-      "brown"
+      "brown",
+      "black"
     ],
     "playable": true,
     "enabledAsAnswer": true,
@@ -1138,7 +1139,7 @@
       "Boss"
     ],
     "hairColors": [
-      "blue"
+      "green"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2079,7 +2080,7 @@
       "Midboss"
     ],
     "hairColors": [
-      "brown"
+      "green"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2260,7 +2261,7 @@
       "Boss"
     ],
     "hairColors": [
-      "purple"
+      "pink"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2406,7 +2407,8 @@
       "EX Boss"
     ],
     "hairColors": [
-      "green"
+      "green",
+      "gray"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2542,7 +2544,7 @@
       "僧侣"
     ],
     "hairColors": [
-      "blue"
+      "multicolor"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2589,7 +2591,7 @@
       "船长"
     ],
     "hairColors": [
-      "blue"
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2635,6 +2637,7 @@
       "毘沙门天代理"
     ],
     "hairColors": [
+      "multicolor",
       "blonde"
     ],
     "playable": false,
@@ -2681,8 +2684,7 @@
       "住持"
     ],
     "hairColors": [
-      "blonde",
-      "purple"
+      "multicolor"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2956,7 +2958,7 @@
       "Boss"
     ],
     "hairColors": [
-      "brown"
+      "gray"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3224,7 +3226,7 @@
       "Boss"
     ],
     "hairColors": [
-      "blonde"
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3312,6 +3314,7 @@
       "Boss"
     ],
     "hairColors": [
+      "multicolor",
       "black"
     ],
     "playable": false,
@@ -3356,7 +3359,7 @@
       "Boss"
     ],
     "hairColors": [
-      "brown"
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3399,7 +3402,7 @@
       "EX Boss"
     ],
     "hairColors": [
-      "brown"
+      "red"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3444,7 +3447,7 @@
       "士兵"
     ],
     "hairColors": [
-      "purple"
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3711,7 +3714,8 @@
       "EX Boss"
     ],
     "hairColors": [
-      "multicolor"
+      "multicolor",
+      "red"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3799,7 +3803,7 @@
       "Boss"
     ],
     "hairColors": [
-      "green"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3845,7 +3849,7 @@
       "守护者"
     ],
     "hairColors": [
-      "brown"
+      "green"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3889,7 +3893,7 @@
       "Boss"
     ],
     "hairColors": [
-      "gray"
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3977,7 +3981,7 @@
       "童子"
     ],
     "hairColors": [
-      "blonde"
+      "green"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4070,7 +4074,7 @@
       "Boss"
     ],
     "hairColors": [
-      "pink"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4116,7 +4120,8 @@
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "white",
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4161,7 +4166,7 @@
       "关卡守卫"
     ],
     "hairColors": [
-      "blonde"
+      "multicolor"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4252,7 +4257,7 @@
       "将领"
     ],
     "hairColors": [
-      "blue"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4296,7 +4301,7 @@
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4342,7 +4347,7 @@
       "组长"
     ],
     "hairColors": [
-      "red"
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4387,7 +4392,8 @@
       "商人"
     ],
     "hairColors": [
-      "blonde"
+      "blonde",
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4481,7 +4487,7 @@
       "商人"
     ],
     "hairColors": [
-      "pink"
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4525,7 +4531,7 @@
       "Boss"
     ],
     "hairColors": [
-      "blue"
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4617,7 +4623,7 @@
       "大天狗"
     ],
     "hairColors": [
-      "black"
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4662,7 +4668,8 @@
       "市场神"
     ],
     "hairColors": [
-      "multicolor"
+      "blue",
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4708,7 +4715,8 @@
       "EX Boss"
     ],
     "hairColors": [
-      "blonde"
+      "blue",
+      "gray"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4798,7 +4806,7 @@
       "Boss"
     ],
     "hairColors": [
-      "brown"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4843,7 +4851,7 @@
       "Boss"
     ],
     "hairColors": [
-      "red"
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4887,7 +4895,7 @@
       "案内人"
     ],
     "hairColors": [
-      "blue"
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4976,7 +4984,8 @@
       "Boss"
     ],
     "hairColors": [
-      "gray"
+      "gray",
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5109,7 +5118,7 @@
       "Boss"
     ],
     "hairColors": [
-      "black"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5153,7 +5162,7 @@
       "Boss"
     ],
     "hairColors": [
-      "gray"
+      "brown"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5387,7 +5396,8 @@
       "书籍角色"
     ],
     "hairColors": [
-      "brown"
+      "blue",
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5528,7 +5538,8 @@
       "Boss"
     ],
     "hairColors": [
-      "purple"
+      "black",
+      "brown"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5670,7 +5681,7 @@
       "月之公主"
     ],
     "hairColors": [
-      "silver"
+      "purple"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5718,7 +5729,7 @@
       "月兔"
     ],
     "hairColors": [
-      "purple"
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -6102,7 +6113,8 @@
     ],
     "hairColors": [
       "green",
-      "silver"
+      "silver",
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": false,
@@ -6151,7 +6163,8 @@
       "自机"
     ],
     "hairColors": [
-      "blue"
+      "blue",
+      "purple"
     ],
     "playable": true,
     "enabledAsAnswer": true,
@@ -6297,7 +6310,7 @@
       "自机"
     ],
     "hairColors": [
-      "blue"
+      "pink"
     ],
     "playable": true,
     "enabledAsAnswer": true,
