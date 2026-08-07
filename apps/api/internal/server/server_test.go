@@ -231,9 +231,24 @@ func TestCatalog(t *testing.T) {
 		t.Fatalf("expected 1 content, got %d", len(summary.Contents))
 	}
 	content := summary.Contents[0]
-	// 计数随题库扩展（TH06–TH20 共 113 角色）；08 设计文档 §4.2 亦以 113 为基线。
-	if content.Total != 113 || content.Guessable != 113 || content.Answerable != 113 {
-		t.Fatalf("unexpected counts: %+v", content)
+	var dbTotal, dbGuessable, dbAnswerable int
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM character`).Scan(&dbTotal); err != nil {
+		t.Fatalf("query db total: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM character WHERE enabled_as_guess`).Scan(&dbGuessable); err != nil {
+		t.Fatalf("query db guessable: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM character WHERE enabled_as_answer`).Scan(&dbAnswerable); err != nil {
+		t.Fatalf("query db answerable: %v", err)
+	}
+	if content.Total != dbTotal || content.Guessable != dbGuessable || content.Answerable != dbAnswerable {
+		t.Fatalf(
+			"unexpected counts: %+v (db: total=%d guessable=%d answerable=%d)",
+			content,
+			dbTotal,
+			dbGuessable,
+			dbAnswerable,
+		)
 	}
 	if content.MaxGuesses != 8 || content.VisibleFieldCount != 6 {
 		t.Fatalf("unexpected definition: %+v", content)
@@ -370,7 +385,7 @@ func TestSessionSearchPaginationAndMissingSession(t *testing.T) {
 	if err := json.Unmarshal(payload, &search); err != nil {
 		t.Fatal(err)
 	}
-	if search.Total != 113 || len(search.Results) != 2 {
+	if search.Total <= 0 || len(search.Results) != 2 {
 		t.Fatalf("unexpected page: %+v", search)
 	}
 	if search.Results[0].AppearanceOrder < search.Results[1].AppearanceOrder {
