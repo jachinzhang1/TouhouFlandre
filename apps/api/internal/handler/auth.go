@@ -57,8 +57,17 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				if !s.joinLimiter.allow(clientIP(ctx), s.now()) {
 					return nil, &ApiError{Status: http.StatusTooManyRequests, Code: codeRateLimited, Message: "尝试过于频繁，请稍后再试。"}
 				}
-			case "RoomsGetSnapshot", "RoomsSetReady", "RoomsRematch",
-				"RoomsSubmitGuess", "RoomsLeave", "RoomsClose":
+			case "RoomsGetSnapshot":
+				member, apiErr := s.authenticateGuestForSnapshot(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
+				if apiErr != nil {
+					return nil, apiErr
+				}
+				if roomID, ok := roomIDFromRequest(request); ok && member.RoomID != roomID {
+					return nil, guestUnauthorized("令牌不属于该房间。")
+				}
+				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
+				ctx.SetRequest(req)
+			case "RoomsSetReady", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose":
 				member, apiErr := s.authenticateGuest(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
@@ -81,6 +90,15 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 
 // authenticateGuest 解析并校验令牌凭据，返回成员行（不含房间归属校验，由调用方按路径校验）。
 func (s *Server) authenticateGuest(ctx context.Context, authorization string) (*repo.MultiMember, *ApiError) {
+	return s.authenticateGuestWithPolicy(ctx, authorization, false)
+}
+
+// authenticateGuestForSnapshot 保留 left 成员对最终快照的只读访问，直至房间保留期结束。
+func (s *Server) authenticateGuestForSnapshot(ctx context.Context, authorization string) (*repo.MultiMember, *ApiError) {
+	return s.authenticateGuestWithPolicy(ctx, authorization, true)
+}
+
+func (s *Server) authenticateGuestWithPolicy(ctx context.Context, authorization string, allowLeft bool) (*repo.MultiMember, *ApiError) {
 	if authorization == "" {
 		return nil, guestUnauthorized("缺少令牌。")
 	}
@@ -96,11 +114,15 @@ func (s *Server) authenticateGuest(ctx context.Context, authorization string) (*
 	if token == "" {
 		return nil, guestUnauthorized("令牌为空。")
 	}
-	return s.authenticateToken(ctx, token)
+	return s.authenticateTokenWithPolicy(ctx, token, allowLeft)
 }
 
 // authenticateToken 按令牌哈希查询成员（REST/WS 共用；WS hello 携带的即冒号后的原始 token）。
 func (s *Server) authenticateToken(ctx context.Context, token string) (*repo.MultiMember, *ApiError) {
+	return s.authenticateTokenWithPolicy(ctx, token, false)
+}
+
+func (s *Server) authenticateTokenWithPolicy(ctx context.Context, token string, allowLeft bool) (*repo.MultiMember, *ApiError) {
 	if token == "" {
 		return nil, guestUnauthorized("令牌为空。")
 	}
@@ -111,7 +133,7 @@ func (s *Server) authenticateToken(ctx context.Context, token string) (*repo.Mul
 		}
 		return nil, internalError(err)
 	}
-	if member.Status == string(multi.MemberStatusLeft) {
+	if member.Status == string(multi.MemberStatusLeft) && !allowLeft {
 		return nil, guestUnauthorized("成员已离开。")
 	}
 	return &member, nil

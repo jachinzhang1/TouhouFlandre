@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-08-07T12:00:00.000Z",
+  "records": [
+    {
+      "id": "visual-daily-1",
+      "schemaVersion": 1,
+      "kind": "single",
+      "mode": "daily",
+      "puzzleKey": "2026-08-05",
+      "startedAt": "2026-08-05T01:15:12.000Z",
+      "endedAt": "2026-08-05T01:16:00.000Z",
+      "durationMs": 48000,
+      "outcome": "win",
+      "round": {
+        "roundIndex": 1,
+        "startedAt": "2026-08-05T01:15:12.000Z",
+        "endedAt": "2026-08-05T01:16:00.000Z",
+        "durationMs": 48000,
+        "result": "win",
+        "answer": { "id": "reimu", "name": "博丽灵梦", "avatarUrl": "/characters/0001-博丽灵梦.png", "work": { "id": "th01", "title": "东方灵异传", "code": "TH01" } },
+        "guesses": [
+          { "id": "marisa", "name": "雾雨魔理沙", "avatarUrl": "/characters/0002-雾雨魔理沙.png", "correct": false, "durationMs": 18000 },
+          { "id": "reimu", "name": "博丽灵梦", "avatarUrl": "/characters/0001-博丽灵梦.png", "correct": true, "durationMs": 30000 }
+        ]
+      }
+    },
+    {
+      "id": "visual-daily-2",
+      "schemaVersion": 1,
+      "kind": "single",
+      "mode": "daily",
+      "puzzleKey": "2026-08-06",
+      "startedAt": "2026-08-06T04:20:30.000Z",
+      "endedAt": "2026-08-06T04:21:42.000Z",
+      "durationMs": 72000,
+      "outcome": "win",
+      "round": {
+        "roundIndex": 1,
+        "startedAt": "2026-08-06T04:20:30.000Z",
+        "endedAt": "2026-08-06T04:21:42.000Z",
+        "durationMs": 72000,
+        "result": "win",
+        "answer": { "id": "cirno", "name": "琪露诺", "avatarUrl": "/characters/0603-琪露诺.png", "work": { "id": "th06", "title": "东方红魔乡", "code": "TH06" } },
+        "guesses": [
+          { "id": "rumia", "name": "露米娅", "avatarUrl": "/characters/0601-露米娅.png", "correct": false, "durationMs": 16000 },
+          { "id": "daiyousei", "name": "大妖精", "avatarUrl": "/characters/0602-大妖精.png", "correct": false, "durationMs": 21000 },
+          { "id": "cirno", "name": "琪露诺", "avatarUrl": "/characters/0603-琪露诺.png", "correct": true, "durationMs": 35000 }
+        ]
+      }
+    },
+    {
+      "id": "visual-daily-3",
+      "schemaVersion": 1,
+      "kind": "single",
+      "mode": "daily",
+      "puzzleKey": "2026-08-07",
+      "startedAt": "2026-08-07T02:03:04.000Z",
+      "endedAt": "2026-08-07T02:04:34.000Z",
+      "durationMs": 90000,
+      "outcome": "win",
+      "round": {
+        "roundIndex": 1,
+        "startedAt": "2026-08-07T02:03:04.000Z",
+        "endedAt": "2026-08-07T02:04:34.000Z",
+        "durationMs": 90000,
+        "result": "win",
+        "answer": { "id": "alice", "name": "爱丽丝·玛格特洛依德", "avatarUrl": "/characters/0703-爱丽丝.png", "work": { "id": "th05", "title": "东方怪绮谈", "code": "TH05" } },
+        "guesses": [
+          { "id": "yuuka", "name": "风见幽香", "avatarUrl": "/characters/0902-风见幽香.png", "correct": false, "durationMs": 40000 },
+          { "id": "alice", "name": "爱丽丝·玛格特洛依德", "avatarUrl": "/characters/0703-爱丽丝.png", "correct": true, "durationMs": 50000 }
+        ]
+      }
+    },
+    {
+      "id": "visual-random-1",
+      "schemaVersion": 1,
+      "kind": "single",
+      "mode": "random",
+      "startedAt": "2026-08-07T03:10:11.000Z",
+      "endedAt": "2026-08-07T03:12:11.000Z",
+      "durationMs": 120000,
+      "outcome": "loss",
+      "round": {
+        "roundIndex": 1,
+        "startedAt": "2026-08-07T03:10:11.000Z",
+        "endedAt": "2026-08-07T03:12:11.000Z",
+        "durationMs": 120000,
+        "result": "loss",
+        "answer": { "id": "sakuya", "name": "十六夜咲夜", "avatarUrl": "/characters/0607-十六夜咲夜.png", "work": { "id": "th06", "title": "东方红魔乡", "code": "TH06" } },
+        "guesses": [
+          { "id": "meiling", "name": "红美铃", "avatarUrl": "/characters/0604-红美铃.png", "correct": false, "durationMs": 30000 },
+          { "id": "patchouli", "name": "帕秋莉·诺蕾姬", "avatarUrl": "/characters/0606-帕秋莉.png", "correct": false, "durationMs": 40000 },
+          { "id": "remilia", "name": "蕾米莉亚·斯卡蕾特", "avatarUrl": "/characters/0608-蕾米莉亚.png", "correct": false, "durationMs": 50000 }
+        ]
+      }
+    },
+    {
+      "id": "visual-multi-1",
+      "schemaVersion": 1,
+      "kind": "multiplayer",
+      "mode": "multiplayer",
+      "format": "bo3",
+      "matchIndex": 0,
+      "startedAt": "2026-08-07T05:00:00.000Z",
+      "endedAt": "2026-08-07T05:05:00.000Z",
+      "durationMs": 210000,
+      "outcome": "win",
+      "reason": "normal",
+      "scoreSelf": 2,
+      "scoreOpponent": 1,
+      "rounds": [
+        {
+          "roundIndex": 1,
+          "startedAt": "2026-08-07T05:00:00.000Z",
+          "endedAt": "2026-08-07T05:01:00.000Z",
+          "durationMs": 60000,
+          "result": "win",
+          "answer": { "id": "youmu", "name": "魂魄妖梦", "avatarUrl": "/characters/0708-魂魄妖梦.png", "work": { "id": "th07", "title": "东方妖妖梦", "code": "TH07" } },
+          "guesses": [{ "id": "youmu", "name": "魂魄妖梦", "avatarUrl": "/characters/0708-魂魄妖梦.png", "correct": true, "durationMs": 60000 }]
+        },
+        {
+          "roundIndex": 2,
+          "startedAt": "2026-08-07T05:01:30.000Z",
+          "endedAt": "2026-08-07T05:03:00.000Z",
+          "durationMs": 90000,
+          "result": "loss",
+          "answer": { "id": "reisen", "name": "铃仙·优昙华院·因幡", "avatarUrl": "/characters/0806-铃仙.png", "work": { "id": "th08", "title": "东方永夜抄", "code": "TH08" } },
+          "guesses": [{ "id": "tewi", "name": "因幡帝", "avatarUrl": "/characters/0805-因幡天为.png", "correct": false, "durationMs": 90000 }]
+        },
+        {
+          "roundIndex": 3,
+          "startedAt": "2026-08-07T05:03:30.000Z",
+          "endedAt": "2026-08-07T05:04:30.000Z",
+          "durationMs": 60000,
+          "result": "win",
+          "answer": { "id": "sanae", "name": "东风谷早苗", "avatarUrl": "/characters/1006-东风谷早苗.png", "work": { "id": "th10", "title": "东方风神录", "code": "TH10" } },
+          "guesses": [{ "id": "sanae", "name": "东风谷早苗", "avatarUrl": "/characters/1006-东风谷早苗.png", "correct": true, "durationMs": 60000 }]
+        }
+      ]
+    }
+  ]
+}

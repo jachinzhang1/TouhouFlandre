@@ -81,12 +81,21 @@ export interface RoundOpponentGuessPayload {
   statuses: FeedbackStatus[];
 }
 
+export interface RoundAnswerPayload {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  workId: string;
+  workTitle: string;
+  workCode: string;
+}
+
 export interface RoundEndedPayload {
   matchIndex: number;
   roundIndex: number;
   result: MultiMatchResult;
   winnerSlot: number | null;
-  answer: { id: string; name: string; avatarUrl: string };
+  answer: RoundAnswerPayload;
   boards: { slot1: GuessResult[]; slot2: GuessResult[] };
   scores: { slot1: number; slot2: number };
   /** 下一局 startsAt（本局 ended_at + INTERMISSION，服务端驱动；对局结束则为空）。 */

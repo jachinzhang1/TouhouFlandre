@@ -31,13 +31,26 @@ import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { modeConfig } from "../gameModes";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
 import { api } from "../lib/api";
+import { useForegroundTimer } from "../stats/timer";
+import {
+  loadSingleStatsDraft,
+  recordSingleSession,
+  saveSingleStatsDraft,
+} from "../stats/singleRecorder";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
 
+const writeStatsInBackground = (operation: Promise<unknown>) => {
+  void operation.catch((error) => console.error("本地单人统计写入失败", error));
+};
+
 type StoredSession = {
   id: string;
   puzzleKey?: string;
+  activeElapsedMs?: number;
+  guessCompletedElapsedMs?: number[];
+  /** 兼容旧版墙钟计时字段。 */
   guessCompletedElapsedSeconds?: number[];
 };
 
@@ -63,20 +76,6 @@ const formatDuration = (seconds: number) => {
   return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
-const elapsedSecondsForSession = (
-  session: PublicGameSession | null,
-  nowMs: number,
-) => {
-  if (!session) return 0;
-  const startedAt = Date.parse(session.startedAt);
-  if (Number.isNaN(startedAt)) return 0;
-  const endedAt =
-    session.endedAt && !Number.isNaN(Date.parse(session.endedAt))
-      ? Date.parse(session.endedAt)
-      : nowMs;
-  return Math.max(0, Math.floor((endedAt - startedAt) / 1000));
-};
-
 const normalizeGuessTimings = (
   timings: unknown,
   expectedLength: number,
@@ -92,7 +91,7 @@ const formatGuessDuration = (timings: number[], index: number) => {
   const previousCompletedAt = index > 0 ? timings[index - 1] : 0;
   if (!Number.isFinite(completedAt)) return "--:--";
   if (index > 0 && !Number.isFinite(previousCompletedAt)) return "--:--";
-  return formatDuration(completedAt - previousCompletedAt);
+  return formatDuration((completedAt - previousCompletedAt) / 1000);
 };
 
 function SuggestionPopover({
@@ -194,8 +193,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [endingSession, setEndingSession] = useState(false);
   const [message, setMessage] = useState("");
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  const [guessCompletedElapsedSeconds, setGuessCompletedElapsedSeconds] =
+  const [initialElapsedMs, setInitialElapsedMs] = useState(0);
+  const [guessCompletedElapsedMs, setGuessCompletedElapsedMs] =
     useState<number[]>([]);
 
   const guessedIds = useMemo(
@@ -203,10 +202,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     [session],
   );
   const isFinished = session?.status === "won" || session?.status === "lost";
-  const currentElapsedSeconds = useMemo(
-    () => elapsedSecondsForSession(session, nowMs),
-    [nowMs, session],
+  const { elapsedMs, checkpoint } = useForegroundTimer(
+    session?.id ?? "none",
+    Boolean(session && !isFinished),
+    initialElapsedMs,
   );
+  const currentElapsedSeconds = Math.floor(elapsedMs / 1000);
   const selectableResults = useMemo(
     () => results.filter((result) => !guessedIds.has(result.id)),
     [guessedIds, results],
@@ -222,14 +223,16 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const persistSession = (
     nextMode: SinglePlayerGameMode,
     nextSession: PublicGameSession,
-    nextGuessCompletedElapsedSeconds: number[] = guessCompletedElapsedSeconds,
+    nextGuessCompletedElapsedMs: number[] = guessCompletedElapsedMs,
+    nextActiveElapsedMs = elapsedMs,
   ) => {
     localStorage.setItem(
       modeConfig[nextMode].storageKey,
       JSON.stringify({
         id: nextSession.id,
         puzzleKey: nextSession.puzzleKey,
-        guessCompletedElapsedSeconds: nextGuessCompletedElapsedSeconds,
+        activeElapsedMs: nextActiveElapsedMs,
+        guessCompletedElapsedMs: nextGuessCompletedElapsedMs,
       } satisfies StoredSession),
     );
   };
@@ -247,8 +250,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     setActiveSuggestionId("");
     setSuggestionsDismissed(false);
     setEndingSession(false);
-    setGuessCompletedElapsedSeconds([]);
-    setNowMs(Date.now());
+    setGuessCompletedElapsedMs([]);
+    setInitialElapsedMs(0);
 
     try {
       let dailyDateKey: string | undefined;
@@ -263,20 +266,53 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           const restored = await api.getSession(storedSession.id);
           if (!isCurrentRequest()) return;
           if (nextMode === "daily" && restored.puzzleKey !== dailyDateKey) {
+            const oldTimings = normalizeGuessTimings(
+              storedSession.guessCompletedElapsedMs ??
+                storedSession.guessCompletedElapsedSeconds?.map((value) => value * 1000),
+              restored.guesses.length,
+            );
+            const oldElapsed = Math.max(0, storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0);
+            if (restored.status === "playing" && restored.guesses.length > 0) {
+              try {
+                const forfeited = await api.forfeitSession(restored.id);
+                writeStatsInBackground(
+                  recordSingleSession(forfeited, nextMode, oldElapsed, oldTimings, "abandoned"),
+                );
+              } catch {
+                // 跨日旧会话可能已过期；不阻塞创建当天新题。
+              }
+            } else if (restored.status !== "playing") {
+              writeStatsInBackground(recordSingleSession(restored, nextMode, oldElapsed, oldTimings));
+            }
             localStorage.removeItem(modeConfig[nextMode].storageKey);
           } else {
-            setSession(restored);
-            setGuessCompletedElapsedSeconds(
-              normalizeGuessTimings(
-                storedSession.guessCompletedElapsedSeconds,
-                restored.guesses.length,
-              ),
+            const localTimings = normalizeGuessTimings(
+              storedSession.guessCompletedElapsedMs ??
+                storedSession.guessCompletedElapsedSeconds?.map((value) => value * 1000),
+              restored.guesses.length,
             );
+            const draft = await loadSingleStatsDraft(restored.id);
+            const restoredTimings = localTimings.length
+              ? localTimings
+              : normalizeGuessTimings(draft?.guessCompletedElapsedMs, restored.guesses.length);
+            const restoredElapsed = Math.max(
+              storedSession.activeElapsedMs ?? 0,
+              draft?.activeElapsedMs ?? 0,
+              restoredTimings.at(-1) ?? 0,
+            );
+            setSession(restored);
+            setGuessCompletedElapsedMs(restoredTimings);
+            setInitialElapsedMs(restoredElapsed);
             setPuzzleLabel(
               nextMode === "daily"
                 ? `${modeConfig[nextMode].label} ${restored.puzzleKey}`
                 : modeConfig[nextMode].puzzleLabel,
             );
+            if (restored.status !== "playing") {
+              writeStatsInBackground(recordSingleSession(restored, nextMode, restoredElapsed, restoredTimings));
+            } else {
+              writeStatsInBackground(saveSingleStatsDraft(restored, nextMode, restoredElapsed, restoredTimings));
+            }
             return;
           }
         } catch (error) {
@@ -295,9 +331,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       const created = await api.createPuzzle(nextMode);
       if (!isCurrentRequest()) return;
       setSession(created.session);
-      setGuessCompletedElapsedSeconds([]);
+      setGuessCompletedElapsedMs([]);
+      setInitialElapsedMs(0);
       setPuzzleLabel(created.puzzleLabel);
-      persistSession(nextMode, created.session, []);
+      persistSession(nextMode, created.session, [], 0);
+      writeStatsInBackground(saveSingleStatsDraft(created.session, nextMode, 0, []));
     } catch (error) {
       if (!isCurrentRequest()) return;
       setMessage(error instanceof Error ? error.message : "加载游戏失败。");
@@ -311,15 +349,6 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     await loadSession(nextMode);
   };
 
-  useEffect(() => {
-    if (!session || isFinished) return;
-    setNowMs(Date.now());
-    const timer = window.setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isFinished, session]);
-
   const requestFreshSession = async () => {
     if (mode !== "random" || loading || submitting || endingSession) return;
     if (
@@ -328,6 +357,17 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       !window.confirm("当前随机题进度将会丢失，确定重新开始吗？")
     ) {
       return;
+    }
+    if (session?.status === "playing" && session.guesses.length > 0) {
+      const completedElapsedMs = checkpoint();
+      const forfeited = await api.forfeitSession(session.id);
+      writeStatsInBackground(recordSingleSession(
+        forfeited,
+        mode,
+        completedElapsedMs,
+        guessCompletedElapsedMs,
+        "abandoned",
+      ));
     }
     await startFresh("random");
   };
@@ -339,24 +379,49 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     };
   }, [mode]);
 
+  useEffect(() => {
+    if (!session || isFinished) return;
+    const flush = () => {
+      const activeElapsedMs = checkpoint();
+      persistSession(mode, session, guessCompletedElapsedMs, activeElapsedMs);
+      writeStatsInBackground(saveSingleStatsDraft(
+        session,
+        mode,
+        activeElapsedMs,
+        guessCompletedElapsedMs,
+      ));
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [session, isFinished, mode, guessCompletedElapsedMs, checkpoint]);
+
   const submitGuess = async (guessId = selectedId) => {
     if (!session || !guessId || submitting || isFinished) return;
     setSubmitting(true);
     setMessage("");
+    const completedElapsedMs = checkpoint();
 
     try {
       const payload = await api.submitGuess(session.id, guessId);
-      const completedElapsedSeconds = elapsedSecondsForSession(
-        payload,
-        Date.now(),
-      );
-      const nextGuessCompletedElapsedSeconds = [
-        ...guessCompletedElapsedSeconds,
-        completedElapsedSeconds,
+      const nextGuessCompletedElapsedMs = [
+        ...guessCompletedElapsedMs,
+        completedElapsedMs,
       ].slice(0, payload.guesses.length);
       setSession(payload);
-      setGuessCompletedElapsedSeconds(nextGuessCompletedElapsedSeconds);
-      persistSession(mode, payload, nextGuessCompletedElapsedSeconds);
+      setGuessCompletedElapsedMs(nextGuessCompletedElapsedMs);
+      persistSession(mode, payload, nextGuessCompletedElapsedMs, completedElapsedMs);
+      if (payload.status === "playing") {
+        writeStatsInBackground(saveSingleStatsDraft(payload, mode, completedElapsedMs, nextGuessCompletedElapsedMs));
+      } else {
+        writeStatsInBackground(recordSingleSession(payload, mode, completedElapsedMs, nextGuessCompletedElapsedMs));
+      }
       setQuery("");
       setSelectedId("");
       setActiveSuggestionId("");
@@ -373,20 +438,15 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       return;
     setEndingSession(true);
     setMessage("");
+    const completedElapsedMs = checkpoint();
 
     try {
       const payload = await api.forfeitSession(session.id);
-      const completedElapsedSeconds = elapsedSecondsForSession(
-        payload,
-        Date.now(),
-      );
-      const nextGuessCompletedElapsedSeconds = [
-        ...guessCompletedElapsedSeconds,
-        completedElapsedSeconds,
-      ].slice(0, payload.guesses.length);
+      const nextGuessCompletedElapsedMs = guessCompletedElapsedMs.slice(0, payload.guesses.length);
       setSession(payload);
-      setGuessCompletedElapsedSeconds(nextGuessCompletedElapsedSeconds);
-      persistSession(mode, payload, nextGuessCompletedElapsedSeconds);
+      setGuessCompletedElapsedMs(nextGuessCompletedElapsedMs);
+      persistSession(mode, payload, nextGuessCompletedElapsedMs, completedElapsedMs);
+      writeStatsInBackground(recordSingleSession(payload, mode, completedElapsedMs, nextGuessCompletedElapsedMs, "forfeit"));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "放弃失败。");
     } finally {
@@ -705,7 +765,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     <td>
                       <span className="guess-duration">
                         {formatGuessDuration(
-                          guessCompletedElapsedSeconds,
+                          guessCompletedElapsedMs,
                           index,
                         )}
                       </span>

@@ -5,6 +5,7 @@ package multi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"hash/fnv"
 	"math/rand/v2"
 
@@ -125,14 +126,14 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		}
 		answer := chars[payload.AnswerID]
 		return RoundEndedPayload{
-			MatchIndex:     payload.MatchIndex,
-			RoundIndex:     payload.RoundIndex,
-			Result:         resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-			WinnerSlot:     payload.WinnerSlot,
-			Answer:         AnswerView{ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL},
-			Boards:         hydrateBoards(guesses, chars, memberSlotByID),
-			Scores:         payload.Scores,
-			NextStartsAt:   payload.NextStartsAt,
+			MatchIndex:   payload.MatchIndex,
+			RoundIndex:   payload.RoundIndex,
+			Result:       resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+			WinnerSlot:   payload.WinnerSlot,
+			Answer:       AnswerViewForCharacter(answer),
+			Boards:       hydrateBoards(guesses, chars, memberSlotByID),
+			Scores:       payload.Scores,
+			NextStartsAt: payload.NextStartsAt,
 		}, false, nil
 
 	case EventMatchEnded:
@@ -154,6 +155,18 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			return nil, false, err
 		}
 		return payload, false, nil
+	}
+}
+
+// AnswerViewForCharacter 从场绑定题库快照构造稳定的局末答案视图。
+func AnswerViewForCharacter(answer game.Character) AnswerView {
+	workCode := "TH--"
+	if answer.FirstAppearance.MainlineIndex != nil {
+		workCode = fmt.Sprintf("TH%02d", *answer.FirstAppearance.MainlineIndex)
+	}
+	return AnswerView{
+		ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL,
+		WorkID: answer.FirstAppearance.WorkID, WorkTitle: answer.FirstAppearance.WorkTitle, WorkCode: workCode,
 	}
 }
 

@@ -25,8 +25,14 @@ const wonSession = {
     },
   ],
   answer: {
+    id: "patchouli_knowledge",
     names: { zhHans: "帕秋莉·诺蕾姬" },
     avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
+    firstAppearance: {
+      workId: "th06_eosd",
+      workTitle: "东方红魔乡",
+      mainlineIndex: 6,
+    },
   },
 } as unknown as PublicGameSession;
 
@@ -47,8 +53,14 @@ const forfeitedSession = {
   endedAt: new Date().toISOString(),
   guesses: sessionWithGuess.guesses,
   answer: {
+    id: "patchouli_knowledge",
     names: { zhHans: "帕秋莉·诺蕾姬" },
     avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
+    firstAppearance: {
+      workId: "th06_eosd",
+      workTitle: "东方红魔乡",
+      mainlineIndex: 6,
+    },
   },
 } as unknown as PublicGameSession;
 
@@ -169,7 +181,7 @@ describe("SingleGamePage", () => {
     expect(await screen.findByText("本次游戏结束")).toBeTruthy();
     expect(screen.getByText("帕秋莉·诺蕾姬", { selector: "strong" })).toBeTruthy();
     expect(
-      screen.getByText(/^01:0[45]$/, { selector: ".guess-duration" }),
+      screen.getByText("--:--", { selector: ".guess-duration" }),
     ).toBeTruthy();
   });
 
@@ -201,6 +213,7 @@ describe("SingleGamePage", () => {
       contents: [],
     } as never);
     vi.mocked(api.getSession).mockResolvedValue(sessionWithGuess as never);
+    vi.mocked(api.forfeitSession).mockResolvedValue(forfeitedSession as never);
     vi.mocked(api.createPuzzle).mockResolvedValue({
       session: nextDailySession,
       puzzleLabel: "每日题 2026-08-06",

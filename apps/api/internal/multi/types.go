@@ -106,11 +106,11 @@ const (
 type MatchEndReason string
 
 const (
-	MatchEndReasonNormal       MatchEndReason = "normal"
-	MatchEndReasonForfeit      MatchEndReason = "forfeit"
-	MatchEndReasonDisconnect   MatchEndReason = "disconnect"
+	MatchEndReasonNormal        MatchEndReason = "normal"
+	MatchEndReasonForfeit       MatchEndReason = "forfeit"
+	MatchEndReasonDisconnect    MatchEndReason = "disconnect"
 	MatchEndReasonServerRestart MatchEndReason = "server_restart"
-	MatchEndReasonRoundCap     MatchEndReason = "round_cap"
+	MatchEndReasonRoundCap      MatchEndReason = "round_cap"
 )
 
 // RoomCloseReason 房间关闭原因。
@@ -127,15 +127,15 @@ const (
 type EventType string
 
 const (
-	EventRoomUpdated       EventType = "room.updated"
-	EventMatchStarted      EventType = "match.started"
-	EventMatchRematch      EventType = "match.rematch"
-	EventRoundStarted      EventType = "round.started"
-	EventRoundPlaying      EventType = "round.playing"
+	EventRoomUpdated        EventType = "room.updated"
+	EventMatchStarted       EventType = "match.started"
+	EventMatchRematch       EventType = "match.rematch"
+	EventRoundStarted       EventType = "round.started"
+	EventRoundPlaying       EventType = "round.playing"
 	EventRoundOpponentGuess EventType = "round.opponent.guess"
-	EventRoundEnded        EventType = "round.ended"
-	EventMatchEnded        EventType = "match.ended"
-	EventRoomClosed        EventType = "room.closed"
+	EventRoundEnded         EventType = "round.ended"
+	EventMatchEnded         EventType = "match.ended"
+	EventRoomClosed         EventType = "room.closed"
 )
 
 // Envelope 事件信封（08 §8.2）。Payload 为规范形态（round.opponent.guess 存真实列序），
@@ -161,7 +161,7 @@ type MemberView struct {
 
 // RoomUpdatedPayload room.updated：大厅任何成员变化/就绪。
 type RoomUpdatedPayload struct {
-	Format  RoomFormat  `json:"format"`
+	Format  RoomFormat   `json:"format"`
 	Members []MemberView `json:"members"`
 }
 
@@ -180,11 +180,11 @@ type MatchRematchPayload struct {
 
 // RoundStartedPayload round.started：每局创建（countdown 态）。
 type RoundStartedPayload struct {
-	MatchIndex  int       `json:"matchIndex"`
-	RoundIndex  int       `json:"roundIndex"`
-	StartsAt    time.Time `json:"startsAt"`
-	Deadline    time.Time `json:"deadline"`
-	MaxGuesses  int       `json:"maxGuesses"`
+	MatchIndex int       `json:"matchIndex"`
+	RoundIndex int       `json:"roundIndex"`
+	StartsAt   time.Time `json:"startsAt"`
+	Deadline   time.Time `json:"deadline"`
+	MaxGuesses int       `json:"maxGuesses"`
 }
 
 // RoundPlayingPayload round.playing：倒计时结束可开猜。
@@ -195,29 +195,32 @@ type RoundPlayingPayload struct {
 
 // RoundOpponentGuessPayload round.opponent.guess：对手匿名行（已按观察者列置换）。
 type RoundOpponentGuessPayload struct {
-	MatchIndex int    `json:"matchIndex"`
-	RoundIndex int    `json:"roundIndex"`
-	RowIndex   int    `json:"rowIndex"`
+	MatchIndex int      `json:"matchIndex"`
+	RoundIndex int      `json:"roundIndex"`
+	RowIndex   int      `json:"rowIndex"`
 	Statuses   []string `json:"statuses"`
 }
 
 // RoundEndedPayload round.ended：局结束（result 为观察者视角；揭示答案与双方完整棋盘）。
 type RoundEndedPayload struct {
-	MatchIndex   int          `json:"matchIndex"`
-	RoundIndex   int          `json:"roundIndex"`
-	Result       MatchResult  `json:"result"`
-	WinnerSlot   *int         `json:"winnerSlot"`
-	Answer       AnswerView   `json:"answer"`
-	Boards       BoardsView   `json:"boards"`
-	Scores       ScoresView   `json:"scores"`
-	NextStartsAt *time.Time   `json:"nextStartsAt,omitempty"`
+	MatchIndex   int         `json:"matchIndex"`
+	RoundIndex   int         `json:"roundIndex"`
+	Result       MatchResult `json:"result"`
+	WinnerSlot   *int        `json:"winnerSlot"`
+	Answer       AnswerView  `json:"answer"`
+	Boards       BoardsView  `json:"boards"`
+	Scores       ScoresView  `json:"scores"`
+	NextStartsAt *time.Time  `json:"nextStartsAt,omitempty"`
 }
 
-// AnswerView 揭示的答案角色（名称/头像）。
+// AnswerView 揭示的答案角色与作品快照。
 type AnswerView struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatarUrl"`
+	WorkID    string `json:"workId"`
+	WorkTitle string `json:"workTitle"`
+	WorkCode  string `json:"workCode"`
 }
 
 // ScoresView 比分。
@@ -252,11 +255,11 @@ type FieldFeedbackView struct {
 
 // MatchEndedPayload match.ended：对局结束。
 type MatchEndedPayload struct {
-	MatchIndex  int            `json:"matchIndex"`
-	Result      MatchResult    `json:"result"`
-	WinnerSlot  *int           `json:"winnerSlot"`
-	Scores      ScoresView     `json:"scores"`
-	Reason      MatchEndReason `json:"reason"`
+	MatchIndex int            `json:"matchIndex"`
+	Result     MatchResult    `json:"result"`
+	WinnerSlot *int           `json:"winnerSlot"`
+	Scores     ScoresView     `json:"scores"`
+	Reason     MatchEndReason `json:"reason"`
 }
 
 // RoomClosedPayload room.closed：房间关闭（终态）。
