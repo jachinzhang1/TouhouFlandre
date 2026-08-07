@@ -39,7 +39,7 @@
 
 ## 三、契约补充
 
-当前多人 `round.ended` 的答案只有 ID、名称和头像，[multi.ts](D:/MyCode/TouhouFriberg/packages/shared/src/multi.ts:84) 无法提供稳定作品 ID。需要：
+当前多人 `round.ended` 的答案只有 ID、名称和头像，[multi.ts](packages/shared/src/multi.ts#L84) 无法提供稳定作品 ID。需要：
 
 1. 在 `contracts/ws/protocol.yaml` 的答案载荷增加 `workId`、`workTitle`。
 2. 同步 Go `AnswerView`、投影逻辑、共享 TS 类型、协议有效/无效示例。
