@@ -76,7 +76,7 @@
       "光"
     ],
     "affiliations": [
-      "主角组"
+      "无明确阵营"
     ],
     "locations": [
       "魔法之森",
@@ -352,7 +352,8 @@
       "workId": "th06_eosd"
     },
     "species": [
-      "恶魔"
+      "恶魔",
+      "妖怪"
     ],
     "abilityDisplay": "使用魔法程度的能力",
     "abilityTags": [
@@ -400,7 +401,8 @@
       "workId": "th06_eosd"
     },
     "species": [
-      "魔法使"
+      "魔法使",
+      "妖怪"
     ],
     "abilityDisplay": "操纵火水木金土日月程度的能力",
     "abilityTags": [
@@ -499,7 +501,8 @@
       "workId": "th06_eosd"
     },
     "species": [
-      "吸血鬼"
+      "吸血鬼",
+      "妖怪"
     ],
     "abilityDisplay": "操纵命运程度的能力",
     "abilityTags": [
@@ -548,7 +551,8 @@
       "workId": "th06_eosd"
     },
     "species": [
-      "吸血鬼"
+      "吸血鬼",
+      "妖怪"
     ],
     "abilityDisplay": "破坏一切事物程度的能力",
     "abilityTags": [
@@ -639,8 +643,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "妖怪",
-      "猫又"
+      "妖怪猫",
+      "妖兽"
     ],
     "abilityDisplay": "使用妖术程度的能力",
     "abilityTags": [
@@ -689,7 +693,8 @@
       "workId": "th05_ms"
     },
     "species": [
-      "魔法使"
+      "魔法使",
+      "妖怪"
     ],
     "abilityDisplay": "操纵人偶程度的能力",
     "abilityTags": [
@@ -779,7 +784,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "骚灵"
+      "骚灵",
+      "灵"
     ],
     "abilityDisplay": "不用手演奏乐器程度的能力",
     "abilityTags": [
@@ -824,7 +830,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "骚灵"
+      "骚灵",
+      "灵"
     ],
     "abilityDisplay": "不用手演奏乐器程度的能力",
     "abilityTags": [
@@ -869,7 +876,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "骚灵"
+      "骚灵",
+      "灵"
     ],
     "abilityDisplay": "不用手演奏乐器程度的能力",
     "abilityTags": [
@@ -966,7 +974,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "亡灵"
+      "亡灵",
+      "灵"
     ],
     "abilityDisplay": "操纵死亡程度的能力",
     "abilityTags": [
@@ -1015,7 +1024,7 @@
     },
     "species": [
       "妖怪",
-      "九尾狐"
+      "妖兽"
     ],
     "abilityDisplay": "使用式神程度的能力",
     "abilityTags": [
@@ -1072,7 +1081,7 @@
       "空间"
     ],
     "affiliations": [
-      "妖怪贤者"
+      "八云家"
     ],
     "locations": [
       "幻想乡"
@@ -1217,10 +1226,10 @@
       "知识"
     ],
     "affiliations": [
-      "人类村落"
+      "人间之里"
     ],
     "locations": [
-      "人类村落",
+      "人间之里",
       "幻想乡"
     ],
     "roles": [
@@ -1254,7 +1263,8 @@
       "workId": "th08_in"
     },
     "species": [
-      "妖怪兔"
+      "妖怪兔",
+      "妖怪"
     ],
     "abilityDisplay": "赋予人类幸运程度的能力",
     "abilityTags": [
@@ -1266,7 +1276,8 @@
     ],
     "locations": [
       "迷途竹林",
-      "永远亭"
+      "永远亭",
+      "幻想乡"
     ],
     "roles": [
       "Midboss"
@@ -1302,7 +1313,9 @@
       "workId": "th08_in"
     },
     "species": [
-      "月兔"
+      "月兔",
+      "妖怪兔",
+      "妖怪"
     ],
     "abilityDisplay": "操纵狂气程度的能力",
     "abilityTags": [
@@ -1397,7 +1410,8 @@
       "workId": "th08_in"
     },
     "species": [
-      "月人"
+      "月人",
+      "蓬莱人"
     ],
     "abilityDisplay": "操纵永远与须臾程度的能力",
     "abilityTags": [
@@ -1491,7 +1505,7 @@
       "workId": "th09_pofv"
     },
     "species": [
-      "人偶"
+      "妖怪"
     ],
     "abilityDisplay": "操纵毒程度的能力",
     "abilityTags": [
@@ -1579,7 +1593,8 @@
       "workId": "th09_pofv"
     },
     "species": [
-      "死神"
+      "死神",
+      "妖怪"
     ],
     "abilityDisplay": "操纵距离程度的能力",
     "abilityTags": [
@@ -1625,7 +1640,8 @@
       "workId": "th09_pofv"
     },
     "species": [
-      "阎魔"
+      "阎魔",
+      "妖怪"
     ],
     "abilityDisplay": "判断是非黑白程度的能力",
     "abilityTags": [
@@ -1687,7 +1703,7 @@
       "Midboss"
     ],
     "hairColors": [
-      "red"
+      "orange"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -1757,7 +1773,7 @@
       "workId": "th10_mof"
     },
     "species": [
-      "厄神"
+      "神明"
     ],
     "abilityDisplay": "储存厄运程度的能力",
     "abilityTags": [
@@ -1852,7 +1868,8 @@
       "workId": "th10_mof"
     },
     "species": [
-      "白狼天狗"
+      "天狗",
+      "妖怪"
     ],
     "abilityDisplay": "看穿千里程度的能力",
     "abilityTags": [
@@ -1951,7 +1968,8 @@
       "workId": "th10_mof"
     },
     "species": [
-      "神明"
+      "神明",
+      "神灵"
     ],
     "abilityDisplay": "创造乾程度的能力",
     "abilityTags": [
@@ -2043,7 +2061,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "钓瓶落"
+      "钓瓶落",
+      "妖怪"
     ],
     "abilityDisplay": "使鬼火落下程度的能力",
     "abilityTags": [
@@ -2086,7 +2105,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "土蜘蛛"
+      "土蜘蛛",
+      "妖怪"
     ],
     "abilityDisplay": "操纵疾病程度的能力",
     "abilityTags": [
@@ -2129,7 +2149,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "桥姬"
+      "桥姬",
+      "妖怪"
     ],
     "abilityDisplay": "操纵嫉妒心程度的能力",
     "abilityTags": [
@@ -2172,7 +2193,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "鬼"
+      "鬼",
+      "妖怪"
     ],
     "abilityDisplay": "拥有怪力乱神程度的能力",
     "abilityTags": [
@@ -2219,7 +2241,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "觉"
+      "觉",
+      "妖怪"
     ],
     "abilityDisplay": "读取心灵程度的能力",
     "abilityTags": [
@@ -2263,8 +2286,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "火车",
-      "妖怪猫"
+      "妖怪猫",
+      "妖兽"
     ],
     "abilityDisplay": "搬运尸体程度的能力",
     "abilityTags": [
@@ -2364,7 +2387,8 @@
       "workId": "th11_sa"
     },
     "species": [
-      "觉"
+      "觉",
+      "妖怪"
     ],
     "abilityDisplay": "操纵无意识程度的能力",
     "abilityTags": [
@@ -2408,7 +2432,8 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "鼠妖怪"
+      "鼠妖怪",
+      "妖怪"
     ],
     "abilityDisplay": "搜寻东西程度的能力",
     "abilityTags": [
@@ -2497,8 +2522,8 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "人类",
-      "入道"
+      "入道",
+      "妖怪"
     ],
     "abilityDisplay": "使用入道程度的能力",
     "abilityTags": [
@@ -2544,7 +2569,8 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "船幽灵"
+      "船幽灵",
+      "灵"
     ],
     "abilityDisplay": "引发水难程度的能力",
     "abilityTags": [
@@ -2589,8 +2615,8 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "妖怪",
-      "虎"
+      "妖兽",
+      "妖怪"
     ],
     "abilityDisplay": "收集财宝程度的能力",
     "abilityTags": [
@@ -2635,7 +2661,8 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "魔法使"
+      "魔法使",
+      "妖怪"
     ],
     "abilityDisplay": "使用魔法程度的能力",
     "abilityTags": [
@@ -2682,6 +2709,7 @@
     },
     "species": [
       "鵺",
+      "妖兽",
       "妖怪"
     ],
     "abilityDisplay": "使物体正体不明程度的能力",
@@ -2726,7 +2754,8 @@
       "workId": "th13_td"
     },
     "species": [
-      "山彦"
+      "山彦",
+      "妖怪"
     ],
     "abilityDisplay": "反射声音程度的能力",
     "abilityTags": [
@@ -2816,7 +2845,8 @@
       "workId": "th13_td"
     },
     "species": [
-      "邪仙"
+      "邪仙",
+      "仙人"
     ],
     "abilityDisplay": "穿越墙壁程度的能力",
     "abilityTags": [
@@ -2861,7 +2891,8 @@
       "workId": "th13_td"
     },
     "species": [
-      "亡灵"
+      "亡灵",
+      "灵"
     ],
     "abilityDisplay": "引发雷电程度的能力",
     "abilityTags": [
@@ -2905,7 +2936,8 @@
       "workId": "th13_td"
     },
     "species": [
-      "尸解仙"
+      "尸解仙",
+      "仙人"
     ],
     "abilityDisplay": "操纵风水程度的能力",
     "abilityTags": [
@@ -2950,7 +2982,8 @@
       "workId": "th13_td"
     },
     "species": [
-      "圣人"
+      "尸解仙",
+      "仙人"
     ],
     "abilityDisplay": "听取十人欲望程度的能力",
     "abilityTags": [
@@ -3039,7 +3072,8 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "人鱼"
+      "人鱼",
+      "妖怪"
     ],
     "abilityDisplay": "在水中增强力量程度的能力",
     "abilityTags": [
@@ -3083,7 +3117,8 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "轱辘首"
+      "轱辘首",
+      "妖怪"
     ],
     "abilityDisplay": "让头飞出去程度的能力",
     "abilityTags": [
@@ -3094,7 +3129,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "人类村落",
+      "人间之里",
       "幻想乡"
     ],
     "roles": [
@@ -3127,7 +3162,8 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "狼女"
+      "狼女",
+      "妖怪"
     ],
     "abilityDisplay": "在满月之夜变成狼程度的能力",
     "abilityTags": [
@@ -3179,7 +3215,7 @@
       "琵琶"
     ],
     "affiliations": [
-      "付丧神"
+      "无明确阵营"
     ],
     "locations": [
       "幻想乡"
@@ -3222,7 +3258,7 @@
       "古琴"
     ],
     "affiliations": [
-      "付丧神"
+      "无明确阵营"
     ],
     "locations": [
       "幻想乡"
@@ -3257,7 +3293,8 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "天邪鬼"
+      "天邪鬼",
+      "妖怪"
     ],
     "abilityDisplay": "颠倒万物程度的能力",
     "abilityTags": [
@@ -3353,7 +3390,7 @@
       "鼓"
     ],
     "affiliations": [
-      "付丧神"
+      "无明确阵营"
     ],
     "locations": [
       "幻想乡"
@@ -3388,7 +3425,8 @@
       "workId": "th15_lolk"
     },
     "species": [
-      "月兔"
+      "月兔",
+      "妖兽"
     ],
     "abilityDisplay": "从异次元射击弹幕程度的能力",
     "abilityTags": [
@@ -3432,7 +3470,8 @@
       "workId": "th15_lolk"
     },
     "species": [
-      "月兔"
+      "月兔",
+      "妖兽"
     ],
     "abilityDisplay": "通过吃团子变强程度的能力",
     "abilityTags": [
@@ -3476,7 +3515,8 @@
       "workId": "th15_lolk"
     },
     "species": [
-      "貘"
+      "貘",
+      "妖怪"
     ],
     "abilityDisplay": "食用并创造梦境程度的能力",
     "abilityTags": [
@@ -3651,7 +3691,7 @@
       "workId": "th15_lolk"
     },
     "species": [
-      "女神"
+      "神明"
     ],
     "abilityDisplay": "拥有三个身体程度的能力",
     "abilityTags": [
@@ -3740,7 +3780,8 @@
       "workId": "th16_hsifs"
     },
     "species": [
-      "山姥"
+      "山姥",
+      "妖怪"
     ],
     "abilityDisplay": "创造圣域程度的能力",
     "abilityTags": [
@@ -3784,7 +3825,8 @@
       "workId": "th16_hsifs"
     },
     "species": [
-      "狛犬"
+      "狛犬",
+      "妖怪"
     ],
     "abilityDisplay": "发现神佛程度的能力",
     "abilityTags": [
@@ -3829,7 +3871,7 @@
       "workId": "th16_hsifs"
     },
     "species": [
-      "魔法地藏"
+      "地藏"
     ],
     "abilityDisplay": "使用魔法程度的能力",
     "abilityTags": [
@@ -3962,7 +4004,8 @@
       "workId": "th16_hsifs"
     },
     "species": [
-      "秘神"
+      "秘神",
+      "神明"
     ],
     "abilityDisplay": "在万物背上制作门程度的能力",
     "abilityTags": [
@@ -4008,7 +4051,8 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "水子"
+      "水子之灵",
+      "灵"
     ],
     "abilityDisplay": "擅长堆石程度的能力",
     "abilityTags": [
@@ -4016,7 +4060,7 @@
       "灵"
     ],
     "affiliations": [
-      "赛之河原"
+      "无明确阵营"
     ],
     "locations": [
       "赛之河原",
@@ -4052,7 +4096,9 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "牛鬼"
+      "牛鬼",
+      "鬼",
+      "妖怪"
     ],
     "abilityDisplay": "改变身边物体重量程度的能力",
     "abilityTags": [
@@ -4070,7 +4116,7 @@
       "Boss"
     ],
     "hairColors": [
-      "blue"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4096,7 +4142,7 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "鸡神"
+      "神明"
     ],
     "abilityDisplay": "治愈喉咙疾病程度的能力",
     "abilityTags": [
@@ -4141,7 +4187,9 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "吉吊"
+      "吉吊",
+      "动物灵",
+      "灵"
     ],
     "abilityDisplay": "使人失去反抗心程度的能力",
     "abilityTags": [
@@ -4274,7 +4322,9 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "天马"
+      "天马",
+      "动物灵",
+      "灵"
     ],
     "abilityDisplay": "拥有无与伦比脚力程度的能力",
     "abilityTags": [
@@ -4363,7 +4413,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "山童"
+      "山童",
+      "妖怪"
     ],
     "abilityDisplay": "操纵森林气程度的能力",
     "abilityTags": [
@@ -4372,7 +4423,7 @@
       "商业"
     ],
     "affiliations": [
-      "山童"
+      "妖怪之山"
     ],
     "locations": [
       "妖怪之山",
@@ -4409,7 +4460,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "山女郎"
+      "山女郎",
+      "妖怪"
     ],
     "abilityDisplay": "用烟草烟操纵精神程度的能力",
     "abilityTags": [
@@ -4499,7 +4551,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "管狐"
+      "管狐",
+      "妖兽"
     ],
     "abilityDisplay": "潜入灵魂空隙程度的能力",
     "abilityTags": [
@@ -4544,7 +4597,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "大天狗"
+      "天狗",
+      "妖怪"
     ],
     "abilityDisplay": "操纵星空程度的能力",
     "abilityTags": [
@@ -4553,7 +4607,7 @@
       "组织"
     ],
     "affiliations": [
-      "天狗社会"
+      "妖怪之山"
     ],
     "locations": [
       "妖怪之山"
@@ -4597,7 +4651,7 @@
       "市场"
     ],
     "affiliations": [
-      "月虹市场"
+      "无明确阵营"
     ],
     "locations": [
       "妖怪之山",
@@ -4634,7 +4688,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "大蜈蚣"
+      "大蜈蚣",
+      "妖怪"
     ],
     "abilityDisplay": "吃龙程度的能力",
     "abilityTags": [
@@ -4724,7 +4779,8 @@
       "workId": "th19_udoalg"
     },
     "species": [
-      "山犬"
+      "山犬",
+      "妖兽"
     ],
     "abilityDisplay": "使用陷阱程度的能力",
     "abilityTags": [
@@ -4768,7 +4824,8 @@
       "workId": "th19_udoalg"
     },
     "species": [
-      "天火人"
+      "天火人",
+      "妖怪"
     ],
     "abilityDisplay": "操纵血和火程度的能力",
     "abilityTags": [
@@ -4776,7 +4833,7 @@
       "火"
     ],
     "affiliations": [
-      "旧地狱"
+      "刚欲同盟"
     ],
     "locations": [
       "旧地狱",
@@ -4856,6 +4913,7 @@
       "workId": "th19_udoalg"
     },
     "species": [
+      "人鬼",
       "鬼"
     ],
     "abilityDisplay": "操纵无程度的能力",
@@ -4900,7 +4958,8 @@
       "workId": "th20_fw"
     },
     "species": [
-      "山姥"
+      "山姥",
+      "妖怪"
     ],
     "abilityDisplay": "破坏圣域程度的能力",
     "abilityTags": [
@@ -4943,7 +5002,9 @@
       "workId": "th20_fw"
     },
     "species": [
-      "魑魅"
+      "魑魅",
+      "妖兽",
+      "妖怪"
     ],
     "abilityDisplay": "操纵山河之气程度的能力",
     "abilityTags": [
@@ -4986,7 +5047,8 @@
       "workId": "th20_fw"
     },
     "species": [
-      "道祖神"
+      "道祖神",
+      "神明"
     ],
     "abilityDisplay": "阻断道路程度的能力",
     "abilityTags": [
@@ -5029,7 +5091,8 @@
       "workId": "th20_fw"
     },
     "species": [
-      "神人"
+      "古神人",
+      "神明"
     ],
     "abilityDisplay": "让蛇吞食后重生程度的能力",
     "abilityTags": [
@@ -5072,7 +5135,8 @@
       "workId": "th20_fw"
     },
     "species": [
-      "石之女神"
+      "石之女神",
+      "神明"
     ],
     "abilityDisplay": "令人放弃变化程度的能力",
     "abilityTags": [
@@ -5115,7 +5179,8 @@
       "workId": "th20_fw"
     },
     "species": [
-      "蜃"
+      "蜃",
+      "妖怪"
     ],
     "abilityDisplay": "显示海市蜃楼程度的能力",
     "abilityTags": [
@@ -5123,7 +5188,7 @@
       "幻象"
     ],
     "affiliations": [
-      "浅间净山"
+      "无明确阵营"
     ],
     "locations": [
       "浅间净山"
