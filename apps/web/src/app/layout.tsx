@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-Hans">
+    <html lang="zh-Hans" data-scroll-behavior="smooth">
       <body className="max-[680px]:pb-[68px]">
         <div className="mx-auto w-[min(1240px,calc(100%-40px))] min-h-screen max-[680px]:w-full">
           <SiteNav />
