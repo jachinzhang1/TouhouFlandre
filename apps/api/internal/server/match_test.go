@@ -292,7 +292,8 @@ func TestMultiGuessWin(t *testing.T) {
 		t.Fatalf("round.ended result = %v, want win", payloadMap["result"])
 	}
 	answerView, _ := payloadMap["answer"].(map[string]any)
-	if answerView["name"] == "" || answerView["avatarUrl"] == "" {
+	if answerView["name"] == "" || answerView["avatarUrl"] == "" ||
+		answerView["workId"] == "" || answerView["workTitle"] == "" || answerView["workCode"] == "" {
 		t.Fatalf("round.ended answer not revealed: %v", payloadMap["answer"])
 	}
 	scores, _ := payloadMap["scores"].(map[string]any)
@@ -677,7 +678,7 @@ func TestMultiForfeit(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("forfeit leave: %d %s", resp.StatusCode, payload)
 	}
-	// 弃赛者令牌已撤销（成员行 left，§6.2），由对方拉取结果
+	// 对方视角可拉取结果。
 	events := eventsOfAs(t, fixture, fixture.joinerToken)
 	var ended *openapi.RoomEventEnvelope
 	for i := range events {
@@ -703,10 +704,28 @@ func TestMultiForfeit(t *testing.T) {
 	if status != "left" {
 		t.Fatalf("host member status = %s, want left", status)
 	}
-	// 弃赛者令牌已撤销
+	// left 成员在保留期内仍可只读拉取终态快照。
 	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.hostToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("left member snapshot status %d, want 200: %s", resp.StatusCode, payload)
+	}
+	var leftSnapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &leftSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	var leftEnded map[string]any
+	for _, event := range leftSnapshot.Events {
+		if event.Type == "match.ended" {
+			leftEnded = event.Payload
+		}
+	}
+	if leftEnded["result"] != "loss" || leftEnded["reason"] != "forfeit" {
+		t.Fatalf("left member terminal event = %v", leftEnded)
+	}
+	// 写命令仍拒绝 left 令牌。
+	resp, _ = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
 	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("left member snapshot status %d, want 401", resp.StatusCode)
+		t.Fatalf("left member rematch status %d, want 401", resp.StatusCode)
 	}
 }
 

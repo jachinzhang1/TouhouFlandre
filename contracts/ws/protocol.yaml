@@ -213,7 +213,7 @@ events:
         answer:
           type: object
           additionalProperties: false
-          required: [id, name, avatarUrl]
+          required: [id, name, avatarUrl, workId, workTitle, workCode]
           properties:
             id:
               type: string
@@ -221,6 +221,13 @@ events:
               type: string
             avatarUrl:
               type: string
+            workId:
+              type: string
+            workTitle:
+              type: string
+            workCode:
+              type: string
+              description: 作品短编号；整数正作使用 THxx，无法编号时为 TH--。
         boards:
           $ref: "#/definitions/Boards"
         scores:
@@ -500,6 +507,9 @@ examples:
             id: reimu_hakurei
             name: 博丽灵梦
             avatarUrl: https://example.com/avatars/reimu.png
+            workId: th01
+            workTitle: 东方灵异传
+            workCode: TH01
           boards:
             slot1:
               - guessId: marisa_kirisame
@@ -660,6 +670,9 @@ examples:
             id: reimu_hakurei
             name: 博丽灵梦
             avatarUrl: https://example.com/avatars/reimu.png
+            workId: th01
+            workTitle: 东方灵异传
+            workCode: TH01
           boards:
             slot1: []
             slot2: []

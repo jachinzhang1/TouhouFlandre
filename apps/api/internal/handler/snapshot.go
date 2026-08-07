@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -96,12 +95,12 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			}
 		}
 		matchView := openapi.MatchView{
-			MatchIndex:  int(state.Match.MatchIndex),
-			TargetWins:  int(state.Match.TargetWins),
-			ScoreSlot1:  int(state.Match.ScoreSlot1),
-			ScoreSlot2:  int(state.Match.ScoreSlot2),
-			RoundIndex:  roundIndex,
-			MaxRounds:   multi.MaxRounds(format, s.timing.MaxRoundsFactor),
+			MatchIndex:   int(state.Match.MatchIndex),
+			TargetWins:   int(state.Match.TargetWins),
+			ScoreSlot1:   int(state.Match.ScoreSlot1),
+			ScoreSlot2:   int(state.Match.ScoreSlot2),
+			RoundIndex:   roundIndex,
+			MaxRounds:    multi.MaxRounds(format, s.timing.MaxRoundsFactor),
 			RematchReady: rematchReady[:],
 		}
 		snapshot.Match = &matchView
@@ -228,14 +227,14 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 			}
 			answer := chars[payload.AnswerID]
 			wire := map[string]any{
-				"matchIndex":     payload.MatchIndex,
-				"roundIndex":     payload.RoundIndex,
-				"result":         resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-				"winnerSlot":     payload.WinnerSlot,
-				"answer":         map[string]any{"id": answer.ID, "name": answer.Names.ZhHans, "avatarUrl": answer.AvatarURL},
-				"boards":         hydrateBoards(guesses, chars, memberSlotByID),
-				"scores":         map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
-				"nextStartsAt":   payload.NextStartsAt,
+				"matchIndex":   payload.MatchIndex,
+				"roundIndex":   payload.RoundIndex,
+				"result":       resultForObserver(payload.WinnerSlot, int(observer.Slot)),
+				"winnerSlot":   payload.WinnerSlot,
+				"answer":       multi.AnswerViewForCharacter(answer),
+				"boards":       hydrateBoards(guesses, chars, memberSlotByID),
+				"scores":       map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
+				"nextStartsAt": payload.NextStartsAt,
 			}
 			out = append(out, openapi.RoomEventEnvelope{
 				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,

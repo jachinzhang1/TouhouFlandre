@@ -39,7 +39,7 @@ export function RoomView({ code }: { code: string }) {
     }
   }, [stored, normalized, router]);
 
-  const { state, mySlot, actions, guessError } = useRoom(
+  const { state, mySlot, actions, guessError, roomUnavailable } = useRoom(
     stored?.roomId ?? "",
     stored?.guestToken ?? "",
     stored?.memberSlot ?? 1,
@@ -52,6 +52,13 @@ export function RoomView({ code }: { code: string }) {
       router.replace("/multi");
     }
   }, [state.room?.status, router]);
+
+  // 房间已超过保留期：草稿由 useRoom 标记为同步不完整，再清理恢复凭据。
+  useEffect(() => {
+    if (!roomUnavailable) return;
+    clearMultiRoom();
+    router.replace("/multi");
+  }, [roomUnavailable, router]);
 
   const status = state.room?.status ?? "connecting";
   const format = state.room?.format ?? "bo3";
