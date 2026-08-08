@@ -263,7 +263,7 @@ type CreateRoomParams struct {
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
 }
 
-// 多人模式查询（docs/08_multiplayer_mode_design.md §9.3 清单 + 实施所需补充）。
+// 多人模式查询（docs/multiplayer.md）。
 // 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error) {
 	row := q.db.QueryRow(ctx, createRoom,

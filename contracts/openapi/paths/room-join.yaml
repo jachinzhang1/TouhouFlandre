@@ -1,5 +1,5 @@
 # POST /api/rooms/{roomCode}/join — 加入房间（入座 slot 2）
-# 对应 docs/08_multiplayer_mode_design.md §7.1
+# 对应 docs/multiplayer.md
 post:
   operationId: rooms_join
   tags:

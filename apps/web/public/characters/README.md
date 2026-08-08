@@ -10,6 +10,6 @@
 
 这些图片不适用仓库的 MIT 许可证，版权仍归原作者所有。复用或再分发前请确认并遵守作者的使用条件，同时保留署名。完整资产清单见 [`THIRD_PARTY_ASSETS.md`](../../../../THIRD_PARTY_ASSETS.md)。
 
-题库与头像文件的对应关系维护在 `packages/data/src/characters.demo.json` 的 `avatarUrl` 字段中。文件名开头的四位数字用于派生角色登场顺序，格式要求见[东方内容与数据规范](../../../../docs/03_touhou_integration.md)。运行 `task db:seed` 后，API 会将头像地址与角色数据一起提供给前端。
+题库与头像文件的对应关系维护在 `packages/data/src/characters.demo.json` 的 `avatarUrl` 字段中。文件名开头的四位数字用于派生角色登场顺序，格式要求见[数据规范](../../../../docs/data-guidelines.md)。运行 `task db:seed` 后，API 会将头像地址与角色数据一起提供给前端。
 
 目录可以保留尚未写入题库的角色头像，供后续题库扩展使用。数据校验只要求题库已引用的头像文件存在，并要求已收录角色的四位编号唯一。

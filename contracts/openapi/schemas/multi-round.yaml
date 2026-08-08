@@ -1,5 +1,5 @@
 # 多人单局 schema：RoundView 与猜测响应
-# 对应 docs/08_multiplayer_mode_design.md §7.3 快照形状中的 round 段与 §7.1 guess 端点响应
+# 对应 docs/multiplayer.md（round 快照与 guess 端点响应）
 
 OpponentRow:
   type: object

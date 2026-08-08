@@ -1,33 +1,53 @@
-# Third-Party Assets
+# 第三方素材与授权
 
-The source code in this repository is licensed separately from the third-party visual assets listed below. The project license does not relicense these assets.
+本仓库源代码与第三方视觉素材分开授权。仓库的 MIT License 不会重新授权下列素材、商标、角色名称或东方 Project 相关设定。
 
-## Touhou Pixel Portraits
+## 东方全角色像素肖像素材包
 
-- **Asset:** 东方全角色像素肖像素材包
-- **Creator:** 苗库里
-- **Creator page:** https://space.bilibili.com/152309938
-- **Location:** `apps/web/public/characters`
-- **Permitted use:** personal and non-commercial use, including fan works, free games, and websites
-- **Modifications in this repository:** filenames and image contents are preserved; the website scales and crops the images through CSS
+| 项目 | 内容 |
+|---|---|
+| 素材 | 东方全角色像素肖像素材包 |
+| 作者 | 苗库里 |
+| 作者主页 | https://space.bilibili.com/152309938 |
+| 仓库位置 | `apps/web/public/characters` |
+| 用途 | 角色头像、搜索结果、猜测历史和答案展示 |
+| 允许范围 | 个人及非商业用途，包括同人作品、免费游戏和网站 |
+| 仓库处理 | 保留原始编号与角色名称；网站通过 CSS 缩放与裁切展示 |
 
-The portraits remain the property of their original creator. Do not assume that the repository's MIT license applies to them. Anyone redistributing or reusing these files must follow the creator's terms and retain attribution.
+这些头像版权仍归原作者所有，不适用仓库 MIT License。复用、再分发或迁移到其他项目之前，请确认并遵守作者的使用条件，同时保留署名。
 
-Touhou Project characters and settings belong to their respective rights holders. TouhouFlandre is an unofficial fan project and is not affiliated with Team Shanghai Alice.
+## 首页视觉素材
 
-## Lobe Icons
+| 项目 | 内容 |
+|---|---|
+| 素材 | 首页封面图 |
+| 来源 | pixiv 作品 50752377 |
+| 来源链接 | https://www.pixiv.net/artworks/50752377 |
+| 仓库位置 | `apps/web/public/hero-touhou-collage.jpg` |
+| 用途 | 首页首屏背景视觉 |
+| 授权状态 | 需继续核对原作者许可与再分发条件 |
 
-- **Asset:** Bilibili Mono icon
-- **Source:** https://github.com/lobehub/lobe-icons
-- **License:** MIT
-- **Location:** `apps/web/src/components/BilibiliIcon.tsx`
+在许可条款完全确认前，请勿将该图片从本项目中单独抽取、再分发或用于其他项目。若无法确认许可，应替换为授权明确且允许仓库分发的网站视觉素材。
 
-The Bilibili logo path is sourced from Lobe Icons. Bilibili is a trademark of its respective owner; use of the logo only identifies the linked platform.
+## 平台图标
 
-## Hero Collage
+| 素材 | 来源 | 许可证 | 仓库位置 |
+|---|---|---|---|
+| Bilibili Mono icon | https://github.com/lobehub/lobe-icons | MIT | `apps/web/src/components/BilibiliIcon.tsx` |
+| pixiv icon | https://simpleicons.org/ | CC0-1.0 | `apps/web/src/components/PixivIcon.tsx` |
 
-- **Location:** `apps/web/public/hero-touhou-collage.jpg`
-- **Provenance:** present in the repository's initial commit; original creator and source were not recorded
-- **License status:** unresolved; it is not covered by the repository's MIT license
+Bilibili 与 pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
 
-Do not redistribute this image outside the existing project checkout until its source and permission terms are confirmed, or replace it with an asset whose redistribution terms are documented.
+## 项目自制图形
+
+| 素材 | 仓库位置 | 说明 |
+|---|---|---|
+| 站点 favicon SVG | `apps/web/public/favicon.svg` | 项目内自制图形。 |
+| 站点 favicon PNG | `apps/web/public/favicon.png` | SVG 的位图版本或配套图标。 |
+| 阴阳标记组件 | `apps/web/src/components/YinYangMark.tsx` | 项目内自制 SVG 组件。 |
+
+## 东方 Project 声明
+
+TouhouFlandre 是非官方同人项目，与上海爱丽丝幻乐团或任何官方发行方无关。东方 Project 的名称、角色和设定归各自权利方所有。
+
+引入新素材时，必须同步更新本文，记录作者、来源链接、许可证或授权说明、仓库位置和站内用途。来源不明或授权不清的素材不得纳入仓库。

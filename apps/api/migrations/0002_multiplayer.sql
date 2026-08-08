@@ -1,5 +1,5 @@
 -- +goose Up
--- 多人模式数据模型（docs/08_multiplayer_mode_design.md §9.1）
+-- 多人模式数据模型（docs/multiplayer.md）
 -- 表结构、索引与 CHECK 约束对齐 08 §9.1 逐字。
 
 CREATE TABLE multi_room (

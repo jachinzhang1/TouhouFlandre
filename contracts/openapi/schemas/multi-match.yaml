@@ -1,5 +1,5 @@
 # 多人场次 schema：MatchView
-# 对应 docs/08_multiplayer_mode_design.md §7.3 快照形状中的 match 段
+# 对应 docs/multiplayer.md（match 快照）
 
 MatchView:
   type: object

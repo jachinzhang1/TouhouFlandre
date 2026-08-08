@@ -1,5 +1,5 @@
 # 多人模式通用 schema：枚举、令牌约定与事件信封
-# 对应 docs/08_multiplayer_mode_design.md §5（游客令牌）、§7.2（错误码）、§8.2（事件信封）
+# 对应 docs/multiplayer.md（游客令牌、错误码、事件信封）
 
 RoomFormat:
   type: string

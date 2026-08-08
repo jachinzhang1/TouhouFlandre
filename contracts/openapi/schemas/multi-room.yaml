@@ -1,5 +1,5 @@
 # 多人房间 schema：MemberView / RoomInfo / 创建加入响应 / RoomSnapshot
-# 对应 docs/08_multiplayer_mode_design.md §7.1（端点响应）与 §7.3（快照形状）
+# 对应 docs/multiplayer.md（端点响应与快照形状）
 
 MemberView:
   type: object

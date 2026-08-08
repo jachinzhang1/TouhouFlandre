@@ -1,6 +1,6 @@
 # touhouflandre-multi.v1 WebSocket 子协议规范
 #
-# 依据：docs/08_multiplayer_mode_design.md §8（WebSocket 协议全节）
+# 依据：docs/multiplayer.md（WebSocket 协议）
 # 校验：scripts/check-ws-protocol.mjs（`task check:ws-protocol` / CI）
 #   - examples.valid 逐一通过 schema 校验与连接时序校验
 #   - examples.invalid 必须失败（正反例双测）

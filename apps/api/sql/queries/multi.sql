@@ -1,4 +1,4 @@
--- 多人模式查询（docs/08_multiplayer_mode_design.md §9.3 清单 + 实施所需补充）。
+-- 多人模式查询（docs/multiplayer.md）。
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one

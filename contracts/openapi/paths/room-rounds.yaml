@@ -1,5 +1,5 @@
 # 猜测提交（成员令牌鉴权）
-# 对应 docs/08_multiplayer_mode_design.md §7.1 guess 端点与 §9.2 猜测事务分流
+# 对应 docs/multiplayer.md（guess 端点与猜测事务分流）
 
 # POST /api/rooms/{roomId}/rounds/{roundIndex}/guess
 post:

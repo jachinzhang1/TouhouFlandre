@@ -1,7 +1,7 @@
 // 多人模式 WebSocket 协议类型。
 // 与 contracts/ws/protocol.yaml 字段一一对应（手写维护）；
 // 字段名集合由 scripts/check-ws-protocol.mjs 与协议比对（`task check:ws-protocol`）。
-// 依据：docs/08_multiplayer_mode_design.md §8（WebSocket 协议）。
+// 依据：docs/multiplayer.md（WebSocket 协议）。
 
 import type { FeedbackStatus, GuessResult } from "./types";
 
