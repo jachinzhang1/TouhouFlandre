@@ -17,11 +17,11 @@ tasks:
 
   db:up:
     cmds:
-      - docker compose up -d --wait postgres
+      - docker compose -f compose-dev.yaml up -d --wait postgres
 
   db:down:
     cmds:
-      - docker compose down
+      - docker compose -f compose-dev.yaml down
 
   db:migrate:
     dir: apps/api
@@ -82,3 +82,19 @@ tasks:
     dir: apps/api
     cmds:
       - go run ./cmd/server
+
+  prod:build:
+    cmds:
+      - docker compose build
+
+  prod:up:
+    cmds:
+      - docker compose up -d --build --wait
+
+  prod:down:
+    cmds:
+      - docker compose down
+
+  prod:logs:
+    cmds:
+      - docker compose logs -f

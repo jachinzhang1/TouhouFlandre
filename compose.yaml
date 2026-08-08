@@ -1,12 +1,21 @@
+# 生产全栈：postgres + migrate + seed + api + web。
+# 用法：docker compose up -d --build（见 Taskfile prod:up）。
+# 开发环境用 compose-dev.yaml（仅 postgres，宿主端口 5433）。
+# 独立项目名：与 dev 的 pgdata 卷隔离，避免两套 postgres 同时操作同一数据目录。
+#
+# 公网暴露（无内置反代）：运维用 cloudflared 隧道指向宿主机端口即可——
+#   - web（HTTP+WS 全流量）→ http://localhost:3000
+#   - 可选：api 直连调试 → http://localhost:4000
+# 浏览器访问源 = https://<隧道公网域名>，必须写入 .env 的 WEB_ORIGINS。
+name: touhouflandre-prod
+
 services:
   postgres:
     image: postgres:18.4-alpine
     environment:
       POSTGRES_DB: touhouflandre
       POSTGRES_USER: touhouflandre
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5433:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql
     healthcheck:
@@ -14,6 +23,94 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  # 一次性：goose 迁移（api 镜像内含 goose 二进制与 migrations 目录）
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["/usr/local/bin/goose", "-dir", "/migrations", "up"]
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://touhouflandre:${POSTGRES_PASSWORD}@postgres:5432/touhouflandre?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # 一次性：题库写入（读取镜像内 /catalog 的 JSON）
+  seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ["/usr/local/bin/seed"]
+    environment:
+      DATABASE_URL_PG: postgres://touhouflandre:${POSTGRES_PASSWORD}@postgres:5432/touhouflandre?sslmode=disable
+      CATALOG_DATA_DIR: /catalog
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL_PG: postgres://touhouflandre:${POSTGRES_PASSWORD}@postgres:5432/touhouflandre?sslmode=disable
+      API_PORT: "4000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # WS 升级校验 Origin ∈ WEB_ORIGINS（逗号分隔，含协议与端口）：
+      #   cloudflared：https://<隧道公网域名>（浏览器 Origin）
+      #   本地直连调试：http://localhost:3000
+      # 注意 .env 的 dev 值（5173）会覆盖此默认——务必显式设置。
+      WEB_ORIGINS: ${WEB_ORIGINS:-http://localhost:3000}
+      # 多人玩法可调参数（默认值与 apps/api/internal/config/config.go 一致）
+      MULTI_LOBBY_TTL: ${MULTI_LOBBY_TTL:-30m}
+      MULTI_EVENT_RETENTION: ${MULTI_EVENT_RETENTION:-24h}
+      MULTI_JOIN_RATE_LIMIT: ${MULTI_JOIN_RATE_LIMIT:-10}
+      MULTI_ROUND_COUNTDOWN: ${MULTI_ROUND_COUNTDOWN:-3s}
+      MULTI_INTERMISSION: ${MULTI_INTERMISSION:-5s}
+      MULTI_ROUND_SECONDS: ${MULTI_ROUND_SECONDS:-900s}
+      MULTI_TURN_SECONDS: ${MULTI_TURN_SECONDS:-60s}
+      MULTI_DISCONNECT_GRACE: ${MULTI_DISCONNECT_GRACE:-60s}
+      MULTI_MAX_ROUNDS_FACTOR: ${MULTI_MAX_ROUNDS_FACTOR:-3}
+      MULTI_FINISHED_RETENTION: ${MULTI_FINISHED_RETENTION:-30m}
+      MULTI_WS_READ_LIMIT: ${MULTI_WS_READ_LIMIT:-4096}
+      MULTI_WS_SEND_QUEUE: ${MULTI_WS_SEND_QUEUE:-64}
+    ports:
+      # 可选：cloudflared 第二隧道直连 api 调试；web 代理未启用时前端直连用
+      - "4000:4000"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Next 16 standalone 的 rewrites 目标在构建期固化，必须用构建参数注入
+        API_PROXY_TARGET: http://api:4000
+        # 留空 = 同源 rewrites 代理（默认）；非空则客户端直连该 API 基址（构建时内联）
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+    environment:
+      NODE_ENV: production
+    ports:
+      # cloudflared 隧道指向这里（HTTP + WS 全流量，/api 由 Next 代理到 api 容器）
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

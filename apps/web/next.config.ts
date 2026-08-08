@@ -1,8 +1,13 @@
+import path from "path";
 import type { NextConfig } from "next";
 
 const API_TARGET = process.env.API_PROXY_TARGET ?? "http://127.0.0.1:4000";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  // Monorepo：tracing root 必须指向仓库根，standalone 才能包含
+  // workspace 依赖（@touhouflandre/shared）并正确计算 server.js 相对路径。
+  outputFileTracingRoot: path.join(__dirname, "../.."),
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   rewrites: async () => [
     {

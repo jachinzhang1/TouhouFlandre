@@ -1,0 +1,32 @@
+# VCS 与 CI
+.git
+.gitattributes
+.github
+
+# 环境与密钥（绝不能进镜像；.env.example 含默认口令模板，同样排除）
+.env
+.env.*
+.env.local
+
+# 依赖与构建产物
+node_modules
+**/node_modules
+.pnpm-store
+**/dist
+**/.next
+**/test-results
+**/playwright-report
+**/*.tsbuildinfo
+apps/api/server
+apps/api/.openapi.bundled.yaml
+
+# 构建不需要的仓库内容（生成物已提交入库）
+docs
+content
+output
+contracts
+
+# 本地工具产物
+*.log
+.DS_Store
+**/*.xlsx
