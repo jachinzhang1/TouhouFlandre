@@ -22,9 +22,13 @@ apps/api/.openapi.bundled.yaml
 
 # 构建不需要的仓库内容（生成物已提交入库）
 docs
-content
 output
 contracts
+
+# 公告由 Web 生产镜像在运行时读取，需要保留。
+!content/
+!content/announcements/
+!content/announcements/**
 
 # 本地工具产物
 *.log

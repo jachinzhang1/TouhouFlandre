@@ -61,6 +61,17 @@ task prod:up
 docker compose up -d --build --wait
 ```
 
+生产数据库由 Compose 管理，不需要手动建库、迁移或 seed。完整启动会依次完成：
+
+```bash
+docker compose up -d --wait postgres
+docker compose up --build migrate
+docker compose up --build seed
+docker compose up -d --build --wait api web
+```
+
+平时使用单条 `task prod:up` 即可；拆分命令主要用于排查具体失败环节。
+
 查看状态和日志：
 
 ```bash
@@ -74,6 +85,8 @@ task prod:logs
 |---|---|
 | `http://localhost:3000` | Web 入口。 |
 | `http://localhost:3000/api/health` | 经 Web 同源代理访问 API 健康检查。 |
+| `http://localhost:3000/api/catalog/characters` | 经 Web 服务读取题库角色缓存。 |
+| `http://localhost:3000/api/announcements` | 经 Web 服务读取公告内容。 |
 | `http://localhost:4000/livez` | API 进程探活。 |
 | `http://localhost:4000/readyz` | API 数据库 readiness。 |
 

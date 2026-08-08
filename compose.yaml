@@ -104,6 +104,8 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
     environment:
       NODE_ENV: production
+      API_PROXY_TARGET: http://api:4000
+      ANNOUNCEMENTS_DIR: /app/content/announcements
     ports:
       # cloudflared 隧道指向这里（HTTP + WS 全流量，/api 由 Next 代理到 api 容器）
       - "3000:3000"

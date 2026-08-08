@@ -44,6 +44,7 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/public ./apps/web/public
+COPY --from=builder --chown=nextjs:nodejs /repo/content ./content
 USER nextjs
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]

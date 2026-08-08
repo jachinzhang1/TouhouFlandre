@@ -18,6 +18,11 @@ tasks:
   db:up:
     cmds:
       - docker compose -f compose-dev.yaml up -d --wait postgres
+      - task: db:wait
+
+  db:wait:
+    cmds:
+      - node scripts/wait-for-db-port.mjs
 
   db:down:
     cmds:
