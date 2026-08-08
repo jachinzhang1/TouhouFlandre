@@ -9,6 +9,7 @@ import {
   Megaphone,
   Search,
 } from "lucide-react";
+import { useAnnouncementUnreadCount } from "../hooks/useAnnouncementUnreadCount";
 import { YinYangMark } from "./YinYangMark";
 
 const NAV_ITEMS: {
@@ -47,6 +48,7 @@ const NAV_ITEMS: {
 
 export function SiteNav() {
   const pathname = usePathname();
+  const unreadAnnouncements = useAnnouncementUnreadCount();
 
   return (
     <nav
@@ -70,15 +72,25 @@ export function SiteNav() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
+          const hasUnread =
+            item.href === "/announcement" && unreadAnnouncements > 0;
           return (
             <Link
               className={active ? "nav-link active" : "nav-link"}
               key={item.label}
               href={item.href}
               aria-current={active ? "page" : undefined}
+              aria-label={hasUnread ? `${item.label}，有未读公告` : item.label}
             >
               <Icon size={16} aria-hidden="true" />
               <span>{item.label}</span>
+              {hasUnread ? (
+                <span
+                  className="nav-unread-dot"
+                  aria-hidden="true"
+                  title="有未读公告"
+                />
+              ) : null}
             </Link>
           );
         })}

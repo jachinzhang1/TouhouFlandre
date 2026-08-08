@@ -482,6 +482,122 @@ input:focus-visible {
   transform: scaleX(1);
 }
 
+.nav-unread-dot {
+  position: absolute;
+  top: 8px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5484d;
+  box-shadow:
+    0 0 0 3px var(--paper),
+    0 0 0 6px rgba(229, 72, 77, 0.14);
+}
+
+.announcement-markdown {
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.85;
+}
+
+.announcement-markdown > * {
+  margin-block: 0;
+}
+
+.announcement-markdown > * + * {
+  margin-top: 0.9rem;
+}
+
+.announcement-markdown strong {
+  font-weight: 900;
+}
+
+.announcement-markdown em {
+  color: var(--ink);
+}
+
+.announcement-markdown u {
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.announcement-markdown del {
+  color: var(--ink-soft);
+  text-decoration-thickness: 2px;
+}
+
+.announcement-markdown a {
+  color: var(--vermilion-dark);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.announcement-markdown blockquote {
+  border-left: 4px solid var(--jade-border);
+  color: var(--ink-soft);
+  padding-left: 14px;
+}
+
+.announcement-markdown hr {
+  height: 1px;
+  border: 0;
+  background: var(--line);
+}
+
+.announcement-markdown ul,
+.announcement-markdown ol {
+  padding-left: 1.25rem;
+}
+
+.announcement-markdown code {
+  border-radius: 4px;
+  background: var(--surface-muted);
+  padding: 0.12em 0.35em;
+  font-size: 0.9em;
+}
+
+.announcement-markdown pre {
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  padding: 14px;
+}
+
+.announcement-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.announcement-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+}
+
+.announcement-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-wrap: anywhere;
+}
+
+.announcement-markdown th,
+.announcement-markdown td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.announcement-markdown th {
+  background: var(--surface-soft);
+  font-weight: 900;
+}
+
 .hero-content h1,
 .page-heading h1,
 .topbar h1,
