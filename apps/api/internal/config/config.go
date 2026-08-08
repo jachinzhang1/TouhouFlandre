@@ -93,6 +93,12 @@ func MultiRoundSeconds() time.Duration {
 	return durationFromEnv("MULTI_ROUND_SECONDS", 900*time.Second)
 }
 
+// MultiTurnSeconds 接力模式单用户猜测时限默认值（MULTI_TURN_SECONDS，默认 60s）。
+// 房主创建接力房间时可在 30/60/90/120 秒中选择，env 仅作为后端兜底默认。
+func MultiTurnSeconds() time.Duration {
+	return durationFromEnv("MULTI_TURN_SECONDS", 60*time.Second)
+}
+
 // MultiDisconnectGrace 断线宽限期（MULTI_DISCONNECT_GRACE，默认 60s，08 §4.7）。
 func MultiDisconnectGrace() time.Duration {
 	return durationFromEnv("MULTI_DISCONNECT_GRACE", 60*time.Second)
@@ -139,6 +145,7 @@ func MultiTiming() multi.TimingConfig {
 		RoundCountdown:    MultiRoundCountdown(),
 		Intermission:      MultiIntermission(),
 		RoundSeconds:      MultiRoundSeconds(),
+		TurnSeconds:       MultiTurnSeconds(),
 		DisconnectGrace:   MultiDisconnectGrace(),
 		MaxRoundsFactor:   MultiMaxRoundsFactor(),
 		FinishedRetention: MultiFinishedRetention(),

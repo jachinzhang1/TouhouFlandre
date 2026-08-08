@@ -1,0 +1,44 @@
+# POST /api/rooms/{roomId}/rounds/{roundIndex}/pass — 接力主动空过本轮
+post:
+  operationId: rooms_passRelayTurn
+  tags:
+    - rooms
+  summary: 接力主动空过本轮
+  description: |
+    成员令牌鉴权。仅接力模式可用，且必须轮到当前玩家。
+    主动空过会消耗该玩家一次轮次机会和一次空过额度，并按接力规则推进到下一手。
+    主动空过与超时空过共享每人每局 2 次空过额度；额度耗尽后再次空过，该玩家本局判负。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: roundIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      description: 目标局号（须匹配当前局）。
+  responses:
+    "204":
+      description: 本轮已空过
+    "401":
+      description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 房间/局/轮次状态不允许空过（ROOM_CLOSED / ROUND_NOT_ACTIVE / NOT_YOUR_TURN / TURN_EXPIRED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

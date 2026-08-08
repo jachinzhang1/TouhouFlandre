@@ -3,6 +3,7 @@ import {
   aggregateWorks,
   buildHistogram,
   dailyStreak,
+  displayGuessesForRecord,
   filterStatsRecords,
   quantile,
   summarize,
@@ -47,7 +48,7 @@ const records: StatsRecord[] = [
   },
   {
     id: "multi-win", schemaVersion: STATS_SCHEMA_VERSION, kind: "multiplayer", mode: "multiplayer",
-    format: "bo3", matchIndex: 0, startedAt: "2026-01-03T10:00:00Z", endedAt: "2026-01-03T10:03:00Z",
+    format: "bo3", multiplayerMode: "race", matchIndex: 0, startedAt: "2026-01-03T10:00:00Z", endedAt: "2026-01-03T10:03:00Z",
     durationMs: 70_000, outcome: "win", reason: "normal", scoreSelf: 2, scoreOpponent: 1,
     rounds: [round(1, "win", "th06", 1), round(2, "loss", "th07", 2), round(3, "win", "th06", 3)],
   },
@@ -68,8 +69,9 @@ describe("stats aggregation", () => {
   });
 
   it("支持模式、日期和多人赛制筛选", () => {
-    expect(filterStatsRecords(records, { mode: "multiplayer", format: "bo3" })).toHaveLength(1);
-    expect(filterStatsRecords(records, { mode: "all", format: "all", from: "2026-01-02", to: "2026-01-02" }).map((item) => item.id)).toEqual(["random-loss"]);
+    expect(filterStatsRecords(records, { mode: "multiplayer", format: "bo3", multiplayerMode: "all" })).toHaveLength(1);
+    expect(filterStatsRecords(records, { mode: "all", format: "all", multiplayerMode: "race" }).map((item) => item.id)).toEqual(["multi-win"]);
+    expect(filterStatsRecords(records, { mode: "all", format: "all", multiplayerMode: "all", from: "2026-01-02", to: "2026-01-02" }).map((item) => item.id)).toEqual(["random-loss"]);
   });
 
   it("处理零分母、分位数和直方图区间", () => {
@@ -84,6 +86,35 @@ describe("stats aggregation", () => {
       ...records[0], id: `daily-${index}`, puzzleKey, startedAt: `${puzzleKey}T10:00:00Z`, endedAt: `${puzzleKey}T10:01:00Z`,
     })) as StatsRecord[];
     expect(dailyStreak(streakRecords, new Date("2026-01-03T12:00:00"))).toEqual({ current: 3, longest: 3 });
+  });
+
+  it("接力游玩记录只展示本地玩家的猜测头像", () => {
+    const relayRecord: StatsRecord = {
+      id: "relay",
+      schemaVersion: STATS_SCHEMA_VERSION,
+      kind: "multiplayer",
+      mode: "multiplayer",
+      format: "bo3",
+      multiplayerMode: "relay",
+      memberSlot: 1,
+      matchIndex: 0,
+      startedAt: "2026-01-04T10:00:00Z",
+      endedAt: "2026-01-04T10:04:00Z",
+      durationMs: 120_000,
+      outcome: "loss",
+      reason: "normal",
+      scoreSelf: 0,
+      scoreOpponent: 2,
+      rounds: [{
+        ...round(4, "loss", "th06", 0),
+        guesses: [
+          { id: "mine", name: "我的猜测", correct: false, memberSlot: 1 },
+          { id: "opponent", name: "对手猜测", correct: true, memberSlot: 2 },
+        ],
+      }],
+    };
+
+    expect(displayGuessesForRecord(relayRecord).map((guess) => guess.id)).toEqual(["mine"]);
   });
 });
 

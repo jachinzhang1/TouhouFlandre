@@ -57,7 +57,7 @@ describe("stats import/export", () => {
   });
 
   it("拒绝未知版本并剥离导入记录的额外敏感字段", () => {
-    expect(() => parseStatsImport(JSON.stringify({ schemaVersion: 2, exportedAt: new Date().toISOString(), records: [] }))).toThrow();
+    expect(() => parseStatsImport(JSON.stringify({ schemaVersion: 999, exportedAt: new Date().toISOString(), records: [] }))).toThrow();
     const raw = {
       schemaVersion: STATS_SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
@@ -66,6 +66,32 @@ describe("stats import/export", () => {
     const parsed = parseStatsImport(JSON.stringify(raw));
     expect(parsed.records[0]).not.toHaveProperty("guestToken");
     expect(parsed.records[0]).not.toHaveProperty("roomCode");
+  });
+
+  it("导入旧 v1 多人记录时补竞速玩法", () => {
+    const raw = {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      records: [{
+        id: "multi-old",
+        schemaVersion: 1,
+        kind: "multiplayer",
+        mode: "multiplayer",
+        format: "bo1",
+        matchIndex: 0,
+        startedAt: "2026-08-07T10:00:00Z",
+        endedAt: "2026-08-07T10:01:00Z",
+        durationMs: 60_000,
+        outcome: "win",
+        reason: "normal",
+        scoreSelf: 1,
+        scoreOpponent: 0,
+        rounds: [],
+      }],
+    };
+    const parsed = parseStatsImport(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(STATS_SCHEMA_VERSION);
+    expect(parsed.records[0]).toMatchObject({ schemaVersion: STATS_SCHEMA_VERSION, multiplayerMode: "race" });
   });
 
   it("预览冲突，并分别支持合并和覆盖", async () => {

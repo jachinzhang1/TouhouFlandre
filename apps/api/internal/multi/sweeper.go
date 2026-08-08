@@ -82,6 +82,7 @@ func (s *Sweeper) notify(roomID string) {
 func (s *Sweeper) SweepOnce(ctx context.Context) error {
 	steps := []func(context.Context) error{
 		s.startCountdownRounds,
+		s.settleExpiredRelayTurns,
 		s.settleTimedOutRounds,
 		s.advanceRounds,
 		s.expireDisconnectedMembers,
@@ -178,6 +179,68 @@ func (s *Sweeper) startRound(ctx context.Context, roundID string) error {
 	return nil
 }
 
+// settleExpiredRelayTurns playing 接力单手超时 → 记空过并切手，必要时结束本局。
+func (s *Sweeper) settleExpiredRelayTurns(ctx context.Context) error {
+	rounds, err := repo.New(s.pool).ListExpiredRelayTurns(ctx)
+	if err != nil {
+		return err
+	}
+	for _, round := range rounds {
+		if err := s.settleExpiredRelayTurn(ctx, round.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+
+	round, err := q.GetRoundForUpdate(ctx, roundID)
+	if err != nil {
+		return err
+	}
+	if !RelayTurnExpired(round, s.now()) {
+		return tx.Commit(ctx)
+	}
+	match, err := q.GetMatchForUpdate(ctx, round.MatchID)
+	if err != nil {
+		return err
+	}
+	room, err := q.GetRoom(ctx, match.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
+		return tx.Commit(ctx)
+	}
+
+	changed := false
+	for RelayTurnExpired(round, s.now()) {
+		result, err := SettleExpiredRelayTurnTx(ctx, q, room, round, match, s.now(), s.cfg.Timing)
+		if err != nil {
+			return err
+		}
+		changed = true
+		round = result.Round
+		if result.RoundEnded {
+			break
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if changed {
+		s.notify(room.ID)
+	}
+	return nil
+}
+
 // settleTimedOutRounds playing 超时 → 平局（round.ended；场级推进由 advanceRounds 完成）。
 func (s *Sweeper) settleTimedOutRounds(ctx context.Context) error {
 	rounds, err := repo.New(s.pool).ListExpiredRounds(ctx)
@@ -214,9 +277,9 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 		return err
 	}
 	if _, err := q.EndRound(ctx, repo.EndRoundParams{
-		ID:        round.ID,
+		ID:         round.ID,
 		WinnerSlot: pgtype.Int4{},
-		EndedAt:   pgtypeTimestamptz(s.now()),
+		EndedAt:    pgtypeTimestamptz(s.now()),
 	}); err != nil {
 		return err
 	}
@@ -304,14 +367,17 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	format := RoomFormat(room.Format)
 	maxRounds := MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)
+	turnSlot, turnDeadline := InitialTurnParams(room, int(round.RoundIndex+1), startsAt)
 	newRound, err := q.CreateRound(ctx, repo.CreateRoundParams{
-		ID:          NewID(),
-		MatchID:     match.ID,
-		MaxRounds:   int32(maxRounds),
-		RoundIndex:  round.RoundIndex + 1,
-		AnswerID:    answer,
-		StartsAt:    pgtypeTimestamptz(startsAt),
-		Deadline:    pgtypeTimestamptz(startsAt.Add(s.cfg.Timing.RoundSeconds)),
+		ID:           NewID(),
+		MatchID:      match.ID,
+		MaxRounds:    int32(maxRounds),
+		RoundIndex:   round.RoundIndex + 1,
+		AnswerID:     answer,
+		StartsAt:     pgtypeTimestamptz(startsAt),
+		Deadline:     pgtypeTimestamptz(startsAt.Add(s.cfg.Timing.RoundSeconds)),
+		TurnSlot:     turnSlot,
+		TurnDeadline: turnDeadline,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -327,13 +393,15 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		}
 		return err
 	}
-	if err := AppendEvent(ctx, q, roomID, EventRoundStarted, RoundStartedPayload{
+	roundStarted := RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
 		Deadline:   startsAt.Add(s.cfg.Timing.RoundSeconds),
 		MaxGuesses: GameMaxGuesses,
-	}); err != nil {
+	}
+	AddRelayRoundStartedFields(&roundStarted, room, int(newRound.RoundIndex), startsAt)
+	if err := AppendEvent(ctx, q, roomID, EventRoundStarted, roundStarted); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -436,8 +504,10 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 		return err
 	}
 	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, RoomUpdatedPayload{
-		Format:  RoomFormat(room.Format),
-		Members: MemberViews(remaining),
+		Format:      RoomFormat(room.Format),
+		Mode:        MultiplayerMode(room.Mode),
+		TurnSeconds: int(room.TurnSeconds),
+		Members:     MemberViews(remaining),
 	}); err != nil {
 		return err
 	}

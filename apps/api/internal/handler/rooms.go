@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -41,6 +42,15 @@ var validRoomFormats = map[multi.RoomFormat]bool{
 	multi.RoomFormatBO7: true,
 }
 
+func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember) multi.RoomUpdatedPayload {
+	return multi.RoomUpdatedPayload{
+		Format:      multi.RoomFormat(room.Format),
+		Mode:        multi.MultiplayerMode(room.Mode),
+		TurnSeconds: int(room.TurnSeconds),
+		Members:     multi.MemberViews(members),
+	}
+}
+
 func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 	return openapi.MemberView{
 		Slot:        m.Slot,
@@ -49,7 +59,6 @@ func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 		Ready:       m.Ready,
 	}
 }
-
 
 // ---- RoomsCreate：创建房间（房主入座 slot 1） ----
 
@@ -62,6 +71,23 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	if !validRoomFormats[format] {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidFormat, Message: "非法赛制。"}
 	}
+	mode := multi.MultiplayerModeRace
+	if request.Body.Mode != nil {
+		mode = multi.MultiplayerMode(*request.Body.Mode)
+	}
+	if !multi.ValidMultiplayerMode(mode) {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "非法多人玩法。"}
+	}
+	turnSeconds := int(s.timing.TurnSeconds / time.Second)
+	if !multi.ValidTurnSeconds(turnSeconds) {
+		turnSeconds = 60
+	}
+	if request.Body.TurnSeconds != nil {
+		turnSeconds = int(*request.Body.TurnSeconds)
+	}
+	if !multi.ValidTurnSeconds(turnSeconds) {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "非法接力回合时限。"}
+	}
 	displayName := ""
 	if request.Body.DisplayName != nil {
 		displayName = *request.Body.DisplayName
@@ -69,7 +95,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	displayName = multi.NormalizeDisplayName(displayName)
 
 	for attempt := 0; attempt < 5; attempt++ {
-		response, err := s.createRoomTx(ctx, format, displayName)
+		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, displayName)
 		if err == nil {
 			return response, nil
 		}
@@ -83,7 +109,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	return nil, internalError(errors.New("room code collision after retries"))
 }
 
-func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, displayName string) (openapi.RoomsCreateResponseObject, error) {
+func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds int, displayName string) (openapi.RoomsCreateResponseObject, error) {
 	roomID := newSessionID()
 	token, err := multi.GenerateGuestToken()
 	if err != nil {
@@ -97,10 +123,12 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, disp
 	q := repo.New(tx)
 
 	room, err := q.CreateRoom(ctx, repo.CreateRoomParams{
-		ID:        roomID,
-		Code:      multi.GenerateRoomCode(),
-		Format:    string(format),
-		ExpiresAt: timestamptz(s.now().Add(s.lobbyTTL)),
+		ID:          roomID,
+		Code:        multi.GenerateRoomCode(),
+		Format:      string(format),
+		Mode:        string(mode),
+		TurnSeconds: int32(turnSeconds),
+		ExpiresAt:   timestamptz(s.now().Add(s.lobbyTTL)),
 	})
 	if err != nil {
 		return nil, mapRoomWriteError(err)
@@ -115,10 +143,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, disp
 	if err != nil {
 		return nil, mapRoomWriteError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  format,
-		Members: multi.MemberViews([]repo.MultiMember{member}),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, roomUpdatedPayload(room, []repo.MultiMember{member})); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -155,6 +180,8 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	return openapi.RoomsGetInfo200JSONResponse{
 		RoomCode:    room.Code,
 		Format:      openapi.RoomFormat(room.Format),
+		Mode:        openapi.MultiplayerMode(room.Mode),
+		TurnSeconds: openapi.RoomInfoTurnSeconds(room.TurnSeconds),
 		Status:      openapi.RoomStatus(room.Status),
 		MemberCount: len(members),
 	}, nil
@@ -220,10 +247,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 		return nil, mapRoomWriteError(err)
 	}
 	updated := append(members, member)
-	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  multi.RoomFormat(room.Format),
-		Members: multi.MemberViews(updated),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoomUpdated, roomUpdatedPayload(room, updated)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -296,10 +320,7 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 			return nil, err
 		}
 	}
-	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  multi.RoomFormat(room.Format),
-		Members: multi.MemberViews(after),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(room, after)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -399,10 +420,7 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 	if err != nil {
 		return nil, internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  multi.RoomFormat(lockedRoom.Format),
-		Members: multi.MemberViews(remaining),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(lockedRoom, remaining)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -68,6 +68,48 @@ func SettleRoundEnd(winnerSlot int, guessCounts [2]int, maxGuesses int, timedOut
 	return RoundEnd{}
 }
 
+// RelayFirstTurnSlot 接力模式逐局交替先手：奇数局 slot 1，偶数局 slot 2。
+func RelayFirstTurnSlot(roundIndex int) int {
+	if roundIndex%2 == 0 {
+		return 2
+	}
+	return 1
+}
+
+// OtherSlot 返回两人房间中的另一方 slot。
+func OtherSlot(slot int) int {
+	if slot == 1 {
+		return 2
+	}
+	return 1
+}
+
+// RelayTurnAdvance 接力一次猜测/空过后的推进结果。
+type RelayTurnAdvance struct {
+	RoundEnded   bool
+	WinnerSlot   int
+	NextTurnSlot int
+}
+
+// AdvanceRelayTurn 接力模式在当前玩家已消耗一次轮次后推进。
+// counts 为消耗后的双方轮次计数；isCorrect 优先立即结束本局。
+func AdvanceRelayTurn(isCorrect bool, memberSlot int, counts [2]int, maxTurnsPerPlayer int) RelayTurnAdvance {
+	if isCorrect {
+		return RelayTurnAdvance{RoundEnded: true, WinnerSlot: memberSlot}
+	}
+	if counts[0] >= maxTurnsPerPlayer && counts[1] >= maxTurnsPerPlayer {
+		return RelayTurnAdvance{RoundEnded: true}
+	}
+	next := OtherSlot(memberSlot)
+	if counts[next-1] < maxTurnsPerPlayer {
+		return RelayTurnAdvance{NextTurnSlot: next}
+	}
+	if counts[memberSlot-1] < maxTurnsPerPlayer {
+		return RelayTurnAdvance{NextTurnSlot: memberSlot}
+	}
+	return RelayTurnAdvance{RoundEnded: true}
+}
+
 // MatchAdvance 场次级推进结果。
 type MatchAdvance struct {
 	MatchEnded bool

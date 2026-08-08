@@ -8,6 +8,9 @@ import type { FeedbackStatus, GuessResult } from "./types";
 export const MULTI_ROOM_FORMATS = ["bo1", "bo3", "bo5", "bo7"] as const;
 export type MultiRoomFormat = (typeof MULTI_ROOM_FORMATS)[number];
 
+export const MULTIPLAYER_MODES = ["race", "relay"] as const;
+export type MultiplayerMode = (typeof MULTIPLAYER_MODES)[number];
+
 export const MULTI_ROOM_STATUSES = ["lobby", "playing", "finished", "closed"] as const;
 export type MultiRoomStatus = (typeof MULTI_ROOM_STATUSES)[number];
 
@@ -47,11 +50,15 @@ export interface MemberView {
 
 export interface RoomUpdatedPayload {
   format: MultiRoomFormat;
+  mode: MultiplayerMode;
+  turnSeconds: number;
   members: MemberView[];
 }
 
 export interface MatchStartedPayload {
   format: MultiRoomFormat;
+  mode: MultiplayerMode;
+  turnSeconds: number;
   targetWins: number;
   catalogVersion: string;
   matchIndex: number;
@@ -67,6 +74,10 @@ export interface RoundStartedPayload {
   startsAt: string;
   deadline: string;
   maxGuesses: number;
+  turnSlot?: number;
+  turnDeadline?: string;
+  maxTurnsPerPlayer?: number;
+  maxSkipsPerPlayer?: number;
 }
 
 export interface RoundPlayingPayload {
@@ -79,6 +90,37 @@ export interface RoundOpponentGuessPayload {
   roundIndex: number;
   rowIndex: number;
   statuses: FeedbackStatus[];
+}
+
+export interface RelayTurnRow {
+  index: number;
+  memberSlot: number;
+  kind: "guess" | "timeout" | "pass";
+  guess?: GuessResult;
+}
+
+export interface RoundSharedGuessPayload {
+  matchIndex: number;
+  roundIndex: number;
+  row: RelayTurnRow;
+  nextTurnSlot?: number;
+  nextTurnDeadline?: string;
+}
+
+export interface RoundTurnTimeoutPayload {
+  matchIndex: number;
+  roundIndex: number;
+  row: RelayTurnRow;
+  nextTurnSlot?: number;
+  nextTurnDeadline?: string;
+}
+
+export interface RoundTurnPassPayload {
+  matchIndex: number;
+  roundIndex: number;
+  row: RelayTurnRow;
+  nextTurnSlot?: number;
+  nextTurnDeadline?: string;
 }
 
 export interface RoundAnswerPayload {
@@ -97,6 +139,7 @@ export interface RoundEndedPayload {
   winnerSlot: number | null;
   answer: RoundAnswerPayload;
   boards: { slot1: GuessResult[]; slot2: GuessResult[] };
+  turns?: RelayTurnRow[];
   scores: { slot1: number; slot2: number };
   /** 下一局 startsAt（本局 ended_at + INTERMISSION，服务端驱动；对局结束则为空）。 */
   nextStartsAt?: string;
@@ -148,6 +191,9 @@ export const MULTI_WS_EVENT_TYPES = [
   "round.started",
   "round.playing",
   "round.opponent.guess",
+  "round.shared.guess",
+  "round.turn.timeout",
+  "round.turn.pass",
   "round.ended",
   "match.ended",
   "room.closed",

@@ -41,6 +41,8 @@ const (
 	codeRoundNotActive      openapi.ErrorResponseCode = "ROUND_NOT_ACTIVE"
 	codeRoundEnded          openapi.ErrorResponseCode = "ROUND_ENDED"
 	codeGuessLimitReached   openapi.ErrorResponseCode = "GUESS_LIMIT_REACHED"
+	codeNotYourTurn         openapi.ErrorResponseCode = "NOT_YOUR_TURN"
+	codeTurnExpired         openapi.ErrorResponseCode = "TURN_EXPIRED"
 	codeRateLimited         openapi.ErrorResponseCode = "RATE_LIMITED"
 )
 

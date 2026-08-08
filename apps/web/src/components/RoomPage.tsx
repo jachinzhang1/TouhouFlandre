@@ -2,12 +2,14 @@
 
 // 房间页编排（08 §10.2/§10.3）：useRoom 连接 + 视图切换
 // （lobby → 对局 → 结果；断线重连/缺口补齐由 useRoom 处理）。
+import { FastForward, Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   clearMultiRoom,
   loadMultiRoom,
   normalizeRoomCode,
+  relaySkipRemaining,
 } from "../domain/multiRoom";
 import type { StoredMultiRoom } from "../domain/multiRoom";
 import { useRoom } from "../hooks/useRoom";
@@ -15,6 +17,7 @@ import { CountdownOverlay } from "./CountdownOverlay";
 import { GuessInputBar } from "./GuessInputBar";
 import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
+import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
 
@@ -24,6 +27,8 @@ export function RoomView({ code }: { code: string }) {
   // 加载放在 effect：避免 SSR 访问 window.localStorage（hydration 失败）
   const [stored, setStored] = useState<StoredMultiRoom | null | undefined>(undefined);
   const [redirecting, setRedirecting] = useState(false);
+  const [forfeitConfirm, setForfeitConfirm] = useState(false);
+  const [roundActionBusy, setRoundActionBusy] = useState<"forfeit" | "pass" | null>(null);
 
   useEffect(() => {
     setStored(loadMultiRoom());
@@ -62,12 +67,50 @@ export function RoomView({ code }: { code: string }) {
 
   const status = state.room?.status ?? "connecting";
   const format = state.room?.format ?? "bo3";
+  const mode = state.room?.mode ?? "race";
+  const turnSeconds = state.room?.turnSeconds ?? 60;
   const hasOpponent = state.members.length === 2;
+
+  useEffect(() => {
+    setForfeitConfirm(false);
+    setRoundActionBusy(null);
+  }, [state.match?.matchIndex, state.match?.roundIndex, state.round?.status]);
+
+  useEffect(() => {
+    if (!forfeitConfirm) return;
+    const timeoutId = window.setTimeout(() => setForfeitConfirm(false), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [forfeitConfirm]);
 
   const handleLeave = async () => {
     await actions.leave();
     clearMultiRoom();
     router.replace("/multi");
+  };
+
+  const handleForfeitRound = async () => {
+    if (!state.match || state.round?.status !== "playing") return;
+    if (!forfeitConfirm) {
+      setForfeitConfirm(true);
+      return;
+    }
+    setRoundActionBusy("forfeit");
+    setForfeitConfirm(false);
+    try {
+      await actions.forfeitRound();
+    } finally {
+      setRoundActionBusy(null);
+    }
+  };
+
+  const handlePassRelayTurn = async () => {
+    if (mode !== "relay" || !state.match || state.round?.status !== "playing") return;
+    setRoundActionBusy("pass");
+    try {
+      await actions.passRelayTurn();
+    } finally {
+      setRoundActionBusy(null);
+    }
   };
 
   if (stored === undefined || redirecting) return null;
@@ -79,6 +122,8 @@ export function RoomView({ code }: { code: string }) {
         <RoomLobby
           roomCode={normalized}
           format={format}
+          mode={mode}
+          turnSeconds={turnSeconds}
           members={state.members}
           mySlot={mySlot}
           onReady={actions.setReady}
@@ -92,27 +137,72 @@ export function RoomView({ code }: { code: string }) {
   // 对局态
   if (status === "playing" && state.match) {
     const inCountdown = state.round?.status === "countdown";
+    const relayCanGuess =
+      mode === "relay" &&
+      state.round?.status === "playing" &&
+      state.round.turnSlot === mySlot &&
+      hasOpponent;
+    const relayRows = state.round?.shared?.rows ?? [];
+    const relayMaxSkips = state.round?.maxSkipsPerPlayer ?? 2;
+    const relaySkipsRemaining = relaySkipRemaining(
+      relayRows,
+      mySlot,
+      relayMaxSkips,
+    );
+    const relayCanPass = relayCanGuess && relaySkipsRemaining > 0;
+    const roundActions =
+      state.round?.status === "playing" ? (
+        <RoundActionButtons
+          mode={mode}
+          forfeitConfirm={forfeitConfirm}
+          actionBusy={roundActionBusy}
+          relayCanPass={relayCanPass}
+          relaySkipsRemaining={relaySkipsRemaining}
+          relayMaxSkips={relayMaxSkips}
+          onForfeit={handleForfeitRound}
+          onPass={handlePassRelayTurn}
+        />
+      ) : null;
+    const guessedIds =
+      mode === "relay"
+        ? new Set(
+            state.round?.shared?.rows
+              .filter((row) => row.kind === "guess" && row.guess)
+              .map((row) => row.guess!.guessId) ?? [],
+          )
+        : new Set(state.round?.self.guesses.map((g) => g.guessId) ?? []);
     return (
       <>
-        <MatchBoard
-          format={format}
-          match={state.match}
-          round={state.round}
-          mySlot={mySlot}
-          roundResult={state.roundResult}
-          catalogVersion={state.catalogVersion ?? undefined}
-          onGuess={actions.submitGuess}
-          disabled={!hasOpponent}
-        />
+        {mode === "relay" ? (
+          <RelayMatchBoard
+            format={format}
+            match={state.match}
+            round={state.round}
+            members={state.members}
+            mySlot={mySlot}
+            roundResult={state.roundResult}
+            roundActions={roundActions}
+          />
+        ) : (
+          <MatchBoard
+            format={format}
+            match={state.match}
+            round={state.round}
+            mySlot={mySlot}
+            roundResult={state.roundResult}
+            catalogVersion={state.catalogVersion ?? undefined}
+            onGuess={actions.submitGuess}
+            disabled={!hasOpponent}
+            roundActions={roundActions}
+          />
+        )}
         <RoundHistoryBar history={state.history} />
         {state.round?.status === "playing" && (
           <GuessInputBar
             onGuess={actions.submitGuess}
-            disabled={!hasOpponent}
+            disabled={mode === "relay" ? !relayCanGuess : !hasOpponent}
             catalogVersion={state.catalogVersion ?? undefined}
-            guessedIds={
-              new Set(state.round?.self.guesses.map((g) => g.guessId) ?? [])
-            }
+            guessedIds={guessedIds}
           />
         )}
         {inCountdown && state.round && !state.roundResult && (
@@ -151,6 +241,72 @@ export function RoomView({ code }: { code: string }) {
     <section className="px-[18px] pt-16 text-center text-ink-soft">
       房间状态同步中……
     </section>
+  );
+}
+
+function RoundActionButtons({
+  mode,
+  forfeitConfirm,
+  actionBusy,
+  relayCanPass,
+  relaySkipsRemaining,
+  relayMaxSkips,
+  onForfeit,
+  onPass,
+}: {
+  mode: string;
+  forfeitConfirm: boolean;
+  actionBusy: "forfeit" | "pass" | null;
+  relayCanPass: boolean;
+  relaySkipsRemaining: number;
+  relayMaxSkips: number;
+  onForfeit: () => void;
+  onPass: () => void;
+}) {
+  const forfeitLabel =
+    actionBusy === "forfeit"
+      ? "提交中……"
+      : forfeitConfirm
+        ? "再次点击确认放弃"
+        : "放弃本局";
+  const passDisabled = actionBusy !== null || !relayCanPass;
+  const passTitle =
+    relaySkipsRemaining <= 0
+      ? "本局空过次数已用完"
+      : "主动空过本轮猜测";
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {mode === "relay" ? (
+        <button
+          type="button"
+          onClick={onPass}
+          disabled={passDisabled}
+          title={passTitle}
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.75rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FastForward size={14} aria-hidden="true" />
+          本轮空过
+          <span className="rounded bg-paper px-1.5 py-0.5 text-[0.68rem] tabular-nums">
+            余 {relaySkipsRemaining}/{relayMaxSkips}
+          </span>
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onForfeit}
+        disabled={actionBusy !== null}
+        title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
+        className={`inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border px-3 py-1.5 text-[0.75rem] font-bold disabled:cursor-not-allowed disabled:opacity-50 ${
+          forfeitConfirm
+            ? "border-vermilion bg-vermilion-soft text-vermilion"
+            : "border-line-strong bg-paper-muted text-ink-soft hover:bg-paper"
+        }`}
+      >
+        <Flag size={14} aria-hidden="true" />
+        {forfeitLabel}
+      </button>
+    </div>
   );
 }
 

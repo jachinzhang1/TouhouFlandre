@@ -1,6 +1,6 @@
-import type { MultiMatchEndReason, MultiRoomFormat } from "@touhouflandre/shared";
+import type { MultiMatchEndReason, MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 1 as const;
+export const STATS_SCHEMA_VERSION = 2 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
 export type StatsOutcome =
@@ -28,7 +28,12 @@ export interface StatsCharacterSnapshot {
 export interface StatsGuessSnapshot extends StatsCharacterSnapshot {
   durationMs?: number;
   correct: boolean;
+  memberSlot?: 1 | 2;
 }
+
+export type StatsRelayTurnSnapshot =
+  | { index: number; memberSlot: 1 | 2; kind: "timeout" | "pass" }
+  | { index: number; memberSlot: 1 | 2; kind: "guess"; guess: StatsGuessSnapshot };
 
 export interface StatsRound {
   roundIndex: number;
@@ -38,6 +43,7 @@ export interface StatsRound {
   result: "win" | "loss" | "draw";
   answer: StatsCharacterSnapshot;
   guesses: StatsGuessSnapshot[];
+  turns?: StatsRelayTurnSnapshot[];
 }
 
 interface StatsRecordBase {
@@ -61,6 +67,9 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   kind: "multiplayer";
   mode: "multiplayer";
   format: MultiRoomFormat;
+  multiplayerMode: MultiplayerMode;
+  /** 本地玩家在该多人房间中的 slot，用于按玩家视角展示接力猜测。 */
+  memberSlot?: 1 | 2;
   matchIndex: number;
   reason: MultiMatchEndReason | "incomplete";
   scoreSelf: number;
@@ -95,6 +104,8 @@ export interface MultiplayerStatsDraft {
   startedAt: string;
   updatedAt: string;
   format: MultiRoomFormat;
+  multiplayerMode: MultiplayerMode;
+  memberSlot?: 1 | 2;
   matchIndex: number;
   rounds: StatsRound[];
   activeRound?: MultiplayerRoundDraft;
@@ -119,6 +130,7 @@ export interface StatsFilters {
   from?: string;
   to?: string;
   format: "all" | MultiRoomFormat;
+  multiplayerMode: "all" | MultiplayerMode;
 }
 
 export function workCode(mainlineIndex?: number, fallback = "TH--"): string {

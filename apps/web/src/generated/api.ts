@@ -337,11 +337,56 @@ export interface paths {
         put?: never;
         /**
          * 提交猜测
-         * @description 成员令牌鉴权。实时竞速：无回合交替，任何时刻（局处于 playing）双方都可提交。
+         * @description 成员令牌鉴权。竞速模式：无回合交替，任何时刻（局处于 playing）双方都可提交。
+         *     接力模式：仅当前 turnSlot 可提交，提交或超时空过都会消耗该玩家一次轮次。
          *     携带 idempotencyKey（客户端 UUID），重试返回首次结果。
-         *     响应为自视角完整反馈；局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影）。
+         *     响应为自视角完整反馈；竞速局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影），
+         *     接力局中的共享棋盘经 WS round.shared.guess / 快照投影同步。
          */
         post: operations["rooms_submitGuess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/rounds/{roundIndex}/forfeit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 放弃本局
+         * @description 成员令牌鉴权。仅结束当前小局：放弃者判负，对手获得本局胜利。
+         *     多局赛制下由既有局间推进机制进入下一小局；若对手因此达到 targetWins，则整场结束。
+         */
+        post: operations["rooms_forfeitRound"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/rounds/{roundIndex}/pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 接力主动空过本轮
+         * @description 成员令牌鉴权。仅接力模式可用，且必须轮到当前玩家。
+         *     主动空过会消耗该玩家一次轮次机会和一次空过额度，并按接力规则推进到下一手。
+         *     主动空过与超时空过共享每人每局 2 次空过额度；额度耗尽后再次空过，该玩家本局判负。
+         */
+        post: operations["rooms_passRelayTurn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -355,7 +400,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
             error: string;
         };
         /** @enum {string} */
@@ -526,6 +571,11 @@ export interface components {
          */
         RoomFormat: "bo1" | "bo3" | "bo5" | "bo7";
         /**
+         * @description 多人玩法模式。race = 竞速；relay = 接力。
+         * @enum {string}
+         */
+        MultiplayerMode: "race" | "relay";
+        /**
          * @description 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
          * @enum {string}
          */
@@ -591,6 +641,12 @@ export interface components {
             /** @description 6 位房间号。 */
             roomCode: string;
             format: components["schemas"]["RoomFormat"];
+            mode: components["schemas"]["MultiplayerMode"];
+            /**
+             * @description 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
+             * @enum {integer}
+             */
+            turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
             memberCount: number;
         };
@@ -616,6 +672,9 @@ export interface components {
             roomId: string;
             roomCode: string;
             format: components["schemas"]["RoomFormat"];
+            mode: components["schemas"]["MultiplayerMode"];
+            /** @enum {integer} */
+            turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
             members: components["schemas"]["MemberView"][];
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
@@ -644,7 +703,7 @@ export interface components {
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-         *     opponent 为匿名矩阵（只含状态颜色序列）。
+         *     opponent 为匿名矩阵（只含状态颜色序列）。接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
          */
         RoundView: {
             status: components["schemas"]["RoundStatus"];
@@ -668,6 +727,21 @@ export interface components {
             opponent: {
                 rows: components["schemas"]["OpponentRow"][];
             };
+            /** @description 接力模式共享棋盘；竞速模式为空或缺省。 */
+            shared?: {
+                rows: components["schemas"]["RelayTurnRow"][];
+            };
+            /** @description 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。 */
+            turnSlot?: number;
+            /**
+             * Format: date-time
+             * @description 接力模式当前玩家本轮截止时刻。
+             */
+            turnDeadline?: string;
+            /** @description 接力模式每名玩家每局的轮次上限（猜测与超时空过均计入）。 */
+            maxTurnsPerPlayer?: number;
+            /** @description 接力模式每名玩家每局可空过次数上限（主动空过与超时空过共享）。 */
+            maxSkipsPerPlayer?: number;
         };
         /** @description 对手一行猜测（匿名矩阵行）。局中只含状态颜色序列，不含角色名/字段标签/值。 */
         OpponentRow: {
@@ -675,6 +749,16 @@ export interface components {
             index: number;
             /** @description 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。 */
             statuses: components["schemas"]["FeedbackStatus"][];
+        };
+        /** @description 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。 */
+        RelayTurnRow: {
+            /** @description 本局共享轮次序号（1 起）。 */
+            index: number;
+            /** @description 本轮归属玩家 slot。 */
+            memberSlot: number;
+            /** @enum {string} */
+            kind: "guess" | "timeout" | "pass";
+            guess?: components["schemas"]["GuessResult"];
         };
         /** @description 猜测被接受的自视角响应（完整反馈；局中不返回答案与对手信息）。 */
         GuessResponse: {
@@ -1055,6 +1139,14 @@ export interface operations {
             content: {
                 "application/json": {
                     format: components["schemas"]["RoomFormat"];
+                    /** @description 可选玩法模式；缺省为 race（竞速）。 */
+                    mode?: components["schemas"]["MultiplayerMode"];
+                    /**
+                     * @description 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
+                     * @default 60
+                     * @enum {integer}
+                     */
+                    turnSeconds?: 30 | 60 | 90 | 120;
                     /** @description 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。 */
                     displayName?: string;
                 };
@@ -1534,8 +1626,107 @@ export interface operations {
             /**
              * @description 房间/对局/局状态不允许本次猜测：
              *     ROOM_CLOSED / MATCH_ALREADY_STARTED / ROUND_NOT_ACTIVE（countdown/已结束/已超时，猜测不写入）/
-             *     ROUND_ENDED（正确猜测迟到，携带局结果，不写入）/ GUESS_LIMIT_REACHED / DUPLICATE_GUESS。
+             *     ROUND_ENDED（正确猜测迟到，携带局结果，不写入）/ NOT_YOUR_TURN / TURN_EXPIRED /
+             *     GUESS_LIMIT_REACHED / DUPLICATE_GUESS。
              */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_forfeitRound: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+                /** @description 目标局号（须匹配当前局）。 */
+                roundIndex: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本局已放弃 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间/局状态不允许放弃本局（ROOM_CLOSED / ROUND_NOT_ACTIVE / ROUND_ENDED） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_passRelayTurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+                /** @description 目标局号（须匹配当前局）。 */
+                roundIndex: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 本轮已空过 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间/局/轮次状态不允许空过（ROOM_CLOSED / ROUND_NOT_ACTIVE / NOT_YOUR_TURN / TURN_EXPIRED） */
             409: {
                 headers: {
                     [name: string]: unknown;

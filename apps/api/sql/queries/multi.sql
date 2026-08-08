@@ -2,8 +2,8 @@
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one
-INSERT INTO multi_room (id, code, format, status, expires_at)
-VALUES ($1, $2, $3, 'lobby', $4)
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at)
+VALUES ($1, $2, $3, $4, $5, 'lobby', $6)
 RETURNING *;
 
 -- name: GetRoomByCode :one
@@ -43,7 +43,9 @@ SELECT jsonb_build_object(
     'match',   (SELECT to_jsonb(lm) FROM latest_match lm),
     'round',   (SELECT to_jsonb(ar) FROM active_round ar),
     'guesses', (SELECT COALESCE(jsonb_agg(g ORDER BY g.member_id, g.sequence), '[]'::jsonb)
-                FROM multi_guess g WHERE g.round_id = (SELECT ar.id FROM active_round ar))
+                FROM multi_guess g WHERE g.round_id = (SELECT ar.id FROM active_round ar)),
+    'turns',   (SELECT COALESCE(jsonb_agg(t ORDER BY t.turn_index), '[]'::jsonb)
+                FROM multi_turn t WHERE t.round_id = (SELECT ar.id FROM active_round ar))
 )::jsonb AS snapshot;
 
 -- name: UpdateRoomStatus :one
@@ -116,8 +118,8 @@ WITH incremented AS (
     WHERE id = $1 AND round_count < sqlc.arg(max_rounds)
     RETURNING id
 )
-INSERT INTO multi_round (id, match_id, round_index, answer_id, status, starts_at, deadline)
-SELECT $2, $1, $3, $4, 'countdown', $5, $6
+INSERT INTO multi_round (id, match_id, round_index, answer_id, status, starts_at, deadline, turn_slot, turn_deadline)
+SELECT $2, $1, $3, $4, 'countdown', $5, $6, sqlc.arg(turn_slot), sqlc.arg(turn_deadline)
 FROM incremented
 RETURNING *;
 
@@ -192,8 +194,32 @@ SELECT COUNT(*) FROM multi_guess WHERE round_id = $1 AND member_id = $2;
 -- name: ListGuessesForRound :many
 SELECT * FROM multi_guess WHERE round_id = $1 ORDER BY member_id, sequence;
 
+-- name: CountTurnsForRound :one
+SELECT COUNT(*) FROM multi_turn WHERE round_id = $1;
+
+-- name: CountTurnsForRoundMember :one
+SELECT COUNT(*) FROM multi_turn WHERE round_id = $1 AND member_id = $2;
+
+-- name: CountSkipsForRoundMember :one
+SELECT COUNT(*) FROM multi_turn WHERE round_id = $1 AND member_id = $2 AND kind IN ('timeout', 'pass');
+
+-- name: InsertTurn :one
+INSERT INTO multi_turn (id, round_id, member_id, turn_index, kind, guess_id, statuses, is_correct, idempotency_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING
+RETURNING *;
+
+-- name: GetTurnByIdempotencyKey :one
+SELECT * FROM multi_turn WHERE round_id = $1 AND member_id = $2 AND idempotency_key = $3;
+
+-- name: ListTurnsForRound :many
+SELECT * FROM multi_turn WHERE round_id = $1 ORDER BY turn_index;
+
+-- name: UpdateRoundTurn :one
+UPDATE multi_round SET turn_slot = $2, turn_deadline = $3 WHERE id = $1 RETURNING *;
+
 -- name: EndRound :one
-UPDATE multi_round SET status = 'ended', winner_slot = $2, ended_at = $3 WHERE id = $1 RETURNING *;
+UPDATE multi_round SET status = 'ended', winner_slot = $2, ended_at = $3, turn_slot = NULL, turn_deadline = NULL WHERE id = $1 RETURNING *;
 
 -- name: UpdateMatchScore :one
 UPDATE multi_match SET score_slot1 = $2, score_slot2 = $3 WHERE id = $1 RETURNING *;
@@ -214,6 +240,18 @@ SELECT * FROM multi_round
 WHERE (status = 'countdown' AND starts_at <= now())
    OR (status = 'playing' AND deadline <= now())
 ORDER BY starts_at;
+
+-- name: ListExpiredRelayTurns :many
+SELECT r.*, m.room_id AS room_id
+FROM multi_round r
+JOIN multi_match m ON m.id = r.match_id
+JOIN multi_room room ON room.id = m.room_id
+WHERE room.mode = 'relay'
+  AND r.status = 'playing'
+  AND r.turn_slot IS NOT NULL
+  AND r.turn_deadline IS NOT NULL
+  AND r.turn_deadline <= now()
+ORDER BY r.turn_deadline;
 
 -- name: ListTimedOutMembers :many
 SELECT * FROM multi_member WHERE status = 'disconnected' AND grace_until <= now() ORDER BY grace_until;

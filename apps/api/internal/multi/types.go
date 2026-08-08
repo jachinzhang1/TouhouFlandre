@@ -31,6 +31,9 @@ func NewID() string {
 // GameMaxGuesses 每局每人猜测上限（08 §4.2：沿用单人 GameContentDefinition.MaxGuesses = 8）。
 var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 
+// RelayMaxSkipsPerPlayer 接力模式每局每名玩家可空过次数上限（主动空过与超时空过共享）。
+const RelayMaxSkipsPerPlayer = 2
+
 // MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。
 func MemberViews(rows []repo.MultiMember) []MemberView {
 	views := make([]MemberView, 0, len(rows))
@@ -55,6 +58,14 @@ const (
 	RoomFormatBO3 RoomFormat = "bo3"
 	RoomFormatBO5 RoomFormat = "bo5"
 	RoomFormatBO7 RoomFormat = "bo7"
+)
+
+// MultiplayerMode 多人玩法模式。
+type MultiplayerMode string
+
+const (
+	MultiplayerModeRace  MultiplayerMode = "race"
+	MultiplayerModeRelay MultiplayerMode = "relay"
 )
 
 // RoomStatus 房间生命周期状态。
@@ -133,6 +144,9 @@ const (
 	EventRoundStarted       EventType = "round.started"
 	EventRoundPlaying       EventType = "round.playing"
 	EventRoundOpponentGuess EventType = "round.opponent.guess"
+	EventRoundSharedGuess   EventType = "round.shared.guess"
+	EventRoundTurnTimeout   EventType = "round.turn.timeout"
+	EventRoundTurnPass      EventType = "round.turn.pass"
 	EventRoundEnded         EventType = "round.ended"
 	EventMatchEnded         EventType = "match.ended"
 	EventRoomClosed         EventType = "room.closed"
@@ -161,16 +175,20 @@ type MemberView struct {
 
 // RoomUpdatedPayload room.updated：大厅任何成员变化/就绪。
 type RoomUpdatedPayload struct {
-	Format  RoomFormat   `json:"format"`
-	Members []MemberView `json:"members"`
+	Format      RoomFormat      `json:"format"`
+	Mode        MultiplayerMode `json:"mode"`
+	TurnSeconds int             `json:"turnSeconds"`
+	Members     []MemberView    `json:"members"`
 }
 
 // MatchStartedPayload match.started：新场次开始。
 type MatchStartedPayload struct {
-	Format         RoomFormat `json:"format"`
-	TargetWins     int        `json:"targetWins"`
-	CatalogVersion string     `json:"catalogVersion"`
-	MatchIndex     int        `json:"matchIndex"`
+	Format         RoomFormat      `json:"format"`
+	Mode           MultiplayerMode `json:"mode"`
+	TurnSeconds    int             `json:"turnSeconds"`
+	TargetWins     int             `json:"targetWins"`
+	CatalogVersion string          `json:"catalogVersion"`
+	MatchIndex     int             `json:"matchIndex"`
 }
 
 // MatchRematchPayload match.rematch：成员确认再来一局。
@@ -180,11 +198,15 @@ type MatchRematchPayload struct {
 
 // RoundStartedPayload round.started：每局创建（countdown 态）。
 type RoundStartedPayload struct {
-	MatchIndex int       `json:"matchIndex"`
-	RoundIndex int       `json:"roundIndex"`
-	StartsAt   time.Time `json:"startsAt"`
-	Deadline   time.Time `json:"deadline"`
-	MaxGuesses int       `json:"maxGuesses"`
+	MatchIndex        int        `json:"matchIndex"`
+	RoundIndex        int        `json:"roundIndex"`
+	StartsAt          time.Time  `json:"startsAt"`
+	Deadline          time.Time  `json:"deadline"`
+	MaxGuesses        int        `json:"maxGuesses"`
+	TurnSlot          *int       `json:"turnSlot,omitempty"`
+	TurnDeadline      *time.Time `json:"turnDeadline,omitempty"`
+	MaxTurnsPerPlayer *int       `json:"maxTurnsPerPlayer,omitempty"`
+	MaxSkipsPerPlayer  *int       `json:"maxSkipsPerPlayer,omitempty"`
 }
 
 // RoundPlayingPayload round.playing：倒计时结束可开猜。
@@ -201,16 +223,61 @@ type RoundOpponentGuessPayload struct {
 	Statuses   []string `json:"statuses"`
 }
 
+// RelayTurnKind 接力共享棋盘行类型。
+type RelayTurnKind string
+
+const (
+	RelayTurnKindGuess   RelayTurnKind = "guess"
+	RelayTurnKindTimeout RelayTurnKind = "timeout"
+	RelayTurnKindPass    RelayTurnKind = "pass"
+)
+
+// RelayTurnRow 接力模式共享棋盘行。
+type RelayTurnRow struct {
+	Index      int              `json:"index"`
+	MemberSlot int              `json:"memberSlot"`
+	Kind       RelayTurnKind    `json:"kind"`
+	Guess      *GuessResultView `json:"guess,omitempty"`
+}
+
+// RoundSharedGuessPayload round.shared.guess：接力共享猜测行。
+type RoundSharedGuessPayload struct {
+	MatchIndex       int          `json:"matchIndex"`
+	RoundIndex       int          `json:"roundIndex"`
+	Row              RelayTurnRow `json:"row"`
+	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
+}
+
+// RoundTurnTimeoutPayload round.turn.timeout：接力超时空过行。
+type RoundTurnTimeoutPayload struct {
+	MatchIndex       int          `json:"matchIndex"`
+	RoundIndex       int          `json:"roundIndex"`
+	Row              RelayTurnRow `json:"row"`
+	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
+}
+
+// RoundTurnPassPayload round.turn.pass：接力主动空过行。
+type RoundTurnPassPayload struct {
+	MatchIndex       int          `json:"matchIndex"`
+	RoundIndex       int          `json:"roundIndex"`
+	Row              RelayTurnRow `json:"row"`
+	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
+}
+
 // RoundEndedPayload round.ended：局结束（result 为观察者视角；揭示答案与双方完整棋盘）。
 type RoundEndedPayload struct {
-	MatchIndex   int         `json:"matchIndex"`
-	RoundIndex   int         `json:"roundIndex"`
-	Result       MatchResult `json:"result"`
-	WinnerSlot   *int        `json:"winnerSlot"`
-	Answer       AnswerView  `json:"answer"`
-	Boards       BoardsView  `json:"boards"`
-	Scores       ScoresView  `json:"scores"`
-	NextStartsAt *time.Time  `json:"nextStartsAt,omitempty"`
+	MatchIndex   int            `json:"matchIndex"`
+	RoundIndex   int            `json:"roundIndex"`
+	Result       MatchResult    `json:"result"`
+	WinnerSlot   *int           `json:"winnerSlot"`
+	Answer       AnswerView     `json:"answer"`
+	Boards       BoardsView     `json:"boards"`
+	Turns        []RelayTurnRow `json:"turns,omitempty"`
+	Scores       ScoresView     `json:"scores"`
+	NextStartsAt *time.Time     `json:"nextStartsAt,omitempty"`
 }
 
 // AnswerView 揭示的答案角色与作品快照。

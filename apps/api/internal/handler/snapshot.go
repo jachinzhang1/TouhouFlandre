@@ -23,6 +23,7 @@ type snapshotState struct {
 	Match   *repo.MultiMatch   `json:"match"`
 	Round   *repo.MultiRound   `json:"round"`
 	Guesses []snapshotGuess    `json:"guesses"`
+	Turns   []snapshotTurn     `json:"turns"`
 }
 
 // snapshotGuess 快照猜测行（statuses 为数组形态）。
@@ -34,6 +35,17 @@ type snapshotGuess struct {
 	GuessID   string   `json:"guess_id"`
 	Statuses  []string `json:"statuses"`
 	IsCorrect bool     `json:"is_correct"`
+}
+
+type snapshotTurn struct {
+	ID        string    `json:"id"`
+	RoundID   string    `json:"round_id"`
+	MemberID  string    `json:"member_id"`
+	TurnIndex int32     `json:"turn_index"`
+	Kind      string    `json:"kind"`
+	GuessID   *string   `json:"guess_id"`
+	Statuses  *[]string `json:"statuses"`
+	IsCorrect bool      `json:"is_correct"`
 }
 
 // RoomsGetSnapshot 房间快照与事件重放（成员令牌；中间件已鉴权）。
@@ -73,11 +85,13 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
 	snapshot := openapi.RoomSnapshot{
-		RoomId:   state.Room.ID,
-		RoomCode: state.Room.Code,
-		Format:   openapi.RoomFormat(state.Room.Format),
-		Status:   openapi.RoomStatus(state.Room.Status),
-		Members:  memberViews,
+		RoomId:      state.Room.ID,
+		RoomCode:    state.Room.Code,
+		Format:      openapi.RoomFormat(state.Room.Format),
+		Mode:        openapi.MultiplayerMode(state.Room.Mode),
+		TurnSeconds: openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
+		Status:      openapi.RoomStatus(state.Room.Status),
+		Members:     memberViews,
 	}
 
 	if state.Match != nil {
@@ -157,7 +171,49 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	}
 	roundView.Self.Guesses = self
 	roundView.Opponent.Rows = opponentRows
+	if multi.MultiplayerMode(state.Room.Mode) == multi.MultiplayerModeRelay {
+		rows := make([]openapi.RelayTurnRow, 0, len(state.Turns))
+		for _, turn := range state.Turns {
+			row := openapi.RelayTurnRow{
+				Index:      int(turn.TurnIndex),
+				Kind:       openapi.RelayTurnRowKind(turn.Kind),
+				MemberSlot: memberSlotForID(state.Members, turn.MemberID),
+			}
+			if turn.Kind == string(multi.RelayTurnKindGuess) && turn.GuessID != nil && turn.Statuses != nil {
+				guessChar, ok := byID[*turn.GuessID]
+				if !ok {
+					return nil, internalError(errors.New("relay turn character missing from snapshot"))
+				}
+				hydrated := multi.HydrateGuessResult(guessChar, *turn.Statuses, turn.IsCorrect)
+				guess := toOpenAPIGuessResult(hydrated)
+				row.Guess = &guess
+			}
+			rows = append(rows, row)
+		}
+		roundView.Shared = &struct {
+			Rows []openapi.RelayTurnRow `json:"rows"`
+		}{Rows: rows}
+		if state.Round.TurnSlot.Valid {
+			slot := int(state.Round.TurnSlot.Int32)
+			roundView.TurnSlot = &slot
+		}
+		if state.Round.TurnDeadline.Valid {
+			deadline := state.Round.TurnDeadline.Time
+			roundView.TurnDeadline = &deadline
+		}
+		maxTurns := multi.GameMaxGuesses
+		roundView.MaxTurnsPerPlayer = &maxTurns
+	}
 	return &roundView, nil
+}
+
+func memberSlotForID(members []repo.MultiMember, memberID string) int {
+	for _, member := range members {
+		if member.ID == memberID {
+			return int(member.Slot)
+		}
+	}
+	return 0
 }
 
 // projectEvents 事件重放投影（08 §4.5 三路径共用投影语义）：
@@ -166,106 +222,31 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, state snapshotState, observer repo.MultiMember) ([]openapi.RoomEventEnvelope, error) {
 	out := make([]openapi.RoomEventEnvelope, 0, len(events))
 	charCache := map[string]map[string]game.Character{}
-	loadChars := func(version string) (map[string]game.Character, error) {
-		if chars, ok := charCache[version]; ok {
-			return chars, nil
-		}
-		characters, err := multi.CharactersForVersion(ctx, s.q, version)
-		if err != nil {
-			return nil, err
-		}
-		chars := multi.CharactersByID(characters)
-		charCache[version] = chars
-		return chars, nil
-	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range state.Members {
 		memberSlotByID[m.ID] = m.Slot
 	}
 
 	for _, event := range events {
-		switch event.Type {
-		case string(multi.EventRoundOpponentGuess):
-			var payload multi.RoundGuessPayload
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-				return nil, internalError(err)
-			}
-			if payload.MemberSlot == int(observer.Slot) {
-				continue // 自己的猜测不回放（自视角以 REST 响应为准）
-			}
-			perm := multi.ColumnPermutation(payload.RoundID, observer.ID, len(game.CharacterGuessFields))
-			wire := map[string]any{
-				"matchIndex": payload.MatchIndex,
-				"roundIndex": payload.RoundIndex,
-				"rowIndex":   payload.RowIndex,
-				"statuses":   toOpenAPIFeedbackStatuses(multi.PermuteStatuses(payload.Statuses, perm)),
-			}
-			out = append(out, openapi.RoomEventEnvelope{
-				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
-				Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: wire,
-			})
-		case string(multi.EventRoundEnded):
-			var payload multi.RoundEndedEventPayload
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-				return nil, internalError(err)
-			}
-			round, err := s.q.GetRound(ctx, payload.RoundID)
-			if err != nil {
-				return nil, internalError(err)
-			}
-			match, err := s.q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: state.Room.ID, MatchIndex: int32(payload.MatchIndex)})
-			if err != nil {
-				return nil, internalError(err)
-			}
-			chars, err := loadChars(match.CatalogVersion)
-			if err != nil {
-				return nil, err
-			}
-			guesses, err := s.q.ListGuessesForRound(ctx, round.ID)
-			if err != nil {
-				return nil, internalError(err)
-			}
-			answer := chars[payload.AnswerID]
-			wire := map[string]any{
-				"matchIndex":   payload.MatchIndex,
-				"roundIndex":   payload.RoundIndex,
-				"result":       resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-				"winnerSlot":   payload.WinnerSlot,
-				"answer":       multi.AnswerViewForCharacter(answer),
-				"boards":       hydrateBoards(guesses, chars, memberSlotByID),
-				"scores":       map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
-				"nextStartsAt": payload.NextStartsAt,
-			}
-			out = append(out, openapi.RoomEventEnvelope{
-				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
-				Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: wire,
-			})
-		case string(multi.EventMatchEnded):
-			var payload multi.MatchEndedEventPayload
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-				return nil, internalError(err)
-			}
-			wire := map[string]any{
-				"matchIndex": payload.MatchIndex,
-				"result":     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-				"winnerSlot": payload.WinnerSlot,
-				"scores":     map[string]int{"slot1": payload.Scores.Slot1, "slot2": payload.Scores.Slot2},
-				"reason":     payload.Reason,
-			}
-			out = append(out, openapi.RoomEventEnvelope{
-				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
-				Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: wire,
-			})
-		default:
-			var payload map[string]any
-			if err := json.Unmarshal(event.Payload, &payload); err != nil {
-				return nil, internalError(err)
-			}
-			out = append(out, openapi.RoomEventEnvelope{
-				Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
-				Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: payload,
-			})
+		payload, skip, err := multi.ProjectEvent(ctx, s.q, event, state.Room.ID, observer, memberSlotByID, charCache)
+		if err != nil {
+			return nil, internalError(err)
 		}
+		if skip {
+			continue
+		}
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		wire := map[string]any{}
+		if err := json.Unmarshal(raw, &wire); err != nil {
+			return nil, internalError(err)
+		}
+		out = append(out, openapi.RoomEventEnvelope{
+			Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
+			Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: wire,
+		})
 	}
 	return out, nil
 }

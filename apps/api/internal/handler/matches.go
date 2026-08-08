@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
@@ -53,33 +52,40 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		return mapRoomWriteError(err)
 	}
 	startsAt := now.Add(s.timing.RoundCountdown)
+	turnSlot, turnDeadline := multi.InitialTurnParams(room, 1, startsAt)
 	round, err := q.CreateRound(ctx, repo.CreateRoundParams{
-		ID:         multi.NewID(),
-		MatchID:    match.ID,
-		MaxRounds:  int32(maxRounds),
-		RoundIndex: 1,
-		AnswerID:   answerID,
-		StartsAt:   timestamptz(startsAt),
-		Deadline:   timestamptz(startsAt.Add(s.timing.RoundSeconds)),
+		ID:           multi.NewID(),
+		MatchID:      match.ID,
+		MaxRounds:    int32(maxRounds),
+		RoundIndex:   1,
+		AnswerID:     answerID,
+		StartsAt:     timestamptz(startsAt),
+		Deadline:     timestamptz(startsAt.Add(s.timing.RoundSeconds)),
+		TurnSlot:     turnSlot,
+		TurnDeadline: turnDeadline,
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
 	}
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventMatchStarted, multi.MatchStartedPayload{
 		Format:         format,
+		Mode:           multi.MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
 		TargetWins:     targetWins,
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
 	}); err != nil {
 		return internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, multi.RoundStartedPayload{
+	roundStarted := multi.RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
 		StartsAt:   startsAt,
 		Deadline:   startsAt.Add(s.timing.RoundSeconds),
 		MaxGuesses: multi.GameMaxGuesses,
-	}); err != nil {
+	}
+	multi.AddRelayRoundStartedFields(&roundStarted, room, int(round.RoundIndex), startsAt)
+	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {
 		return internalError(err)
 	}
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
@@ -144,199 +150,29 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if err != nil {
 		return nil, internalError(err)
 	}
-	// 3. 角色校验与反馈计算（真实列序）
-	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId)
-	if apiErr != nil {
-		return nil, apiErr
+	module, ok := guessModeModules[multi.MultiplayerMode(room.Mode)]
+	if !ok {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "未知多人玩法。"}
 	}
-	// 4. 局态分流（不可猜时不写入，仅返回结果）
-	switch round.Status {
-	case string(multi.RoundStatusEnded):
-		if isCorrect {
-			return nil, roundEndedWithResult(round)
+	result, err := module.SubmitGuess(ctx, s, q, submitGuessInput{
+		request: request,
+		member:  *member,
+		room:    room,
+		round:   round,
+		match:   match,
+	})
+	if result.commit {
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			return nil, internalError(commitErr)
 		}
-		return nil, roundNotActiveError("本局已结束。")
-	case string(multi.RoundStatusCountdown):
-		return nil, roundNotActiveError("本局尚未开始。")
-	case string(multi.RoundStatusPlaying):
-		if !s.now().Before(round.Deadline.Time) {
-			// 4b 整局超时：猜测事务内同步结算平局（谁先发现超时谁结算，状态一致）。
-			// 结算必须先提交（返回错误会触发 deferred rollback 丢失结算）。
-			if err := s.settleTimeoutInTxn(ctx, q, room.ID, round, match); err != nil {
-				return nil, internalError(err)
-			}
-			if err := tx.Commit(ctx); err != nil {
-				return nil, internalError(err)
-			}
+		if result.publish {
 			s.publish(request.RoomId)
-			return nil, roundNotActiveError("本局已超时（按平局结算）。")
-		}
-		if s.now().Before(round.StartsAt.Time) {
-			return nil, roundNotActiveError("本局尚未到开猜时间。")
-		}
-	default:
-		return nil, roundNotActiveError("本局不可猜测。")
-	}
-
-	// 5. 幂等：同 (round, member, idempotencyKey) 重试返回首次结果，不重复处理
-	existing, err := q.GetGuessByIdempotencyKey(ctx, repo.GetGuessByIdempotencyKeyParams{
-		RoundID: round.ID, MemberID: member.ID, IdempotencyKey: request.Body.IdempotencyKey,
-	})
-	if err == nil {
-		return s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, internalError(err)
-	}
-
-	// 6. 每局每人上限（08 §4.3：用尽后不能再提交，但对手仍可继续）
-	count, err := q.CountGuessesForRoundMember(ctx, repo.CountGuessesForRoundMemberParams{
-		RoundID: round.ID, MemberID: member.ID,
-	})
-	if err != nil {
-		return nil, internalError(err)
-	}
-	if int(count) >= multi.GameMaxGuesses {
-		return nil, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
-	}
-	sequence := int(count) + 1
-
-	// 7. 写入猜测（幂等键 ON CONFLICT DO NOTHING；guess_id 唯一冲突 → DUPLICATE_GUESS）
-	statusesJSON, err := json.Marshal(statuses)
-	if err != nil {
-		return nil, internalError(err)
-	}
-	_, err = q.InsertGuess(ctx, repo.InsertGuessParams{
-		ID:             multi.NewID(),
-		RoundID:        round.ID,
-		MemberID:       member.ID,
-		Sequence:       int32(sequence),
-		GuessID:        guessChar.ID,
-		Statuses:       statusesJSON,
-		IsCorrect:      isCorrect,
-		IdempotencyKey: request.Body.IdempotencyKey,
-	})
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "multi_guess_round_id_member_id_guess_id_key" {
-			return nil, &ApiError{Status: http.StatusConflict, Code: codeDuplicateGuess, Message: "本局已猜过该角色。"}
-		}
-		return nil, mapRoomWriteError(err)
-	}
-
-	// 8. 猜测事件（规范形态：真实列序 + 猜测者 slot + roundID；投影阶段剥离/置换）
-	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundOpponentGuess, multi.RoundGuessPayload{
-		RoundID:    round.ID,
-		MatchIndex: int(match.MatchIndex),
-		RoundIndex: int(round.RoundIndex),
-		MemberSlot: int(member.Slot),
-		RowIndex:   sequence,
-		Statuses:   statuses,
-	}); err != nil {
-		return nil, internalError(err)
-	}
-
-	// 9. 单局结束判定（猜中 > 双方用尽）
-	members, err := q.ListMembers(ctx, room.ID)
-	if err != nil {
-		return nil, internalError(err)
-	}
-	opponentID := ""
-	for _, m := range members {
-		if m.ID != member.ID {
-			opponentID = m.ID
-			break
 		}
 	}
-	opponentCount := int64(0)
-	if opponentID != "" {
-		opponentCount, err = q.CountGuessesForRoundMember(ctx, repo.CountGuessesForRoundMemberParams{
-			RoundID: round.ID, MemberID: opponentID,
-		})
-		if err != nil {
-			return nil, internalError(err)
-		}
-	}
-	winnerSlot := 0
-	if isCorrect {
-		winnerSlot = int(member.Slot)
-	}
-	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, multi.GameMaxGuesses, false)
-	// 响应在提交前组装（自视角完整反馈，按快照水合；tx 尚未关闭）
-	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
-		GuessID:   guessChar.ID,
-		Statuses:  statusesJSON,
-		IsCorrect: isCorrect,
-	})
 	if err != nil {
 		return nil, err
 	}
-	if roundEnd.Ended {
-		var winner pgtype.Int4
-		if roundEnd.WinnerSlot != 0 {
-			winner = pgtype.Int4{Int32: int32(roundEnd.WinnerSlot), Valid: true}
-		}
-		if _, err := q.EndRound(ctx, repo.EndRoundParams{ID: round.ID, WinnerSlot: winner, EndedAt: timestamptz(s.now())}); err != nil {
-			return nil, internalError(err)
-		}
-		// 10. 比分与场次推进
-		advance := multi.AdvanceMatch([2]int{int(match.ScoreSlot1), int(match.ScoreSlot2)},
-			int(match.TargetWins), int(match.RoundCount), multi.MaxRounds(multi.RoomFormat(room.Format), s.timing.MaxRoundsFactor), roundEnd.WinnerSlot)
-		if _, err := q.UpdateMatchScore(ctx, repo.UpdateMatchScoreParams{
-			ID:        match.ID,
-			ScoreSlot1: int32(advance.Score[0]),
-			ScoreSlot2: int32(advance.Score[1]),
-		}); err != nil {
-			return nil, internalError(err)
-		}
-		var roundWinnerSlot *int
-		if roundEnd.WinnerSlot != 0 {
-			slot := roundEnd.WinnerSlot
-			roundWinnerSlot = &slot
-		}
-		nextStarts := s.now().Add(s.timing.Intermission)
-		if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundEnded, multi.RoundEndedEventPayload{
-			RoundID:      round.ID,
-			MatchIndex:   int(match.MatchIndex),
-			RoundIndex:   int(round.RoundIndex),
-			WinnerSlot:   roundWinnerSlot,
-			AnswerID:     round.AnswerID,
-			Scores:       multi.ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
-			NextStartsAt: &nextStarts,
-		}); err != nil {
-			return nil, internalError(err)
-		}
-		if advance.MatchEnded {
-			if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: timestamptz(s.now())}); err != nil {
-				return nil, internalError(err)
-			}
-			if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
-				ID:        room.ID,
-				Status:    string(multi.RoomStatusFinished),
-				ExpiresAt: timestamptz(s.now().Add(s.timing.FinishedRetention)),
-			}); err != nil {
-				return nil, internalError(err)
-			}
-			var matchWinnerSlot *int
-			if advance.WinnerSlot != 0 {
-				slot := advance.WinnerSlot
-				matchWinnerSlot = &slot
-			}
-			if err := multi.AppendEvent(ctx, q, room.ID, multi.EventMatchEnded, multi.MatchEndedEventPayload{
-				MatchIndex: int(match.MatchIndex),
-				WinnerSlot: matchWinnerSlot,
-				Scores:     multi.ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
-				Reason:     advance.Reason,
-			}); err != nil {
-				return nil, internalError(err)
-			}
-		}
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, internalError(err)
-	}
-	s.publish(request.RoomId)
-	return response, nil
+	return result.response, nil
 }
 
 // computeFeedback 校验角色并计算反馈（真实列序状态数组）。
@@ -365,14 +201,14 @@ func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVe
 // settleTimeoutInTxn 猜测事务内的超时结算（§9.2 步骤 4b）：本局判平，本次猜测不写入。
 func (s *Server) settleTimeoutInTxn(ctx context.Context, q *repo.Queries, roomID string, round repo.MultiRound, match repo.MultiMatch) error {
 	if _, err := q.EndRound(ctx, repo.EndRoundParams{
-		ID:        round.ID,
+		ID:         round.ID,
 		WinnerSlot: pgtype.Int4{},
-		EndedAt:   timestamptz(s.now()),
+		EndedAt:    timestamptz(s.now()),
 	}); err != nil {
 		return err
 	}
 	return multi.AppendEvent(ctx, q, roomID, multi.EventRoundEnded, multi.RoundEndedEventPayload{
-		RoundID:   round.ID,
+		RoundID:    round.ID,
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
 		WinnerSlot: nil,

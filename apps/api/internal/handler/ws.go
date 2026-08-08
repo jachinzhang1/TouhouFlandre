@@ -125,10 +125,7 @@ func (s *Server) markMemberConnected(ctx context.Context, roomID, memberID strin
 	if err != nil {
 		return internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  multi.RoomFormat(room.Format),
-		Members: multi.MemberViews(members),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, roomUpdatedPayload(room, members)); err != nil {
 		return internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {

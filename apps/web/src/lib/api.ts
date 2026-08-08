@@ -1,6 +1,8 @@
 import createClient from "openapi-fetch";
 import type { paths } from "../generated/api";
-import type { MultiRoomFormat } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+
+type RelayTurnSeconds = 30 | 60 | 90 | 120;
 
 // 默认同源（Next rewrites /api → Go 4000）；可被 NEXT_PUBLIC_API_BASE_URL 覆盖为直连。
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
@@ -103,7 +105,7 @@ export const api = {
   },
 
   // ---- 多人房间（08 §7.1） ----
-  createRoom: (body: { format: MultiRoomFormat; displayName?: string }) =>
+  createRoom: (body: { format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: RelayTurnSeconds; displayName?: string }) =>
     requestApi(client.POST("/api/rooms", { body })),
   roomInfo: (roomCode: string) =>
     requestApi(
@@ -148,6 +150,20 @@ export const api = {
     requestApi(
       client.DELETE("/api/rooms/{roomId}", {
         params: { path: { roomId } },
+        headers: guestAuthHeader(token),
+      }),
+    ),
+  forfeitRound: (roomId: string, token: string, roundIndex: number) =>
+    requestApi(
+      client.POST("/api/rooms/{roomId}/rounds/{roundIndex}/forfeit", {
+        params: { path: { roomId, roundIndex } },
+        headers: guestAuthHeader(token),
+      }),
+    ),
+  passRelayTurn: (roomId: string, token: string, roundIndex: number) =>
+    requestApi(
+      client.POST("/api/rooms/{roomId}/rounds/{roundIndex}/pass", {
+        params: { path: { roomId, roundIndex } },
         headers: guestAuthHeader(token),
       }),
     ),

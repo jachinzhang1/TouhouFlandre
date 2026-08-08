@@ -110,25 +110,42 @@ type MultiMember struct {
 }
 
 type MultiRoom struct {
-	ID        string             `json:"id"`
-	Code      string             `json:"code"`
-	Format    string             `json:"format"`
-	Status    string             `json:"status"`
-	EventSeq  int64              `json:"event_seq"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	ID          string             `json:"id"`
+	Code        string             `json:"code"`
+	Format      string             `json:"format"`
+	Status      string             `json:"status"`
+	EventSeq    int64              `json:"event_seq"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	Mode        string             `json:"mode"`
+	TurnSeconds int32              `json:"turn_seconds"`
 }
 
 type MultiRound struct {
-	ID         string             `json:"id"`
-	MatchID    string             `json:"match_id"`
-	RoundIndex int32              `json:"round_index"`
-	AnswerID   string             `json:"answer_id"`
-	Status     string             `json:"status"`
-	WinnerSlot pgtype.Int4        `json:"winner_slot"`
-	StartsAt   pgtype.Timestamptz `json:"starts_at"`
-	Deadline   pgtype.Timestamptz `json:"deadline"`
-	EndedAt    pgtype.Timestamptz `json:"ended_at"`
+	ID           string             `json:"id"`
+	MatchID      string             `json:"match_id"`
+	RoundIndex   int32              `json:"round_index"`
+	AnswerID     string             `json:"answer_id"`
+	Status       string             `json:"status"`
+	WinnerSlot   pgtype.Int4        `json:"winner_slot"`
+	StartsAt     pgtype.Timestamptz `json:"starts_at"`
+	Deadline     pgtype.Timestamptz `json:"deadline"`
+	EndedAt      pgtype.Timestamptz `json:"ended_at"`
+	TurnSlot     pgtype.Int4        `json:"turn_slot"`
+	TurnDeadline pgtype.Timestamptz `json:"turn_deadline"`
+}
+
+type MultiTurn struct {
+	ID             string             `json:"id"`
+	RoundID        string             `json:"round_id"`
+	MemberID       string             `json:"member_id"`
+	TurnIndex      int32              `json:"turn_index"`
+	Kind           string             `json:"kind"`
+	GuessID        pgtype.Text        `json:"guess_id"`
+	Statuses       []byte             `json:"statuses"`
+	IsCorrect      bool               `json:"is_correct"`
+	IdempotencyKey pgtype.Text        `json:"idempotency_key"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type RoomEvent struct {

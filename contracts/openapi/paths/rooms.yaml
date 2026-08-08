@@ -17,6 +17,14 @@ post:
           properties:
             format:
               $ref: "../schemas/multi-common.yaml#/RoomFormat"
+            mode:
+              $ref: "../schemas/multi-common.yaml#/MultiplayerMode"
+              description: 可选玩法模式；缺省为 race（竞速）。
+            turnSeconds:
+              type: integer
+              enum: [30, 60, 90, 120]
+              default: 60
+              description: 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
             displayName:
               type: string
               description: 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。

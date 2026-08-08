@@ -20,6 +20,9 @@ type Querier interface {
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
 	CountSearchCharacters(ctx context.Context, arg CountSearchCharactersParams) (int64, error)
+	CountSkipsForRoundMember(ctx context.Context, arg CountSkipsForRoundMemberParams) (int64, error)
+	CountTurnsForRound(ctx context.Context, roundID string) (int64, error)
+	CountTurnsForRoundMember(ctx context.Context, arg CountTurnsForRoundMemberParams) (int64, error)
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
@@ -68,6 +71,7 @@ type Querier interface {
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
+	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 幂等：ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING；
@@ -75,11 +79,13 @@ type Querier interface {
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
 	InsertGuess(ctx context.Context, arg InsertGuessParams) (MultiGuess, error)
 	InsertRoomEvent(ctx context.Context, arg InsertRoomEventParams) (RoomEvent, error)
+	InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTurn, error)
 	// 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
 	ListActiveMatches(ctx context.Context) ([]MultiMatch, error)
 	ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeqParams) ([]RoomEvent, error)
 	ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error)
 	ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error)
+	ListExpiredRelayTurns(ctx context.Context) ([]ListExpiredRelayTurnsRow, error)
 	ListExpiredRounds(ctx context.Context) ([]MultiRound, error)
 	// finished 展示期（FINISHED_RETENTION）到期的场次 → 关闭房间（room.closed reason=retention）。
 	ListFinishedMatches(ctx context.Context) ([]MultiMatch, error)
@@ -93,6 +99,7 @@ type Querier interface {
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
 	ListTimedOutMembers(ctx context.Context) ([]MultiMember, error)
+	ListTurnsForRound(ctx context.Context, roundID string) ([]MultiTurn, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
 	ListWorks(ctx context.Context) ([]Work, error)
 	SearchCharactersByAppearance(ctx context.Context, arg SearchCharactersByAppearanceParams) ([]Character, error)
@@ -105,6 +112,7 @@ type Querier interface {
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
+	UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams) (MultiRound, error)
 	UpdateSessionGuess(ctx context.Context, arg UpdateSessionGuessParams) (GameSession, error)
 	UpsertCatalogState(ctx context.Context, currentVersion string) error
 	UpsertCharacter(ctx context.Context, arg UpsertCharacterParams) error

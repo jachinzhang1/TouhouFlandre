@@ -1,5 +1,5 @@
 // 多人房间持久化与展示工具（08 §10.1）。
-import type { MultiRoomFormat } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 
 export const MULTI_ROOM_STORAGE_KEY = "touhouflandre:multi-room";
 
@@ -66,3 +66,39 @@ export const ROOM_FORMAT_SHORT: Record<MultiRoomFormat, string> = {
   bo5: "BO5",
   bo7: "BO7",
 };
+
+export const MULTIPLAYER_MODE_LABELS: Record<MultiplayerMode, string> = {
+  race: "竞速",
+  relay: "接力",
+};
+
+export const MULTIPLAYER_MODE_DESCRIPTIONS: Record<MultiplayerMode, string> = {
+  race: "两边同时猜，先猜中者赢下本局。",
+  relay: "共用一栏轮流猜，猜中者赢下本局。",
+};
+
+export const TURN_SECONDS_OPTIONS = [30, 60, 90, 120] as const;
+export type RelayTurnSeconds = (typeof TURN_SECONDS_OPTIONS)[number];
+
+type RelaySkipRow = {
+  memberSlot: number;
+  kind: string;
+};
+
+export function countRelaySkips(
+  rows: readonly RelaySkipRow[],
+  slot: 1 | 2,
+): number {
+  return rows.filter(
+    (row) =>
+      row.memberSlot === slot && (row.kind === "timeout" || row.kind === "pass"),
+  ).length;
+}
+
+export function relaySkipRemaining(
+  rows: readonly RelaySkipRow[],
+  slot: 1 | 2,
+  maxSkipsPerPlayer: number,
+): number {
+  return Math.max(0, maxSkipsPerPlayer - countRelaySkips(rows, slot));
+}

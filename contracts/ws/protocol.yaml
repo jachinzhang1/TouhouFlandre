@@ -59,11 +59,17 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, members]
+      required: [format, mode, turnSeconds, members]
       properties:
         format:
           type: string
           enum: [bo1, bo3, bo5, bo7]
+        mode:
+          type: string
+          enum: [race, relay]
+        turnSeconds:
+          type: integer
+          enum: [30, 60, 90, 120]
         members:
           type: array
           items:
@@ -89,11 +95,17 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, targetWins, catalogVersion, matchIndex]
+      required: [format, mode, turnSeconds, targetWins, catalogVersion, matchIndex]
       properties:
         format:
           type: string
           enum: [bo1, bo3, bo5, bo7]
+        mode:
+          type: string
+          enum: [race, relay]
+        turnSeconds:
+          type: integer
+          enum: [30, 60, 90, 120]
         targetWins:
           type: integer
           minimum: 1
@@ -142,6 +154,23 @@ events:
         maxGuesses:
           type: integer
           minimum: 1
+        turnSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+          description: 接力模式首个可提交玩家；竞速模式缺省。
+        turnDeadline:
+          type: string
+          format: date-time
+          description: 接力模式当前手截止时刻；竞速模式缺省。
+        maxTurnsPerPlayer:
+          type: integer
+          minimum: 1
+          description: 接力模式每名玩家每局轮次上限；竞速模式缺省。
+        maxSkipsPerPlayer:
+          type: integer
+          minimum: 0
+          description: 接力模式每名玩家每局空过上限；主动空过与超时空过共享，竞速模式缺省。
 
   - type: round.playing
     observer: all
@@ -185,6 +214,78 @@ events:
           maxItems: 6
           items:
             $ref: "#/definitions/FeedbackStatus"
+
+  - type: round.shared.guess
+    observer: all
+    summary: 接力模式中一次被接受的共享猜测行，携带完整反馈并推进到下一手。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, row]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        row:
+          $ref: "#/definitions/RelayTurnRow"
+        nextTurnSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+        nextTurnDeadline:
+          type: string
+          format: date-time
+
+  - type: round.turn.timeout
+    observer: all
+    summary: 接力模式中当前玩家超时空过，消耗该玩家一次轮次与空过额度；额度耗尽后再次空过则本局判负。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, row]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        row:
+          $ref: "#/definitions/RelayTurnRow"
+        nextTurnSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+        nextTurnDeadline:
+          type: string
+          format: date-time
+
+  - type: round.turn.pass
+    observer: all
+    summary: 接力模式中当前玩家主动空过，消耗该玩家一次轮次与空过额度；额度耗尽后再次空过则本局判负。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, row]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        row:
+          $ref: "#/definitions/RelayTurnRow"
+        nextTurnSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+        nextTurnDeadline:
+          type: string
+          format: date-time
 
   - type: round.ended
     observer: all
@@ -230,6 +331,11 @@ events:
               description: 作品短编号；整数正作使用 THxx，无法编号时为 TH--。
         boards:
           $ref: "#/definitions/Boards"
+        turns:
+          type: array
+          description: 接力模式共享轮次流；竞速模式缺省。
+          items:
+            $ref: "#/definitions/RelayTurnRow"
         scores:
           type: object
           additionalProperties: false
@@ -398,6 +504,23 @@ definitions:
     type: array
     items:
       $ref: "#/definitions/GuessResult"
+  RelayTurnRow:
+    type: object
+    additionalProperties: false
+    required: [index, memberSlot, kind]
+    properties:
+      index:
+        type: integer
+        minimum: 1
+      memberSlot:
+        type: integer
+        minimum: 1
+        maximum: 2
+      kind:
+        type: string
+        enum: [guess, timeout, pass]
+      guess:
+        $ref: "#/definitions/GuessResult"
   Boards:
     type: object
     additionalProperties: false
@@ -420,6 +543,8 @@ examples:
         occurredAt: "2026-08-06T12:00:01Z"
         payload:
           format: bo3
+          mode: race
+          turnSeconds: 60
           members:
             - slot: 1
               displayName: 房主
@@ -439,6 +564,8 @@ examples:
         occurredAt: "2026-08-06T12:00:07Z"
         payload:
           format: bo3
+          mode: race
+          turnSeconds: 60
           targetWins: 2
           catalogVersion: 66b0a79b
           matchIndex: 0
@@ -490,6 +617,67 @@ examples:
           roundIndex: 1
           rowIndex: 1
           statuses: [miss, exact, partial, lower, miss, unknown]
+
+    - label: round.shared.guess（接力共享猜测行）
+      message:
+        type: round.shared.guess
+        eventId: evt_01J8Z3R
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 12
+        occurredAt: "2026-08-06T12:00:14Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          row:
+            index: 1
+            memberSlot: 1
+            kind: guess
+            guess:
+              guessId: marisa_kirisame
+              guessName: 雾雨魔理沙
+              isCorrect: false
+              feedback:
+                - field: firstAppearance
+                  label: 初登场作品
+                  status: partial
+                  symbol: "~"
+                  displayValue: [游戏]
+          nextTurnSlot: 2
+          nextTurnDeadline: "2026-08-06T12:01:14Z"
+
+    - label: round.turn.timeout（接力超时空过）
+      message:
+        type: round.turn.timeout
+        eventId: evt_01J8Z3T
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 13
+        occurredAt: "2026-08-06T12:01:14Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          row:
+            index: 2
+            memberSlot: 2
+            kind: timeout
+          nextTurnSlot: 1
+          nextTurnDeadline: "2026-08-06T12:02:14Z"
+
+    - label: round.turn.pass（接力主动空过）
+      message:
+        type: round.turn.pass
+        eventId: evt_01J8Z3P
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 14
+        occurredAt: "2026-08-06T12:02:00Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          row:
+            index: 3
+            memberSlot: 1
+            kind: pass
+          nextTurnSlot: 2
+          nextTurnDeadline: "2026-08-06T12:03:00Z"
 
     - label: round.ended（玩家1猜中）
       message:
@@ -638,6 +826,8 @@ examples:
         occurredAt: "2026-08-06T12:00:01Z"
         payload:
           format: bo3
+          mode: race
+          turnSeconds: 60
           members: []
 
     - label: round.opponent.guess 缺 statuses

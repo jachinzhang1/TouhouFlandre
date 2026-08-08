@@ -6,7 +6,13 @@ import type {
   RoundStartedPayload,
 } from "@touhouflandre/shared";
 import { putStatsDraft, stableRecordId, statsDb } from "./db";
-import { STATS_SCHEMA_VERSION, type MultiplayerStatsDraft, type StatsGuessSnapshot, type StatsOutcome } from "./types";
+import {
+  STATS_SCHEMA_VERSION,
+  type MultiplayerStatsDraft,
+  type StatsGuessSnapshot,
+  type StatsOutcome,
+  type StatsRelayTurnSnapshot,
+} from "./types";
 
 export interface MultiplayerTimingSnapshot {
   activeElapsedMs: number;
@@ -55,6 +61,8 @@ export async function recordMultiplayerEvent(
       startedAt: event.occurredAt,
       updatedAt: event.occurredAt,
       format: payload.format,
+      multiplayerMode: payload.mode ?? "race",
+      memberSlot: mySlot,
       matchIndex: payload.matchIndex,
       rounds: [],
     });
@@ -88,15 +96,46 @@ export async function recordMultiplayerEvent(
       (timing?.guessCompletedElapsedMs.length ?? 0) >= (active?.guessCompletedElapsedMs.length ?? 0)
         ? timing?.guessCompletedElapsedMs ?? []
         : active?.guessCompletedElapsedMs ?? [];
+    const multiplayerMode = draft.multiplayerMode ?? "race";
     const board = mySlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
     const durations = durationsForGuesses(completed, board.length);
-    const guesses: StatsGuessSnapshot[] = board.map((guess, index) => ({
-      id: guess.guessId,
-      name: guess.guessName,
-      avatarUrl: guess.guessAvatarUrl,
-      correct: guess.isCorrect,
-      durationMs: durations[index],
-    }));
+    let turns: StatsRelayTurnSnapshot[] | undefined;
+    let guesses: StatsGuessSnapshot[];
+    if (multiplayerMode === "relay" && payload.turns) {
+      turns = payload.turns.map((turn) => {
+        const memberSlot = turn.memberSlot === 2 ? 2 : 1;
+        if (turn.kind !== "guess" || !turn.guess) {
+          return {
+            index: turn.index,
+            memberSlot,
+            kind: turn.kind === "pass" ? "pass" : "timeout",
+          };
+        }
+        return {
+          index: turn.index,
+          memberSlot,
+          kind: "guess",
+          guess: {
+            id: turn.guess.guessId,
+            name: turn.guess.guessName,
+            avatarUrl: turn.guess.guessAvatarUrl,
+            correct: turn.guess.isCorrect,
+            memberSlot,
+          },
+        };
+      });
+      guesses = turns.flatMap((turn) =>
+        turn.kind === "guess" ? [turn.guess] : [],
+      );
+    } else {
+      guesses = board.map((guess, index) => ({
+        id: guess.guessId,
+        name: guess.guessName,
+        avatarUrl: guess.guessAvatarUrl,
+        correct: guess.isCorrect,
+        durationMs: durations[index],
+      }));
+    }
     const round = {
       roundIndex: payload.roundIndex,
       startedAt: active?.startedAt ?? event.occurredAt,
@@ -110,6 +149,7 @@ export async function recordMultiplayerEvent(
         work: { id: payload.answer.workId, title: payload.answer.workTitle, code: payload.answer.workCode },
       },
       guesses,
+      turns,
     };
     draft.rounds = [...draft.rounds.filter((entry) => entry.roundIndex !== payload.roundIndex), round].sort((a, b) => a.roundIndex - b.roundIndex);
     draft.activeRound = undefined;
@@ -132,6 +172,8 @@ export async function recordMultiplayerEvent(
       kind: "multiplayer" as const,
       mode: "multiplayer" as const,
       format: draft.format,
+      multiplayerMode: draft.multiplayerMode ?? "race",
+      memberSlot: draft.memberSlot ?? mySlot,
       matchIndex: payload.matchIndex,
       startedAt: draft.startedAt,
       endedAt: event.occurredAt,

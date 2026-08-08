@@ -68,12 +68,13 @@ export function GuessInputBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
+          disabled={disabled}
+          placeholder={disabled ? "等待当前轮次……" : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"}
           aria-label="搜索角色"
           aria-activedescendant={showSuggestions ? `suggestion-${highlightIndex}` : undefined}
           aria-expanded={showSuggestions}
           role="combobox"
-          className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion"
+          className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
         />
         {query && (
           <button
