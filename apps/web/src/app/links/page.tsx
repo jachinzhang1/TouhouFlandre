@@ -86,6 +86,17 @@ const developers: Array<{ name: string; links: Platform[] }> = [
       },
     ],
   },
+  {
+    name: "陌望",
+    links: [
+      {
+        name: "Bilibili",
+        href: "https://space.bilibili.com/3546908777777221",
+        Icon: BilibiliIcon,
+        className: platformStyles.bilibili,
+      },
+    ],
+  },
 ];
 
 const friendLinks = [
