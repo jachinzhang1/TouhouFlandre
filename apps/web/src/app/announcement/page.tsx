@@ -1,13 +1,10 @@
-import { Megaphone } from "lucide-react";
-import { PlaceholderPage } from "../../components/PlaceholderPage";
+import { readAnnouncements } from "../../announcements/catalog";
+import { AnnouncementPage } from "../../components/AnnouncementPage";
 
-export default function AnnouncementPage() {
-  return (
-    <PlaceholderPage
-      icon={Megaphone}
-      eyebrow="ANNOUNCEMENTS"
-      title="公告"
-      text="当前暂无公告。"
-    />
-  );
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+export default async function AnnouncementRoute() {
+  const { announcements } = await readAnnouncements();
+  return <AnnouncementPage initialAnnouncements={announcements} />;
 }
