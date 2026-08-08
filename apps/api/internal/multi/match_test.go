@@ -28,13 +28,13 @@ func TestTargetWinsAndMaxRounds(t *testing.T) {
 
 func TestSettleRoundEnd(t *testing.T) {
 	cases := []struct {
-		name        string
-		winnerSlot  int
-		counts      [2]int
-		maxGuesses  int
-		timedOut    bool
-		wantEnded   bool
-		wantWinner  int
+		name       string
+		winnerSlot int
+		counts     [2]int
+		maxGuesses int
+		timedOut   bool
+		wantEnded  bool
+		wantWinner int
 	}{
 		{"猜中立即结束", 1, [2]int{1, 0}, 8, false, true, 1},
 		{"对手猜中", 2, [2]int{1, 1}, 8, false, true, 2},
@@ -73,6 +73,41 @@ func TestAdvanceMatch(t *testing.T) {
 	}
 	for _, c := range cases {
 		got := AdvanceMatch(c.score, c.target, c.roundCnt, c.maxRnd, c.winner)
+		if got != c.want {
+			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestRelayFirstTurnSlot(t *testing.T) {
+	cases := map[int]int{
+		1: 1,
+		2: 2,
+		3: 1,
+		4: 2,
+	}
+	for roundIndex, want := range cases {
+		if got := RelayFirstTurnSlot(roundIndex); got != want {
+			t.Errorf("RelayFirstTurnSlot(%d) = %d, want %d", roundIndex, got, want)
+		}
+	}
+}
+
+func TestAdvanceRelayTurn(t *testing.T) {
+	cases := []struct {
+		name    string
+		correct bool
+		slot    int
+		counts  [2]int
+		want    RelayTurnAdvance
+	}{
+		{"猜中立即胜局", true, 1, [2]int{1, 0}, RelayTurnAdvance{RoundEnded: true, WinnerSlot: 1}},
+		{"错误后切给对方", false, 1, [2]int{1, 0}, RelayTurnAdvance{NextTurnSlot: 2}},
+		{"对方机会已尽则自己继续", false, 1, [2]int{7, 8}, RelayTurnAdvance{NextTurnSlot: 1}},
+		{"双方机会耗尽平局", false, 2, [2]int{8, 8}, RelayTurnAdvance{RoundEnded: true}},
+	}
+	for _, c := range cases {
+		got := AdvanceRelayTurn(c.correct, c.slot, c.counts, 8)
 		if got != c.want {
 			t.Errorf("%s: got %+v, want %+v", c.name, got, c.want)
 		}

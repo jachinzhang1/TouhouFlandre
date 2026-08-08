@@ -124,6 +124,14 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if err != nil {
 			return nil, false, err
 		}
+		turns, err := q.ListTurnsForRound(ctx, round.ID)
+		if err != nil {
+			return nil, false, err
+		}
+		relayRows, err := HydrateRelayTurnRows(turns, chars, memberSlotByID)
+		if err != nil {
+			return nil, false, err
+		}
 		answer := chars[payload.AnswerID]
 		return RoundEndedPayload{
 			MatchIndex:   payload.MatchIndex,
@@ -132,6 +140,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			WinnerSlot:   payload.WinnerSlot,
 			Answer:       AnswerViewForCharacter(answer),
 			Boards:       hydrateBoards(guesses, chars, memberSlotByID),
+			Turns:        relayRows,
 			Scores:       payload.Scores,
 			NextStartsAt: payload.NextStartsAt,
 		}, false, nil
@@ -200,23 +209,7 @@ func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, m
 		if !ok {
 			continue
 		}
-		hydrated := GuessResultView{
-			GuessID:        guessChar.ID,
-			GuessName:      guessChar.Names.ZhHans,
-			GuessAvatarURL: guessChar.AvatarURL,
-			IsCorrect:      guess.IsCorrect,
-		}
-		feedback := HydrateGuessResult(guessChar, statuses, guess.IsCorrect)
-		hydrated.Feedback = make([]FieldFeedbackView, len(feedback.Feedback))
-		for i, fb := range feedback.Feedback {
-			hydrated.Feedback[i] = FieldFeedbackView{
-				Field:        string(fb.Field),
-				Label:        fb.Label,
-				Status:       string(fb.Status),
-				Symbol:       fb.Symbol,
-				DisplayValue: fb.DisplayValue,
-			}
-		}
+		hydrated := HydrateGuessResultView(guessChar, statuses, guess.IsCorrect)
 		if memberSlotByID[guess.MemberID] == 1 {
 			boards.Slot1 = append(boards.Slot1, hydrated)
 		} else {

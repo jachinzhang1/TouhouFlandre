@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { StatsDraft, StatsMetadata, StatsRecord } from "./types";
+import { STATS_SCHEMA_VERSION, type StatsDraft, type StatsMetadata, type StatsRecord } from "./types";
 
 const DB_NAME = "touhouflandre-stats";
 const CHANNEL_NAME = "touhouflandre:stats";
@@ -70,7 +70,7 @@ export async function clearStatistics(): Promise<void> {
     await statsDb.records.clear();
     await statsDb.drafts.clear();
     await statsDb.metadata.put({ key: "clearedAt", value: clearedAt });
-    await statsDb.metadata.put({ key: "schemaVersion", value: 1 });
+    await statsDb.metadata.put({ key: "schemaVersion", value: STATS_SCHEMA_VERSION });
   });
   broadcast("cleared");
 }
@@ -82,7 +82,7 @@ export async function replaceStatistics(records: StatsRecord[]): Promise<void> {
     await statsDb.drafts.clear();
     await statsDb.records.bulkPut(records);
     await statsDb.metadata.put({ key: "lastImportAt", value: importedAt });
-    await statsDb.metadata.put({ key: "schemaVersion", value: 1 });
+    await statsDb.metadata.put({ key: "schemaVersion", value: STATS_SCHEMA_VERSION });
   });
   broadcast("imported");
 }
@@ -91,7 +91,7 @@ export async function mergeStatistics(records: StatsRecord[]): Promise<void> {
   await statsDb.transaction("rw", statsDb.records, statsDb.metadata, async () => {
     await statsDb.records.bulkPut(records);
     await statsDb.metadata.put({ key: "lastImportAt", value: new Date().toISOString() });
-    await statsDb.metadata.put({ key: "schemaVersion", value: 1 });
+    await statsDb.metadata.put({ key: "schemaVersion", value: STATS_SCHEMA_VERSION });
   });
   broadcast("imported");
 }

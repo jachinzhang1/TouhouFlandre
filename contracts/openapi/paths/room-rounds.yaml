@@ -8,9 +8,11 @@ post:
     - rooms
   summary: 提交猜测
   description: |
-    成员令牌鉴权。实时竞速：无回合交替，任何时刻（局处于 playing）双方都可提交。
+    成员令牌鉴权。竞速模式：无回合交替，任何时刻（局处于 playing）双方都可提交。
+    接力模式：仅当前 turnSlot 可提交，提交或超时空过都会消耗该玩家一次轮次。
     携带 idempotencyKey（客户端 UUID），重试返回首次结果。
-    响应为自视角完整反馈；局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影）。
+    响应为自视角完整反馈；竞速局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影），
+    接力局中的共享棋盘经 WS round.shared.guess / 快照投影同步。
   parameters:
     - name: roomId
       in: path
@@ -69,7 +71,8 @@ post:
       description: |
         房间/对局/局状态不允许本次猜测：
         ROOM_CLOSED / MATCH_ALREADY_STARTED / ROUND_NOT_ACTIVE（countdown/已结束/已超时，猜测不写入）/
-        ROUND_ENDED（正确猜测迟到，携带局结果，不写入）/ GUESS_LIMIT_REACHED / DUPLICATE_GUESS。
+        ROUND_ENDED（正确猜测迟到，携带局结果，不写入）/ NOT_YOUR_TURN / TURN_EXPIRED /
+        GUESS_LIMIT_REACHED / DUPLICATE_GUESS。
       content:
         application/json:
           schema:

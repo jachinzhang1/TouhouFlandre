@@ -100,7 +100,16 @@ func createMatchFixture(t *testing.T) matchFixture {
 // createMatchFixtureFormat 以指定赛制创建双人房间（fast server）。
 func createMatchFixtureFormat(t *testing.T, format string) matchFixture {
 	t.Helper()
-	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]string{"format": format})
+	return createMatchFixtureMode(t, format, "race", 60)
+}
+
+func createMatchFixtureMode(t *testing.T, format, mode string, turnSeconds int) matchFixture {
+	t.Helper()
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{
+		"format":      format,
+		"mode":        mode,
+		"turnSeconds": turnSeconds,
+	})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create: %d %s", resp.StatusCode, payload)
 	}
@@ -363,6 +372,82 @@ func TestMultiGuessRace(t *testing.T) {
 	}
 	if statuses["ROUND_ENDED"] != 1 {
 		t.Fatalf("loser should get ROUND_ENDED: %v", statuses)
+	}
+}
+
+func TestRelayModeSharedTurns(t *testing.T) {
+	fixture := createMatchFixtureMode(t, "bo3", "relay", 30)
+	resp, payload := fastRequest(http.MethodGet, "/api/rooms/"+fixture.roomCode, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("info status %d: %s", resp.StatusCode, payload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(payload, &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode != openapi.Relay || int(info.TurnSeconds) != 30 {
+		t.Fatalf("room info mode/turn = %s/%d, want relay/30", info.Mode, info.TurnSeconds)
+	}
+
+	snap := startMatch(t, fixture)
+	if snap.Mode != openapi.Relay || int(snap.TurnSeconds) != 30 {
+		t.Fatalf("snapshot mode/turn = %s/%d, want relay/30", snap.Mode, snap.TurnSeconds)
+	}
+	if snap.Round == nil || snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 1 ||
+		snap.Round.TurnDeadline == nil || snap.Round.MaxTurnsPerPlayer == nil || *snap.Round.MaxTurnsPerPlayer != 8 {
+		t.Fatalf("relay round fields = %+v", snap.Round)
+	}
+
+	answer := currentAnswer(t, fixture.roomID)
+	wrongIDs := guessableIDs(t, answer, 3)
+	resp, payload = guess(t, fixture.roomID, fixture.joinerToken, 1, wrongIDs[0], "relay-not-your-turn")
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("joiner early guess status %d: %s", resp.StatusCode, payload)
+	}
+	if err := decodeError(t, payload); err.Code != "NOT_YOUR_TURN" {
+		t.Fatalf("want NOT_YOUR_TURN, got %s", err.Code)
+	}
+
+	resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, wrongIDs[0], "relay-host-1")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("host relay guess status %d: %s", resp.StatusCode, payload)
+	}
+	snap = startMatchSnapshotAs(t, fixture, fixture.joinerToken)
+	if snap.Round == nil || snap.Round.Shared == nil || len(snap.Round.Shared.Rows) != 1 {
+		t.Fatalf("joiner shared rows = %+v", snap.Round)
+	}
+	row := snap.Round.Shared.Rows[0]
+	if row.Kind != "guess" || row.MemberSlot != 1 || row.Guess == nil || len(row.Guess.Feedback) != 6 {
+		t.Fatalf("shared guess row = %+v", row)
+	}
+	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
+		t.Fatalf("turn slot after host guess = %+v, want 2", snap.Round.TurnSlot)
+	}
+
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_round r
+		SET turn_deadline = now() - interval '1 second'
+		FROM multi_match m
+		WHERE r.match_id = m.id AND m.room_id = $1 AND r.round_index = 1`,
+		fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
+	resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, wrongIDs[1], "relay-host-after-timeout")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("host after timeout status %d: %s", resp.StatusCode, payload)
+	}
+	snap = startMatchSnapshot(t, fixture)
+	if snap.Round == nil || snap.Round.Shared == nil || len(snap.Round.Shared.Rows) != 3 {
+		t.Fatalf("shared rows after timeout = %+v", snap.Round)
+	}
+	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].MemberSlot != 2 {
+		t.Fatalf("timeout row = %+v", snap.Round.Shared.Rows[1])
+	}
+	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].MemberSlot != 1 {
+		t.Fatalf("post-timeout guess row = %+v", snap.Round.Shared.Rows[2])
+	}
+	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
+		t.Fatalf("turn slot after post-timeout host guess = %+v, want 2", snap.Round.TurnSlot)
 	}
 }
 
@@ -659,7 +744,12 @@ func TestMultiFullBO3AndIntermission(t *testing.T) {
 // startMatchSnapshot 拉取快照（host 视角）。
 func startMatchSnapshot(t *testing.T, fixture matchFixture) openapi.RoomSnapshot {
 	t.Helper()
-	resp, payload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.hostToken, nil)
+	return startMatchSnapshotAs(t, fixture, fixture.hostToken)
+}
+
+func startMatchSnapshotAs(t *testing.T, fixture matchFixture, token string) openapi.RoomSnapshot {
+	t.Helper()
+	resp, payload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", token, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("snapshot: %d %s", resp.StatusCode, payload)
 	}

@@ -4,26 +4,33 @@
 import { useRouter } from "next/navigation";
 import { DoorOpen, Plus, Users } from "lucide-react";
 import { useState } from "react";
-import type { MultiRoomFormat } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];
 import {
   isValidRoomCode,
+  MULTIPLAYER_MODE_DESCRIPTIONS,
+  MULTIPLAYER_MODE_LABELS,
   normalizeRoomCode,
   ROOM_FORMAT_LABELS,
   ROOM_FORMAT_SHORT,
   saveMultiRoom,
+  TURN_SECONDS_OPTIONS,
+  type RelayTurnSeconds,
 } from "../domain/multiRoom";
 import { api } from "../lib/api";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
+const MODES: MultiplayerMode[] = ["race", "relay"];
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : "操作失败。");
 
 export function MultiLobby() {
   const router = useRouter();
   const [format, setFormat] = useState<MultiRoomFormat>("bo3");
+  const [mode, setMode] = useState<MultiplayerMode>("race");
+  const [turnSeconds, setTurnSeconds] = useState<RelayTurnSeconds>(60);
   const [nickname, setNickname] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [joinNickname, setJoinNickname] = useState("");
@@ -60,6 +67,8 @@ export function MultiLobby() {
     try {
       const created = await api.createRoom({
         format,
+        mode,
+        turnSeconds,
         displayName: nickname || undefined,
       });
       saveMultiRoom({
@@ -123,8 +132,63 @@ export function MultiLobby() {
               创建房间
             </h2>
             <p className="mt-0 mb-4 text-[0.78rem] text-ink-soft">
-              你是房主，选择赛制并邀请好友加入。
+              你是房主，选择玩法和赛制并邀请好友加入。
             </p>
+            <fieldset className="mb-4">
+              <legend className="mb-1 text-[0.75rem] text-ink-soft">玩法</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {MODES.map((option) => (
+                  <label
+                    key={option}
+                    className={`flex min-h-[58px] cursor-pointer flex-col justify-center rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
+                      mode === option
+                        ? "border-vermilion bg-vermilion-soft text-vermilion"
+                        : "border-line bg-paper-muted hover:bg-paper"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="mode"
+                      value={option}
+                      checked={mode === option}
+                      onChange={() => setMode(option)}
+                      className="sr-only"
+                    />
+                    <span>{MULTIPLAYER_MODE_LABELS[option]}</span>
+                    <span className="mt-0.5 text-[0.68rem] font-normal text-ink-soft">
+                      {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {mode === "relay" && (
+              <fieldset className="mb-4">
+                <legend className="mb-1 text-[0.75rem] text-ink-soft">单手时限</legend>
+                <div className="grid grid-cols-4 gap-2">
+                  {TURN_SECONDS_OPTIONS.map((seconds) => (
+                    <label
+                      key={seconds}
+                      className={`flex cursor-pointer items-center justify-center rounded-[6px] border px-2 py-2 text-[0.78rem] font-bold tabular-nums ${
+                        turnSeconds === seconds
+                          ? "border-jade bg-jade-soft text-jade"
+                          : "border-line bg-paper-muted hover:bg-paper"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="turnSeconds"
+                        value={seconds}
+                        checked={turnSeconds === seconds}
+                        onChange={() => setTurnSeconds(seconds)}
+                        className="sr-only"
+                      />
+                      {seconds}s
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <fieldset className="mb-4">
               <legend className="sr-only">赛制</legend>
               <div className="grid grid-cols-2 gap-2">
@@ -200,7 +264,9 @@ export function MultiLobby() {
             {infoLoading && <p className="mt-0 mb-2 text-[0.72rem] text-ink-soft">查询中……</p>}
             {info && (
               <p className="mt-0 mb-2 text-[0.72rem] text-jade">
-                房间存在 · {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 当前 {info.memberCount}/2 人
+                房间存在 · {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ?? info.mode}
+                {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
+                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 当前 {info.memberCount}/2 人
               </p>
             )}
             {codeValid && infoError && !infoLoading && (

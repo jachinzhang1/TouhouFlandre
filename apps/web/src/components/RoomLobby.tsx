@@ -6,7 +6,10 @@ import { useState } from "react";
 import type { components } from "../generated/api";
 
 type MemberView = components["schemas"]["MemberView"];
-import { ROOM_FORMAT_LABELS } from "../domain/multiRoom";
+import {
+  MULTIPLAYER_MODE_LABELS,
+  ROOM_FORMAT_LABELS,
+} from "../domain/multiRoom";
 
 const MEMBER_STATUS_LABEL: Record<string, string> = {
   connected: "在线",
@@ -17,6 +20,8 @@ const MEMBER_STATUS_LABEL: Record<string, string> = {
 export function RoomLobby({
   roomCode,
   format,
+  mode,
+  turnSeconds,
   members,
   mySlot,
   onReady,
@@ -24,6 +29,8 @@ export function RoomLobby({
 }: {
   roomCode: string;
   format: string;
+  mode: string;
+  turnSeconds: number;
   members: MemberView[];
   mySlot: 1 | 2;
   onReady: () => void;
@@ -54,6 +61,8 @@ export function RoomLobby({
           {roomCode}
         </h1>
         <p className="mb-5 text-[0.8rem] text-ink-soft">
+          {MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ?? mode}
+          {mode === "relay" ? ` ${turnSeconds}s` : ""} ·{" "}
           {ROOM_FORMAT_LABELS[format as keyof typeof ROOM_FORMAT_LABELS] ?? format} ·
           把房间号发给好友加入
         </p>

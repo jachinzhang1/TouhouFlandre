@@ -2,6 +2,7 @@
 
 // 对局视图（08 §10.2 布局调整）：比分条 + 双棋盘左右排布（左自己、右对手；
 // 窄屏 max-[680px] 堆叠为上下）。搜索输入在底部固定条（GuessInputBar）。
+import type { ReactNode } from "react";
 import type { components } from "../generated/api";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
@@ -22,6 +23,7 @@ export function MatchBoard({
   catalogVersion,
   onGuess,
   disabled,
+  roundActions,
 }: {
   format: string;
   match: MatchView;
@@ -31,6 +33,7 @@ export function MatchBoard({
   catalogVersion?: string;
   onGuess: (guessId: string) => void;
   disabled?: boolean;
+  roundActions?: ReactNode;
 }) {
   const remaining = useRoomClock(round?.deadline ?? null);
 
@@ -39,7 +42,7 @@ export function MatchBoard({
 
   return (
     <section className="px-[18px] pt-5 pb-28">
-      <div className="mb-3 flex items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
           {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}
         </span>
@@ -54,6 +57,7 @@ export function MatchBoard({
             剩余 {formatRemaining(remaining)}
           </span>
         )}
+        {roundActions}
       </div>
 
       <div

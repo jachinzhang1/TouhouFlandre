@@ -18,11 +18,15 @@ import {
   X,
 } from "lucide-react";
 import { useEffect } from "react";
-import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
+import {
+  MULTIPLAYER_MODE_LABELS,
+  ROOM_FORMAT_SHORT,
+} from "../domain/multiRoom";
 import {
   aggregateWorks,
   buildHistogram,
   dailyStreak,
+  displayGuessesForRecord,
   filterStatsRecords,
   guessDurations,
   roundsForRecords,
@@ -99,7 +103,7 @@ function escapeHtml(value: string): string {
 }
 
 export function StatsDashboard() {
-  const [filters, setFilters] = useState<StatsFilters>({ mode: "all", format: "all" });
+  const [filters, setFilters] = useState<StatsFilters>({ mode: "all", format: "all", multiplayerMode: "all" });
   const [revision, setRevision] = useState(0);
   const [clearOpen, setClearOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
@@ -239,6 +243,10 @@ export function StatsDashboard() {
                       option.value === "daily" || option.value === "random"
                         ? "all"
                         : current.format,
+                    multiplayerMode:
+                      option.value === "daily" || option.value === "random"
+                        ? "all"
+                        : current.multiplayerMode,
                   }))
                 }
               >
@@ -259,6 +267,14 @@ export function StatsDashboard() {
           <select className="h-10 rounded-[5px] border border-line bg-[var(--surface)] px-3 text-sm text-ink" value={filters.format} onChange={(event) => setFilters((current) => ({ ...current, format: event.target.value as StatsFilters["format"] }))}>
             <option value="all">全部赛制</option>
             <option value="bo1">BO1</option><option value="bo3">BO3</option><option value="bo5">BO5</option><option value="bo7">BO7</option>
+          </select>
+        </label>
+        <label className="grid gap-1.5">
+          <span className="h-4 text-xs font-bold leading-4 text-ink-soft">多人玩法</span>
+          <select className="h-10 rounded-[5px] border border-line bg-[var(--surface)] px-3 text-sm text-ink" value={filters.multiplayerMode} onChange={(event) => setFilters((current) => ({ ...current, multiplayerMode: event.target.value as StatsFilters["multiplayerMode"] }))}>
+            <option value="all">全部玩法</option>
+            <option value="race">竞速</option>
+            <option value="relay">接力</option>
           </select>
         </label>
       </section>
@@ -370,9 +386,13 @@ function History({ records }: { records: StatsRecord[] }) {
 function HistoryRow({ record }: { record: StatsRecord }) {
   const [open, setOpen] = useState(false);
   const rounds = record.kind === "single" ? [record.round] : record.rounds;
-  const guessCount = rounds.reduce((sum, round) => sum + round.guesses.length, 0);
+  const displayGuesses = displayGuessesForRecord(record);
+  const guessCount = displayGuesses.length;
+  const modeLabel = record.kind === "multiplayer"
+    ? MULTIPLAYER_MODE_LABELS[record.multiplayerMode ?? "race"]
+    : "";
   return <>
-    <tr className="border-t border-line align-middle"><td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatDateTime(record.startedAt)}</td><td className="px-4 py-3 font-bold text-ink">{record.kind === "single" ? (record.mode === "daily" ? "每日" : "随机") : `${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`}</td><td className="px-4 py-3"><Outcome outcome={record.outcome} /></td><td className="px-4 py-3 tabular-nums text-ink">{guessCount}</td><td className="px-4 py-3 tabular-nums text-ink">{formatDuration(record.durationMs)}</td><td className="px-4 py-2"><GuessSequence rounds={rounds} /></td><td className="px-4 py-2"><AnswerSequence rounds={rounds} /></td><td className="px-3 py-2">{record.kind === "multiplayer" ? <button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] text-ink-soft hover:bg-[var(--surface-soft)]" title={open ? "收起详情" : "展开详情"} aria-label={open ? "收起详情" : "展开详情"} aria-expanded={open} onClick={() => setOpen((value) => !value)}><ChevronRight className={`transition-transform ${open ? "rotate-90" : ""}`} size={17} /></button> : null}</td></tr>
+    <tr className="border-t border-line align-middle"><td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatDateTime(record.startedAt)}</td><td className="px-4 py-3 font-bold text-ink">{record.kind === "single" ? (record.mode === "daily" ? "每日" : "随机") : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`}</td><td className="px-4 py-3"><Outcome outcome={record.outcome} /></td><td className="px-4 py-3 tabular-nums text-ink">{guessCount}</td><td className="px-4 py-3 tabular-nums text-ink">{formatDuration(record.durationMs)}</td><td className="px-4 py-2"><GuessSequence guesses={displayGuesses} /></td><td className="px-4 py-2"><AnswerSequence rounds={rounds} /></td><td className="px-3 py-2">{record.kind === "multiplayer" ? <button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] text-ink-soft hover:bg-[var(--surface-soft)]" title={open ? "收起详情" : "展开详情"} aria-label={open ? "收起详情" : "展开详情"} aria-expanded={open} onClick={() => setOpen((value) => !value)}><ChevronRight className={`transition-transform ${open ? "rotate-90" : ""}`} size={17} /></button> : null}</td></tr>
     {open && record.kind === "multiplayer" ? <tr className="border-t border-line bg-[var(--surface-soft)]"><td colSpan={8} className="px-4 py-3"><RoundDetails record={record} /></td></tr> : null}
   </>;
 }
@@ -382,8 +402,7 @@ function Outcome({ outcome }: { outcome: StatsOutcome }) {
   return <span className={`inline-flex rounded-[4px] px-2 py-1 text-xs font-bold ${style}`}>{OUTCOME_LABELS[outcome]}</span>;
 }
 
-function GuessSequence({ rounds }: { rounds: StatsRound[] }) {
-  const guesses = rounds.flatMap((round) => round.guesses);
+function GuessSequence({ guesses }: { guesses: ReturnType<typeof displayGuessesForRecord> }) {
   if (!guesses.length) return <span className="text-xs text-ink-soft">未猜测</span>;
   return <div className="flex w-max min-w-max items-center gap-1 py-1" aria-label={`猜测角色：${guesses.map((guess) => guess.name).join("、")}`}>{guesses.slice(0, 9).map((guess, index) => <CharacterAvatar key={`${guess.id}-${index}`} avatarUrl={guess.avatarUrl} name={guess.name} initials={guess.name.slice(0, 2)} className="size-8 shrink-0" />)}{guesses.length > 9 ? <span className="ml-1 shrink-0 text-xs font-bold text-ink-soft">+{guesses.length - 9}</span> : null}</div>;
 }

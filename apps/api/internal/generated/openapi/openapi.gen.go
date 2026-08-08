@@ -78,6 +78,7 @@ const (
 	INVALIDGUESS           ErrorResponseCode = "INVALID_GUESS"
 	INVALIDREQUEST         ErrorResponseCode = "INVALID_REQUEST"
 	MATCHALREADYSTARTED    ErrorResponseCode = "MATCH_ALREADY_STARTED"
+	NOTYOURTURN            ErrorResponseCode = "NOT_YOUR_TURN"
 	RATELIMITED            ErrorResponseCode = "RATE_LIMITED"
 	REMATCHNOTAVAILABLE    ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
 	ROOMCLOSED             ErrorResponseCode = "ROOM_CLOSED"
@@ -87,6 +88,7 @@ const (
 	ROUNDNOTACTIVE         ErrorResponseCode = "ROUND_NOT_ACTIVE"
 	SESSIONCLOSED          ErrorResponseCode = "SESSION_CLOSED"
 	SESSIONNOTFOUND        ErrorResponseCode = "SESSION_NOT_FOUND"
+	TURNEXPIRED            ErrorResponseCode = "TURN_EXPIRED"
 	UNSUPPORTEDCONTENTTYPE ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
 )
 
@@ -113,6 +115,8 @@ func (e ErrorResponseCode) Valid() bool {
 		return true
 	case MATCHALREADYSTARTED:
 		return true
+	case NOTYOURTURN:
+		return true
 	case RATELIMITED:
 		return true
 	case REMATCHNOTAVAILABLE:
@@ -130,6 +134,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case SESSIONCLOSED:
 		return true
 	case SESSIONNOTFOUND:
+		return true
+	case TURNEXPIRED:
 		return true
 	case UNSUPPORTEDCONTENTTYPE:
 		return true
@@ -345,6 +351,45 @@ func (e MemberStatus) Valid() bool {
 	}
 }
 
+// Defines values for MultiplayerMode.
+const (
+	Race  MultiplayerMode = "race"
+	Relay MultiplayerMode = "relay"
+)
+
+// Valid indicates whether the value is a known member of the MultiplayerMode enum.
+func (e MultiplayerMode) Valid() bool {
+	switch e {
+	case Race:
+		return true
+	case Relay:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RelayTurnRowKind.
+const (
+	Guess   RelayTurnRowKind = "guess"
+	Pass    RelayTurnRowKind = "pass"
+	Timeout RelayTurnRowKind = "timeout"
+)
+
+// Valid indicates whether the value is a known member of the RelayTurnRowKind enum.
+func (e RelayTurnRowKind) Valid() bool {
+	switch e {
+	case Guess:
+		return true
+	case Pass:
+		return true
+	case Timeout:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RoomFormat.
 const (
 	Bo1 RoomFormat = "bo1"
@@ -363,6 +408,54 @@ func (e RoomFormat) Valid() bool {
 	case Bo5:
 		return true
 	case Bo7:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomInfoTurnSeconds.
+const (
+	RoomInfoTurnSecondsN120 RoomInfoTurnSeconds = 120
+	RoomInfoTurnSecondsN30  RoomInfoTurnSeconds = 30
+	RoomInfoTurnSecondsN60  RoomInfoTurnSeconds = 60
+	RoomInfoTurnSecondsN90  RoomInfoTurnSeconds = 90
+)
+
+// Valid indicates whether the value is a known member of the RoomInfoTurnSeconds enum.
+func (e RoomInfoTurnSeconds) Valid() bool {
+	switch e {
+	case RoomInfoTurnSecondsN120:
+		return true
+	case RoomInfoTurnSecondsN30:
+		return true
+	case RoomInfoTurnSecondsN60:
+		return true
+	case RoomInfoTurnSecondsN90:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomSnapshotTurnSeconds.
+const (
+	RoomSnapshotTurnSecondsN120 RoomSnapshotTurnSeconds = 120
+	RoomSnapshotTurnSecondsN30  RoomSnapshotTurnSeconds = 30
+	RoomSnapshotTurnSecondsN60  RoomSnapshotTurnSeconds = 60
+	RoomSnapshotTurnSecondsN90  RoomSnapshotTurnSeconds = 90
+)
+
+// Valid indicates whether the value is a known member of the RoomSnapshotTurnSeconds enum.
+func (e RoomSnapshotTurnSeconds) Valid() bool {
+	switch e {
+	case RoomSnapshotTurnSecondsN120:
+		return true
+	case RoomSnapshotTurnSecondsN30:
+		return true
+	case RoomSnapshotTurnSecondsN60:
+		return true
+	case RoomSnapshotTurnSecondsN90:
 		return true
 	default:
 		return false
@@ -507,6 +600,30 @@ func (e PuzzlesCreateParamsMode) Valid() bool {
 	case PuzzlesCreateParamsModeDaily:
 		return true
 	case PuzzlesCreateParamsModeRandom:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomsCreateJSONBodyTurnSeconds.
+const (
+	RoomsCreateJSONBodyTurnSecondsN120 RoomsCreateJSONBodyTurnSeconds = 120
+	RoomsCreateJSONBodyTurnSecondsN30  RoomsCreateJSONBodyTurnSeconds = 30
+	RoomsCreateJSONBodyTurnSecondsN60  RoomsCreateJSONBodyTurnSeconds = 60
+	RoomsCreateJSONBodyTurnSecondsN90  RoomsCreateJSONBodyTurnSeconds = 90
+)
+
+// Valid indicates whether the value is a known member of the RoomsCreateJSONBodyTurnSeconds enum.
+func (e RoomsCreateJSONBodyTurnSeconds) Valid() bool {
+	switch e {
+	case RoomsCreateJSONBodyTurnSecondsN120:
+		return true
+	case RoomsCreateJSONBodyTurnSecondsN30:
+		return true
+	case RoomsCreateJSONBodyTurnSecondsN60:
+		return true
+	case RoomsCreateJSONBodyTurnSecondsN90:
 		return true
 	default:
 		return false
@@ -749,6 +866,9 @@ type MemberView struct {
 	Status MemberStatus `json:"status"`
 }
 
+// MultiplayerMode 多人玩法模式。race = 竞速；relay = 接力。
+type MultiplayerMode string
+
 // OpponentRow 对手一行猜测（匿名矩阵行）。局中只含状态颜色序列，不含角色名/字段标签/值。
 type OpponentRow struct {
 	// Index 该成员局内猜测序号（1 起）。
@@ -786,6 +906,21 @@ type PuzzleResponse struct {
 	Session PublicGameSession `json:"session"`
 }
 
+// RelayTurnRow 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
+type RelayTurnRow struct {
+	Guess *GuessResult `json:"guess,omitempty"`
+
+	// Index 本局共享轮次序号（1 起）。
+	Index int              `json:"index"`
+	Kind  RelayTurnRowKind `json:"kind"`
+
+	// MemberSlot 本轮归属玩家 slot。
+	MemberSlot int `json:"memberSlot"`
+}
+
+// RelayTurnRowKind defines model for RelayTurnRow.Kind.
+type RelayTurnRowKind string
+
 // RoomEventEnvelope 房间事件信封（与 contracts/ws/protocol.yaml 一致）。payload 形状以协议规范为准。
 type RoomEventEnvelope struct {
 	EventId    string                 `json:"eventId"`
@@ -809,12 +944,21 @@ type RoomInfo struct {
 	Format      RoomFormat `json:"format"`
 	MemberCount int        `json:"memberCount"`
 
+	// Mode 多人玩法模式。race = 竞速；relay = 接力。
+	Mode MultiplayerMode `json:"mode"`
+
 	// RoomCode 6 位房间号。
 	RoomCode string `json:"roomCode"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
 	Status RoomStatus `json:"status"`
+
+	// TurnSeconds 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
+	TurnSeconds RoomInfoTurnSeconds `json:"turnSeconds"`
 }
+
+// RoomInfoTurnSeconds 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
+type RoomInfoTurnSeconds int
 
 // RoomSnapshot 逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
 // events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
@@ -827,17 +971,24 @@ type RoomSnapshot struct {
 	Format RoomFormat `json:"format"`
 
 	// Match 当前场次（lobby 态不存在；含 finished 等待再来一局）。
-	Match    *MatchView   `json:"match,omitempty"`
-	Members  []MemberView `json:"members"`
-	RoomCode string       `json:"roomCode"`
-	RoomId   string       `json:"roomId"`
+	Match   *MatchView   `json:"match,omitempty"`
+	Members []MemberView `json:"members"`
+
+	// Mode 多人玩法模式。race = 竞速；relay = 接力。
+	Mode     MultiplayerMode `json:"mode"`
+	RoomCode string          `json:"roomCode"`
+	RoomId   string          `json:"roomId"`
 
 	// Round 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。
 	Round *RoundView `json:"round,omitempty"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
-	Status RoomStatus `json:"status"`
+	Status      RoomStatus              `json:"status"`
+	TurnSeconds RoomSnapshotTurnSeconds `json:"turnSeconds"`
 }
+
+// RoomSnapshotTurnSeconds defines model for RoomSnapshot.TurnSeconds.
+type RoomSnapshotTurnSeconds int
 
 // RoomStatus 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
 type RoomStatus string
@@ -846,13 +997,19 @@ type RoomStatus string
 type RoundStatus string
 
 // RoundView 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-// opponent 为匿名矩阵（只含状态颜色序列）。
+// opponent 为匿名矩阵（只含状态颜色序列）。接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
 type RoundView struct {
 	// Deadline 整局超时平局时刻（默认 startsAt + 15min）。
 	Deadline time.Time `json:"deadline"`
 
 	// MaxGuesses 每局每人猜测上限（沿用单人 GameContentDefinition.MaxGuesses = 8）。
 	MaxGuesses int `json:"maxGuesses"`
+
+	// MaxSkipsPerPlayer 接力模式每名玩家每局可空过次数上限（主动空过与超时空过共享）。
+	MaxSkipsPerPlayer *int `json:"maxSkipsPerPlayer,omitempty"`
+
+	// MaxTurnsPerPlayer 接力模式每名玩家每局的轮次上限（猜测与超时空过均计入）。
+	MaxTurnsPerPlayer *int `json:"maxTurnsPerPlayer,omitempty"`
 
 	// Opponent 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。
 	Opponent struct {
@@ -864,11 +1021,22 @@ type RoundView struct {
 		Guesses []GuessResult `json:"guesses"`
 	} `json:"self"`
 
+	// Shared 接力模式共享棋盘；竞速模式为空或缺省。
+	Shared *struct {
+		Rows []RelayTurnRow `json:"rows"`
+	} `json:"shared,omitempty"`
+
 	// StartsAt 本局可开猜时刻（倒计时结束；局间间歇兼作倒计时）。
 	StartsAt time.Time `json:"startsAt"`
 
 	// Status 单局状态：countdown（倒计时）→ playing → ended。
 	Status RoundStatus `json:"status"`
+
+	// TurnDeadline 接力模式当前玩家本轮截止时刻。
+	TurnDeadline *time.Time `json:"turnDeadline,omitempty"`
+
+	// TurnSlot 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。
+	TurnSlot *int `json:"turnSlot,omitempty"`
 }
 
 // SessionStatus defines model for SessionStatus.
@@ -922,7 +1090,16 @@ type RoomsCreateJSONBody struct {
 
 	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
 	Format RoomFormat `json:"format"`
+
+	// Mode 多人玩法模式。race = 竞速；relay = 接力。
+	Mode *MultiplayerMode `json:"mode,omitempty"`
+
+	// TurnSeconds 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
+	TurnSeconds *RoomsCreateJSONBodyTurnSeconds `json:"turnSeconds,omitempty"`
 }
+
+// RoomsCreateJSONBodyTurnSeconds defines parameters for RoomsCreate.
+type RoomsCreateJSONBodyTurnSeconds int
 
 // RoomsJoinJSONBody defines parameters for RoomsJoin.
 type RoomsJoinJSONBody struct {
@@ -1001,9 +1178,15 @@ type ServerInterface interface {
 	// RoomsRematch 确认再来一局
 	// (POST /api/rooms/{roomId}/rematch)
 	RoomsRematch(ctx *echo.Context, roomId string) error
+	// RoomsForfeitRound 放弃本局
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/forfeit)
+	RoomsForfeitRound(ctx *echo.Context, roomId string, roundIndex int) error
 	// RoomsSubmitGuess 提交猜测
 	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/guess)
 	RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error
+	// RoomsPassRelayTurn 接力主动空过本轮
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/pass)
+	RoomsPassRelayTurn(ctx *echo.Context, roomId string, roundIndex int) error
 	// RoomsGetSnapshot 房间快照与事件重放
 	// (GET /api/rooms/{roomId}/snapshot)
 	RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error
@@ -1234,6 +1417,30 @@ func (w *ServerInterfaceWrapper) RoomsRematch(ctx *echo.Context) error {
 	return err
 }
 
+// RoomsForfeitRound converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsForfeitRound(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// ------------- Path parameter "roundIndex" -------------
+	var roundIndex int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roundIndex", ctx.Param("roundIndex"), &roundIndex, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roundIndex: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsForfeitRound(ctx, roomId, roundIndex)
+	return err
+}
+
 // RoomsSubmitGuess converts echo context to params.
 func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx *echo.Context) error {
 	var err error
@@ -1255,6 +1462,30 @@ func (w *ServerInterfaceWrapper) RoomsSubmitGuess(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.RoomsSubmitGuess(ctx, roomId, roundIndex)
+	return err
+}
+
+// RoomsPassRelayTurn converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsPassRelayTurn(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// ------------- Path parameter "roundIndex" -------------
+	var roundIndex int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roundIndex", ctx.Param("roundIndex"), &roundIndex, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roundIndex: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsPassRelayTurn(ctx, roomId, roundIndex)
 	return err
 }
 
@@ -1412,6 +1643,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.DELETE(options.BaseURL+"/api/rooms/:roomId", wrapper.RoomsClose, options.OperationMiddlewares["rooms_close"]...)
 	router.GET(options.BaseURL+"/api/rooms/:roomId/ws", wrapper.RoomsConnectWs, options.OperationMiddlewares["rooms_connectWs"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/guess", wrapper.RoomsSubmitGuess, options.OperationMiddlewares["rooms_submitGuess"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/forfeit", wrapper.RoomsForfeitRound, options.OperationMiddlewares["rooms_forfeitRound"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/pass", wrapper.RoomsPassRelayTurn, options.OperationMiddlewares["rooms_passRelayTurn"]...)
 
 }
 
@@ -2048,6 +2281,65 @@ func (response RoomsRematch409JSONResponse) VisitRoomsRematchResponse(w http.Res
 	return err
 }
 
+type RoomsForfeitRoundRequestObject struct {
+	RoomId     string `json:"roomId"`
+	RoundIndex int    `json:"roundIndex"`
+}
+
+type RoomsForfeitRoundResponseObject interface {
+	VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error
+}
+
+type RoomsForfeitRound204Response struct {
+}
+
+func (response RoomsForfeitRound204Response) VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsForfeitRound401JSONResponse ErrorResponse
+
+func (response RoomsForfeitRound401JSONResponse) VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsForfeitRound404JSONResponse ErrorResponse
+
+func (response RoomsForfeitRound404JSONResponse) VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsForfeitRound409JSONResponse ErrorResponse
+
+func (response RoomsForfeitRound409JSONResponse) VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsSubmitGuessRequestObject struct {
 	RoomId     string `json:"roomId"`
 	RoundIndex int    `json:"roundIndex"`
@@ -2117,6 +2409,65 @@ func (response RoomsSubmitGuess404JSONResponse) VisitRoomsSubmitGuessResponse(w 
 type RoomsSubmitGuess409JSONResponse ErrorResponse
 
 func (response RoomsSubmitGuess409JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsPassRelayTurnRequestObject struct {
+	RoomId     string `json:"roomId"`
+	RoundIndex int    `json:"roundIndex"`
+}
+
+type RoomsPassRelayTurnResponseObject interface {
+	VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error
+}
+
+type RoomsPassRelayTurn204Response struct {
+}
+
+func (response RoomsPassRelayTurn204Response) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsPassRelayTurn401JSONResponse ErrorResponse
+
+func (response RoomsPassRelayTurn401JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsPassRelayTurn404JSONResponse ErrorResponse
+
+func (response RoomsPassRelayTurn404JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsPassRelayTurn409JSONResponse ErrorResponse
+
+func (response RoomsPassRelayTurn409JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2477,9 +2828,15 @@ type StrictServerInterface interface {
 	// RoomsRematch 确认再来一局
 	// (POST /api/rooms/{roomId}/rematch)
 	RoomsRematch(ctx context.Context, request RoomsRematchRequestObject) (RoomsRematchResponseObject, error)
+	// RoomsForfeitRound 放弃本局
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/forfeit)
+	RoomsForfeitRound(ctx context.Context, request RoomsForfeitRoundRequestObject) (RoomsForfeitRoundResponseObject, error)
 	// RoomsSubmitGuess 提交猜测
 	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/guess)
 	RoomsSubmitGuess(ctx context.Context, request RoomsSubmitGuessRequestObject) (RoomsSubmitGuessResponseObject, error)
+	// RoomsPassRelayTurn 接力主动空过本轮
+	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/pass)
+	RoomsPassRelayTurn(ctx context.Context, request RoomsPassRelayTurnRequestObject) (RoomsPassRelayTurnResponseObject, error)
 	// RoomsGetSnapshot 房间快照与事件重放
 	// (GET /api/rooms/{roomId}/snapshot)
 	RoomsGetSnapshot(ctx context.Context, request RoomsGetSnapshotRequestObject) (RoomsGetSnapshotResponseObject, error)
@@ -2833,6 +3190,32 @@ func (sh *strictHandler) RoomsRematch(ctx *echo.Context, roomId string) error {
 	return nil
 }
 
+// RoomsForfeitRound operation middleware
+func (sh *strictHandler) RoomsForfeitRound(ctx *echo.Context, roomId string, roundIndex int) error {
+	var request RoomsForfeitRoundRequestObject
+
+	request.RoomId = roomId
+	request.RoundIndex = roundIndex
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsForfeitRound(ctx.Request().Context(), request.(RoomsForfeitRoundRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsForfeitRound")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsForfeitRoundResponseObject); ok {
+		return validResponse.VisitRoomsForfeitRoundResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // RoomsSubmitGuess operation middleware
 func (sh *strictHandler) RoomsSubmitGuess(ctx *echo.Context, roomId string, roundIndex int) error {
 	var request RoomsSubmitGuessRequestObject
@@ -2869,6 +3252,32 @@ func (sh *strictHandler) RoomsSubmitGuess(ctx *echo.Context, roomId string, roun
 		return err
 	} else if validResponse, ok := response.(RoomsSubmitGuessResponseObject); ok {
 		return validResponse.VisitRoomsSubmitGuessResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsPassRelayTurn operation middleware
+func (sh *strictHandler) RoomsPassRelayTurn(ctx *echo.Context, roomId string, roundIndex int) error {
+	var request RoomsPassRelayTurnRequestObject
+
+	request.RoomId = roomId
+	request.RoundIndex = roundIndex
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsPassRelayTurn(ctx.Request().Context(), request.(RoomsPassRelayTurnRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsPassRelayTurn")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsPassRelayTurnResponseObject); ok {
+		return validResponse.VisitRoomsPassRelayTurnResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -3022,147 +3431,163 @@ func (sh *strictHandler) SessionsSubmitGuess(ctx *echo.Context, sessionId string
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

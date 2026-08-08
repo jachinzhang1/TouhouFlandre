@@ -91,8 +91,10 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		return
 	}
 	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:  multi.RoomFormat(room.Format),
-		Members: multi.MemberViews(members),
+		Format:      multi.RoomFormat(room.Format),
+		Mode:        multi.MultiplayerMode(room.Mode),
+		TurnSeconds: int(room.TurnSeconds),
+		Members:     multi.MemberViews(members),
 	}); err != nil {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return

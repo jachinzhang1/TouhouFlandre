@@ -28,6 +28,8 @@ ErrorResponse:
         - REMATCH_NOT_AVAILABLE
         - ROUND_NOT_ACTIVE
         - ROUND_ENDED
+        - NOT_YOUR_TURN
+        - TURN_EXPIRED
         - GUESS_LIMIT_REACHED
         # 加入/预检按 IP 速率限制（08 §8.5）
         - RATE_LIMITED

@@ -1,4 +1,4 @@
-import type { MultiplayerStatsRecord, StatsFilters, StatsRecord, StatsRound } from "./types";
+import type { MultiplayerStatsRecord, StatsFilters, StatsGuessSnapshot, StatsRecord, StatsRound } from "./types";
 
 export interface WorkMetric {
   id: string;
@@ -34,12 +34,37 @@ export function filterStatsRecords(records: StatsRecord[], filters: StatsFilters
     const startedAt = Date.parse(record.startedAt);
     if (filters.mode !== "all" && record.mode !== filters.mode) return false;
     if (startedAt < from || startedAt > to) return false;
+    if (
+      filters.multiplayerMode !== "all" &&
+      (record.kind !== "multiplayer" || (record.multiplayerMode ?? "race") !== filters.multiplayerMode)
+    ) return false;
     return filters.format === "all" || (record.kind === "multiplayer" && record.format === filters.format);
   });
 }
 
 export function roundsForRecords(records: StatsRecord[]): StatsRound[] {
   return records.flatMap((record) => record.kind === "single" ? [record.round] : record.rounds);
+}
+
+function inferRelayMemberSlot(record: MultiplayerStatsRecord): 1 | 2 | undefined {
+  if ((record.multiplayerMode ?? "race") !== "relay") return record.memberSlot;
+  if (record.memberSlot) return record.memberSlot;
+  for (const round of record.rounds) {
+    const winnerGuess = round.guesses.find((guess) => guess.correct && guess.memberSlot);
+    if (!winnerGuess?.memberSlot) continue;
+    if (round.result === "win") return winnerGuess.memberSlot;
+    if (round.result === "loss") return winnerGuess.memberSlot === 1 ? 2 : 1;
+  }
+  return undefined;
+}
+
+export function displayGuessesForRecord(record: StatsRecord): StatsGuessSnapshot[] {
+  const guesses = roundsForRecords([record]).flatMap((round) => round.guesses);
+  if (record.kind !== "multiplayer" || (record.multiplayerMode ?? "race") !== "relay") return guesses;
+  const selfSlot = inferRelayMemberSlot(record);
+  if (!selfSlot) return guesses;
+  if (!guesses.some((guess) => guess.memberSlot)) return guesses;
+  return guesses.filter((guess) => guess.memberSlot === selfSlot);
 }
 
 export function quantile(values: number[], percentile: number): number {

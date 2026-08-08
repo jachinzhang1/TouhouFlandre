@@ -39,7 +39,7 @@ describe("stats IndexedDB", () => {
   });
 
   it("多人 round 重放幂等，并在 match 结束时事务归档", async () => {
-    await recordMultiplayerEvent(event("match.started", 1, { format: "bo3", targetWins: 2, catalogVersion: "v1", matchIndex: 0 }), 1);
+    await recordMultiplayerEvent(event("match.started", 1, { format: "bo3", mode: "race", turnSeconds: 60, targetWins: 2, catalogVersion: "v1", matchIndex: 0 }), 1);
     await recordMultiplayerEvent(event("round.started", 2, { matchIndex: 0, roundIndex: 1, startsAt: "2026-08-07T12:00:02Z", deadline: "2026-08-07T12:10:02Z", maxGuesses: 8 }), 1);
     const ended = event("round.ended", 3, {
       matchIndex: 0, roundIndex: 1, result: "win", winnerSlot: 1,
@@ -53,6 +53,7 @@ describe("stats IndexedDB", () => {
     const records = await statsDb.records.toArray();
     expect(records).toHaveLength(1);
     expect(records[0].kind === "multiplayer" && records[0].rounds).toHaveLength(1);
+    expect(records[0].kind === "multiplayer" && records[0].multiplayerMode).toBe("race");
     expect(await statsDb.drafts.count()).toBe(0);
   });
 });

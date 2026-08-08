@@ -10,6 +10,13 @@ RoomFormat:
     - bo5
     - bo7
 
+MultiplayerMode:
+  type: string
+  description: 多人玩法模式。race = 竞速；relay = 接力。
+  enum:
+    - race
+    - relay
+
 RoomStatus:
   type: string
   description: 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。

@@ -19,11 +19,37 @@ OpponentRow:
       minItems: 6
       maxItems: 6
 
+RelayTurnRow:
+  type: object
+  description: 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
+  required:
+    - index
+    - memberSlot
+    - kind
+  properties:
+    index:
+      type: integer
+      minimum: 1
+      description: 本局共享轮次序号（1 起）。
+    memberSlot:
+      type: integer
+      minimum: 1
+      maximum: 2
+      description: 本轮归属玩家 slot。
+    kind:
+      type: string
+      enum:
+        - guess
+        - timeout
+        - pass
+    guess:
+      $ref: "./session.yaml#/GuessResult"
+
 RoundView:
   type: object
   description: |
     逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-    opponent 为匿名矩阵（只含状态颜色序列）。
+    opponent 为匿名矩阵（只含状态颜色序列）。接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
   required:
     - status
     - startsAt
@@ -66,6 +92,33 @@ RoundView:
           type: array
           items:
             $ref: "#/OpponentRow"
+    shared:
+      type: object
+      description: 接力模式共享棋盘；竞速模式为空或缺省。
+      required:
+        - rows
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/RelayTurnRow"
+    turnSlot:
+      type: integer
+      minimum: 1
+      maximum: 2
+      description: 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。
+    turnDeadline:
+      type: string
+      format: date-time
+      description: 接力模式当前玩家本轮截止时刻。
+    maxTurnsPerPlayer:
+      type: integer
+      minimum: 1
+      description: 接力模式每名玩家每局的轮次上限（猜测与超时空过均计入）。
+    maxSkipsPerPlayer:
+      type: integer
+      minimum: 0
+      description: 接力模式每名玩家每局可空过次数上限（主动空过与超时空过共享）。
 
 GuessResponse:
   type: object

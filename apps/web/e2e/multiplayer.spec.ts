@@ -57,6 +57,49 @@ test.describe("多人房间", () => {
     }
   });
 
+  test("接力模式共享棋盘与轮次锁定", async ({ browser }) => {
+    const hostCtx = await browser.newContext();
+    const guestCtx = await browser.newContext();
+    const host = await hostCtx.newPage();
+    const guest = await guestCtx.newPage();
+    try {
+      await host.goto("/multi");
+      await host.locator("label", { hasText: "接力" }).click();
+      await host.locator("label", { hasText: "30s" }).click();
+      await host.getByRole("button", { name: "创建房间" }).click();
+      await host.waitForURL(/\/multi\/room\/[A-Z2-9]{6}/);
+      const roomCode = new URL(host.url()).pathname.split("/").pop()!;
+
+      await guest.goto("/multi");
+      await guest.getByPlaceholder(/ABC123/).fill(roomCode);
+      await guest.getByPlaceholder(/ABC123/).press("Tab");
+      await expect(guest.getByText(/房间存在 · 接力 30s/)).toBeVisible({ timeout: 5_000 });
+      await guest.getByRole("button", { name: "加入房间" }).click();
+      await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
+
+      await expect(host.getByText("接力 · BO3")).toBeVisible();
+      await expect(host.getByText("单手 30s")).toBeVisible();
+
+      await host.getByRole("button", { name: "准备" }).click();
+      await guest.getByRole("button", { name: "准备" }).click();
+      await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByLabel("搜索角色")).toBeEnabled({ timeout: 10_000 });
+
+      await guessViaUI(host, "灵梦");
+      await expect(guest.getByText("博丽灵梦")).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByLabel("搜索角色")).toBeDisabled();
+      await expect(guest.getByLabel("搜索角色")).toBeEnabled();
+
+      await guessViaUI(guest, "魔理沙");
+      await expect(host.getByText("雾雨魔理沙")).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByLabel("搜索角色")).toBeEnabled();
+      await expect(guest.getByLabel("搜索角色")).toBeDisabled();
+    } finally {
+      await hostCtx.close();
+      await guestCtx.close();
+    }
+  });
+
   test("刷新恢复会话状态", async ({ browser }) => {
     const hostCtx = await browser.newContext();
     const guestCtx = await browser.newContext();

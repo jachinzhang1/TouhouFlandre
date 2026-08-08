@@ -18,6 +18,8 @@ describe("roomReducer", () => {
   it("room.updated 更新成员列表", () => {
     const state = roomReducer(initialRoomState, event("room.updated", 1, {
       format: "bo3",
+      mode: "race",
+      turnSeconds: 60,
       members: [{ slot: 1, displayName: "房主", status: "connected", ready: false }],
     }));
     expect(state.members).toHaveLength(1);
@@ -31,7 +33,7 @@ describe("roomReducer", () => {
       history: [{ roundIndex: 1, result: "win" as const }],
     };
     state = roomReducer(state, event("match.started", 3, {
-      format: "bo3", targetWins: 2, catalogVersion: "v1", matchIndex: 1,
+      format: "bo3", mode: "race", turnSeconds: 60, targetWins: 2, catalogVersion: "v1", matchIndex: 1,
     }));
     expect(state.match?.matchIndex).toBe(1);
     expect(state.match?.scoreSlot1).toBe(0);
@@ -80,9 +82,53 @@ describe("roomReducer", () => {
     expect(state.history[0]).toEqual({ roundIndex: 1, result: "loss" });
   });
 
+  it("接力事件追加共享行并更新当前手", () => {
+    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] } };
+    state = roomReducer(state, event("round.started", 4, {
+      matchIndex: 0,
+      roundIndex: 1,
+      startsAt: "2026-08-06T12:00:03Z",
+      deadline: "2026-08-06T12:15:03Z",
+      maxGuesses: 8,
+      turnSlot: 1,
+      turnDeadline: "2026-08-06T12:01:03Z",
+      maxTurnsPerPlayer: 8,
+      maxSkipsPerPlayer: 2,
+    }));
+    expect(state.round?.maxSkipsPerPlayer).toBe(2);
+    state = roomReducer(state, event("round.shared.guess", 5, {
+      matchIndex: 0,
+      roundIndex: 1,
+      row: { index: 1, memberSlot: 1, kind: "guess", guess: { guessId: "a", guessName: "A", isCorrect: false, feedback: [] } },
+      nextTurnSlot: 2,
+      nextTurnDeadline: "2026-08-06T12:02:03Z",
+    }));
+    expect(state.round?.shared?.rows).toHaveLength(1);
+    expect(state.round?.turnSlot).toBe(2);
+    state = roomReducer(state, event("round.turn.timeout", 6, {
+      matchIndex: 0,
+      roundIndex: 1,
+      row: { index: 2, memberSlot: 2, kind: "timeout" },
+      nextTurnSlot: 1,
+      nextTurnDeadline: "2026-08-06T12:03:03Z",
+    }));
+    expect(state.round?.shared?.rows).toHaveLength(2);
+    expect(state.round?.turnSlot).toBe(1);
+    state = roomReducer(state, event("round.turn.pass", 7, {
+      matchIndex: 0,
+      roundIndex: 1,
+      row: { index: 3, memberSlot: 1, kind: "pass" },
+      nextTurnSlot: 2,
+      nextTurnDeadline: "2026-08-06T12:04:03Z",
+    }));
+    expect(state.round?.shared?.rows).toHaveLength(3);
+    expect(state.round?.shared?.rows[2]?.kind).toBe("pass");
+    expect(state.round?.turnSlot).toBe(2);
+  });
+
   it("match.ended 切终态（finished）", () => {
     const state = roomReducer(
-      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false] } } as RoomUiState,
+      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false] } } as RoomUiState,
       event("match.ended", 9, { matchIndex: 0, result: "win", winnerSlot: 1, scores: { slot1: 2, slot2: 0 }, reason: "normal" }),
     );
     expect(state.matchResult?.reason).toBe("normal");
@@ -90,7 +136,7 @@ describe("roomReducer", () => {
   });
 
   it("match.rematch 标记确认；room.closed 终态", () => {
-    let state = roomReducer({ ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", status: "finished" }, rematchReady: [false, false] } as RoomUiState, event("match.rematch", 10, { memberSlot: 2 }));
+    let state = roomReducer({ ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "finished" }, rematchReady: [false, false] } as RoomUiState, event("match.rematch", 10, { memberSlot: 2 }));
     expect(state.rematchReady).toEqual([false, true]);
     state = roomReducer(state, event("room.closed", 11, { reason: "member_left" }));
     expect(state.room?.status).toBe("closed");
@@ -101,9 +147,9 @@ describe("roomReducer", () => {
     let applied = 0;
     let state = initialRoomState;
     for (const e of [
-      event("room.updated", 5, { format: "bo3", members: [] }),
-      event("room.updated", 3, { format: "bo3", members: [] }), // 乱序：跳过
-      event("room.updated", 5, { format: "bo3", members: [] }), // 重复：跳过
+      event("room.updated", 5, { format: "bo3", mode: "race", turnSeconds: 60, members: [] }),
+      event("room.updated", 3, { format: "bo3", mode: "race", turnSeconds: 60, members: [] }), // 乱序：跳过
+      event("room.updated", 5, { format: "bo3", mode: "race", turnSeconds: 60, members: [] }), // 重复：跳过
     ]) {
       if (e.sequence <= applied) continue;
       applied = e.sequence;
@@ -119,11 +165,13 @@ describe("applySnapshot", () => {
       roomId: "room-1",
       roomCode: "ABC123",
       format: "bo3",
+      mode: "race",
+      turnSeconds: 60,
       status: "playing",
       members: [{ slot: 1, displayName: "房主", status: "connected", ready: true }],
       match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] },
       round: { status: "playing", startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8, self: { guesses: [] }, opponent: { rows: [] } },
-      events: [event("match.started", 1, { format: "bo3", targetWins: 2, catalogVersion: "v1", matchIndex: 0 })],
+      events: [event("match.started", 1, { format: "bo3", mode: "race", turnSeconds: 60, targetWins: 2, catalogVersion: "v1", matchIndex: 0 })],
     };
     const state = applySnapshot(initialRoomState, snapshot as never);
     expect(state.room?.roomCode).toBe("ABC123");

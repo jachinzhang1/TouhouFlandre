@@ -30,6 +30,8 @@ RoomInfo:
   required:
     - roomCode
     - format
+    - mode
+    - turnSeconds
     - status
     - memberCount
   properties:
@@ -38,6 +40,12 @@ RoomInfo:
       description: 6 位房间号。
     format:
       $ref: "./multi-common.yaml#/RoomFormat"
+    mode:
+      $ref: "./multi-common.yaml#/MultiplayerMode"
+    turnSeconds:
+      type: integer
+      enum: [30, 60, 90, 120]
+      description: 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
     memberCount:
@@ -88,6 +96,8 @@ RoomSnapshot:
     - roomId
     - roomCode
     - format
+    - mode
+    - turnSeconds
     - status
     - members
     - events
@@ -98,6 +108,11 @@ RoomSnapshot:
       type: string
     format:
       $ref: "./multi-common.yaml#/RoomFormat"
+    mode:
+      $ref: "./multi-common.yaml#/MultiplayerMode"
+    turnSeconds:
+      type: integer
+      enum: [30, 60, 90, 120]
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
     members:

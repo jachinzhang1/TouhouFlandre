@@ -9,11 +9,15 @@ import type {
   MatchRematchPayload,
   MatchStartedPayload,
   MultiRoomFormat,
+  MultiplayerMode,
   MultiRoomStatus,
   RoundEndedPayload,
   RoundOpponentGuessPayload,
   RoundPlayingPayload,
+  RoundSharedGuessPayload,
   RoundStartedPayload,
+  RoundTurnTimeoutPayload,
+  RoundTurnPassPayload,
   RoomClosedPayload,
   RoomUpdatedPayload,
 } from "@touhouflandre/shared";
@@ -43,7 +47,7 @@ export interface RoundSummary {
 
 export interface RoomUiState {
   connection: RoomConnection;
-  room: { roomId: string; roomCode: string; format: MultiRoomFormat; status: MultiRoomStatus } | null;
+  room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus } | null;
   members: MemberView[];
   match: MatchView | null;
   round: RoundView | null;
@@ -89,7 +93,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         ...state,
         members: payload.members,
         room: state.room
-          ? { ...state.room, format: payload.format }
+          ? { ...state.room, format: payload.format, mode: payload.mode, turnSeconds: payload.turnSeconds }
           : state.room,
       };
     }
@@ -99,7 +103,9 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       return {
         ...state,
         catalogVersion: payload.catalogVersion ?? null,
-        room: state.room ? { ...state.room, status: "playing" } : state.room,
+        room: state.room
+          ? { ...state.room, status: "playing", mode: payload.mode, turnSeconds: payload.turnSeconds }
+          : state.room,
         match: {
           matchIndex: payload.matchIndex,
           targetWins: payload.targetWins,
@@ -132,8 +138,13 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           startsAt: payload.startsAt,
           deadline: payload.deadline,
           maxGuesses: payload.maxGuesses,
+          maxTurnsPerPlayer: payload.maxTurnsPerPlayer,
+          maxSkipsPerPlayer: payload.maxSkipsPerPlayer,
+          turnSlot: payload.turnSlot,
+          turnDeadline: payload.turnDeadline,
           self: { guesses: [] },
           opponent: { rows: [] },
+          ...(payload.maxTurnsPerPlayer ? { shared: { rows: [] } } : {}),
         },
         match: state.match
           ? { ...state.match, roundIndex: payload.roundIndex }
@@ -165,11 +176,64 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         },
       };
     }
+    case "round.shared.guess": {
+      const payload = event.payload as unknown as RoundSharedGuessPayload;
+      if (!state.round) return state;
+      return {
+        ...state,
+        round: {
+          ...state.round,
+          shared: {
+            rows: [...(state.round.shared?.rows ?? []), payload.row],
+          },
+          turnSlot: payload.nextTurnSlot,
+          turnDeadline: payload.nextTurnDeadline,
+        },
+      };
+    }
+    case "round.turn.timeout": {
+      const payload = event.payload as unknown as RoundTurnTimeoutPayload;
+      if (!state.round) return state;
+      return {
+        ...state,
+        round: {
+          ...state.round,
+          shared: {
+            rows: [...(state.round.shared?.rows ?? []), payload.row],
+          },
+          turnSlot: payload.nextTurnSlot,
+          turnDeadline: payload.nextTurnDeadline,
+        },
+      };
+    }
+    case "round.turn.pass": {
+      const payload = event.payload as unknown as RoundTurnPassPayload;
+      if (!state.round) return state;
+      return {
+        ...state,
+        round: {
+          ...state.round,
+          shared: {
+            rows: [...(state.round.shared?.rows ?? []), payload.row],
+          },
+          turnSlot: payload.nextTurnSlot,
+          turnDeadline: payload.nextTurnDeadline,
+        },
+      };
+    }
     case "round.ended": {
       const payload = event.payload as unknown as RoundEndedPayload;
       return {
         ...state,
-        round: state.round ? { ...state.round, status: "ended" } : state.round,
+        round: state.round
+          ? {
+              ...state.round,
+              status: "ended",
+              ...(payload.turns ? { shared: { rows: payload.turns } } : {}),
+              turnSlot: undefined,
+              turnDeadline: undefined,
+            }
+          : state.round,
         roundResult: payload,
         history: [
           ...state.history,
@@ -238,6 +302,8 @@ export function applySnapshot(
       roomId: snapshot.roomId,
       roomCode: snapshot.roomCode,
       format: snapshot.format,
+      mode: snapshot.mode,
+      turnSeconds: snapshot.turnSeconds,
       status: snapshot.status,
     },
     members: snapshot.members,
@@ -254,6 +320,8 @@ export interface RoomActions {
   leave: () => Promise<void>;
   rematch: () => Promise<void>;
   submitGuess: (guessId: string) => Promise<void>;
+  forfeitRound: () => Promise<void>;
+  passRelayTurn: () => Promise<void>;
 }
 
 export interface UseRoomResult {
@@ -546,7 +614,13 @@ export function useRoom(
       if (!state.round || state.round.status !== "playing" || !state.match) return;
       const idempotencyKey = crypto.randomUUID();
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
-      const expectedGuessCount = state.round.self.guesses.length + 1;
+      const isRelay = state.room?.mode === "relay";
+      const completedGuessCount = isRelay
+        ? state.round.shared?.rows.filter(
+            (row) => row.kind === "guess" && row.memberSlot === mySlot,
+          ).length ?? 0
+        : state.round.self.guesses.length;
+      const expectedGuessCount = completedGuessCount + 1;
       pendingGuessRef.current = completedElapsedMs;
       try {
         const resp = await api.submitMultiGuess(
@@ -567,21 +641,50 @@ export function useRoom(
           activeElapsedMs: completedElapsedMs,
           guessCompletedElapsedMs: [...guessCompletedRef.current],
         });
-        // 自视角无事件回放：本地追加（08 §10.2）
-        setState((s) =>
-          s.round
-            ? {
-                ...s,
-                round: {
-                  ...s.round,
-                  self: { guesses: [...s.round.self.guesses, resp.guess] },
-                },
-              }
-            : s,
-        );
+        if (!isRelay) {
+          // 竞速自视角无事件回放：本地追加（08 §10.2）
+          setState((s) =>
+            s.round
+              ? {
+                  ...s,
+                  round: {
+                    ...s.round,
+                    self: { guesses: [...s.round.self.guesses, resp.guess] },
+                  },
+                }
+              : s,
+          );
+        }
       } catch (e) {
         pendingGuessRef.current = null;
         setGuessError(e instanceof Error ? e.message : "猜测失败。");
+      }
+    },
+    forfeitRound: async () => {
+      setGuessError("");
+      pendingGuessRef.current = null;
+      if (!state.round || state.round.status !== "playing" || !state.match) return;
+      try {
+        await api.forfeitRound(roomId, token, state.match.roundIndex);
+      } catch (e) {
+        setGuessError(e instanceof Error ? e.message : "放弃本局失败。");
+      }
+    },
+    passRelayTurn: async () => {
+      setGuessError("");
+      pendingGuessRef.current = null;
+      if (
+        !state.round ||
+        state.round.status !== "playing" ||
+        !state.match ||
+        state.room?.mode !== "relay"
+      ) {
+        return;
+      }
+      try {
+        await api.passRelayTurn(roomId, token, state.match.roundIndex);
+      } catch (e) {
+        setGuessError(e instanceof Error ? e.message : "空过失败。");
       }
     },
   };
