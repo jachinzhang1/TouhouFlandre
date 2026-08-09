@@ -1,6 +1,7 @@
 // 局结果弹窗：查看对局本地关闭；下一局倒计时由服务端 startsAt 驱动展示。
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { act } from "react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { RoundResultOverlay } from "./RoundResultOverlay";
 
@@ -52,5 +53,25 @@ describe("RoundResultOverlay", () => {
   it("无下一局（对局结束）不显示倒计时", () => {
     render(<RoundResultOverlay result={{ ...RESULT, nextStartsAt: undefined }} mySlot={1} nextRoundStartsAt={null} />);
     expect(screen.queryByText(/下一局/)).toBeNull();
+  });
+
+  it("启用自动关闭时在倒计时结束后触发关闭", () => {
+    const onDismiss = vi.fn();
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        mySlot={1}
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+        autoDismissAtCountdownEnd
+        onDismiss={onDismiss}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "查看对局" })).toBeNull();
   });
 });

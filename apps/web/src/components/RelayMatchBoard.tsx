@@ -51,6 +51,8 @@ export function RelayMatchBoard({
       ? "我"
       : currentMember?.displayName ?? `玩家 ${currentSlot}`
     : "等待结算";
+  const isMyActiveTurn =
+    round?.status === "playing" && !ended && round.turnSlot === mySlot;
 
   return (
     <section className="px-[18px] pt-5 pb-28">
@@ -71,7 +73,11 @@ export function RelayMatchBoard({
         )}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-3 shadow-sm">
+      <div
+        className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-3 shadow-sm ${
+          isMyActiveTurn ? "relay-current-turn-active" : ""
+        }`}
+      >
         {round?.status === "playing" && !ended ? (
           <>
             <p className="m-0 text-[0.82rem] font-semibold text-ink">

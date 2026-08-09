@@ -1503,6 +1503,28 @@ html[data-theme-mode="dark"] .appearance-swatch {
   font-size: 0.58rem;
 }
 
+.relay-current-turn-active {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--vermilion) 36%, var(--line));
+}
+
+.relay-current-turn-active::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--vermilion-soft);
+  content: "";
+  opacity: 0.36;
+  pointer-events: none;
+  animation: relay-turn-pulse 1.4s ease-in-out infinite;
+}
+
+.relay-current-turn-active > * {
+  position: relative;
+  z-index: 1;
+}
+
 .empty-state {
   height: 150px;
   color: var(--subtle-text);
@@ -1624,6 +1646,16 @@ html[data-theme-mode="dark"] .appearance-swatch {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes relay-turn-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.62;
   }
 }
 

@@ -39,6 +39,8 @@ import {
 } from "../stats/multiplayerRecorder";
 
 export type RoomConnection = "connecting" | "connected" | "reconnecting";
+const SNAPSHOT_FALLBACK_INTERVAL_MS = 5000;
+const CONNECTION_ISSUE_MESSAGE = "实时同步连接中断，正在自动恢复。";
 
 export interface RoundSummary {
   roundIndex: number;
@@ -47,6 +49,7 @@ export interface RoundSummary {
 
 export interface RoomUiState {
   connection: RoomConnection;
+  connectionIssue: string | null;
   room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus } | null;
   members: MemberView[];
   match: MatchView | null;
@@ -66,6 +69,7 @@ export interface RoomUiState {
 
 export const initialRoomState: RoomUiState = {
   connection: "connecting",
+  connectionIssue: null,
   room: null,
   members: [],
   match: null,
@@ -253,8 +257,6 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       return {
         ...state,
         matchResult: payload,
-        round: null,
-        roundResult: null,
         match: state.match
           ? {
               ...state.match,
@@ -411,9 +413,7 @@ export function useRoom(
         lastAppliedRef.current = event.sequence;
         void queueStatsEvent(event as Envelope);
       }
-      setState((current) =>
-        applySnapshot({ ...current, lastSequence: 0 }, snapshot),
-      );
+      setState((current) => applySnapshot(current, snapshot));
       await statsQueueRef.current;
       if (snapshot.match && snapshot.round?.status === "playing") {
         const timing = await loadMultiplayerTiming(
@@ -435,6 +435,49 @@ export function useRoom(
     if (!roomId) return; // 无成员资格：空 roomId 不发起请求，等页面重定向
     let disposed = false;
     let retry = 0;
+    let fallbackIntervalId: number | undefined;
+    let fallbackInFlight = false;
+
+    const markUnavailable = async () => {
+      await markMultiplayerDraftIncomplete(roomId, mySlot);
+      if (!disposed) setRoomUnavailable(true);
+    };
+
+    const syncFallbackSnapshot = async () => {
+      if (disposed || fallbackInFlight) return;
+      fallbackInFlight = true;
+      try {
+        const snapshot = await api.roomSnapshot(
+          roomId,
+          token,
+          lastAppliedRef.current,
+        );
+        if (!disposed) await syncSnapshot(snapshot);
+      } catch (error) {
+        if (
+          error instanceof ApiRequestError &&
+          (error.status === 401 || error.status === 404)
+        ) {
+          await markUnavailable();
+        }
+      } finally {
+        fallbackInFlight = false;
+      }
+    };
+
+    const startSnapshotFallback = () => {
+      if (fallbackIntervalId !== undefined) return;
+      void syncFallbackSnapshot();
+      fallbackIntervalId = window.setInterval(() => {
+        void syncFallbackSnapshot();
+      }, SNAPSHOT_FALLBACK_INTERVAL_MS);
+    };
+
+    const stopSnapshotFallback = () => {
+      if (fallbackIntervalId === undefined) return;
+      window.clearInterval(fallbackIntervalId);
+      fallbackIntervalId = undefined;
+    };
 
     const connect = (lastSequence: number) => {
       if (disposed) return;
@@ -446,14 +489,11 @@ export function useRoom(
       try {
         ws = new WebSocket(roomWsUrl(roomId), "touhouflandre-multi.v1");
       } catch {
-        console.log("DEBUG-WS constructor threw");
         scheduleReconnect();
         return;
       }
       wsRef.current = ws;
       ws.onopen = () => {
-        console.log("DEBUG-WS open");
-      
         ws.send(
           JSON.stringify({
             type: "hello",
@@ -471,7 +511,8 @@ export function useRoom(
         }
         if (msg.type === "hello-ok") {
           retry = 0;
-          setState((s) => ({ ...s, connection: "connected" }));
+          stopSnapshotFallback();
+          setState((s) => ({ ...s, connection: "connected", connectionIssue: null }));
           // 快照对齐（room/members/match/round 权威视图 + 历史事件）；
           // 重放事件由服务端在 hello-ok 后推送，reducer 按 sequence 去重。
           api
@@ -502,6 +543,12 @@ export function useRoom(
     };
 
     const scheduleReconnect = () => {
+      setState((s) => ({
+        ...s,
+        connection: "reconnecting",
+        connectionIssue: CONNECTION_ISSUE_MESSAGE,
+      }));
+      startSnapshotFallback();
       const delay = Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
       window.setTimeout(() => connect(lastAppliedRef.current), delay);
@@ -526,8 +573,7 @@ export function useRoom(
           error instanceof ApiRequestError &&
           (error.status === 401 || error.status === 404)
         ) {
-          await markMultiplayerDraftIncomplete(roomId, mySlot);
-          if (!disposed) setRoomUnavailable(true);
+          await markUnavailable();
           return;
         }
       }
@@ -541,6 +587,7 @@ export function useRoom(
 
     return () => {
       disposed = true;
+      stopSnapshotFallback();
       window.removeEventListener("load", start);
       wsRef.current?.close();
       wsRef.current = null;

@@ -29,6 +29,7 @@ export function RoomView({ code }: { code: string }) {
   const [redirecting, setRedirecting] = useState(false);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [roundActionBusy, setRoundActionBusy] = useState<"forfeit" | "pass" | null>(null);
+  const [dismissedRoundResultKey, setDismissedRoundResultKey] = useState<string | null>(null);
 
   useEffect(() => {
     setStored(loadMultiRoom());
@@ -70,6 +71,18 @@ export function RoomView({ code }: { code: string }) {
   const mode = state.room?.mode ?? "race";
   const turnSeconds = state.room?.turnSeconds ?? 60;
   const hasOpponent = state.members.length === 2;
+  const roundResultKey = state.roundResult
+    ? `${state.roundResult.matchIndex}:${state.roundResult.roundIndex}`
+    : null;
+  const roundResultDismissed =
+    roundResultKey !== null && dismissedRoundResultKey === roundResultKey;
+  const showRoundResult = Boolean(state.roundResult && !roundResultDismissed);
+  const showingFinalRoundResult = Boolean(
+    status === "finished" &&
+      state.matchResult &&
+      state.roundResult &&
+      !roundResultDismissed,
+  );
 
   useEffect(() => {
     setForfeitConfirm(false);
@@ -129,13 +142,14 @@ export function RoomView({ code }: { code: string }) {
           onReady={actions.setReady}
           onLeave={handleLeave}
         />
+        <ConnectionNotice message={state.connectionIssue} />
         <GuessErrorToast message={guessError} />
       </>
     );
   }
 
   // 对局态
-  if (status === "playing" && state.match) {
+  if ((status === "playing" || showingFinalRoundResult) && state.match) {
     const inCountdown = state.round?.status === "countdown";
     const relayCanGuess =
       mode === "relay" &&
@@ -208,19 +222,42 @@ export function RoomView({ code }: { code: string }) {
         {inCountdown && state.round && !state.roundResult && (
           <CountdownOverlay startsAt={state.round.startsAt} />
         )}
-        {state.roundResult && (
+        {showRoundResult && state.roundResult && (
           <RoundResultOverlay
             result={state.roundResult}
             mySlot={mySlot}
             nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
+            autoDismissAtCountdownEnd={Boolean(state.matchResult)}
+            onDismiss={() => {
+              if (roundResultKey) setDismissedRoundResultKey(roundResultKey);
+            }}
           />
         )}
+        <ConnectionNotice message={state.connectionIssue} />
         <GuessErrorToast message={guessError} />
       </>
     );
   }
 
   // 对局结束（等待再来一局 / 结果展示）
+  if (status === "finished" && state.matchResult && showRoundResult && state.roundResult) {
+    return (
+      <>
+        <RoundResultOverlay
+          result={state.roundResult}
+          mySlot={mySlot}
+          nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
+          autoDismissAtCountdownEnd
+          onDismiss={() => {
+            if (roundResultKey) setDismissedRoundResultKey(roundResultKey);
+          }}
+        />
+        <ConnectionNotice message={state.connectionIssue} />
+        <GuessErrorToast message={guessError} />
+      </>
+    );
+  }
+
   if (status === "finished" && state.matchResult) {
     return (
       <>
@@ -232,6 +269,7 @@ export function RoomView({ code }: { code: string }) {
           onRematch={actions.rematch}
           onLeave={handleLeave}
         />
+        <ConnectionNotice message={state.connectionIssue} />
         <GuessErrorToast message={guessError} />
       </>
     );
@@ -241,6 +279,20 @@ export function RoomView({ code }: { code: string }) {
     <section className="px-[18px] pt-16 text-center text-ink-soft">
       房间状态同步中……
     </section>
+  );
+}
+
+function ConnectionNotice({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center px-4">
+      <p
+        className="rounded-[6px] border border-amber-soft bg-paper px-4 py-2 text-[0.78rem] font-semibold text-ink-soft shadow-sm"
+        role="status"
+      >
+        {message}
+      </p>
+    </div>
   );
 }
 

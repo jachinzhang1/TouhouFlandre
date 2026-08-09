@@ -5,31 +5,58 @@
 // （nextRoundStartsAt 由 round.ended 载荷携带，服务端 startsAt 驱动）。
 import { Check, X } from "lucide-react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function RoundResultOverlay({
   result,
   mySlot,
   nextRoundStartsAt,
+  onDismiss,
+  autoDismissAtCountdownEnd = false,
 }: {
   result: RoundEndedPayload;
   mySlot: 1 | 2;
   nextRoundStartsAt: string | null;
+  onDismiss?: () => void;
+  autoDismissAtCountdownEnd?: boolean;
 }) {
   const [dismissed, setDismissed] = useState(false);
+  const dismissedRef = useRef(false);
+  const onDismissRef = useRef(onDismiss);
   const won = result.result === "win";
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  useEffect(() => {
+    dismissedRef.current = false;
+    setDismissed(false);
+  }, [result.matchIndex, result.roundIndex]);
+
+  const dismiss = useCallback(() => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    setDismissed(true);
+    onDismissRef.current?.();
+  }, []);
 
   // 下一局倒计时（服务端 startsAt 驱动；查看对局不暂停）
   const [remaining, setRemaining] = useState(0);
   useEffect(() => {
-    if (!nextRoundStartsAt) return;
+    if (!nextRoundStartsAt) {
+      setRemaining(0);
+      return;
+    }
     const tick = () => {
-      setRemaining(Math.max(0, new Date(nextRoundStartsAt).getTime() - Date.now()));
+      const nextRemaining = Math.max(0, new Date(nextRoundStartsAt).getTime() - Date.now());
+      setRemaining(nextRemaining);
+      if (autoDismissAtCountdownEnd && nextRemaining === 0) dismiss();
     };
     tick();
     const id = window.setInterval(tick, 200);
     return () => window.clearInterval(id);
-  }, [nextRoundStartsAt]);
+  }, [autoDismissAtCountdownEnd, dismiss, nextRoundStartsAt]);
 
   if (dismissed) return null;
 
@@ -48,7 +75,7 @@ export function RoundResultOverlay({
         </p>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={dismiss}
           className="w-full rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark"
         >
           查看对局

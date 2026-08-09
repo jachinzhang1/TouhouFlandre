@@ -34,7 +34,7 @@ pnpm dev
 | API | `http://localhost:4000` |
 | API 健康检查 | `http://localhost:4000/api/health`、`/livez`、`/readyz` |
 
-Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API。若要让浏览器直连 Go API，可设置 `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`。
+Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API。若要让浏览器直连 Go API，可设置 `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`。本地生产栈则通过 `http://localhost:3000` 提供 Web 与 WebSocket 入口。
 
 ## 环境变量
 

@@ -57,6 +57,43 @@ test.describe("多人房间", () => {
     }
   });
 
+  test("弃权结束回合会同步给双方并推进下一局", async ({ browser }) => {
+    const hostCtx = await browser.newContext();
+    const guestCtx = await browser.newContext();
+    const host = await hostCtx.newPage();
+    const guest = await guestCtx.newPage();
+    try {
+      await host.goto("/multi");
+      await host.getByRole("button", { name: "创建房间" }).click();
+      await host.waitForURL(/\/multi\/room\/[A-Z2-9]{6}/);
+      const roomCode = new URL(host.url()).pathname.split("/").pop()!;
+
+      await guest.goto("/multi");
+      await guest.getByPlaceholder(/ABC123/).fill(roomCode);
+      await guest.getByPlaceholder(/ABC123/).press("Tab");
+      await expect(guest.getByText(/房间存在/)).toBeVisible({ timeout: 5_000 });
+      await guest.getByRole("button", { name: "加入房间" }).click();
+      await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
+
+      await host.getByRole("button", { name: "准备" }).click();
+      await guest.getByRole("button", { name: "准备" }).click();
+      await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
+      await expect(guest.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByLabel("搜索角色")).toBeEnabled({ timeout: 10_000 });
+
+      await host.getByRole("button", { name: "放弃本局" }).click();
+      await host.getByRole("button", { name: /再次点击确认放弃/ }).click();
+
+      await expect(host.getByText(/本局失利/)).toBeVisible({ timeout: 10_000 });
+      await expect(guest.getByText(/本局获胜/)).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
+      await expect(guest.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
+    } finally {
+      await hostCtx.close();
+      await guestCtx.close();
+    }
+  });
+
   test("接力模式共享棋盘与轮次锁定", async ({ browser }) => {
     const hostCtx = await browser.newContext();
     const guestCtx = await browser.newContext();
@@ -77,8 +114,7 @@ test.describe("多人房间", () => {
       await guest.getByRole("button", { name: "加入房间" }).click();
       await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
 
-      await expect(host.getByText("接力 · BO3")).toBeVisible();
-      await expect(host.getByText("单手 30s")).toBeVisible();
+      await expect(host.getByText(/接力 30s · BO3/)).toBeVisible();
 
       await host.getByRole("button", { name: "准备" }).click();
       await guest.getByRole("button", { name: "准备" }).click();
@@ -105,16 +141,6 @@ test.describe("多人房间", () => {
     const guestCtx = await browser.newContext();
     const host = await hostCtx.newPage();
     const guest = await guestCtx.newPage();
-    guest.on("pageerror", (e) => console.log("GUEST PAGEERR:", e.message.slice(0, 200)));
-    guest.on("console", (m) => { if (m.type() === "error") console.log("GUEST CONSOLE:", m.text().slice(0, 200)); });
-    guest.on("requestfailed", (req) => console.log("GUEST REQFAIL:", req.method(), req.url(), req.failure()?.errorText));
-    host.on("websocket", (ws) => {
-      console.log("HOST WS:", ws.url().slice(0, 60));
-      ws.on("framereceived", (e) => {
-        const text = e.payload.toString().slice(0, 60);
-        if (text.includes("type")) console.log("HOST FRAME:", text.replace(/\s+/g, " "));
-      });
-    });
     try {
       await host.goto("/multi");
       await host.getByRole("button", { name: "创建房间" }).click();
@@ -161,15 +187,23 @@ test.describe("多人房间", () => {
       // 显式 blur 触发预检并等其完成（避免预检与 join 并发 preflight 阻塞 join）
       await guest.getByPlaceholder(/ABC123/).press("Tab");
       await expect(guest.getByText(/房间存在/)).toBeVisible({ timeout: 5_000 });
+      const guestWsPromise = guest.waitForEvent("websocket", {
+        predicate: (ws) => ws.url().includes("/api/rooms/"),
+        timeout: 10_000,
+      });
       await guest.getByRole("button", { name: "加入房间" }).click();
       await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
+      const guestWs = await guestWsPromise;
+      await guestWs.waitForEvent("framereceived", { timeout: 10_000 });
+      await expect(host.getByText("在线")).toHaveCount(2, { timeout: 10_000 });
 
-      // guest 导航离开（页面卸载关闭 WS）→ host 大厅成员显示离线
-      await guest.goto("/multi");
+      // guest 页面关闭（WS 断开）→ host 大厅成员显示离线
+      await guest.close();
       await expect(host.getByText("离线")).toBeVisible({ timeout: 10_000 });
 
       // guest 回到房间（同 context，localStorage 保留）→ 恢复在线
-      await guest.goto(`/multi/room/${roomCode}`);
+      const reconnectedGuest = await guestCtx.newPage();
+      await reconnectedGuest.goto(`/multi/room/${roomCode}`);
       await expect(host.getByText("离线")).toHaveCount(0, { timeout: 10_000 });
       await expect(host.getByText("在线")).toHaveCount(2, { timeout: 10_000 });
     } finally {
