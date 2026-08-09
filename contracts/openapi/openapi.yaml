@@ -24,9 +24,13 @@ tags:
     description: 会话与猜测
   - name: rooms
     description: 多人房间（创建/加入/就绪/猜测/对局/再来一局）
+  - name: site
+    description: 站点级信息与统计
 paths:
   /api/health:
     $ref: ./paths/health.yaml
+  /api/site/visits:
+    $ref: ./paths/site-visits.yaml
   /api/characters/search:
     $ref: ./paths/characters.yaml
   /api/catalog:
@@ -69,6 +73,8 @@ components:
   schemas:
     ErrorResponse:
       $ref: ./schemas/common.yaml#/ErrorResponse
+    SiteVisitResponse:
+      $ref: ./schemas/site.yaml#/SiteVisitResponse
     HairColor:
       $ref: ./schemas/character.yaml#/HairColor
     DifficultyTier:

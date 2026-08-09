@@ -60,6 +60,7 @@ export function roomWsUrl(roomId: string): string {
 }
 
 export const api = {
+  recordSiteVisit: () => requestApi(client.POST("/api/site/visits")),
   searchCharacters: (
     params: NonNullable<
       paths["/api/characters/search"]["get"]["parameters"]

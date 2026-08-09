@@ -1,0 +1,12 @@
+# 站点级统计与展示数据
+SiteVisitResponse:
+  type: object
+  description: 站点访问数记录结果。
+  required:
+    - count
+  properties:
+    count:
+      type: integer
+      format: int64
+      minimum: 0
+      description: 递增后的全站访问次数。

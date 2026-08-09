@@ -157,6 +157,12 @@ type RoomEvent struct {
 	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
 }
 
+type SiteMetric struct {
+	Key       string             `json:"key"`
+	Value     int64              `json:"value"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Work struct {
 	ID            string             `json:"id"`
 	TitleZh       string             `json:"title_zh"`

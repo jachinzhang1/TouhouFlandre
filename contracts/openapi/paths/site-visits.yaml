@@ -1,0 +1,19 @@
+# POST /api/site/visits
+post:
+  operationId: site_visits_create
+  tags:
+    - site
+  summary: 记录站点访问并返回总访问数
+  responses:
+    "200":
+      description: 访问数记录成功
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/site.yaml#/SiteVisitResponse"
+    "500":
+      description: 访问数记录失败
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

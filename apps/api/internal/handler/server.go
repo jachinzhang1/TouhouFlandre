@@ -89,6 +89,15 @@ func (s *Server) HealthCheck(ctx context.Context, _ openapi.HealthCheckRequestOb
 	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhouflandre-api"}, nil
 }
 
+// SiteVisitsCreate 记录一次完整页面访问并返回递增后的全站访问数。
+func (s *Server) SiteVisitsCreate(ctx context.Context, _ openapi.SiteVisitsCreateRequestObject) (openapi.SiteVisitsCreateResponseObject, error) {
+	count, err := s.q.IncrementSiteVisitCount(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	return openapi.SiteVisitsCreate200JSONResponse(openapi.SiteVisitResponse{Count: count}), nil
+}
+
 // CharactersSearch 搜索角色（行表 + ILIKE）。
 func (s *Server) CharactersSearch(ctx context.Context, request openapi.CharactersSearchRequestObject) (openapi.CharactersSearchResponseObject, error) {
 	query := ""
