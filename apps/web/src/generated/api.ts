@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/site/visits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 记录站点访问并返回总访问数 */
+        post: operations["site_visits_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/characters/search": {
         parameters: {
             query?: never;
@@ -402,6 +419,14 @@ export interface components {
             /** @enum {string} */
             code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
             error: string;
+        };
+        /** @description 站点访问数记录结果。 */
+        SiteVisitResponse: {
+            /**
+             * Format: int64
+             * @description 递增后的全站访问次数。
+             */
+            count: number;
         };
         /** @enum {string} */
         HairColor: "black" | "brown" | "blonde" | "white" | "silver" | "red" | "pink" | "purple" | "blue" | "green" | "orange" | "gray" | "multicolor" | "other";
@@ -799,6 +824,35 @@ export interface operations {
                         ok: boolean;
                         service: string;
                     };
+                };
+            };
+        };
+    };
+    site_visits_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 访问数记录成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteVisitResponse"];
+                };
+            };
+            /** @description 访问数记录失败 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

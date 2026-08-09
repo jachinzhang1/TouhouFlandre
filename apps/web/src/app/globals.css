@@ -388,6 +388,114 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+.stats-date-picker.ant-picker {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 7px;
+}
+
+.stats-date-picker.ant-picker:hover {
+  background: var(--surface-soft);
+}
+
+.stats-date-picker.ant-picker-focused,
+.stats-date-picker.ant-picker-focused:hover {
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+
+.stats-date-picker.ant-picker .ant-picker-input {
+  height: 100%;
+}
+
+.stats-date-picker.ant-picker .ant-picker-input > input {
+  height: 100%;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 38px;
+  text-align: center;
+  box-shadow: none;
+}
+
+.stats-date-picker.ant-picker .ant-picker-input > input::placeholder {
+  color: var(--placeholder-text);
+}
+
+.stats-date-picker.ant-picker .ant-picker-input > input:focus,
+.stats-date-picker.ant-picker .ant-picker-input > input:focus-visible {
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+}
+
+.stats-date-picker.ant-picker .ant-picker-suffix {
+  display: none;
+}
+
+.ant-picker-dropdown .ant-picker-panel-container {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.ant-picker-dropdown .ant-picker-panel,
+.ant-picker-dropdown .ant-picker-header,
+.ant-picker-dropdown .ant-picker-footer {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.ant-picker-dropdown .ant-picker-header button,
+.ant-picker-dropdown .ant-picker-content th {
+  color: var(--ink-soft);
+}
+
+.ant-picker-dropdown .ant-picker-cell {
+  color: var(--subtle-text);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view {
+  color: var(--ink);
+}
+
+.ant-picker-dropdown .ant-picker-cell-inner {
+  border-radius: 4px;
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: var(--vermilion);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+  color: var(--accent-contrast);
+  background: var(--vermilion);
+}
+
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-hover .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view .ant-picker-cell-inner:hover {
+  background: var(--accent-soft);
+}
+
+.ant-picker-dropdown .ant-picker-cell-disabled {
+  color: var(--disabled-text);
+}
+
+.ant-picker-dropdown .ant-picker-cell-disabled::before {
+  background: var(--surface-muted);
+}
+
+.ant-picker-dropdown .ant-picker-now-btn {
+  color: var(--vermilion);
+}
+
 ::selection {
   color: var(--selection-text);
   background: var(--vermilion);

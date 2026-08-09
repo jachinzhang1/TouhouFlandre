@@ -1,12 +1,51 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { statsDb } from "../stats/db";
 import { STATS_SCHEMA_VERSION, type SingleStatsRecord } from "../stats/types";
 import { StatsDashboard } from "./StatsDashboard";
 
+const { statsChartCalls } = vi.hoisted(() => ({
+  statsChartCalls: [] as { ariaLabel: string; option: unknown; className?: string }[],
+}));
+
 vi.mock("./StatsChart", () => ({
-  StatsChart: ({ ariaLabel }: { ariaLabel: string }) => <div role="img" aria-label={ariaLabel} />,
+  StatsChart: (props: { ariaLabel: string; option: unknown; className?: string }) => {
+    statsChartCalls.push(props);
+    return <div role="img" aria-label={props.ariaLabel} />;
+  },
+}));
+
+vi.mock("antd", () => ({
+  ConfigProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  DatePicker: ({
+    className,
+    placeholder,
+    value,
+    onChange,
+    ...props
+  }: {
+    className?: string;
+    placeholder?: string;
+    value?: { format: (template: string) => string } | null;
+    onChange?: (value: { format: (template: string) => string } | null) => void;
+    [key: string]: unknown;
+  }) => (
+    <input
+      aria-label={props["aria-label"] as string}
+      className={`ant-picker ${className ?? ""}`}
+      placeholder={placeholder}
+      value={value?.format("YYYY-MM-DD") ?? ""}
+      onChange={(event) =>
+        onChange?.(
+          event.target.value
+            ? { format: () => event.target.value }
+            : null,
+        )
+      }
+    />
+  ),
 }));
 
 const record: SingleStatsRecord = {
@@ -14,13 +53,36 @@ const record: SingleStatsRecord = {
   startedAt: "2026-08-07T10:20:30Z", endedAt: "2026-08-07T10:21:00Z", durationMs: 30_000, outcome: "win",
   round: {
     roundIndex: 1, startedAt: "2026-08-07T10:20:30Z", endedAt: "2026-08-07T10:21:00Z", durationMs: 30_000,
-    result: "win", answer: { id: "reimu", name: "博丽灵梦", work: { id: "th01", title: "东方灵异传", code: "TH01" } },
-    guesses: [{ id: "reimu", name: "博丽灵梦", correct: true, durationMs: 30_000 }],
+    result: "win", answer: { id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", work: { id: "th01", title: "东方灵异传", code: "TH01" } },
+    guesses: [{ id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", correct: true, durationMs: 30_000 }],
   },
 };
 
+function makeWorkRecord(index: number): SingleStatsRecord {
+  const code = `TH${String(index).padStart(2, "0")}`;
+  const day = String(index).padStart(2, "0");
+  const name = `角色 ${index}`;
+  const avatarUrl = `/avatars/character-${index}.webp`;
+  return {
+    ...record,
+    id: `record-${index}`,
+    puzzleKey: `2026-08-${day}`,
+    startedAt: `2026-08-${day}T10:20:30Z`,
+    endedAt: `2026-08-${day}T10:21:00Z`,
+    round: {
+      ...record.round,
+      roundIndex: index,
+      startedAt: `2026-08-${day}T10:20:30Z`,
+      endedAt: `2026-08-${day}T10:21:00Z`,
+      answer: { id: `answer-${index}`, name, avatarUrl, work: { id: `th${index}`, title: `作品 ${index}`, code } },
+      guesses: [{ id: `guess-${index}`, name, avatarUrl, correct: true, durationMs: 30_000 }],
+    },
+  };
+}
+
 describe("StatsDashboard", () => {
   beforeEach(async () => {
+    statsChartCalls.length = 0;
     await statsDb.records.clear();
     await statsDb.drafts.clear();
     await statsDb.metadata.clear();
@@ -37,7 +99,31 @@ describe("StatsDashboard", () => {
     ).toBeTruthy();
   });
 
-  it("使用正确的导入导出图标，并联动日期范围", async () => {
+  it("作品猜测情况默认展示完整横轴范围", async () => {
+    await statsDb.records.bulkPut(Array.from({ length: 11 }, (_, index) => makeWorkRecord(index + 2)));
+    render(<StatsDashboard />);
+
+    await screen.findByRole("img", { name: "各东方作品答案出现次数、获胜次数与胜率" });
+    await waitFor(() => {
+      const workCharts = statsChartCalls.filter((call) => call.ariaLabel === "各东方作品答案出现次数、获胜次数与胜率");
+      expect(workCharts.length).toBeGreaterThan(0);
+      const option = workCharts[workCharts.length - 1]?.option as { dataZoom?: Array<Record<string, unknown>> };
+      expect(option.dataZoom?.[0]).toMatchObject({ type: "slider", start: 0, end: 100 });
+      expect(option.dataZoom?.[0]).not.toHaveProperty("startValue");
+      expect(option.dataZoom?.[0]).not.toHaveProperty("endValue");
+    });
+  });
+
+  it("游玩记录头像使用非懒加载策略", async () => {
+    const { container } = render(<StatsDashboard />);
+    await screen.findByLabelText(/猜测角色：博丽灵梦/);
+
+    const avatars = Array.from(container.querySelectorAll("img"));
+    expect(avatars.length).toBeGreaterThan(0);
+    expect(avatars.every((avatar) => avatar.getAttribute("loading") === "eager")).toBe(true);
+  });
+
+  it("使用正确的导入导出图标，并联动 Ant Design 日期筛选", async () => {
     render(<StatsDashboard />);
     await screen.findByLabelText(/猜测角色：博丽灵梦/);
 
@@ -46,10 +132,16 @@ describe("StatsDashboard", () => {
 
     const from = screen.getByLabelText("开始日期");
     const to = screen.getByLabelText("结束日期");
+    expect(from.closest(".stats-date-picker")).toBeTruthy();
+    expect(to.closest(".stats-date-picker")).toBeTruthy();
+    expect(from.closest(".stats-date-range")?.className).toContain("h-10");
+    expect(screen.queryByText("开始")).toBeNull();
+    expect(screen.queryByText("结束")).toBeNull();
+
     fireEvent.change(from, { target: { value: "2026-08-01" } });
     fireEvent.change(to, { target: { value: "2026-08-07" } });
-    expect(to.getAttribute("min")).toBe("2026-08-01");
-    expect(from.getAttribute("max")).toBe("2026-08-07");
+    expect((from as HTMLInputElement).value).toBe("2026-08-01");
+    expect((to as HTMLInputElement).value).toBe("2026-08-07");
     await userEvent.click(screen.getByRole("button", { name: "清除日期筛选" }));
     expect((from as HTMLInputElement).value).toBe("");
     expect((to as HTMLInputElement).value).toBe("");

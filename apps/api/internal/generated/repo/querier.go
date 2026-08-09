@@ -74,6 +74,8 @@ type Querier interface {
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
+	// 站点级计数器
+	IncrementSiteVisitCount(ctx context.Context) (int64, error)
 	// 幂等：ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING；
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。

@@ -7,11 +7,13 @@ export function CharacterAvatar({
   name,
   initials,
   className = "",
+  loading = "lazy",
 }: {
   avatarUrl?: string;
   name: string;
   initials: string;
   className?: string;
+  loading?: "eager" | "lazy";
 }) {
   const [failedUrl, setFailedUrl] = useState("");
   const showImage = avatarUrl && failedUrl !== avatarUrl;
@@ -26,7 +28,7 @@ export function CharacterAvatar({
           src={avatarUrl}
           alt=""
           title={name}
-          loading="lazy"
+          loading={loading}
           decoding="async"
           className="size-full object-cover [image-rendering:pixelated]"
           onError={() => setFailedUrl(avatarUrl)}

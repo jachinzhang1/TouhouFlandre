@@ -211,6 +211,74 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+func TestSiteVisitsCreateIncrementsCount(t *testing.T) {
+	initial := currentVisitCount(t)
+
+	firstResp, firstPayload := request(http.MethodPost, "/api/site/visits", nil)
+	if firstResp.StatusCode != http.StatusOK {
+		t.Fatalf("first visit status %d: %s", firstResp.StatusCode, firstPayload)
+	}
+	var first openapi.SiteVisitResponse
+	if err := json.Unmarshal(firstPayload, &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Count != initial+1 {
+		t.Fatalf("first count %d, want %d", first.Count, initial+1)
+	}
+
+	secondResp, secondPayload := request(http.MethodPost, "/api/site/visits", nil)
+	if secondResp.StatusCode != http.StatusOK {
+		t.Fatalf("second visit status %d: %s", secondResp.StatusCode, secondPayload)
+	}
+	var second openapi.SiteVisitResponse
+	if err := json.Unmarshal(secondPayload, &second); err != nil {
+		t.Fatal(err)
+	}
+	if second.Count != initial+2 {
+		t.Fatalf("second count %d, want %d", second.Count, initial+2)
+	}
+	if stored := currentVisitCount(t); stored != initial+2 {
+		t.Fatalf("stored count %d, want %d", stored, initial+2)
+	}
+}
+
+func TestSiteVisitsCreateIsAtomic(t *testing.T) {
+	initial := currentVisitCount(t)
+	const requests = 16
+
+	var wg sync.WaitGroup
+	statuses := make([]int, requests)
+	for i := range statuses {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			resp, _ := request(http.MethodPost, "/api/site/visits", nil)
+			statuses[index] = resp.StatusCode
+		}(i)
+	}
+	wg.Wait()
+
+	for i, status := range statuses {
+		if status != http.StatusOK {
+			t.Fatalf("request %d status %d", i, status)
+		}
+	}
+	if stored := currentVisitCount(t); stored != initial+requests {
+		t.Fatalf("stored count %d, want %d", stored, initial+requests)
+	}
+}
+
+func currentVisitCount(t *testing.T) int64 {
+	t.Helper()
+	var count int64
+	if err := pool.QueryRow(ctx,
+		`SELECT value FROM site_metric WHERE key = 'visits_total'`,
+	).Scan(&count); err != nil {
+		t.Fatalf("query visit count: %v", err)
+	}
+	return count
+}
+
 func TestReadyzSkipsOpenAPIValidation(t *testing.T) {
 	resp, payload := request(http.MethodGet, "/readyz", nil)
 	if resp.StatusCode != http.StatusOK {

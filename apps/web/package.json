@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@touhouflandre/shared": "workspace:*",
+    "antd": "^6.5.4",
+    "dayjs": "^1.11.21",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
     "echarts": "^6.1.0",
