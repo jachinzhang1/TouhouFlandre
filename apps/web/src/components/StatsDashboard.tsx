@@ -1,6 +1,10 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { ConfigProvider, DatePicker } from "antd";
+import zhCN from "antd/locale/zh_CN";
+import dayjs, { type Dayjs } from "dayjs";
+import "dayjs/locale/zh-cn";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { EChartsCoreOption } from "echarts/core";
 import {
@@ -59,6 +63,8 @@ const MODE_OPTIONS = [
   { value: "random", label: "随机" },
   { value: "multiplayer", label: "多人" },
 ] as const;
+
+dayjs.locale("zh-cn");
 
 const OUTCOME_LABELS: Record<StatsOutcome, string> = {
   win: "成功",
@@ -160,7 +166,7 @@ export function StatsDashboard() {
       { type: "value", minInterval: 1, name: "题局" },
       { type: "value", min: 0, max: 1, interval: 0.25, name: "胜率", axisLabel: { formatter: (value: number) => `${value * 100}%` } },
     ],
-    dataZoom: works.length > 10 ? [{ type: "slider", startValue: 0, endValue: 9, height: 18, bottom: 10 }, { type: "inside" }] : [],
+    dataZoom: works.length > 10 ? [{ type: "slider", start: 0, end: 100, height: 18, bottom: 10 }, { type: "inside" }] : [],
     series: [
       { name: "答案出现", type: "bar", data: works.map((item) => item.total), itemStyle: { color: "#9aa5a0" }, barMaxWidth: 30 },
       { name: "获胜题局", type: "bar", data: works.map((item) => item.wins), barMaxWidth: 30 },
@@ -328,24 +334,74 @@ function ActionButton({ icon: Icon, label, danger = false, onClick }: { icon: ty
 }
 
 function DateRangeFilter({ from, to, onFromChange, onToChange, onClear }: { from: string; to: string; onFromChange: (value: string) => void; onToChange: (value: string) => void; onClear: () => void }) {
+  const fromDate = from ? dayjs(from, "YYYY-MM-DD") : null;
+  const toDate = to ? dayjs(to, "YYYY-MM-DD") : null;
+
   return (
-    <div className="grid w-[370px] max-w-full gap-1.5 max-[680px]:w-full">
+    <div className="grid w-[420px] max-w-full gap-1.5 max-[680px]:w-full">
       <span className="h-4 text-xs font-bold leading-4 text-ink-soft">日期范围</span>
-      <div className="flex h-10 min-w-0 items-center overflow-hidden rounded-[6px] border border-line bg-[var(--surface)] shadow-sm transition focus-within:border-vermilion focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
-        <CalendarRange className="ml-3 shrink-0 text-ink-soft" size={16} aria-hidden="true" />
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">开始日期</span>
-          <input className="h-9 w-full min-w-0 bg-transparent px-2 text-sm text-ink outline-none" type="date" aria-label="开始日期" value={from} max={to || undefined} onChange={(event) => onFromChange(event.target.value)} />
-        </label>
-        <span className="shrink-0 text-xs font-bold text-ink-soft" aria-hidden="true">至</span>
-        <label className="min-w-0 flex-1">
-          <span className="sr-only">结束日期</span>
-          <input className="h-9 w-full min-w-0 bg-transparent px-2 text-sm text-ink outline-none" type="date" aria-label="结束日期" value={to} min={from || undefined} onChange={(event) => onToChange(event.target.value)} />
-        </label>
-        {from || to ? <button type="button" className="mr-1 inline-flex size-8 shrink-0 items-center justify-center rounded-[4px] text-ink-soft hover:bg-[var(--surface-soft)] hover:text-ink" aria-label="清除日期筛选" title="清除日期筛选" onClick={onClear}><X size={15} /></button> : <span className="w-2 shrink-0" />}
-      </div>
+      <ConfigProvider
+        locale={zhCN}
+        theme={{
+          token: {
+            borderRadius: 5,
+            colorBgContainer: "var(--surface)",
+            colorBorder: "var(--line)",
+            colorPrimary: "var(--vermilion)",
+            colorPrimaryBg: "var(--accent-soft)",
+            colorPrimaryBgHover: "var(--accent-soft)",
+            colorPrimaryBorder: "var(--accent-hover-border)",
+            colorPrimaryHover: "var(--vermilion-dark)",
+            colorText: "var(--ink)",
+            colorTextHeading: "var(--ink)",
+            colorTextLightSolid: "var(--accent-contrast)",
+            colorTextQuaternary: "var(--subtle-text)",
+            colorTextSecondary: "var(--ink-soft)",
+            colorBgElevated: "var(--surface)",
+            colorFillSecondary: "var(--surface-soft)",
+            colorFillTertiary: "var(--surface-muted)",
+            colorSplit: "var(--line)",
+            colorTextPlaceholder: "var(--placeholder-text)",
+            controlItemBgActive: "var(--accent-soft)",
+            controlItemBgHover: "var(--surface-soft)",
+            fontFamily: "var(--font-ui)",
+          },
+        }}
+      >
+        <div className="stats-date-range flex h-10 min-w-0 items-center overflow-hidden rounded-[6px] border border-line bg-[var(--surface)] px-2 shadow-sm transition focus-within:border-vermilion focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
+          <CalendarRange className="mx-1 shrink-0 text-vermilion" size={16} aria-hidden="true" />
+          <DatePicker
+            className="stats-date-picker"
+            value={fromDate}
+            format="YYYY-MM-DD"
+            placeholder="开始日期"
+            inputReadOnly
+            allowClear={false}
+            aria-label="开始日期"
+            disabledDate={(current) => Boolean(toDate && current.isAfter(toDate, "day"))}
+            onChange={(value) => onFromChange(datePickerValue(value))}
+          />
+          <span className="mx-1 h-px w-5 shrink-0 bg-line-strong max-[420px]:w-3" aria-hidden="true" />
+          <DatePicker
+            className="stats-date-picker"
+            value={toDate}
+            format="YYYY-MM-DD"
+            placeholder="结束日期"
+            inputReadOnly
+            allowClear={false}
+            aria-label="结束日期"
+            disabledDate={(current) => Boolean(fromDate && current.isBefore(fromDate, "day"))}
+            onChange={(value) => onToChange(datePickerValue(value))}
+          />
+          {from || to ? <button type="button" className="ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-[4px] text-ink-soft hover:bg-[var(--surface-soft)] hover:text-ink" aria-label="清除日期筛选" title="清除日期筛选" onClick={onClear}><X size={15} /></button> : <span className="w-2 shrink-0" />}
+        </div>
+      </ConfigProvider>
     </div>
   );
+}
+
+function datePickerValue(value: Dayjs | null): string {
+  return value?.format("YYYY-MM-DD") ?? "";
 }
 
 function Metric({ icon: Icon, label, value, detail, tone = "accent" }: { icon: typeof Target; label: string; value: string; detail: string; tone?: "accent" | "jade" | "amber" }) {
@@ -404,15 +460,15 @@ function Outcome({ outcome }: { outcome: StatsOutcome }) {
 
 function GuessSequence({ guesses }: { guesses: ReturnType<typeof displayGuessesForRecord> }) {
   if (!guesses.length) return <span className="text-xs text-ink-soft">未猜测</span>;
-  return <div className="flex w-max min-w-max items-center gap-1 py-1" aria-label={`猜测角色：${guesses.map((guess) => guess.name).join("、")}`}>{guesses.slice(0, 9).map((guess, index) => <CharacterAvatar key={`${guess.id}-${index}`} avatarUrl={guess.avatarUrl} name={guess.name} initials={guess.name.slice(0, 2)} className="size-8 shrink-0" />)}{guesses.length > 9 ? <span className="ml-1 shrink-0 text-xs font-bold text-ink-soft">+{guesses.length - 9}</span> : null}</div>;
+  return <div className="flex w-max min-w-max items-center gap-1 py-1" aria-label={`猜测角色：${guesses.map((guess) => guess.name).join("、")}`}>{guesses.slice(0, 9).map((guess, index) => <CharacterAvatar key={`${guess.id}-${index}`} avatarUrl={guess.avatarUrl} name={guess.name} initials={guess.name.slice(0, 2)} loading="eager" className="size-8 shrink-0" />)}{guesses.length > 9 ? <span className="ml-1 shrink-0 text-xs font-bold text-ink-soft">+{guesses.length - 9}</span> : null}</div>;
 }
 
 function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
-  return <div className="flex w-max min-w-max items-center gap-1 py-1" aria-label={`答案角色：${rounds.map((round) => round.answer.name).join("、")}`}>{rounds.map((round) => <CharacterAvatar key={round.roundIndex} avatarUrl={round.answer.avatarUrl} name={round.answer.name} initials={round.answer.name.slice(0, 2)} className="size-8 shrink-0" />)}</div>;
+  return <div className="flex w-max min-w-max items-center gap-1 py-1" aria-label={`答案角色：${rounds.map((round) => round.answer.name).join("、")}`}>{rounds.map((round) => <CharacterAvatar key={round.roundIndex} avatarUrl={round.answer.avatarUrl} name={round.answer.name} initials={round.answer.name.slice(0, 2)} loading="eager" className="size-8 shrink-0" />)}</div>;
 }
 
 function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
-  return <div className="grid gap-2">{record.rounds.map((round) => <div key={round.roundIndex} className="grid grid-cols-[72px_64px_80px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_54px_minmax(0,1fr)]"><strong className="text-ink">第 {round.roundIndex} 局</strong><span className={round.result === "win" ? "text-jade" : "text-[var(--error-text)]"}>{round.result === "win" ? "胜" : round.result === "loss" ? "负" : "平"}</span><span className="tabular-nums text-ink-soft max-[680px]:hidden">{formatDuration(round.durationMs)}</span><div className="flex min-w-0 items-center gap-2"><CharacterAvatar avatarUrl={round.answer.avatarUrl} name={round.answer.name} initials={round.answer.name.slice(0, 2)} className="size-7" /><span className="truncate text-ink">答案：{round.answer.name} · {round.answer.work?.code ?? "TH--"}</span></div></div>)}</div>;
+  return <div className="grid gap-2">{record.rounds.map((round) => <div key={round.roundIndex} className="grid grid-cols-[72px_64px_80px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_54px_minmax(0,1fr)]"><strong className="text-ink">第 {round.roundIndex} 局</strong><span className={round.result === "win" ? "text-jade" : "text-[var(--error-text)]"}>{round.result === "win" ? "胜" : round.result === "loss" ? "负" : "平"}</span><span className="tabular-nums text-ink-soft max-[680px]:hidden">{formatDuration(round.durationMs)}</span><div className="flex min-w-0 items-center gap-2"><CharacterAvatar avatarUrl={round.answer.avatarUrl} name={round.answer.name} initials={round.answer.name.slice(0, 2)} loading="eager" className="size-7" /><span className="truncate text-ink">答案：{round.answer.name} · {round.answer.work?.code ?? "TH--"}</span></div></div>)}</div>;
 }
 
 function ConfirmDialog({ title, text, confirmLabel, onCancel, onConfirm }: { title: string; text: string; confirmLabel: string; onCancel: () => void; onConfirm: () => void | Promise<void> }) {
