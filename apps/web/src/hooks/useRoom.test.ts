@@ -127,11 +127,22 @@ describe("roomReducer", () => {
   });
 
   it("match.ended 切终态（finished）", () => {
+    const existingRoundResult = {
+      matchIndex: 0,
+      roundIndex: 2,
+      result: "win",
+      winnerSlot: 1,
+      scores: { slot1: 2, slot2: 0 },
+      answer: { id: "a", name: "A", avatarUrl: "", workId: "th01", workTitle: "TH01", workCode: "TH01" },
+      boards: { slot1: [], slot2: [] },
+    };
     const state = roomReducer(
-      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false] } } as RoomUiState,
+      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false] }, round: { status: "ended", startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8, self: { guesses: [] }, opponent: { rows: [] } }, roundResult: existingRoundResult } as RoomUiState,
       event("match.ended", 9, { matchIndex: 0, result: "win", winnerSlot: 1, scores: { slot1: 2, slot2: 0 }, reason: "normal" }),
     );
     expect(state.matchResult?.reason).toBe("normal");
+    expect(state.roundResult?.answer.name).toBe("A");
+    expect(state.round?.status).toBe("ended");
     expect(state.room?.status).toBe("finished");
   });
 
@@ -178,5 +189,29 @@ describe("applySnapshot", () => {
     expect(state.match?.matchIndex).toBe(0);
     expect(state.round?.status).toBe("playing");
     expect(state.lastSequence).toBe(1);
+  });
+
+  it("preserves the current sequence when a fallback snapshot has no new events", () => {
+    const snapshot = {
+      roomId: "room-1",
+      roomCode: "ABC123",
+      format: "bo3",
+      mode: "race",
+      turnSeconds: 60,
+      status: "lobby",
+      members: [
+        { slot: 1, displayName: "host", status: "connected", ready: false },
+      ],
+      match: null,
+      round: null,
+      events: [],
+    };
+    const state = applySnapshot(
+      { ...initialRoomState, lastSequence: 12 },
+      snapshot as never,
+    );
+
+    expect(state.lastSequence).toBe(12);
+    expect(state.room?.roomCode).toBe("ABC123");
   });
 });

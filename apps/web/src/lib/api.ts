@@ -51,12 +51,15 @@ export const guestAuthHeader = (token: string) => ({
  *  实测：Chromium 在页面加载期间对 localhost（→ ::1）的 WS 握手会延迟数十秒，
  *  127.0.0.1（IPv4）瞬时完成——WS 地址统一归一化为 IPv4。 */
 export function roomWsUrl(roomId: string): string {
-  let base = API_BASE_URL;
-  if (base) {
-    base = base.replace("//localhost:", "//127.0.0.1:");
-    return base.replace(/^http/, "ws") + `/api/rooms/${roomId}/ws`;
+  const url = new URL(API_BASE_URL || window.location.origin);
+  if (url.hostname === "localhost") {
+    url.hostname = "127.0.0.1";
   }
-  return `${window.location.origin}/api/rooms/${roomId}/ws`;
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = `/api/rooms/${encodeURIComponent(roomId)}/ws`;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 export const api = {

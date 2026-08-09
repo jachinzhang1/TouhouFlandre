@@ -74,6 +74,7 @@ export function MatchBoard({
             <SelfBoard
               guesses={round?.self.guesses ?? []}
               playing={round?.status === "playing"}
+              maxGuesses={round?.maxGuesses}
             />
             <OpponentBoard rows={round?.opponent.rows ?? []} />
           </>

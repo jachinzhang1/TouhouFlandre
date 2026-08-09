@@ -4,6 +4,8 @@
 import { useRouter } from "next/navigation";
 import { DoorOpen, Plus, Users } from "lucide-react";
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
@@ -23,6 +25,14 @@ import { api } from "../lib/api";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
+const MODE_RULES: Record<MultiplayerMode, string> = {
+  race: `**竞速模式**中，双方会同时竞猜同一个隐藏角色。每名玩家在本局最多可以提交 **8 手**猜测；自己会看到完整的猜测记录和字段反馈，对手棋盘则只显示匿名反馈矩阵。任意一方率先猜中目标角色时，本局立即结束并为该玩家记一胜；若双方都用尽 8 手仍无人猜中，或本局总倒计时结束，则本局判为平局。
+
+每一小局结束后会揭示答案、当前比分和双方完整棋盘。先达到目标胜局的一方赢得整场对局。`,
+  relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，当前轮到的玩家可以提交一次猜测或主动选择空过。每名玩家每局最多消耗 **8 手**轮次；猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
+
+接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
+};
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : "操作失败。");
 
@@ -140,7 +150,7 @@ export function MultiLobby() {
                 {MODES.map((option) => (
                   <label
                     key={option}
-                    className={`flex min-h-[58px] cursor-pointer flex-col justify-center rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
+                    className={`mode-option relative flex min-h-[58px] cursor-pointer flex-col justify-center rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
                       mode === option
                         ? "border-vermilion bg-vermilion-soft text-vermilion"
                         : "border-line bg-paper-muted hover:bg-paper"
@@ -152,12 +162,14 @@ export function MultiLobby() {
                       value={option}
                       checked={mode === option}
                       onChange={() => setMode(option)}
+                      aria-describedby={`mode-rule-${option}`}
                       className="sr-only"
                     />
                     <span>{MULTIPLAYER_MODE_LABELS[option]}</span>
                     <span className="mt-0.5 text-[0.68rem] font-normal text-ink-soft">
                       {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
                     </span>
+                    <ModeRulePopover mode={option} />
                   </label>
                 ))}
               </div>
@@ -297,5 +309,19 @@ export function MultiLobby() {
         </div>
       </div>
     </section>
+  );
+}
+
+function ModeRulePopover({ mode }: { mode: MultiplayerMode }) {
+  return (
+    <div
+      id={`mode-rule-${mode}`}
+      role="tooltip"
+      className="mode-rule-popover pointer-events-none absolute right-0 bottom-[calc(100%+10px)] left-0 z-20 rounded-[6px] border border-line bg-paper px-3 py-2.5 text-left text-[0.72rem] font-normal leading-[1.65] text-ink shadow-lg"
+    >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
+        {MODE_RULES[mode]}
+      </ReactMarkdown>
+    </div>
   );
 }

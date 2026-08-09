@@ -9,9 +9,11 @@ import { GuessTable, type GuessRow } from "./GuessTable";
 export function SelfBoard({
   guesses,
   playing,
+  maxGuesses,
 }: {
   guesses: GuessResult[];
   playing: boolean;
+  maxGuesses?: number;
 }) {
   const rows: GuessRow[] = useMemo(
     () =>
@@ -27,11 +29,14 @@ export function SelfBoard({
       })),
     [guesses],
   );
+  const guessCountLabel = maxGuesses
+    ? `${guesses.length}/${maxGuesses}`
+    : `${guesses.length}`;
 
   return (
     <GuessTable
       title="我"
-      subtitle={`已猜 ${guesses.length}${playing ? " 局 · 竞速中" : ""}`}
+      subtitle={`已猜 ${guessCountLabel} 手${playing ? " · 竞速中" : ""}`}
       rows={rows}
       emptyLabel={playing ? "搜索角色开始猜测。" : "本局尚未猜测。"}
     />

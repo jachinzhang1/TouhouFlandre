@@ -1145,6 +1145,73 @@ html[data-theme-mode="dark"] .appearance-swatch {
   background: var(--topbar-active-bg);
 }
 
+.mode-option {
+  isolation: isolate;
+}
+
+.mode-option:hover,
+.mode-option:focus-within {
+  z-index: 30;
+}
+
+.mode-rule-popover {
+  color: var(--ink);
+  border-color: var(--line);
+  background: #ffffff;
+  opacity: 0;
+  transform: translateY(5px);
+  visibility: hidden;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    visibility 140ms ease;
+}
+
+.mode-rule-popover::after {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #ffffff;
+  content: "";
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.mode-option:hover .mode-rule-popover,
+.mode-option:focus-within .mode-rule-popover {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.mode-rule-popover p {
+  margin: 0;
+}
+
+.mode-rule-popover p + p {
+  margin-top: 0.65rem;
+}
+
+.mode-rule-popover strong {
+  color: var(--vermilion-dark);
+  font-weight: 900;
+}
+
+html[data-theme-mode="dark"] .mode-rule-popover {
+  color: #edf4f1;
+  border-color: #26332f;
+  background: #050706;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
+}
+
+html[data-theme-mode="dark"] .mode-rule-popover::after {
+  border-color: #26332f;
+  background: #050706;
+}
+
 .status-strip {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) 96px 96px 112px auto;
@@ -1503,6 +1570,28 @@ html[data-theme-mode="dark"] .appearance-swatch {
   font-size: 0.58rem;
 }
 
+.relay-current-turn-active {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--vermilion) 36%, var(--line));
+}
+
+.relay-current-turn-active::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--vermilion-soft);
+  content: "";
+  opacity: 0.36;
+  pointer-events: none;
+  animation: relay-turn-pulse 1.4s ease-in-out infinite;
+}
+
+.relay-current-turn-active > * {
+  position: relative;
+  z-index: 1;
+}
+
 .empty-state {
   height: 150px;
   color: var(--subtle-text);
@@ -1624,6 +1713,16 @@ html[data-theme-mode="dark"] .appearance-swatch {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes relay-turn-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.62;
   }
 }
 
