@@ -115,7 +115,7 @@
       ]
     },
     "firstAppearance": {
-      "workId": "th09_pofv"
+      "workId": "baijr"
     },
     "species": [
       "天狗",
@@ -2544,7 +2544,7 @@
       "僧侣"
     ],
     "hairColors": [
-      "multicolor"
+      "none"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4159,7 +4159,8 @@
     ],
     "locations": [
       "地狱",
-      "妖怪之山"
+      "妖怪之山",
+      "幻想乡"
     ],
     "roles": [
       "Boss",
@@ -4432,8 +4433,9 @@
       "妖怪之山"
     ],
     "locations": [
+      "虹龙洞",
       "妖怪之山",
-      "虹龙洞"
+      "幻想乡"
     ],
     "roles": [
       "Boss",
@@ -4479,8 +4481,9 @@
       "无明确阵营"
     ],
     "locations": [
+      "虹龙洞",
       "妖怪之山",
-      "虹龙洞"
+      "幻想乡"
     ],
     "roles": [
       "Boss",
@@ -4525,7 +4528,8 @@
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山"
+      "妖怪之山",
+      "幻想乡"
     ],
     "roles": [
       "Boss"
@@ -4616,7 +4620,8 @@
       "妖怪之山"
     ],
     "locations": [
-      "妖怪之山"
+      "妖怪之山",
+      "幻想乡"
     ],
     "roles": [
       "Boss",
@@ -4660,8 +4665,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "虹龙洞"
+      "幻想乡"
     ],
     "roles": [
       "Boss",
@@ -4709,7 +4713,8 @@
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山"
+      "妖怪之山",
+      "幻想乡"
     ],
     "roles": [
       "EX Boss"
