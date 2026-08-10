@@ -52,7 +52,7 @@ type Querier interface {
 	// 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
 	GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID string) (MultiRound, error)
 	// 每日题
-	GetDailyPuzzle(ctx context.Context, dateKey string) (DailyPuzzle, error)
+	GetDailyPuzzle(ctx context.Context, arg GetDailyPuzzleParams) (DailyPuzzle, error)
 	GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessByIdempotencyKeyParams) (MultiGuess, error)
 	// 按 (room, match_index) 取场（快照事件水合用）。
 	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
@@ -113,6 +113,7 @@ type Querier interface {
 	StartRound(ctx context.Context, id string) (MultiRound, error)
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
+	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
 	UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams) (MultiRound, error)
 	UpdateSessionGuess(ctx context.Context, arg UpdateSessionGuessParams) (GameSession, error)

@@ -13,11 +13,11 @@ import (
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO game_session (
-    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses
+    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, question_scope
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at
+RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope
 `
 
 type CreateSessionParams struct {
@@ -29,6 +29,7 @@ type CreateSessionParams struct {
 	PuzzleKey      pgtype.Text `json:"puzzle_key"`
 	Status         string      `json:"status"`
 	MaxGuesses     int32       `json:"max_guesses"`
+	QuestionScope  []byte      `json:"question_scope"`
 }
 
 // 会话：创建、查询、乐观锁更新
@@ -42,6 +43,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (G
 		arg.PuzzleKey,
 		arg.Status,
 		arg.MaxGuesses,
+		arg.QuestionScope,
 	)
 	var i GameSession
 	err := row.Scan(
@@ -59,12 +61,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (G
 		&i.EndedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at FROM game_session WHERE id = $1
+SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope FROM game_session WHERE id = $1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (GameSession, error) {
@@ -85,6 +88,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (GameSession, error
 		&i.EndedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -97,7 +101,7 @@ SET guesses = $1::jsonb,
     version = version + 1,
     updated_at = now()
 WHERE id = $4 AND version = $5 AND status = 'playing'
-RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at
+RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope
 `
 
 type UpdateSessionGuessParams struct {
@@ -132,6 +136,7 @@ func (q *Queries) UpdateSessionGuess(ctx context.Context, arg UpdateSessionGuess
 		&i.EndedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }

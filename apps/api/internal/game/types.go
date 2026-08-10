@@ -29,25 +29,26 @@ const (
 
 // GuessField 对应 shared 的 GuessField。
 type GuessField struct {
-	Key            GuessFieldKey `json:"key"`
-	Label          string        `json:"label"`
-	Type           string        `json:"type"`
-	Visible        bool          `json:"visible"`
-	CompareStrategy string       `json:"compareStrategy"`
-	HelpText       string        `json:"helpText,omitempty"`
+	Key             GuessFieldKey `json:"key"`
+	Label           string        `json:"label"`
+	Type            string        `json:"type"`
+	Visible         bool          `json:"visible"`
+	CompareStrategy string        `json:"compareStrategy"`
+	HelpText        string        `json:"helpText,omitempty"`
 }
 
 // FieldFeedback 对应 shared 的 FieldFeedback。
 type FieldFeedback struct {
-	Field        GuessFieldKey `json:"field"`
-	Label        string        `json:"label"`
+	Field        GuessFieldKey  `json:"field"`
+	Label        string         `json:"label"`
 	Status       FeedbackStatus `json:"status"`
-	Symbol       string        `json:"symbol"`
-	DisplayValue []string      `json:"displayValue"`
+	Symbol       string         `json:"symbol"`
+	DisplayValue []string       `json:"displayValue"`
 }
 
 // GuessResult 对应 shared 的 GuessResult。
 type GuessResult struct {
+	Kind           string          `json:"kind,omitempty"`
 	GuessID        string          `json:"guessId"`
 	GuessName      string          `json:"guessName"`
 	GuessAvatarURL string          `json:"guessAvatarUrl,omitempty"`

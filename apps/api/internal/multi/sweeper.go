@@ -360,7 +360,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	for _, id := range usedRows {
 		usedSet[id] = true
 	}
-	answer, err := DrawAnswer(AnswerPool(characters), usedSet, s.rng)
+	answer, err := DrawAnswer(AnswerPoolForMatch(match, characters), usedSet, s.rng)
 	if err != nil {
 		return err
 	}

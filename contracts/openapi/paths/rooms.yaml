@@ -28,6 +28,8 @@ post:
             displayName:
               type: string
               description: 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。
+            questionScope:
+              $ref: "../schemas/question-scope.yaml#/QuestionScopeConfig"
   responses:
     "201":
       description: 房间已创建（含房间号与一次性游客令牌）

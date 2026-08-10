@@ -13,11 +13,9 @@ OpponentRow:
       description: 该成员局内猜测序号（1 起）。
     statuses:
       type: array
-      description: 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+      description: 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
       items:
         $ref: "./session.yaml#/FeedbackStatus"
-      minItems: 6
-      maxItems: 6
 
 RelayTurnRow:
   type: object

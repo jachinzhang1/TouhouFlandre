@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -24,6 +26,92 @@ type snapshotState struct {
 	Round   *repo.MultiRound   `json:"round"`
 	Guesses []snapshotGuess    `json:"guesses"`
 	Turns   []snapshotTurn     `json:"turns"`
+}
+
+type snapshotRoom struct {
+	ID            string             `json:"id"`
+	Code          string             `json:"code"`
+	Format        string             `json:"format"`
+	Status        string             `json:"status"`
+	EventSeq      int64              `json:"event_seq"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	Mode          string             `json:"mode"`
+	TurnSeconds   int32              `json:"turn_seconds"`
+	QuestionScope json.RawMessage    `json:"question_scope"`
+}
+
+type snapshotMatch struct {
+	ID             string             `json:"id"`
+	RoomID         string             `json:"room_id"`
+	MatchIndex     int32              `json:"match_index"`
+	CatalogVersion string             `json:"catalog_version"`
+	TargetWins     int32              `json:"target_wins"`
+	ScoreSlot1     int32              `json:"score_slot1"`
+	ScoreSlot2     int32              `json:"score_slot2"`
+	RoundCount     int32              `json:"round_count"`
+	Status         string             `json:"status"`
+	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	QuestionScope  json.RawMessage    `json:"question_scope"`
+}
+
+func (room snapshotRoom) toRepo() repo.MultiRoom {
+	return repo.MultiRoom{
+		ID:            room.ID,
+		Code:          room.Code,
+		Format:        room.Format,
+		Status:        room.Status,
+		EventSeq:      room.EventSeq,
+		CreatedAt:     room.CreatedAt,
+		ExpiresAt:     room.ExpiresAt,
+		Mode:          room.Mode,
+		TurnSeconds:   room.TurnSeconds,
+		QuestionScope: append([]byte{}, room.QuestionScope...),
+	}
+}
+
+func (match snapshotMatch) toRepo() repo.MultiMatch {
+	return repo.MultiMatch{
+		ID:             match.ID,
+		RoomID:         match.RoomID,
+		MatchIndex:     match.MatchIndex,
+		CatalogVersion: match.CatalogVersion,
+		TargetWins:     match.TargetWins,
+		ScoreSlot1:     match.ScoreSlot1,
+		ScoreSlot2:     match.ScoreSlot2,
+		RoundCount:     match.RoundCount,
+		Status:         match.Status,
+		StartedAt:      match.StartedAt,
+		EndedAt:        match.EndedAt,
+		QuestionScope:  append([]byte{}, match.QuestionScope...),
+	}
+}
+
+func (state *snapshotState) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Room    snapshotRoom       `json:"room"`
+		Members []repo.MultiMember `json:"members"`
+		Match   *snapshotMatch     `json:"match"`
+		Round   *repo.MultiRound   `json:"round"`
+		Guesses []snapshotGuess    `json:"guesses"`
+		Turns   []snapshotTurn     `json:"turns"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	state.Room = raw.Room.toRepo()
+	state.Members = raw.Members
+	if raw.Match != nil {
+		match := raw.Match.toRepo()
+		state.Match = &match
+	} else {
+		state.Match = nil
+	}
+	state.Round = raw.Round
+	state.Guesses = raw.Guesses
+	state.Turns = raw.Turns
+	return nil
 }
 
 // snapshotGuess 快照猜测行（statuses 为数组形态）。
@@ -93,6 +181,12 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		Status:      openapi.RoomStatus(state.Room.Status),
 		Members:     memberViews,
 	}
+	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	openapiRoomScope := toOpenAPIQuestionScope(roomScope)
+	snapshot.QuestionScope = &openapiRoomScope
 
 	if state.Match != nil {
 		format := multi.RoomFormat(state.Room.Format)
@@ -108,14 +202,24 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 				rematchReady[1] = m.RematchReady
 			}
 		}
+		matchScope, err := storedQuestionScopeFromJSON(state.Match.QuestionScope)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		if matchScope.SchemaVersion == 0 {
+			matchScope = roomScope
+		}
+		openapiMatchScope := toOpenAPIQuestionScope(matchScope)
 		matchView := openapi.MatchView{
-			MatchIndex:   int(state.Match.MatchIndex),
-			TargetWins:   int(state.Match.TargetWins),
-			ScoreSlot1:   int(state.Match.ScoreSlot1),
-			ScoreSlot2:   int(state.Match.ScoreSlot2),
-			RoundIndex:   roundIndex,
-			MaxRounds:    multi.MaxRounds(format, s.timing.MaxRoundsFactor),
-			RematchReady: rematchReady[:],
+			MatchIndex:     int(state.Match.MatchIndex),
+			TargetWins:     int(state.Match.TargetWins),
+			ScoreSlot1:     int(state.Match.ScoreSlot1),
+			ScoreSlot2:     int(state.Match.ScoreSlot2),
+			RoundIndex:     roundIndex,
+			MaxRounds:      multi.MaxRounds(format, s.timing.MaxRoundsFactor),
+			RematchReady:   rematchReady[:],
+			CatalogVersion: state.Match.CatalogVersion,
+			QuestionScope:  &openapiMatchScope,
 		}
 		snapshot.Match = &matchView
 
@@ -143,7 +247,8 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		return nil, internalError(err)
 	}
 	byID := multi.CharactersByID(characters)
-	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(game.CharacterGuessFields))
+	fields := multi.FieldsForMatch(*state.Match)
+	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(fields))
 
 	self := []openapi.GuessResult{}
 	opponentRows := []openapi.OpponentRow{} // 空对手矩阵序列化为 []（前端按数组消费）
@@ -154,12 +259,13 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			return nil, internalError(errors.New("guess character missing from snapshot"))
 		}
 		if guess.MemberID == observer.ID {
-			hydrated := multi.HydrateGuessResult(guessChar, statuses, guess.IsCorrect)
+			hydrated := multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields)
 			self = append(self, toOpenAPIGuessResult(hydrated))
 		} else {
+			visibleStatuses := multi.StatusesForFields(statuses, fields)
 			opponentRows = append(opponentRows, openapi.OpponentRow{
 				Index:    int(guess.Sequence),
-				Statuses: toOpenAPIFeedbackStatuses(multi.PermuteStatuses(statuses, perm)),
+				Statuses: toOpenAPIFeedbackStatuses(multi.PermuteStatuses(visibleStatuses, perm)),
 			})
 		}
 	}
@@ -184,7 +290,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 				if !ok {
 					return nil, internalError(errors.New("relay turn character missing from snapshot"))
 				}
-				hydrated := multi.HydrateGuessResult(guessChar, *turn.Statuses, turn.IsCorrect)
+				hydrated := multi.HydrateGuessResultWithFields(guessChar, *turn.Statuses, turn.IsCorrect, fields)
 				guess := toOpenAPIGuessResult(hydrated)
 				row.Guess = &guess
 			}

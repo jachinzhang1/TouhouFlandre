@@ -1,0 +1,172 @@
+QuestionDifficultyPreset:
+  type: string
+  enum:
+    - easy
+    - normal
+    - hard
+    - lunatic
+
+QuestionDifficulty:
+  type: string
+  enum:
+    - easy
+    - normal
+    - hard
+    - lunatic
+    - custom
+
+QuestionScopeMode:
+  type: string
+  enum:
+    - preset
+    - custom
+
+QuestionScopeWorkSelection:
+  type: string
+  enum:
+    - all
+    - partial
+    - none
+
+QuestionScopeReleaseYearMode:
+  type: string
+  enum:
+    - hidden
+    - exactOnly
+    - directional
+
+QuestionScopeFieldRules:
+  type: object
+  required:
+    - firstAppearance
+    - releaseYear
+    - species
+    - affiliations
+    - locations
+    - hairColors
+  properties:
+    firstAppearance:
+      type: boolean
+    releaseYear:
+      $ref: "#/QuestionScopeReleaseYearMode"
+    species:
+      type: boolean
+    affiliations:
+      type: boolean
+    locations:
+      type: boolean
+    hairColors:
+      type: boolean
+
+QuestionScopeTurnLimit:
+  type: object
+  required:
+    - enabled
+    - seconds
+  properties:
+    enabled:
+      type: boolean
+    seconds:
+      type: integer
+      minimum: 30
+      maximum: 120
+
+QuestionScopeRules:
+  type: object
+  required:
+    - fields
+    - turnLimit
+  properties:
+    fields:
+      $ref: "#/QuestionScopeFieldRules"
+    turnLimit:
+      $ref: "#/QuestionScopeTurnLimit"
+    hiddenFields:
+      description: Legacy schemaVersion 1 input. Normalized responses use fields.
+      type: array
+      items:
+        $ref: "./guess.yaml#/GuessFieldKey"
+    turnSeconds:
+      description: Legacy schemaVersion 1 input. Normalized responses use turnLimit.
+      type: integer
+      minimum: 1
+
+QuestionScopeWorkState:
+  type: object
+  required:
+    - workId
+    - state
+    - selectedCount
+    - totalCount
+  properties:
+    workId:
+      type: string
+    state:
+      $ref: "#/QuestionScopeWorkSelection"
+    selectedCount:
+      type: integer
+      minimum: 0
+    totalCount:
+      type: integer
+      minimum: 0
+
+QuestionScopeConfig:
+  type: object
+  required:
+    - schemaVersion
+    - catalogVersion
+    - mode
+    - difficulty
+    - selectedCharacterIds
+    - workStates
+    - rules
+  properties:
+    schemaVersion:
+      type: integer
+      enum: [2]
+    catalogVersion:
+      type: string
+    mode:
+      $ref: "#/QuestionScopeMode"
+    difficulty:
+      $ref: "#/QuestionDifficulty"
+    selectedCharacterIds:
+      type: array
+      items:
+        type: string
+    workStates:
+      type: array
+      items:
+        $ref: "#/QuestionScopeWorkState"
+    rules:
+      $ref: "#/QuestionScopeRules"
+
+CatalogFull:
+  type: object
+  description: 当前全量题库快照。供题库设置弹窗和版本修正使用，不作为角色搜索缓存源。
+  required:
+    - version
+    - works
+    - characters
+    - defaultQuestionScope
+  properties:
+    version:
+      type: string
+    works:
+      type: array
+      items:
+        $ref: "./work.yaml#/Work"
+    characters:
+      type: array
+      items:
+        $ref: "./character.yaml#/Character"
+    defaultQuestionScope:
+      $ref: "#/QuestionScopeConfig"
+
+PuzzleCreateRequest:
+  type: object
+  properties:
+    questionScope:
+      $ref: "#/QuestionScopeConfig"
+    difficulty:
+      $ref: "#/QuestionDifficultyPreset"

@@ -6,21 +6,21 @@ import (
 
 // HairColorLabel 对应 shared 的 HAIR_COLOR_LABELS。
 var HairColorLabels = map[string]string{
-	"black":     "黑",
-	"brown":     "棕",
-	"blonde":    "金",
-	"white":     "白",
-	"silver":    "银",
-	"red":       "红",
-	"pink":      "粉",
-	"purple":    "紫",
-	"blue":      "蓝",
-	"green":     "绿",
-	"orange":    "橙",
-	"gray":      "灰",
+	"black":      "黑",
+	"brown":      "棕",
+	"blonde":     "金",
+	"white":      "白",
+	"silver":     "银",
+	"red":        "红",
+	"pink":       "粉",
+	"purple":     "紫",
+	"blue":       "蓝",
+	"green":      "绿",
+	"orange":     "橙",
+	"gray":       "灰",
 	"multicolor": "多色",
-	"other":     "其他",
-	"none":      "光头",
+	"other":      "其他",
+	"none":       "光头",
 }
 
 // CHARACTER_GUESS_FIELDS 对应 shared 的 CHARACTER_GUESS_FIELDS。
@@ -218,6 +218,7 @@ func CompareCharacter(guess, answer Character, fields []GuessField) GuessResult 
 		}
 	}
 	return GuessResult{
+		Kind:           "guess",
 		GuessID:        guess.ID,
 		GuessName:      guess.Names.ZhHans,
 		GuessAvatarURL: guess.AvatarURL,

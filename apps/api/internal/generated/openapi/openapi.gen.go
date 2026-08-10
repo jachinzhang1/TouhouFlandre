@@ -9,7 +9,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -23,22 +25,22 @@ import (
 
 // Defines values for DifficultyTier.
 const (
-	Easy    DifficultyTier = "easy"
-	Hard    DifficultyTier = "hard"
-	Lunatic DifficultyTier = "lunatic"
-	Normal  DifficultyTier = "normal"
+	DifficultyTierEasy    DifficultyTier = "easy"
+	DifficultyTierHard    DifficultyTier = "hard"
+	DifficultyTierLunatic DifficultyTier = "lunatic"
+	DifficultyTierNormal  DifficultyTier = "normal"
 )
 
 // Valid indicates whether the value is a known member of the DifficultyTier enum.
 func (e DifficultyTier) Valid() bool {
 	switch e {
-	case Easy:
+	case DifficultyTierEasy:
 		return true
-	case Hard:
+	case DifficultyTierHard:
 		return true
-	case Lunatic:
+	case DifficultyTierLunatic:
 		return true
-	case Normal:
+	case DifficultyTierNormal:
 		return true
 	default:
 		return false
@@ -146,28 +148,28 @@ func (e ErrorResponseCode) Valid() bool {
 
 // Defines values for FeedbackStatus.
 const (
-	Exact   FeedbackStatus = "exact"
-	Higher  FeedbackStatus = "higher"
-	Lower   FeedbackStatus = "lower"
-	Miss    FeedbackStatus = "miss"
-	Partial FeedbackStatus = "partial"
-	Unknown FeedbackStatus = "unknown"
+	FeedbackStatusExact   FeedbackStatus = "exact"
+	FeedbackStatusHigher  FeedbackStatus = "higher"
+	FeedbackStatusLower   FeedbackStatus = "lower"
+	FeedbackStatusMiss    FeedbackStatus = "miss"
+	FeedbackStatusPartial FeedbackStatus = "partial"
+	FeedbackStatusUnknown FeedbackStatus = "unknown"
 )
 
 // Valid indicates whether the value is a known member of the FeedbackStatus enum.
 func (e FeedbackStatus) Valid() bool {
 	switch e {
-	case Exact:
+	case FeedbackStatusExact:
 		return true
-	case Higher:
+	case FeedbackStatusHigher:
 		return true
-	case Lower:
+	case FeedbackStatusLower:
 		return true
-	case Miss:
+	case FeedbackStatusMiss:
 		return true
-	case Partial:
+	case FeedbackStatusPartial:
 		return true
-	case Unknown:
+	case FeedbackStatusUnknown:
 		return true
 	default:
 		return false
@@ -176,28 +178,28 @@ func (e FeedbackStatus) Valid() bool {
 
 // Defines values for FeedbackSymbol.
 const (
-	Empty FeedbackSymbol = "↑"
-	N1    FeedbackSymbol = "↓"
-	N2    FeedbackSymbol = "?"
-	O     FeedbackSymbol = "O"
-	Tilde FeedbackSymbol = "~"
-	X     FeedbackSymbol = "X"
+	FeedbackSymbolEmpty FeedbackSymbol = "↑"
+	FeedbackSymbolN1    FeedbackSymbol = "↓"
+	FeedbackSymbolN2    FeedbackSymbol = "?"
+	FeedbackSymbolO     FeedbackSymbol = "O"
+	FeedbackSymbolTilde FeedbackSymbol = "~"
+	FeedbackSymbolX     FeedbackSymbol = "X"
 )
 
 // Valid indicates whether the value is a known member of the FeedbackSymbol enum.
 func (e FeedbackSymbol) Valid() bool {
 	switch e {
-	case Empty:
+	case FeedbackSymbolEmpty:
 		return true
-	case N1:
+	case FeedbackSymbolN1:
 		return true
-	case N2:
+	case FeedbackSymbolN2:
 		return true
-	case O:
+	case FeedbackSymbolO:
 		return true
-	case Tilde:
+	case FeedbackSymbolTilde:
 		return true
-	case X:
+	case FeedbackSymbolX:
 		return true
 	default:
 		return false
@@ -270,6 +272,24 @@ func (e GuessFieldKey) Valid() bool {
 	case GuessFieldKeyRoles:
 		return true
 	case GuessFieldKeySpecies:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GuessResultKind.
+const (
+	GuessResultKindGuess   GuessResultKind = "guess"
+	GuessResultKindTimeout GuessResultKind = "timeout"
+)
+
+// Valid indicates whether the value is a known member of the GuessResultKind enum.
+func (e GuessResultKind) Valid() bool {
+	switch e {
+	case GuessResultKindGuess:
+		return true
+	case GuessResultKindTimeout:
 		return true
 	default:
 		return false
@@ -372,21 +392,147 @@ func (e MultiplayerMode) Valid() bool {
 	}
 }
 
+// Defines values for QuestionDifficulty.
+const (
+	QuestionDifficultyCustom  QuestionDifficulty = "custom"
+	QuestionDifficultyEasy    QuestionDifficulty = "easy"
+	QuestionDifficultyHard    QuestionDifficulty = "hard"
+	QuestionDifficultyLunatic QuestionDifficulty = "lunatic"
+	QuestionDifficultyNormal  QuestionDifficulty = "normal"
+)
+
+// Valid indicates whether the value is a known member of the QuestionDifficulty enum.
+func (e QuestionDifficulty) Valid() bool {
+	switch e {
+	case QuestionDifficultyCustom:
+		return true
+	case QuestionDifficultyEasy:
+		return true
+	case QuestionDifficultyHard:
+		return true
+	case QuestionDifficultyLunatic:
+		return true
+	case QuestionDifficultyNormal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QuestionDifficultyPreset.
+const (
+	QuestionDifficultyPresetEasy    QuestionDifficultyPreset = "easy"
+	QuestionDifficultyPresetHard    QuestionDifficultyPreset = "hard"
+	QuestionDifficultyPresetLunatic QuestionDifficultyPreset = "lunatic"
+	QuestionDifficultyPresetNormal  QuestionDifficultyPreset = "normal"
+)
+
+// Valid indicates whether the value is a known member of the QuestionDifficultyPreset enum.
+func (e QuestionDifficultyPreset) Valid() bool {
+	switch e {
+	case QuestionDifficultyPresetEasy:
+		return true
+	case QuestionDifficultyPresetHard:
+		return true
+	case QuestionDifficultyPresetLunatic:
+		return true
+	case QuestionDifficultyPresetNormal:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QuestionScopeConfigSchemaVersion.
+const (
+	QuestionScopeConfigSchemaVersionN2 QuestionScopeConfigSchemaVersion = 2
+)
+
+// Valid indicates whether the value is a known member of the QuestionScopeConfigSchemaVersion enum.
+func (e QuestionScopeConfigSchemaVersion) Valid() bool {
+	switch e {
+	case QuestionScopeConfigSchemaVersionN2:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QuestionScopeMode.
+const (
+	QuestionScopeModeCustom QuestionScopeMode = "custom"
+	QuestionScopeModePreset QuestionScopeMode = "preset"
+)
+
+// Valid indicates whether the value is a known member of the QuestionScopeMode enum.
+func (e QuestionScopeMode) Valid() bool {
+	switch e {
+	case QuestionScopeModeCustom:
+		return true
+	case QuestionScopeModePreset:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QuestionScopeReleaseYearMode.
+const (
+	Directional QuestionScopeReleaseYearMode = "directional"
+	ExactOnly   QuestionScopeReleaseYearMode = "exactOnly"
+	Hidden      QuestionScopeReleaseYearMode = "hidden"
+)
+
+// Valid indicates whether the value is a known member of the QuestionScopeReleaseYearMode enum.
+func (e QuestionScopeReleaseYearMode) Valid() bool {
+	switch e {
+	case Directional:
+		return true
+	case ExactOnly:
+		return true
+	case Hidden:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for QuestionScopeWorkSelection.
+const (
+	QuestionScopeWorkSelectionAll     QuestionScopeWorkSelection = "all"
+	QuestionScopeWorkSelectionNone    QuestionScopeWorkSelection = "none"
+	QuestionScopeWorkSelectionPartial QuestionScopeWorkSelection = "partial"
+)
+
+// Valid indicates whether the value is a known member of the QuestionScopeWorkSelection enum.
+func (e QuestionScopeWorkSelection) Valid() bool {
+	switch e {
+	case QuestionScopeWorkSelectionAll:
+		return true
+	case QuestionScopeWorkSelectionNone:
+		return true
+	case QuestionScopeWorkSelectionPartial:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RelayTurnRowKind.
 const (
-	Guess   RelayTurnRowKind = "guess"
-	Pass    RelayTurnRowKind = "pass"
-	Timeout RelayTurnRowKind = "timeout"
+	RelayTurnRowKindGuess   RelayTurnRowKind = "guess"
+	RelayTurnRowKindPass    RelayTurnRowKind = "pass"
+	RelayTurnRowKindTimeout RelayTurnRowKind = "timeout"
 )
 
 // Valid indicates whether the value is a known member of the RelayTurnRowKind enum.
 func (e RelayTurnRowKind) Valid() bool {
 	switch e {
-	case Guess:
+	case RelayTurnRowKindGuess:
 		return true
-	case Pass:
+	case RelayTurnRowKindPass:
 		return true
-	case Timeout:
+	case RelayTurnRowKindTimeout:
 		return true
 	default:
 		return false
@@ -652,6 +798,14 @@ type CatalogContentSummary struct {
 	VisibleFieldCount int             `json:"visibleFieldCount"`
 }
 
+// CatalogFull 当前全量题库快照。供题库设置弹窗和版本修正使用，不作为角色搜索缓存源。
+type CatalogFull struct {
+	Characters           []Character         `json:"characters"`
+	DefaultQuestionScope QuestionScopeConfig `json:"defaultQuestionScope"`
+	Version              string              `json:"version"`
+	Works                []Work              `json:"works"`
+}
+
 // CatalogSummary defines model for CatalogSummary.
 type CatalogSummary struct {
 	Contents []CatalogContentSummary `json:"contents"`
@@ -722,9 +876,10 @@ type CreateRoomResponse struct {
 	GuestToken GuestToken `json:"guestToken"`
 
 	// Member 房间成员视图。
-	Member   MemberView `json:"member"`
-	RoomCode string     `json:"roomCode"`
-	RoomId   string     `json:"roomId"`
+	Member        MemberView           `json:"member"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
+	RoomCode      string               `json:"roomCode"`
+	RoomId        string               `json:"roomId"`
 }
 
 // DifficultyTier defines model for DifficultyTier.
@@ -793,7 +948,13 @@ type GuessResult struct {
 	GuessId        string  `json:"guessId"`
 	GuessName      string  `json:"guessName"`
 	IsCorrect      bool    `json:"isCorrect"`
+
+	// Kind 缺失时按普通猜测 guess 处理。
+	Kind GuessResultKind `json:"kind"`
 }
+
+// GuessResultKind 缺失时按普通猜测 guess 处理。
+type GuessResultKind string
 
 // GuestToken 游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
 // 传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
@@ -829,11 +990,15 @@ type LocalizedNames struct {
 
 // MatchView 场次视图。场次自包含：比分、题库版本绑定（catalogVersion 见事件）、round_count 归场行。
 type MatchView struct {
+	// CatalogVersion 本场绑定的题库版本。
+	CatalogVersion string `json:"catalogVersion"`
+
 	// MatchIndex 场次序号；0 = 首场，1 = 第一次再来一局……
 	MatchIndex int `json:"matchIndex"`
 
 	// MaxRounds 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。
-	MaxRounds int `json:"maxRounds"`
+	MaxRounds     int                  `json:"maxRounds"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
 	// RematchReady 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。
 	RematchReady []bool `json:"rematchReady"`
@@ -877,7 +1042,7 @@ type OpponentRow struct {
 	// Index 该成员局内猜测序号（1 起）。
 	Index int `json:"index"`
 
-	// Statuses 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+	// Statuses 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
 	Statuses []FeedbackStatus `json:"statuses"`
 }
 
@@ -891,14 +1056,21 @@ type PublicGameSession struct {
 	ContentType    GameContentType `json:"contentType"`
 
 	// EndedAt 会话结束后才返回。
-	EndedAt    *time.Time    `json:"endedAt,omitempty"`
-	Guesses    []GuessResult `json:"guesses"`
-	Id         string        `json:"id"`
-	MaxGuesses int           `json:"maxGuesses"`
-	Mode       GameMode      `json:"mode"`
-	PuzzleKey  *string       `json:"puzzleKey,omitempty"`
-	StartedAt  time.Time     `json:"startedAt"`
-	Status     SessionStatus `json:"status"`
+	EndedAt       *time.Time           `json:"endedAt,omitempty"`
+	Guesses       []GuessResult        `json:"guesses"`
+	Id            string               `json:"id"`
+	MaxGuesses    int                  `json:"maxGuesses"`
+	Mode          GameMode             `json:"mode"`
+	PuzzleKey     *string              `json:"puzzleKey,omitempty"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
+	StartedAt     time.Time            `json:"startedAt"`
+	Status        SessionStatus        `json:"status"`
+}
+
+// PuzzleCreateRequest defines model for PuzzleCreateRequest.
+type PuzzleCreateRequest struct {
+	Difficulty    *QuestionDifficultyPreset `json:"difficulty,omitempty"`
+	QuestionScope *QuestionScopeConfig      `json:"questionScope,omitempty"`
 }
 
 // PuzzleResponse 创建题局的响应。
@@ -907,6 +1079,71 @@ type PuzzleResponse struct {
 
 	// Session 公开会话视图。answer 仅在会话结束后返回。
 	Session PublicGameSession `json:"session"`
+}
+
+// QuestionDifficulty defines model for QuestionDifficulty.
+type QuestionDifficulty string
+
+// QuestionDifficultyPreset defines model for QuestionDifficultyPreset.
+type QuestionDifficultyPreset string
+
+// QuestionScopeConfig defines model for QuestionScopeConfig.
+type QuestionScopeConfig struct {
+	CatalogVersion       string                           `json:"catalogVersion"`
+	Difficulty           QuestionDifficulty               `json:"difficulty"`
+	Mode                 QuestionScopeMode                `json:"mode"`
+	Rules                QuestionScopeRules               `json:"rules"`
+	SchemaVersion        QuestionScopeConfigSchemaVersion `json:"schemaVersion"`
+	SelectedCharacterIds []string                         `json:"selectedCharacterIds"`
+	WorkStates           []QuestionScopeWorkState         `json:"workStates"`
+}
+
+// QuestionScopeConfigSchemaVersion defines model for QuestionScopeConfig.SchemaVersion.
+type QuestionScopeConfigSchemaVersion int
+
+// QuestionScopeFieldRules defines model for QuestionScopeFieldRules.
+type QuestionScopeFieldRules struct {
+	Affiliations    bool                         `json:"affiliations"`
+	FirstAppearance bool                         `json:"firstAppearance"`
+	HairColors      bool                         `json:"hairColors"`
+	Locations       bool                         `json:"locations"`
+	ReleaseYear     QuestionScopeReleaseYearMode `json:"releaseYear"`
+	Species         bool                         `json:"species"`
+}
+
+// QuestionScopeMode defines model for QuestionScopeMode.
+type QuestionScopeMode string
+
+// QuestionScopeReleaseYearMode defines model for QuestionScopeReleaseYearMode.
+type QuestionScopeReleaseYearMode string
+
+// QuestionScopeRules defines model for QuestionScopeRules.
+type QuestionScopeRules struct {
+	Fields QuestionScopeFieldRules `json:"fields"`
+
+	// HiddenFields Legacy schemaVersion 1 input. Normalized responses use fields.
+	HiddenFields *[]GuessFieldKey       `json:"hiddenFields,omitempty"`
+	TurnLimit    QuestionScopeTurnLimit `json:"turnLimit"`
+
+	// TurnSeconds Legacy schemaVersion 1 input. Normalized responses use turnLimit.
+	TurnSeconds *int `json:"turnSeconds,omitempty"`
+}
+
+// QuestionScopeTurnLimit defines model for QuestionScopeTurnLimit.
+type QuestionScopeTurnLimit struct {
+	Enabled bool `json:"enabled"`
+	Seconds int  `json:"seconds"`
+}
+
+// QuestionScopeWorkSelection defines model for QuestionScopeWorkSelection.
+type QuestionScopeWorkSelection string
+
+// QuestionScopeWorkState defines model for QuestionScopeWorkState.
+type QuestionScopeWorkState struct {
+	SelectedCount int                        `json:"selectedCount"`
+	State         QuestionScopeWorkSelection `json:"state"`
+	TotalCount    int                        `json:"totalCount"`
+	WorkId        string                     `json:"workId"`
 }
 
 // RelayTurnRow 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
@@ -948,7 +1185,8 @@ type RoomInfo struct {
 	MemberCount int        `json:"memberCount"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode MultiplayerMode `json:"mode"`
+	Mode          MultiplayerMode      `json:"mode"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
 	// RoomCode 6 位房间号。
 	RoomCode string `json:"roomCode"`
@@ -978,9 +1216,10 @@ type RoomSnapshot struct {
 	Members []MemberView `json:"members"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode     MultiplayerMode `json:"mode"`
-	RoomCode string          `json:"roomCode"`
-	RoomId   string          `json:"roomId"`
+	Mode          MultiplayerMode      `json:"mode"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
+	RoomCode      string               `json:"roomCode"`
+	RoomId        string               `json:"roomId"`
 
 	// Round 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。
 	Round *RoundView `json:"round,omitempty"`
@@ -1101,7 +1340,8 @@ type RoomsCreateJSONBody struct {
 	Format RoomFormat `json:"format"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode *MultiplayerMode `json:"mode,omitempty"`
+	Mode          *MultiplayerMode     `json:"mode,omitempty"`
+	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
 	// TurnSeconds 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
 	TurnSeconds *RoomsCreateJSONBodyTurnSeconds `json:"turnSeconds,omitempty"`
@@ -1137,6 +1377,9 @@ type SessionsSubmitGuessJSONBody struct {
 	GuessId string `json:"guessId"`
 }
 
+// PuzzlesCreateJSONRequestBody defines body for PuzzlesCreate for application/json ContentType.
+type PuzzlesCreateJSONRequestBody = PuzzleCreateRequest
+
 // RoomsCreateJSONRequestBody defines body for RoomsCreate for application/json ContentType.
 type RoomsCreateJSONRequestBody RoomsCreateJSONBody
 
@@ -1157,6 +1400,9 @@ type ServerInterface interface {
 	// CatalogCharacters 获取完整可猜角色表与当前题库版本
 	// (GET /api/catalog/characters)
 	CatalogCharacters(ctx *echo.Context) error
+	// CatalogFull 获取当前全量题库快照
+	// (GET /api/catalog/full)
+	CatalogFull(ctx *echo.Context) error
 	// CharactersSearch 搜索角色
 	// (GET /api/characters/search)
 	CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error
@@ -1211,6 +1457,9 @@ type ServerInterface interface {
 	// SessionsSubmitGuess 提交猜测
 	// (POST /api/sessions/{sessionId}/guess)
 	SessionsSubmitGuess(ctx *echo.Context, sessionId string) error
+	// SessionsTimeout 记录单人超时空过
+	// (POST /api/sessions/{sessionId}/timeout)
+	SessionsTimeout(ctx *echo.Context, sessionId string) error
 	// SiteVisitsCreate 记录站点访问并返回总访问数
 	// (POST /api/site/visits)
 	SiteVisitsCreate(ctx *echo.Context) error
@@ -1236,6 +1485,15 @@ func (w *ServerInterfaceWrapper) CatalogCharacters(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CatalogCharacters(ctx)
+	return err
+}
+
+// CatalogFull converts echo context to params.
+func (w *ServerInterfaceWrapper) CatalogFull(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CatalogFull(ctx)
 	return err
 }
 
@@ -1590,6 +1848,22 @@ func (w *ServerInterfaceWrapper) SessionsSubmitGuess(ctx *echo.Context) error {
 	return err
 }
 
+// SessionsTimeout converts echo context to params.
+func (w *ServerInterfaceWrapper) SessionsTimeout(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "sessionId" -------------
+	var sessionId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "sessionId", ctx.Param("sessionId"), &sessionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter sessionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SessionsTimeout(ctx, sessionId)
+	return err
+}
+
 // SiteVisitsCreate converts echo context to params.
 func (w *ServerInterfaceWrapper) SiteVisitsCreate(ctx *echo.Context) error {
 	var err error
@@ -1650,9 +1924,11 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/api/site/visits", wrapper.SiteVisitsCreate, options.OperationMiddlewares["site_visits_create"]...)
 	router.GET(options.BaseURL+"/api/characters/search", wrapper.CharactersSearch, options.OperationMiddlewares["characters_search"]...)
 	router.GET(options.BaseURL+"/api/catalog", wrapper.CatalogGet, options.OperationMiddlewares["catalog_get"]...)
+	router.GET(options.BaseURL+"/api/catalog/full", wrapper.CatalogFull, options.OperationMiddlewares["catalog_full"]...)
 	router.GET(options.BaseURL+"/api/catalog/characters", wrapper.CatalogCharacters, options.OperationMiddlewares["catalog_characters"]...)
 	router.POST(options.BaseURL+"/api/puzzles/:mode", wrapper.PuzzlesCreate, options.OperationMiddlewares["puzzles_create"]...)
 	router.POST(options.BaseURL+"/api/sessions/:sessionId/guess", wrapper.SessionsSubmitGuess, options.OperationMiddlewares["sessions_submitGuess"]...)
+	router.POST(options.BaseURL+"/api/sessions/:sessionId/timeout", wrapper.SessionsTimeout, options.OperationMiddlewares["sessions_timeout"]...)
 	router.POST(options.BaseURL+"/api/sessions/:sessionId/forfeit", wrapper.SessionsForfeit, options.OperationMiddlewares["sessions_forfeit"]...)
 	router.GET(options.BaseURL+"/api/sessions/:sessionId", wrapper.SessionsGet, options.OperationMiddlewares["sessions_get"]...)
 	router.POST(options.BaseURL+"/api/rooms", wrapper.RoomsCreate, options.OperationMiddlewares["rooms_create"]...)
@@ -1729,6 +2005,41 @@ func (response CatalogCharacters200JSONResponse) VisitCatalogCharactersResponse(
 type CatalogCharacters503JSONResponse ErrorResponse
 
 func (response CatalogCharacters503JSONResponse) VisitCatalogCharactersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CatalogFullRequestObject struct {
+}
+
+type CatalogFullResponseObject interface {
+	VisitCatalogFullResponse(w http.ResponseWriter) error
+}
+
+type CatalogFull200JSONResponse CatalogFull
+
+func (response CatalogFull200JSONResponse) VisitCatalogFullResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CatalogFull503JSONResponse ErrorResponse
+
+func (response CatalogFull503JSONResponse) VisitCatalogFullResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -1830,6 +2141,7 @@ func (response HealthCheck200JSONResponse) VisitHealthCheckResponse(w http.Respo
 
 type PuzzlesCreateRequestObject struct {
 	Mode PuzzlesCreateParamsMode `json:"mode"`
+	Body *PuzzlesCreateJSONRequestBody
 }
 
 type PuzzlesCreateResponseObject interface {
@@ -2812,6 +3124,73 @@ func (response SessionsSubmitGuess501JSONResponse) VisitSessionsSubmitGuessRespo
 	return err
 }
 
+type SessionsTimeoutRequestObject struct {
+	SessionId string `json:"sessionId"`
+}
+
+type SessionsTimeoutResponseObject interface {
+	VisitSessionsTimeoutResponse(w http.ResponseWriter) error
+}
+
+type SessionsTimeout200JSONResponse struct {
+	// Session 公开会话视图。answer 仅在会话结束后返回。
+	Session PublicGameSession `json:"session"`
+}
+
+func (response SessionsTimeout200JSONResponse) VisitSessionsTimeoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SessionsTimeout404JSONResponse ErrorResponse
+
+func (response SessionsTimeout404JSONResponse) VisitSessionsTimeoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SessionsTimeout409JSONResponse ErrorResponse
+
+func (response SessionsTimeout409JSONResponse) VisitSessionsTimeoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SessionsTimeout500JSONResponse ErrorResponse
+
+func (response SessionsTimeout500JSONResponse) VisitSessionsTimeoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type SiteVisitsCreateRequestObject struct {
 }
 
@@ -2855,6 +3234,9 @@ type StrictServerInterface interface {
 	// CatalogCharacters 获取完整可猜角色表与当前题库版本
 	// (GET /api/catalog/characters)
 	CatalogCharacters(ctx context.Context, request CatalogCharactersRequestObject) (CatalogCharactersResponseObject, error)
+	// CatalogFull 获取当前全量题库快照
+	// (GET /api/catalog/full)
+	CatalogFull(ctx context.Context, request CatalogFullRequestObject) (CatalogFullResponseObject, error)
 	// CharactersSearch 搜索角色
 	// (GET /api/characters/search)
 	CharactersSearch(ctx context.Context, request CharactersSearchRequestObject) (CharactersSearchResponseObject, error)
@@ -2909,6 +3291,9 @@ type StrictServerInterface interface {
 	// SessionsSubmitGuess 提交猜测
 	// (POST /api/sessions/{sessionId}/guess)
 	SessionsSubmitGuess(ctx context.Context, request SessionsSubmitGuessRequestObject) (SessionsSubmitGuessResponseObject, error)
+	// SessionsTimeout 记录单人超时空过
+	// (POST /api/sessions/{sessionId}/timeout)
+	SessionsTimeout(ctx context.Context, request SessionsTimeoutRequestObject) (SessionsTimeoutResponseObject, error)
 	// SiteVisitsCreate 记录站点访问并返回总访问数
 	// (POST /api/site/visits)
 	SiteVisitsCreate(ctx context.Context, request SiteVisitsCreateRequestObject) (SiteVisitsCreateResponseObject, error)
@@ -2972,6 +3357,29 @@ func (sh *strictHandler) CatalogCharacters(ctx *echo.Context) error {
 	return nil
 }
 
+// CatalogFull operation middleware
+func (sh *strictHandler) CatalogFull(ctx *echo.Context) error {
+	var request CatalogFullRequestObject
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CatalogFull(ctx.Request().Context(), request.(CatalogFullRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CatalogFull")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CatalogFullResponseObject); ok {
+		return validResponse.VisitCatalogFullResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // CharactersSearch operation middleware
 func (sh *strictHandler) CharactersSearch(ctx *echo.Context, params CharactersSearchParams) error {
 	var request CharactersSearchRequestObject
@@ -3025,6 +3433,25 @@ func (sh *strictHandler) PuzzlesCreate(ctx *echo.Context, mode PuzzlesCreatePara
 	var request PuzzlesCreateRequestObject
 
 	request.Mode = mode
+
+	var body PuzzlesCreateJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			return err
+		}
+	} else {
+		request.Body = &body
+	}
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.PuzzlesCreate(ctx.Request().Context(), request.(PuzzlesCreateRequestObject))
@@ -3486,6 +3913,31 @@ func (sh *strictHandler) SessionsSubmitGuess(ctx *echo.Context, sessionId string
 	return nil
 }
 
+// SessionsTimeout operation middleware
+func (sh *strictHandler) SessionsTimeout(ctx *echo.Context, sessionId string) error {
+	var request SessionsTimeoutRequestObject
+
+	request.SessionId = sessionId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.SessionsTimeout(ctx.Request().Context(), request.(SessionsTimeoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SessionsTimeout")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(SessionsTimeoutResponseObject); ok {
+		return validResponse.VisitSessionsTimeoutResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // SiteVisitsCreate operation middleware
 func (sh *strictHandler) SiteVisitsCreate(ctx *echo.Context) error {
 	var request SiteVisitsCreateRequestObject
@@ -3514,166 +3966,178 @@ func (sh *strictHandler) SiteVisitsCreate(ctx *echo.Context) error {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -13,6 +13,12 @@ post:
         enum:
           - daily
           - random
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/question-scope.yaml#/PuzzleCreateRequest"
   responses:
     "200":
       description: 题局创建成功

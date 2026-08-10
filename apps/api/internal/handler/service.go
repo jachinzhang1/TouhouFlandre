@@ -44,6 +44,7 @@ type answerSelection struct {
 	answer         game.Character
 	catalogVersion string
 	puzzleKey      *string
+	questionScope  game.QuestionScopeConfig
 }
 
 // getCurrentCatalog 对应 game.ts 的 getCurrentCatalog。
@@ -75,8 +76,8 @@ func (s *Server) charactersForVersion(ctx context.Context, version string) ([]ga
 }
 
 // getOrCreateDailyPuzzle 对应 game.ts 的 getOrCreateDailyPuzzle。
-func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string) (game.Character, string, error) {
-	existing, err := s.q.GetDailyPuzzle(ctx, dateKey)
+func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string, difficulty game.QuestionDifficulty, scope game.QuestionScopeConfig) (game.Character, string, error) {
+	existing, err := s.q.GetDailyPuzzle(ctx, repo.GetDailyPuzzleParams{DateKey: dateKey, Difficulty: string(difficulty)})
 	if err == nil {
 		characters, err := s.charactersForVersion(ctx, existing.CatalogVersion)
 		if err != nil {
@@ -102,18 +103,20 @@ func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string) (ga
 	if err != nil {
 		return game.Character{}, "", err
 	}
-	answer, err := game.GetDailyAnswer(characters, dateKey)
+	pool := charactersForQuestionScope(characters, scope)
+	answer, err := game.GetDailyAnswerFromPool(pool, dateKey+":"+string(difficulty))
 	if err != nil {
 		return game.Character{}, "", &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: err.Error()}
 	}
 	if _, err := s.q.CreateDailyPuzzle(ctx, repo.CreateDailyPuzzleParams{
 		DateKey:        dateKey,
+		Difficulty:     string(difficulty),
 		CatalogVersion: version,
 		AnswerID:       answer.ID,
 	}); err != nil {
 		// 并发创建冲突时重读已有记录。
 		if isUniqueViolation(err) {
-			return s.getOrCreateDailyPuzzle(ctx, dateKey)
+			return s.getOrCreateDailyPuzzle(ctx, dateKey, difficulty, scope)
 		}
 		return game.Character{}, "", internalError(err)
 	}
@@ -129,30 +132,40 @@ func isUniqueViolation(err error) bool {
 }
 
 // selectAnswer 按模式选择答案。
-func (s *Server) selectAnswer(ctx context.Context, mode string, definition game.SinglePlayerModeDefinition) (answerSelection, error) {
-	if mode == string(game.GameModeDaily) {
-		dateKey := game.GetPuzzleDateKey(s.now(), nil)
-		answer, version, err := s.getOrCreateDailyPuzzle(ctx, dateKey)
-		if err != nil {
-			return answerSelection{}, err
-		}
-		return answerSelection{answer: answer, catalogVersion: version, puzzleKey: &dateKey}, nil
-	}
-	version, characters, err := s.getCurrentCatalog(ctx)
+func (s *Server) selectAnswer(ctx context.Context, mode string, definition game.SinglePlayerModeDefinition, requestedScope *game.QuestionScopeConfig, dailyDifficulty game.QuestionDifficulty) (answerSelection, error) {
+	version, characters, works, err := s.currentCatalogWithWorks(ctx)
 	if err != nil {
 		return answerSelection{}, err
 	}
-	pool := make([]game.Character, 0, len(characters))
-	for _, character := range characters {
-		if character.EnabledAsAnswer {
-			pool = append(pool, character)
+	scopeInput := requestedScope
+	if mode == string(game.GameModeDaily) {
+		if !game.IsQuestionDifficultyPreset(dailyDifficulty) {
+			dailyDifficulty = game.QuestionDifficultyNormal
 		}
+		preset := game.DefaultQuestionScope(version, questionScopeWorks(works), characters, dailyDifficulty)
+		scopeInput = &preset
+		scope := normalizeQuestionScopeForCatalog(scopeInput, version, characters, works).Config
+		dateKey := game.GetPuzzleDateKey(s.now(), nil)
+		answer, version, err := s.getOrCreateDailyPuzzle(ctx, dateKey, dailyDifficulty, scope)
+		if err != nil {
+			return answerSelection{}, err
+		}
+		if version != scope.CatalogVersion {
+			dailyCharacters, err := s.charactersForVersion(ctx, version)
+			if err != nil {
+				return answerSelection{}, err
+			}
+			scope = game.DefaultQuestionScope(version, questionScopeWorksForSnapshot(nil, dailyCharacters), dailyCharacters, dailyDifficulty)
+		}
+		return answerSelection{answer: answer, catalogVersion: version, puzzleKey: &dateKey, questionScope: scope}, nil
 	}
+	scope := normalizeQuestionScopeForCatalog(scopeInput, version, characters, works).Config
+	pool := charactersForQuestionScope(characters, scope)
 	if len(pool) == 0 {
 		return answerSelection{}, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
 	}
 	answer := pool[s.rng.IntN(len(pool))]
-	return answerSelection{answer: answer, catalogVersion: version}, nil
+	return answerSelection{answer: answer, catalogVersion: version, questionScope: scope}, nil
 }
 
 // createSession 对应 game.ts 的 createSession。
@@ -170,6 +183,7 @@ func (s *Server) createSession(ctx context.Context, mode string, definition game
 		PuzzleKey:      puzzleKey,
 		Status:         string(game.SessionPlaying),
 		MaxGuesses:     int32(game.GameContentDefinition.MaxGuesses),
+		QuestionScope:  mustQuestionScopeJSON(selection.questionScope),
 	})
 	if err != nil {
 		return openapi.PublicGameSession{}, internalError(err)
@@ -183,4 +197,26 @@ func (s *Server) createSession(ctx context.Context, mode string, definition game
 		return openapi.PublicGameSession{}, internalError(err)
 	}
 	return public, nil
+}
+
+func charactersForQuestionScope(characters []game.Character, scope game.QuestionScopeConfig) []game.Character {
+	selected := map[string]bool{}
+	for _, id := range scope.SelectedCharacterIDs {
+		selected[id] = true
+	}
+	pool := make([]game.Character, 0, len(scope.SelectedCharacterIDs))
+	for _, character := range characters {
+		if character.EnabledAsAnswer && selected[character.ID] {
+			pool = append(pool, character)
+		}
+	}
+	return pool
+}
+
+func mustQuestionScopeJSON(scope game.QuestionScopeConfig) []byte {
+	data, err := questionScopeJSON(scope)
+	if err != nil {
+		panic("handler: invalid question scope: " + err.Error())
+	}
+	return data
 }

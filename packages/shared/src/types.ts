@@ -1,3 +1,5 @@
+import type { QuestionScopeConfig } from "./questionScope";
+
 export const HAIR_COLORS = [
   "black",
   "brown",
@@ -109,7 +111,7 @@ export type GuessField = {
   label: string;
   type: "string" | "enum" | "multi_enum" | "number" | "hierarchy";
   visible: boolean;
-  compareStrategy: "firstAppearance" | "numberDirection" | "multiSet";
+  compareStrategy: "firstAppearance" | "numberDirection" | "numberExact" | "multiSet";
   helpText?: string;
 };
 
@@ -122,6 +124,7 @@ export type FieldFeedback = {
 };
 
 export type GuessResult = {
+  kind?: "guess" | "timeout";
   guessId: string;
   guessName: string;
   guessAvatarUrl?: string;
@@ -136,6 +139,7 @@ export type PublicGameSession = {
   status: SessionStatus;
   maxGuesses: number;
   catalogVersion?: string;
+  questionScope?: QuestionScopeConfig;
   puzzleKey?: string;
   guesses: GuessResult[];
   startedAt: string;

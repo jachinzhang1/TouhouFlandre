@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog/full": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取当前全量题库快照 */
+        get: operations["catalog_full"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalog/characters": {
         parameters: {
             query?: never;
@@ -117,6 +134,23 @@ export interface paths {
         put?: never;
         /** 提交猜测 */
         post: operations["sessions_submitGuess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{sessionId}/timeout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 记录单人超时空过 */
+        post: operations["sessions_timeout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -512,6 +546,63 @@ export interface components {
             works: components["schemas"]["Work"][];
         };
         /** @enum {string} */
+        QuestionDifficultyPreset: "easy" | "normal" | "hard" | "lunatic";
+        /** @enum {string} */
+        QuestionDifficulty: "easy" | "normal" | "hard" | "lunatic" | "custom";
+        /** @enum {string} */
+        QuestionScopeMode: "preset" | "custom";
+        /** @enum {string} */
+        QuestionScopeWorkSelection: "all" | "partial" | "none";
+        /** @enum {string} */
+        QuestionScopeReleaseYearMode: "hidden" | "exactOnly" | "directional";
+        QuestionScopeFieldRules: {
+            firstAppearance: boolean;
+            releaseYear: components["schemas"]["QuestionScopeReleaseYearMode"];
+            species: boolean;
+            affiliations: boolean;
+            locations: boolean;
+            hairColors: boolean;
+        };
+        QuestionScopeTurnLimit: {
+            enabled: boolean;
+            seconds: number;
+        };
+        QuestionScopeRules: {
+            fields: components["schemas"]["QuestionScopeFieldRules"];
+            turnLimit: components["schemas"]["QuestionScopeTurnLimit"];
+            /** @description Legacy schemaVersion 1 input. Normalized responses use fields. */
+            hiddenFields?: components["schemas"]["GuessFieldKey"][];
+            /** @description Legacy schemaVersion 1 input. Normalized responses use turnLimit. */
+            turnSeconds?: number;
+        };
+        QuestionScopeWorkState: {
+            workId: string;
+            state: components["schemas"]["QuestionScopeWorkSelection"];
+            selectedCount: number;
+            totalCount: number;
+        };
+        QuestionScopeConfig: {
+            /** @enum {integer} */
+            schemaVersion: 2;
+            catalogVersion: string;
+            mode: components["schemas"]["QuestionScopeMode"];
+            difficulty: components["schemas"]["QuestionDifficulty"];
+            selectedCharacterIds: string[];
+            workStates: components["schemas"]["QuestionScopeWorkState"][];
+            rules: components["schemas"]["QuestionScopeRules"];
+        };
+        /** @description 当前全量题库快照。供题库设置弹窗和版本修正使用，不作为角色搜索缓存源。 */
+        CatalogFull: {
+            version: string;
+            works: components["schemas"]["Work"][];
+            characters: components["schemas"]["Character"][];
+            defaultQuestionScope: components["schemas"]["QuestionScopeConfig"];
+        };
+        PuzzleCreateRequest: {
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
+            difficulty?: components["schemas"]["QuestionDifficultyPreset"];
+        };
+        /** @enum {string} */
         WorkType: "game" | "print" | "music_cd" | "other";
         Work: {
             id: string;
@@ -545,6 +636,11 @@ export interface components {
             displayValue: string[];
         };
         GuessResult: {
+            /**
+             * @description 缺失时按普通猜测 guess 处理。
+             * @enum {string}
+             */
+            kind: "guess" | "timeout";
             guessId: string;
             guessName: string;
             /** @description 旧记录可能缺少该字段。 */
@@ -561,6 +657,7 @@ export interface components {
             maxGuesses: number;
             /** @description 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。 */
             catalogVersion?: string;
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
             puzzleKey?: string;
             guesses: components["schemas"]["GuessResult"][];
             /** Format: date-time */
@@ -587,7 +684,7 @@ export interface components {
             type: "string" | "enum" | "multi_enum" | "number" | "hierarchy";
             visible: boolean;
             /** @enum {string} */
-            compareStrategy: "firstAppearance" | "numberDirection" | "multiSet";
+            compareStrategy: "firstAppearance" | "numberDirection" | "numberExact" | "multiSet";
             helpText?: string;
         };
         /**
@@ -674,6 +771,7 @@ export interface components {
             turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
             memberCount: number;
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 创建房间响应。guestToken 明文仅此一次返回。 */
         CreateRoomResponse: {
@@ -681,6 +779,7 @@ export interface components {
             roomCode: string;
             guestToken: components["schemas"]["GuestToken"];
             member: components["schemas"]["MemberView"];
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 加入房间响应。guestToken 明文仅此一次返回。 */
         JoinRoomResponse: {
@@ -701,6 +800,7 @@ export interface components {
             /** @enum {integer} */
             turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
             members: components["schemas"]["MemberView"][];
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
             match?: components["schemas"]["MatchView"];
@@ -725,6 +825,9 @@ export interface components {
             maxRounds: number;
             /** @description 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。 */
             rematchReady: boolean[];
+            /** @description 本场绑定的题库版本。 */
+            catalogVersion: string;
+            questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
@@ -772,7 +875,7 @@ export interface components {
         OpponentRow: {
             /** @description 该成员局内猜测序号（1 起）。 */
             index: number;
-            /** @description 6 个字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。 */
+            /** @description 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。 */
             statuses: components["schemas"]["FeedbackStatus"][];
         };
         /** @description 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。 */
@@ -944,6 +1047,35 @@ export interface operations {
             };
         };
     };
+    catalog_full: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前全量题库快照与默认题库配置。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogFull"];
+                };
+            };
+            /** @description 题库未初始化 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     catalog_characters: {
         parameters: {
             query?: never;
@@ -982,7 +1114,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PuzzleCreateRequest"];
+            };
+        };
         responses: {
             /** @description 题局创建成功 */
             200: {
@@ -1098,6 +1234,57 @@ export interface operations {
             };
         };
     };
+    sessions_timeout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 超时空过已记录 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        session: components["schemas"]["PublicGameSession"];
+                    };
+                };
+            };
+            /** @description 会话不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 会话已结束、未开启单手限时或并发冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 服务器内部错误 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     sessions_forfeit: {
         parameters: {
             query?: never;
@@ -1203,6 +1390,7 @@ export interface operations {
                     turnSeconds?: 30 | 60 | 90 | 120;
                     /** @description 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。 */
                     displayName?: string;
+                    questionScope?: components["schemas"]["QuestionScopeConfig"];
                 };
             };
         };

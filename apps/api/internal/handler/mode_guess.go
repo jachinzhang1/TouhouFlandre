@@ -45,8 +45,10 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	room := input.room
 	round := input.round
 	match := input.match
+	fields := multi.FieldsForMatch(match)
+	storageFields := multi.StorageFieldsForMatch(match)
 
-	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId)
+	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
@@ -76,7 +78,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		RoundID: round.ID, MemberID: member.ID, IdempotencyKey: request.Body.IdempotencyKey,
 	})
 	if err == nil {
-		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing)
+		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing, fields)
 		return submitGuessResult{response: response, commit: true}, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -157,7 +159,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		GuessID:   guessChar.ID,
 		Statuses:  statusesJSON,
 		IsCorrect: isCorrect,
-	})
+	}, fields)
 	if err != nil {
 		return submitGuessResult{}, err
 	}

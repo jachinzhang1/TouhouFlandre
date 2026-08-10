@@ -2,8 +2,8 @@
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one
-INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, 'lobby', $6)
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at, question_scope)
+VALUES ($1, $2, $3, $4, $5, 'lobby', $6, $7)
 RETURNING *;
 
 -- name: GetRoomByCode :one
@@ -51,6 +51,9 @@ SELECT jsonb_build_object(
 -- name: UpdateRoomStatus :one
 UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING *;
 
+-- name: UpdateRoomQuestionScope :one
+UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING *;
+
 -- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING *;
 
@@ -85,8 +88,8 @@ UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;
 
 -- name: CreateMatch :one
 -- 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
-INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at)
-SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5
+INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at, question_scope)
+SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5, $6
 FROM multi_match WHERE room_id = $2
 RETURNING *;
 

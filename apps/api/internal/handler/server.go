@@ -313,13 +313,44 @@ func (s *Server) CatalogCharacters(ctx context.Context, _ openapi.CatalogCharact
 	}, nil
 }
 
+// CatalogFull 当前全量题库快照，供题库设置弹窗和版本修正使用。
+func (s *Server) CatalogFull(ctx context.Context, _ openapi.CatalogFullRequestObject) (openapi.CatalogFullResponseObject, error) {
+	version, characters, works, err := s.currentCatalogWithWorks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	openapiCharacters := make([]openapi.Character, 0, len(characters))
+	for _, character := range characters {
+		openapiCharacters = append(openapiCharacters, toOpenAPICharacter(character))
+	}
+	openapiWorks := make([]openapi.Work, 0, len(works))
+	for _, work := range works {
+		openapiWorks = append(openapiWorks, toOpenAPIWork(work))
+	}
+	defaultScope := game.DefaultQuestionScope(version, questionScopeWorks(works), characters, game.QuestionDifficultyNormal)
+	return openapi.CatalogFull200JSONResponse(openapi.CatalogFull{
+		Version:              version,
+		Characters:           openapiCharacters,
+		Works:                openapiWorks,
+		DefaultQuestionScope: toOpenAPIQuestionScope(defaultScope),
+	}), nil
+}
+
 // PuzzlesCreate 创建题局（每日题或随机）。
 func (s *Server) PuzzlesCreate(ctx context.Context, request openapi.PuzzlesCreateRequestObject) (openapi.PuzzlesCreateResponseObject, error) {
 	definition := game.SinglePlayerModeDefinitions[string(request.Mode)]
 	if definition.ID == "" {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "不支持的模式。"}
 	}
-	selection, err := s.selectAnswer(ctx, string(request.Mode), definition)
+	var requestedScope *game.QuestionScopeConfig
+	dailyDifficulty := game.QuestionDifficultyNormal
+	if request.Body != nil {
+		requestedScope = questionScopeFromOpenAPI(request.Body.QuestionScope)
+		if request.Body.Difficulty != nil {
+			dailyDifficulty = game.QuestionDifficulty(*request.Body.Difficulty)
+		}
+	}
+	selection, err := s.selectAnswer(ctx, string(request.Mode), definition, requestedScope, dailyDifficulty)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +440,11 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "本局题库快照中缺少答案角色。"}
 		}
 
-		result := game.CompareCharacter(*guess, *answer, nil)
+		scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		result := game.CompareCharacter(*guess, *answer, game.FieldsForQuestionScope(scope))
 		nextGuesses := append(guesses, result)
 		nextStatus := game.SessionPlaying
 		if result.IsCorrect {
@@ -426,6 +461,66 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 			return nil, internalError(err)
 		}
 		return openapi.SessionsSubmitGuess200JSONResponse{Session: public}, nil
+	}
+
+	return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "会话刚刚发生变化，请重新提交。"}
+}
+
+// SessionsTimeout 记录单人模式的一次超时空过。
+func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTimeoutRequestObject) (openapi.SessionsTimeoutResponseObject, error) {
+	for attempt := 0; attempt < 2; attempt++ {
+		session, err := s.q.GetSession(ctx, request.SessionId)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &ApiError{Status: http.StatusNotFound, Code: codeSessionNotFound, Message: "没有找到这一局游戏。"}
+			}
+			return nil, internalError(err)
+		}
+		if session.Status != string(game.SessionPlaying) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
+		}
+
+		var guesses []game.GuessResult
+		if err := jsonUnmarshal(session.Guesses, &guesses); err != nil {
+			return nil, internalError(err)
+		}
+		if len(guesses) >= int(session.MaxGuesses) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
+		}
+
+		characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
+		if err != nil {
+			return nil, err
+		}
+		scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		if !scope.Rules.TurnLimit.Enabled {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeInvalidRequest, Message: "本局未开启单手限时。"}
+		}
+
+		sequence := len(guesses) + 1
+		nextGuesses := append(guesses, game.GuessResult{
+			Kind:      "timeout",
+			GuessID:   fmt.Sprintf("__timeout__:%d", sequence),
+			GuessName: "超时空过",
+			IsCorrect: false,
+			Feedback:  []game.FieldFeedback{},
+		})
+		nextStatus := game.SessionPlaying
+		if len(nextGuesses) >= int(session.MaxGuesses) {
+			nextStatus = game.SessionLost
+		}
+
+		public, err := s.updateSessionState(ctx, session, nextGuesses, nextStatus, characters)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue
+			}
+			return nil, internalError(err)
+		}
+		return openapi.SessionsTimeout200JSONResponse{Session: public}, nil
 	}
 
 	return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "会话刚刚发生变化，请重新提交。"}

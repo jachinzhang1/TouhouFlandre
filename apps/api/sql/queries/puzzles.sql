@@ -1,8 +1,8 @@
 -- 每日题
 -- name: GetDailyPuzzle :one
-SELECT * FROM daily_puzzle WHERE date_key = @date_key;
+SELECT * FROM daily_puzzle WHERE date_key = @date_key AND difficulty = @difficulty;
 
 -- name: CreateDailyPuzzle :one
-INSERT INTO daily_puzzle (date_key, catalog_version, answer_id)
-VALUES (@date_key, @catalog_version, @answer_id)
+INSERT INTO daily_puzzle (date_key, difficulty, catalog_version, answer_id)
+VALUES (@date_key, @difficulty, @catalog_version, @answer_id)
 RETURNING *;

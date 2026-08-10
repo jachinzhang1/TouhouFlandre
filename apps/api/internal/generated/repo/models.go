@@ -51,6 +51,7 @@ type DailyPuzzle struct {
 	CatalogVersion string             `json:"catalog_version"`
 	AnswerID       string             `json:"answer_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	Difficulty     string             `json:"difficulty"`
 }
 
 type GameSession struct {
@@ -68,6 +69,7 @@ type GameSession struct {
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	QuestionScope  []byte             `json:"question_scope"`
 }
 
 type MultiGuess struct {
@@ -94,6 +96,7 @@ type MultiMatch struct {
 	Status         string             `json:"status"`
 	StartedAt      pgtype.Timestamptz `json:"started_at"`
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	QuestionScope  []byte             `json:"question_scope"`
 }
 
 type MultiMember struct {
@@ -110,15 +113,16 @@ type MultiMember struct {
 }
 
 type MultiRoom struct {
-	ID          string             `json:"id"`
-	Code        string             `json:"code"`
-	Format      string             `json:"format"`
-	Status      string             `json:"status"`
-	EventSeq    int64              `json:"event_seq"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	Mode        string             `json:"mode"`
-	TurnSeconds int32              `json:"turn_seconds"`
+	ID            string             `json:"id"`
+	Code          string             `json:"code"`
+	Format        string             `json:"format"`
+	Status        string             `json:"status"`
+	EventSeq      int64              `json:"event_seq"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	Mode          string             `json:"mode"`
+	TurnSeconds   int32              `json:"turn_seconds"`
+	QuestionScope []byte             `json:"question_scope"`
 }
 
 type MultiRound struct {
