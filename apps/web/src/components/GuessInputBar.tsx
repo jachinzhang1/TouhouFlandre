@@ -5,6 +5,7 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
+import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
@@ -58,12 +59,13 @@ export function GuessInputBar({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur">
-      <div className="relative mx-auto w-full max-w-[560px]">
-        <Search
-          size={14}
-          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft"
-          aria-hidden="true"
-        />
+      <div className="mx-auto flex w-full max-w-[720px] items-start gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            size={14}
+            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft"
+            aria-hidden="true"
+          />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -87,7 +89,7 @@ export function GuessInputBar({
           </button>
         )}
         {error && <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>}
-        {showSuggestions && (
+          {showSuggestions && (
           <ul className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
             {filtered.map((result, index) => (
               <li key={result.id}>
@@ -115,7 +117,9 @@ export function GuessInputBar({
               </li>
             ))}
           </ul>
-        )}
+          )}
+        </div>
+        <FeedbackLegendButton className="shrink-0" placement="above" />
       </div>
     </div>
   );

@@ -40,9 +40,10 @@ const assetCredits = [
   },
 ];
 
-const developers: Array<{ name: string; links: Platform[] }> = [
+const developers: Array<{ name: string; role: string; links: Platform[] }> = [
   {
     name: "Vitamin X",
+    role: "核心功能开发",
     links: [
       {
         name: "GitHub",
@@ -60,6 +61,7 @@ const developers: Array<{ name: string; links: Platform[] }> = [
   },
   {
     name: "常乐凯特",
+    role: "核心功能开发",
     links: [
       {
         name: "GitHub",
@@ -77,6 +79,7 @@ const developers: Array<{ name: string; links: Platform[] }> = [
   },
   {
     name: "哲狗",
+    role: "基础设施提供",
     links: [
       {
         name: "Pixiv",
@@ -87,7 +90,32 @@ const developers: Array<{ name: string; links: Platform[] }> = [
     ],
   },
   {
+    name: "存在的虚无",
+    role: "数据校对、站点推广",
+    links: [
+      {
+        name: "Bilibili",
+        href: "https://space.bilibili.com/452230036",
+        Icon: BilibiliIcon,
+        className: platformStyles.bilibili,
+      },
+    ],
+  },
+  {
+    name: "赤色侠盗",
+    role: "数据校对",
+    links: [
+      {
+        name: "Bilibili",
+        href: "https://space.bilibili.com/387814829",
+        Icon: BilibiliIcon,
+        className: platformStyles.bilibili,
+      },
+    ],
+  },
+  {
     name: "陌望",
+    role: "站点推广",
     links: [
       {
         name: "Bilibili",
@@ -138,9 +166,14 @@ export default function LinksPage() {
               className="flex min-h-[92px] items-center justify-between gap-4 rounded-[6px] border border-line bg-paper p-4 shadow-sm"
               key={developer.name}
             >
-              <h3 className="m-0 text-[1.05rem] font-black leading-[1.35] text-ink">
-                {developer.name}
-              </h3>
+              <div className="min-w-0">
+                <h3 className="m-0 text-[1.05rem] font-black leading-[1.35] text-ink">
+                  {developer.name}
+                </h3>
+                <p className="mt-1 mb-0 text-[0.76rem] font-bold leading-[1.35] text-ink-soft">
+                  {developer.role}
+                </p>
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 {developer.links.map(({ Icon, className, href, name }) => (
                   <a

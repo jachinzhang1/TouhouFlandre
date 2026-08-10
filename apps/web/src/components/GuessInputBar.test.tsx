@@ -64,4 +64,19 @@ describe("GuessInputBar", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onGuess).toHaveBeenCalledWith("reimu_hakurei");
   });
+
+  it("在多人底部输入栏展示共用反馈图例", () => {
+    render(<GuessInputBar onGuess={onGuess} guessedIds={new Set()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "查看图例" }));
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.className).toContain("feedback-legend-tooltip-above");
+    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
+    expect(tooltip.querySelector(".feedback-question-mark-icon")).toBeTruthy();
+    expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });

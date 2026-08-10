@@ -5,6 +5,7 @@ import {
   Loader2,
   RotateCcw,
   Search,
+  Send,
   X,
 } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -27,6 +28,7 @@ import type {
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
+import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { modeConfig } from "../gameModes";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
@@ -698,24 +700,27 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               )}
             </SuggestionPopover>
           </div>
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={
-              !selectedId ||
-              loading ||
-              submitting ||
-              endingSession ||
-              isFinished
-            }
-          >
-            {submitting ? (
-              <Loader2 className="spin" size={18} aria-hidden="true" />
-            ) : (
-              <Search size={18} aria-hidden="true" />
-            )}
-            <span>提交猜测</span>
-          </button>
+          <div className="guess-form-actions">
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={
+                !selectedId ||
+                loading ||
+                submitting ||
+                endingSession ||
+                isFinished
+              }
+            >
+              {submitting ? (
+                <Loader2 className="spin" size={18} aria-hidden="true" />
+              ) : (
+                <Send size={18} aria-hidden="true" />
+              )}
+              <span>提交猜测</span>
+            </button>
+            <FeedbackLegendButton />
+          </div>
         </form>
 
         {message ? <p className="message error">{message}</p> : null}
