@@ -16,6 +16,11 @@ class StatsDatabase extends Dexie {
       drafts: "id,kind,updatedAt",
       metadata: "key",
     });
+    this.version(2).stores({
+      records: "id,kind,mode,startedAt,endedAt,outcome,format,difficulty",
+      drafts: "id,kind,updatedAt",
+      metadata: "key",
+    });
   }
 }
 

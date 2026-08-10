@@ -22,7 +22,8 @@ const roundSchema = z.object({
   turns: z.array(relayTurnSchema).optional(),
 });
 const outcomeSchema = z.enum(["win", "loss", "draw", "forfeit", "abandoned", "disconnect", "incomplete"]);
-const schemaVersion = z.union([z.literal(1), z.literal(STATS_SCHEMA_VERSION)]);
+const difficultySchema = z.enum(["easy", "normal", "hard", "lunatic", "custom", "unknown"]).default("unknown");
+const schemaVersion = z.union([z.literal(1), z.literal(2), z.literal(STATS_SCHEMA_VERSION)]);
 const baseShape = {
   id: z.string(),
   schemaVersion,
@@ -30,6 +31,7 @@ const baseShape = {
   endedAt: z.string(),
   durationMs: z.number().nonnegative(),
   outcome: outcomeSchema,
+  difficulty: difficultySchema,
 };
 const singleSchema = z.object({ ...baseShape, kind: z.literal("single"), mode: z.enum(["daily", "random"]), puzzleKey: z.string().optional(), round: roundSchema });
 const multiplayerSchema = z.object({
@@ -54,9 +56,10 @@ function normalizeStatsRecord(record: z.infer<typeof recordSchema>): StatsRecord
       ...record,
       schemaVersion: STATS_SCHEMA_VERSION,
       multiplayerMode: record.multiplayerMode ?? "race",
+      difficulty: record.difficulty ?? "unknown",
     } as StatsRecord;
   }
-  return { ...record, schemaVersion: STATS_SCHEMA_VERSION } as StatsRecord;
+  return { ...record, schemaVersion: STATS_SCHEMA_VERSION, difficulty: record.difficulty ?? "unknown" } as StatsRecord;
 }
 
 export async function createStatsExport(): Promise<StatsExportFile> {
