@@ -13,6 +13,7 @@ export const HAIR_COLORS = [
   "gray",
   "multicolor",
   "other",
+  "none",
 ] as const;
 export type HairColor = (typeof HAIR_COLORS)[number];
 export const WORK_TYPES = ["game", "print", "music_cd", "other"] as const;

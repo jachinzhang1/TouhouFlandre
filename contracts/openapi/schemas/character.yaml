@@ -18,6 +18,7 @@ HairColor:
     - gray
     - multicolor
     - other
+    - none
 
 DifficultyTier:
   type: string

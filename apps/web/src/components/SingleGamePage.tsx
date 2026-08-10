@@ -684,7 +684,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                         {disabled
                           ? "已猜"
                           : result.hairColors
-                              .map((color) => HAIR_COLOR_LABELS[color])
+                              .map((color) => HAIR_COLOR_LABELS[color] ?? color)
                               .join("、")}
                       </span>
                     </button>
