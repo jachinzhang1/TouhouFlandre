@@ -603,7 +603,7 @@ export interface components {
             difficulty?: components["schemas"]["QuestionDifficultyPreset"];
         };
         /** @enum {string} */
-        WorkType: "game" | "print" | "music_cd" | "other";
+        WorkType: "game" | "ftg" | "stg" | "print" | "music_cd" | "other";
         Work: {
             id: string;
             titleZh: string;

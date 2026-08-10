@@ -18,7 +18,7 @@ export const HAIR_COLORS = [
   "none",
 ] as const;
 export type HairColor = (typeof HAIR_COLORS)[number];
-export const WORK_TYPES = ["game", "print", "music_cd", "other"] as const;
+export const WORK_TYPES = ["game", "ftg", "stg", "print", "music_cd", "other"] as const;
 export type WorkType = (typeof WORK_TYPES)[number];
 export const DIFFICULTY_TIERS = ["easy", "normal", "hard", "lunatic"] as const;
 export type DifficultyTier = (typeof DIFFICULTY_TIERS)[number];

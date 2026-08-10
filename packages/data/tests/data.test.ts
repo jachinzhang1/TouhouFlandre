@@ -4,6 +4,7 @@ import {
   demoCharacters,
   getAppearanceOrder,
   hairColorSchema,
+  workSchema,
 } from "../src";
 
 describe("catalog metadata", () => {
@@ -32,5 +33,21 @@ describe("catalog metadata", () => {
 describe("hair color preset", () => {
   it("accepts none as a bald marker", () => {
     expect(hairColorSchema.safeParse("none").success).toBe(true);
+  });
+});
+
+describe("work type preset", () => {
+  const baseWork = {
+    id: "th06_eosd",
+    titleZh: "东方红魔乡",
+    titleJa: "東方紅魔郷",
+    shortName: "红魔乡",
+    releaseYear: 2002,
+  };
+
+  it("accepts split game genres and legacy game values", () => {
+    for (const type of ["ftg", "stg", "game"]) {
+      expect(workSchema.safeParse({ ...baseWork, type }).success).toBe(true);
+    }
   });
 });
