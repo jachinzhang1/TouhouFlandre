@@ -184,6 +184,12 @@ func CompareField(guess, answer Character, field GuessField) FieldFeedback {
 		} else {
 			status = FeedbackLower
 		}
+	case "numberExact":
+		if guess.FirstAppearance.ReleaseYear == answer.FirstAppearance.ReleaseYear {
+			status = FeedbackExact
+		} else {
+			status = FeedbackMiss
+		}
 	case "multiSet":
 		status = compareMultiSet(
 			valuesForField(guess, field.Key),
