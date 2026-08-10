@@ -2,6 +2,7 @@ import type { Character, GuessFieldKey, Work } from "./types";
 
 export const QUESTION_SCOPE_SCHEMA_VERSION = 2 as const;
 export const QUESTION_SCOPE_MIN_TURN_SECONDS = 30;
+export const QUESTION_SCOPE_HARD_TURN_SECONDS = 45;
 export const QUESTION_SCOPE_MAX_TURN_SECONDS = 120;
 
 export const QUESTION_DIFFICULTY_PRESETS = [
@@ -103,7 +104,7 @@ export const QUESTION_DIFFICULTY_DESCRIPTIONS: Record<
 > = {
   easy: "仅包含整数作中人气较高作品的角色",
   normal: "包含官作（整数作、小数作、出版物）的部分高人气角色",
-  hard: "包含所有角色",
+  hard: "包含所有角色，每手猜测限时45秒",
   lunatic: "禁用初登场作品属性，每手猜测限时30秒",
 };
 
@@ -124,7 +125,10 @@ const defaultTurnLimit: QuestionScopeRules["turnLimit"] = {
 const presetRules: Record<QuestionDifficultyPreset, QuestionScopeRules> = {
   easy: { fields: allFieldsEnabled, turnLimit: defaultTurnLimit },
   normal: { fields: allFieldsEnabled, turnLimit: defaultTurnLimit },
-  hard: { fields: allFieldsEnabled, turnLimit: defaultTurnLimit },
+  hard: {
+    fields: allFieldsEnabled,
+    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
+  },
   lunatic: {
     fields: { ...allFieldsEnabled, firstAppearance: false },
     turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },

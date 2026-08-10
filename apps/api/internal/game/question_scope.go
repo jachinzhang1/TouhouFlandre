@@ -5,8 +5,9 @@ import "sort"
 const QuestionScopeSchemaVersion = 2
 
 const (
-	QuestionScopeMinTurnSeconds = 30
-	QuestionScopeMaxTurnSeconds = 120
+	QuestionScopeMinTurnSeconds  = 30
+	QuestionScopeHardTurnSeconds = 45
+	QuestionScopeMaxTurnSeconds  = 120
 )
 
 type QuestionDifficulty string
@@ -120,6 +121,10 @@ func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
 			Enabled: false,
 			Seconds: QuestionScopeMinTurnSeconds,
 		},
+	}
+	if preset == QuestionDifficultyHard {
+		rules.TurnLimit.Enabled = true
+		rules.TurnLimit.Seconds = QuestionScopeHardTurnSeconds
 	}
 	if preset == QuestionDifficultyLunatic {
 		rules.Fields.FirstAppearance = false

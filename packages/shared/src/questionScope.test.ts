@@ -63,6 +63,31 @@ const snapshot: FullCatalogSnapshot = {
 };
 
 describe("question scope normalization", () => {
+  it("uses a 45 second turn limit for the hard preset", () => {
+    const correction = normalizeQuestionScope(
+      {
+        schemaVersion: QUESTION_SCOPE_SCHEMA_VERSION,
+        catalogVersion: "v2",
+        mode: "preset",
+        difficulty: "hard",
+        selectedCharacterIds: ["easy-one", "normal-one", "hard-one"],
+        workStates: [],
+        rules: questionScopePresetRules("hard"),
+      },
+      snapshot,
+    );
+
+    expect(questionScopePresetRules("hard").turnLimit).toEqual({
+      enabled: true,
+      seconds: 45,
+    });
+    expect(correction.config.difficulty).toBe("hard");
+    expect(correction.config.rules.turnLimit).toEqual({
+      enabled: true,
+      seconds: 45,
+    });
+  });
+
   it("recomputes preset identity from the current catalog", () => {
     const correction = normalizeQuestionScope(
       {
