@@ -5,6 +5,7 @@
 import { FastForward, Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CHARACTER_GUESS_FIELDS, visibleQuestionFields } from "@touhouflandre/shared";
 import {
   clearMultiRoom,
   loadMultiRoom,
@@ -70,6 +71,10 @@ export function RoomView({ code }: { code: string }) {
   const format = state.room?.format ?? "bo3";
   const mode = state.room?.mode ?? "race";
   const turnSeconds = state.room?.turnSeconds ?? 60;
+  const visibleFields = visibleQuestionFields(
+    state.questionScope?.rules,
+    CHARACTER_GUESS_FIELDS,
+  );
   const hasOpponent = state.members.length === 2;
   const roundResultKey = state.roundResult
     ? `${state.roundResult.matchIndex}:${state.roundResult.roundIndex}`
@@ -196,6 +201,7 @@ export function RoomView({ code }: { code: string }) {
             mySlot={mySlot}
             roundResult={state.roundResult}
             roundActions={roundActions}
+            fields={visibleFields}
           />
         ) : (
           <MatchBoard
@@ -208,6 +214,7 @@ export function RoomView({ code }: { code: string }) {
             onGuess={actions.submitGuess}
             disabled={!hasOpponent}
             roundActions={roundActions}
+            fields={visibleFields}
           />
         )}
         <RoundHistoryBar history={state.history} />

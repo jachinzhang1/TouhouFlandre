@@ -1,7 +1,7 @@
 "use client";
 
 import type { RoundEndedPayload } from "@touhouflandre/shared";
-import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
+import { CHARACTER_GUESS_FIELDS, type GuessField } from "@touhouflandre/shared";
 import type { ReactNode } from "react";
 import type { components } from "../generated/api";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
@@ -28,6 +28,7 @@ export function RelayMatchBoard({
   mySlot,
   roundResult,
   roundActions,
+  fields = CHARACTER_GUESS_FIELDS,
 }: {
   format: string;
   match: MatchView;
@@ -36,6 +37,7 @@ export function RelayMatchBoard({
   mySlot: 1 | 2;
   roundResult: RoundEndedPayload | null;
   roundActions?: ReactNode;
+  fields?: readonly GuessField[];
 }) {
   const roundRemaining = useRoomClock(round?.deadline ?? null);
   const turnRemaining = useRoomClock(round?.turnDeadline ?? null);
@@ -119,7 +121,7 @@ export function RelayMatchBoard({
                 <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
                   角色
                 </th>
-                {CHARACTER_GUESS_FIELDS.map((field) => (
+                {fields.map((field) => (
                   <th
                     key={field.key}
                     className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
@@ -132,13 +134,13 @@ export function RelayMatchBoard({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={CHARACTER_GUESS_FIELDS.length + 2} className="py-4 text-center text-ink-soft">
+                  <td colSpan={fields.length + 2} className="py-4 text-center text-ink-soft">
                     等待第一手猜测。
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => (
-                  <RelayTurn key={row.index} row={row} mySlot={mySlot} />
+                  <RelayTurn key={row.index} row={row} mySlot={mySlot} fields={fields} />
                 ))
               )}
             </tbody>
@@ -149,7 +151,7 @@ export function RelayMatchBoard({
   );
 }
 
-function RelayTurn({ row, mySlot }: { row: RelayTurnRow; mySlot: 1 | 2 }) {
+function RelayTurn({ row, mySlot, fields }: { row: RelayTurnRow; mySlot: 1 | 2; fields: readonly GuessField[] }) {
   const owner = row.memberSlot === mySlot ? "我" : "对手";
   if (row.kind !== "guess" || !row.guess) {
     const label = row.kind === "pass" ? "主动空过" : "超时空过";
@@ -158,7 +160,7 @@ function RelayTurn({ row, mySlot }: { row: RelayTurnRow; mySlot: 1 | 2 }) {
         <th scope="row" className="border-b border-line p-1.5 text-left font-normal text-ink-soft">
           第 {row.index} 手 · {owner}
         </th>
-        <td colSpan={CHARACTER_GUESS_FIELDS.length + 1} className="border-b border-line p-1.5">
+        <td colSpan={fields.length + 1} className="border-b border-line p-1.5">
           <span
             className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-bold ${
               row.kind === "pass"

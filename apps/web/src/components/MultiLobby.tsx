@@ -2,11 +2,11 @@
 
 // 多人大厅（08 §10.1）：创建房间（赛制单选 + 昵称）、加入房间（房间号 + 昵称 + 公开预检）。
 import { useRouter } from "next/navigation";
-import { DoorOpen, Plus, Users } from "lucide-react";
+import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode, QuestionScopeConfig } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];
@@ -22,6 +22,11 @@ import {
   type RelayTurnSeconds,
 } from "../domain/multiRoom";
 import { api } from "../lib/api";
+import {
+  catalogFullToSnapshot,
+  loadLocalQuestionScope,
+} from "../lib/questionScopeStorage";
+import { QuestionScopeDialog } from "./QuestionScopeDialog";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
@@ -49,6 +54,8 @@ export function MultiLobby() {
   const [infoError, setInfoError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [hostScopeOpen, setHostScopeOpen] = useState(false);
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -75,11 +82,15 @@ export function MultiLobby() {
     setBusy("create");
     setError("");
     try {
+      const questionScope = loadLocalQuestionScope(
+        catalogFullToSnapshot(await api.catalogFull()),
+      ).config;
       const created = await api.createRoom({
         format,
         mode,
         turnSeconds,
         displayName: nickname || undefined,
+        questionScope,
       });
       saveMultiRoom({
         roomId: created.roomId,
@@ -137,13 +148,25 @@ export function MultiLobby() {
 
         <div className="grid gap-5 md:grid-cols-2">
           <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
-            <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
-              <Plus size={17} className="text-vermilion" aria-hidden="true" />
-              创建房间
-            </h2>
-            <p className="mt-0 mb-4 text-[0.78rem] text-ink-soft">
-              你是房主，选择玩法和赛制并邀请好友加入。
-            </p>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
+                  <Plus size={17} className="text-vermilion" aria-hidden="true" />
+                  创建房间
+                </h2>
+                <p className="m-0 text-[0.78rem] text-ink-soft">
+                  你是房主，选择玩法和赛制并邀请好友加入。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[5px] border border-line bg-paper-muted px-2.5 text-[0.72rem] font-bold text-ink-soft hover:bg-paper"
+                onClick={() => setScopeOpen(true)}
+              >
+                <Settings size={14} aria-hidden="true" />
+                题库设置
+              </button>
+            </div>
             <fieldset className="mb-4">
               <legend className="mb-1 text-[0.75rem] text-ink-soft">玩法</legend>
               <div className="grid grid-cols-2 gap-2">
@@ -286,6 +309,15 @@ export function MultiLobby() {
                 未找到该房间或查询过于频繁，请稍后再试。
               </p>
             )}
+            <button
+              type="button"
+              disabled={!info}
+              onClick={() => setHostScopeOpen(true)}
+              className="mb-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 text-[0.78rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Eye size={15} aria-hidden="true" />
+              查看房主所设题库
+            </button>
             <label className="mb-4 block">
               <span className="mb-1 block text-[0.75rem] text-ink-soft">昵称（可选，≤16 字符）</span>
               <input
@@ -308,6 +340,17 @@ export function MultiLobby() {
           </div>
         </div>
       </div>
+      <QuestionScopeDialog
+        open={scopeOpen}
+        onClose={() => setScopeOpen(false)}
+      />
+      <QuestionScopeDialog
+        open={hostScopeOpen}
+        title="房主题库设置"
+        readOnly
+        initialConfig={(info?.questionScope ?? null) as QuestionScopeConfig | null}
+        onClose={() => setHostScopeOpen(false)}
+      />
     </section>
   );
 }

@@ -4,7 +4,7 @@
 // 列标签只出现一次（表头，复用单人模式字段序）；单元格统一 feedback feedback-{status}
 // 语义类（两边同色同高）；对手匿名行只渲染状态色块，永不含名称/标签/值（08 §4.5）。
 import type { ReactNode } from "react";
-import type { FeedbackStatus } from "@touhouflandre/shared";
+import type { FeedbackStatus, GuessField } from "@touhouflandre/shared";
 import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
@@ -42,6 +42,7 @@ export function GuessTable({
   rows,
   emptyLabel,
   variant = "self",
+  fields = CHARACTER_GUESS_FIELDS,
 }: {
   title?: string;
   subtitle?: string;
@@ -49,6 +50,7 @@ export function GuessTable({
   rows: GuessRow[];
   emptyLabel: string;
   variant?: GuessTableVariant;
+  fields?: readonly GuessField[];
 }) {
   const isOpponent = variant === "opponent";
 
@@ -78,7 +80,7 @@ export function GuessTable({
               >
                 角色
               </th>
-              {CHARACTER_GUESS_FIELDS.map((field) => (
+              {fields.map((field) => (
                 <th
                   key={field.key}
                   className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
@@ -92,7 +94,7 @@ export function GuessTable({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={CHARACTER_GUESS_FIELDS.length + 1}
+                  colSpan={fields.length + 1}
                   className="py-4 text-center text-ink-soft"
                 >
                   {emptyLabel}

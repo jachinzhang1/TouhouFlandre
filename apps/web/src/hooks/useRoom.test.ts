@@ -29,7 +29,7 @@ describe("roomReducer", () => {
   it("match.started 重置比分与历史（新场行）", () => {
     let state: RoomUiState = {
       ...initialRoomState,
-      match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] },
+      match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" },
       history: [{ roundIndex: 1, result: "win" as const }],
     };
     state = roomReducer(state, event("match.started", 3, {
@@ -42,7 +42,7 @@ describe("roomReducer", () => {
   });
 
   it("round.started 建局且 round.playing 解锁（弹窗在 playing 时关闭）", () => {
-    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] } };
+    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" } };
     state = roomReducer(state, event("round.started", 4, {
       matchIndex: 0, roundIndex: 1, startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8,
     }));
@@ -66,7 +66,7 @@ describe("roomReducer", () => {
   });
 
   it("round.opponent.guess 追加对手行；round.ended 更新比分与历史", () => {
-    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] } };
+    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" } };
     state = roomReducer(state, event("round.started", 4, {
       matchIndex: 0, roundIndex: 1, startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8,
     }));
@@ -83,7 +83,7 @@ describe("roomReducer", () => {
   });
 
   it("接力事件追加共享行并更新当前手", () => {
-    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] } };
+    let state: RoomUiState = { ...initialRoomState, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 0, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" } };
     state = roomReducer(state, event("round.started", 4, {
       matchIndex: 0,
       roundIndex: 1,
@@ -137,7 +137,7 @@ describe("roomReducer", () => {
       boards: { slot1: [], slot2: [] },
     };
     const state = roomReducer(
-      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false] }, round: { status: "ended", startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8, self: { guesses: [] }, opponent: { rows: [] } }, roundResult: existingRoundResult } as RoomUiState,
+      { ...initialRoomState, room: { roomId: "room-1", roomCode: "ABC123", format: "bo3", mode: "race", turnSeconds: 60, status: "playing" }, match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 2, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" }, round: { status: "ended", startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8, self: { guesses: [] }, opponent: { rows: [] } }, roundResult: existingRoundResult } as RoomUiState,
       event("match.ended", 9, { matchIndex: 0, result: "win", winnerSlot: 1, scores: { slot1: 2, slot2: 0 }, reason: "normal" }),
     );
     expect(state.matchResult?.reason).toBe("normal");
@@ -180,7 +180,7 @@ describe("applySnapshot", () => {
       turnSeconds: 60,
       status: "playing",
       members: [{ slot: 1, displayName: "房主", status: "connected", ready: true }],
-      match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false] },
+      match: { matchIndex: 0, targetWins: 2, scoreSlot1: 1, scoreSlot2: 0, roundIndex: 1, maxRounds: 9, rematchReady: [false, false], catalogVersion: "v1" },
       round: { status: "playing", startsAt: "2026-08-06T12:00:03Z", deadline: "2026-08-06T12:15:03Z", maxGuesses: 8, self: { guesses: [] }, opponent: { rows: [] } },
       events: [event("match.started", 1, { format: "bo3", mode: "race", turnSeconds: 60, targetWins: 2, catalogVersion: "v1", matchIndex: 0 })],
     };
