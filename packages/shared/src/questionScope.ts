@@ -102,7 +102,7 @@ export const QUESTION_DIFFICULTY_DESCRIPTIONS: Record<
   string
 > = {
   easy: "仅包含整数作中人气较高作品的角色",
-  normal: "包含官方游戏整数与小数作作品的部分高人气角色",
+  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色",
   hard: "包含所有角色",
   lunatic: "禁用初登场作品属性，每手猜测限时30秒",
 };
