@@ -244,6 +244,40 @@ describe("SingleGamePage", () => {
     confirm.mockRestore();
   });
 
+  it("falls back to the raw hair color and labels none as 光头", async () => {
+    searchHookMock.mockReturnValue({
+      results: [
+        {
+          id: "test_char",
+          name: "测试角色",
+          subtitle: "Test · 测试作品",
+          avatarUrl: "/characters/0001-测试角色.png",
+          initials: "测试",
+          workId: "th06_eosd",
+          hairColors: ["teal", "none"],
+        },
+      ],
+      total: 1,
+      error: "",
+      loading: false,
+      retry: vi.fn(),
+    });
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+
+    render(<SingleGamePage mode="daily" />);
+    await screen.findByText("每日题 2026-08-05");
+    await userEvent.type(screen.getByLabelText("搜索东方角色"), "测试");
+
+    expect(await screen.findByText("teal、光头")).toBeTruthy();
+  });
+
   it("selects a search suggestion with the keyboard", async () => {
     vi.mocked(api.catalog).mockResolvedValue({
       dailyDateKey: "2026-08-05",

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { demoCatalogVersion, demoCharacters, getAppearanceOrder } from "../src";
+import {
+  demoCatalogVersion,
+  demoCharacters,
+  getAppearanceOrder,
+  hairColorSchema,
+} from "../src";
 
 describe("catalog metadata", () => {
   it("parses the four-digit portrait order", () => {
@@ -21,5 +26,11 @@ describe("catalog metadata", () => {
 
   it("produces a deterministic catalog version", () => {
     expect(demoCatalogVersion).toMatch(/^[0-9a-f]{8}$/);
+  });
+});
+
+describe("hair color preset", () => {
+  it("accepts none as a bald marker", () => {
+    expect(hairColorSchema.safeParse("none").success).toBe(true);
   });
 });

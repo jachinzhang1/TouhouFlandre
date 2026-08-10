@@ -24,6 +24,23 @@
 
 所有 ID 必须稳定且唯一。已发布 ID 不应仅因译名调整而变化，否则会破坏历史会话和外部引用。
 
+## Excel 编辑流程
+
+角色与作品数据共享同一个 Excel 文件 `packages/data/src/catalog.demo.xlsx`，内含 `characters` 与 `works` 两张工作表：
+
+| 命令 | 作用 |
+|---|---|
+| `pnpm --filter @touhouflandre/data xlsx:out` | 从 `characters.demo.json` 与 `works.demo.json` 生成 `catalog.demo.xlsx`（两张工作表）。 |
+| `pnpm --filter @touhouflandre/data xlsx:in` | 从 `catalog.demo.xlsx` 的两张工作表分别校验并写回对应的 JSON。 |
+| `pnpm --filter @touhouflandre/data xlsx:merge <base.json>` | 角色数据三方合并（见下文）。 |
+| `pnpm --filter @touhouflandre/data xlsx:works:merge <base.json>` | 作品数据三方合并。 |
+
+`catalog.demo.xlsx` 是生成物，已被 `.gitignore` 忽略，不提交到仓库；`xlsx:out` 前如已有手工编辑过的 xlsx，请先 `xlsx:in` 导回，再重新导出。
+
+单元格规则：多值字段（如 `species`、`abilityTags`）用 `|` 分隔；布尔字段填写 `true/false`（也接受 `1/0/yes/no/是/否`）；可选字段留空表示无值，必填字段留空或填非法值会在导回时被 schema 校验拒绝。导回前请先运行「内容贡献检查」。
+
+三方合并用于「Excel 是从旧版本 JSON 导出、工作区 JSON 已前进、Excel 只包含对既有记录的手工编辑」的场景：`base.json` 是导出那份 Excel 时的旧 JSON；合并仅应用 Excel 相对 base 有变化的单元格，不会用陈旧列覆盖上游对同一记录的新改动。合并只影响对应数据集的工作表与 JSON 文件。
+
 ## 角色字段
 
 | 字段 | 必填 | 用途 |

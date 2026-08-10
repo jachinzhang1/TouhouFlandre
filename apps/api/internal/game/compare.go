@@ -20,6 +20,7 @@ var HairColorLabels = map[string]string{
 	"gray":      "灰",
 	"multicolor": "多色",
 	"other":     "其他",
+	"none":      "光头",
 }
 
 // CHARACTER_GUESS_FIELDS 对应 shared 的 CHARACTER_GUESS_FIELDS。
@@ -112,7 +113,12 @@ func DisplayValuesForField(character Character, field GuessFieldKey) []string {
 	case FieldHairColors:
 		labels := make([]string, 0, len(character.HairColors))
 		for _, color := range character.HairColors {
-			labels = append(labels, HairColorLabels[color])
+			if label, ok := HairColorLabels[color]; ok {
+				labels = append(labels, label)
+			} else {
+				// 未知发色回退为原始值，与前端 HAIR_COLOR_LABELS[color] ?? color 对齐。
+				labels = append(labels, color)
+			}
 		}
 		return labels
 	default:

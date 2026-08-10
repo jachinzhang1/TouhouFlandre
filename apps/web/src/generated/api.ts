@@ -429,7 +429,7 @@ export interface components {
             count: number;
         };
         /** @enum {string} */
-        HairColor: "black" | "brown" | "blonde" | "white" | "silver" | "red" | "pink" | "purple" | "blue" | "green" | "orange" | "gray" | "multicolor" | "other";
+        HairColor: "black" | "brown" | "blonde" | "white" | "silver" | "red" | "pink" | "purple" | "blue" | "green" | "orange" | "gray" | "multicolor" | "other" | "none";
         /** @enum {string} */
         DifficultyTier: "easy" | "normal" | "hard" | "lunatic";
         /** @enum {string} */

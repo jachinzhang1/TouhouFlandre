@@ -367,5 +367,15 @@
     "type": "game",
     "releaseYear": 2021,
     "era": "windows"
+  },
+  {
+    "id": "baijr",
+    "titleZh": "东方文花帖（书籍）",
+    "titleJa": "东方文花帖 ～ Bohemian Archive in Japanese Red",
+    "titleEn": "Bohemian Archive in Japanese Red",
+    "shortName": "文花帖",
+    "type": "print",
+    "releaseYear": 2005,
+    "era": "other"
   }
 ]

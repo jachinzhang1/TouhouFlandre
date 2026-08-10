@@ -91,6 +91,29 @@ func TestCompareCharacterHairMiss(t *testing.T) {
 	}
 }
 
+func TestHairColorLabels(t *testing.T) {
+	if got := game.HairColorLabels["none"]; got != "光头" {
+		t.Fatalf("expected 光头 for none, got %q", got)
+	}
+}
+
+// 未知发色在展示时回退为原始值，与前端 HAIR_COLOR_LABELS[color] ?? color 对齐。
+func TestHairColorDisplayFallsBackToRaw(t *testing.T) {
+	character := withPatch(baseCharacter(), func(c *game.Character) {
+		c.HairColors = []string{"none", "teal"}
+	})
+	values := game.DisplayValuesForField(character, game.FieldHairColors)
+	want := []string{"光头", "teal"}
+	if len(values) != len(want) {
+		t.Fatalf("expected %v, got %v", want, values)
+	}
+	for i := range want {
+		if values[i] != want[i] {
+			t.Fatalf("expected %v, got %v", want, values)
+		}
+	}
+}
+
 func TestCompareCharacterReleaseYearHigher(t *testing.T) {
 	guess := withPatch(baseCharacter(), func(c *game.Character) {
 		c.ID = "guess"
