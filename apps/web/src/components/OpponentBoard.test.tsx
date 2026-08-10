@@ -36,8 +36,9 @@ describe("OpponentBoard", () => {
       "lucide lucide-x",
       "lucide lucide-chevrons-up",
       "lucide lucide-chevrons-down",
-      "lucide lucide-x",
+      "feedback-question-mark-icon",
     ]);
+    expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）
     for (const header of ["初登场作品", "初登场年份", "种族", "阵营", "地点", "头发颜色"]) {

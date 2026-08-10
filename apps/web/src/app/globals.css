@@ -1389,6 +1389,111 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   padding: 20px 24px 16px;
 }
 
+.guess-form-actions {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 11px;
+}
+
+.legend-control {
+  position: relative;
+}
+
+.legend-button {
+  white-space: nowrap;
+}
+
+.feedback-legend-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  width: min(360px, calc(100vw - 36px));
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: dropdown-enter 140ms ease both;
+}
+
+.feedback-legend-tooltip-above {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.feedback-legend-tooltip::before {
+  position: absolute;
+  top: -6px;
+  right: 30px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--line-strong);
+  border-left: 1px solid var(--line-strong);
+  background: var(--surface);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.feedback-legend-tooltip-above::before {
+  top: auto;
+  bottom: -6px;
+  border-top: 0;
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+  border-left: 0;
+}
+
+.feedback-legend-tooltip ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedback-legend-tooltip li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.feedback-legend-tooltip .feedback-legend-exact {
+  color: var(--jade);
+}
+
+.feedback-legend-tooltip .feedback-legend-partial,
+.feedback-legend-tooltip .feedback-legend-higher,
+.feedback-legend-tooltip .feedback-legend-lower {
+  color: var(--amber);
+}
+
+.feedback-legend-tooltip .feedback-legend-miss,
+.feedback-legend-tooltip .feedback-legend-unknown {
+  color: var(--neutral-mark);
+}
+
+.feedback-legend-icon,
+.feedback-legend-icon b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-legend-icon b {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--accent-contrast);
+}
+
 .search-combobox {
   position: relative;
   min-width: 0;
@@ -1972,8 +2077,19 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
     padding: 16px 18px 14px;
   }
 
-  .guess-form .primary-button {
+  .guess-form-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .guess-form-actions .primary-button,
+  .legend-button {
     width: 100%;
+    padding: 0 12px;
+  }
+
+  .feedback-legend-tooltip {
+    right: 0;
   }
 
   .message {
