@@ -10,7 +10,8 @@
     "validate": "tsx src/validate.ts",
     "xlsx:out": "tsx src/convert-excel.ts json2excel",
     "xlsx:in": "tsx src/convert-excel.ts excel2json",
-    "xlsx:merge": "tsx src/convert-excel.ts merge",
+    "xlsx:merge": "tsx src/convert-excel.ts characters merge",
+    "xlsx:works:merge": "tsx src/convert-excel.ts works merge",
     "test": "vitest run",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"

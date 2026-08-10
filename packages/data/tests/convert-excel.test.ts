@@ -1,18 +1,25 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
 import charactersJson from "../src/characters.demo.json";
-import { charactersSchema } from "../src/schema";
+import worksJson from "../src/works.demo.json";
+import { charactersSchema, worksSchema } from "../src/schema";
 import {
+  buildCatalogWorkbook,
   buildWorkbook,
+  buildWorksWorkbook,
   flatten,
   mergeCatalogs,
   readCharactersFromWorkbook,
+  readWorksFromWorkbook,
 } from "../src/convert-excel";
 
-const workbookFromRows = (rows: Record<string, unknown>[]) => {
+const workbookFromRows = (
+  rows: Record<string, unknown>[],
+  sheetName = "characters",
+) => {
   const worksheet = XLSX.utils.json_to_sheet(rows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "characters");
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
   return workbook;
 };
 
@@ -99,6 +106,81 @@ describe("excel catalog conversion", () => {
     const badBook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(badBook, corrupted, "characters");
     expect(() => readCharactersFromWorkbook(badBook)).toThrow();
+  });
+});
+
+describe("works excel conversion", () => {
+  const works = worksSchema.parse(worksJson);
+
+  it("round-trips the demo works catalog byte-for-byte", () => {
+    const workbook = buildWorksWorkbook(works);
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    const restored = XLSX.read(buffer, { type: "buffer" });
+    expect(readWorksFromWorkbook(restored)).toEqual(works);
+  });
+
+  it("keeps numeric cells as numbers", () => {
+    const workbook = buildWorksWorkbook([works[0]]);
+    const worksheet = workbook.Sheets["works"]!;
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      raw: true,
+    });
+    expect(rows[0].releaseYear).toBe(works[0].releaseYear);
+  });
+
+  it("maps blank optional string and number cells to undefined", () => {
+    const workbook = buildWorksWorkbook(works);
+    const worksheet = workbook.Sheets["works"]!;
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      raw: true,
+      defval: "",
+    });
+    const th01 = rows.find((row) => row.id === "th01_hrtp")!;
+    th01["titleEn"] = "";
+    th01["mainlineIndex"] = "";
+    th01["era"] = "";
+    const restored = readWorksFromWorkbook(
+      workbookFromRows(rows, "works"),
+    );
+    const roundTripped = restored.find((work) => work.id === "th01_hrtp");
+    expect(roundTripped?.titleEn).toBeUndefined();
+    expect(roundTripped?.mainlineIndex).toBeUndefined();
+    expect(roundTripped?.era).toBeUndefined();
+  });
+
+  it("rejects a blank required number cell", () => {
+    const workbook = buildWorksWorkbook([works[0]]);
+    const worksheet = workbook.Sheets["works"]!;
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      raw: true,
+      defval: "",
+    });
+    rows[0]["releaseYear"] = "";
+    expect(() => readWorksFromWorkbook(workbookFromRows(rows, "works"))).toThrow();
+  });
+
+  it("fails clearly when the works worksheet is missing", () => {
+    const emptyBook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      emptyBook,
+      XLSX.utils.json_to_sheet([]),
+      "other",
+    );
+    expect(() => readWorksFromWorkbook(emptyBook)).toThrow(/works/);
+  });
+});
+
+describe("combined catalog workbook", () => {
+  const characters = charactersSchema.parse(charactersJson);
+  const works = worksSchema.parse(worksJson);
+
+  it("holds both datasets as separate sheets and round-trips them", () => {
+    const workbook = buildCatalogWorkbook(characters, works);
+    expect(workbook.SheetNames).toEqual(["characters", "works"]);
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    const restored = XLSX.read(buffer, { type: "buffer" });
+    expect(readCharactersFromWorkbook(restored)).toEqual(characters);
+    expect(readWorksFromWorkbook(restored)).toEqual(works);
   });
 });
 
