@@ -118,7 +118,7 @@ describe("question scope normalization", () => {
         difficulty: "custom",
         selectedCharacterIds: ["easy-one", "missing"],
         workStates: [],
-        rules: { hiddenFields: [] },
+        rules: questionScopePresetRules("easy"),
       },
       snapshot,
     );
@@ -126,6 +126,7 @@ describe("question scope normalization", () => {
     expect(correction.reason).toBe("invalid-ids-dropped");
     expect(correction.config.selectedCharacterIds).toEqual(["easy-one"]);
     expect(correction.config.difficulty).toBe("easy");
+    expect(correction.config.mode).toBe("preset");
   });
 
   it("falls back to normal if the selected pool is empty", () => {
