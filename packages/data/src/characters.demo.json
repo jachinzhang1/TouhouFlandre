@@ -466,7 +466,7 @@
       "女仆"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": true,
     "enabledAsAnswer": true,
@@ -607,7 +607,7 @@
       "Boss"
     ],
     "hairColors": [
-      "purple"
+      "pink"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -919,7 +919,7 @@
     },
     "species": [
       "人类",
-      "幽灵"
+      "灵"
     ],
     "abilityDisplay": "使用剑术程度的能力",
     "abilityTags": [
@@ -938,7 +938,7 @@
       "庭师"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": true,
     "enabledAsAnswer": true,
@@ -1068,7 +1068,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "隙间妖怪"
+      "隙间妖怪",
+      "妖怪"
     ],
     "abilityDisplay": "操纵境界程度的能力",
     "abilityTags": [
@@ -1232,7 +1233,7 @@
       "教师"
     ],
     "hairColors": [
-      "silver",
+      "white",
       "green"
     ],
     "playable": false,
@@ -1377,7 +1378,7 @@
       "药师"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -1474,7 +1475,7 @@
       "EX Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -1877,7 +1878,7 @@
       "哨戒天狗"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2863,6 +2864,7 @@
       "workId": "th13_td"
     },
     "species": [
+      "怨灵",
       "亡灵",
       "灵"
     ],
@@ -2908,8 +2910,7 @@
     },
     "species": [
       "尸解仙",
-      "仙人",
-      "亡灵"
+      "仙人"
     ],
     "abilityDisplay": "操纵风水程度的能力",
     "abilityTags": [
@@ -2954,8 +2955,7 @@
     },
     "species": [
       "尸解仙",
-      "仙人",
-      "亡灵"
+      "仙人"
     ],
     "abilityDisplay": "听取十人欲望程度的能力",
     "abilityTags": [
@@ -3548,7 +3548,7 @@
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3771,7 +3771,7 @@
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4038,7 +4038,7 @@
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4354,7 +4354,7 @@
     ],
     "hairColors": [
       "blonde",
-      "silver",
+      "white",
       "brown"
     ],
     "playable": false,
@@ -4755,13 +4755,13 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山"
+      "魔法森林"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4930,10 +4930,10 @@
       "破坏"
     ],
     "affiliations": [
-      "浅间净山"
+      "圣域"
     ],
     "locations": [
-      "浅间净山"
+      "圣域"
     ],
     "roles": [
       "Boss"
@@ -4977,16 +4977,16 @@
       "气"
     ],
     "affiliations": [
-      "无明确阵营"
+      "圣域"
     ],
     "locations": [
-      "浅间净山"
+      "圣域"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5020,10 +5020,10 @@
       "阻断"
     ],
     "affiliations": [
-      "无明确阵营"
+      "圣域"
     ],
     "locations": [
-      "浅间净山"
+      "圣域"
     ],
     "roles": [
       "Boss"
@@ -5063,16 +5063,16 @@
       "重生"
     ],
     "affiliations": [
-      "浅间净山"
+      "浅间净秽山"
     ],
     "locations": [
-      "浅间净山"
+      "浅间净秽山"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5106,10 +5106,10 @@
       "石"
     ],
     "affiliations": [
-      "浅间净山"
+      "浅间净秽山"
     ],
     "locations": [
-      "浅间净山"
+      "浅间净秽山"
     ],
     "roles": [
       "Boss"
@@ -5152,7 +5152,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "浅间净山"
+      "浅间净秽山"
     ],
     "roles": [
       "Boss"
@@ -5302,7 +5302,7 @@
       "书籍角色"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5348,7 +5348,7 @@
     ],
     "hairColors": [
       "blue",
-      "silver"
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5894,7 +5894,9 @@
       "workId": "cds"
     },
     "species": [
-      "怨灵"
+      "亡灵",
+      "怨灵",
+      "灵"
     ],
     "abilityDisplay": "夺取身心程度的能力",
     "abilityTags": [
@@ -6392,7 +6394,7 @@
       "组织首领"
     ],
     "hairColors": [
-      "silver"
+      "white"
     ],
     "playable": true,
     "enabledAsAnswer": true,
