@@ -96,7 +96,8 @@ export function MultiLobby() {
         roomId: created.roomId,
         roomCode: created.roomCode,
         guestToken: created.guestToken,
-        memberSlot: created.member.slot === 2 ? 2 : 1,
+        role: created.viewer.role,
+        memberSlot: created.viewer.slot === 2 ? 2 : 1,
       });
       router.push(`/multi/room/${created.roomCode}`);
     } catch (e) {
@@ -116,7 +117,8 @@ export function MultiLobby() {
         roomId: joined.roomId,
         roomCode: normalizedCode,
         guestToken: joined.guestToken,
-        memberSlot: joined.member.slot === 2 ? 2 : 1,
+        role: joined.viewer.role,
+        memberSlot: joined.viewer.role === "spectator" ? undefined : joined.viewer.slot === 2 ? 2 : 1,
       });
       router.push(`/multi/room/${normalizedCode}`);
     } catch (e) {
@@ -301,7 +303,8 @@ export function MultiLobby() {
               <p className="mt-0 mb-2 text-[0.72rem] text-jade">
                 房间存在 · {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ?? info.mode}
                 {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
-                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 当前 {info.memberCount}/2 人
+                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家 {info.memberCount}/2
+                {info.spectatorCount > 0 ? ` · 观战 ${info.spectatorCount}` : ""}
               </p>
             )}
             {codeValid && infoError && !infoLoading && (
@@ -335,7 +338,7 @@ export function MultiLobby() {
               className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <DoorOpen size={16} aria-hidden="true" />
-              {busy === "join" ? "加入中……" : "加入房间"}
+              {busy === "join" ? "加入中……" : info?.joinRole === "spectator" ? "进入观战" : "加入房间"}
             </button>
           </div>
         </div>

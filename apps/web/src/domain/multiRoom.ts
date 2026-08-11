@@ -1,5 +1,5 @@
 // 多人房间持久化与展示工具（08 §10.1）。
-import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type { MultiParticipantRole, MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 
 export const MULTI_ROOM_STORAGE_KEY = "touhouflandre:multi-room";
 
@@ -7,8 +7,9 @@ export interface StoredMultiRoom {
   roomId: string;
   roomCode: string;
   guestToken: string;
+  role: MultiParticipantRole;
   /** 自身席位（1 = 房主；结果展示/离开判断用）。 */
-  memberSlot: 1 | 2;
+  memberSlot?: 1 | 2;
 }
 
 export function saveMultiRoom(room: StoredMultiRoom): void {
@@ -28,9 +29,11 @@ export function loadMultiRoom(): StoredMultiRoom | null {
       typeof (parsed as StoredMultiRoom).guestToken === "string"
     ) {
       const slot = (parsed as StoredMultiRoom).memberSlot;
+      const role = (parsed as StoredMultiRoom).role === "spectator" ? "spectator" : "player";
       return {
         ...(parsed as StoredMultiRoom),
-        memberSlot: slot === 2 ? 2 : 1, // 兼容旧存储：缺省视为房主
+        role,
+        memberSlot: role === "spectator" ? undefined : slot === 2 ? 2 : 1, // 兼容旧存储：缺省视为房主
       };
     }
   } catch {

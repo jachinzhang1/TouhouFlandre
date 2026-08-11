@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // 多人房间客户端状态机（08 §10.3）：状态以事件 + 快照为唯一权威；
 // 客户端不自行计算反馈；localStorage 只做恢复入口。
@@ -8,6 +8,7 @@ import type {
   MatchEndedPayload,
   MatchRematchPayload,
   MatchStartedPayload,
+  MultiParticipantRole,
   MultiRoomFormat,
   MultiplayerMode,
   QuestionScopeConfig,
@@ -15,6 +16,7 @@ import type {
   RoundEndedPayload,
   RoundOpponentGuessPayload,
   RoundPlayingPayload,
+  RoundSpectatorGuessPayload,
   RoundSharedGuessPayload,
   RoundStartedPayload,
   RoundTurnTimeoutPayload,
@@ -51,7 +53,8 @@ export interface RoundSummary {
 export interface RoomUiState {
   connection: RoomConnection;
   connectionIssue: string | null;
-  room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus } | null;
+  room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus; expiresAt: string; spectatorCount: number } | null;
+  viewer: components["schemas"]["ParticipantView"] | null;
   members: MemberView[];
   match: MatchView | null;
   round: RoundView | null;
@@ -67,6 +70,8 @@ export interface RoomUiState {
   rematchReady: [boolean, boolean];
   /** 历史局摘要（第 N 局 胜/负/平）。 */
   history: RoundSummary[];
+  /** 房间保留期内完整局末记录，供观战/复盘选择。 */
+  roundArchives: RoundEndedPayload[];
   lastSequence: number;
 }
 
@@ -74,6 +79,7 @@ export const initialRoomState: RoomUiState = {
   connection: "connecting",
   connectionIssue: null,
   room: null,
+  viewer: null,
   members: [],
   match: null,
   round: null,
@@ -83,6 +89,7 @@ export const initialRoomState: RoomUiState = {
   matchResult: null,
   rematchReady: [false, false],
   history: [],
+  roundArchives: [],
   lastSequence: 0,
 };
 
@@ -101,7 +108,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         ...state,
         members: payload.members,
         room: state.room
-          ? { ...state.room, format: payload.format, mode: payload.mode, turnSeconds: payload.turnSeconds }
+          ? { ...state.room, format: payload.format, mode: payload.mode, turnSeconds: payload.turnSeconds, spectatorCount: payload.spectatorCount }
           : state.room,
       };
     }
@@ -186,6 +193,22 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         },
       };
     }
+    case "round.spectator.guess": {
+      const payload = event.payload as unknown as RoundSpectatorGuessPayload;
+      if (!state.round) return state;
+      const boards = state.round.boards ?? { slot1: [], slot2: [] };
+      const key = payload.memberSlot === 1 ? "slot1" : "slot2";
+      return {
+        ...state,
+        round: {
+          ...state.round,
+          boards: {
+            slot1: key === "slot1" ? [...boards.slot1, payload.guess] : boards.slot1,
+            slot2: key === "slot2" ? [...boards.slot2, payload.guess] : boards.slot2,
+          },
+        },
+      };
+    }
     case "round.shared.guess": {
       const payload = event.payload as unknown as RoundSharedGuessPayload;
       if (!state.round) return state;
@@ -249,6 +272,10 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           ...state.history,
           { roundIndex: payload.roundIndex, result: roundSummary(payload.result) },
         ],
+        roundArchives: [
+          ...state.roundArchives.filter((archive) => !(archive.matchIndex === payload.matchIndex && archive.roundIndex === payload.roundIndex)),
+          payload,
+        ],
         match: state.match
           ? {
               ...state.match,
@@ -270,7 +297,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               scoreSlot2: payload.scores.slot2,
             }
           : state.match,
-        room: state.room ? { ...state.room, status: "finished" } : state.room,
+        room: state.room ? { ...state.room, status: "finished", expiresAt: payload.retentionEndsAt } : state.room,
       };
     }
     case "room.closed": {
@@ -313,7 +340,10 @@ export function applySnapshot(
       mode: snapshot.mode,
       turnSeconds: snapshot.turnSeconds,
       status: snapshot.status,
+      expiresAt: snapshot.expiresAt,
+      spectatorCount: snapshot.spectatorCount,
     },
+    viewer: snapshot.viewer,
     members: snapshot.members,
     match: snapshot.match ?? null,
     catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
@@ -337,7 +367,8 @@ export interface RoomActions {
 export interface UseRoomResult {
   state: RoomUiState;
   /** 自身席位（1 = 房主；来自创建/加入响应，随 localStorage 持久化）。 */
-  mySlot: 1 | 2;
+  mySlot: 1 | 2 | null;
+  role: MultiParticipantRole;
   actions: RoomActions;
   /** 提交猜测错误（toast 展示）。 */
   guessError: string;
@@ -351,7 +382,8 @@ export interface UseRoomResult {
 export function useRoom(
   roomId: string,
   token: string,
-  mySlot: 1 | 2,
+  mySlot: 1 | 2 | null,
+  role: MultiParticipantRole = "player",
 ): UseRoomResult {
   const [state, setState] = useState<RoomUiState>(initialRoomState);
   const [guessError, setGuessError] = useState("");
@@ -362,20 +394,23 @@ export function useRoom(
   const guessCompletedRef = useRef<number[]>([]);
   const pendingGuessRef = useRef<number | null>(null);
   const statsQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const isSpectator = role === "spectator" || mySlot === null;
+  const playerSlot: 1 | 2 = mySlot ?? 1;
 
   if (timerRef.current === null) timerRef.current = new ForegroundTimer();
 
   const queueStatsEvent = useCallback(
     (event: Envelope, timing?: MultiplayerTimingSnapshot) => {
+      if (isSpectator) return Promise.resolve();
       const queued = statsQueueRef.current.then(() =>
-        recordMultiplayerEvent(event, mySlot, timing),
+        recordMultiplayerEvent(event, playerSlot, timing),
       );
       statsQueueRef.current = queued.catch((error) => {
         console.error("本地多人统计写入失败", error);
       });
       return queued;
     },
-    [mySlot],
+    [isSpectator, playerSlot],
   );
 
   const applyEvent = useCallback((event: Envelope) => {
@@ -391,7 +426,7 @@ export function useRoom(
       timerRef.current?.setActive(true);
     } else if (event.type === "round.ended") {
       const payload = event.payload as unknown as RoundEndedPayload;
-      const board = mySlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
+      const board = playerSlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
       if (
         pendingGuessRef.current !== null &&
         guessCompletedRef.current.length < board.length
@@ -412,7 +447,7 @@ export function useRoom(
     }
     void queueStatsEvent(event, timing);
     setState((s) => ({ ...roomReducer(s, event), lastSequence: event.sequence }));
-  }, [mySlot, queueStatsEvent]);
+  }, [playerSlot, queueStatsEvent]);
 
   const syncSnapshot = useCallback(
     async (snapshot: RoomSnapshot) => {
@@ -423,11 +458,11 @@ export function useRoom(
       }
       setState((current) => applySnapshot(current, snapshot));
       await statsQueueRef.current;
-      if (snapshot.match && snapshot.round?.status === "playing") {
+      if (!isSpectator && snapshot.match && snapshot.round?.status === "playing") {
         const timing = await loadMultiplayerTiming(
           snapshot.roomId,
           snapshot.match.matchIndex,
-          mySlot,
+          playerSlot,
         );
         timerRef.current?.reset(timing?.activeElapsedMs ?? 0);
         guessCompletedRef.current = timing?.guessCompletedElapsedMs ?? [];
@@ -436,7 +471,7 @@ export function useRoom(
         timerRef.current?.setActive(false);
       }
     },
-    [mySlot, queueStatsEvent],
+    [isSpectator, playerSlot, queueStatsEvent],
   );
 
   useEffect(() => {
@@ -447,7 +482,7 @@ export function useRoom(
     let fallbackInFlight = false;
 
     const markUnavailable = async () => {
-      await markMultiplayerDraftIncomplete(roomId, mySlot);
+      await markMultiplayerDraftIncomplete(roomId, playerSlot);
       if (!disposed) setRoomUnavailable(true);
     };
 
@@ -571,7 +606,7 @@ export function useRoom(
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         if (disposed) return;
         await syncSnapshot(snapshot);
-        const self = snapshot.members.find((member) => member.slot === mySlot);
+        const self = snapshot.members.find((member: MemberView) => member.slot === playerSlot);
         if (self?.status === "left" || snapshot.status === "closed") {
           setState((current) => ({ ...current, connection: "connected" }));
           return;
@@ -600,7 +635,7 @@ export function useRoom(
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [roomId, token, mySlot, applyEvent, syncSnapshot]);
+  }, [roomId, token, playerSlot, applyEvent, syncSnapshot]);
 
   useEffect(() => {
     const timer = timerRef.current;
@@ -608,7 +643,7 @@ export function useRoom(
   }, []);
 
   useEffect(() => {
-    if (!roomId || !state.match || state.round?.status !== "playing") return;
+    if (isSpectator || !roomId || !state.match || state.round?.status !== "playing") return;
     const flush = () => {
       const timing = {
         activeElapsedMs: timerRef.current?.snapshot() ?? 0,
@@ -617,7 +652,7 @@ export function useRoom(
       void updateMultiplayerTiming(
         roomId,
         state.match!.matchIndex,
-        mySlot,
+        playerSlot,
         timing,
       );
     };
@@ -630,7 +665,7 @@ export function useRoom(
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [roomId, state.match, state.round?.status, mySlot]);
+  }, [isSpectator, roomId, state.match, state.round?.status, playerSlot]);
 
   const actions: RoomActions = {
     setReady: async () => {
@@ -643,12 +678,12 @@ export function useRoom(
     leave: async () => {
       try {
         if (state.match && state.round?.status === "playing") {
-          await updateMultiplayerTiming(roomId, state.match.matchIndex, mySlot, {
+          await updateMultiplayerTiming(roomId, state.match.matchIndex, playerSlot, {
             activeElapsedMs: timerRef.current?.snapshot() ?? 0,
             guessCompletedElapsedMs: [...guessCompletedRef.current],
           });
         }
-        const self = state.members.find((member) => member.slot === mySlot);
+        const self = state.members.find((member) => member.slot === playerSlot);
         if (self?.status !== "left") await api.leaveRoom(roomId, token);
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         await syncSnapshot(snapshot);
@@ -666,13 +701,13 @@ export function useRoom(
     },
     submitGuess: async (guessId: string) => {
       setGuessError("");
-      if (!state.round || state.round.status !== "playing" || !state.match) return;
+      if (isSpectator || !state.round || state.round.status !== "playing" || !state.match) return;
       const idempotencyKey = crypto.randomUUID();
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
       const isRelay = state.room?.mode === "relay";
       const completedGuessCount = isRelay
         ? state.round.shared?.rows.filter(
-            (row) => row.kind === "guess" && row.memberSlot === mySlot,
+            (row) => row.kind === "guess" && row.memberSlot === playerSlot,
           ).length ?? 0
         : state.round.self.guesses.length;
       const expectedGuessCount = completedGuessCount + 1;
@@ -692,7 +727,7 @@ export function useRoom(
           ];
         }
         pendingGuessRef.current = null;
-        await updateMultiplayerTiming(roomId, state.match.matchIndex, mySlot, {
+        await updateMultiplayerTiming(roomId, state.match.matchIndex, playerSlot, {
           activeElapsedMs: completedElapsedMs,
           guessCompletedElapsedMs: [...guessCompletedRef.current],
         });
@@ -718,7 +753,7 @@ export function useRoom(
     forfeitRound: async () => {
       setGuessError("");
       pendingGuessRef.current = null;
-      if (!state.round || state.round.status !== "playing" || !state.match) return;
+      if (isSpectator || !state.round || state.round.status !== "playing" || !state.match) return;
       try {
         await api.forfeitRound(roomId, token, state.match.roundIndex);
       } catch (e) {
@@ -729,6 +764,7 @@ export function useRoom(
       setGuessError("");
       pendingGuessRef.current = null;
       if (
+        isSpectator ||
         !state.round ||
         state.round.status !== "playing" ||
         !state.match ||
@@ -744,5 +780,5 @@ export function useRoom(
     },
   };
 
-  return { state, mySlot, actions, guessError, roomUnavailable };
+  return { state, mySlot, role, actions, guessError, roomUnavailable };
 }
