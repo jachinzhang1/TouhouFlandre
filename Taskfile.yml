@@ -45,7 +45,7 @@ tasks:
 
   catalog:check:
     cmds:
-      - pnpm --filter @touhouflandre/data validate
+      - pnpm --config.verify-deps-before-run=false --filter @touhouflandre/data validate
 
   gen:openapi:
     dir: apps/api

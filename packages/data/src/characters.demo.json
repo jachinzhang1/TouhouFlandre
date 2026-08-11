@@ -30,8 +30,7 @@
       "博丽神社"
     ],
     "locations": [
-      "博丽神社",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "自机",
@@ -80,8 +79,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "魔法之森",
-      "幻想乡"
+      "魔法之森"
     ],
     "roles": [
       "自机",
@@ -128,11 +126,10 @@
       "速度"
     ],
     "affiliations": [
-      "妖怪之山"
+      "天狗"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "自机",
@@ -179,7 +176,8 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "雾之湖",
+      "妖怪兽道"
     ],
     "roles": [
       "Boss"
@@ -190,7 +188,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Rumia"
     ]
@@ -222,8 +220,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "雾之湖",
-      "幻想乡"
+      "雾之湖"
     ],
     "roles": [
       "Midboss"
@@ -234,7 +231,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Daiyousei"
     ]
@@ -251,6 +248,8 @@
       "aliases": [
         "⑨",
         "冰之妖精",
+        "笨蛋",
+        "baka",
         "qln"
       ]
     },
@@ -270,8 +269,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "雾之湖",
-      "幻想乡"
+      "雾之湖"
     ],
     "roles": [
       "Boss",
@@ -319,8 +317,7 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "Boss",
@@ -364,8 +361,7 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "Midboss",
@@ -377,7 +373,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Koakuma"
     ]
@@ -415,8 +411,7 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "Boss"
@@ -463,8 +458,7 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "Boss",
@@ -514,12 +508,12 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "Boss",
-      "EX Midboss"
+      "EX Midboss",
+      "自机"
     ],
     "hairColors": [
       "blue"
@@ -563,8 +557,7 @@
       "红魔馆"
     ],
     "locations": [
-      "红魔馆",
-      "幻想乡"
+      "红魔馆"
     ],
     "roles": [
       "EX Boss"
@@ -596,8 +589,7 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "妖怪",
-      "雪女"
+      "妖怪"
     ],
     "abilityDisplay": "操纵寒气程度的能力",
     "abilityTags": [
@@ -609,7 +601,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss"
@@ -620,7 +612,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Letty_Whiterock"
     ]
@@ -644,7 +636,6 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "妖怪猫",
       "妖兽"
     ],
     "abilityDisplay": "使用妖术程度的能力",
@@ -657,7 +648,8 @@
     ],
     "locations": [
       "妖怪之山",
-      "幻想乡"
+      "妖怪兽道",
+      "人间之里"
     ],
     "roles": [
       "Boss",
@@ -669,7 +661,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Chen"
     ]
@@ -707,8 +699,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "魔法之森",
-      "幻想乡"
+      "魔法之森"
     ],
     "roles": [
       "Boss",
@@ -720,7 +711,7 @@
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Alice_Margatroid"
     ]
@@ -753,7 +744,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Midboss"
@@ -764,7 +755,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Lily_White"
     ]
@@ -798,7 +789,7 @@
       "普莉兹姆利巴乐团"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss",
@@ -844,7 +835,7 @@
       "普莉兹姆利巴乐团"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss",
@@ -890,7 +881,7 @@
       "普莉兹姆利巴乐团"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss",
@@ -927,7 +918,8 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "半人半灵"
+      "人类",
+      "幽灵"
     ],
     "abilityDisplay": "使用剑术程度的能力",
     "abilityTags": [
@@ -991,7 +983,8 @@
       "白玉楼"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "pink"
@@ -1036,11 +1029,13 @@
       "八云家"
     ],
     "locations": [
-      "幻想乡"
+      "八云邸",
+      "人间之里"
     ],
     "roles": [
       "EX Boss",
-      "式神"
+      "式神",
+      "自机"
     ],
     "hairColors": [
       "blonde"
@@ -1048,7 +1043,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Ran_Yakumo"
     ]
@@ -1073,7 +1068,7 @@
       "workId": "th07_pcb"
     },
     "species": [
-      "妖怪"
+      "隙间妖怪"
     ],
     "abilityDisplay": "操纵境界程度的能力",
     "abilityTags": [
@@ -1085,10 +1080,11 @@
       "八云家"
     ],
     "locations": [
-      "幻想乡"
+      "八云邸"
     ],
     "roles": [
-      "Phantasm Boss"
+      "Phantasm Boss",
+      "自机"
     ],
     "hairColors": [
       "blonde"
@@ -1096,7 +1092,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Yukari_Yakumo"
     ]
@@ -1133,7 +1129,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "妖怪兽道"
     ],
     "roles": [
       "Boss"
@@ -1144,7 +1140,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Wriggle_Nightbug"
     ]
@@ -1169,8 +1165,7 @@
       "workId": "th08_in"
     },
     "species": [
-      "妖怪",
-      "夜雀"
+      "妖怪"
     ],
     "abilityDisplay": "用歌声迷惑人程度的能力",
     "abilityTags": [
@@ -1181,7 +1176,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "妖怪兽道"
     ],
     "roles": [
       "Boss",
@@ -1193,7 +1188,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Mystia_Lorelei"
     ]
@@ -1218,8 +1213,8 @@
       "workId": "th08_in"
     },
     "species": [
-      "半兽",
-      "白泽"
+      "人类",
+      "妖兽"
     ],
     "abilityDisplay": "吞噬历史程度的能力",
     "abilityTags": [
@@ -1230,20 +1225,20 @@
       "人间之里"
     ],
     "locations": [
-      "人间之里",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "Boss",
       "教师"
     ],
     "hairColors": [
-      "silver"
+      "silver",
+      "green"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Keine_Kamishirasawa"
     ]
@@ -1277,8 +1272,7 @@
     ],
     "locations": [
       "迷途竹林",
-      "永远亭",
-      "幻想乡"
+      "永远亭"
     ],
     "roles": [
       "Midboss"
@@ -1289,7 +1283,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Tewi_Inaba"
     ]
@@ -1315,7 +1309,6 @@
     },
     "species": [
       "月兔",
-      "妖怪兔",
       "妖怪"
     ],
     "abilityDisplay": "操纵狂气程度的能力",
@@ -1328,8 +1321,9 @@
       "永远亭"
     ],
     "locations": [
+      "迷途竹林",
       "永远亭",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "Boss",
@@ -1362,7 +1356,8 @@
       "workId": "th08_in"
     },
     "species": [
-      "月人"
+      "月人",
+      "蓬莱人"
     ],
     "abilityDisplay": "制作任何药物程度的能力",
     "abilityTags": [
@@ -1424,8 +1419,7 @@
       "永远亭"
     ],
     "locations": [
-      "永远亭",
-      "幻想乡"
+      "永远亭"
     ],
     "roles": [
       "Boss"
@@ -1436,7 +1430,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kaguya_Houraisan"
     ]
@@ -1474,18 +1468,18 @@
     ],
     "locations": [
       "迷途竹林",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "EX Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Fujiwara_no_Mokou"
     ]
@@ -1506,7 +1500,8 @@
       "workId": "th09_pofv"
     },
     "species": [
-      "妖怪"
+      "妖怪",
+      "人偶"
     ],
     "abilityDisplay": "操纵毒程度的能力",
     "abilityTags": [
@@ -1517,8 +1512,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "无名之丘",
-      "幻想乡"
+      "无名之丘"
     ],
     "roles": [
       "Boss"
@@ -1561,8 +1555,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "太阳花田",
-      "幻想乡"
+      "太阳花田"
     ],
     "roles": [
       "Boss"
@@ -1595,7 +1588,7 @@
     },
     "species": [
       "死神",
-      "妖怪"
+      "神明"
     ],
     "abilityDisplay": "操纵距离程度的能力",
     "abilityTags": [
@@ -1604,7 +1597,7 @@
       "三途川"
     ],
     "affiliations": [
-      "彼岸"
+      "是非曲直厅"
     ],
     "locations": [
       "三途川",
@@ -1620,7 +1613,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Komachi_Onozuka"
     ]
@@ -1642,7 +1635,7 @@
     },
     "species": [
       "阎魔",
-      "妖怪"
+      "神明"
     ],
     "abilityDisplay": "判断是非黑白程度的能力",
     "abilityTags": [
@@ -1650,7 +1643,7 @@
       "善恶"
     ],
     "affiliations": [
-      "彼岸"
+      "是非曲直厅"
     ],
     "locations": [
       "彼岸"
@@ -1665,7 +1658,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Eiki_Shiki,_Yamaxanadu"
     ]
@@ -1694,11 +1687,10 @@
       "秋"
     ],
     "affiliations": [
-      "秋姐妹"
+      "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Midboss"
@@ -1709,7 +1701,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Shizuha_Aki"
     ]
@@ -1738,11 +1730,10 @@
       "秋"
     ],
     "affiliations": [
-      "秋姐妹"
+      "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
@@ -1753,7 +1744,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Minoriko_Aki"
     ]
@@ -1785,8 +1776,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
@@ -1797,7 +1787,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Hina_Kagiyama"
     ]
@@ -1832,11 +1822,10 @@
       "机械"
     ],
     "affiliations": [
-      "妖怪之山"
+      "河童"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -1878,18 +1867,17 @@
       "警戒"
     ],
     "affiliations": [
-      "妖怪之山"
+      "天狗"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Midboss",
       "哨戒天狗"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -1920,7 +1908,8 @@
     },
     "species": [
       "人类",
-      "现人神"
+      "现人神",
+      "神明"
     ],
     "abilityDisplay": "引发奇迹程度的能力",
     "abilityTags": [
@@ -1931,8 +1920,7 @@
       "守矢神社"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -1969,8 +1957,7 @@
       "workId": "th10_mof"
     },
     "species": [
-      "神明",
-      "神灵"
+      "神明"
     ],
     "abilityDisplay": "创造乾程度的能力",
     "abilityTags": [
@@ -1981,8 +1968,7 @@
       "守矢神社"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
@@ -1993,7 +1979,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kanako_Yasaka"
     ]
@@ -2029,8 +2015,7 @@
       "守矢神社"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "EX Boss"
@@ -2041,7 +2026,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Suwako_Moriya"
     ]
@@ -2062,7 +2047,6 @@
       "workId": "th11_sa"
     },
     "species": [
-      "钓瓶落",
       "妖怪"
     ],
     "abilityDisplay": "使鬼火落下程度的能力",
@@ -2106,7 +2090,6 @@
       "workId": "th11_sa"
     },
     "species": [
-      "土蜘蛛",
       "妖怪"
     ],
     "abilityDisplay": "操纵疾病程度的能力",
@@ -2150,7 +2133,6 @@
       "workId": "th11_sa"
     },
     "species": [
-      "桥姬",
       "妖怪"
     ],
     "abilityDisplay": "操纵嫉妒心程度的能力",
@@ -2159,7 +2141,7 @@
       "嫉妒"
     ],
     "affiliations": [
-      "无明确阵营"
+      "旧地狱"
     ],
     "locations": [
       "旧地狱"
@@ -2173,7 +2155,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Parsee_Mizuhashi"
     ]
@@ -2217,7 +2199,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Yuugi_Hoshiguma"
     ]
@@ -2266,7 +2248,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Satori_Komeiji"
     ]
@@ -2287,8 +2269,7 @@
       "workId": "th11_sa"
     },
     "species": [
-      "妖怪猫",
-      "妖兽"
+      "妖怪"
     ],
     "abilityDisplay": "搬运尸体程度的能力",
     "abilityTags": [
@@ -2338,7 +2319,6 @@
       "workId": "th11_sa"
     },
     "species": [
-      "地狱鸦",
       "妖怪"
     ],
     "abilityDisplay": "操纵核融合程度的能力",
@@ -2363,7 +2343,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Utsuho_Reiuji"
     ]
@@ -2413,7 +2393,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Koishi_Komeiji"
     ]
@@ -2434,7 +2414,6 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "鼠妖怪",
       "妖怪"
     ],
     "abilityDisplay": "搜寻东西程度的能力",
@@ -2446,8 +2425,7 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -2459,7 +2437,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Nazrin"
     ]
@@ -2491,7 +2469,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -2503,7 +2481,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kogasa_Tatara"
     ]
@@ -2536,8 +2514,7 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -2571,7 +2548,7 @@
       "workId": "th12_ufo"
     },
     "species": [
-      "船幽灵",
+      "幽灵",
       "灵"
     ],
     "abilityDisplay": "引发水难程度的能力",
@@ -2583,8 +2560,7 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -2629,15 +2605,14 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
       "毘沙门天代理"
     ],
     "hairColors": [
-      "multicolor",
+      "black",
       "blonde"
     ],
     "playable": false,
@@ -2676,15 +2651,15 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
       "住持"
     ],
     "hairColors": [
-      "multicolor"
+      "purple",
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2712,7 +2687,8 @@
     "species": [
       "鵺",
       "妖兽",
-      "妖怪"
+      "妖怪",
+      "正体不明"
     ],
     "abilityDisplay": "使物体正体不明程度的能力",
     "abilityTags": [
@@ -2723,8 +2699,7 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "EX Boss"
@@ -2735,7 +2710,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Nue_Houjuu"
     ]
@@ -2756,7 +2731,6 @@
       "workId": "th13_td"
     },
     "species": [
-      "山彦",
       "妖怪"
     ],
     "abilityDisplay": "反射声音程度的能力",
@@ -2768,8 +2742,7 @@
       "命莲寺"
     ],
     "locations": [
-      "命莲寺",
-      "幻想乡"
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -2813,8 +2786,7 @@
       "神灵庙"
     ],
     "locations": [
-      "神灵庙",
-      "幻想乡"
+      "神灵庙"
     ],
     "roles": [
       "Boss",
@@ -2847,7 +2819,6 @@
       "workId": "th13_td"
     },
     "species": [
-      "邪仙",
       "仙人"
     ],
     "abilityDisplay": "穿越墙壁程度的能力",
@@ -2859,8 +2830,7 @@
       "神灵庙"
     ],
     "locations": [
-      "神灵庙",
-      "幻想乡"
+      "神灵庙"
     ],
     "roles": [
       "Boss",
@@ -2905,8 +2875,7 @@
       "神灵庙"
     ],
     "locations": [
-      "神灵庙",
-      "幻想乡"
+      "神灵庙"
     ],
     "roles": [
       "Midboss"
@@ -2939,7 +2908,8 @@
     },
     "species": [
       "尸解仙",
-      "仙人"
+      "仙人",
+      "亡灵"
     ],
     "abilityDisplay": "操纵风水程度的能力",
     "abilityTags": [
@@ -2951,8 +2921,7 @@
       "神灵庙"
     ],
     "locations": [
-      "神灵庙",
-      "幻想乡"
+      "神灵庙"
     ],
     "roles": [
       "Boss"
@@ -2963,7 +2932,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Mononobe_no_Futo"
     ]
@@ -2985,7 +2954,8 @@
     },
     "species": [
       "尸解仙",
-      "仙人"
+      "仙人",
+      "亡灵"
     ],
     "abilityDisplay": "听取十人欲望程度的能力",
     "abilityTags": [
@@ -2996,8 +2966,7 @@
       "神灵庙"
     ],
     "locations": [
-      "神灵庙",
-      "幻想乡"
+      "神灵庙"
     ],
     "roles": [
       "Boss"
@@ -3038,11 +3007,13 @@
       "狸"
     ],
     "affiliations": [
-      "无明确阵营"
+      "妖怪狸"
     ],
     "locations": [
-      "幻想乡",
-      "外界"
+      "外界",
+      "命莲寺",
+      "魔法之森",
+      "人间之里"
     ],
     "roles": [
       "EX Boss"
@@ -3053,7 +3024,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "hard",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Mamizou_Futatsuiwa"
     ]
@@ -3074,7 +3045,6 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "人鱼",
       "妖怪"
     ],
     "abilityDisplay": "在水中增强力量程度的能力",
@@ -3083,11 +3053,10 @@
       "力量"
     ],
     "affiliations": [
-      "无明确阵营"
+      "草根妖怪联盟"
     ],
     "locations": [
-      "雾之湖",
-      "幻想乡"
+      "雾之湖"
     ],
     "roles": [
       "Boss"
@@ -3098,7 +3067,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Wakasagihime"
     ]
@@ -3119,7 +3088,6 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "轱辘首",
       "妖怪"
     ],
     "abilityDisplay": "让头飞出去程度的能力",
@@ -3128,11 +3096,10 @@
       "飞头"
     ],
     "affiliations": [
-      "无明确阵营"
+      "草根妖怪联盟"
     ],
     "locations": [
-      "人间之里",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "Boss"
@@ -3164,7 +3131,6 @@
       "workId": "th14_ddc"
     },
     "species": [
-      "狼女",
       "妖怪"
     ],
     "abilityDisplay": "在满月之夜变成狼程度的能力",
@@ -3173,11 +3139,10 @@
       "月"
     ],
     "affiliations": [
-      "无明确阵营"
+      "草根妖怪联盟"
     ],
     "locations": [
-      "迷途竹林",
-      "幻想乡"
+      "迷途竹林"
     ],
     "roles": [
       "Boss"
@@ -3188,7 +3153,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kagerou_Imaizumi"
     ]
@@ -3220,7 +3185,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss"
@@ -3263,7 +3228,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss"
@@ -3307,20 +3272,19 @@
       "辉针城"
     ],
     "locations": [
-      "辉针城",
-      "幻想乡"
+      "辉针城"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "multicolor",
-      "black"
+      "black",
+      "red"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Seija_Kijin"
     ]
@@ -3353,7 +3317,7 @@
     ],
     "locations": [
       "辉针城",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "Boss"
@@ -3364,7 +3328,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Shinmyoumaru_Sukuna"
     ]
@@ -3393,10 +3357,11 @@
       "鼓"
     ],
     "affiliations": [
-      "无明确阵营"
+      "普莉兹姆利巴乐团"
     ],
     "locations": [
-      "幻想乡"
+      "外界",
+      "无固定地点"
     ],
     "roles": [
       "EX Boss"
@@ -3407,7 +3372,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Raiko_Horikawa"
     ]
@@ -3440,11 +3405,13 @@
       "月之都"
     ],
     "locations": [
-      "月之都"
+      "月之都",
+      "人间之里"
     ],
     "roles": [
       "Boss",
-      "士兵"
+      "士兵",
+      "自机"
     ],
     "hairColors": [
       "blue"
@@ -3485,7 +3452,8 @@
       "月之都"
     ],
     "locations": [
-      "月之都"
+      "月之都",
+      "人间之里"
     ],
     "roles": [
       "Boss",
@@ -3541,7 +3509,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Doremy_Sweet"
     ]
@@ -3614,11 +3582,11 @@
       "火"
     ],
     "affiliations": [
-      "地狱"
+      "地狱界"
     ],
     "locations": [
       "地狱",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "Boss"
@@ -3629,7 +3597,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Clownpiece"
     ]
@@ -3658,7 +3626,7 @@
       "怨恨"
     ],
     "affiliations": [
-      "地狱"
+      "地狱界"
     ],
     "locations": [
       "地狱",
@@ -3673,7 +3641,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Junko"
     ]
@@ -3703,7 +3671,7 @@
       "月"
     ],
     "affiliations": [
-      "地狱"
+      "地狱界"
     ],
     "locations": [
       "地狱",
@@ -3714,13 +3682,14 @@
       "EX Boss"
     ],
     "hairColors": [
-      "multicolor",
-      "red"
+      "red",
+      "blue",
+      "blonde"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Hecatia_Lapislazuli"
     ]
@@ -3752,7 +3721,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "Boss"
@@ -3796,14 +3765,13 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3829,7 +3797,6 @@
       "workId": "th16_hsifs"
     },
     "species": [
-      "狛犬",
       "妖怪"
     ],
     "abilityDisplay": "发现神佛程度的能力",
@@ -3841,12 +3808,12 @@
       "博丽神社"
     ],
     "locations": [
-      "博丽神社",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "Boss",
-      "守护者"
+      "守护者",
+      "自机"
     ],
     "hairColors": [
       "green"
@@ -3886,8 +3853,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "魔法之森",
-      "幻想乡"
+      "魔法之森"
     ],
     "roles": [
       "Boss"
@@ -4021,8 +3987,7 @@
       "后户之国"
     ],
     "locations": [
-      "后户之国",
-      "幻想乡"
+      "后户之国"
     ],
     "roles": [
       "Boss",
@@ -4055,7 +4020,6 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "水子之灵",
       "灵"
     ],
     "abilityDisplay": "擅长堆石程度的能力",
@@ -4074,7 +4038,7 @@
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4100,8 +4064,6 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "牛鬼",
-      "鬼",
       "妖怪"
     ],
     "abilityDisplay": "改变身边物体重量程度的能力",
@@ -4155,24 +4117,25 @@
       "喉咙"
     ],
     "affiliations": [
-      "地狱"
+      "是非曲直厅"
     ],
     "locations": [
       "地狱",
       "妖怪之山",
-      "幻想乡"
+      "三途川"
     ],
     "roles": [
       "Boss",
       "关卡守卫"
     ],
     "hairColors": [
-      "multicolor"
+      "blonde",
+      "red"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kutaka_Niwatari"
     ]
@@ -4193,7 +4156,6 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "吉吊",
       "动物灵",
       "灵"
     ],
@@ -4218,7 +4180,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Yachie_Kicchou"
     ]
@@ -4263,7 +4225,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Mayumi_Joutouguu"
     ]
@@ -4307,7 +4269,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Keiki_Haniyasushin"
     ]
@@ -4328,7 +4290,6 @@
       "workId": "th17_wbawc"
     },
     "species": [
-      "天马",
       "动物灵",
       "灵"
     ],
@@ -4385,8 +4346,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -4394,7 +4354,8 @@
     ],
     "hairColors": [
       "blonde",
-      "white"
+      "silver",
+      "brown"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -4430,12 +4391,11 @@
       "商业"
     ],
     "affiliations": [
-      "妖怪之山"
+      "山童"
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -4468,7 +4428,6 @@
       "workId": "th18_um"
     },
     "species": [
-      "山女郎",
       "妖怪"
     ],
     "abilityDisplay": "用烟草烟操纵精神程度的能力",
@@ -4482,8 +4441,7 @@
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -4528,8 +4486,7 @@
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
@@ -4570,11 +4527,10 @@
       "诱导"
     ],
     "affiliations": [
-      "无明确阵营"
+      "天狗"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -4586,7 +4542,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Tsukasa_Kudamaki"
     ]
@@ -4617,11 +4573,10 @@
       "组织"
     ],
     "affiliations": [
-      "妖怪之山"
+      "天狗"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss",
@@ -4633,7 +4588,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Megumu_Iizunamaru"
     ]
@@ -4665,7 +4620,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "市场"
     ],
     "roles": [
       "Boss",
@@ -4678,7 +4633,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Chimata_Tenkyuu"
     ]
@@ -4699,8 +4654,8 @@
       "workId": "th18_um"
     },
     "species": [
-      "大蜈蚣",
-      "妖怪"
+      "妖怪",
+      "虫"
     ],
     "abilityDisplay": "吃龙程度的能力",
     "abilityTags": [
@@ -4709,12 +4664,11 @@
       "食欲"
     ],
     "affiliations": [
-      "虹龙洞"
+      "无明确阵营"
     ],
     "locations": [
       "虹龙洞",
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "EX Boss"
@@ -4747,8 +4701,7 @@
       "workId": "th19_udoalg"
     },
     "species": [
-      "妖怪",
-      "猿猴"
+      "妖怪"
     ],
     "abilityDisplay": "操纵野生猴子程度的能力",
     "abilityTags": [
@@ -4759,8 +4712,7 @@
       "劲牙组"
     ],
     "locations": [
-      "畜生界",
-      "幻想乡"
+      "畜生界"
     ],
     "roles": [
       "Boss"
@@ -4771,7 +4723,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Son_Biten"
     ]
@@ -4792,7 +4744,6 @@
       "workId": "th19_udoalg"
     },
     "species": [
-      "山犬",
       "妖兽"
     ],
     "abilityDisplay": "使用陷阱程度的能力",
@@ -4804,19 +4755,18 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Enoko_Mitsugashira"
     ]
@@ -4837,7 +4787,6 @@
       "workId": "th19_udoalg"
     },
     "species": [
-      "天火人",
       "妖怪"
     ],
     "abilityDisplay": "操纵血和火程度的能力",
@@ -4846,7 +4795,8 @@
       "火"
     ],
     "affiliations": [
-      "刚欲同盟"
+      "刚欲同盟",
+      "日白残无"
     ],
     "locations": [
       "旧地狱",
@@ -4861,7 +4811,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Chiyari_Tenkajin"
     ]
@@ -4890,7 +4840,7 @@
       "地狱"
     ],
     "affiliations": [
-      "地狱"
+      "日白残无"
     ],
     "locations": [
       "地狱"
@@ -4905,7 +4855,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Hisami_Yomotsu"
     ]
@@ -4935,7 +4885,7 @@
       "支配"
     ],
     "affiliations": [
-      "地狱"
+      "日白残无"
     ],
     "locations": [
       "地狱"
@@ -4950,7 +4900,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Zanmu_Nippaku"
     ]
@@ -5018,7 +4968,8 @@
     "species": [
       "魑魅",
       "妖兽",
-      "妖怪"
+      "妖怪",
+      "正体不明"
     ],
     "abilityDisplay": "操纵山河之气程度的能力",
     "abilityTags": [
@@ -5035,12 +4986,12 @@
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://touhou.fandom.com/wiki/Chimi_Houjuu"
     ]
@@ -5061,7 +5012,6 @@
       "workId": "th20_fw"
     },
     "species": [
-      "道祖神",
       "神明"
     ],
     "abilityDisplay": "阻断道路程度的能力",
@@ -5084,7 +5034,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://touhou.fandom.com/wiki/Nareko_Michigami"
     ]
@@ -5105,7 +5055,6 @@
       "workId": "th20_fw"
     },
     "species": [
-      "古神人",
       "神明"
     ],
     "abilityDisplay": "让蛇吞食后重生程度的能力",
@@ -5123,7 +5072,7 @@
       "Boss"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5149,7 +5098,6 @@
       "workId": "th20_fw"
     },
     "species": [
-      "石之女神",
       "神明"
     ],
     "abilityDisplay": "令人放弃变化程度的能力",
@@ -5193,7 +5141,6 @@
       "workId": "th20_fw"
     },
     "species": [
-      "蜃",
       "妖怪"
     ],
     "abilityDisplay": "显示海市蜃楼程度的能力",
@@ -5211,7 +5158,6 @@
       "Boss"
     ],
     "hairColors": [
-      "white",
       "blonde"
     ],
     "playable": false,
@@ -5251,8 +5197,7 @@
       "秘封俱乐部"
     ],
     "locations": [
-      "外界",
-      "京都"
+      "外界"
     ],
     "roles": [
       "秘封俱乐部",
@@ -5264,7 +5209,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Renko_Usami"
     ]
@@ -5273,15 +5218,16 @@
     "id": "maribel_hearn",
     "avatarUrl": "/characters/0004-梅莉.png",
     "names": {
-      "zhHans": "梅莉",
-      "zhHant": "梅莉",
+      "zhHans": "玛艾露贝莉·赫恩",
+      "zhHant": "瑪艾露貝莉·赫恩",
       "ja": "マエリベリー・ハーン",
       "en": "Maribel Hearn",
       "romaji": "Maeriberii Haan",
       "aliases": [
-        "玛艾露贝莉·赫恩",
+        "梅莉",
         "Merry",
-        "ml"
+        "ml",
+        "malblhn"
       ]
     },
     "firstAppearance": {
@@ -5299,8 +5245,7 @@
       "秘封俱乐部"
     ],
     "locations": [
-      "外界",
-      "京都"
+      "外界"
     ],
     "roles": [
       "秘封俱乐部",
@@ -5312,7 +5257,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Maribel_Hearn"
     ]
@@ -5337,7 +5282,8 @@
       "workId": "cola"
     },
     "species": [
-      "半人半妖"
+      "人类",
+      "妖怪"
     ],
     "abilityDisplay": "知道道具名称和用途程度的能力",
     "abilityTags": [
@@ -5349,7 +5295,7 @@
     ],
     "locations": [
       "香霖堂",
-      "幻想乡"
+      "魔法之森"
     ],
     "roles": [
       "店主",
@@ -5395,19 +5341,19 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "书籍角色"
     ],
     "hairColors": [
       "blue",
-      "white"
+      "silver"
     ],
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "lunatic",
+    "difficultyTier": "hard",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Tokiko"
     ]
@@ -5442,7 +5388,7 @@
     ],
     "locations": [
       "魔法森林",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "书籍角色",
@@ -5489,7 +5435,7 @@
     ],
     "locations": [
       "魔法森林",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "书籍角色",
@@ -5536,15 +5482,14 @@
     ],
     "locations": [
       "魔法森林",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "书籍角色",
       "Boss"
     ],
     "hairColors": [
-      "black",
-      "brown"
+      "black"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -5581,11 +5526,10 @@
       "记录"
     ],
     "affiliations": [
-      "稗田家"
+      "人间之里"
     ],
     "locations": [
-      "人类村落",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "书籍角色",
@@ -5628,10 +5572,9 @@
       "海山"
     ],
     "affiliations": [
-      "月都"
+      "月之都"
     ],
     "locations": [
-      "月都",
       "月之都"
     ],
     "roles": [
@@ -5644,7 +5587,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Watatsuki_no_Toyohime"
     ]
@@ -5675,10 +5618,9 @@
       "召唤"
     ],
     "affiliations": [
-      "月都"
+      "月之都"
     ],
     "locations": [
-      "月都",
       "月之都"
     ],
     "roles": [
@@ -5691,7 +5633,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Watatsuki_no_Yorihime"
     ]
@@ -5722,11 +5664,9 @@
       "未知"
     ],
     "affiliations": [
-      "月都",
-      "绵月姐妹"
+      "月之都"
     ],
     "locations": [
-      "月都",
       "月之都"
     ],
     "roles": [
@@ -5772,11 +5712,11 @@
       "引导"
     ],
     "affiliations": [
-      "妖怪之山"
+      "人间之里"
     ],
     "locations": [
       "妖怪之山",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "书籍角色",
@@ -5836,7 +5776,7 @@
     "playable": false,
     "enabledAsAnswer": false,
     "enabledAsGuess": true,
-    "difficultyTier": "lunatic",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Ibaraki-douji%27s_Arm"
     ]
@@ -5883,7 +5823,7 @@
     "playable": false,
     "enabledAsAnswer": false,
     "enabledAsGuess": true,
-    "difficultyTier": "lunatic",
+    "difficultyTier": "easy",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Kasen_Ibaraki"
     ]
@@ -5915,11 +5855,10 @@
       "阅读"
     ],
     "affiliations": [
-      "铃奈庵"
+      "人间之里"
     ],
     "locations": [
-      "人类村落",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "书籍角色",
@@ -5966,7 +5905,7 @@
       "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "书籍角色",
@@ -5978,7 +5917,7 @@
     "playable": false,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "lunatic",
+    "difficultyTier": "hard",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Mizuchi_Miyadeguchi"
     ]
@@ -6009,11 +5948,10 @@
       "未知"
     ],
     "affiliations": [
-      "鲵吞亭"
+      "无明确阵营"
     ],
     "locations": [
-      "人类村落",
-      "幻想乡"
+      "人间之里"
     ],
     "roles": [
       "书籍角色",
@@ -6057,11 +5995,11 @@
       "聚散"
     ],
     "affiliations": [
-      "鬼族"
+      "博丽神社"
     ],
     "locations": [
       "妖怪之山",
-      "幻想乡"
+      "博丽神社"
     ],
     "roles": [
       "Boss",
@@ -6073,7 +6011,7 @@
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "easy",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Suika_Ibuki"
     ]
@@ -6097,8 +6035,7 @@
       "workId": "th105_swr"
     },
     "species": [
-      "妖怪",
-      "龙宫使者"
+      "妖怪"
     ],
     "abilityDisplay": "读取空气程度的能力",
     "abilityTags": [
@@ -6109,8 +6046,7 @@
       "天界"
     ],
     "locations": [
-      "天界",
-      "幻想乡"
+      "天界"
     ],
     "roles": [
       "Boss",
@@ -6158,8 +6094,7 @@
       "天界"
     ],
     "locations": [
-      "天界",
-      "有顶天"
+      "天界"
     ],
     "roles": [
       "Boss",
@@ -6207,8 +6142,7 @@
       "妖怪之山"
     ],
     "locations": [
-      "妖怪之山",
-      "幻想乡"
+      "妖怪之山"
     ],
     "roles": [
       "自机",
@@ -6220,7 +6154,7 @@
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "normal",
+    "difficultyTier": "hard",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Hatate_Himekaidou"
     ]
@@ -6244,7 +6178,6 @@
       "workId": "th135_hm"
     },
     "species": [
-      "面灵气",
       "付丧神"
     ],
     "abilityDisplay": "操纵感情程度的能力",
@@ -6253,11 +6186,13 @@
       "面具"
     ],
     "affiliations": [
-      "无明确阵营"
+      "命莲寺",
+      "神灵庙"
     ],
     "locations": [
       "人类村落",
-      "幻想乡"
+      "神灵庙",
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -6305,7 +6240,7 @@
     ],
     "locations": [
       "外界",
-      "幻想乡"
+      "无固定地点"
     ],
     "roles": [
       "自机",
@@ -6317,7 +6252,7 @@
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "easy",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Sumireko_Usami"
     ]
@@ -6341,7 +6276,6 @@
       "workId": "th155_aocf"
     },
     "species": [
-      "疫病神",
       "神明"
     ],
     "abilityDisplay": "使人消费财产程度的能力",
@@ -6350,10 +6284,11 @@
       "消费"
     ],
     "affiliations": [
-      "依神姐妹"
+      "命莲寺"
     ],
     "locations": [
-      "幻想乡"
+      "人间之里",
+      "命莲寺"
     ],
     "roles": [
       "Boss",
@@ -6389,7 +6324,6 @@
       "workId": "th155_aocf"
     },
     "species": [
-      "贫穷神",
       "神明"
     ],
     "abilityDisplay": "使人不幸程度的能力",
@@ -6398,10 +6332,12 @@
       "贫穷"
     ],
     "affiliations": [
-      "依神姐妹"
+      "无明确阵营"
     ],
     "locations": [
-      "幻想乡"
+      "博丽神社",
+      "人间之里",
+      "天界"
     ],
     "roles": [
       "Boss",
@@ -6422,7 +6358,7 @@
     "id": "yuuma_toutetsu",
     "avatarUrl": "/characters/1751-饕餮尤魇.png",
     "names": {
-      "zhHans": "饕餮尤魇",
+      "zhHans": "饕餮尤魔",
       "zhHant": "饕餮尤魔",
       "ja": "饕餮尤魔",
       "en": "Yuuma Toutetsu",
@@ -6445,8 +6381,7 @@
       "贪欲"
     ],
     "affiliations": [
-      "刚欲同盟",
-      "畜生界"
+      "刚欲同盟"
     ],
     "locations": [
       "畜生界",
@@ -6457,12 +6392,12 @@
       "组织首领"
     ],
     "hairColors": [
-      "white"
+      "silver"
     ],
     "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
-    "difficultyTier": "hard",
+    "difficultyTier": "normal",
     "sourceRefs": [
       "https://en.touhouwiki.net/wiki/Yuuma_Toutetsu"
     ]
