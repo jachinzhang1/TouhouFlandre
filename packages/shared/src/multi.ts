@@ -18,6 +18,9 @@ export type MultiRoomStatus = (typeof MULTI_ROOM_STATUSES)[number];
 export const MULTI_MEMBER_STATUSES = ["connected", "disconnected", "left"] as const;
 export type MultiMemberStatus = (typeof MULTI_MEMBER_STATUSES)[number];
 
+export const MULTI_PARTICIPANT_ROLES = ["player", "spectator"] as const;
+export type MultiParticipantRole = (typeof MULTI_PARTICIPANT_ROLES)[number];
+
 export const MULTI_ROUND_STATUSES = ["countdown", "playing", "ended"] as const;
 export type MultiRoundStatus = (typeof MULTI_ROUND_STATUSES)[number];
 
@@ -54,6 +57,7 @@ export interface RoomUpdatedPayload {
   mode: MultiplayerMode;
   turnSeconds: number;
   members: MemberView[];
+  spectatorCount: number;
 }
 
 export interface MatchStartedPayload {
@@ -92,6 +96,14 @@ export interface RoundOpponentGuessPayload {
   roundIndex: number;
   rowIndex: number;
   statuses: FeedbackStatus[];
+}
+
+export interface RoundSpectatorGuessPayload {
+  matchIndex: number;
+  roundIndex: number;
+  memberSlot: number;
+  rowIndex: number;
+  guess: NormalizedGuessResult;
 }
 
 export type NormalizedGuessResult = GuessResult & {
@@ -143,6 +155,7 @@ export interface RoundEndedPayload {
   roundIndex: number;
   result: MultiMatchResult;
   winnerSlot: number | null;
+  forfeitedSlot?: number;
   answer: RoundAnswerPayload;
   boards: { slot1: GuessResult[]; slot2: GuessResult[] };
   turns?: RelayTurnRow[];
@@ -157,6 +170,7 @@ export interface MatchEndedPayload {
   winnerSlot: number | null;
   scores: { slot1: number; slot2: number };
   reason: MultiMatchEndReason;
+  retentionEndsAt: string;
 }
 
 export interface RoomClosedPayload {
@@ -197,6 +211,7 @@ export const MULTI_WS_EVENT_TYPES = [
   "round.started",
   "round.playing",
   "round.opponent.guess",
+  "round.spectator.guess",
   "round.shared.guess",
   "round.turn.timeout",
   "round.turn.pass",

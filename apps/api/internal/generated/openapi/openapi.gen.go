@@ -91,6 +91,7 @@ const (
 	ROUNDNOTACTIVE         ErrorResponseCode = "ROUND_NOT_ACTIVE"
 	SESSIONCLOSED          ErrorResponseCode = "SESSION_CLOSED"
 	SESSIONNOTFOUND        ErrorResponseCode = "SESSION_NOT_FOUND"
+	SPECTATORREADONLY      ErrorResponseCode = "SPECTATOR_READ_ONLY"
 	TURNEXPIRED            ErrorResponseCode = "TURN_EXPIRED"
 	UNSUPPORTEDCONTENTTYPE ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
 )
@@ -139,6 +140,8 @@ func (e ErrorResponseCode) Valid() bool {
 	case SESSIONCLOSED:
 		return true
 	case SESSIONNOTFOUND:
+		return true
+	case SPECTATORREADONLY:
 		return true
 	case TURNEXPIRED:
 		return true
@@ -389,6 +392,24 @@ func (e MultiplayerMode) Valid() bool {
 	case Race:
 		return true
 	case Relay:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ParticipantRole.
+const (
+	ParticipantRolePlayer    ParticipantRole = "player"
+	ParticipantRoleSpectator ParticipantRole = "spectator"
+)
+
+// Valid indicates whether the value is a known member of the ParticipantRole enum.
+func (e ParticipantRole) Valid() bool {
+	switch e {
+	case ParticipantRolePlayer:
+		return true
+	case ParticipantRoleSpectator:
 		return true
 	default:
 		return false
@@ -888,11 +909,10 @@ type CreateRoomResponse struct {
 	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
 	GuestToken GuestToken `json:"guestToken"`
 
-	// Member 房间成员视图。
-	Member        MemberView           `json:"member"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 	RoomCode      string               `json:"roomCode"`
 	RoomId        string               `json:"roomId"`
+	Viewer        ParticipantView      `json:"viewer"`
 }
 
 // DifficultyTier defines model for DifficultyTier.
@@ -986,9 +1006,8 @@ type JoinRoomResponse struct {
 	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
 	GuestToken GuestToken `json:"guestToken"`
 
-	// Member 房间成员视图。
-	Member MemberView `json:"member"`
-	RoomId string     `json:"roomId"`
+	RoomId string          `json:"roomId"`
+	Viewer ParticipantView `json:"viewer"`
 }
 
 // LocalizedNames defines model for LocalizedNames.
@@ -1045,6 +1064,17 @@ type MemberView struct {
 
 	// Status 成员连接状态。
 	Status MemberStatus `json:"status"`
+}
+
+// ParticipantRole defines model for ParticipantRole.
+type ParticipantRole string
+
+// ParticipantView 当前访问者视图。观战者不占玩家 slot。
+type ParticipantView struct {
+	DisplayName string          `json:"displayName"`
+	Role        ParticipantRole `json:"role"`
+	Slot        *int            `json:"slot,omitempty"`
+	Status      MemberStatus    `json:"status"`
 }
 
 // MultiplayerMode 多人玩法模式。race = 竞速；relay = 接力。
@@ -1201,8 +1231,9 @@ type RoomFormat string
 // RoomInfo 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
 type RoomInfo struct {
 	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
-	Format      RoomFormat `json:"format"`
-	MemberCount int        `json:"memberCount"`
+	Format      RoomFormat      `json:"format"`
+	MemberCount int             `json:"memberCount"`
+	JoinRole    ParticipantRole `json:"joinRole"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
 	Mode          MultiplayerMode      `json:"mode"`
@@ -1212,7 +1243,8 @@ type RoomInfo struct {
 	RoomCode string `json:"roomCode"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
-	Status RoomStatus `json:"status"`
+	Status         RoomStatus `json:"status"`
+	SpectatorCount int        `json:"spectatorCount"`
 
 	// TurnSeconds 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
 	TurnSeconds RoomInfoTurnSeconds `json:"turnSeconds"`
@@ -1226,7 +1258,8 @@ type RoomInfoTurnSeconds int
 // round 仅在局处于 countdown/playing 时存在。
 type RoomSnapshot struct {
 	// Events after 游标之后的事件（逐观察者投影后）。
-	Events []RoomEventEnvelope `json:"events"`
+	Events    []RoomEventEnvelope `json:"events"`
+	ExpiresAt time.Time           `json:"expiresAt"`
 
 	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
 	Format RoomFormat `json:"format"`
@@ -1245,8 +1278,10 @@ type RoomSnapshot struct {
 	Round *RoundView `json:"round,omitempty"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
-	Status      RoomStatus              `json:"status"`
-	TurnSeconds RoomSnapshotTurnSeconds `json:"turnSeconds"`
+	Status         RoomStatus              `json:"status"`
+	SpectatorCount int                     `json:"spectatorCount"`
+	TurnSeconds    RoomSnapshotTurnSeconds `json:"turnSeconds"`
+	Viewer         ParticipantView         `json:"viewer"`
 }
 
 // RoomSnapshotTurnSeconds defines model for RoomSnapshot.TurnSeconds.
@@ -1266,6 +1301,11 @@ type RoundView struct {
 
 	// MaxGuesses 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。
 	MaxGuesses int `json:"maxGuesses"`
+
+	Boards *struct {
+		Slot1 []GuessResult `json:"slot1"`
+		Slot2 []GuessResult `json:"slot2"`
+	} `json:"boards,omitempty"`
 
 	// MaxSkipsPerPlayer 接力模式每名玩家每局可空过次数上限（主动空过与超时空过共享）。
 	MaxSkipsPerPlayer *int `json:"maxSkipsPerPlayer,omitempty"`

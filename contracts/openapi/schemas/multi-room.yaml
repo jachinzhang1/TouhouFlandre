@@ -24,6 +24,26 @@ MemberView:
       type: boolean
       description: 大厅就绪态（仅 lobby 态使用）。
 
+ParticipantView:
+  type: object
+  description: 当前访问者视图。观战者不占玩家 slot。
+  required:
+    - role
+    - displayName
+    - status
+  properties:
+    role:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+    slot:
+      type: integer
+      minimum: 1
+      maximum: 2
+      description: 玩家席位；观战者缺省。
+    displayName:
+      type: string
+    status:
+      $ref: "./multi-common.yaml#/MemberStatus"
+
 RoomInfo:
   type: object
   description: 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
@@ -34,6 +54,8 @@ RoomInfo:
     - turnSeconds
     - status
     - memberCount
+    - spectatorCount
+    - joinRole
   properties:
     roomCode:
       type: string
@@ -52,6 +74,13 @@ RoomInfo:
       type: integer
       minimum: 0
       maximum: 2
+      description: 当前 PK 玩家数（不含观战者）。
+    spectatorCount:
+      type: integer
+      minimum: 0
+      description: 当前未离开的观战者数量。
+    joinRole:
+      $ref: "./multi-common.yaml#/ParticipantRole"
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -62,7 +91,7 @@ CreateRoomResponse:
     - roomId
     - roomCode
     - guestToken
-    - member
+    - viewer
   properties:
     roomId:
       type: string
@@ -70,8 +99,8 @@ CreateRoomResponse:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
-    member:
-      $ref: "#/MemberView"
+    viewer:
+      $ref: "#/ParticipantView"
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -81,14 +110,14 @@ JoinRoomResponse:
   required:
     - roomId
     - guestToken
-    - member
+    - viewer
   properties:
     roomId:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
-    member:
-      $ref: "#/MemberView"
+    viewer:
+      $ref: "#/ParticipantView"
 
 RoomSnapshot:
   type: object
@@ -103,7 +132,10 @@ RoomSnapshot:
     - mode
     - turnSeconds
     - status
+    - expiresAt
+    - viewer
     - members
+    - spectatorCount
     - events
   properties:
     roomId:
@@ -119,12 +151,22 @@ RoomSnapshot:
       enum: [30, 60, 90, 120]
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
+    expiresAt:
+      type: string
+      format: date-time
+      description: 当前房间状态的到期时间；finished 态用于观战席保留倒计时。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
+    viewer:
+      $ref: "#/ParticipantView"
     members:
       type: array
+      description: PK 玩家视图，不含观战者。
       items:
         $ref: "#/MemberView"
+    spectatorCount:
+      type: integer
+      minimum: 0
     match:
       type: object
       description: 当前场次（lobby 态不存在；含 finished 等待再来一局）。

@@ -51,15 +51,15 @@ handshake:
     detail: 同成员新连接注册时，旧连接收到 replaced 帧后关闭（每成员单活跃连接）。
 
 # 服务端 → 客户端事件（08 §8.3 全表）
-# observer: all = 全体成员；opponent = 仅对手（逐观察者投影，唯一例外）
+# observer: all = 全体成员；opponent = 仅对手；spectator = 仅观战者（逐观察者投影）
 events:
   - type: room.updated
     observer: all
-    summary: 大厅任何成员变化/就绪（成员列表全量视图，无独立 join/leave 事件）。
+    summary: 大厅任何成员变化/就绪（玩家列表全量视图，无独立 join/leave 事件）。
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, members]
+      required: [format, mode, turnSeconds, members, spectatorCount]
       properties:
         format:
           type: string
@@ -72,6 +72,7 @@ events:
           enum: [30, 60, 90, 120]
         members:
           type: array
+          description: PK 玩家视图，不含观战者。
           items:
             type: object
             additionalProperties: false
@@ -88,6 +89,9 @@ events:
                 enum: [connected, disconnected, left]
               ready:
                 type: boolean
+        spectatorCount:
+          type: integer
+          minimum: 0
 
   - type: match.started
     observer: all
@@ -218,6 +222,30 @@ events:
           items:
             $ref: "#/definitions/FeedbackStatus"
 
+  - type: round.spectator.guess
+    observer: spectator
+    summary: 竞速模式中观战者收到的完整猜测行，包含猜测角色、字段值与反馈。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, memberSlot, rowIndex, guess]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        memberSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+        rowIndex:
+          type: integer
+          minimum: 1
+        guess:
+          $ref: "#/definitions/GuessResult"
+
   - type: round.shared.guess
     observer: all
     summary: 接力模式中一次被接受的共享猜测行，携带完整反馈并推进到下一手。
@@ -314,6 +342,11 @@ events:
               maximum: 2
             - type: "null"
           description: 平局为 null。
+        forfeitedSlot:
+          type: integer
+          minimum: 1
+          maximum: 2
+          description: 主动放弃本局的玩家 slot；非放弃结算时缺省。
         answer:
           type: object
           additionalProperties: false
@@ -361,7 +394,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, result, winnerSlot, scores, reason]
+      required: [matchIndex, result, winnerSlot, scores, reason, retentionEndsAt]
       properties:
         matchIndex:
           type: integer
@@ -390,6 +423,10 @@ events:
         reason:
           type: string
           enum: [normal, forfeit, disconnect, server_restart, round_cap]
+        retentionEndsAt:
+          type: string
+          format: date-time
+          description: finished 房间保留到期时间；观战席据此显示倒计时。
 
   - type: room.closed
     observer: all
@@ -557,6 +594,7 @@ examples:
               displayName: 匿名玩家
               status: connected
               ready: false
+          spectatorCount: 0
 
     - label: match.started（双方就绪）
       message:
@@ -641,6 +679,30 @@ examples:
           roundIndex: 1
           rowIndex: 1
           statuses: [miss, exact, partial, lower, miss, unknown]
+
+    - label: round.spectator.guess（观战者完整行）
+      message:
+        type: round.spectator.guess
+        eventId: evt_01J8Z3S
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 11
+        occurredAt: "2026-08-06T12:00:13Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          memberSlot: 1
+          rowIndex: 1
+          guess:
+            guessId: reimu
+            guessName: 博丽灵梦
+            guessAvatarUrl: /avatars/reimu.png
+            isCorrect: false
+            feedback:
+              - field: species
+                label: 种族
+                status: exact
+                symbol: ●
+                displayValue: [人类]
 
     - label: round.shared.guess（接力共享猜测行）
       message:
@@ -772,6 +834,7 @@ examples:
             slot1: 2
             slot2: 0
           reason: normal
+          retentionEndsAt: "2026-08-06T12:30:00Z"
 
     - label: room.closed（房主离开）
       message:

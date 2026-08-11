@@ -148,6 +148,10 @@ const opponentEvents = doc.events.filter((e) => e.observer === "opponent");
 if (opponentEvents.length !== 1 || opponentEvents[0]?.type !== "round.opponent.guess") {
   fail("round.opponent.guess 必须是唯一逐观察者事件（08 §8.3）");
 }
+const spectatorEvents = doc.events.filter((e) => e.observer === "spectator");
+if (spectatorEvents.length !== 1 || spectatorEvents[0]?.type !== "round.spectator.guess") {
+  fail("round.spectator.guess 必须是唯一观战者专用事件");
+}
 const expectedEventTypes = [
   "room.updated",
   "match.started",
@@ -155,6 +159,7 @@ const expectedEventTypes = [
   "round.started",
   "round.playing",
   "round.opponent.guess",
+  "round.spectator.guess",
   "round.shared.guess",
   "round.turn.timeout",
   "round.turn.pass",
@@ -269,6 +274,7 @@ if (!existsSync(tsPath)) {
     "round.started": "RoundStartedPayload",
     "round.playing": "RoundPlayingPayload",
     "round.opponent.guess": "RoundOpponentGuessPayload",
+    "round.spectator.guess": "RoundSpectatorGuessPayload",
     "round.shared.guess": "RoundSharedGuessPayload",
     "round.turn.timeout": "RoundTurnTimeoutPayload",
     "round.turn.pass": "RoundTurnPassPayload",
