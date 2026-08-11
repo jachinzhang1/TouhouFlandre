@@ -47,6 +47,9 @@ const nextDailySession = {
   puzzleKey: "2026-08-06",
 } as unknown as PublicGameSession;
 
+const dailyTitle = "每日题 2026-08-05 - Normal Level";
+const nextDailyTitle = "每日题 2026-08-06 - Normal Level";
+
 const forfeitedSession = {
   ...playingSession,
   status: "lost",
@@ -75,6 +78,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("../lib/api", () => ({
   api: {
     catalog: vi.fn(),
+    catalogFull: vi.fn(),
     getSession: vi.fn(),
     createPuzzle: vi.fn(),
     submitGuess: vi.fn(),
@@ -91,10 +95,16 @@ import { api } from "../lib/api";
 describe("SingleGamePage", () => {
   beforeEach(() => {
     vi.mocked(api.catalog).mockReset();
+    vi.mocked(api.catalogFull).mockReset();
     vi.mocked(api.getSession).mockReset();
     vi.mocked(api.createPuzzle).mockReset();
     vi.mocked(api.submitGuess).mockReset();
     vi.mocked(api.forfeitSession).mockReset();
+    vi.mocked(api.catalogFull).mockResolvedValue({
+      version: "v2",
+      works: [],
+      characters: [],
+    } as never);
     searchHookMock.mockReset();
     searchHookMock.mockReturnValue({
       results: [
@@ -128,7 +138,7 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="daily" />);
 
-    expect(await screen.findByText("每日题 2026-08-05")).toBeTruthy();
+    expect(await screen.findByText(dailyTitle)).toBeTruthy();
     expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(screen.getByText("进行中")).toBeTruthy();
@@ -149,7 +159,7 @@ describe("SingleGamePage", () => {
     } as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText("每日题 2026-08-05");
+    await screen.findByText(dailyTitle);
 
     const submitButton = screen.getByRole("button", { name: "提交猜测" });
     expect(submitButton.querySelector(".lucide-send")).toBeTruthy();
@@ -194,7 +204,7 @@ describe("SingleGamePage", () => {
     vi.mocked(api.submitGuess).mockResolvedValue(wonSession as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText("每日题 2026-08-05");
+    await screen.findByText(dailyTitle);
 
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "帕秋莉");
     await userEvent.click(screen.getByText("帕秋莉·诺蕾姬"));
@@ -218,7 +228,7 @@ describe("SingleGamePage", () => {
     vi.mocked(api.forfeitSession).mockResolvedValue(forfeitedSession as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText("每日题 2026-08-05");
+    await screen.findByText(dailyTitle);
 
     await userEvent.click(screen.getByLabelText("放弃本局"));
 
@@ -265,7 +275,7 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="daily" />);
 
-    expect(await screen.findByText("每日题 2026-08-06")).toBeTruthy();
+    expect(await screen.findByText(nextDailyTitle)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-next-day",
@@ -316,7 +326,7 @@ describe("SingleGamePage", () => {
     } as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText("每日题 2026-08-05");
+    await screen.findByText(dailyTitle);
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "测试");
 
     expect(await screen.findByText("teal、光头")).toBeTruthy();
