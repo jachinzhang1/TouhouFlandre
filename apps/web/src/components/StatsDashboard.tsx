@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect } from "react";
+import { QUESTION_DIFFICULTY_LABELS } from "@touhouflandre/shared";
 import {
   MULTIPLAYER_MODE_LABELS,
   ROOM_FORMAT_SHORT,
@@ -49,6 +50,7 @@ import {
 import type {
   MultiplayerStatsRecord,
   StatsExportFile,
+  StatsDifficulty,
   StatsFilters,
   StatsOutcome,
   StatsRecord,
@@ -63,6 +65,16 @@ const MODE_OPTIONS = [
   { value: "random", label: "随机" },
   { value: "multiplayer", label: "多人" },
 ] as const;
+
+const DIFFICULTY_OPTIONS: { value: StatsFilters["difficulty"]; label: string }[] = [
+  { value: "all", label: "全部难度" },
+  { value: "easy", label: QUESTION_DIFFICULTY_LABELS.easy },
+  { value: "normal", label: QUESTION_DIFFICULTY_LABELS.normal },
+  { value: "hard", label: QUESTION_DIFFICULTY_LABELS.hard },
+  { value: "lunatic", label: QUESTION_DIFFICULTY_LABELS.lunatic },
+  { value: "custom", label: QUESTION_DIFFICULTY_LABELS.custom },
+  { value: "unknown", label: "未知" },
+];
 
 dayjs.locale("zh-cn");
 
@@ -98,6 +110,10 @@ function percent(value: number): string {
   return `${(value * 100).toFixed(value > 0 && value < 0.1 ? 1 : 0)}%`;
 }
 
+function difficultyLabel(value: StatsDifficulty): string {
+  return value === "unknown" ? "未知" : QUESTION_DIFFICULTY_LABELS[value];
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
@@ -109,7 +125,7 @@ function escapeHtml(value: string): string {
 }
 
 export function StatsDashboard() {
-  const [filters, setFilters] = useState<StatsFilters>({ mode: "all", format: "all", multiplayerMode: "all" });
+  const [filters, setFilters] = useState<StatsFilters>({ mode: "all", format: "all", multiplayerMode: "all", difficulty: "all" });
   const [revision, setRevision] = useState(0);
   const [clearOpen, setClearOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{
@@ -145,7 +161,10 @@ export function StatsDashboard() {
     () => buildHistogram(roundsForRecords(filtered).map((round) => round.durationMs)),
     [filtered],
   );
-  const streak = useMemo(() => dailyStreak(records), [records]);
+  const streak = useMemo(
+    () => dailyStreak(records, new Date(), filters.difficulty === "all" ? undefined : filters.difficulty),
+    [filters.difficulty, records],
+  );
 
   const workOption = useMemo<EChartsCoreOption>(() => ({
     animationDuration: 450,
@@ -281,6 +300,12 @@ export function StatsDashboard() {
             <option value="all">全部玩法</option>
             <option value="race">竞速</option>
             <option value="relay">接力</option>
+          </select>
+        </label>
+        <label className="grid gap-1.5">
+          <span className="h-4 text-xs font-bold leading-4 text-ink-soft">游戏难度</span>
+          <select className="h-10 rounded-[5px] border border-line bg-[var(--surface)] px-3 text-sm text-ink" value={filters.difficulty} onChange={(event) => setFilters((current) => ({ ...current, difficulty: event.target.value as StatsFilters["difficulty"] }))}>
+            {DIFFICULTY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
       </section>
@@ -429,9 +454,9 @@ function History({ records }: { records: StatsRecord[] }) {
     <section className="mt-5 border-t border-line pt-5">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-black text-ink">游玩记录</h2><p className="text-xs text-ink-soft">共 {records.length} 条本地记录</p></div><label className="flex items-center gap-2 text-xs font-bold text-ink-soft">每页<select className="h-8 rounded-[5px] border border-line bg-[var(--surface)] px-2 text-ink" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>条</label></div>
       <div className="overflow-x-auto rounded-[7px] border border-line bg-[var(--surface)]">
-        <table className="w-full min-w-[920px] border-collapse text-left text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs text-ink-soft"><tr><th className="px-4 py-3">开始时间</th><th className="px-4 py-3">模式</th><th className="px-4 py-3">结果</th><th className="px-4 py-3">猜测次数</th><th className="px-4 py-3">总耗时</th><th className="px-4 py-3">所猜角色</th><th className="px-4 py-3">答案</th><th className="w-12 px-3 py-3"><span className="sr-only">详情</span></th></tr></thead>
-          <tbody>{visible.length ? visible.map((record) => <HistoryRow key={record.id} record={record} />) : <tr><td colSpan={8} className="px-4 py-14 text-center text-ink-soft">暂无游玩记录</td></tr>}</tbody>
+        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+          <thead className="bg-[var(--surface-soft)] text-xs text-ink-soft"><tr><th className="px-4 py-3">开始时间</th><th className="px-4 py-3">模式</th><th className="px-4 py-3">难度</th><th className="px-4 py-3">结果</th><th className="px-4 py-3">猜测次数</th><th className="px-4 py-3">总耗时</th><th className="px-4 py-3">所猜角色</th><th className="px-4 py-3">答案</th><th className="w-12 px-3 py-3"><span className="sr-only">详情</span></th></tr></thead>
+          <tbody>{visible.length ? visible.map((record) => <HistoryRow key={record.id} record={record} />) : <tr><td colSpan={9} className="px-4 py-14 text-center text-ink-soft">暂无游玩记录</td></tr>}</tbody>
         </table>
       </div>
       <div className="mt-3 flex items-center justify-end gap-2 text-xs text-ink-soft"><button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line disabled:opacity-40" title="上一页" aria-label="上一页" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={16} /></button><span className="min-w-16 text-center">{page} / {pageCount}</span><button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line disabled:opacity-40" title="下一页" aria-label="下一页" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)}><ChevronRight size={16} /></button></div>
@@ -448,8 +473,8 @@ function HistoryRow({ record }: { record: StatsRecord }) {
     ? MULTIPLAYER_MODE_LABELS[record.multiplayerMode ?? "race"]
     : "";
   return <>
-    <tr className="border-t border-line align-middle"><td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatDateTime(record.startedAt)}</td><td className="px-4 py-3 font-bold text-ink">{record.kind === "single" ? (record.mode === "daily" ? "每日" : "随机") : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`}</td><td className="px-4 py-3"><Outcome outcome={record.outcome} /></td><td className="px-4 py-3 tabular-nums text-ink">{guessCount}</td><td className="px-4 py-3 tabular-nums text-ink">{formatDuration(record.durationMs)}</td><td className="px-4 py-2"><GuessSequence guesses={displayGuesses} /></td><td className="px-4 py-2"><AnswerSequence rounds={rounds} /></td><td className="px-3 py-2">{record.kind === "multiplayer" ? <button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] text-ink-soft hover:bg-[var(--surface-soft)]" title={open ? "收起详情" : "展开详情"} aria-label={open ? "收起详情" : "展开详情"} aria-expanded={open} onClick={() => setOpen((value) => !value)}><ChevronRight className={`transition-transform ${open ? "rotate-90" : ""}`} size={17} /></button> : null}</td></tr>
-    {open && record.kind === "multiplayer" ? <tr className="border-t border-line bg-[var(--surface-soft)]"><td colSpan={8} className="px-4 py-3"><RoundDetails record={record} /></td></tr> : null}
+    <tr className="border-t border-line align-middle"><td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatDateTime(record.startedAt)}</td><td className="px-4 py-3 font-bold text-ink">{record.kind === "single" ? (record.mode === "daily" ? "每日" : "随机") : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`}</td><td className="px-4 py-3 text-xs font-bold text-ink-soft">{difficultyLabel(record.difficulty ?? "unknown")}</td><td className="px-4 py-3"><Outcome outcome={record.outcome} /></td><td className="px-4 py-3 tabular-nums text-ink">{guessCount}</td><td className="px-4 py-3 tabular-nums text-ink">{formatDuration(record.durationMs)}</td><td className="px-4 py-2"><GuessSequence guesses={displayGuesses} /></td><td className="px-4 py-2"><AnswerSequence rounds={rounds} /></td><td className="px-3 py-2">{record.kind === "multiplayer" ? <button type="button" className="inline-flex size-8 items-center justify-center rounded-[5px] text-ink-soft hover:bg-[var(--surface-soft)]" title={open ? "收起详情" : "展开详情"} aria-label={open ? "收起详情" : "展开详情"} aria-expanded={open} onClick={() => setOpen((value) => !value)}><ChevronRight className={`transition-transform ${open ? "rotate-90" : ""}`} size={17} /></button> : null}</td></tr>
+    {open && record.kind === "multiplayer" ? <tr className="border-t border-line bg-[var(--surface-soft)]"><td colSpan={9} className="px-4 py-3"><RoundDetails record={record} /></td></tr> : null}
   </>;
 }
 

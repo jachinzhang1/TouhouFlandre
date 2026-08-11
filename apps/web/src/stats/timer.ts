@@ -98,3 +98,44 @@ export function useForegroundTimer(key: string, active: boolean, initialElapsedM
   return { elapsedMs, checkpoint };
 }
 
+export function useWallClockTimer(key: string, active: boolean, initialElapsedMs = 0) {
+  const baseElapsedRef = useRef(initialElapsedMs);
+  const anchorRef = useRef(Date.now());
+  const activeRef = useRef(active);
+  const [elapsedMs, setElapsedMs] = useState(initialElapsedMs);
+
+  const snapshotValue = useCallback(() => {
+    if (!activeRef.current) return Math.round(baseElapsedRef.current);
+    return Math.round(baseElapsedRef.current + Date.now() - anchorRef.current);
+  }, []);
+
+  useEffect(() => {
+    baseElapsedRef.current = Math.max(0, initialElapsedMs);
+    anchorRef.current = Date.now();
+    setElapsedMs(baseElapsedRef.current);
+  }, [key, initialElapsedMs]);
+
+  useEffect(() => {
+    const wasActive = activeRef.current;
+    if (wasActive && !active) {
+      baseElapsedRef.current = snapshotValue();
+    }
+    if (!wasActive && active) {
+      anchorRef.current = Date.now();
+    }
+    activeRef.current = active;
+    setElapsedMs(snapshotValue());
+    if (!active) return;
+    const interval = window.setInterval(() => setElapsedMs(snapshotValue()), 250);
+    return () => window.clearInterval(interval);
+  }, [active, key, snapshotValue]);
+
+  const checkpoint = useCallback(() => {
+    const value = snapshotValue();
+    setElapsedMs(value);
+    return value;
+  }, [snapshotValue]);
+
+  return { elapsedMs, checkpoint };
+}
+

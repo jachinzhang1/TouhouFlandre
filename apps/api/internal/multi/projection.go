@@ -47,18 +47,44 @@ func PermuteStatuses(statuses []string, perm []int) []string {
 	return out
 }
 
+func StatusesForFields(statuses []string, fields []game.GuessField) []string {
+	if len(statuses) == len(fields) {
+		return append([]string{}, statuses...)
+	}
+	indexByField := map[game.GuessFieldKey]int{}
+	for index, field := range game.CharacterGuessFields {
+		indexByField[field.Key] = index
+	}
+	out := make([]string, 0, len(fields))
+	for index, field := range fields {
+		status := "miss"
+		if fullIndex, ok := indexByField[field.Key]; ok && fullIndex < len(statuses) {
+			status = statuses[fullIndex]
+		} else if index < len(statuses) {
+			status = statuses[index]
+		}
+		out = append(out, status)
+	}
+	return out
+}
+
 // HydrateGuessResult 由存储的状态序列（真实列序）重建完整猜测反馈
 // （08 §4.3：标签/符号/展示值按快照在投影时恢复，与单人旧猜测恢复同源）。
 // isCorrect 来自存储行（自视角展示；对手匿名矩阵不渲染该字段）。
 func HydrateGuessResult(guess game.Character, statuses []string, isCorrect bool) game.GuessResult {
-	feedback := make([]game.FieldFeedback, 0, len(game.CharacterGuessFields))
-	for i, field := range game.CharacterGuessFields {
+	return HydrateGuessResultWithFields(guess, statuses, isCorrect, game.CharacterGuessFields)
+}
+
+func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField) game.GuessResult {
+	visibleStatuses := StatusesForFields(statuses, fields)
+	feedback := make([]game.FieldFeedback, 0, len(fields))
+	for i, field := range fields {
 		if !field.Visible {
 			continue
 		}
 		status := game.FeedbackStatus("miss")
-		if i < len(statuses) {
-			status = game.FeedbackStatus(statuses[i])
+		if i < len(visibleStatuses) {
+			status = game.FeedbackStatus(visibleStatuses[i])
 		}
 		feedback = append(feedback, game.FieldFeedback{
 			Field:        field.Key,
@@ -95,12 +121,18 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if payload.MemberSlot == int(observer.Slot) {
 			return nil, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
 		}
-		perm := ColumnPermutation(payload.RoundID, observer.ID, len(game.CharacterGuessFields))
+		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
+		if err != nil {
+			return nil, false, err
+		}
+		fields := FieldsForMatch(match)
+		visibleStatuses := StatusesForFields(payload.Statuses, fields)
+		perm := ColumnPermutation(payload.RoundID, observer.ID, len(fields))
 		return RoundOpponentGuessPayload{
 			MatchIndex: payload.MatchIndex,
 			RoundIndex: payload.RoundIndex,
 			RowIndex:   payload.RowIndex,
-			Statuses:   PermuteStatuses(payload.Statuses, perm),
+			Statuses:   PermuteStatuses(visibleStatuses, perm),
 		}, false, nil
 
 	case EventRoundEnded:
@@ -120,6 +152,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if err != nil {
 			return nil, false, err
 		}
+		fields := FieldsForMatch(match)
 		guesses, err := q.ListGuessesForRound(ctx, round.ID)
 		if err != nil {
 			return nil, false, err
@@ -128,7 +161,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if err != nil {
 			return nil, false, err
 		}
-		relayRows, err := HydrateRelayTurnRows(turns, chars, memberSlotByID)
+		relayRows, err := HydrateRelayTurnRowsWithFields(turns, chars, memberSlotByID, fields)
 		if err != nil {
 			return nil, false, err
 		}
@@ -139,7 +172,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			Result:       resultForObserver(payload.WinnerSlot, int(observer.Slot)),
 			WinnerSlot:   payload.WinnerSlot,
 			Answer:       AnswerViewForCharacter(answer),
-			Boards:       hydrateBoards(guesses, chars, memberSlotByID),
+			Boards:       hydrateBoards(guesses, chars, memberSlotByID, fields),
 			Turns:        relayRows,
 			Scores:       payload.Scores,
 			NextStartsAt: payload.NextStartsAt,
@@ -194,7 +227,11 @@ func charactersForVersionCached(ctx context.Context, q *repo.Queries, version st
 }
 
 // hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
-func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32) BoardsView {
+func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32, fieldSets ...[]game.GuessField) BoardsView {
+	fields := game.CharacterGuessFields
+	if len(fieldSets) > 0 {
+		fields = fieldSets[0]
+	}
 	// 空槽必须序列化为 []（JSON 数组），不能是 nil（null）——前端按数组消费。
 	boards := BoardsView{
 		Slot1: []GuessResultView{},
@@ -209,7 +246,7 @@ func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, m
 		if !ok {
 			continue
 		}
-		hydrated := HydrateGuessResultView(guessChar, statuses, guess.IsCorrect)
+		hydrated := HydrateGuessResultViewWithFields(guessChar, statuses, guess.IsCorrect, fields)
 		if memberSlotByID[guess.MemberID] == 1 {
 			boards.Slot1 = append(boards.Slot1, hydrated)
 		} else {

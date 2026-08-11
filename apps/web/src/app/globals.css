@@ -1322,7 +1322,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
 .status-strip {
   display: grid;
-  grid-template-columns: minmax(210px, 1fr) 96px 96px 112px auto;
+  grid-template-columns: minmax(210px, 1fr) 136px 96px 96px 112px auto;
   gap: 18px;
   align-items: center;
   padding: 17px 24px;
@@ -1331,7 +1331,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .status-strip.daily {
-  grid-template-columns: minmax(210px, 1fr) 96px 96px 112px auto;
+  grid-template-columns: minmax(210px, 1fr) 136px 96px 96px 112px auto;
 }
 
 .label {
@@ -1678,6 +1678,19 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 .guess-avatar {
   width: 34px;
   height: 34px;
+}
+
+.guess-table tbody th.guess-timeout-cell {
+  padding-top: 10px;
+  vertical-align: middle;
+}
+
+.guess-timeout-cell span {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  color: var(--error-text);
+  font-weight: 900;
 }
 
 .guess-table tbody tr {

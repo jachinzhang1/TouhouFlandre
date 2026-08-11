@@ -178,12 +178,20 @@ func toOpenAPIGuessResult(result game.GuessResult) openapi.GuessResult {
 		avatarURL = &result.GuessAvatarURL
 	}
 	return openapi.GuessResult{
+		Kind:           guessKind(result.Kind),
 		GuessId:        result.GuessID,
 		GuessName:      result.GuessName,
 		GuessAvatarUrl: avatarURL,
 		IsCorrect:      result.IsCorrect,
 		Feedback:       feedback,
 	}
+}
+
+func guessKind(kind string) openapi.GuessResultKind {
+	if kind == "timeout" {
+		return openapi.GuessResultKindTimeout
+	}
+	return openapi.GuessResultKindGuess
 }
 
 // hydrateGuessAvatars 对应 db.ts 的 hydrateGuessAvatars：为旧猜测补充头像。
@@ -222,6 +230,14 @@ func toPublicSession(session repo.GameSession, characters []game.Character) (ope
 		Guesses:     hydrated,
 		StartedAt:   session.StartedAt.Time,
 	}
+	catalogVersion := session.CatalogVersion
+	result.CatalogVersion = &catalogVersion
+	scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
+	if err != nil {
+		return openapi.PublicGameSession{}, fmt.Errorf("decode question scope for %s: %w", session.ID, err)
+	}
+	convertedScope := toOpenAPIQuestionScope(scope)
+	result.QuestionScope = &convertedScope
 	if session.PuzzleKey.Valid {
 		result.PuzzleKey = &session.PuzzleKey.String
 	}

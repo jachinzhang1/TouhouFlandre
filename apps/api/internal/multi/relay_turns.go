@@ -120,6 +120,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	row := RelayTurnRow{Index: int(turn.TurnIndex), MemberSlot: memberSlot, Kind: kind.turnKind}
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
+	maxTurnsPerPlayer := MaxGuessesForMatch(match)
 	if skipCountBefore >= RelayMaxSkipsPerPlayer {
 		if err := AppendEvent(ctx, q, room.ID, kind.eventType, relaySkipPayload(kind.turnKind, match, round, row, nil, nil)); err != nil {
 			return RelayTimeoutResult{}, err
@@ -129,7 +130,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		}
 		return RelayTimeoutResult{Round: round, RoundEnded: true, ExpiredSlot: memberSlot}, nil
 	}
-	advance := AdvanceRelayTurn(false, memberSlot, counts, GameMaxGuesses)
+	advance := AdvanceRelayTurn(false, memberSlot, counts, maxTurnsPerPlayer)
 	if !advance.RoundEnded {
 		nextSlot := advance.NextTurnSlot
 		if _, ok := membersBySlot[nextSlot]; !ok {

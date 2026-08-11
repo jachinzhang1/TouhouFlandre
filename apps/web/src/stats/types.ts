@@ -1,8 +1,9 @@
-import type { MultiMatchEndReason, MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type { MultiMatchEndReason, MultiRoomFormat, MultiplayerMode, QuestionDifficulty } from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 2 as const;
+export const STATS_SCHEMA_VERSION = 3 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
+export type StatsDifficulty = QuestionDifficulty | "unknown";
 export type StatsOutcome =
   | "win"
   | "loss"
@@ -54,6 +55,7 @@ interface StatsRecordBase {
   endedAt: string;
   durationMs: number;
   outcome: StatsOutcome;
+  difficulty?: StatsDifficulty;
 }
 
 export interface SingleStatsRecord extends StatsRecordBase {
@@ -86,6 +88,7 @@ export interface SingleStatsDraft {
   startedAt: string;
   updatedAt: string;
   mode: "daily" | "random";
+  difficulty?: StatsDifficulty;
   activeElapsedMs: number;
   guessCompletedElapsedMs: number[];
 }
@@ -105,6 +108,7 @@ export interface MultiplayerStatsDraft {
   updatedAt: string;
   format: MultiRoomFormat;
   multiplayerMode: MultiplayerMode;
+  difficulty?: StatsDifficulty;
   memberSlot?: 1 | 2;
   matchIndex: number;
   rounds: StatsRound[];
@@ -131,6 +135,7 @@ export interface StatsFilters {
   to?: string;
   format: "all" | MultiRoomFormat;
   multiplayerMode: "all" | MultiplayerMode;
+  difficulty?: "all" | StatsDifficulty;
 }
 
 export function workCode(mainlineIndex?: number, fallback = "TH--"): string {

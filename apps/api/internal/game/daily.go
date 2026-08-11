@@ -46,6 +46,10 @@ func GetDailyAnswer(characters []Character, dateKey string) (Character, error) {
 			pool = append(pool, character)
 		}
 	}
+	return GetDailyAnswerFromPool(pool, dateKey)
+}
+
+func GetDailyAnswerFromPool(pool []Character, dateKey string) (Character, error) {
 	if len(pool) == 0 {
 		return Character{}, errors.New("daily puzzle requires at least one enabled answer")
 	}

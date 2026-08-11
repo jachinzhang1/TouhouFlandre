@@ -1,4 +1,4 @@
-import type { MultiplayerStatsRecord, StatsFilters, StatsGuessSnapshot, StatsRecord, StatsRound } from "./types";
+import type { MultiplayerStatsRecord, StatsDifficulty, StatsFilters, StatsGuessSnapshot, StatsRecord, StatsRound } from "./types";
 
 export interface WorkMetric {
   id: string;
@@ -33,6 +33,7 @@ export function filterStatsRecords(records: StatsRecord[], filters: StatsFilters
   return records.filter((record) => {
     const startedAt = Date.parse(record.startedAt);
     if (filters.mode !== "all" && record.mode !== filters.mode) return false;
+    if (filters.difficulty && filters.difficulty !== "all" && (record.difficulty ?? "unknown") !== filters.difficulty) return false;
     if (startedAt < from || startedAt > to) return false;
     if (
       filters.multiplayerMode !== "all" &&
@@ -150,14 +151,7 @@ function addDays(key: string, delta: number): string {
   return localDateKey(date.toISOString());
 }
 
-export function dailyStreak(records: StatsRecord[], now = new Date()): { current: number; longest: number } {
-  const wins = new Set(
-    records.flatMap((record) =>
-      record.kind === "single" && record.mode === "daily" && record.outcome === "win"
-        ? [record.puzzleKey ?? localDateKey(record.startedAt)]
-        : [],
-    ),
-  );
+function streakForDailyWins(wins: Set<string>, now: Date): { current: number; longest: number } {
   const sorted = [...wins].sort();
   let longest = 0;
   let run = 0;
@@ -173,6 +167,35 @@ export function dailyStreak(records: StatsRecord[], now = new Date()): { current
   while (wins.has(cursor)) {
     current += 1;
     cursor = addDays(cursor, -1);
+  }
+  return { current, longest };
+}
+
+export function dailyStreak(
+  records: StatsRecord[],
+  now = new Date(),
+  difficulty?: StatsDifficulty,
+): { current: number; longest: number } {
+  const winsByDifficulty = new Map<StatsDifficulty, Set<string>>();
+  for (const record of records) {
+    if (record.kind !== "single" || record.mode !== "daily" || record.outcome !== "win") {
+      continue;
+    }
+    const recordDifficulty = record.difficulty ?? "unknown";
+    if (difficulty && recordDifficulty !== difficulty) continue;
+    const wins = winsByDifficulty.get(recordDifficulty) ?? new Set<string>();
+    wins.add(record.puzzleKey ?? localDateKey(record.startedAt));
+    winsByDifficulty.set(recordDifficulty, wins);
+  }
+  if (difficulty) {
+    return streakForDailyWins(winsByDifficulty.get(difficulty) ?? new Set(), now);
+  }
+  let current = 0;
+  let longest = 0;
+  for (const wins of winsByDifficulty.values()) {
+    const streak = streakForDailyWins(wins, now);
+    current = Math.max(current, streak.current);
+    longest = Math.max(longest, streak.longest);
   }
   return { current, longest };
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
@@ -93,9 +94,20 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 		displayName = *request.Body.DisplayName
 	}
 	displayName = multi.NormalizeDisplayName(displayName)
+	version, characters, works, err := s.currentCatalogWithWorks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	correction := normalizeQuestionScopeForCatalog(
+		questionScopeFromOpenAPI(request.Body.QuestionScope),
+		version,
+		characters,
+		works,
+	)
+	scope := correction.Config
 
 	for attempt := 0; attempt < 5; attempt++ {
-		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, displayName)
+		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, displayName, scope)
 		if err == nil {
 			return response, nil
 		}
@@ -109,7 +121,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	return nil, internalError(errors.New("room code collision after retries"))
 }
 
-func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds int, displayName string) (openapi.RoomsCreateResponseObject, error) {
+func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds int, displayName string, scope game.QuestionScopeConfig) (openapi.RoomsCreateResponseObject, error) {
 	roomID := newSessionID()
 	token, err := multi.GenerateGuestToken()
 	if err != nil {
@@ -121,6 +133,10 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
+	scopeJSON, err := questionScopeJSON(scope)
+	if err != nil {
+		return nil, internalError(err)
+	}
 
 	room, err := q.CreateRoom(ctx, repo.CreateRoomParams{
 		ID:          roomID,
@@ -129,6 +145,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 		Mode:        string(mode),
 		TurnSeconds: int32(turnSeconds),
 		ExpiresAt:   timestamptz(s.now().Add(s.lobbyTTL)),
+		QuestionScope: scopeJSON,
 	})
 	if err != nil {
 		return nil, mapRoomWriteError(err)
@@ -150,11 +167,13 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 		return nil, internalError(err)
 	}
 	s.publish(roomID)
+	openapiScope := toOpenAPIQuestionScope(scope)
 	return openapi.RoomsCreate201JSONResponse{
-		RoomId:     roomID,
-		RoomCode:   room.Code,
-		GuestToken: openapi.GuestToken(token),
-		Member:     toOpenAPIMemberView(multi.MemberViews([]repo.MultiMember{member})[0]),
+		RoomId:        roomID,
+		RoomCode:      room.Code,
+		GuestToken:    openapi.GuestToken(token),
+		Member:        toOpenAPIMemberView(multi.MemberViews([]repo.MultiMember{member})[0]),
+		QuestionScope: &openapiScope,
 	}, nil
 }
 
@@ -177,13 +196,19 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	if err != nil {
 		return nil, internalError(err)
 	}
+	scope, err := storedQuestionScopeFromJSON(room.QuestionScope)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	openapiScope := toOpenAPIQuestionScope(scope)
 	return openapi.RoomsGetInfo200JSONResponse{
-		RoomCode:    room.Code,
-		Format:      openapi.RoomFormat(room.Format),
-		Mode:        openapi.MultiplayerMode(room.Mode),
-		TurnSeconds: openapi.RoomInfoTurnSeconds(room.TurnSeconds),
-		Status:      openapi.RoomStatus(room.Status),
-		MemberCount: len(members),
+		RoomCode:      room.Code,
+		Format:        openapi.RoomFormat(room.Format),
+		Mode:          openapi.MultiplayerMode(room.Mode),
+		TurnSeconds:   openapi.RoomInfoTurnSeconds(room.TurnSeconds),
+		Status:        openapi.RoomStatus(room.Status),
+		MemberCount:   len(members),
+		QuestionScope: &openapiScope,
 	}, nil
 }
 

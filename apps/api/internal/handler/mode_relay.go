@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
@@ -25,6 +26,9 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	round := input.round
 	match := input.match
 	now := s.now()
+	fields := multi.FieldsForMatch(match)
+	storageFields := multi.StorageFieldsForMatch(match)
+	maxTurnsPerPlayer := multi.MaxGuessesForMatch(match)
 
 	switch round.Status {
 	case string(multi.RoundStatusEnded):
@@ -51,7 +55,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 		IdempotencyKey: pgtype.Text{String: request.Body.IdempotencyKey, Valid: true},
 	})
 	if err == nil {
-		response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing)
+		response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing, fields)
 		return submitGuessResult{response: response, commit: true}, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -83,11 +87,11 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	if int(memberTurnCount) >= multi.GameMaxGuesses {
+	if int(memberTurnCount) >= maxTurnsPerPlayer {
 		return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局轮次机会已用尽。"}
 	}
 
-	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId)
+	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
@@ -121,7 +125,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 			if readErr != nil {
 				return submitGuessResult{}, internalError(readErr)
 			}
-			response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing)
+			response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing, fields)
 			return submitGuessResult{response: response, commit: true}, err
 		}
 		if isRelayDuplicateGuess(err) {
@@ -154,7 +158,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	advance := multi.AdvanceRelayTurn(isCorrect, int(member.Slot), counts, multi.GameMaxGuesses)
+	advance := multi.AdvanceRelayTurn(isCorrect, int(member.Slot), counts, maxTurnsPerPlayer)
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
 	if !advance.RoundEnded {
@@ -180,7 +184,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 		Index:      int(turn.TurnIndex),
 		MemberSlot: int(member.Slot),
 		Kind:       multi.RelayTurnKindGuess,
-		Guess:      ptr(multi.HydrateGuessResultView(guessChar, statuses, isCorrect)),
+		Guess:      ptr(multi.HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields)),
 	}
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundSharedGuess, multi.RoundSharedGuessPayload{
 		MatchIndex:       int(match.MatchIndex),
@@ -197,7 +201,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 		}
 	}
 
-	response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, turn)
+	response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, turn, fields)
 	if err != nil {
 		return submitGuessResult{}, err
 	}
@@ -212,7 +216,7 @@ func nextGuessSequence(ctx context.Context, q *repo.Queries, roundID, memberID s
 	return int(count) + 1, nil
 }
 
-func (s *Server) relayTurnAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion string, turn repo.MultiTurn) (openapi.RoomsSubmitGuessResponseObject, error) {
+func (s *Server) relayTurnAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion string, turn repo.MultiTurn, fields []game.GuessField) (openapi.RoomsSubmitGuessResponseObject, error) {
 	if turn.Kind != string(multi.RelayTurnKindGuess) {
 		return nil, turnExpiredError("本轮已超时空过。")
 	}
@@ -220,7 +224,7 @@ func (s *Server) relayTurnAcceptedResponse(ctx context.Context, roundIndex int, 
 		GuessID:   turn.GuessID.String,
 		Statuses:  turn.Statuses,
 		IsCorrect: turn.IsCorrect,
-	})
+	}, fields)
 }
 
 func isRelayDuplicateGuess(err error) bool {

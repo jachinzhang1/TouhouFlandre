@@ -10,6 +10,7 @@ import type {
   MatchStartedPayload,
   MultiRoomFormat,
   MultiplayerMode,
+  QuestionScopeConfig,
   MultiRoomStatus,
   RoundEndedPayload,
   RoundOpponentGuessPayload,
@@ -56,6 +57,8 @@ export interface RoomUiState {
   round: RoundView | null;
   /** 本局绑定题库版本（match.started 载荷；本地角色表按版本键缓存）。 */
   catalogVersion: string | null;
+  /** 本场绑定的题库范围；只影响本场展示和统计，不写入本地题库设置。 */
+  questionScope: QuestionScopeConfig | null;
   /** 局末弹窗数据（round.ended 事件）。 */
   roundResult: RoundEndedPayload | null;
   /** 整场结果弹窗数据（match.ended 事件）。 */
@@ -75,6 +78,7 @@ export const initialRoomState: RoomUiState = {
   match: null,
   round: null,
   catalogVersion: null,
+  questionScope: null,
   roundResult: null,
   matchResult: null,
   rematchReady: [false, false],
@@ -107,6 +111,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       return {
         ...state,
         catalogVersion: payload.catalogVersion ?? null,
+        questionScope: payload.questionScope ?? state.questionScope,
         room: state.room
           ? { ...state.room, status: "playing", mode: payload.mode, turnSeconds: payload.turnSeconds }
           : state.room,
@@ -118,6 +123,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           roundIndex: 0,
           maxRounds: maxRoundsFor(payload.format),
           rematchReady: [false, false],
+          catalogVersion: payload.catalogVersion,
         },
         round: null,
         roundResult: null,
@@ -310,6 +316,8 @@ export function applySnapshot(
     },
     members: snapshot.members,
     match: snapshot.match ?? null,
+    catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
+    questionScope: (snapshot.match?.questionScope ?? snapshot.questionScope ?? next.questionScope) as QuestionScopeConfig | null,
     round: snapshot.round ?? null,
     rematchReady: snapshot.match
       ? [snapshot.match.rematchReady[0] ?? false, snapshot.match.rematchReady[1] ?? false]

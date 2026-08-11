@@ -10,42 +10,55 @@ import (
 )
 
 const createDailyPuzzle = `-- name: CreateDailyPuzzle :one
-INSERT INTO daily_puzzle (date_key, catalog_version, answer_id)
-VALUES ($1, $2, $3)
-RETURNING date_key, catalog_version, answer_id, created_at
+INSERT INTO daily_puzzle (date_key, difficulty, catalog_version, answer_id)
+VALUES ($1, $2, $3, $4)
+RETURNING date_key, catalog_version, answer_id, created_at, difficulty
 `
 
 type CreateDailyPuzzleParams struct {
 	DateKey        string `json:"date_key"`
+	Difficulty     string `json:"difficulty"`
 	CatalogVersion string `json:"catalog_version"`
 	AnswerID       string `json:"answer_id"`
 }
 
 func (q *Queries) CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error) {
-	row := q.db.QueryRow(ctx, createDailyPuzzle, arg.DateKey, arg.CatalogVersion, arg.AnswerID)
+	row := q.db.QueryRow(ctx, createDailyPuzzle,
+		arg.DateKey,
+		arg.Difficulty,
+		arg.CatalogVersion,
+		arg.AnswerID,
+	)
 	var i DailyPuzzle
 	err := row.Scan(
 		&i.DateKey,
 		&i.CatalogVersion,
 		&i.AnswerID,
 		&i.CreatedAt,
+		&i.Difficulty,
 	)
 	return i, err
 }
 
 const getDailyPuzzle = `-- name: GetDailyPuzzle :one
-SELECT date_key, catalog_version, answer_id, created_at FROM daily_puzzle WHERE date_key = $1
+SELECT date_key, catalog_version, answer_id, created_at, difficulty FROM daily_puzzle WHERE date_key = $1 AND difficulty = $2
 `
 
+type GetDailyPuzzleParams struct {
+	DateKey    string `json:"date_key"`
+	Difficulty string `json:"difficulty"`
+}
+
 // 每日题
-func (q *Queries) GetDailyPuzzle(ctx context.Context, dateKey string) (DailyPuzzle, error) {
-	row := q.db.QueryRow(ctx, getDailyPuzzle, dateKey)
+func (q *Queries) GetDailyPuzzle(ctx context.Context, arg GetDailyPuzzleParams) (DailyPuzzle, error) {
+	row := q.db.QueryRow(ctx, getDailyPuzzle, arg.DateKey, arg.Difficulty)
 	var i DailyPuzzle
 	err := row.Scan(
 		&i.DateKey,
 		&i.CatalogVersion,
 		&i.AnswerID,
 		&i.CreatedAt,
+		&i.Difficulty,
 	)
 	return i, err
 }

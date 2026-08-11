@@ -4,7 +4,7 @@
 // 窄屏 max-[680px] 堆叠为上下）。搜索输入在底部固定条（GuessInputBar）。
 import type { ReactNode } from "react";
 import type { components } from "../generated/api";
-import type { RoundEndedPayload } from "@touhouflandre/shared";
+import type { GuessField, RoundEndedPayload } from "@touhouflandre/shared";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
 import { OpponentBoard } from "./OpponentBoard";
@@ -24,6 +24,7 @@ export function MatchBoard({
   onGuess,
   disabled,
   roundActions,
+  fields,
 }: {
   format: string;
   match: MatchView;
@@ -34,6 +35,7 @@ export function MatchBoard({
   onGuess: (guessId: string) => void;
   disabled?: boolean;
   roundActions?: ReactNode;
+  fields?: readonly GuessField[];
 }) {
   const remaining = useRoomClock(round?.deadline ?? null);
 
@@ -68,15 +70,16 @@ export function MatchBoard({
         }`}
       >
         {ended && roundResult ? (
-          <EndedBoards roundResult={roundResult} mySlot={mySlot} />
+          <EndedBoards roundResult={roundResult} mySlot={mySlot} fields={fields} />
         ) : (
           <>
             <SelfBoard
               guesses={round?.self.guesses ?? []}
               playing={round?.status === "playing"}
               maxGuesses={round?.maxGuesses}
+              fields={fields}
             />
-            <OpponentBoard rows={round?.opponent.rows ?? []} />
+            <OpponentBoard rows={round?.opponent.rows ?? []} fields={fields} />
           </>
         )}
       </div>
@@ -89,9 +92,11 @@ export function MatchBoard({
 function EndedBoards({
   roundResult,
   mySlot,
+  fields,
 }: {
   roundResult: RoundEndedPayload;
   mySlot: 1 | 2;
+  fields?: readonly GuessField[];
 }) {
   const toRows = (slot: 1 | 2): GuessRow[] => {
     const board = slot === 1 ? roundResult.boards.slot1 : roundResult.boards.slot2;
@@ -108,8 +113,8 @@ function EndedBoards({
   };
   return (
     <>
-      <GuessTable title="我" rows={toRows(mySlot)} emptyLabel="本局未猜测。" />
-      <GuessTable title="对手（局末揭示）" rows={toRows(mySlot === 1 ? 2 : 1)} emptyLabel="对手本局未猜测。" />
+      <GuessTable title="我" rows={toRows(mySlot)} emptyLabel="本局未猜测。" fields={fields} />
+      <GuessTable title="对手（局末揭示）" rows={toRows(mySlot === 1 ? 2 : 1)} emptyLabel="对手本局未猜测。" fields={fields} />
     </>
   );
 }

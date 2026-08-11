@@ -41,6 +41,7 @@ GuessField:
       enum:
         - firstAppearance
         - numberDirection
+        - numberExact
         - multiSet
     helpText:
       type: string

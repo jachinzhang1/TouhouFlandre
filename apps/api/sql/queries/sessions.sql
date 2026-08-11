@@ -1,9 +1,9 @@
 -- 会话：创建、查询、乐观锁更新
 -- name: CreateSession :one
 INSERT INTO game_session (
-    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses
+    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, question_scope
 ) VALUES (
-    @id, @mode, @content_type, @answer_id, @catalog_version, @puzzle_key, @status, @max_guesses
+    @id, @mode, @content_type, @answer_id, @catalog_version, @puzzle_key, @status, @max_guesses, @question_scope
 )
 RETURNING *;
 

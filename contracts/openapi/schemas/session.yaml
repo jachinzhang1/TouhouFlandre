@@ -66,11 +66,18 @@ FieldFeedback:
 GuessResult:
   type: object
   required:
+    - kind
     - guessId
     - guessName
     - isCorrect
     - feedback
   properties:
+    kind:
+      type: string
+      enum:
+        - guess
+        - timeout
+      description: 缺失时按普通猜测 guess 处理。
     guessId:
       type: string
     guessName:
@@ -111,6 +118,8 @@ PublicGameSession:
     catalogVersion:
       type: string
       description: 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。
+    questionScope:
+      $ref: "./question-scope.yaml#/QuestionScopeConfig"
     puzzleKey:
       type: string
     guesses:

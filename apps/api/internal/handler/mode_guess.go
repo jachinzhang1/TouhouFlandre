@@ -45,8 +45,11 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	room := input.room
 	round := input.round
 	match := input.match
+	fields := multi.FieldsForMatch(match)
+	storageFields := multi.StorageFieldsForMatch(match)
+	maxGuesses := multi.MaxGuessesForMatch(match)
 
-	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId)
+	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
@@ -76,7 +79,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		RoundID: round.ID, MemberID: member.ID, IdempotencyKey: request.Body.IdempotencyKey,
 	})
 	if err == nil {
-		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing)
+		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing, fields)
 		return submitGuessResult{response: response, commit: true}, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -89,7 +92,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	if int(count) >= multi.GameMaxGuesses {
+	if int(count) >= maxGuesses {
 		return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
 	}
 	sequence := int(count) + 1
@@ -151,13 +154,13 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if isCorrect {
 		winnerSlot = int(member.Slot)
 	}
-	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, multi.GameMaxGuesses, false)
+	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, maxGuesses, false)
 
 	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
 		GuessID:   guessChar.ID,
 		Statuses:  statusesJSON,
 		IsCorrect: isCorrect,
-	})
+	}, fields)
 	if err != nil {
 		return submitGuessResult{}, err
 	}

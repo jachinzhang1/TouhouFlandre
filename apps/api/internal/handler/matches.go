@@ -33,7 +33,31 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return internalError(err)
 	}
-	answerID, err := multi.DrawAnswer(multi.AnswerPool(characters), map[string]bool{}, s.rng)
+	works, err := q.ListWorks(ctx)
+	if err != nil {
+		return internalError(err)
+	}
+	storedScope, err := storedQuestionScopeFromJSON(room.QuestionScope)
+	if err != nil {
+		return internalError(err)
+	}
+	correction := normalizeQuestionScopeForCatalog(&storedScope, state.CurrentVersion, characters, works)
+	scope := correction.Config
+	scopeJSON, err := questionScopeJSON(scope)
+	if err != nil {
+		return internalError(err)
+	}
+	if correction.Changed {
+		updatedRoom, err := q.UpdateRoomQuestionScope(ctx, repo.UpdateRoomQuestionScopeParams{
+			ID:            room.ID,
+			QuestionScope: scopeJSON,
+		})
+		if err != nil {
+			return internalError(err)
+		}
+		room = updatedRoom
+	}
+	answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
 	if err != nil {
 		return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
 	}
@@ -47,6 +71,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		CatalogVersion: state.CurrentVersion,
 		TargetWins:     int32(targetWins),
 		StartedAt:      timestamptz(now),
+		QuestionScope:  scopeJSON,
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
@@ -74,15 +99,17 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		TargetWins:     targetWins,
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
+		QuestionScope:  scope,
 	}); err != nil {
 		return internalError(err)
 	}
+	maxGuesses := game.EffectiveQuestionScopeMaxGuesses(scope.Rules)
 	roundStarted := multi.RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
 		StartsAt:   startsAt,
 		Deadline:   startsAt.Add(s.timing.RoundSeconds),
-		MaxGuesses: multi.GameMaxGuesses,
+		MaxGuesses: maxGuesses,
 	}
 	multi.AddRelayRoundStartedFields(&roundStarted, room, int(round.RoundIndex), startsAt)
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {
@@ -176,7 +203,7 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 }
 
 // computeFeedback 校验角色并计算反馈（真实列序状态数组）。
-func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVersion, answerID, guessID string) (game.Character, []string, bool, *ApiError) {
+func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVersion, answerID, guessID string, fields []game.GuessField) (game.Character, []string, bool, *ApiError) {
 	characters, err := multi.CharactersForVersion(ctx, q, catalogVersion)
 	if err != nil {
 		return game.Character{}, nil, false, internalError(err)
@@ -190,7 +217,7 @@ func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVe
 	if !ok {
 		return game.Character{}, nil, false, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "本局答案缺失。"}
 	}
-	result := game.CompareCharacter(guess, answer, game.CharacterGuessFields)
+	result := game.CompareCharacter(guess, answer, fields)
 	statuses := make([]string, len(result.Feedback))
 	for i, fb := range result.Feedback {
 		statuses[i] = string(fb.Status)
@@ -219,7 +246,7 @@ func (s *Server) settleTimeoutInTxn(ctx context.Context, q *repo.Queries, roomID
 
 // guessAcceptedResponse 组装 200 响应（自视角完整反馈，按快照水合）。
 // q 须绑定在未提交的事务上（幂等重放路径与正常路径均在提交前调用）。
-func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion string, guess repo.MultiGuess) (openapi.RoomsSubmitGuessResponseObject, error) {
+func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion string, guess repo.MultiGuess, fields []game.GuessField) (openapi.RoomsSubmitGuessResponseObject, error) {
 	var statuses []string
 	if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
 		return nil, internalError(err)
@@ -232,7 +259,7 @@ func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *r
 	if !ok {
 		return nil, internalError(errors.New("guess character missing from snapshot"))
 	}
-	hydrated := multi.HydrateGuessResult(guessChar, statuses, guess.IsCorrect)
+	hydrated := multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields)
 	return openapi.RoomsSubmitGuess200JSONResponse{
 		RoundIndex: roundIndex,
 		Guess:      toOpenAPIGuessResult(hydrated),

@@ -1,6 +1,6 @@
 import createClient from "openapi-fetch";
 import type { paths } from "../generated/api";
-import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode, QuestionDifficultyPreset, QuestionScopeConfig } from "@touhouflandre/shared";
 
 type RelayTurnSeconds = 30 | 60 | 90 | 120;
 
@@ -78,15 +78,28 @@ export const api = {
     ),
   catalog: (signal?: AbortSignal) =>
     requestApi(client.GET("/api/catalog", { signal })),
-  createPuzzle: (mode: "daily" | "random") =>
+  catalogFull: (signal?: AbortSignal) =>
+    requestApi(client.GET("/api/catalog/full", { signal })),
+  createPuzzle: (
+    mode: "daily" | "random",
+    body?: { questionScope?: QuestionScopeConfig; difficulty?: QuestionDifficultyPreset },
+  ) =>
     requestApi(
-      client.POST("/api/puzzles/{mode}", { params: { path: { mode } } }),
+      client.POST("/api/puzzles/{mode}", { params: { path: { mode } }, body }),
     ),
   submitGuess: async (sessionId: string, guessId: string) => {
     const { session } = await requestApi(
       client.POST("/api/sessions/{sessionId}/guess", {
         params: { path: { sessionId } },
         body: { guessId },
+      }),
+    );
+    return session;
+  },
+  timeoutSession: async (sessionId: string) => {
+    const { session } = await requestApi(
+      client.POST("/api/sessions/{sessionId}/timeout", {
+        params: { path: { sessionId } },
       }),
     );
     return session;
@@ -109,7 +122,7 @@ export const api = {
   },
 
   // ---- 多人房间（08 §7.1） ----
-  createRoom: (body: { format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: RelayTurnSeconds; displayName?: string }) =>
+  createRoom: (body: { format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: RelayTurnSeconds; displayName?: string; questionScope?: QuestionScopeConfig }) =>
     requestApi(client.POST("/api/rooms", { body })),
   roomInfo: (roomCode: string) =>
     requestApi(

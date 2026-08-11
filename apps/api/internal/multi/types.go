@@ -28,7 +28,7 @@ func NewID() string {
 	return string(id)
 }
 
-// GameMaxGuesses 每局每人猜测上限（08 §4.2：沿用单人 GameContentDefinition.MaxGuesses = 8）。
+// GameMaxGuesses is the legacy fallback when a match has no stored question scope.
 var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 
 // RelayMaxSkipsPerPlayer 接力模式每局每名玩家可空过次数上限（主动空过与超时空过共享）。
@@ -183,12 +183,13 @@ type RoomUpdatedPayload struct {
 
 // MatchStartedPayload match.started：新场次开始。
 type MatchStartedPayload struct {
-	Format         RoomFormat      `json:"format"`
-	Mode           MultiplayerMode `json:"mode"`
-	TurnSeconds    int             `json:"turnSeconds"`
-	TargetWins     int             `json:"targetWins"`
-	CatalogVersion string          `json:"catalogVersion"`
-	MatchIndex     int             `json:"matchIndex"`
+	Format         RoomFormat               `json:"format"`
+	Mode           MultiplayerMode          `json:"mode"`
+	TurnSeconds    int                      `json:"turnSeconds"`
+	TargetWins     int                      `json:"targetWins"`
+	CatalogVersion string                   `json:"catalogVersion"`
+	MatchIndex     int                      `json:"matchIndex"`
+	QuestionScope  game.QuestionScopeConfig `json:"questionScope"`
 }
 
 // MatchRematchPayload match.rematch：成员确认再来一局。
@@ -206,7 +207,7 @@ type RoundStartedPayload struct {
 	TurnSlot          *int       `json:"turnSlot,omitempty"`
 	TurnDeadline      *time.Time `json:"turnDeadline,omitempty"`
 	MaxTurnsPerPlayer *int       `json:"maxTurnsPerPlayer,omitempty"`
-	MaxSkipsPerPlayer  *int       `json:"maxSkipsPerPlayer,omitempty"`
+	MaxSkipsPerPlayer *int       `json:"maxSkipsPerPlayer,omitempty"`
 }
 
 // RoundPlayingPayload round.playing：倒计时结束可开猜。

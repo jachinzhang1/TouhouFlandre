@@ -2,11 +2,11 @@
 
 // 多人大厅（08 §10.1）：创建房间（赛制单选 + 昵称）、加入房间（房间号 + 昵称 + 公开预检）。
 import { useRouter } from "next/navigation";
-import { DoorOpen, Plus, Users } from "lucide-react";
+import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode, QuestionScopeConfig } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];
@@ -22,14 +22,19 @@ import {
   type RelayTurnSeconds,
 } from "../domain/multiRoom";
 import { api } from "../lib/api";
+import {
+  catalogFullToSnapshot,
+  loadLocalQuestionScope,
+} from "../lib/questionScopeStorage";
+import { QuestionScopeDialog } from "./QuestionScopeDialog";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
 const MODE_RULES: Record<MultiplayerMode, string> = {
-  race: `**竞速模式**中，双方会同时竞猜同一个隐藏角色。每名玩家在本局最多可以提交 **8 手**猜测；自己会看到完整的猜测记录和字段反馈，对手棋盘则只显示匿名反馈矩阵。任意一方率先猜中目标角色时，本局立即结束并为该玩家记一胜；若双方都用尽 8 手仍无人猜中，或本局总倒计时结束，则本局判为平局。
+  race: `**竞速模式**中，双方会同时竞猜同一个隐藏角色。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。任意一方率先猜中目标角色时，本局**立即结束**并为该玩家记一胜；若双方都用尽次数限制仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 每一小局结束后会揭示答案、当前比分和双方完整棋盘。先达到目标胜局的一方赢得整场对局。`,
-  relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，当前轮到的玩家可以提交一次猜测或主动选择空过。每名玩家每局最多消耗 **8 手**轮次；猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
+  relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，出题范围和猜测次数限制**由房主决定**。当前轮到的玩家可以提交一次猜测或主动选择空过。猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
 };
@@ -49,6 +54,8 @@ export function MultiLobby() {
   const [infoError, setInfoError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [hostScopeOpen, setHostScopeOpen] = useState(false);
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -75,11 +82,15 @@ export function MultiLobby() {
     setBusy("create");
     setError("");
     try {
+      const questionScope = loadLocalQuestionScope(
+        catalogFullToSnapshot(await api.catalogFull()),
+      ).config;
       const created = await api.createRoom({
         format,
         mode,
         turnSeconds,
         displayName: nickname || undefined,
+        questionScope,
       });
       saveMultiRoom({
         roomId: created.roomId,
@@ -137,13 +148,25 @@ export function MultiLobby() {
 
         <div className="grid gap-5 md:grid-cols-2">
           <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
-            <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
-              <Plus size={17} className="text-vermilion" aria-hidden="true" />
-              创建房间
-            </h2>
-            <p className="mt-0 mb-4 text-[0.78rem] text-ink-soft">
-              你是房主，选择玩法和赛制并邀请好友加入。
-            </p>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
+                  <Plus size={17} className="text-vermilion" aria-hidden="true" />
+                  创建房间
+                </h2>
+                <p className="m-0 text-[0.78rem] text-ink-soft">
+                  你是房主，选择玩法和赛制并邀请好友加入。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[5px] border border-line bg-paper-muted px-2.5 text-[0.72rem] font-bold text-ink-soft hover:bg-paper"
+                onClick={() => setScopeOpen(true)}
+              >
+                <Settings size={14} aria-hidden="true" />
+                题库设置
+              </button>
+            </div>
             <fieldset className="mb-4">
               <legend className="mb-1 text-[0.75rem] text-ink-soft">玩法</legend>
               <div className="grid grid-cols-2 gap-2">
@@ -286,6 +309,15 @@ export function MultiLobby() {
                 未找到该房间或查询过于频繁，请稍后再试。
               </p>
             )}
+            <button
+              type="button"
+              disabled={!info}
+              onClick={() => setHostScopeOpen(true)}
+              className="mb-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 text-[0.78rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Eye size={15} aria-hidden="true" />
+              查看房主所设题库
+            </button>
             <label className="mb-4 block">
               <span className="mb-1 block text-[0.75rem] text-ink-soft">昵称（可选，≤16 字符）</span>
               <input
@@ -308,6 +340,17 @@ export function MultiLobby() {
           </div>
         </div>
       </div>
+      <QuestionScopeDialog
+        open={scopeOpen}
+        onClose={() => setScopeOpen(false)}
+      />
+      <QuestionScopeDialog
+        open={hostScopeOpen}
+        title="房主题库设置"
+        readOnly
+        initialConfig={(info?.questionScope ?? null) as QuestionScopeConfig | null}
+        onClose={() => setHostScopeOpen(false)}
+      />
     </section>
   );
 }

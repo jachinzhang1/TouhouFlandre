@@ -5,6 +5,8 @@ WorkType:
   type: string
   enum:
     - game
+    - ftg
+    - stg
     - print
     - music_cd
     - other

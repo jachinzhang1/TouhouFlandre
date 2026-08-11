@@ -54,8 +54,16 @@ func HydrateGuessResultView(guess game.Character, statuses []string, isCorrect b
 	return GuessResultViewFromGame(HydrateGuessResult(guess, statuses, isCorrect))
 }
 
+func HydrateGuessResultViewWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField) GuessResultView {
+	return GuessResultViewFromGame(HydrateGuessResultWithFields(guess, statuses, isCorrect, fields))
+}
+
 // HydrateRelayTurnRows rebuilds relay's shared board from stored turn rows.
 func HydrateRelayTurnRows(turns []repo.MultiTurn, chars map[string]game.Character, memberSlotByID map[string]int32) ([]RelayTurnRow, error) {
+	return HydrateRelayTurnRowsWithFields(turns, chars, memberSlotByID, game.CharacterGuessFields)
+}
+
+func HydrateRelayTurnRowsWithFields(turns []repo.MultiTurn, chars map[string]game.Character, memberSlotByID map[string]int32, fields []game.GuessField) ([]RelayTurnRow, error) {
 	rows := make([]RelayTurnRow, 0, len(turns))
 	for _, turn := range turns {
 		row := RelayTurnRow{
@@ -72,7 +80,7 @@ func HydrateRelayTurnRows(turns []repo.MultiTurn, chars map[string]game.Characte
 			if !ok {
 				return nil, ErrRelayTurnCharacterMissing
 			}
-			hydrated := HydrateGuessResultView(guess, statuses, turn.IsCorrect)
+			hydrated := HydrateGuessResultViewWithFields(guess, statuses, turn.IsCorrect, fields)
 			row.Guess = &hydrated
 		}
 		rows = append(rows, row)

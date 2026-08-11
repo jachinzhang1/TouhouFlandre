@@ -1,0 +1,42 @@
+# POST /api/sessions/:sessionId/timeout
+post:
+  operationId: sessions_timeout
+  tags:
+    - sessions
+  summary: 记录单人超时空过
+  parameters:
+    - name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: 超时空过已记录
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - session
+            properties:
+              session:
+                $ref: "../schemas/session.yaml#/PublicGameSession"
+    "404":
+      description: 会话不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 会话已结束、未开启单手限时或并发冲突
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

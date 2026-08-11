@@ -4,6 +4,7 @@
 // 依据：docs/multiplayer.md（WebSocket 协议）。
 
 import type { FeedbackStatus, GuessResult } from "./types";
+import type { QuestionScopeConfig } from "./questionScope";
 
 export const MULTI_ROOM_FORMATS = ["bo1", "bo3", "bo5", "bo7"] as const;
 export type MultiRoomFormat = (typeof MULTI_ROOM_FORMATS)[number];
@@ -62,6 +63,7 @@ export interface MatchStartedPayload {
   targetWins: number;
   catalogVersion: string;
   matchIndex: number;
+  questionScope?: QuestionScopeConfig;
 }
 
 export interface MatchRematchPayload {
@@ -92,11 +94,15 @@ export interface RoundOpponentGuessPayload {
   statuses: FeedbackStatus[];
 }
 
+export type NormalizedGuessResult = GuessResult & {
+  kind: NonNullable<GuessResult["kind"]>;
+};
+
 export interface RelayTurnRow {
   index: number;
   memberSlot: number;
   kind: "guess" | "timeout" | "pass";
-  guess?: GuessResult;
+  guess?: NormalizedGuessResult;
 }
 
 export interface RoundSharedGuessPayload {

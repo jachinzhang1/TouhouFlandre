@@ -1,6 +1,6 @@
 import type { PublicGameSession, SinglePlayerGameMode } from "@touhouflandre/shared";
 import { putStatsDraft, putStatsRecord, stableRecordId, statsDb } from "./db";
-import { STATS_SCHEMA_VERSION, workCode, type SingleStatsDraft, type StatsOutcome } from "./types";
+import { STATS_SCHEMA_VERSION, workCode, type SingleStatsDraft, type StatsDifficulty, type StatsOutcome } from "./types";
 
 function guessDurations(completed: number[], count: number): (number | undefined)[] {
   return Array.from({ length: count }, (_, index) => {
@@ -30,6 +30,7 @@ export async function saveSingleStatsDraft(
     startedAt: session.startedAt,
     updatedAt: new Date().toISOString(),
     mode,
+    difficulty: session.questionScope?.difficulty ?? "unknown",
     activeElapsedMs,
     guessCompletedElapsedMs,
   });
@@ -47,6 +48,7 @@ export async function recordSingleSession(
   const endedAt = session.endedAt ?? new Date().toISOString();
   const durations = guessDurations(guessCompletedElapsedMs, session.guesses.length);
   const result: "win" | "loss" = session.status === "won" ? "win" : "loss";
+  const difficulty: StatsDifficulty = session.questionScope?.difficulty ?? "unknown";
   const answer = {
     id: session.answer.id,
     name: session.answer.names.zhHans,
@@ -67,6 +69,7 @@ export async function recordSingleSession(
     endedAt,
     durationMs: Math.max(0, activeElapsedMs),
     outcome: (outcomeOverride ?? result) as StatsOutcome,
+    difficulty,
     round: {
       roundIndex: 1,
       startedAt: session.startedAt,

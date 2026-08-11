@@ -28,7 +28,10 @@ func AddRelayRoundStartedFields(payload *RoundStartedPayload, room repo.MultiRoo
 		return
 	}
 	slot, deadline := InitialRelayTurn(roundIndex, int(room.TurnSeconds), startsAt)
-	max := GameMaxGuesses
+	max := payload.MaxGuesses
+	if max <= 0 {
+		max = GameMaxGuesses
+	}
 	payload.TurnSlot = &slot
 	payload.TurnDeadline = &deadline
 	payload.MaxTurnsPerPlayer = &max

@@ -95,7 +95,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, targetWins, catalogVersion, matchIndex]
+      required: [format, mode, turnSeconds, targetWins, catalogVersion, matchIndex, questionScope]
       properties:
         format:
           type: string
@@ -115,6 +115,9 @@ events:
         matchIndex:
           type: integer
           minimum: 0
+        questionScope:
+          type: object
+          additionalProperties: true
 
   - type: match.rematch
     observer: all
@@ -191,7 +194,7 @@ events:
     observer: opponent
     summary: |
       对手每次被接受的猜测（唯一逐观察者事件）。
-      statuses 为 6 个字段位置的状态，已按观察者 (roundId, observerMemberId) 种子列置换；
+      statuses 为当前可见字段位置的状态，已按观察者 (roundId, observerMemberId) 种子列置换；
       不含角色名/字段标签/值（08 §4.5 数据最小化）。
     payload:
       type: object
@@ -569,6 +572,27 @@ examples:
           targetWins: 2
           catalogVersion: 66b0a79b
           matchIndex: 0
+          questionScope:
+            schemaVersion: 2
+            catalogVersion: 66b0a79b
+            mode: preset
+            difficulty: normal
+            selectedCharacterIds: [reimu_hakurei, marisa_kirisame]
+            workStates: []
+            rules:
+              fields:
+                firstAppearance: true
+                releaseYear: directional
+                species: true
+                affiliations: true
+                locations: true
+                hairColors: true
+              turnLimit:
+                enabled: false
+                seconds: 30
+              guessLimit:
+                enabled: true
+                maxGuesses: 8
 
     - label: match.rematch（成员确认再来一局）
       message:

@@ -5,7 +5,7 @@
     "titleJa": "東方靈異伝",
     "titleEn": "Highly Responsive to Prayers",
     "shortName": "TH01",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 1996,
     "mainlineIndex": 1,
     "era": "pc98"
@@ -16,7 +16,7 @@
     "titleJa": "東方封魔録",
     "titleEn": "Story of Eastern Wonderland",
     "shortName": "TH02",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 1997,
     "mainlineIndex": 2,
     "era": "pc98"
@@ -27,7 +27,7 @@
     "titleJa": "東方幻想郷",
     "titleEn": "Lotus Land Story",
     "shortName": "TH04",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 1998,
     "mainlineIndex": 4,
     "era": "pc98"
@@ -38,7 +38,7 @@
     "titleJa": "東方怪綺談",
     "titleEn": "Mystic Square",
     "shortName": "TH05",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 1998,
     "mainlineIndex": 5,
     "era": "pc98"
@@ -49,7 +49,7 @@
     "titleJa": "東方紅魔郷",
     "titleEn": "Embodiment of Scarlet Devil",
     "shortName": "TH06",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2002,
     "mainlineIndex": 6,
     "era": "windows"
@@ -60,7 +60,7 @@
     "titleJa": "東方妖々夢",
     "titleEn": "Perfect Cherry Blossom",
     "shortName": "TH07",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2003,
     "mainlineIndex": 7,
     "era": "windows"
@@ -71,7 +71,7 @@
     "titleJa": "東方永夜抄",
     "titleEn": "Imperishable Night",
     "shortName": "TH08",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2004,
     "mainlineIndex": 8,
     "era": "windows"
@@ -82,7 +82,7 @@
     "titleJa": "東方花映塚",
     "titleEn": "Phantasmagoria of Flower View",
     "shortName": "TH09",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2005,
     "mainlineIndex": 9,
     "era": "windows"
@@ -93,7 +93,7 @@
     "titleJa": "東方風神録",
     "titleEn": "Mountain of Faith",
     "shortName": "TH10",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2007,
     "mainlineIndex": 10,
     "era": "windows"
@@ -104,7 +104,7 @@
     "titleJa": "東方地霊殿",
     "titleEn": "Subterranean Animism",
     "shortName": "TH11",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2008,
     "mainlineIndex": 11,
     "era": "windows"
@@ -115,7 +115,7 @@
     "titleJa": "東方星蓮船",
     "titleEn": "Undefined Fantastic Object",
     "shortName": "TH12",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2009,
     "mainlineIndex": 12,
     "era": "windows"
@@ -126,7 +126,7 @@
     "titleJa": "東方神霊廟",
     "titleEn": "Ten Desires",
     "shortName": "TH13",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2011,
     "mainlineIndex": 13,
     "era": "windows"
@@ -137,7 +137,7 @@
     "titleJa": "東方輝針城",
     "titleEn": "Double Dealing Character",
     "shortName": "TH14",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2013,
     "mainlineIndex": 14,
     "era": "windows"
@@ -148,7 +148,7 @@
     "titleJa": "東方紺珠伝",
     "titleEn": "Legacy of Lunatic Kingdom",
     "shortName": "TH15",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2015,
     "mainlineIndex": 15,
     "era": "windows"
@@ -159,7 +159,7 @@
     "titleJa": "東方天空璋",
     "titleEn": "Hidden Star in Four Seasons",
     "shortName": "TH16",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2017,
     "mainlineIndex": 16,
     "era": "windows"
@@ -170,7 +170,7 @@
     "titleJa": "東方鬼形獣",
     "titleEn": "Wily Beast and Weakest Creature",
     "shortName": "TH17",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2019,
     "mainlineIndex": 17,
     "era": "windows"
@@ -181,7 +181,7 @@
     "titleJa": "東方虹龍洞",
     "titleEn": "Unconnected Marketeers",
     "shortName": "TH18",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2021,
     "mainlineIndex": 18,
     "era": "windows"
@@ -192,7 +192,7 @@
     "titleJa": "東方獣王園",
     "titleEn": "Unfinished Dream of All Living Ghost",
     "shortName": "TH19",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2023,
     "mainlineIndex": 19,
     "era": "windows"
@@ -203,7 +203,7 @@
     "titleJa": "東方錦上京",
     "titleEn": "Fossilized Wonders",
     "shortName": "TH20",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2025,
     "mainlineIndex": 20,
     "era": "windows"
@@ -234,7 +234,7 @@
     "titleJa": "東方萃夢想　～ Immaterial and Missing Power",
     "titleEn": "Immaterial and Missing Power",
     "shortName": "TH7.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2004,
     "era": "windows"
   },
@@ -274,7 +274,7 @@
     "titleJa": "東方緋想天　～ Scarlet Weather Rhapsody",
     "titleEn": "Scarlet Weather Rhapsody",
     "shortName": "TH10.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2008,
     "era": "windows"
   },
@@ -284,7 +284,7 @@
     "titleJa": "ダブルスポイラー　～ 東方文花帖",
     "titleEn": "Double Spoiler",
     "shortName": "TH12.5",
-    "type": "game",
+    "type": "stg",
     "releaseYear": 2010,
     "era": "windows"
   },
@@ -314,7 +314,7 @@
     "titleJa": "東方心綺楼　～ Hopeless Masquerade",
     "titleEn": "Hopeless Masquerade",
     "shortName": "TH13.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2013,
     "era": "windows"
   },
@@ -324,7 +324,7 @@
     "titleJa": "東方深秘録　～ Urban Legend in Limbo",
     "titleEn": "Urban Legend in Limbo",
     "shortName": "TH14.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2015,
     "era": "windows"
   },
@@ -334,7 +334,7 @@
     "titleJa": "東方憑依華　～ Antinomy of Common Flowers",
     "titleEn": "Antinomy of Common Flowers",
     "shortName": "TH15.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2017,
     "era": "windows"
   },
@@ -364,13 +364,13 @@
     "titleJa": "東方剛欲異聞　～ 水没した沈愁地獄",
     "titleEn": "Sunken Fossil World",
     "shortName": "TH17.5",
-    "type": "game",
+    "type": "ftg",
     "releaseYear": 2021,
     "era": "windows"
   },
   {
     "id": "baijr",
-    "titleZh": "东方文花帖（书籍）",
+    "titleZh": "东方文花帖",
     "titleJa": "东方文花帖 ～ Bohemian Archive in Japanese Red",
     "titleEn": "Bohemian Archive in Japanese Red",
     "shortName": "文花帖",

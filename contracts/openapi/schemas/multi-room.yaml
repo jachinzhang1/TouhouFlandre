@@ -52,6 +52,8 @@ RoomInfo:
       type: integer
       minimum: 0
       maximum: 2
+    questionScope:
+      $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
 CreateRoomResponse:
   type: object
@@ -70,6 +72,8 @@ CreateRoomResponse:
       $ref: "./multi-common.yaml#/GuestToken"
     member:
       $ref: "#/MemberView"
+    questionScope:
+      $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
 JoinRoomResponse:
   type: object
@@ -115,6 +119,8 @@ RoomSnapshot:
       enum: [30, 60, 90, 120]
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
+    questionScope:
+      $ref: "./question-scope.yaml#/QuestionScopeConfig"
     members:
       type: array
       items:

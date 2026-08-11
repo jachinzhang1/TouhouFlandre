@@ -35,12 +35,16 @@ paths:
     $ref: ./paths/characters.yaml
   /api/catalog:
     $ref: ./paths/catalog.yaml
+  /api/catalog/full:
+    $ref: ./paths/catalog-full.yaml
   /api/catalog/characters:
     $ref: ./paths/catalog-characters.yaml
   /api/puzzles/{mode}:
     $ref: ./paths/puzzles.yaml
   /api/sessions/{sessionId}/guess:
     $ref: ./paths/sessions-guess.yaml
+  /api/sessions/{sessionId}/timeout:
+    $ref: ./paths/sessions-timeout.yaml
   /api/sessions/{sessionId}/forfeit:
     $ref: ./paths/sessions-forfeit.yaml
   /api/sessions/{sessionId}:
@@ -95,6 +99,32 @@ components:
       $ref: ./schemas/character.yaml#/CatalogContentSummary
     CatalogSummary:
       $ref: ./schemas/character.yaml#/CatalogSummary
+    QuestionDifficultyPreset:
+      $ref: ./schemas/question-scope.yaml#/QuestionDifficultyPreset
+    QuestionDifficulty:
+      $ref: ./schemas/question-scope.yaml#/QuestionDifficulty
+    QuestionScopeMode:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeMode
+    QuestionScopeWorkSelection:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeWorkSelection
+    QuestionScopeReleaseYearMode:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeReleaseYearMode
+    QuestionScopeFieldRules:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeFieldRules
+    QuestionScopeTurnLimit:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeTurnLimit
+    QuestionScopeGuessLimit:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeGuessLimit
+    QuestionScopeRules:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeRules
+    QuestionScopeWorkState:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeWorkState
+    QuestionScopeConfig:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeConfig
+    CatalogFull:
+      $ref: ./schemas/question-scope.yaml#/CatalogFull
+    PuzzleCreateRequest:
+      $ref: ./schemas/question-scope.yaml#/PuzzleCreateRequest
     WorkType:
       $ref: ./schemas/work.yaml#/WorkType
     Work:

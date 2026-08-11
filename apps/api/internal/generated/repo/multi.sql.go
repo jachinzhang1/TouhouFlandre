@@ -12,7 +12,7 @@ import (
 )
 
 const closeRoom = `-- name: CloseRoom :one
-UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds
+UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope
 `
 
 type CloseRoomParams struct {
@@ -33,6 +33,7 @@ func (q *Queries) CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -169,10 +170,10 @@ func (q *Queries) CountTurnsForRoundMember(ctx context.Context, arg CountTurnsFo
 }
 
 const createMatch = `-- name: CreateMatch :one
-INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at)
-SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5
+INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at, question_scope)
+SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5, $6
 FROM multi_match WHERE room_id = $2
-RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
 `
 
 type CreateMatchParams struct {
@@ -181,6 +182,7 @@ type CreateMatchParams struct {
 	CatalogVersion string             `json:"catalog_version"`
 	TargetWins     int32              `json:"target_wins"`
 	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	QuestionScope  []byte             `json:"question_scope"`
 }
 
 // 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
@@ -191,6 +193,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 		arg.CatalogVersion,
 		arg.TargetWins,
 		arg.StartedAt,
+		arg.QuestionScope,
 	)
 	var i MultiMatch
 	err := row.Scan(
@@ -205,6 +208,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -249,18 +253,19 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 
 const createRoom = `-- name: CreateRoom :one
 
-INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at)
-VALUES ($1, $2, $3, $4, $5, 'lobby', $6)
-RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at, question_scope)
+VALUES ($1, $2, $3, $4, $5, 'lobby', $6, $7)
+RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope
 `
 
 type CreateRoomParams struct {
-	ID          string             `json:"id"`
-	Code        string             `json:"code"`
-	Format      string             `json:"format"`
-	Mode        string             `json:"mode"`
-	TurnSeconds int32              `json:"turn_seconds"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	ID            string             `json:"id"`
+	Code          string             `json:"code"`
+	Format        string             `json:"format"`
+	Mode          string             `json:"mode"`
+	TurnSeconds   int32              `json:"turn_seconds"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	QuestionScope []byte             `json:"question_scope"`
 }
 
 // 多人模式查询（docs/multiplayer.md）。
@@ -273,6 +278,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRo
 		arg.Mode,
 		arg.TurnSeconds,
 		arg.ExpiresAt,
+		arg.QuestionScope,
 	)
 	var i MultiRoom
 	err := row.Scan(
@@ -285,6 +291,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRo
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -365,7 +372,7 @@ func (q *Queries) DeleteRoom(ctx context.Context, id string) error {
 }
 
 const endMatch = `-- name: EndMatch :one
-UPDATE multi_match SET status = 'finished', ended_at = $2 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at
+UPDATE multi_match SET status = 'finished', ended_at = $2 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
 `
 
 type EndMatchParams struct {
@@ -388,6 +395,7 @@ func (q *Queries) EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -422,7 +430,7 @@ func (q *Queries) EndRound(ctx context.Context, arg EndRoundParams) (MultiRound,
 }
 
 const getActiveMatchForUpdate = `-- name: GetActiveMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match
 WHERE room_id = $1 AND status = 'playing'
 ORDER BY match_index DESC
 LIMIT 1
@@ -445,6 +453,7 @@ func (q *Queries) GetActiveMatchForUpdate(ctx context.Context, roomID string) (M
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -534,7 +543,7 @@ func (q *Queries) GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessById
 }
 
 const getMatchByIndex = `-- name: GetMatchByIndex :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE room_id = $1 AND match_index = $2
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE room_id = $1 AND match_index = $2
 `
 
 type GetMatchByIndexParams struct {
@@ -558,12 +567,13 @@ func (q *Queries) GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE id = $1 FOR UPDATE
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error) {
@@ -581,6 +591,7 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -608,7 +619,7 @@ func (q *Queries) GetMemberByTokenHash(ctx context.Context, tokenHash string) (M
 }
 
 const getRoom = `-- name: GetRoom :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE id = $1
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE id = $1
 `
 
 func (q *Queries) GetRoom(ctx context.Context, id string) (MultiRoom, error) {
@@ -624,12 +635,13 @@ func (q *Queries) GetRoom(ctx context.Context, id string) (MultiRoom, error) {
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE code = $1
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (MultiRoom, error) {
@@ -645,12 +657,13 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (MultiRoom, er
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getRoomByCodeForUpdate = `-- name: GetRoomByCodeForUpdate :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE code = $1 FOR UPDATE
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE code = $1 FOR UPDATE
 `
 
 // 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
@@ -667,12 +680,13 @@ func (q *Queries) GetRoomByCodeForUpdate(ctx context.Context, code string) (Mult
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getRoomForUpdate = `-- name: GetRoomForUpdate :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE id = $1 FOR UPDATE
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE id = $1 FOR UPDATE
 `
 
 // 大厅命令（ready/leave/close）锁房间行。
@@ -689,13 +703,14 @@ func (q *Queries) GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, e
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }
 
 const getRoomSnapshotState = `-- name: GetRoomSnapshotState :one
 WITH latest_match AS (
-    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
+    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
 ),
 active_round AS (
     SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline FROM multi_round r
@@ -938,7 +953,7 @@ func (q *Queries) InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTu
 }
 
 const listActiveMatches = `-- name: ListActiveMatches :many
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at FROM multi_match WHERE status = 'playing' ORDER BY started_at
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE status = 'playing' ORDER BY started_at
 `
 
 // 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
@@ -963,6 +978,7 @@ func (q *Queries) ListActiveMatches(ctx context.Context) ([]MultiMatch, error) {
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.QuestionScope,
 		); err != nil {
 			return nil, err
 		}
@@ -1011,7 +1027,7 @@ func (q *Queries) ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeq
 }
 
 const listExpiredClosedRooms = `-- name: ListExpiredClosedRooms :many
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE status = 'closed' AND expires_at <= now() ORDER BY expires_at
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE status = 'closed' AND expires_at <= now() ORDER BY expires_at
 `
 
 func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error) {
@@ -1033,6 +1049,7 @@ func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, erro
 			&i.ExpiresAt,
 			&i.Mode,
 			&i.TurnSeconds,
+			&i.QuestionScope,
 		); err != nil {
 			return nil, err
 		}
@@ -1045,7 +1062,7 @@ func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, erro
 }
 
 const listExpiredLobbyRooms = `-- name: ListExpiredLobbyRooms :many
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at
 `
 
 func (q *Queries) ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error) {
@@ -1067,6 +1084,7 @@ func (q *Queries) ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error
 			&i.ExpiresAt,
 			&i.Mode,
 			&i.TurnSeconds,
+			&i.QuestionScope,
 		); err != nil {
 			return nil, err
 		}
@@ -1179,7 +1197,7 @@ func (q *Queries) ListExpiredRounds(ctx context.Context) ([]MultiRound, error) {
 }
 
 const listFinishedMatches = `-- name: ListFinishedMatches :many
-SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at
+SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at, m.question_scope
 FROM multi_match m
 JOIN multi_room r ON r.id = m.room_id
 WHERE m.status = 'finished' AND r.status = 'finished' AND r.expires_at <= now()
@@ -1208,6 +1226,7 @@ func (q *Queries) ListFinishedMatches(ctx context.Context) ([]MultiMatch, error)
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.QuestionScope,
 		); err != nil {
 			return nil, err
 		}
@@ -1597,7 +1616,7 @@ func (q *Queries) StartRound(ctx context.Context, id string) (MultiRound, error)
 }
 
 const updateMatchScore = `-- name: UpdateMatchScore :one
-UPDATE multi_match SET score_slot1 = $2, score_slot2 = $3 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at
+UPDATE multi_match SET score_slot1 = $2, score_slot2 = $3 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
 `
 
 type UpdateMatchScoreParams struct {
@@ -1621,6 +1640,7 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
+		&i.QuestionScope,
 	)
 	return i, err
 }
@@ -1653,8 +1673,35 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 	return i, err
 }
 
+const updateRoomQuestionScope = `-- name: UpdateRoomQuestionScope :one
+UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope
+`
+
+type UpdateRoomQuestionScopeParams struct {
+	ID            string `json:"id"`
+	QuestionScope []byte `json:"question_scope"`
+}
+
+func (q *Queries) UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error) {
+	row := q.db.QueryRow(ctx, updateRoomQuestionScope, arg.ID, arg.QuestionScope)
+	var i MultiRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Format,
+		&i.Status,
+		&i.EventSeq,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Mode,
+		&i.TurnSeconds,
+		&i.QuestionScope,
+	)
+	return i, err
+}
+
 const updateRoomStatus = `-- name: UpdateRoomStatus :one
-UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds
+UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope
 `
 
 type UpdateRoomStatusParams struct {
@@ -1676,6 +1723,7 @@ func (q *Queries) UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusPara
 		&i.ExpiresAt,
 		&i.Mode,
 		&i.TurnSeconds,
+		&i.QuestionScope,
 	)
 	return i, err
 }

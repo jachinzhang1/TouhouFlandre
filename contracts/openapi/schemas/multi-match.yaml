@@ -12,6 +12,7 @@ MatchView:
     - roundIndex
     - maxRounds
     - rematchReady
+    - catalogVersion
   properties:
     matchIndex:
       type: integer
@@ -43,3 +44,8 @@ MatchView:
         type: boolean
       minItems: 2
       maxItems: 2
+    catalogVersion:
+      type: string
+      description: 本场绑定的题库版本。
+    questionScope:
+      $ref: "./question-scope.yaml#/QuestionScopeConfig"
