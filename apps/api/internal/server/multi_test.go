@@ -76,11 +76,11 @@ func TestMultiCreateRoom(t *testing.T) {
 	if len(created.RoomCode) != 6 {
 		t.Fatalf("roomCode %q, want 6 chars", created.RoomCode)
 	}
-	if created.Member.Slot != 1 {
-		t.Fatalf("host slot = %d, want 1", created.Member.Slot)
+	if created.Viewer.Slot == nil || *created.Viewer.Slot != 1 {
+		t.Fatalf("host slot = %v, want 1", created.Viewer.Slot)
 	}
-	if created.Member.DisplayName != "房主" {
-		t.Fatalf("displayName = %q, want 房主（trim）", created.Member.DisplayName)
+	if created.Viewer.DisplayName != "房主" {
+		t.Fatalf("displayName = %q, want 房主（trim）", created.Viewer.DisplayName)
 	}
 	if created.GuestToken == "" {
 		t.Fatal("guestToken empty")
@@ -106,8 +106,8 @@ func TestMultiCreateRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Member.DisplayName != "匿名玩家" {
-		t.Fatalf("empty displayName = %q, want 匿名玩家", created.Member.DisplayName)
+	if created.Viewer.DisplayName != "匿名玩家" {
+		t.Fatalf("empty displayName = %q, want 匿名玩家", created.Viewer.DisplayName)
 	}
 }
 
@@ -157,17 +157,21 @@ func TestMultiJoinRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &joined); err != nil {
 		t.Fatal(err)
 	}
-	if joined.Member.Slot != 2 || joined.Member.DisplayName != "玩家B" {
-		t.Fatalf("unexpected member: %+v", joined.Member)
+	if joined.Viewer.Slot == nil || *joined.Viewer.Slot != 2 || joined.Viewer.DisplayName != "玩家B" {
+		t.Fatalf("unexpected viewer: %+v", joined.Viewer)
 	}
 
-	// 满房 → 409 ROOM_FULL
+	// 满员后继续加入 → spectator
 	resp, payload = request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{})
-	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("full room status %d: %s", resp.StatusCode, payload)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("spectator join status %d: %s", resp.StatusCode, payload)
 	}
-	if err := decodeError(t, payload); err.Code != "ROOM_FULL" {
-		t.Fatalf("want ROOM_FULL, got %s", err.Code)
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Slot != nil {
+		t.Fatalf("unexpected spectator viewer: %+v", spectator.Viewer)
 	}
 }
 

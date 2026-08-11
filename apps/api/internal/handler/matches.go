@@ -134,6 +134,9 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
 	}
+	if apiErr := requirePlayer(member); apiErr != nil {
+		return nil, apiErr
+	}
 	if request.Body == nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
 	}
@@ -273,6 +276,9 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
 	}
+	if apiErr := requirePlayer(member); apiErr != nil {
+		return nil, apiErr
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
@@ -309,7 +315,7 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 			return nil, internalError(err)
 		}
 		if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventMatchRematch, multi.MatchRematchPayload{
-			MemberSlot: int(member.Slot),
+			MemberSlot: multi.MemberSlot(*member),
 		}); err != nil {
 			return nil, internalError(err)
 		}

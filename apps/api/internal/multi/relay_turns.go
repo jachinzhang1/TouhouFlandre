@@ -36,7 +36,7 @@ func RelayTurnCounts(ctx context.Context, q *repo.Queries, roomID, roundID strin
 	}
 	membersBySlot := map[int]repo.MultiMember{}
 	for _, member := range members {
-		membersBySlot[int(member.Slot)] = member
+		membersBySlot[MemberSlot(member)] = member
 	}
 	counts := [2]int{}
 	for slot := 1; slot <= 2; slot++ {
@@ -83,7 +83,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	} else {
 		found := false
 		for _, candidate := range members {
-			if int(candidate.Slot) == expiredSlot {
+			if MemberSlot(candidate) == expiredSlot {
 				member = candidate
 				found = true
 				break
@@ -116,7 +116,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return RelayTimeoutResult{}, err
 	}
-	memberSlot := int(member.Slot)
+	memberSlot := MemberSlot(member)
 	row := RelayTurnRow{Index: int(turn.TurnIndex), MemberSlot: memberSlot, Kind: kind.turnKind}
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time

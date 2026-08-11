@@ -121,9 +121,11 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundOpponentGuess, multi.RoundGuessPayload{
 		RoundID:    round.ID,
+		MemberID:   member.ID,
+		GuessID:    guessChar.ID,
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
-		MemberSlot: int(member.Slot),
+		MemberSlot: multi.MemberSlot(member),
 		RowIndex:   sequence,
 		Statuses:   statuses,
 	}); err != nil {
@@ -152,7 +154,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	}
 	winnerSlot := 0
 	if isCorrect {
-		winnerSlot = int(member.Slot)
+		winnerSlot = multi.MemberSlot(member)
 	}
 	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, maxGuesses, false)
 

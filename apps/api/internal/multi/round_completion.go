@@ -10,7 +10,7 @@ import (
 )
 
 // CompleteRoundTx 结束单局并推进比分/整场状态。调用方须已按 局→场→房间 锁序进入事务。
-func CompleteRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, round repo.MultiRound, match repo.MultiMatch, winnerSlot int, now time.Time, timing TimingConfig) (MatchAdvance, error) {
+func CompleteRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, round repo.MultiRound, match repo.MultiMatch, winnerSlot int, now time.Time, timing TimingConfig, forfeitedSlots ...int) (MatchAdvance, error) {
 	var winner pgtype.Int4
 	if winnerSlot != 0 {
 		winner = pgtype.Int4{Int32: int32(winnerSlot), Valid: true}
@@ -43,27 +43,34 @@ func CompleteRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, 
 		slot := winnerSlot
 		roundWinnerSlot = &slot
 	}
+	var forfeitedSlot *int
+	if len(forfeitedSlots) > 0 && forfeitedSlots[0] != 0 {
+		slot := forfeitedSlots[0]
+		forfeitedSlot = &slot
+	}
 	nextStarts := now.Add(timing.Intermission)
 	if err := AppendEvent(ctx, q, room.ID, EventRoundEnded, RoundEndedEventPayload{
-		RoundID:      round.ID,
-		MatchIndex:   int(match.MatchIndex),
-		RoundIndex:   int(round.RoundIndex),
-		WinnerSlot:   roundWinnerSlot,
-		AnswerID:     round.AnswerID,
-		Scores:       ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
-		NextStartsAt: &nextStarts,
+		RoundID:       round.ID,
+		MatchIndex:    int(match.MatchIndex),
+		RoundIndex:    int(round.RoundIndex),
+		WinnerSlot:    roundWinnerSlot,
+		ForfeitedSlot: forfeitedSlot,
+		AnswerID:      round.AnswerID,
+		Scores:        ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
+		NextStartsAt:  &nextStarts,
 	}); err != nil {
 		return MatchAdvance{}, err
 	}
 
 	if advance.MatchEnded {
+		retentionEndsAt := now.Add(timing.FinishedRetention)
 		if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
 			return MatchAdvance{}, err
 		}
 		if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
 			ID:        room.ID,
 			Status:    string(RoomStatusFinished),
-			ExpiresAt: pgtypeTimestamptz(now.Add(timing.FinishedRetention)),
+			ExpiresAt: pgtypeTimestamptz(retentionEndsAt),
 		}); err != nil {
 			return MatchAdvance{}, err
 		}
@@ -73,10 +80,11 @@ func CompleteRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, 
 			matchWinnerSlot = &slot
 		}
 		if err := AppendEvent(ctx, q, room.ID, EventMatchEnded, MatchEndedEventPayload{
-			MatchIndex: int(match.MatchIndex),
-			WinnerSlot: matchWinnerSlot,
-			Scores:     ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
-			Reason:     advance.Reason,
+			MatchIndex:      int(match.MatchIndex),
+			WinnerSlot:      matchWinnerSlot,
+			Scores:          ScoresView{Slot1: advance.Score[0], Slot2: advance.Score[1]},
+			Reason:          advance.Reason,
+			RetentionEndsAt: retentionEndsAt,
 		}); err != nil {
 			return MatchAdvance{}, err
 		}

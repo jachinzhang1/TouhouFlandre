@@ -68,7 +68,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
-		if result.ExpiredSlot == int(member.Slot) {
+		if result.ExpiredSlot == multi.MemberSlot(member) {
 			expiredOwnTurn = true
 		}
 		round = result.Round
@@ -79,7 +79,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if expiredOwnTurn {
 		return submitGuessResult{commit: true, publish: true}, turnExpiredError("本轮已超时空过。")
 	}
-	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != int(member.Slot) {
+	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSlot(member) {
 		return submitGuessResult{}, notYourTurnError()
 	}
 
@@ -158,7 +158,8 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	advance := multi.AdvanceRelayTurn(isCorrect, int(member.Slot), counts, maxTurnsPerPlayer)
+	memberSlot := multi.MemberSlot(member)
+	advance := multi.AdvanceRelayTurn(isCorrect, memberSlot, counts, maxTurnsPerPlayer)
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
 	if !advance.RoundEnded {
@@ -182,7 +183,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 
 	row := multi.RelayTurnRow{
 		Index:      int(turn.TurnIndex),
-		MemberSlot: int(member.Slot),
+		MemberSlot: memberSlot,
 		Kind:       multi.RelayTurnKindGuess,
 		Guess:      ptr(multi.HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields)),
 	}
