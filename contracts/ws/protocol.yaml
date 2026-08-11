@@ -590,6 +590,9 @@ examples:
               turnLimit:
                 enabled: false
                 seconds: 30
+              guessLimit:
+                enabled: true
+                maxGuesses: 8
 
     - label: match.rematch（成员确认再来一局）
       message:

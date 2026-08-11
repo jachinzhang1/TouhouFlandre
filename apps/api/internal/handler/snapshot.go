@@ -273,7 +273,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		Status:     openapi.RoundStatus(state.Round.Status),
 		StartsAt:   state.Round.StartsAt.Time,
 		Deadline:   state.Round.Deadline.Time,
-		MaxGuesses: multi.GameMaxGuesses,
+		MaxGuesses: multi.MaxGuessesForMatch(*state.Match),
 	}
 	roundView.Self.Guesses = self
 	roundView.Opponent.Rows = opponentRows
@@ -307,7 +307,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			deadline := state.Round.TurnDeadline.Time
 			roundView.TurnDeadline = &deadline
 		}
-		maxTurns := multi.GameMaxGuesses
+		maxTurns := multi.MaxGuessesForMatch(*state.Match)
 		roundView.MaxTurnsPerPlayer = &maxTurns
 	}
 	return &roundView, nil

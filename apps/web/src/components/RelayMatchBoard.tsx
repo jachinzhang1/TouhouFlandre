@@ -1,7 +1,11 @@
 "use client";
 
 import type { RoundEndedPayload } from "@touhouflandre/shared";
-import { CHARACTER_GUESS_FIELDS, type GuessField } from "@touhouflandre/shared";
+import {
+  CHARACTER_GUESS_FIELDS,
+  isUnlimitedGuessLimit,
+  type GuessField,
+} from "@touhouflandre/shared";
 import type { ReactNode } from "react";
 import type { components } from "../generated/api";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
@@ -44,6 +48,8 @@ export function RelayMatchBoard({
   const ended = Boolean(roundResult);
   const rows = (roundResult?.turns ?? round?.shared?.rows ?? []) as RelayTurnRow[];
   const maxSkips = round?.maxSkipsPerPlayer ?? 2;
+  const maxTurnsPerPlayer = round?.maxTurnsPerPlayer ?? 8;
+  const hasUnlimitedTurns = isUnlimitedGuessLimit(maxTurnsPerPlayer);
   const mySkipCount = countRelaySkips(rows, mySlot);
   const mySkipRemaining = relaySkipRemaining(rows, mySlot, maxSkips);
   const currentSlot = round?.turnSlot;
@@ -108,7 +114,9 @@ export function RelayMatchBoard({
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">共享棋盘</h3>
           <span className="text-[0.72rem] text-ink-soft">
-            已消耗 {rows.length} / {(round?.maxTurnsPerPlayer ?? 8) * 2} 手
+            {hasUnlimitedTurns
+              ? "无次数限制"
+              : `已消耗 ${rows.length} / ${maxTurnsPerPlayer * 2} 手`}
           </span>
         </div>
         <div className="overflow-x-auto">

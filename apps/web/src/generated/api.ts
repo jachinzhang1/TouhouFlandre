@@ -567,9 +567,14 @@ export interface components {
             enabled: boolean;
             seconds: number;
         };
+        QuestionScopeGuessLimit: {
+            enabled: boolean;
+            maxGuesses: number;
+        };
         QuestionScopeRules: {
             fields: components["schemas"]["QuestionScopeFieldRules"];
             turnLimit: components["schemas"]["QuestionScopeTurnLimit"];
+            guessLimit: components["schemas"]["QuestionScopeGuessLimit"];
             /** @description Legacy schemaVersion 1 input. Normalized responses use fields. */
             hiddenFields?: components["schemas"]["GuessFieldKey"][];
             /** @description Legacy schemaVersion 1 input. Normalized responses use turnLimit. */
@@ -845,7 +850,7 @@ export interface components {
              * @description 整局超时平局时刻（默认 startsAt + 15min）。
              */
             deadline: string;
-            /** @description 每局每人猜测上限（沿用单人 GameContentDefinition.MaxGuesses = 8）。 */
+            /** @description 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。 */
             maxGuesses: number;
             /** @description 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。 */
             self: {

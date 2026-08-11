@@ -81,6 +81,10 @@ func questionScopeRulesFromOpenAPI(input openapi.QuestionScopeRules) game.Questi
 			hiddenFields = append(hiddenFields, game.GuessFieldKey(field))
 		}
 	}
+	guessLimit := game.QuestionScopeGuessLimit{
+		Enabled:    input.GuessLimit.Enabled,
+		MaxGuesses: input.GuessLimit.MaxGuesses,
+	}
 	return game.QuestionScopeRules{
 		Fields: game.QuestionScopeFieldRules{
 			FirstAppearance: input.Fields.FirstAppearance,
@@ -94,6 +98,7 @@ func questionScopeRulesFromOpenAPI(input openapi.QuestionScopeRules) game.Questi
 			Enabled: input.TurnLimit.Enabled,
 			Seconds: input.TurnLimit.Seconds,
 		},
+		GuessLimit:   guessLimit,
 		HiddenFields: hiddenFields,
 		TurnSeconds:  input.TurnSeconds,
 	}
@@ -125,6 +130,7 @@ func toOpenAPIQuestionScope(config game.QuestionScopeConfig) openapi.QuestionSco
 }
 
 func toOpenAPIQuestionScopeRules(rules game.QuestionScopeRules) openapi.QuestionScopeRules {
+	rules = game.NormalizeQuestionScopeRules(rules)
 	return openapi.QuestionScopeRules{
 		Fields: openapi.QuestionScopeFieldRules{
 			FirstAppearance: rules.Fields.FirstAppearance,
@@ -137,6 +143,10 @@ func toOpenAPIQuestionScopeRules(rules game.QuestionScopeRules) openapi.Question
 		TurnLimit: openapi.QuestionScopeTurnLimit{
 			Enabled: rules.TurnLimit.Enabled,
 			Seconds: rules.TurnLimit.Seconds,
+		},
+		GuessLimit: openapi.QuestionScopeGuessLimit{
+			Enabled:    rules.GuessLimit.Enabled,
+			MaxGuesses: rules.GuessLimit.MaxGuesses,
 		},
 	}
 }

@@ -24,6 +24,7 @@ import {
   HAIR_COLOR_LABELS,
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
+  isUnlimitedGuessLimit,
   visibleQuestionFields,
 } from "@touhouflandre/shared";
 import type {
@@ -348,6 +349,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         CHARACTER_GAME.fields,
       ),
     [session?.questionScope?.rules],
+  );
+  const maxGuesses = session?.maxGuesses ?? CHARACTER_GAME.maxGuesses;
+  const hasUnlimitedGuesses = isUnlimitedGuessLimit(maxGuesses);
+  const guessProgressPercent = Math.min(
+    100,
+    ((session?.guesses.length ?? 0) / maxGuesses) * 100,
   );
 
   const persistSession = (
@@ -834,7 +841,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             <span className="progress-track" aria-hidden="true">
               <span
                 style={{
-                  width: `${((session?.guesses.length ?? 0) / (session?.maxGuesses ?? CHARACTER_GAME.maxGuesses)) * 100}%`,
+                  width: `${guessProgressPercent}%`,
                 }}
               />
             </span>
@@ -857,9 +864,14 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           </div>
           <div>
             <span className="label">进度</span>
-            <strong>
-              {session?.guesses.length ?? 0}/
-              {session?.maxGuesses ?? CHARACTER_GAME.maxGuesses}
+            <strong className={hasUnlimitedGuesses ? "text-jade" : undefined}>
+              {hasUnlimitedGuesses ? (
+                "无限制"
+              ) : (
+                <>
+                  {session?.guesses.length ?? 0}/{maxGuesses}
+                </>
+              )}
             </strong>
           </div>
           <div>

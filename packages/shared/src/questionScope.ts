@@ -4,6 +4,10 @@ export const QUESTION_SCOPE_SCHEMA_VERSION = 2 as const;
 export const QUESTION_SCOPE_MIN_TURN_SECONDS = 30;
 export const QUESTION_SCOPE_HARD_TURN_SECONDS = 45;
 export const QUESTION_SCOPE_MAX_TURN_SECONDS = 120;
+export const QUESTION_SCOPE_MIN_GUESSES = 4;
+export const QUESTION_SCOPE_DEFAULT_GUESSES = 8;
+export const QUESTION_SCOPE_MAX_GUESSES = 20;
+export const QUESTION_SCOPE_UNLIMITED_GUESSES = 999;
 
 export const QUESTION_DIFFICULTY_PRESETS = [
   "easy",
@@ -31,6 +35,10 @@ export type QuestionScopeReleaseYearMode =
   | "hidden"
   | "exactOnly"
   | "directional";
+export type QuestionScopeGuessLimit = {
+  enabled: boolean;
+  maxGuesses: number;
+};
 
 export type QuestionScopeRules = {
   fields: {
@@ -45,6 +53,7 @@ export type QuestionScopeRules = {
     enabled: boolean;
     seconds: number;
   };
+  guessLimit: QuestionScopeGuessLimit;
   /** Legacy v1 input. Normalized configs do not write this field. */
   hiddenFields?: GuessFieldKey[];
   /** Legacy v1 input. Normalized configs do not write this field. */
@@ -102,10 +111,10 @@ export const QUESTION_DIFFICULTY_DESCRIPTIONS: Record<
   QuestionDifficultyPreset,
   string
 > = {
-  easy: "仅包含整数作中人气较高作品的角色",
-  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色",
-  hard: "包含所有角色，每手猜测限时45秒",
-  lunatic: "禁用初登场作品属性，每手猜测限时30秒",
+  easy: "仅包含高人气整数作角色，不限制猜测次数",
+  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色，限制 8 次猜测",
+  hard: "包含所有角色，限制 8 次猜测，每手限时 45 秒",
+  lunatic: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒",
 };
 
 const allFieldsEnabled: QuestionScopeRules["fields"] = {
@@ -122,16 +131,36 @@ const defaultTurnLimit: QuestionScopeRules["turnLimit"] = {
   seconds: QUESTION_SCOPE_MIN_TURN_SECONDS,
 };
 
+const defaultGuessLimit: QuestionScopeGuessLimit = {
+  enabled: true,
+  maxGuesses: QUESTION_SCOPE_DEFAULT_GUESSES,
+};
+
+const unlimitedGuessLimit: QuestionScopeGuessLimit = {
+  enabled: false,
+  maxGuesses: QUESTION_SCOPE_DEFAULT_GUESSES,
+};
+
 const presetRules: Record<QuestionDifficultyPreset, QuestionScopeRules> = {
-  easy: { fields: allFieldsEnabled, turnLimit: defaultTurnLimit },
-  normal: { fields: allFieldsEnabled, turnLimit: defaultTurnLimit },
+  easy: {
+    fields: allFieldsEnabled,
+    turnLimit: defaultTurnLimit,
+    guessLimit: unlimitedGuessLimit,
+  },
+  normal: {
+    fields: allFieldsEnabled,
+    turnLimit: defaultTurnLimit,
+    guessLimit: defaultGuessLimit,
+  },
   hard: {
     fields: allFieldsEnabled,
     turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
+    guessLimit: defaultGuessLimit,
   },
   lunatic: {
     fields: { ...allFieldsEnabled, firstAppearance: false },
     turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
+    guessLimit: defaultGuessLimit,
   },
 };
 
@@ -170,6 +199,7 @@ export function questionScopePresetRules(
   return {
     fields: { ...rules.fields },
     turnLimit: { ...rules.turnLimit },
+    guessLimit: { ...rules.guessLimit },
   };
 }
 
@@ -189,6 +219,26 @@ const clampTurnSeconds = (value: unknown): number => {
     Math.max(QUESTION_SCOPE_MIN_TURN_SECONDS, seconds),
   );
 };
+
+const clampGuessLimit = (value: unknown): number => {
+  const guesses =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.floor(value)
+      : QUESTION_SCOPE_DEFAULT_GUESSES;
+  return Math.min(
+    QUESTION_SCOPE_MAX_GUESSES,
+    Math.max(QUESTION_SCOPE_MIN_GUESSES, guesses),
+  );
+};
+
+function normalizeQuestionScopeGuessLimit(
+  guessLimit?: Partial<QuestionScopeGuessLimit>,
+): QuestionScopeGuessLimit {
+  return {
+    enabled: guessLimit?.enabled === false ? false : true,
+    maxGuesses: clampGuessLimit(guessLimit?.maxGuesses),
+  };
+}
 
 export function normalizeQuestionScopeRules(
   rules?: Partial<QuestionScopeRules>,
@@ -234,7 +284,23 @@ export function normalizeQuestionScopeRules(
       enabled,
       seconds,
     },
+    guessLimit: normalizeQuestionScopeGuessLimit(rules?.guessLimit),
   };
+}
+
+export function effectiveQuestionScopeMaxGuesses(
+  rules?: Partial<QuestionScopeRules>,
+): number {
+  const guessLimit = normalizeQuestionScopeRules(rules).guessLimit;
+  return guessLimit.enabled
+    ? guessLimit.maxGuesses
+    : QUESTION_SCOPE_UNLIMITED_GUESSES;
+}
+
+export function isUnlimitedGuessLimit(
+  maxGuesses: number | null | undefined,
+): boolean {
+  return (maxGuesses ?? 0) >= QUESTION_SCOPE_UNLIMITED_GUESSES;
 }
 
 function rulesEqual(left: QuestionScopeRules, right: QuestionScopeRules): boolean {
@@ -249,7 +315,9 @@ function rulesEqual(left: QuestionScopeRules, right: QuestionScopeRules): boolea
     left.fields.hairColors === right.fields.hairColors &&
     left.turnLimit.enabled === right.turnLimit.enabled &&
     (!left.turnLimit.enabled ||
-      left.turnLimit.seconds === right.turnLimit.seconds)
+      left.turnLimit.seconds === right.turnLimit.seconds) &&
+    left.guessLimit.enabled === right.guessLimit.enabled &&
+    left.guessLimit.maxGuesses === right.guessLimit.maxGuesses
   );
 }
 

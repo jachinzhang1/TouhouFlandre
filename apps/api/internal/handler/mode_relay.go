@@ -28,6 +28,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	now := s.now()
 	fields := multi.FieldsForMatch(match)
 	storageFields := multi.StorageFieldsForMatch(match)
+	maxTurnsPerPlayer := multi.MaxGuessesForMatch(match)
 
 	switch round.Status {
 	case string(multi.RoundStatusEnded):
@@ -86,7 +87,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	if int(memberTurnCount) >= multi.GameMaxGuesses {
+	if int(memberTurnCount) >= maxTurnsPerPlayer {
 		return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局轮次机会已用尽。"}
 	}
 
@@ -157,7 +158,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	advance := multi.AdvanceRelayTurn(isCorrect, int(member.Slot), counts, multi.GameMaxGuesses)
+	advance := multi.AdvanceRelayTurn(isCorrect, int(member.Slot), counts, maxTurnsPerPlayer)
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
 	if !advance.RoundEnded {

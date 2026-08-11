@@ -30,7 +30,10 @@ import {
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
   QUESTION_SCOPE_SCHEMA_VERSION,
+  QUESTION_SCOPE_DEFAULT_GUESSES,
+  QUESTION_SCOPE_MAX_GUESSES,
   QUESTION_SCOPE_MAX_TURN_SECONDS,
+  QUESTION_SCOPE_MIN_GUESSES,
   QUESTION_SCOPE_MIN_TURN_SECONDS,
   toggleCharacterInQuestionScope,
   toggleWorkInQuestionScope,
@@ -181,6 +184,12 @@ export function QuestionScopeDialog({
     updateRules({
       ...rules,
       turnLimit,
+    });
+  };
+  const updateGuessLimit = (guessLimit: QuestionScopeRules["guessLimit"]) => {
+    updateRules({
+      ...rules,
+      guessLimit,
     });
   };
   const applyPreset = (preset: QuestionDifficultyPreset) => {
@@ -504,6 +513,11 @@ export function QuestionScopeDialog({
                       }
                     />
                   </div>
+                  <GuessLimitControls
+                    guessLimit={rules.guessLimit}
+                    readOnly={readOnly}
+                    onChange={updateGuessLimit}
+                  />
                 </div>
               </section>
 
@@ -744,5 +758,65 @@ function BinaryCheck({ checked }: { checked: boolean }) {
     >
       {checked ? <Check size={14} /> : null}
     </span>
+  );
+}
+
+function GuessLimitControls({
+  guessLimit,
+  readOnly,
+  onChange,
+}: {
+  guessLimit: QuestionScopeRules["guessLimit"];
+  readOnly: boolean;
+  onChange: (guessLimit: QuestionScopeRules["guessLimit"]) => void;
+}) {
+  return (
+    <div className="grid gap-2 border-t border-line pt-2 md:grid-cols-[150px_minmax(0,1fr)_86px] md:items-center">
+      <label className="flex items-center justify-between gap-2 text-sm font-bold text-ink">
+        <span>设置猜测次数限制</span>
+        <Switch
+          size="small"
+          checked={guessLimit.enabled}
+          disabled={readOnly}
+          onChange={(checked) =>
+            onChange({
+              enabled: checked,
+              maxGuesses: guessLimit.maxGuesses,
+            })
+          }
+        />
+      </label>
+      <Slider
+        min={QUESTION_SCOPE_MIN_GUESSES}
+        max={QUESTION_SCOPE_MAX_GUESSES}
+        value={guessLimit.maxGuesses}
+        disabled={readOnly || !guessLimit.enabled}
+        onChange={(value) => {
+          if (typeof value === "number") {
+            onChange({
+              enabled: guessLimit.enabled,
+              maxGuesses: value,
+            });
+          }
+        }}
+      />
+      <InputNumber
+        min={QUESTION_SCOPE_MIN_GUESSES}
+        max={QUESTION_SCOPE_MAX_GUESSES}
+        addonAfter="手"
+        size="small"
+        value={guessLimit.maxGuesses}
+        disabled={readOnly || !guessLimit.enabled}
+        onChange={(value) =>
+          onChange({
+            enabled: guessLimit.enabled,
+            maxGuesses:
+              typeof value === "number"
+                ? value
+                : QUESTION_SCOPE_DEFAULT_GUESSES,
+          })
+        }
+      />
+    </div>
   );
 }

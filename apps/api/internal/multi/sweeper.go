@@ -398,7 +398,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
 		Deadline:   startsAt.Add(s.cfg.Timing.RoundSeconds),
-		MaxGuesses: GameMaxGuesses,
+		MaxGuesses: MaxGuessesForMatch(match),
 	}
 	AddRelayRoundStartedFields(&roundStarted, room, int(newRound.RoundIndex), startsAt)
 	if err := AppendEvent(ctx, q, roomID, EventRoundStarted, roundStarted); err != nil {

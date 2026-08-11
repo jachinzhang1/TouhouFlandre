@@ -103,12 +103,13 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	}); err != nil {
 		return internalError(err)
 	}
+	maxGuesses := game.EffectiveQuestionScopeMaxGuesses(scope.Rules)
 	roundStarted := multi.RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
 		StartsAt:   startsAt,
 		Deadline:   startsAt.Add(s.timing.RoundSeconds),
-		MaxGuesses: multi.GameMaxGuesses,
+		MaxGuesses: maxGuesses,
 	}
 	multi.AddRelayRoundStartedFields(&roundStarted, room, int(round.RoundIndex), startsAt)
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {

@@ -28,7 +28,7 @@ func NewID() string {
 	return string(id)
 }
 
-// GameMaxGuesses 每局每人猜测上限（08 §4.2：沿用单人 GameContentDefinition.MaxGuesses = 8）。
+// GameMaxGuesses is the legacy fallback when a match has no stored question scope.
 var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 
 // RelayMaxSkipsPerPlayer 接力模式每局每名玩家可空过次数上限（主动空过与超时空过共享）。

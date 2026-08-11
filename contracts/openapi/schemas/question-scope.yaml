@@ -71,16 +71,32 @@ QuestionScopeTurnLimit:
       minimum: 30
       maximum: 120
 
+QuestionScopeGuessLimit:
+  type: object
+  required:
+    - enabled
+    - maxGuesses
+  properties:
+    enabled:
+      type: boolean
+    maxGuesses:
+      type: integer
+      minimum: 4
+      maximum: 20
+
 QuestionScopeRules:
   type: object
   required:
     - fields
     - turnLimit
+    - guessLimit
   properties:
     fields:
       $ref: "#/QuestionScopeFieldRules"
     turnLimit:
       $ref: "#/QuestionScopeTurnLimit"
+    guessLimit:
+      $ref: "#/QuestionScopeGuessLimit"
     hiddenFields:
       description: Legacy schemaVersion 1 input. Normalized responses use fields.
       type: array

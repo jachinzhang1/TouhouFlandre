@@ -113,6 +113,8 @@ components:
       $ref: ./schemas/question-scope.yaml#/QuestionScopeFieldRules
     QuestionScopeTurnLimit:
       $ref: ./schemas/question-scope.yaml#/QuestionScopeTurnLimit
+    QuestionScopeGuessLimit:
+      $ref: ./schemas/question-scope.yaml#/QuestionScopeGuessLimit
     QuestionScopeRules:
       $ref: ./schemas/question-scope.yaml#/QuestionScopeRules
     QuestionScopeWorkState:

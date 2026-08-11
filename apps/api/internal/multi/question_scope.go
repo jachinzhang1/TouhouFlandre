@@ -18,6 +18,18 @@ func QuestionScopeForMatch(match repo.MultiMatch) (game.QuestionScopeConfig, boo
 	return scope, true
 }
 
+func MaxGuessesForMatch(match repo.MultiMatch) int {
+	scope, ok := QuestionScopeForMatch(match)
+	if !ok {
+		return GameMaxGuesses
+	}
+	maxGuesses := game.EffectiveQuestionScopeMaxGuesses(scope.Rules)
+	if maxGuesses <= 0 {
+		return GameMaxGuesses
+	}
+	return maxGuesses
+}
+
 func FieldsForMatch(match repo.MultiMatch) []game.GuessField {
 	scope, ok := QuestionScopeForMatch(match)
 	if !ok {

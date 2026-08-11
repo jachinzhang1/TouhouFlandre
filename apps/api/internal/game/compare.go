@@ -40,7 +40,7 @@ var GameContentDefinition = struct {
 	Fields     []GuessField
 }{
 	Label:      "角色",
-	MaxGuesses: 8,
+	MaxGuesses: QuestionScopeDefaultGuesses,
 	Fields:     CharacterGuessFields,
 }
 

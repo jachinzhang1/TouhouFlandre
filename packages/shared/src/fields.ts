@@ -1,4 +1,5 @@
 import type { GuessField, HairColor } from "./types";
+import { QUESTION_SCOPE_DEFAULT_GUESSES } from "./questionScope";
 
 export const CHARACTER_GUESS_FIELDS: GuessField[] = [
   {
@@ -50,7 +51,7 @@ export const CHARACTER_GUESS_FIELDS: GuessField[] = [
 export const GAME_CONTENT_DEFINITIONS = {
   character: {
     label: "角色",
-    maxGuesses: 8,
+    maxGuesses: QUESTION_SCOPE_DEFAULT_GUESSES,
     fields: CHARACTER_GUESS_FIELDS,
   },
 } as const;

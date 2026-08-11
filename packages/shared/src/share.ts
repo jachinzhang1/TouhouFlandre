@@ -1,6 +1,6 @@
 import type { GuessResult, PublicGameSession } from "./types";
 import { GAME_CONTENT_DEFINITIONS } from "./fields";
-import { visibleQuestionFields } from "./questionScope";
+import { isUnlimitedGuessLimit, visibleQuestionFields } from "./questionScope";
 
 const rowToShareLine = (guess: GuessResult) =>
   guess.kind === "timeout"
@@ -12,10 +12,13 @@ export const createShareText = (
   puzzleLabel: string,
   siteUrl = "http://localhost:5173",
 ) => {
+  const maxGuessLabel = isUnlimitedGuessLimit(session.maxGuesses)
+    ? "无限制"
+    : session.maxGuesses;
   const result =
     session.status === "won"
-      ? `${session.guesses.length}/${session.maxGuesses}`
-      : `X/${session.maxGuesses}`;
+      ? `${session.guesses.length}/${maxGuessLabel}`
+      : `X/${maxGuessLabel}`;
   const lines = [
     `TouhouFlandre ${puzzleLabel}`,
     result,

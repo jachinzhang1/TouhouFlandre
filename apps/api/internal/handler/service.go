@@ -174,6 +174,10 @@ func (s *Server) createSession(ctx context.Context, mode string, definition game
 	if selection.puzzleKey != nil {
 		puzzleKey = pgtype.Text{String: *selection.puzzleKey, Valid: true}
 	}
+	maxGuesses := game.GameContentDefinition.MaxGuesses
+	if mode != string(game.GameModeDaily) {
+		maxGuesses = game.EffectiveQuestionScopeMaxGuesses(selection.questionScope.Rules)
+	}
 	created, err := s.q.CreateSession(ctx, repo.CreateSessionParams{
 		ID:             newSessionID(),
 		Mode:           mode,
@@ -182,7 +186,7 @@ func (s *Server) createSession(ctx context.Context, mode string, definition game
 		CatalogVersion: selection.catalogVersion,
 		PuzzleKey:      puzzleKey,
 		Status:         string(game.SessionPlaying),
-		MaxGuesses:     int32(game.GameContentDefinition.MaxGuesses),
+		MaxGuesses:     int32(maxGuesses),
 		QuestionScope:  mustQuestionScopeJSON(selection.questionScope),
 	})
 	if err != nil {

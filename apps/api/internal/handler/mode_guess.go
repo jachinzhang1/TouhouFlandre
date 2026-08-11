@@ -47,6 +47,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	match := input.match
 	fields := multi.FieldsForMatch(match)
 	storageFields := multi.StorageFieldsForMatch(match)
+	maxGuesses := multi.MaxGuessesForMatch(match)
 
 	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {
@@ -91,7 +92,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	if int(count) >= multi.GameMaxGuesses {
+	if int(count) >= maxGuesses {
 		return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
 	}
 	sequence := int(count) + 1
@@ -153,7 +154,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if isCorrect {
 		winnerSlot = int(member.Slot)
 	}
-	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, multi.GameMaxGuesses, false)
+	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, maxGuesses, false)
 
 	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
 		GuessID:   guessChar.ID,

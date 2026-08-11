@@ -10,6 +10,13 @@ const (
 	QuestionScopeMaxTurnSeconds  = 120
 )
 
+const (
+	QuestionScopeMinGuesses       = 4
+	QuestionScopeDefaultGuesses   = 8
+	QuestionScopeMaxGuesses       = 20
+	QuestionScopeUnlimitedGuesses = 999
+)
+
 type QuestionDifficulty string
 
 const (
@@ -57,9 +64,15 @@ type QuestionScopeTurnLimit struct {
 	Seconds int  `json:"seconds"`
 }
 
+type QuestionScopeGuessLimit struct {
+	Enabled    bool `json:"enabled"`
+	MaxGuesses int  `json:"maxGuesses"`
+}
+
 type QuestionScopeRules struct {
 	Fields       QuestionScopeFieldRules `json:"fields"`
 	TurnLimit    QuestionScopeTurnLimit  `json:"turnLimit"`
+	GuessLimit   QuestionScopeGuessLimit `json:"guessLimit"`
 	HiddenFields []GuessFieldKey         `json:"hiddenFields,omitempty"`
 	TurnSeconds  *int                    `json:"turnSeconds,omitempty"`
 }
@@ -121,6 +134,13 @@ func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
 			Enabled: false,
 			Seconds: QuestionScopeMinTurnSeconds,
 		},
+		GuessLimit: QuestionScopeGuessLimit{
+			Enabled:    true,
+			MaxGuesses: QuestionScopeDefaultGuesses,
+		},
+	}
+	if preset == QuestionDifficultyEasy {
+		rules.GuessLimit.Enabled = false
 	}
 	if preset == QuestionDifficultyHard {
 		rules.TurnLimit.Enabled = true
@@ -192,13 +212,39 @@ func normalizeQuestionScopeTurnLimit(turnLimit QuestionScopeTurnLimit) QuestionS
 	return turnLimit
 }
 
+func normalizeQuestionScopeGuessLimit(guessLimit QuestionScopeGuessLimit) QuestionScopeGuessLimit {
+	if !guessLimit.Enabled && guessLimit.MaxGuesses == 0 {
+		return QuestionScopeGuessLimit{Enabled: true, MaxGuesses: QuestionScopeDefaultGuesses}
+	}
+	if guessLimit.MaxGuesses < QuestionScopeMinGuesses {
+		guessLimit.MaxGuesses = QuestionScopeMinGuesses
+	}
+	if guessLimit.MaxGuesses > QuestionScopeMaxGuesses {
+		guessLimit.MaxGuesses = QuestionScopeMaxGuesses
+	}
+	return guessLimit
+}
+
 func normalizeQuestionScopeRules(rules QuestionScopeRules) QuestionScopeRules {
 	return QuestionScopeRules{
 		Fields:       normalizeQuestionScopeFieldRules(rules.Fields),
 		TurnLimit:    normalizeQuestionScopeTurnLimit(rules.TurnLimit),
+		GuessLimit:   normalizeQuestionScopeGuessLimit(rules.GuessLimit),
 		HiddenFields: nil,
 		TurnSeconds:  nil,
 	}
+}
+
+func NormalizeQuestionScopeRules(rules QuestionScopeRules) QuestionScopeRules {
+	return normalizeQuestionScopeRules(rules)
+}
+
+func EffectiveQuestionScopeMaxGuesses(rules QuestionScopeRules) int {
+	guessLimit := normalizeQuestionScopeGuessLimit(rules.GuessLimit)
+	if !guessLimit.Enabled {
+		return QuestionScopeUnlimitedGuesses
+	}
+	return guessLimit.MaxGuesses
 }
 
 func legacyQuestionScopeRules(rules QuestionScopeRules, requestedPreset QuestionDifficulty) QuestionScopeRules {
@@ -206,6 +252,7 @@ func legacyQuestionScopeRules(rules QuestionScopeRules, requestedPreset Question
 		requestedPreset = QuestionDifficultyNormal
 	}
 	normalized := PresetQuestionScopeRules(requestedPreset)
+	normalized.GuessLimit = QuestionScopeGuessLimit{Enabled: true, MaxGuesses: QuestionScopeDefaultGuesses}
 	hidden := make(map[GuessFieldKey]bool, len(rules.HiddenFields))
 	for _, field := range rules.HiddenFields {
 		hidden[field] = true
@@ -240,7 +287,9 @@ func sameQuestionScopeRules(left, right QuestionScopeRules) bool {
 	right = normalizeQuestionScopeRules(right)
 	return left.Fields == right.Fields &&
 		left.TurnLimit.Enabled == right.TurnLimit.Enabled &&
-		(!left.TurnLimit.Enabled || left.TurnLimit.Seconds == right.TurnLimit.Seconds)
+		(!left.TurnLimit.Enabled || left.TurnLimit.Seconds == right.TurnLimit.Seconds) &&
+		left.GuessLimit.Enabled == right.GuessLimit.Enabled &&
+		left.GuessLimit.MaxGuesses == right.GuessLimit.MaxGuesses
 }
 
 func sameIds(left, right []string) bool {

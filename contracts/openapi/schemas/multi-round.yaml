@@ -69,7 +69,7 @@ RoundView:
     maxGuesses:
       type: integer
       minimum: 1
-      description: 每局每人猜测上限（沿用单人 GameContentDefinition.MaxGuesses = 8）。
+      description: 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。
     self:
       type: object
       description: 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。
