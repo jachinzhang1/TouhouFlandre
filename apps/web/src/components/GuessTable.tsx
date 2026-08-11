@@ -26,11 +26,13 @@ export type GuessCell = {
 
 export type GuessRow = {
   key: string;
+  notice?: string;
+  tone?: "danger";
   /** 匿名行为空（角色列显示行号「第 N 猜」）。 */
   name?: string;
   avatarUrl?: string;
   isCorrect?: boolean;
-  cells: GuessCell[];
+  cells?: GuessCell[];
 };
 
 export type GuessTableVariant = "self" | "opponent";
@@ -43,6 +45,7 @@ export function GuessTable({
   emptyLabel,
   variant = "self",
   fields = CHARACTER_GUESS_FIELDS,
+  highlight = false,
 }: {
   title?: string;
   subtitle?: string;
@@ -51,11 +54,12 @@ export function GuessTable({
   emptyLabel: string;
   variant?: GuessTableVariant;
   fields?: readonly GuessField[];
+  highlight?: boolean;
 }) {
   const isOpponent = variant === "opponent";
 
   return (
-    <div className="rounded-[6px] border border-line bg-paper p-3 shadow-sm">
+    <div className={`rounded-[6px] border bg-paper p-3 shadow-sm ${highlight ? "border-jade" : "border-line"}`}>
       {(title || subtitle || headerExtra) && (
         <div className="mb-2 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -101,7 +105,21 @@ export function GuessTable({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              rows.map((row) => row.notice ? (
+                <tr key={row.key}>
+                  <td colSpan={fields.length + 1} className="border-b border-line p-2">
+                    <span
+                      className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
+                        row.tone === "danger"
+                          ? "bg-vermilion-soft text-vermilion"
+                          : "bg-paper-muted text-ink-soft"
+                      }`}
+                    >
+                      {row.notice}
+                    </span>
+                  </td>
+                </tr>
+              ) : (
                 <tr key={row.key}>
                   <th
                     scope="row"
@@ -128,7 +146,7 @@ export function GuessTable({
                       <span className="text-ink-soft">第 {row.key} 猜</span>
                     )}
                   </th>
-                  {row.cells.map((cell, index) => (
+                  {(row.cells ?? []).map((cell, index) => (
                     <td
                       key={index}
                       className="border-b border-line p-1.5 align-top"

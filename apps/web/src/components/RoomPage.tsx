@@ -1,58 +1,108 @@
 "use client";
 
-// 房间页编排（08 §10.2/§10.3）：useRoom 连接 + 视图切换
-// （lobby → 对局 → 结果；断线重连/缺口补齐由 useRoom 处理）。
 import { FastForward, Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CHARACTER_GUESS_FIELDS, visibleQuestionFields } from "@touhouflandre/shared";
+import {
+  CHARACTER_GUESS_FIELDS,
+  visibleQuestionFields,
+  type GuessField,
+  type RoundEndedPayload,
+} from "@touhouflandre/shared";
+import type { components } from "../generated/api";
 import {
   clearMultiRoom,
   loadMultiRoom,
+  MULTIPLAYER_MODE_LABELS,
   normalizeRoomCode,
   relaySkipRemaining,
+  ROOM_FORMAT_SHORT,
+  saveMultiRoom,
 } from "../domain/multiRoom";
 import type { StoredMultiRoom } from "../domain/multiRoom";
-import { useRoom } from "../hooks/useRoom";
+import { useRoom, type RoomUiState } from "../hooks/useRoom";
+import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
+import { api } from "../lib/api";
 import { CountdownOverlay } from "./CountdownOverlay";
 import { GuessInputBar } from "./GuessInputBar";
+import { GuessTable, type GuessRow } from "./GuessTable";
 import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
 
+type SpectatorBoardGuess =
+  | components["schemas"]["GuessResult"]
+  | RoundEndedPayload["boards"]["slot1"][number];
+
+type SpectatorBoards = {
+  slot1: SpectatorBoardGuess[];
+  slot2: SpectatorBoardGuess[];
+};
+
 export function RoomView({ code }: { code: string }) {
   const router = useRouter();
   const normalized = normalizeRoomCode(code);
-  // 加载放在 effect：避免 SSR 访问 window.localStorage（hydration 失败）
   const [stored, setStored] = useState<StoredMultiRoom | null | undefined>(undefined);
   const [redirecting, setRedirecting] = useState(false);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [roundActionBusy, setRoundActionBusy] = useState<"forfeit" | "pass" | null>(null);
   const [dismissedRoundResultKey, setDismissedRoundResultKey] = useState<string | null>(null);
+  const [selectedArchiveKey, setSelectedArchiveKey] = useState<string | null>(null);
 
   useEffect(() => {
     setStored(loadMultiRoom());
   }, []);
 
-  // 无成员资格/房间号不匹配 → 清理并重定向大厅（08 §10.1）
   useEffect(() => {
-    if (stored === undefined) return; // storage 尚未加载
-    if (!stored || stored.roomCode !== normalized) {
+    if (stored === undefined) return;
+    if (stored?.roomCode === normalized) return;
+    let disposed = false;
+    const enterSpectatorIfAvailable = async () => {
+      try {
+        const info = await api.roomInfo(normalized);
+        if (info.joinRole !== "spectator") throw new Error("not spectator");
+        const joined = await api.joinRoom(normalized, {});
+        if (disposed) return;
+        const next: StoredMultiRoom = {
+          roomId: joined.roomId,
+          roomCode: normalized,
+          guestToken: joined.guestToken,
+          role: joined.viewer.role,
+          memberSlot: undefined,
+        };
+        saveMultiRoom(next);
+        setStored(next);
+      } catch {
+        clearMultiRoom();
+        setRedirecting(true);
+        router.replace("/multi");
+      }
+    };
+    if (!stored) {
+      void enterSpectatorIfAvailable();
+      return () => {
+        disposed = true;
+      };
+    }
+    if (stored.roomCode !== normalized) {
       clearMultiRoom();
       setRedirecting(true);
       router.replace("/multi");
     }
+    return () => {
+      disposed = true;
+    };
   }, [stored, normalized, router]);
 
-  const { state, mySlot, actions, guessError, roomUnavailable } = useRoom(
+  const { state, mySlot, role, actions, guessError, roomUnavailable } = useRoom(
     stored?.roomId ?? "",
     stored?.guestToken ?? "",
-    stored?.memberSlot ?? 1,
+    stored?.role === "spectator" ? null : stored?.memberSlot ?? 1,
+    stored?.role ?? "player",
   );
 
-  // 房间关闭（终态）→ 清理并返回大厅
   useEffect(() => {
     if (state.room?.status === "closed") {
       clearMultiRoom();
@@ -60,7 +110,6 @@ export function RoomView({ code }: { code: string }) {
     }
   }, [state.room?.status, router]);
 
-  // 房间已超过保留期：草稿由 useRoom 标记为同步不完整，再清理恢复凭据。
   useEffect(() => {
     if (!roomUnavailable) return;
     clearMultiRoom();
@@ -76,6 +125,8 @@ export function RoomView({ code }: { code: string }) {
     CHARACTER_GUESS_FIELDS,
   );
   const hasOpponent = state.members.length === 2;
+  const isSpectator = role === "spectator" || mySlot === null;
+  const playerSlot: 1 | 2 = mySlot ?? 1;
   const roundResultKey = state.roundResult
     ? `${state.roundResult.matchIndex}:${state.roundResult.roundIndex}`
     : null;
@@ -133,7 +184,35 @@ export function RoomView({ code }: { code: string }) {
 
   if (stored === undefined || redirecting) return null;
 
-  // 大厅态
+  if (isSpectator && !state.room) {
+    return (
+      <>
+        <section className="px-[18px] pt-16 text-center text-ink-soft">
+          观战席同步中……
+        </section>
+        <ConnectionNotice message={state.connectionIssue} />
+      </>
+    );
+  }
+
+  if (isSpectator && state.room) {
+    return (
+      <>
+        <SpectatorRoom
+          state={state}
+          format={format}
+          mode={mode}
+          fields={visibleFields}
+          selectedArchiveKey={selectedArchiveKey}
+          onSelectArchive={setSelectedArchiveKey}
+          onLeave={handleLeave}
+        />
+        <ConnectionNotice message={state.connectionIssue} />
+        <GuessErrorToast message={guessError} />
+      </>
+    );
+  }
+
   if (status === "lobby" || status === "connecting") {
     return (
       <>
@@ -143,7 +222,7 @@ export function RoomView({ code }: { code: string }) {
           mode={mode}
           turnSeconds={turnSeconds}
           members={state.members}
-          mySlot={mySlot}
+          mySlot={playerSlot}
           onReady={actions.setReady}
           onLeave={handleLeave}
         />
@@ -153,19 +232,18 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
-  // 对局态
   if ((status === "playing" || showingFinalRoundResult) && state.match) {
     const inCountdown = state.round?.status === "countdown";
     const relayCanGuess =
       mode === "relay" &&
       state.round?.status === "playing" &&
-      state.round.turnSlot === mySlot &&
+      state.round.turnSlot === playerSlot &&
       hasOpponent;
     const relayRows = state.round?.shared?.rows ?? [];
     const relayMaxSkips = state.round?.maxSkipsPerPlayer ?? 2;
     const relaySkipsRemaining = relaySkipRemaining(
       relayRows,
-      mySlot,
+      playerSlot,
       relayMaxSkips,
     );
     const relayCanPass = relayCanGuess && relaySkipsRemaining > 0;
@@ -198,7 +276,7 @@ export function RoomView({ code }: { code: string }) {
             match={state.match}
             round={state.round}
             members={state.members}
-            mySlot={mySlot}
+            mySlot={playerSlot}
             roundResult={state.roundResult}
             roundActions={roundActions}
             fields={visibleFields}
@@ -208,7 +286,7 @@ export function RoomView({ code }: { code: string }) {
             format={format}
             match={state.match}
             round={state.round}
-            mySlot={mySlot}
+            mySlot={playerSlot}
             roundResult={state.roundResult}
             catalogVersion={state.catalogVersion ?? undefined}
             onGuess={actions.submitGuess}
@@ -232,7 +310,7 @@ export function RoomView({ code }: { code: string }) {
         {showRoundResult && state.roundResult && (
           <RoundResultOverlay
             result={state.roundResult}
-            mySlot={mySlot}
+            mySlot={playerSlot}
             nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
             autoDismissAtCountdownEnd={Boolean(state.matchResult)}
             onDismiss={() => {
@@ -246,13 +324,12 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
-  // 对局结束（等待再来一局 / 结果展示）
   if (status === "finished" && state.matchResult && showRoundResult && state.roundResult) {
     return (
       <>
         <RoundResultOverlay
           result={state.roundResult}
-          mySlot={mySlot}
+          mySlot={playerSlot}
           nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
           autoDismissAtCountdownEnd
           onDismiss={() => {
@@ -270,7 +347,7 @@ export function RoomView({ code }: { code: string }) {
       <>
         <MatchResultOverlay
           result={state.matchResult}
-          mySlot={mySlot}
+          mySlot={playerSlot}
           format={format}
           rematchReady={state.rematchReady}
           onRematch={actions.rematch}
@@ -299,6 +376,221 @@ function ConnectionNotice({ message }: { message: string | null }) {
       >
         {message}
       </p>
+    </div>
+  );
+}
+
+function SpectatorRoom({
+  state,
+  format,
+  mode,
+  fields,
+  selectedArchiveKey,
+  onSelectArchive,
+  onLeave,
+}: {
+  state: RoomUiState;
+  format: string;
+  mode: string;
+  fields: readonly GuessField[];
+  selectedArchiveKey: string | null;
+  onSelectArchive: (key: string | null) => void;
+  onLeave: () => void;
+}) {
+  const selectedArchive =
+    state.roundArchives.find(
+      (archive) => `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
+    ) ?? null;
+  const latestArchive = state.roundArchives.at(-1) ?? null;
+  const displayArchive =
+    selectedArchive ??
+    (state.room?.status === "finished" || state.round?.status === "ended" || !state.round ? latestArchive : null);
+  const retentionUntil = state.matchResult?.retentionEndsAt ?? state.room?.expiresAt ?? null;
+  const remaining = useRoomClock(state.room?.status === "finished" ? retentionUntil : null);
+  const waitingToStart = state.room?.status === "lobby" && !state.match;
+  const preparingNextRound = Boolean(
+    !state.matchResult &&
+      state.roundResult &&
+      state.round?.status !== "playing",
+  );
+  const winnerName =
+    state.matchResult?.winnerSlot === 1
+      ? state.members.find((member) => member.slot === 1)?.displayName ?? "玩家 1"
+      : state.matchResult?.winnerSlot === 2
+        ? state.members.find((member) => member.slot === 2)?.displayName ?? "玩家 2"
+        : null;
+
+  return (
+    <section className="px-[18px] pt-5 pb-16">
+      <div className="mx-auto max-w-[1280px]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
+          <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.72rem] font-black text-jade">
+            观战席 · {MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ?? mode} · {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}
+          </span>
+          {waitingToStart ? (
+            <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.82rem] font-black text-vermilion">
+              等待开始
+            </span>
+          ) : (
+            <span className="text-[0.95rem] font-black tabular-nums">
+              {state.match?.scoreSlot1 ?? 0} : {state.match?.scoreSlot2 ?? 0}
+            </span>
+          )}
+          <span className="text-[0.75rem] text-ink-soft">
+            观战 {state.room?.spectatorCount ?? 0}
+          </span>
+          <button
+            type="button"
+            onClick={onLeave}
+            className="rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.75rem] font-bold text-ink-soft hover:bg-paper"
+          >
+            退出房间
+          </button>
+        </div>
+
+        {state.matchResult ? (
+          <div className="mb-3 rounded-[6px] border border-jade bg-jade-soft px-4 py-3 text-[0.86rem] font-bold text-jade">
+            {winnerName ? `${winnerName} 赢得本场对局` : "本场对局平局"}
+            {state.room?.status === "finished" ? (
+              <span className="ml-2 text-ink-soft tabular-nums">
+                房间保留 {formatRemaining(remaining)}
+              </span>
+            ) : null}
+          </div>
+        ) : preparingNextRound ? (
+          <div className="relay-current-turn-active mb-3 rounded-[6px] border border-vermilion bg-paper px-4 py-3 text-[0.86rem] font-black text-vermilion">
+            即将进行下一局…
+          </div>
+        ) : null}
+
+        <SpectatorArchiveBar
+          archives={state.roundArchives}
+          selectedKey={displayArchive ? `${displayArchive.matchIndex}:${displayArchive.roundIndex}` : null}
+          showCurrent={!state.matchResult && state.room?.status !== "finished"}
+          onSelect={onSelectArchive}
+        />
+
+        {mode === "relay" ? (
+          <RelayMatchBoard
+            format={format}
+            match={state.match}
+            round={state.round}
+            members={state.members}
+            mySlot={1}
+            viewerRole="spectator"
+            roundResult={displayArchive}
+            fields={fields}
+          />
+        ) : (
+          <SpectatorRaceBoards
+            boards={displayArchive?.boards ?? state.round?.boards ?? { slot1: [], slot2: [] }}
+            members={state.members}
+            fields={fields}
+            archive={displayArchive}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SpectatorArchiveBar({
+  archives,
+  selectedKey,
+  showCurrent = true,
+  onSelect,
+}: {
+  archives: RoundEndedPayload[];
+  selectedKey: string | null;
+  showCurrent?: boolean;
+  onSelect: (key: string | null) => void;
+}) {
+  if (archives.length === 0) return null;
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      {showCurrent ? (
+        <button
+          type="button"
+          onClick={() => onSelect(null)}
+          className={`rounded px-2 py-1 text-[0.7rem] font-bold ${selectedKey === null ? "bg-jade-soft text-jade" : "bg-paper-muted text-ink-soft"}`}
+        >
+          当前棋盘
+        </button>
+      ) : null}
+      {archives.map((archive) => {
+        const key = `${archive.matchIndex}:${archive.roundIndex}`;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onSelect(key)}
+            className={`rounded px-2 py-1 text-[0.7rem] font-bold ${selectedKey === key ? "bg-jade-soft text-jade" : "bg-paper-muted text-ink-soft"}`}
+          >
+            第 {archive.matchIndex + 1} 场 · 第 {archive.roundIndex} 局
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SpectatorRaceBoards({
+  boards,
+  members,
+  fields,
+  archive,
+}: {
+  boards: SpectatorBoards;
+  members: components["schemas"]["MemberView"][];
+  fields: readonly GuessField[];
+  archive: RoundEndedPayload | null;
+}) {
+  const toRows = (slot: 1 | 2): GuessRow[] => {
+    const board = slot === 1 ? boards.slot1 : boards.slot2;
+    const rows: GuessRow[] = board.map((guess, index) => ({
+      key: `${slot}:${guess.guessId}:${index}`,
+      name: guess.guessName,
+      avatarUrl: guess.guessAvatarUrl,
+      isCorrect: guess.isCorrect,
+      cells: guess.feedback.map((field) => ({
+        status: field.status,
+        value: field.displayValue.join("、"),
+      })),
+    }));
+    if (archive?.forfeitedSlot === slot) {
+      rows.push({
+        key: `${slot}:forfeit:${archive.matchIndex}:${archive.roundIndex}`,
+        notice: "玩家放弃此局",
+        tone: "danger",
+      });
+    }
+    return rows;
+  };
+  const winnerBadge = (
+    <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.68rem] font-black text-jade">
+      胜利
+    </span>
+  );
+  return (
+    <div className="grid grid-cols-2 items-start gap-3 max-[1100px]:grid-cols-1">
+      <GuessTable
+        title={members.find((member) => member.slot === 1)?.displayName ?? "玩家 1"}
+        subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
+        headerExtra={archive?.winnerSlot === 1 ? winnerBadge : null}
+        rows={toRows(1)}
+        emptyLabel="该玩家暂无猜测。"
+        fields={fields}
+        highlight={archive?.winnerSlot === 1}
+      />
+      <GuessTable
+        title={members.find((member) => member.slot === 2)?.displayName ?? "玩家 2"}
+        subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
+        headerExtra={archive?.winnerSlot === 2 ? winnerBadge : null}
+        rows={toRows(2)}
+        emptyLabel="该玩家暂无猜测。"
+        fields={fields}
+        highlight={archive?.winnerSlot === 2}
+      />
     </div>
   );
 }

@@ -1,20 +1,20 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import {
   CHARACTER_GUESS_FIELDS,
   isUnlimitedGuessLimit,
   type GuessField,
 } from "@touhouflandre/shared";
-import type { ReactNode } from "react";
 import type { components } from "../generated/api";
-import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import {
   countRelaySkips,
   MULTIPLAYER_MODE_LABELS,
   relaySkipRemaining,
   ROOM_FORMAT_SHORT,
 } from "../domain/multiRoom";
+import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { STATUS_LABEL } from "./GuessTable";
@@ -33,15 +33,17 @@ export function RelayMatchBoard({
   roundResult,
   roundActions,
   fields = CHARACTER_GUESS_FIELDS,
+  viewerRole = "player",
 }: {
   format: string;
-  match: MatchView;
+  match: MatchView | null;
   round: RoundView | null;
   members: MemberView[];
   mySlot: 1 | 2;
   roundResult: RoundEndedPayload | null;
   roundActions?: ReactNode;
   fields?: readonly GuessField[];
+  viewerRole?: "player" | "spectator";
 }) {
   const roundRemaining = useRoomClock(round?.deadline ?? null);
   const turnRemaining = useRoomClock(round?.turnDeadline ?? null);
@@ -52,15 +54,25 @@ export function RelayMatchBoard({
   const hasUnlimitedTurns = isUnlimitedGuessLimit(maxTurnsPerPlayer);
   const mySkipCount = countRelaySkips(rows, mySlot);
   const mySkipRemaining = relaySkipRemaining(rows, mySlot, maxSkips);
-  const currentSlot = round?.turnSlot;
+  const currentSlot = round?.turnSlot === 2 ? 2 : round?.turnSlot === 1 ? 1 : null;
+  const currentSkipRemaining = currentSlot
+    ? relaySkipRemaining(rows, currentSlot, maxSkips)
+    : maxSkips;
   const currentMember = members.find((member) => member.slot === currentSlot);
   const currentLabel = currentSlot
-    ? currentSlot === mySlot
+    ? viewerRole === "player" && currentSlot === mySlot
       ? "我"
       : currentMember?.displayName ?? `玩家 ${currentSlot}`
     : "等待结算";
   const isMyActiveTurn =
-    round?.status === "playing" && !ended && round.turnSlot === mySlot;
+    viewerRole === "player" &&
+    round?.status === "playing" &&
+    !ended &&
+    round.turnSlot === mySlot;
+  const forfeitedSlot =
+    roundResult?.forfeitedSlot === 1 || roundResult?.forfeitedSlot === 2
+      ? roundResult.forfeitedSlot
+      : null;
 
   return (
     <section className="px-[18px] pt-5 pb-28">
@@ -68,11 +80,19 @@ export function RelayMatchBoard({
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
           {MULTIPLAYER_MODE_LABELS.relay} · {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}
         </span>
-        <span className="text-[0.95rem] font-black tabular-nums">
-          {match.scoreSlot1} : {match.scoreSlot2}
-        </span>
+        {match ? (
+          <span className="text-[0.95rem] font-black tabular-nums">
+            {match.scoreSlot1} : {match.scoreSlot2}
+          </span>
+        ) : (
+          <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.82rem] font-black text-vermilion">
+            等待开始
+          </span>
+        )}
         <span className="text-[0.75rem] text-ink-soft">
-          第 {match.roundIndex} 局{match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}
+          {match
+            ? `第 ${match.roundIndex} 局${match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}`
+            : "等待双方准备"}
         </span>
         {round && !ended && (
           <span className="text-[0.72rem] text-ink-soft tabular-nums">
@@ -97,9 +117,15 @@ export function RelayMatchBoard({
               ) : null}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-paper-muted px-2 py-1 text-[0.72rem] font-bold text-ink-soft">
-                我的空过 {mySkipCount}/{maxSkips} · 剩余 {mySkipRemaining}
-              </span>
+              {viewerRole === "spectator" ? (
+                <span className="rounded bg-paper-muted px-2 py-1 text-[0.72rem] font-bold text-ink-soft">
+                  空过 {currentSkipRemaining}/{maxSkips}
+                </span>
+              ) : (
+                <span className="rounded bg-paper-muted px-2 py-1 text-[0.72rem] font-bold text-ink-soft">
+                  我的空过 {mySkipCount}/{maxSkips} · 剩余 {mySkipRemaining}
+                </span>
+              )}
               {roundActions}
             </div>
           </>
@@ -140,16 +166,35 @@ export function RelayMatchBoard({
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 ? (
+              {rows.length === 0 && !forfeitedSlot ? (
                 <tr>
                   <td colSpan={fields.length + 2} className="py-4 text-center text-ink-soft">
                     等待第一手猜测。
                   </td>
                 </tr>
               ) : (
-                rows.map((row) => (
-                  <RelayTurn key={row.index} row={row} mySlot={mySlot} fields={fields} />
-                ))
+                <>
+                  {rows.map((row) => (
+                    <RelayTurn
+                      key={row.index}
+                      row={row}
+                      mySlot={mySlot}
+                      members={members}
+                      fields={fields}
+                      viewerRole={viewerRole}
+                      winnerSlot={roundResult?.winnerSlot ?? null}
+                    />
+                  ))}
+                  {forfeitedSlot ? (
+                    <RelayForfeitRow
+                      slot={forfeitedSlot}
+                      members={members}
+                      fields={fields}
+                      viewerRole={viewerRole}
+                      mySlot={mySlot}
+                    />
+                  ) : null}
+                </>
               )}
             </tbody>
           </table>
@@ -159,8 +204,72 @@ export function RelayMatchBoard({
   );
 }
 
-function RelayTurn({ row, mySlot, fields }: { row: RelayTurnRow; mySlot: 1 | 2; fields: readonly GuessField[] }) {
-  const owner = row.memberSlot === mySlot ? "我" : "对手";
+function ownerLabel({
+  slot,
+  mySlot,
+  members,
+  viewerRole,
+}: {
+  slot: number;
+  mySlot: 1 | 2;
+  members: MemberView[];
+  viewerRole: "player" | "spectator";
+}) {
+  if (viewerRole === "spectator") {
+    return members.find((member) => member.slot === slot)?.displayName ?? `玩家 ${slot}`;
+  }
+  return slot === mySlot ? "我" : "对手";
+}
+
+function RelayForfeitRow({
+  slot,
+  mySlot,
+  members,
+  fields,
+  viewerRole,
+}: {
+  slot: 1 | 2;
+  mySlot: 1 | 2;
+  members: MemberView[];
+  fields: readonly GuessField[];
+  viewerRole: "player" | "spectator";
+}) {
+  const owner = ownerLabel({ slot, mySlot, members, viewerRole });
+  return (
+    <tr>
+      <th scope="row" className="border-b border-line p-1.5 text-left font-normal text-ink-soft">
+        {owner}
+      </th>
+      <td colSpan={fields.length + 1} className="border-b border-line p-1.5">
+        <span className="inline-flex rounded bg-vermilion-soft px-2 py-1 text-[0.72rem] font-black text-vermilion">
+          玩家放弃此局
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function RelayTurn({
+  row,
+  mySlot,
+  members,
+  fields,
+  viewerRole,
+  winnerSlot,
+}: {
+  row: RelayTurnRow;
+  mySlot: 1 | 2;
+  members: MemberView[];
+  fields: readonly GuessField[];
+  viewerRole: "player" | "spectator";
+  winnerSlot: number | null;
+}) {
+  const owner = ownerLabel({ slot: row.memberSlot, mySlot, members, viewerRole });
+  const isWinnerGuess =
+    viewerRole === "spectator" &&
+    row.kind === "guess" &&
+    row.memberSlot === winnerSlot;
+
   if (row.kind !== "guess" || !row.guess) {
     const label = row.kind === "pass" ? "主动空过" : "超时空过";
     return (
@@ -182,8 +291,9 @@ function RelayTurn({ row, mySlot, fields }: { row: RelayTurnRow; mySlot: 1 | 2; 
       </tr>
     );
   }
+
   return (
-    <tr>
+    <tr className={isWinnerGuess ? "bg-jade-soft" : undefined}>
       <th scope="row" className="border-b border-line p-1.5 text-left font-normal text-ink-soft">
         第 {row.index} 手 · {owner}
       </th>
