@@ -114,9 +114,9 @@ func MultiMaxRoundsFactor() int {
 	return 3
 }
 
-// MultiFinishedRetention 对局结束展示期（MULTI_FINISHED_RETENTION，默认 30min，08 §4.7）。
+// MultiFinishedRetention 对局结束展示期（MULTI_FINISHED_RETENTION，默认 10min，08 §4.7）。
 func MultiFinishedRetention() time.Duration {
-	return durationFromEnv("MULTI_FINISHED_RETENTION", 30*time.Minute)
+	return durationFromEnv("MULTI_FINISHED_RETENTION", 10*time.Minute)
 }
 
 // MultiWSReadLimit 客户端 WS 消息读限（MULTI_WS_READ_LIMIT，默认 4096，08 §8.5）。
@@ -151,7 +151,6 @@ func MultiTiming() multi.TimingConfig {
 		FinishedRetention: MultiFinishedRetention(),
 	}
 }
-
 
 // LogLevel 应用日志级别（LOG_LEVEL: debug/info/warn/error，默认 info）。
 func LogLevel() slog.Level {

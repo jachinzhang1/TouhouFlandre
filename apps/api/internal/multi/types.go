@@ -12,6 +12,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // NewID 生成 25 位小写字母数字 id（同单人 newSessionID 模式，08 §9.1）。
@@ -38,14 +39,55 @@ const RelayMaxSkipsPerPlayer = 2
 func MemberViews(rows []repo.MultiMember) []MemberView {
 	views := make([]MemberView, 0, len(rows))
 	for _, m := range rows {
+		if !IsPlayer(m) {
+			continue
+		}
 		views = append(views, MemberView{
-			Slot:        int(m.Slot),
+			Slot:        MemberSlot(m),
 			DisplayName: m.DisplayName,
 			Status:      MemberStatus(m.Status),
 			Ready:       m.Ready,
 		})
 	}
 	return views
+}
+
+func MemberSlot(m repo.MultiMember) int {
+	switch slot := any(m.Slot).(type) {
+	case int32:
+		return int(slot)
+	case pgtype.Int4:
+		if !slot.Valid {
+			return 0
+		}
+		return int(slot.Int32)
+	default:
+		return 0
+	}
+}
+
+func IsPlayer(m repo.MultiMember) bool {
+	return m.Role == "" || m.Role == string(ParticipantRolePlayer)
+}
+
+func IsSpectator(m repo.MultiMember) bool {
+	return m.Role == string(ParticipantRoleSpectator)
+}
+
+func ParticipantViewFor(m repo.MultiMember) ParticipantView {
+	view := ParticipantView{
+		Role:        ParticipantRole(m.Role),
+		DisplayName: m.DisplayName,
+		Status:      MemberStatus(m.Status),
+	}
+	if view.Role == "" {
+		view.Role = ParticipantRolePlayer
+	}
+	if IsPlayer(m) {
+		slot := MemberSlot(m)
+		view.Slot = &slot
+	}
+	return view
 }
 
 // 房间/成员/局/对局状态与结果枚举（与 protocol.yaml 与 OpenAPI schema 对齐）。
@@ -95,6 +137,15 @@ const (
 	MemberStatusLeft         MemberStatus = "left"
 )
 
+// ParticipantRole 区分 PK 玩家和观战者。后续扩展更多玩家席位或表情系统时，
+// 优先扩展 role/slot helper，避免把“两个玩家”的假设散落到各层。
+type ParticipantRole string
+
+const (
+	ParticipantRolePlayer    ParticipantRole = "player"
+	ParticipantRoleSpectator ParticipantRole = "spectator"
+)
+
 // RoundStatus 单局状态。
 type RoundStatus string
 
@@ -138,18 +189,19 @@ const (
 type EventType string
 
 const (
-	EventRoomUpdated        EventType = "room.updated"
-	EventMatchStarted       EventType = "match.started"
-	EventMatchRematch       EventType = "match.rematch"
-	EventRoundStarted       EventType = "round.started"
-	EventRoundPlaying       EventType = "round.playing"
-	EventRoundOpponentGuess EventType = "round.opponent.guess"
-	EventRoundSharedGuess   EventType = "round.shared.guess"
-	EventRoundTurnTimeout   EventType = "round.turn.timeout"
-	EventRoundTurnPass      EventType = "round.turn.pass"
-	EventRoundEnded         EventType = "round.ended"
-	EventMatchEnded         EventType = "match.ended"
-	EventRoomClosed         EventType = "room.closed"
+	EventRoomUpdated         EventType = "room.updated"
+	EventMatchStarted        EventType = "match.started"
+	EventMatchRematch        EventType = "match.rematch"
+	EventRoundStarted        EventType = "round.started"
+	EventRoundPlaying        EventType = "round.playing"
+	EventRoundOpponentGuess  EventType = "round.opponent.guess"
+	EventRoundSpectatorGuess EventType = "round.spectator.guess"
+	EventRoundSharedGuess    EventType = "round.shared.guess"
+	EventRoundTurnTimeout    EventType = "round.turn.timeout"
+	EventRoundTurnPass       EventType = "round.turn.pass"
+	EventRoundEnded          EventType = "round.ended"
+	EventMatchEnded          EventType = "match.ended"
+	EventRoomClosed          EventType = "room.closed"
 )
 
 // Envelope 事件信封（08 §8.2）。Payload 为规范形态（round.opponent.guess 存真实列序），
@@ -173,12 +225,21 @@ type MemberView struct {
 	Ready       bool         `json:"ready"`
 }
 
+// ParticipantView 当前访问者视图；观战者不占玩家 slot。
+type ParticipantView struct {
+	Role        ParticipantRole `json:"role"`
+	Slot        *int            `json:"slot,omitempty"`
+	DisplayName string          `json:"displayName"`
+	Status      MemberStatus    `json:"status"`
+}
+
 // RoomUpdatedPayload room.updated：大厅任何成员变化/就绪。
 type RoomUpdatedPayload struct {
-	Format      RoomFormat      `json:"format"`
-	Mode        MultiplayerMode `json:"mode"`
-	TurnSeconds int             `json:"turnSeconds"`
-	Members     []MemberView    `json:"members"`
+	Format         RoomFormat      `json:"format"`
+	Mode           MultiplayerMode `json:"mode"`
+	TurnSeconds    int             `json:"turnSeconds"`
+	Members        []MemberView    `json:"members"`
+	SpectatorCount int             `json:"spectatorCount"`
 }
 
 // MatchStartedPayload match.started：新场次开始。
@@ -222,6 +283,15 @@ type RoundOpponentGuessPayload struct {
 	RoundIndex int      `json:"roundIndex"`
 	RowIndex   int      `json:"rowIndex"`
 	Statuses   []string `json:"statuses"`
+}
+
+// RoundSpectatorGuessPayload round.spectator.guess：观战者可见的完整猜测行。
+type RoundSpectatorGuessPayload struct {
+	MatchIndex int             `json:"matchIndex"`
+	RoundIndex int             `json:"roundIndex"`
+	MemberSlot int             `json:"memberSlot"`
+	RowIndex   int             `json:"rowIndex"`
+	Guess      GuessResultView `json:"guess"`
 }
 
 // RelayTurnKind 接力共享棋盘行类型。
@@ -270,15 +340,16 @@ type RoundTurnPassPayload struct {
 
 // RoundEndedPayload round.ended：局结束（result 为观察者视角；揭示答案与双方完整棋盘）。
 type RoundEndedPayload struct {
-	MatchIndex   int            `json:"matchIndex"`
-	RoundIndex   int            `json:"roundIndex"`
-	Result       MatchResult    `json:"result"`
-	WinnerSlot   *int           `json:"winnerSlot"`
-	Answer       AnswerView     `json:"answer"`
-	Boards       BoardsView     `json:"boards"`
-	Turns        []RelayTurnRow `json:"turns,omitempty"`
-	Scores       ScoresView     `json:"scores"`
-	NextStartsAt *time.Time     `json:"nextStartsAt,omitempty"`
+	MatchIndex    int            `json:"matchIndex"`
+	RoundIndex    int            `json:"roundIndex"`
+	Result        MatchResult    `json:"result"`
+	WinnerSlot    *int           `json:"winnerSlot"`
+	ForfeitedSlot *int           `json:"forfeitedSlot,omitempty"`
+	Answer        AnswerView     `json:"answer"`
+	Boards        BoardsView     `json:"boards"`
+	Turns         []RelayTurnRow `json:"turns,omitempty"`
+	Scores        ScoresView     `json:"scores"`
+	NextStartsAt  *time.Time     `json:"nextStartsAt,omitempty"`
 }
 
 // AnswerView 揭示的答案角色与作品快照。
@@ -323,11 +394,12 @@ type FieldFeedbackView struct {
 
 // MatchEndedPayload match.ended：对局结束。
 type MatchEndedPayload struct {
-	MatchIndex int            `json:"matchIndex"`
-	Result     MatchResult    `json:"result"`
-	WinnerSlot *int           `json:"winnerSlot"`
-	Scores     ScoresView     `json:"scores"`
-	Reason     MatchEndReason `json:"reason"`
+	MatchIndex      int            `json:"matchIndex"`
+	Result          MatchResult    `json:"result"`
+	WinnerSlot      *int           `json:"winnerSlot"`
+	Scores          ScoresView     `json:"scores"`
+	Reason          MatchEndReason `json:"reason"`
+	RetentionEndsAt time.Time      `json:"retentionEndsAt"`
 }
 
 // RoomClosedPayload room.closed：房间关闭（终态）。
@@ -341,6 +413,8 @@ type RoomClosedPayload struct {
 // 投影为 wire 的 round.opponent.guess（按观察者列置换、仅推对手、剥离 memberSlot/roundID）。
 type RoundGuessPayload struct {
 	RoundID    string   `json:"roundId"`
+	MemberID   string   `json:"memberId"`
+	GuessID    string   `json:"guessId"`
 	MatchIndex int      `json:"matchIndex"`
 	RoundIndex int      `json:"roundIndex"`
 	MemberSlot int      `json:"memberSlot"`
@@ -351,12 +425,13 @@ type RoundGuessPayload struct {
 // RoundEndedEventPayload 局结束事件规范形态（入库，最小化）：
 // roundID + winnerSlot + 比分 + answerId；wire 的 answer/boards/result（观察者视角）由投影按快照水合/推导。
 type RoundEndedEventPayload struct {
-	RoundID    string     `json:"roundId"`
-	MatchIndex int        `json:"matchIndex"`
-	RoundIndex int        `json:"roundIndex"`
-	WinnerSlot *int       `json:"winnerSlot"`
-	AnswerID   string     `json:"answerId"`
-	Scores     ScoresView `json:"scores"`
+	RoundID       string     `json:"roundId"`
+	MatchIndex    int        `json:"matchIndex"`
+	RoundIndex    int        `json:"roundIndex"`
+	WinnerSlot    *int       `json:"winnerSlot"`
+	ForfeitedSlot *int       `json:"forfeitedSlot,omitempty"`
+	AnswerID      string     `json:"answerId"`
+	Scores        ScoresView `json:"scores"`
 	// NextStartsAt 下一局 startsAt = 本局 ended_at + INTERMISSION（08 §4.3/§4.7 弹窗倒计时，
 	// 服务端驱动；对局结束/无下一局时仍携带，客户端仅等待 round.started 期间使用）。
 	NextStartsAt *time.Time `json:"nextStartsAt,omitempty"`
@@ -365,10 +440,11 @@ type RoundEndedEventPayload struct {
 // MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；
 // wire 的 result（观察者视角）由投影按 winnerSlot 推导。
 type MatchEndedEventPayload struct {
-	MatchIndex int            `json:"matchIndex"`
-	WinnerSlot *int           `json:"winnerSlot"`
-	Scores     ScoresView     `json:"scores"`
-	Reason     MatchEndReason `json:"reason"`
+	MatchIndex      int            `json:"matchIndex"`
+	WinnerSlot      *int           `json:"winnerSlot"`
+	Scores          ScoresView     `json:"scores"`
+	Reason          MatchEndReason `json:"reason"`
+	RetentionEndsAt time.Time      `json:"retentionEndsAt"`
 }
 
 // ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----

@@ -36,11 +36,11 @@ type Conn struct {
 	member       repo.MultiMember
 	lastSequence int64 // hello 携带的客户端水位（重放起点）
 
-	send      chan []byte
-	closeOnce sync.Once
-	closed    chan struct{}
-	aliveMu   sync.Mutex
-	isAlive   bool
+	send          chan []byte
+	closeOnce     sync.Once
+	closed        chan struct{}
+	aliveMu       sync.Mutex
+	isAlive       bool
 	afterReplaced atomic.Bool // replaced 帧已入队（写出后关闭连接）
 
 	reasonMu    sync.Mutex
@@ -148,18 +148,18 @@ func (c *Conn) replay() error {
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
-		memberSlotByID[m.ID] = m.Slot
+		memberSlotByID[m.ID] = int32(multi.MemberSlot(m))
 	}
 	charCache := map[string]map[string]game.Character{}
 	for _, event := range events {
-		payload, skip, err := multi.ProjectEvent(ctx, c.hub.q, event, c.roomID, c.member, memberSlotByID, charCache)
+		projected, skip, err := multi.ProjectEvent(ctx, c.hub.q, event, c.roomID, c.member, memberSlotByID, charCache)
 		if err != nil || skip {
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		frame, err := envelopeFrame(event, payload)
+		frame, err := envelopeFrame(event, projected)
 		if err != nil {
 			return err
 		}

@@ -77,6 +77,15 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
+	member, err := q.GetMember(ctx, memberID)
+	if err != nil {
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
+		return
+	}
+	if member.Status == string(multi.MemberStatusLeft) {
+		_ = tx.Commit(ctx)
+		return
+	}
 	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
 		ID:         memberID,
 		Status:     string(multi.MemberStatusDisconnected),
@@ -90,11 +99,17 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
+	spectatorCount, err := q.CountSpectators(ctx, roomID)
+	if err != nil {
+		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
+		return
+	}
 	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:      multi.RoomFormat(room.Format),
-		Mode:        multi.MultiplayerMode(room.Mode),
-		TurnSeconds: int(room.TurnSeconds),
-		Members:     multi.MemberViews(members),
+		Format:         multi.RoomFormat(room.Format),
+		Mode:           multi.MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		Members:        multi.MemberViews(members),
+		SpectatorCount: int(spectatorCount),
 	}); err != nil {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
@@ -143,7 +158,7 @@ func (h *Hub) Publish(roomID string) {
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
-		memberSlotByID[m.ID] = m.Slot
+		memberSlotByID[m.ID] = int32(multi.MemberSlot(m))
 	}
 	charCache := map[string]map[string]game.Character{}
 
@@ -152,7 +167,7 @@ func (h *Hub) Publish(roomID string) {
 			if !c.alive() {
 				continue
 			}
-			payload, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
+			projected, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
 			if err != nil {
 				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
 				continue
@@ -160,7 +175,7 @@ func (h *Hub) Publish(roomID string) {
 			if skip {
 				continue
 			}
-			frame, err := envelopeFrame(event, payload)
+			frame, err := envelopeFrame(event, projected)
 			if err != nil {
 				slog.Error("hub publish: marshal event", "room_id", roomID, "sequence", event.Sequence, "error", err)
 				continue
@@ -243,13 +258,13 @@ func (h *Hub) roomEventSeq(roomID string) int64 {
 }
 
 // envelopeFrame 组装事件信封（08 §8.2）。
-func envelopeFrame(event repo.RoomEvent, payload any) ([]byte, error) {
-	payloadBytes, err := json.Marshal(payload)
+func envelopeFrame(event repo.RoomEvent, projected multi.ProjectedEvent) ([]byte, error) {
+	payloadBytes, err := json.Marshal(projected.Payload)
 	if err != nil {
 		return nil, err
 	}
 	return json.Marshal(multi.Envelope{
-		Type:       multi.EventType(event.Type),
+		Type:       projected.Type,
 		EventID:    strconv.FormatInt(event.ID, 10),
 		RoomID:     event.RoomID,
 		Sequence:   event.Sequence,

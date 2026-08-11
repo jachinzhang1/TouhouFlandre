@@ -102,7 +102,8 @@ type MultiMatch struct {
 type MultiMember struct {
 	ID           string             `json:"id"`
 	RoomID       string             `json:"room_id"`
-	Slot         int32              `json:"slot"`
+	Slot         pgtype.Int4        `json:"slot"`
+	Role         string             `json:"role"`
 	DisplayName  string             `json:"display_name"`
 	TokenHash    string             `json:"token_hash"`
 	Status       string             `json:"status"`

@@ -23,6 +23,6 @@ func DefaultTimingConfig() TimingConfig {
 		TurnSeconds:       60 * time.Second,
 		DisconnectGrace:   60 * time.Second,
 		MaxRoundsFactor:   3,
-		FinishedRetention: 30 * time.Minute,
+		FinishedRetention: 10 * time.Minute,
 	}
 }

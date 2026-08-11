@@ -3,6 +3,7 @@
 //   - 对局：countdown→playing、局超时平局（与猜测事务共用结算语义）、
 //     间歇后开下一局（startsAt = 上局 ended_at + INTERMISSION）、3×N 上限判平、宽限期逾期；
 //   - 房间：大厅 TTL 过期关闭、finished 展示期关闭、closed 保留期删除（单条 DELETE CASCADE）。
+//
 // 锁序纪律（§9.2）：所有触碰局/场行的路径统一 局→场→房间，绝不先锁房间。
 package multi
 
@@ -416,24 +417,27 @@ func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, match repo
 	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
 		return err
 	}
+	retentionEndsAt := now.Add(s.cfg.Timing.FinishedRetention)
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
 		ID:        match.RoomID,
 		Status:    string(RoomStatusFinished),
-		ExpiresAt: pgtypeTimestamptz(now.Add(s.cfg.Timing.FinishedRetention)),
+		ExpiresAt: pgtypeTimestamptz(retentionEndsAt),
 	}); err != nil {
 		return err
 	}
 	return AppendEvent(ctx, q, match.RoomID, EventMatchEnded, MatchEndedEventPayload{
-		MatchIndex: int(match.MatchIndex),
-		WinnerSlot: nil,
-		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
-		Reason:     MatchEndReasonRoundCap,
+		MatchIndex:      int(match.MatchIndex),
+		WinnerSlot:      nil,
+		Scores:          ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		Reason:          MatchEndReasonRoundCap,
+		RetentionEndsAt: retentionEndsAt,
 	})
 }
 
 // expireDisconnectedMembers 断线宽限逾期（08 §4.6/§6.2）：
 // lobby：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot；
-// 对局中：判对方胜（reason=disconnect）+ match.ended；finished：房间关闭。
+// 对局中：玩家判对方胜（reason=disconnect）+ match.ended；
+// finished：成员只标记 left，房间等待 retention 到期；观战者任何状态下均只标记 left。
 func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 	members, err := repo.New(s.pool).ListTimedOutMembers(ctx)
 	if err != nil {
@@ -447,6 +451,12 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 			}
 			return err
 		}
+		if IsSpectator(member) {
+			if err := s.markDisconnectedMemberLeft(ctx, room, member); err != nil {
+				return err
+			}
+			continue
+		}
 		switch room.Status {
 		case string(RoomStatusPlaying):
 			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, s.now(), s.cfg.Timing); err != nil {
@@ -457,7 +467,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 				return err
 			}
 		case string(RoomStatusFinished):
-			if err := s.closeFinishedRoom(ctx, room.ID, member); err != nil {
+			if err := s.markDisconnectedMemberLeft(ctx, room, member); err != nil {
 				return err
 			}
 		}
@@ -480,7 +490,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if room.Status != string(RoomStatusLobby) {
 		return tx.Commit(ctx)
 	}
-	if member.Slot == 1 {
+	if MemberSlot(member) == 1 {
 		if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
 			ID:        room.ID,
 			ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
@@ -503,11 +513,16 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
+	spectatorCount, err := q.CountSpectators(ctx, room.ID)
+	if err != nil {
+		return err
+	}
 	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, RoomUpdatedPayload{
-		Format:      RoomFormat(room.Format),
-		Mode:        MultiplayerMode(room.Mode),
-		TurnSeconds: int(room.TurnSeconds),
-		Members:     MemberViews(remaining),
+		Format:         RoomFormat(room.Format),
+		Mode:           MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		Members:        MemberViews(remaining),
+		SpectatorCount: int(spectatorCount),
 	}); err != nil {
 		return err
 	}
@@ -562,41 +577,51 @@ func (s *Sweeper) closeFinishedRoomByMatch(ctx context.Context, match repo.Multi
 	return nil
 }
 
-// closeFinishedRoom 成员在 finished 房间逾期 → 关闭（host → host_left，加入者 → member_left）。
-func (s *Sweeper) closeFinishedRoom(ctx context.Context, roomID string, member repo.MultiMember) error {
+// markDisconnectedMemberLeft 断线宽限逾期后仅移出成员/观战者；finished 房间继续保留到 retention。
+func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.MultiRoom, member repo.MultiMember) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
-	room, err := q.GetRoomForUpdate(ctx, roomID)
+	lockedRoom, err := q.GetRoomForUpdate(ctx, room.ID)
 	if err != nil {
 		return err
 	}
-	if room.Status != string(RoomStatusFinished) {
+	if lockedRoom.Status == string(RoomStatusClosed) {
 		return tx.Commit(ctx)
 	}
-	if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
-		ID:        room.ID,
-		ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
+	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
+		ID:         member.ID,
+		Status:     string(MemberStatusLeft),
+		GraceUntil: pgtype.Timestamptz{},
 	}); err != nil {
 		return err
 	}
-	reason := RoomCloseReasonMemberLeft
-	if member.Slot == 1 {
-		reason = RoomCloseReasonHostLeft
+	players, err := q.ListMembers(ctx, lockedRoom.ID)
+	if err != nil {
+		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomClosed, RoomClosedPayload{Reason: reason}); err != nil {
+	spectatorCount, err := q.CountSpectators(ctx, lockedRoom.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, RoomUpdatedPayload{
+		Format:         RoomFormat(lockedRoom.Format),
+		Mode:           MultiplayerMode(lockedRoom.Mode),
+		TurnSeconds:    int(lockedRoom.TurnSeconds),
+		Members:        MemberViews(players),
+		SpectatorCount: int(spectatorCount),
+	}); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.notify(room.ID)
+	s.notify(lockedRoom.ID)
 	return nil
 }
-
 func (s *Sweeper) closeExpiredLobbies(ctx context.Context) error {
 	rooms, err := repo.New(s.pool).ListExpiredLobbyRooms(ctx)
 	if err != nil {

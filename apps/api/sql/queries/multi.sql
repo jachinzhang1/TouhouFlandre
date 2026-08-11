@@ -39,7 +39,8 @@ active_round AS (
 )
 SELECT jsonb_build_object(
     'room',    (SELECT to_jsonb(mr) FROM multi_room mr WHERE mr.id = $1),
-    'members', (SELECT COALESCE(jsonb_agg(m ORDER BY m.slot), '[]'::jsonb) FROM multi_member m WHERE m.room_id = $1),
+    'members', (SELECT COALESCE(jsonb_agg(m ORDER BY m.slot), '[]'::jsonb) FROM multi_member m WHERE m.room_id = $1 AND m.role = 'player'),
+    'spectatorCount', (SELECT count(*)::int FROM multi_member m WHERE m.room_id = $1 AND m.role = 'spectator' AND m.status <> 'left'),
     'match',   (SELECT to_jsonb(lm) FROM latest_match lm),
     'round',   (SELECT to_jsonb(ar) FROM active_round ar),
     'guesses', (SELECT COALESCE(jsonb_agg(g ORDER BY g.member_id, g.sequence), '[]'::jsonb)
@@ -61,18 +62,29 @@ UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING
 DELETE FROM multi_room WHERE id = $1;
 
 -- name: CreateMember :one
-INSERT INTO multi_member (id, room_id, slot, display_name, token_hash)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
+VALUES ($1, $2, $3::integer, 'player', $4, $5)
+RETURNING *;
+
+-- name: CreateSpectatorMember :one
+INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
+VALUES ($1, $2, NULL, 'spectator', $3, $4)
 RETURNING *;
 
 -- name: GetMemberByTokenHash :one
 SELECT * FROM multi_member WHERE token_hash = $1;
 
+-- name: GetMember :one
+SELECT * FROM multi_member WHERE id = $1;
+
 -- name: ListMembers :many
-SELECT * FROM multi_member WHERE room_id = $1 ORDER BY slot;
+SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY slot;
 
 -- name: ListMembersForRematch :many
-SELECT * FROM multi_member WHERE room_id = $1 AND status <> 'left' ORDER BY slot;
+SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY slot;
+
+-- name: CountSpectators :one
+SELECT count(*)::int FROM multi_member WHERE room_id = $1 AND role = 'spectator' AND status <> 'left';
 
 -- name: DeleteMember :exec
 DELETE FROM multi_member WHERE id = $1;

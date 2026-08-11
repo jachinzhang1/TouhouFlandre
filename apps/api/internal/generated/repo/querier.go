@@ -19,6 +19,7 @@ type Querier interface {
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
+	CountSpectators(ctx context.Context, roomID string) (int32, error)
 	CountSkipsForRoundMember(ctx context.Context, arg CountSkipsForRoundMemberParams) (int64, error)
 	CountTurnsForRound(ctx context.Context, roundID string) (int64, error)
 	CountTurnsForRoundMember(ctx context.Context, arg CountTurnsForRoundMemberParams) (int64, error)
@@ -26,6 +27,7 @@ type Querier interface {
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
+	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error)
@@ -57,6 +59,7 @@ type Querier interface {
 	// 按 (room, match_index) 取场（快照事件水合用）。
 	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
 	GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error)
+	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)

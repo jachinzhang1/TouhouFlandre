@@ -103,6 +103,11 @@ func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCor
 	}
 }
 
+type ProjectedEvent struct {
+	Type    EventType
+	Payload any
+}
+
 // ProjectEvent 按观察者投影单个事件为 wire 形状（快照/重放/实时三路径共用）。
 // - round.opponent.guess：仅对手可见（memberSlot == observer 跳过）、列置换、剥离内部字段；
 // - round.ended：result 按观察者推导 + 答案与双方完整棋盘水合（按快照）；
@@ -110,93 +115,108 @@ func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCor
 // - 其余事件原样返回（payload map）。
 // charsCache 跨事件共享角色索引（避免重复读快照）；memberSlotByID 用于棋盘按 slot 分组。
 func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, roomID string,
-	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (any, bool, error) {
+	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, bool, error) {
 
 	switch EventType(event.Type) {
 	case EventRoundOpponentGuess:
 		var payload RoundGuessPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
-		if payload.MemberSlot == int(observer.Slot) {
-			return nil, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
+		if IsSpectator(observer) {
+			projected, err := projectSpectatorGuess(ctx, q, roomID, payload, memberSlotByID, charsCache)
+			return projected, false, err
+		}
+		if payload.MemberSlot == MemberSlot(observer) {
+			return ProjectedEvent{}, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
 		}
 		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		fields := FieldsForMatch(match)
 		visibleStatuses := StatusesForFields(payload.Statuses, fields)
 		perm := ColumnPermutation(payload.RoundID, observer.ID, len(fields))
-		return RoundOpponentGuessPayload{
-			MatchIndex: payload.MatchIndex,
-			RoundIndex: payload.RoundIndex,
-			RowIndex:   payload.RowIndex,
-			Statuses:   PermuteStatuses(visibleStatuses, perm),
+		return ProjectedEvent{
+			Type: EventRoundOpponentGuess,
+			Payload: RoundOpponentGuessPayload{
+				MatchIndex: payload.MatchIndex,
+				RoundIndex: payload.RoundIndex,
+				RowIndex:   payload.RowIndex,
+				Statuses:   PermuteStatuses(visibleStatuses, perm),
+			},
 		}, false, nil
 
 	case EventRoundEnded:
 		var payload RoundEndedEventPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		round, err := q.GetRound(ctx, payload.RoundID)
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		chars, err := charactersForVersionCached(ctx, q, match.CatalogVersion, charsCache)
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		fields := FieldsForMatch(match)
 		guesses, err := q.ListGuessesForRound(ctx, round.ID)
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		turns, err := q.ListTurnsForRound(ctx, round.ID)
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		relayRows, err := HydrateRelayTurnRowsWithFields(turns, chars, memberSlotByID, fields)
 		if err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
 		answer := chars[payload.AnswerID]
-		return RoundEndedPayload{
-			MatchIndex:   payload.MatchIndex,
-			RoundIndex:   payload.RoundIndex,
-			Result:       resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-			WinnerSlot:   payload.WinnerSlot,
-			Answer:       AnswerViewForCharacter(answer),
-			Boards:       hydrateBoards(guesses, chars, memberSlotByID, fields),
-			Turns:        relayRows,
-			Scores:       payload.Scores,
-			NextStartsAt: payload.NextStartsAt,
+		return ProjectedEvent{
+			Type: EventRoundEnded,
+			Payload: RoundEndedPayload{
+				MatchIndex:    payload.MatchIndex,
+				RoundIndex:    payload.RoundIndex,
+				Result:        resultForObserver(payload.WinnerSlot, MemberSlot(observer)),
+				WinnerSlot:    payload.WinnerSlot,
+				ForfeitedSlot: payload.ForfeitedSlot,
+				Answer:        AnswerViewForCharacter(answer),
+				Boards:        hydrateBoards(guesses, chars, memberSlotByID, fields),
+				Turns:         relayRows,
+				Scores:        payload.Scores,
+				NextStartsAt:  payload.NextStartsAt,
+			},
 		}, false, nil
 
 	case EventMatchEnded:
 		var payload MatchEndedEventPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
-		return MatchEndedPayload{
-			MatchIndex: payload.MatchIndex,
-			Result:     resultForObserver(payload.WinnerSlot, int(observer.Slot)),
-			WinnerSlot: payload.WinnerSlot,
-			Scores:     payload.Scores,
-			Reason:     payload.Reason,
+		return ProjectedEvent{
+			Type: EventMatchEnded,
+			Payload: MatchEndedPayload{
+				MatchIndex:      payload.MatchIndex,
+				Result:          resultForObserver(payload.WinnerSlot, MemberSlot(observer)),
+				WinnerSlot:      payload.WinnerSlot,
+				Scores:          payload.Scores,
+				Reason:          payload.Reason,
+				RetentionEndsAt: payload.RetentionEndsAt,
+			},
 		}, false, nil
 
 	default:
 		var payload map[string]any
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
-			return nil, false, err
+			return ProjectedEvent{}, false, err
 		}
-		return payload, false, nil
+		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
 	}
 }
 
@@ -210,6 +230,57 @@ func AnswerViewForCharacter(answer game.Character) AnswerView {
 		ID: answer.ID, Name: answer.Names.ZhHans, AvatarURL: answer.AvatarURL,
 		WorkID: answer.FirstAppearance.WorkID, WorkTitle: answer.FirstAppearance.WorkTitle, WorkCode: workCode,
 	}
+}
+
+func projectSpectatorGuess(ctx context.Context, q *repo.Queries, roomID string, payload RoundGuessPayload,
+	memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, error) {
+	match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
+	if err != nil {
+		return ProjectedEvent{}, err
+	}
+	round, err := q.GetRound(ctx, payload.RoundID)
+	if err != nil {
+		return ProjectedEvent{}, err
+	}
+	guessID := payload.GuessID
+	statuses := append([]string{}, payload.Statuses...)
+	isCorrect := guessID != "" && guessID == round.AnswerID
+	if guessID == "" {
+		guesses, err := q.ListGuessesForRound(ctx, payload.RoundID)
+		if err != nil {
+			return ProjectedEvent{}, err
+		}
+		for _, guess := range guesses {
+			if int(memberSlotByID[guess.MemberID]) != payload.MemberSlot || int(guess.Sequence) != payload.RowIndex {
+				continue
+			}
+			guessID = guess.GuessID
+			isCorrect = guess.IsCorrect
+			if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
+				return ProjectedEvent{}, err
+			}
+			break
+		}
+	}
+	chars, err := charactersForVersionCached(ctx, q, match.CatalogVersion, charsCache)
+	if err != nil {
+		return ProjectedEvent{}, err
+	}
+	guessChar, ok := chars[guessID]
+	if !ok {
+		return ProjectedEvent{}, fmt.Errorf("spectator guess character missing: %s", guessID)
+	}
+	fields := FieldsForMatch(match)
+	return ProjectedEvent{
+		Type: EventRoundSpectatorGuess,
+		Payload: RoundSpectatorGuessPayload{
+			MatchIndex: payload.MatchIndex,
+			RoundIndex: payload.RoundIndex,
+			MemberSlot: payload.MemberSlot,
+			RowIndex:   payload.RowIndex,
+			Guess:      HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields),
+		},
+	}, nil
 }
 
 // charactersForVersionCached 读取并缓存版本角色索引。

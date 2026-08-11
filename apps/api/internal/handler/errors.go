@@ -36,6 +36,7 @@ const (
 	codeRoomFull            openapi.ErrorResponseCode = "ROOM_FULL"
 	codeRoomClosed          openapi.ErrorResponseCode = "ROOM_CLOSED"
 	codeGuestUnauthorized   openapi.ErrorResponseCode = "GUEST_UNAUTHORIZED"
+	codeSpectatorReadOnly   openapi.ErrorResponseCode = "SPECTATOR_READ_ONLY"
 	codeInvalidFormat       openapi.ErrorResponseCode = "INVALID_FORMAT"
 	codeMatchAlreadyStarted openapi.ErrorResponseCode = "MATCH_ALREADY_STARTED"
 	codeRematchNotAvailable openapi.ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
