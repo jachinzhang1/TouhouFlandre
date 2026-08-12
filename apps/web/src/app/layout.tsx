@@ -14,6 +14,9 @@ export const metadata: Metadata = {
       { url: "/favicon.png", type: "image/png" },
     ],
   },
+  other: {
+    "darkreader-lock": "TouhouFlandre provides native color themes",
+  },
 };
 
 export const viewport: Viewport = {
@@ -59,11 +62,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh-Hans"
-      data-scroll-behavior="smooth"
-      suppressHydrationWarning
-    >
+    <html lang="zh-Hans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="max-[680px]:pb-[68px]">
         <Script
           id="appearance-bootstrap"

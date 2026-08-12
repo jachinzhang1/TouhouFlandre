@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  CalendarDays,
-  Home,
-  Megaphone,
-  Search,
-} from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
+import { BarChart3, CalendarDays, Home, Megaphone, Search } from "lucide-react";
 import { useAnnouncementUnreadCount } from "../hooks/useAnnouncementUnreadCount";
 import { YinYangMark } from "./YinYangMark";
 
@@ -49,10 +44,79 @@ const NAV_ITEMS: {
 export function SiteNav() {
   const pathname = usePathname();
   const unreadAnnouncements = useAnnouncementUnreadCount();
+  const navLinksRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const navLinks = navLinksRef.current;
+    if (!navLinks) return;
+    let animationFrame = 0;
+    let unfoldTimer = 0;
+
+    const updateIndicator = () => {
+      const activeLink = navLinks.querySelector<HTMLElement>(
+        '.nav-link[aria-current="page"]',
+      );
+      if (!activeLink) {
+        delete navLinks.dataset.indicatorReady;
+        return;
+      }
+
+      navLinks.style.setProperty(
+        "--nav-active-x",
+        `${activeLink.offsetLeft}px`,
+      );
+      navLinks.style.setProperty("--nav-active-y", `${activeLink.offsetTop}px`);
+      navLinks.style.setProperty(
+        "--nav-active-width",
+        `${activeLink.offsetWidth}px`,
+      );
+      navLinks.style.setProperty(
+        "--nav-active-height",
+        `${activeLink.offsetHeight}px`,
+      );
+      navLinks.dataset.indicatorReady = "true";
+      if (navLinks.dataset.indicatorInitialized !== "true") {
+        navLinks.dataset.indicatorInitialized = "true";
+      }
+      if (
+        navLinks.dataset.indicatorAnimated !== "true" &&
+        animationFrame === 0
+      ) {
+        animationFrame = window.requestAnimationFrame(() => {
+          navLinks.dataset.indicatorAnimated = "true";
+          animationFrame = 0;
+        });
+      }
+    };
+
+    updateIndicator();
+    if (navLinks.dataset.indicatorAnimated === "true") {
+      navLinks.dataset.indicatorMoving = "true";
+      unfoldTimer = window.setTimeout(() => {
+        delete navLinks.dataset.indicatorMoving;
+      }, 280);
+    }
+    window.addEventListener("resize", updateIndicator);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateIndicator);
+    resizeObserver?.observe(navLinks);
+    for (const link of navLinks.querySelectorAll(".nav-link")) {
+      resizeObserver?.observe(link);
+    }
+
+    return () => {
+      window.clearTimeout(unfoldTimer);
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", updateIndicator);
+      resizeObserver?.disconnect();
+    };
+  }, [pathname]);
 
   return (
     <nav
-      className="relative z-20 flex h-[76px] items-center justify-between gap-7 border-b border-line max-[680px]:mx-[14px] max-[680px]:h-[62px]"
+      className="site-nav relative z-20 flex h-[76px] items-center justify-between gap-7 border-b border-line max-[680px]:h-[62px]"
       aria-label="站点导航"
     >
       <Link
@@ -60,15 +124,26 @@ export function SiteNav() {
         href="/"
         aria-label="返回首页"
       >
-        <span className="inline-flex size-[38px] items-center justify-center rounded-[4px] bg-vermilion text-[var(--accent-contrast)] shadow-[4px_4px_0_var(--brand-shadow)] max-[680px]:size-[34px]">
+        <span className="brand-paper-mark folded-paper folded-paper-red inline-flex size-[38px] items-center justify-center text-[var(--accent-contrast)] max-[680px]:size-[34px]">
           <YinYangMark className="size-[23px]" />
         </span>
-        <span className="grid gap-px">
-          <strong className="font-brand text-[1.05rem]">TouhouFlandre</strong>
-          <small className="text-[0.68rem] text-ink-soft">东方芙一把</small>
+        <span className="grid gap-0 leading-none">
+          <strong className="font-brand text-[1.16rem] leading-none">
+            东方芙一把
+          </strong>
+          <small className="font-brand text-[0.7rem] leading-none text-ink-soft">
+            TouhouFlandre
+          </small>
         </span>
       </Link>
-      <div className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--mobile-nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[14px]">
+      <div
+        ref={navLinksRef}
+        className="nav-links flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[24px]"
+      >
+        <span
+          className="nav-active-indicator folded-paper folded-paper-red"
+          aria-hidden="true"
+        />
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
@@ -83,7 +158,7 @@ export function SiteNav() {
               aria-label={hasUnread ? `${item.label}，有未读公告` : item.label}
             >
               <Icon size={16} aria-hidden="true" />
-              <span>{item.label}</span>
+              <span className="nav-link-label">{item.label}</span>
               {hasUnread ? (
                 <span
                   className="nav-unread-dot"

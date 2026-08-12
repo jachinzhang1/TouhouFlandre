@@ -1,7 +1,7 @@
 /* Tailwind v4 完整入口（含 preflight）。 */
 @import "tailwindcss";
 
-/* Phase 4 D5: Tailwind v4 theme tokens, same values as styles.css :root */
+/* Shared design tokens exposed to Tailwind utilities. */
 @theme {
   --color-ink: #17231f;
   --color-ink-soft: #52615b;
@@ -78,10 +78,9 @@
   --amber-soft: #fbf1d8;
   --amber-strong: #775014;
   --amber-border: #e5cc92;
-  --brand-shadow: #e1c1bb;
   --nav-text: #53625d;
   --nav-hover-bg: rgba(255, 255, 255, 0.66);
-  --mobile-nav-bg: rgba(251, 252, 251, 0.96);
+  --nav-bg: rgba(251, 252, 251, 0.78);
   --mobile-nav-shadow: 0 -8px 24px rgba(25, 46, 39, 0.08);
   --surface: #ffffff;
   --surface-hover: #ffffff;
@@ -173,10 +172,9 @@ html[data-theme-mode="dark"] {
   --amber-soft: #42331e;
   --amber-strong: #f2c071;
   --amber-border: #6a5026;
-  --brand-shadow: #4b302e;
   --nav-text: #a5b4ae;
   --nav-hover-bg: rgba(255, 255, 255, 0.07);
-  --mobile-nav-bg: rgba(16, 22, 20, 0.94);
+  --nav-bg: rgba(16, 22, 20, 0.74);
   --mobile-nav-shadow: 0 -10px 28px rgba(0, 0, 0, 0.34);
   --surface: #1a2421;
   --surface-hover: #24302c;
@@ -362,12 +360,7 @@ html.theme-transitioning *::before,
 html.theme-transitioning *::after {
   transition-duration: 240ms;
   transition-property:
-    color,
-    background-color,
-    border-color,
-    box-shadow,
-    fill,
-    stroke;
+    color, background-color, border-color, box-shadow, fill, stroke;
   transition-timing-function: ease;
 }
 
@@ -502,18 +495,28 @@ input:focus-visible {
   border-radius: 4px;
 }
 
-.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+.ant-picker-dropdown
+  .ant-picker-cell-in-view.ant-picker-cell-today
+  .ant-picker-cell-inner::before {
   border-color: var(--vermilion);
 }
 
-.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
-.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
-.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+.ant-picker-dropdown
+  .ant-picker-cell-in-view.ant-picker-cell-selected
+  .ant-picker-cell-inner,
+.ant-picker-dropdown
+  .ant-picker-cell-in-view.ant-picker-cell-range-start
+  .ant-picker-cell-inner,
+.ant-picker-dropdown
+  .ant-picker-cell-in-view.ant-picker-cell-range-end
+  .ant-picker-cell-inner {
   color: var(--accent-contrast);
   background: var(--vermilion);
 }
 
-.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-hover .ant-picker-cell-inner,
+.ant-picker-dropdown
+  .ant-picker-cell-in-view.ant-picker-cell-hover
+  .ant-picker-cell-inner,
 .ant-picker-dropdown .ant-picker-cell-in-view .ant-picker-cell-inner:hover {
   background: var(--accent-soft);
 }
@@ -535,7 +538,6 @@ input:focus-visible {
   background: var(--vermilion);
 }
 
-.brand-button,
 .nav-link {
   display: inline-flex;
   align-items: center;
@@ -544,48 +546,133 @@ input:focus-visible {
   background: transparent;
 }
 
-.brand-button {
-  gap: 11px;
-  padding: 0;
-  text-align: left;
-  white-space: nowrap;
+.site-nav,
+.site-footer {
+  position: relative;
+  left: 50%;
+  width: 100dvw;
+  padding-inline: max(20px, calc((100dvw - 1240px) / 2));
+  background: var(--nav-bg);
+  transform: translateX(-50%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.18);
+  backdrop-filter: blur(24px) saturate(1.18);
 }
 
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 4px;
-  color: var(--accent-contrast);
-  background: var(--vermilion);
-  box-shadow: 4px 4px 0 var(--brand-shadow);
+@media (min-width: 681px) {
+  .site-nav,
+  .site-footer {
+    background: var(--nav-bg);
+  }
 }
 
-.brand-copy {
-  display: grid;
-  gap: 1px;
+.folded-paper {
+  --paper-fold-size: 12px;
+  --paper-fold-shade: var(--surface-strong);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--paper-fold-size)),
+    calc(100% - var(--paper-fold-size)) 100%,
+    0 100%
+  );
 }
 
-.brand-copy strong {
-  font-family: "Iowan Old Style", "Noto Serif SC", "Songti SC", serif;
-  font-size: 1.05rem;
+.folded-paper::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--paper-fold-size);
+  height: var(--paper-fold-size);
+  background: var(--paper-fold-shade);
+  content: "";
+  pointer-events: none;
+  transform-origin: right bottom;
+  transition:
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(0.22, 0.8, 0.25, 1);
 }
 
-.brand-copy small {
-  color: var(--ink-soft);
-  font-size: 0.68rem;
+.folded-paper-red {
+  --paper-fold-shade: color-mix(
+    in srgb,
+    var(--vermilion-dark) 58%,
+    var(--surface)
+  );
+  background:
+    repeating-linear-gradient(
+      12deg,
+      transparent 0,
+      transparent 5px,
+      rgba(255, 255, 255, 0.045) 5px,
+      rgba(255, 255, 255, 0.045) 6px,
+      transparent 6px,
+      transparent 13px
+    ),
+    repeating-linear-gradient(
+      101deg,
+      transparent 0,
+      transparent 7px,
+      rgba(74, 13, 14, 0.045) 7px,
+      rgba(74, 13, 14, 0.045) 8px,
+      transparent 8px,
+      transparent 17px
+    ),
+    var(--vermilion);
+}
+
+.brand-paper-mark {
+  --paper-fold-size: 8px;
+  position: relative;
+  filter: drop-shadow(4px 4px 0 var(--accent-shadow-strong));
 }
 
 .nav-links {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 3px;
 }
 
+.nav-active-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: var(--nav-active-width, 0);
+  height: var(--nav-active-height, 0);
+  --paper-fold-size: 10px;
+  filter: drop-shadow(4px 4px 0 var(--accent-shadow-strong));
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(var(--nav-active-x, 0), var(--nav-active-y, 0), 0);
+  transition: none;
+}
+.nav-links[data-indicator-animated="true"] .nav-active-indicator {
+  transition:
+    width 260ms cubic-bezier(0.22, 0.8, 0.25, 1),
+    height 260ms cubic-bezier(0.22, 0.8, 0.25, 1),
+    clip-path 220ms cubic-bezier(0.22, 0.8, 0.25, 1),
+    transform 260ms cubic-bezier(0.22, 0.8, 0.25, 1),
+    opacity 120ms ease;
+}
+
+.nav-links[data-indicator-ready="true"] .nav-active-indicator {
+  opacity: 1;
+}
+.nav-links[data-indicator-moving="true"] .nav-active-indicator,
+.nav-links:has(.nav-link.active:hover) .nav-active-indicator {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
+}
+
+.nav-links[data-indicator-moving="true"] .nav-active-indicator::after,
+.nav-links:has(.nav-link.active:hover) .nav-active-indicator::after {
+  opacity: 0;
+  transform: scale(0);
+}
+
 .nav-link {
   position: relative;
+  z-index: 1;
   gap: 7px;
   min-height: 40px;
   padding: 0 12px;
@@ -595,33 +682,24 @@ input:focus-visible {
   font-weight: 700;
   transition:
     color 160ms ease,
-    background 160ms ease;
+    background 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.nav-link::after {
-  position: absolute;
-  right: 12px;
-  bottom: 1px;
-  left: 12px;
-  height: 2px;
-  background: var(--vermilion);
-  content: "";
-  opacity: 0;
-  transform: scaleX(0.3);
-  transition:
-    opacity 160ms ease,
-    transform 160ms ease;
-}
-
-.nav-link:hover,
-.nav-link.active {
+.nav-link:hover {
   color: var(--vermilion-dark);
   background: var(--nav-hover-bg);
 }
 
-.nav-link.active::after {
-  opacity: 1;
-  transform: scaleX(1);
+.nav-link.active {
+  color: var(--accent-contrast);
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-link:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .nav-unread-dot {
@@ -631,10 +709,17 @@ input:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #e5484d;
+  background: var(--feedback-higher-mark);
   box-shadow:
-    0 0 0 3px var(--paper),
-    0 0 0 6px rgba(229, 72, 77, 0.14);
+    0 0 0 3px var(--nav-bg),
+    0 0 0 6px var(--feedback-higher-bg);
+}
+
+.nav-link.active .nav-unread-dot {
+  background: var(--accent-contrast);
+  box-shadow:
+    0 0 0 2px var(--vermilion),
+    0 0 0 4px color-mix(in srgb, var(--accent-contrast) 58%, transparent);
 }
 
 .announcement-markdown {
@@ -749,8 +834,6 @@ input:focus-visible {
   font-weight: 900;
 }
 
-.hero-content h1,
-.page-heading h1,
 .topbar h1,
 .result-panel h2 {
   font-family: "Iowan Old Style", "Noto Serif SC", "Songti SC", serif;
@@ -760,8 +843,7 @@ input:focus-visible {
 
 .primary-button,
 .secondary-button,
-.icon-button,
-.mode-tab {
+.icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -879,6 +961,7 @@ input:focus-visible {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface-glass);
+
   box-shadow: var(--shadow-lg);
   opacity: 0;
   pointer-events: none;
@@ -890,6 +973,11 @@ input:focus-visible {
     transform 150ms ease,
     visibility 150ms ease;
   transition-delay: 260ms;
+}
+@media (min-width: 901px) {
+  body:has(.home-hero) main {
+    padding-bottom: 0;
+  }
 }
 
 .appearance-switcher:hover .appearance-palette,
@@ -935,6 +1023,10 @@ html[data-theme-mode="dark"] .appearance-swatch {
 .home-hero {
   background-color: var(--hero-bg);
   background-image: url("/hero-touhou-collage.jpg");
+  background-image: image-set(
+    url("/hero-touhou-collage-desktop.webp") type("image/webp"),
+    url("/hero-touhou-collage.jpg") type("image/jpeg")
+  );
   background-position: 48% top;
   background-size: cover;
 }
@@ -947,52 +1039,95 @@ html[data-theme-mode="dark"] .appearance-swatch {
   content: "";
   pointer-events: none;
 }
-
-.home-quickbar {
+.paper-shortcut {
+  position: relative;
+  --paper-fold-size: 24px;
+  --paper-fold-shade: var(--surface-strong);
+  isolation: isolate;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
-}
-
-.quick-link {
-  display: grid;
-  grid-template-columns: 42px 1fr auto;
-  gap: 13px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 10px;
   min-width: 0;
-  min-height: 112px;
-  padding: 20px 24px;
+  padding: 34px 48px 24px 22px;
+  overflow: hidden;
   border: 0;
-  border-right: 1px solid var(--line);
   color: var(--ink);
-  text-align: left;
-  background: transparent;
+  text-decoration: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 28px,
+      color-mix(in srgb, var(--line) 38%, transparent) 29px
+    ),
+    color-mix(in srgb, var(--surface) 94%, transparent);
+  box-shadow: 0 2px 10px rgba(25, 46, 39, 0.08);
   transition:
-    color 160ms ease,
-    background 160ms ease;
+    clip-path 220ms cubic-bezier(0.22, 0.8, 0.25, 1),
+    color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.quick-link:last-child {
-  border-right: 0;
+.paper-shortcut::after {
+  opacity: 1;
+  transform-origin: right bottom;
+  transition:
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(0.22, 0.8, 0.25, 1);
 }
 
-.quick-link:hover {
+.paper-shortcut:hover {
   color: var(--vermilion-dark);
-  background: var(--surface-hover);
+  background-color: var(--surface-hover);
+  box-shadow: 0 3px 14px rgba(25, 46, 39, 0.11);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
 }
 
-.quick-link > svg {
-  transition: transform 160ms ease;
+.paper-shortcut:hover::after {
+  opacity: 0;
+  transform: scale(0);
 }
 
-.quick-link:hover > svg {
-  transform: translateX(3px);
+.paper-shortcut:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
 }
 
-.quick-icon,
-.mode-icon,
-.placeholder-icon,
+.paper-shortcut-featured {
+  --paper-fold-shade: color-mix(in srgb, var(--vermilion-dark) 62%, #8d8d8d);
+  align-content: center;
+  gap: 18px;
+  padding: 36px 56px 30px 30px;
+  color: var(--accent-contrast);
+  background:
+    repeating-linear-gradient(
+      12deg,
+      transparent 0,
+      transparent 5px,
+      rgba(255, 255, 255, 0.045) 5px,
+      rgba(255, 255, 255, 0.045) 6px,
+      transparent 6px,
+      transparent 13px
+    ),
+    repeating-linear-gradient(
+      101deg,
+      transparent 0,
+      transparent 7px,
+      rgba(74, 13, 14, 0.045) 7px,
+      rgba(74, 13, 14, 0.045) 8px,
+      transparent 8px,
+      transparent 17px
+    ),
+    var(--vermilion);
+}
+
+.paper-shortcut-featured:hover {
+  color: var(--accent-contrast);
+  background-color: var(--vermilion-dark);
+}
+
 .game-emblem {
   display: inline-flex;
   align-items: center;
@@ -1000,36 +1135,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
   flex: 0 0 auto;
   color: var(--vermilion);
   background: var(--vermilion-soft);
-}
-
-.quick-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 4px;
-}
-
-.quick-copy {
-  display: grid;
-  min-width: 0;
-}
-
-.quick-copy small {
-  color: var(--ink-soft);
-  font-size: 0.7rem;
-}
-
-.quick-copy strong {
-  margin-top: 2px;
-  font-size: 1rem;
-}
-
-.quick-copy > span {
-  margin-top: 3px;
-  overflow: hidden;
-  color: var(--ink-soft);
-  font-size: 0.76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .kicker {
@@ -1040,7 +1145,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
   letter-spacing: 0.12em;
 }
 
-.page-heading h1,
 .topbar h1,
 .result-panel h2 {
   margin: 0;
@@ -1277,23 +1381,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
 .topbar h1 {
   font-size: 1.8rem;
   font-weight: 800;
-}
-
-.mode-tab {
-  padding: 0 14px;
-  color: var(--topbar-soft);
-  border-color: var(--topbar-control-border);
-  background: var(--topbar-control-bg);
-}
-
-.mode-tab:hover {
-  background: var(--topbar-control-hover-bg);
-}
-
-.mode-tab.active {
-  color: var(--topbar-active-text);
-  border-color: var(--topbar-active-bg);
-  background: var(--topbar-active-bg);
 }
 
 .mode-option {
@@ -2056,7 +2143,12 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
 @media (max-width: 900px) {
   .home-hero {
-    background-position: 47% top;
+    background-image: url("/hero-touhou-collage.jpg");
+    background-image: image-set(
+      url("/hero-touhou-collage-tablet.webp") type("image/webp"),
+      url("/hero-touhou-collage.jpg") type("image/jpeg")
+    );
+    background-position: center top;
   }
 
   .home-hero::before {
@@ -2067,24 +2159,26 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
     padding: 0 8px;
   }
 
-  .nav-link span {
+  .nav-link-label {
     display: none;
   }
+}
 
-  .quick-link {
-    min-height: 86px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .quick-link:last-child {
-    border-bottom: 0;
+@media (max-width: 680px) {
+  .site-nav,
+  .site-footer {
+    padding-inline: 14px;
   }
 }
 
 @media (max-width: 680px) {
   .home-hero {
-    background-position: 46% top;
+    background-image: url("/hero-touhou-collage.jpg");
+    background-image: image-set(
+      url("/hero-touhou-collage-mobile.webp") type("image/webp"),
+      url("/hero-touhou-collage.jpg") type("image/jpeg")
+    );
+    background-position: center top;
   }
 
   .home-hero::before {
@@ -2107,15 +2201,8 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
     font-size: 0.64rem;
   }
 
-  .nav-link span {
+  .nav-link-label {
     display: block;
-  }
-
-  .nav-link::after {
-    top: 1px;
-    right: 16px;
-    bottom: auto;
-    left: 16px;
   }
 
   .catalog-controls {
@@ -2131,10 +2218,6 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   .catalog-segment-button {
     min-width: 0;
     padding: 0 7px;
-  }
-
-  .quick-link {
-    padding: 16px 18px;
   }
 
   .game-surface {
@@ -2157,11 +2240,6 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
   .topbar h1 {
     font-size: 1.45rem;
-  }
-
-  .mode-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .status-strip {
@@ -2277,9 +2355,4 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-/* ── preflight 兼容覆盖：恢复 styles.css 语义类的旧基线（无 preflight 时代）──
-   2026-08-05 收敛到标准 Tailwind（含 preflight）时加入；新代码无需依赖此段。 */
-html {
-  line-height: normal;
 }

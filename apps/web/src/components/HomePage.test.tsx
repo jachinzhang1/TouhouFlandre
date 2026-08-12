@@ -35,7 +35,10 @@ describe("HomePage", () => {
     vi.mocked(api.catalog).mockResolvedValue(catalogSummary as never);
     render(<HomePage />);
     expect(await screen.findByText("29")).toBeTruthy();
-    expect(screen.getByText("开始每日题")).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: /每日题/ }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("开始每日题")).toBeNull();
   });
 
   it("falls back to placeholder when catalog request fails", async () => {

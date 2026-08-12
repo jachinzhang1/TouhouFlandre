@@ -1,6 +1,6 @@
 "use client";
 
-import { Github } from "lucide-react";
+import { Github, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
@@ -37,27 +37,29 @@ export function SiteFooter() {
   }, []);
 
   return (
-    <footer className="flex min-h-[66px] items-center justify-between gap-4 border-t border-line text-[0.72rem] text-[var(--subtle-text)]">
-      <span>
+    <footer className="site-footer flex min-h-[66px] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line bg-[var(--surface-glass)] py-3 text-[0.72rem] text-[var(--subtle-text)] backdrop-blur-xl">
+      <span className="min-w-0 basis-96 grow break-words">
         TouhouFlandre · 非官方东方 Project 同人项目 · 访问数{" "}
         {visitCount === null ? "--" : visitCount.toLocaleString("zh-CN")}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
         <Link
-          className="inline-flex size-5 items-center justify-center text-[var(--neutral-text)] no-underline transition-colors hover:text-vermilion"
+          className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-[4px] px-2 text-[var(--neutral-text)] no-underline transition-[color,background-color] duration-150 hover:bg-vermilion-soft hover:text-vermilion focus-visible:outline-[3px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
           href="https://github.com/jachinzhang1/TouhouFlandre"
           aria-label="GitHub 仓库"
           title="GitHub 仓库"
           target="_blank"
           rel="noreferrer"
         >
-          <Github size={18} aria-hidden="true" />
+          <Github size={16} aria-hidden="true" />
+          <span>开源托管于GitHub</span>
         </Link>
         <Link
-          className="py-[5px] text-[var(--neutral-text)] no-underline hover:text-vermilion"
+          className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-[4px] px-2 text-[var(--neutral-text)] no-underline transition-[color,background-color] duration-150 hover:bg-vermilion-soft hover:text-vermilion focus-visible:outline-[3px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
           href="/links"
         >
-          友链与鸣谢
+          <LinkIcon size={16} aria-hidden="true" />
+          <span>友链与鸣谢</span>
         </Link>
       </div>
     </footer>
