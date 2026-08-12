@@ -1127,18 +1127,14 @@ input:focus-visible {
 }
 
 .appearance-fold-flap {
-  clip-path: polygon(78% 100%, 100% 78%, 100% 100%);
+  clip-path: polygon(69% 97%, 97% 69%, 100% 72%, 72% 100%);
   z-index: 1;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 56%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 58%),
     var(--surface-strong);
-  transform-style: preserve-3d;
   pointer-events: none;
-  transition:
-    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1),
-    opacity 180ms ease,
-    transform 280ms cubic-bezier(0.77, 0, 0.175, 1);
-  will-change: clip-path, transform;
+  transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
+  will-change: clip-path;
 }
 
 .appearance-toggle {
@@ -1195,10 +1191,10 @@ input:focus-visible {
 
 .appearance-swatch {
   position: absolute;
-  right: calc(18px + (5 - var(--swatch-index)) * 22px);
-  bottom: calc(24px + var(--swatch-index) * 22px);
-  width: 30px;
-  height: 30px;
+  right: calc(1px + (5 - var(--swatch-index)) * 30px);
+  bottom: calc(1px + var(--swatch-index) * 30px);
+  width: 24px;
+  height: 24px;
   border: 2px solid var(--surface);
   border-radius: 50%;
   background: var(--swatch-light);
@@ -1210,14 +1206,12 @@ input:focus-visible {
 }
 
 .appearance-switcher[data-open="true"] .appearance-corner-surface,
-.appearance-switcher[data-open="true"] .appearance-fold-flap,
 .appearance-switcher[data-open="true"] .appearance-palette {
-  clip-path: polygon(32% 100%, 100% 32%, 100% 100%);
+  clip-path: polygon(37% 100%, 100% 37%, 100% 100%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-fold-flap {
-  opacity: 0.84;
-  transform: perspective(420px) rotateY(-68deg);
+  clip-path: polygon(34% 97%, 97% 34%, 100% 37%, 37% 100%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-swatch {
@@ -1234,14 +1228,12 @@ input:focus-visible {
   }
 
   .appearance-switcher:hover .appearance-corner-surface,
-  .appearance-switcher:hover .appearance-fold-flap,
   .appearance-switcher:hover .appearance-palette {
-    clip-path: polygon(32% 100%, 100% 32%, 100% 100%);
+    clip-path: polygon(37% 100%, 100% 37%, 100% 100%);
   }
 
   .appearance-switcher:hover .appearance-fold-flap {
-    opacity: 0.84;
-    transform: perspective(420px) rotateY(-68deg);
+    clip-path: polygon(34% 97%, 97% 34%, 100% 37%, 37% 100%);
   }
 
   .appearance-switcher:hover .appearance-swatch {
