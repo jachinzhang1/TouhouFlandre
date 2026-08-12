@@ -123,37 +123,19 @@ function PaperShortcut({
       href={href}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <span
-          className={`inline-flex shrink-0 items-center justify-center ${
-            featured
-              ? "size-14 bg-white/15 text-white"
-              : "size-10 border border-[var(--accent-hover-border)] bg-vermilion-soft text-vermilion"
-          }`}
-        >
-          <Icon size={featured ? 25 : 19} aria-hidden="true" />
+        <span className="paper-shortcut-icon inline-flex size-12 shrink-0 items-center justify-center border border-[var(--accent-hover-border)] bg-vermilion-soft text-vermilion">
+          <Icon size={22} aria-hidden="true" />
         </span>
-        <strong
-          className={`font-brand leading-tight ${
-            featured ? "text-[2rem] text-white" : "text-[1.12rem] text-ink"
-          }`}
-        >
+        <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight text-ink">
           {title}
         </strong>
       </span>
-      <span
-        className={
-          featured
-            ? "max-w-[24ch] text-sm leading-7 text-white/85"
-            : "text-xs leading-5 text-ink-soft"
-        }
-      >
+      <span className="paper-shortcut-description text-sm leading-6 text-ink-soft">
         {text}
       </span>
       <ArrowRight
-        className={`absolute right-6 bottom-6 transition-transform duration-180 group-hover:translate-x-1 ${
-          featured ? "text-white" : "text-vermilion"
-        }`}
-        size={featured ? 21 : 18}
+        className="paper-shortcut-arrow absolute right-6 bottom-6 text-vermilion transition-transform duration-180 group-hover:translate-x-1"
+        size={19}
         aria-hidden="true"
       />
     </Link>

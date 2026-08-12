@@ -1131,10 +1131,10 @@ html[data-theme-mode="dark"] .appearance-swatch {
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  gap: 10px;
+  align-content: start;
+  gap: 14px;
   min-width: 0;
-  padding: 34px 48px 24px 22px;
+  padding: 30px 48px 24px 24px;
   overflow: hidden;
   border: 0;
   color: var(--ink);
@@ -1150,8 +1150,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
   box-shadow: 0 2px 10px rgba(25, 46, 39, 0.08);
   transition:
     clip-path 220ms cubic-bezier(0.22, 0.8, 0.25, 1),
-    color 180ms ease,
-    background-color 180ms ease,
     box-shadow 180ms ease;
 }
 
@@ -1164,8 +1162,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
 }
 
 .paper-shortcut:hover {
-  color: var(--vermilion-dark);
-  background-color: var(--surface-hover);
   box-shadow: 0 3px 14px rgba(25, 46, 39, 0.11);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
 }
@@ -1182,9 +1178,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
 
 .paper-shortcut-featured {
   --paper-fold-shade: color-mix(in srgb, var(--vermilion-dark) 62%, #8d8d8d);
-  align-content: center;
-  gap: 18px;
-  padding: 36px 56px 30px 30px;
   color: var(--accent-contrast);
   background:
     repeating-linear-gradient(
@@ -1207,10 +1200,22 @@ html[data-theme-mode="dark"] .appearance-swatch {
     ),
     var(--vermilion);
 }
+.paper-shortcut-featured .paper-shortcut-icon {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.15);
+}
 
-.paper-shortcut-featured:hover {
-  color: var(--accent-contrast);
-  background-color: var(--vermilion-dark);
+.paper-shortcut-featured .paper-shortcut-title {
+  color: #fff;
+}
+
+.paper-shortcut-featured .paper-shortcut-description {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.paper-shortcut-featured .paper-shortcut-arrow {
+  color: #fff;
 }
 
 .game-emblem {
