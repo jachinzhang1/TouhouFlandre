@@ -116,7 +116,7 @@ export function SiteNav() {
 
   return (
     <nav
-      className="site-nav relative z-20 flex h-[76px] items-center justify-between gap-7 border-b border-line max-[680px]:h-[62px]"
+      className="site-nav relative z-20 flex h-[76px] items-center justify-between gap-7 max-[680px]:h-[62px]"
       aria-label="站点导航"
     >
       <Link

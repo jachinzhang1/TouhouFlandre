@@ -37,7 +37,7 @@ export function SiteFooter() {
   }, []);
 
   return (
-    <footer className="site-footer flex min-h-[66px] flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line bg-[var(--surface-glass)] py-3 text-[0.72rem] text-[var(--subtle-text)] backdrop-blur-xl">
+    <footer className="site-footer flex min-h-[66px] flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-[0.72rem]">
       <span className="min-w-0 basis-96 grow break-words">
         TouhouFlandre · 非官方东方 Project 同人项目 · 访问数{" "}
         {visitCount === null ? "--" : visitCount.toLocaleString("zh-CN")}

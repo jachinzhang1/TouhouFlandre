@@ -552,16 +552,131 @@ input:focus-visible {
   left: 50%;
   width: 100dvw;
   padding-inline: max(20px, calc((100dvw - 1240px) / 2));
-  background: var(--nav-bg);
   transform: translateX(-50%);
-  -webkit-backdrop-filter: blur(24px) saturate(1.18);
-  backdrop-filter: blur(24px) saturate(1.18);
+}
+
+.site-nav {
+  isolation: isolate;
+  background:
+    repeating-linear-gradient(
+      12deg,
+      transparent 0,
+      transparent 7px,
+      color-mix(in srgb, var(--line) 14%, transparent) 7px,
+      color-mix(in srgb, var(--line) 14%, transparent) 8px,
+      transparent 8px,
+      transparent 18px
+    ),
+    var(--paper);
+}
+
+.site-footer {
+  z-index: 21;
+  color: rgba(255, 255, 255, 0.78);
+  background: linear-gradient(
+    to bottom,
+    rgba(6, 8, 7, 0.34),
+    rgba(3, 4, 4, 0.9)
+  );
+}
+
+.site-footer::before {
+  position: absolute;
+  inset: -72px 0 100%;
+  background: linear-gradient(to bottom, transparent, rgba(6, 8, 7, 0.34));
+  content: "";
+  pointer-events: none;
+}
+
+.site-footer a {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.site-footer a:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 @media (min-width: 681px) {
-  .site-nav,
-  .site-footer {
-    background: var(--nav-bg);
+  .site-nav::before,
+  .site-nav::after {
+    position: absolute;
+    right: 0;
+    left: 0;
+    z-index: -1;
+    content: "";
+    pointer-events: none;
+  }
+
+  .site-nav::before {
+    top: calc(100% - 2px);
+    height: 14px;
+    background:
+      repeating-linear-gradient(
+        13deg,
+        transparent 0,
+        transparent 8px,
+        color-mix(in srgb, var(--line) 14%, transparent) 8px,
+        color-mix(in srgb, var(--line) 14%, transparent) 9px,
+        transparent 9px,
+        transparent 20px
+      ),
+      color-mix(in srgb, var(--paper) 72%, transparent);
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 58%,
+      98.6% 58%,
+      98% 100%,
+      97.1% 62%,
+      94.5% 74%,
+      91.8% 54%,
+      88.6% 82%,
+      84.4% 57%,
+      80.2% 76%,
+      74.9% 55%,
+      70.8% 88%,
+      66% 59%,
+      61.7% 78%,
+      56.9% 52%,
+      51.1% 83%,
+      45.5% 58%,
+      40.3% 74%,
+      34.2% 55%,
+      29.8% 88%,
+      24.4% 58%,
+      18.8% 77%,
+      13% 54%,
+      8.1% 84%,
+      3.5% 60%,
+      0 72%
+    );
+  }
+
+  .site-nav::after {
+    top: calc(100% + 5px);
+    height: 16px;
+    background: color-mix(in srgb, var(--paper) 38%, transparent);
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% 42%,
+      95.2% 68%,
+      89.4% 38%,
+      83.7% 78%,
+      76.6% 41%,
+      69.8% 72%,
+      63.2% 35%,
+      56.3% 80%,
+      48.9% 39%,
+      41.7% 72%,
+      34.5% 36%,
+      27.1% 77%,
+      20.4% 43%,
+      13.1% 70%,
+      6.8% 39%,
+      0 62%
+    );
   }
 }
 
