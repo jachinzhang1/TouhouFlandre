@@ -2,6 +2,7 @@
 
 import {
   Check,
+  Copy,
   Flag,
   Loader2,
   Play,
@@ -10,6 +11,7 @@ import {
   Send,
   X,
 } from "lucide-react";
+import { message as globalMessage } from "antd";
 import { createPortal } from "react-dom";
 import {
   useCallback,
@@ -20,6 +22,7 @@ import {
   useState,
 } from "react";
 import {
+  createShareText,
   GAME_CONTENT_DEFINITIONS,
   HAIR_COLOR_LABELS,
   QUESTION_DIFFICULTY_LABELS,
@@ -773,6 +776,23 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     }
   };
 
+  const copyShare = async () => {
+    if (!session || !isFinished) return;
+
+    try {
+      const sharePuzzleLabel =
+        mode === "daily" && session.puzzleKey
+          ? `每日题 ${session.puzzleKey} · ${QUESTION_DIFFICULTY_LABELS[dailyDifficulty]}`
+          : puzzleLabel;
+      await navigator.clipboard.writeText(
+        createShareText(session, sharePuzzleLabel, window.location.origin),
+      );
+      globalMessage.success("分享文本已复制");
+    } catch {
+      globalMessage.error("复制失败，请检查浏览器的剪贴板权限");
+    }
+  };
+
   const selectSuggestion = useCallback((result: CharacterSearchResult) => {
     setSelectedId(result.id);
     setQuery(result.name);
@@ -1171,7 +1191,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
 
       {session && isFinished ? (
         <aside className="result-panel" aria-label="游戏结果">
-          <div>
+          <div className="result-summary">
             <p className="kicker">
               {session.status === "won" ? "Clear" : "Failed"}
             </p>
@@ -1189,8 +1209,36 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               className="answer-token"
             />
           ) : null}
-          {mode === "random" ? (
-            <div className="result-actions">
+          {session.answer ? (
+            <dl className="answer-details" aria-label="答案角色资料">
+              <div>
+                <dt>日文名</dt>
+                <dd lang="ja">{session.answer.names.ja}</dd>
+              </div>
+              <div>
+                <dt>首次登场作品</dt>
+                <dd>{session.answer.firstAppearance.workTitle}</dd>
+              </div>
+              <div>
+                <dt>种族</dt>
+                <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
+              </div>
+              <div>
+                <dt>能力</dt>
+                <dd>{session.answer.abilityDisplay}</dd>
+              </div>
+              <div>
+                <dt>出现地点</dt>
+                <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
+              </div>
+              <div>
+                <dt>身份</dt>
+                <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
+              </div>
+            </dl>
+          ) : null}
+          <div className="result-actions">
+            {mode === "random" ? (
               <button
                 className="primary-button"
                 type="button"
@@ -1200,8 +1248,16 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 <RotateCcw size={18} aria-hidden="true" />
                 <span>再来一局</span>
               </button>
-            </div>
-          ) : null}
+            ) : null}
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => void copyShare()}
+            >
+              <Copy size={18} aria-hidden="true" />
+              <span>复制分享</span>
+            </button>
+          </div>
         </aside>
       ) : null}
     </>

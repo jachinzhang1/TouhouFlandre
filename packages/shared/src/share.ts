@@ -1,11 +1,24 @@
-import type { GuessResult, PublicGameSession } from "./types";
+import type {
+  FeedbackStatus,
+  GuessResult,
+  PublicGameSession,
+} from "./types";
 import { GAME_CONTENT_DEFINITIONS } from "./fields";
 import { isUnlimitedGuessLimit, visibleQuestionFields } from "./questionScope";
 
-const rowToShareLine = (guess: GuessResult) =>
+const SHARE_SYMBOLS: Record<FeedbackStatus, string> = {
+  exact: "🟩",
+  partial: "🟨",
+  higher: "🟥",
+  lower: "🟦",
+  miss: "⬛",
+  unknown: "❔",
+};
+
+const rowToShareLine = (guess: GuessResult, fieldCount: number) =>
   guess.kind === "timeout"
-    ? "超时空过"
-    : guess.feedback.map((field) => field.symbol).join(" ");
+    ? Array.from({ length: fieldCount }, () => "⏱️").join(" ")
+    : guess.feedback.map((field) => SHARE_SYMBOLS[field.status]).join(" ");
 
 export const createShareText = (
   session: PublicGameSession,
@@ -19,16 +32,16 @@ export const createShareText = (
     session.status === "won"
       ? `${session.guesses.length}/${maxGuessLabel}`
       : `X/${maxGuessLabel}`;
+  const fieldCount = visibleQuestionFields(
+    session.questionScope?.rules,
+    GAME_CONTENT_DEFINITIONS[session.contentType].fields,
+  ).length;
   const lines = [
-    `TouhouFlandre ${puzzleLabel}`,
+    `东方芙一把 ${puzzleLabel}`,
     result,
-    visibleQuestionFields(
-      session.questionScope?.rules,
-      GAME_CONTENT_DEFINITIONS[session.contentType].fields,
-    )
-      .map((field) => field.label)
-      .join(" "),
-    ...session.guesses.map(rowToShareLine),
+    "",
+    ...session.guesses.map((guess) => rowToShareLine(guess, fieldCount)),
+    "",
     siteUrl,
   ];
 
