@@ -574,7 +574,6 @@ input:focus-visible {
       transparent 18px
     ),
     var(--paper);
-  border-bottom: 1px solid var(--line);
 }
 
 .site-footer {
