@@ -11,7 +11,7 @@ const (
 )
 
 const (
-	QuestionScopeMinGuesses       = 4
+	QuestionScopeMinGuesses       = 1
 	QuestionScopeDefaultGuesses   = 8
 	QuestionScopeMaxGuesses       = 20
 	QuestionScopeUnlimitedGuesses = 999
