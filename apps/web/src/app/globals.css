@@ -1117,7 +1117,7 @@ input:focus-visible {
 }
 
 .appearance-corner-surface {
-  clip-path: polygon(72% 100%, 100% 72%, 100% 100%);
+  clip-path: polygon(68% 100%, 100% 68%, 100% 100%);
   z-index: 0;
   background-color: var(--vermilion);
   background-image: var(--paper-tinted-ornament);
@@ -1127,11 +1127,15 @@ input:focus-visible {
 }
 
 .appearance-fold-flap {
-  clip-path: polygon(72% 100%, 100% 72%, 72% 72%);
+  clip-path: polygon(68% 100%, 100% 68%, 86% 73%);
   z-index: 1;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 58%),
-    var(--surface-strong);
+    repeating-linear-gradient(
+      8deg,
+      transparent 0 10px,
+      rgba(20, 28, 25, 0.045) 10px 11px
+    ),
+    color-mix(in srgb, var(--surface-strong) 72%, var(--ink-soft));
   pointer-events: none;
   transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: clip-path;
@@ -1185,15 +1189,15 @@ input:focus-visible {
   background: transparent;
   visibility: visible;
   pointer-events: none;
-  clip-path: polygon(72% 100%, 100% 72%, 100% 100%);
+  clip-path: polygon(68% 100%, 100% 68%, 100% 100%);
   transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .appearance-swatch {
   position: absolute;
-  /* 24px circles + five 15px diagonal gaps + two 21px edge paddings. */
-  right: calc(11.3px + (5 - var(--swatch-index)) * 27.58px);
-  bottom: calc(11.3px + var(--swatch-index) * 27.58px);
+  /* 24px circles + five 9px diagonal gaps + two 16.4px edge paddings. */
+  right: calc(8.06px + (5 - var(--swatch-index)) * 23.33px);
+  bottom: calc(8.06px + var(--swatch-index) * 23.33px);
   width: 24px;
   height: 24px;
   border: 2px solid var(--surface);
@@ -1208,11 +1212,11 @@ input:focus-visible {
 
 .appearance-switcher[data-open="true"] .appearance-corner-surface,
 .appearance-switcher[data-open="true"] .appearance-palette {
-  clip-path: polygon(34% 100%, 100% 34%, 100% 100%);
+  clip-path: polygon(44% 100%, 100% 44%, 100% 100%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-fold-flap {
-  clip-path: polygon(34% 100%, 100% 34%, 34% 34%);
+  clip-path: polygon(44% 100%, 100% 44%, 78% 50%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-swatch {
@@ -1230,11 +1234,11 @@ input:focus-visible {
 
   .appearance-switcher:hover .appearance-corner-surface,
   .appearance-switcher:hover .appearance-palette {
-    clip-path: polygon(34% 100%, 100% 34%, 100% 100%);
+    clip-path: polygon(44% 100%, 100% 44%, 100% 100%);
   }
 
   .appearance-switcher:hover .appearance-fold-flap {
-    clip-path: polygon(34% 100%, 100% 34%, 34% 34%);
+    clip-path: polygon(44% 100%, 100% 44%, 78% 50%);
   }
 
   .appearance-switcher:hover .appearance-swatch {
