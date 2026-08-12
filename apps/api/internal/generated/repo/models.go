@@ -168,15 +168,16 @@ type SiteMetric struct {
 }
 
 type Work struct {
-	ID            string             `json:"id"`
-	TitleZh       string             `json:"title_zh"`
-	TitleJa       string             `json:"title_ja"`
-	TitleEn       pgtype.Text        `json:"title_en"`
-	ShortName     string             `json:"short_name"`
-	Type          string             `json:"type"`
-	ReleaseYear   int32              `json:"release_year"`
-	MainlineIndex pgtype.Int4        `json:"mainline_index"`
-	Era           pgtype.Text        `json:"era"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	ID             string             `json:"id"`
+	TitleZh        string             `json:"title_zh"`
+	TitleJa        string             `json:"title_ja"`
+	TitleEn        pgtype.Text        `json:"title_en"`
+	ShortName      string             `json:"short_name"`
+	Type           string             `json:"type"`
+	ReleaseYear    int32              `json:"release_year"`
+	MainlineIndex  pgtype.Int4        `json:"mainline_index"`
+	Era            pgtype.Text        `json:"era"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PinyinInitials []byte             `json:"pinyin_initials"`
 }

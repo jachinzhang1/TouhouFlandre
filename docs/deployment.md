@@ -79,13 +79,12 @@ docker compose ps
 task prod:logs
 ```
 
-## 健康检查
+## 运行检查
 
 | 地址 | 用途 |
 |---|---|
 | `http://localhost:3000` | Web 入口。 |
 | `http://localhost:3000/api/health` | 经 Web 同源代理访问 API 健康检查。 |
-| `http://localhost:3000/api/catalog/characters` | 经 Web 服务读取题库角色缓存。 |
 | `http://localhost:3000/api/announcements` | 经 Web 服务读取公告内容。 |
 | `http://localhost:4000/livez` | API 进程探活。 |
 | `http://localhost:4000/readyz` | API 数据库 readiness。 |

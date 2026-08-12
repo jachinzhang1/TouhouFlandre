@@ -83,4 +83,16 @@ describe("AppearanceSwitcher", () => {
       JSON.stringify({ color: sakura?.id }),
     );
   });
+
+  it("offers the blue color theme", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSwitcher />);
+
+    await user.click(screen.getByRole("button", { name: "蓝色主题" }));
+
+    expect(document.documentElement.dataset.themeColor).toBe("azure");
+    expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
+      JSON.stringify({ color: "azure" }),
+    );
+  });
 });

@@ -8,6 +8,7 @@ const characterAvatarUrls = new Set(
   demoCharacters.map((character) => character.avatarUrl),
 );
 const workIds = new Set(demoWorks.map((work) => work.id));
+const workPinyinInitials = new Map<string, string>();
 const appearanceOrders = new Set(
   demoCharacters.map((character) => character.appearanceOrder),
 );
@@ -22,6 +23,18 @@ if (characterAvatarUrls.size !== demoCharacters.length) {
 
 if (workIds.size !== demoWorks.length) {
   throw new Error("Duplicate work ids found.");
+}
+
+for (const work of demoWorks) {
+  for (const initials of work.pinyinInitials) {
+    const owner = workPinyinInitials.get(initials);
+    if (owner && owner !== work.id) {
+      throw new Error(
+        `Work pinyin initials ${initials} are shared by ${owner} and ${work.id}.`,
+      );
+    }
+    workPinyinInitials.set(initials, work.id);
+  }
 }
 
 if (appearanceOrders.size !== demoCharacters.length) {

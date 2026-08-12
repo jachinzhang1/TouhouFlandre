@@ -13,6 +13,7 @@ export const COLOR_THEMES = [
   { id: "iris", label: "鸢尾", light: "#6f63b6", dark: "#9b91e0" },
   { id: "jade", label: "青玉", light: "#247568", dark: "#59b9a7" },
   { id: "amber", label: "琥珀", light: "#a76916", dark: "#d69a43" },
+  { id: "azure", label: "蓝色", light: "#3478b4", dark: "#6ca6d9" },
 ] as const;
 
 export type ThemeColor = (typeof COLOR_THEMES)[number]["id"];

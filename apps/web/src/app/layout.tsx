@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 const appearanceBootstrapScript = `
 (() => {
   const storageKey = "touhoufriberg:appearance";
-  const colors = new Set(["scarlet", "sakura", "iris", "jade", "amber"]);
+  const colors = new Set(["scarlet", "sakura", "iris", "jade", "amber", "azure"]);
   const systemMode = () =>
     window.matchMedia?.("(prefers-color-scheme: dark)").matches
       ? "dark"

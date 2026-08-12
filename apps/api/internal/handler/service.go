@@ -75,6 +75,17 @@ func (s *Server) charactersForVersion(ctx context.Context, version string) ([]ga
 	return characters, nil
 }
 
+func (s *Server) charactersForRequestedVersion(ctx context.Context, version string) ([]game.Character, error) {
+	characters, err := multi.CharactersForVersion(ctx, s.q, version)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusNotFound, Code: codeCatalogVersionNotFound, Message: "没有找到题库版本：" + version}
+		}
+		return nil, internalError(err)
+	}
+	return characters, nil
+}
+
 // getOrCreateDailyPuzzle 对应 game.ts 的 getOrCreateDailyPuzzle。
 func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string, difficulty game.QuestionDifficulty, scope game.QuestionScopeConfig) (game.Character, string, error) {
 	existing, err := s.q.GetDailyPuzzle(ctx, repo.GetDailyPuzzleParams{DateKey: dateKey, Difficulty: string(difficulty)})

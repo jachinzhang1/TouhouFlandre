@@ -21,7 +21,7 @@ flowchart LR
 | `apps/web` | Next.js 16、React、TypeScript、Tailwind CSS v4 前端 |
 | `apps/api` | Go + Echo API 服务，承载权威游戏规则、HTTP API、WebSocket 和数据库访问 |
 | `packages/data` | 角色、作品和头像元数据 JSON；seed 前通过 zod 校验 |
-| `packages/shared` | 前端共享类型、模式配置、展示工具和搜索归一化工具 |
+| `packages/shared` | 前端共享类型、模式配置、展示工具、题库校验辅助和分享文本 |
 | `contracts/openapi` | HTTP API 契约唯一来源，生成 Go 与 Web 类型 |
 | `contracts/ws` | 多人房间 WebSocket 协议约定 |
 | `docs` | 游戏规则、功能说明、架构、部署、数据规范和维护计划 |
@@ -200,7 +200,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 
 - `contracts/openapi/openapi.yaml` 是 HTTP API 契约唯一入口。调整接口后运行 `task gen`，并将 Go 与 Web 生成物一并纳入版本管理。
 - `apps/api/internal/generated`、`apps/web/src/generated` 是生成物，不要手工编辑。
-- 权威游戏规则在 Go 的 `apps/api/internal/game`。前端只做展示逻辑和类型消费。
+- 权威游戏规则和运行时角色搜索位于 Go 的 `apps/api/internal/game`。前端只负责搜索交互、展示逻辑和类型消费。
 - 题库从 `packages/data/src/*.json` 写入 Postgres。维护角色记录后运行 `task db:seed`。
 - 题库 seed 会写版本化快照。会话记录绑定 `catalogVersion`，因此题库更新不会影响已开始的游戏。
 

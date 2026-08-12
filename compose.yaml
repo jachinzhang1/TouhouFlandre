@@ -106,6 +106,9 @@ services:
       NODE_ENV: production
       API_PROXY_TARGET: http://api:4000
       ANNOUNCEMENTS_DIR: /app/content/announcements
+    volumes:
+      # 公告在运行时读取；只读挂载让页面刷新按钮无需重建镜像即可读取最新文档。
+      - ./content/announcements:/app/content/announcements:ro
     ports:
       # cloudflared 隧道指向这里（HTTP + WS 全流量，/api 由 Next 代理到 api 容器）
       - "3000:3000"

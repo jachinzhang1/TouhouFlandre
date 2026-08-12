@@ -104,13 +104,18 @@ func toOpenAPICharacter(character game.Character) openapi.Character {
 }
 
 func toOpenAPIWork(work repo.Work) openapi.Work {
+	var pinyinInitials []string
+	if err := json.Unmarshal(work.PinyinInitials, &pinyinInitials); err != nil {
+		pinyinInitials = []string{}
+	}
 	result := openapi.Work{
-		Id:          work.ID,
-		TitleZh:     work.TitleZh,
-		TitleJa:     work.TitleJa,
-		ShortName:   work.ShortName,
-		Type:        openapi.WorkType(work.Type),
-		ReleaseYear: int(work.ReleaseYear),
+		Id:             work.ID,
+		TitleZh:        work.TitleZh,
+		TitleJa:        work.TitleJa,
+		ShortName:      work.ShortName,
+		PinyinInitials: pinyinInitials,
+		Type:           openapi.WorkType(work.Type),
+		ReleaseYear:    int(work.ReleaseYear),
 	}
 	if work.TitleEn.Valid {
 		titleEn := work.TitleEn.String

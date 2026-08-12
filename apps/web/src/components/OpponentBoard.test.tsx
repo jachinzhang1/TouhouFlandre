@@ -32,7 +32,7 @@ describe("OpponentBoard", () => {
       compactCells.map((cell) => cell.querySelector("svg")?.getAttribute("class")),
     ).toEqual([
       "lucide lucide-check",
-      "lucide lucide-minus",
+      "lucide lucide-triangle",
       "lucide lucide-x",
       "lucide lucide-chevrons-up",
       "lucide lucide-chevrons-down",

@@ -19,3 +19,13 @@ func TestPresetQuestionScopeRulesHardTurnLimit(t *testing.T) {
 		t.Fatal("hard preset should keep first appearance visible")
 	}
 }
+
+func TestNormalizeQuestionScopeRulesAllowsOneGuess(t *testing.T) {
+	rules := game.NormalizeQuestionScopeRules(game.QuestionScopeRules{
+		GuessLimit: game.QuestionScopeGuessLimit{Enabled: true, MaxGuesses: 1},
+	})
+
+	if rules.GuessLimit.MaxGuesses != 1 {
+		t.Fatalf("guess limit = %d, want 1", rules.GuessLimit.MaxGuesses)
+	}
+}

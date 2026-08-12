@@ -96,7 +96,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 获取完整可猜角色表与当前题库版本 */
+        /**
+         * 获取完整可猜角色表与当前题库版本
+         * @deprecated
+         */
         get: operations["catalog_characters"];
         put?: never;
         post?: never;
@@ -451,7 +454,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -513,9 +516,15 @@ export interface components {
             avatarUrl: string;
             appearanceOrder: number;
             workId: string;
-            /** @description 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。 */
+            /**
+             * @deprecated
+             * @description 已弃用的字段边界搜索文本；新客户端不得据此自行执行搜索。
+             */
             searchText: string;
-            /** @description 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。 */
+            /**
+             * @deprecated
+             * @description 已弃用的名称排序键；新客户端由搜索 API 请求排序结果。
+             */
             nameSortKey: string;
             firstAppearance: {
                 workTitle: string;
@@ -615,6 +624,8 @@ export interface components {
             titleJa: string;
             titleEn?: string;
             shortName: string;
+            /** @description 作品中文标题的稳定拼音首字母检索词（简称与全称）。 */
+            pinyinInitials: string[];
             type: components["schemas"]["WorkType"];
             releaseYear: number;
             mainlineIndex?: number;
@@ -898,7 +909,10 @@ export interface components {
             roundIndex: number;
             guess: components["schemas"]["GuessResult"];
         };
-        /** @description 完整可猜角色表（客户端本地搜索用；version 为 CatalogState.currentVersion）。 */
+        /**
+         * @deprecated
+         * @description 已弃用的完整可猜角色表；仅为旧客户端保留一个兼容版本。
+         */
         CatalogCharacters: {
             /** @description 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。 */
             version: string;
@@ -968,10 +982,12 @@ export interface operations {
     characters_search: {
         parameters: {
             query?: {
-                /** @description 规范化后的查询词（可为空，返回全部可猜角色）。 */
+                /** @description 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。 */
                 q?: string;
                 /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
                 sessionId?: string;
+                /** @description 题库版本；供多人题局按绑定快照搜索。与 sessionId 互斥。 */
+                catalogVersion?: string;
                 /** @description 逗号分隔的作品 id 列表；仅用于收窄搜索结果。 */
                 workIds?: string;
                 limit?: number;
@@ -1003,7 +1019,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 游戏会话不存在 */
+            /** @description 游戏会话或题库版本不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1090,7 +1106,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 完整角色表（enabled_as_guess；searchText/nameSortKey 供客户端本地搜索与排序）。 */
+            /** @description 已弃用的完整角色表；新客户端统一使用 /api/characters/search。 */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   demoCatalogVersion,
   demoCharacters,
+  demoWorks,
   getAppearanceOrder,
   hairColorSchema,
   workSchema,
@@ -42,6 +43,7 @@ describe("work type preset", () => {
     titleZh: "东方红魔乡",
     titleJa: "東方紅魔郷",
     shortName: "红魔乡",
+    pinyinInitials: ["hmx", "dfhmx"],
     releaseYear: 2002,
   };
 
@@ -49,5 +51,28 @@ describe("work type preset", () => {
     for (const type of ["ftg", "stg", "game"]) {
       expect(workSchema.safeParse({ ...baseWork, type }).success).toBe(true);
     }
+  });
+
+  it("requires unique lowercase pinyin initials", () => {
+    expect(
+      workSchema.safeParse({
+        ...baseWork,
+        type: "stg",
+        pinyinInitials: ["HMX"],
+      }).success,
+    ).toBe(false);
+    expect(
+      workSchema.safeParse({
+        ...baseWork,
+        type: "stg",
+        pinyinInitials: ["hmx", "hmx"],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps both short and full initials for EoSD", () => {
+    expect(
+      demoWorks.find((work) => work.id === "th06_eosd")?.pinyinInitials,
+    ).toEqual(["hmx", "dfhmx"]);
   });
 });

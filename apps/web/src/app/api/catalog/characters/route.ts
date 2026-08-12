@@ -1,8 +1,7 @@
-// GET /api/catalog/characters —— 完整可猜角色表的同源缓存代理。
+// GET /api/catalog/characters —— 兼容期内保留的完整可猜角色表代理。
 //
-// 架构（本地搜索缓存源）：浏览器 ← 本路由（Next 服务器缓存）← Go /api/catalog/characters。
-// 表更新（seed）时 Go 侧 currentVersion 变化；本路由 TTL 60s 后重拉，响应始终带 version
-// 供客户端按版本键缓存/刷新。上游失败时返回陈旧缓存（韧性），无缓存才 502。
+// 新客户端的角色模糊搜索统一调用 /api/characters/search，不读取这里的全表。
+// 此路由保留 60s 兼容缓存；上游失败时返回陈旧缓存，无缓存才返回 502。
 import { NextResponse } from "next/server";
 import type { components } from "../../../../generated/api";
 

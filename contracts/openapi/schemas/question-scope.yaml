@@ -81,7 +81,7 @@ QuestionScopeGuessLimit:
       type: boolean
     maxGuesses:
       type: integer
-      minimum: 4
+      minimum: 1
       maximum: 20
 
 QuestionScopeRules:

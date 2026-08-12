@@ -175,7 +175,7 @@ test.describe("visual polish", () => {
 
     await page.goto("/single/daily");
     await expect(page.locator(".game-emblem svg")).toBeVisible();
-    await expect(page.getByText("复制分享")).toHaveCount(0);
+    await expect(page.getByText("复制分享")).toBeVisible();
     await expect(page.getByText("再来一局")).toHaveCount(0);
     await expect(page.locator(".answer-token")).not.toHaveCSS(
       "background-color",

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  effectiveQuestionScopeMaxGuesses,
   normalizeQuestionScope,
+  normalizeQuestionScopeRules,
   questionScopePresetRules,
   QUESTION_SCOPE_SCHEMA_VERSION,
   visibleQuestionFields,
@@ -14,6 +16,7 @@ const work = (id: string, mainlineIndex: number): Work => ({
   titleZh: id,
   titleJa: id,
   shortName: id.toUpperCase(),
+  pinyinInitials: [id],
   type: "game",
   releaseYear: 2002 + mainlineIndex,
   mainlineIndex,
@@ -63,6 +66,15 @@ const snapshot: FullCatalogSnapshot = {
 };
 
 describe("question scope normalization", () => {
+  it("allows a one-guess custom limit", () => {
+    const rules = normalizeQuestionScopeRules({
+      guessLimit: { enabled: true, maxGuesses: 1 },
+    });
+
+    expect(rules.guessLimit.maxGuesses).toBe(1);
+    expect(effectiveQuestionScopeMaxGuesses(rules)).toBe(1);
+  });
+
   it("uses a 45 second turn limit for the hard preset", () => {
     const correction = normalizeQuestionScope(
       {

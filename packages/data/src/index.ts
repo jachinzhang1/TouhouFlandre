@@ -44,6 +44,7 @@ export const demoCharacters: Character[] = characterSources.map((character) => {
       releaseYear: work.releaseYear,
       mainlineIndex: work.mainlineIndex,
       era: work.era,
+      workPinyinInitials: work.pinyinInitials,
     },
   };
 });

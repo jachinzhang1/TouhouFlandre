@@ -1,7 +1,7 @@
 // GET /api/catalog/full —— 题库设置专用的全量快照代理。
 //
-// 该路径与 /api/catalog/characters 分离：角色搜索页继续只读取可猜角色缓存，
-// 本地题库设置、版本修正和弹窗才读取这里的完整角色资料。
+// 该路径与兼容期内保留的 /api/catalog/characters 分离；这里只供本地题库
+// 设置、版本修正和弹窗读取完整角色资料，不参与角色模糊搜索。
 import { NextResponse } from "next/server";
 import type { components } from "../../../../generated/api";
 

@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { CharacterSearchResult } from "@touhouflandre/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCharacterSearch } from "./useCharacterSearch";
 
@@ -8,7 +9,7 @@ vi.mock("../lib/api", () => ({
 
 import { api } from "../lib/api";
 
-const result = (id: string) => ({
+const result = (id: string): CharacterSearchResult => ({
   id,
   name: id,
   subtitle: "test",
@@ -16,6 +17,8 @@ const result = (id: string) => ({
   avatarUrl: "",
   appearanceOrder: 1,
   workId: "th06_eosd",
+  searchText: id,
+  nameSortKey: id,
   firstAppearance: { workTitle: "test", releaseYear: 1996 },
   species: [],
   locations: [],
@@ -26,6 +29,49 @@ const result = (id: string) => ({
 describe("useCharacterSearch", () => {
   beforeEach(() => {
     vi.mocked(api.searchCharacters).mockReset();
+  });
+
+  it("uses the search API for the current catalog", async () => {
+    vi.mocked(api.searchCharacters).mockResolvedValue({
+      results: [result("reimu")],
+      total: 1,
+    });
+
+    const { result: hook } = renderHook(() =>
+      useCharacterSearch("灵梦", { delay: 0, limit: 12 }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(api.searchCharacters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: "灵梦",
+        limit: 12,
+        sessionId: undefined,
+        catalogVersion: undefined,
+      }),
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("passes the multiplayer catalog version to character search", async () => {
+    vi.mocked(api.searchCharacters).mockResolvedValue({
+      results: [],
+      total: 0,
+    });
+
+    const { result: hook } = renderHook(() =>
+      useCharacterSearch("hmx", { delay: 0, version: "catalog-v1" }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(api.searchCharacters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: "hmx",
+        sessionId: undefined,
+        catalogVersion: "catalog-v1",
+      }),
+      expect.any(AbortSignal),
+    );
   });
 
   it("passes the game session id to character search", async () => {
@@ -40,7 +86,11 @@ describe("useCharacterSearch", () => {
 
     await waitFor(() => expect(hook.current.loading).toBe(false));
     expect(api.searchCharacters).toHaveBeenCalledWith(
-      expect.objectContaining({ q: "灵梦", sessionId: "session-1" }),
+      expect.objectContaining({
+        q: "灵梦",
+        sessionId: "session-1",
+        catalogVersion: undefined,
+      }),
       expect.any(AbortSignal),
     );
   });

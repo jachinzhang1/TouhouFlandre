@@ -8,13 +8,19 @@ get:
     - name: q
       in: query
       required: false
-      description: 规范化后的查询词（可为空，返回全部可猜角色）。
+      description: 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。
       schema:
         type: string
     - name: sessionId
       in: query
       required: false
       description: 游戏会话 id；提供后按该会话绑定的题库快照搜索。
+      schema:
+        type: string
+    - name: catalogVersion
+      in: query
+      required: false
+      description: 题库版本；供多人题局按绑定快照搜索。与 sessionId 互斥。
       schema:
         type: string
     - name: workIds
@@ -66,7 +72,7 @@ get:
           schema:
             $ref: "../schemas/common.yaml#/ErrorResponse"
     "404":
-      description: 游戏会话不存在
+      description: 游戏会话或题库版本不存在
       content:
         application/json:
           schema:

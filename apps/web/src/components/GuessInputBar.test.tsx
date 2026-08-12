@@ -4,18 +4,17 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { GuessInputBar } from "./GuessInputBar";
 
 vi.mock("../hooks/useCharacterSearch", () => {
-  // 与真实 searchText 语义一致：灵梦别名「红白」使 "白" 命中两项；
   // 按 query 缓存稳定引用（真实 hook 的 results 是 state，引用跨渲染稳定，
   // mock 若每次返回新数组会误触组件内「结果变化回第一项」的重置 effect）。
   const all = [
-    { id: "reimu_hakurei", name: "博丽灵梦", avatarUrl: "/c.png", firstAppearance: { workTitle: "东方灵异传" }, searchText: "博丽灵梦红白bllm" },
-    { id: "byakuren_hijiri", name: "圣白莲", avatarUrl: "/c.png", firstAppearance: { workTitle: "东方星莲船" }, searchText: "圣白莲byakurenhijiri" },
+    { id: "reimu_hakurei", name: "博丽灵梦", avatarUrl: "/c.png", firstAppearance: { workTitle: "东方灵异传" } },
+    { id: "byakuren_hijiri", name: "圣白莲", avatarUrl: "/c.png", firstAppearance: { workTitle: "东方星莲船" } },
   ];
   const byQuery = new Map<string, typeof all>();
   return {
     useCharacterSearch: (query: string) => {
       if (!byQuery.has(query)) {
-        byQuery.set(query, query === "" ? [] : all.filter((c) => c.searchText.includes(query)));
+        byQuery.set(query, query === "" ? [] : query === "白" ? all : all.slice(0, 1));
       }
       return { results: byQuery.get(query), loading: query === "", error: "" };
     },
@@ -33,7 +32,7 @@ describe("GuessInputBar", () => {
   });
 
   it("默认高亮第一项，下键移动高亮，回车提交高亮项", async () => {
-    render(<GuessInputBar onGuess={onGuess} guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "白" } });
 
@@ -57,7 +56,7 @@ describe("GuessInputBar", () => {
   });
 
   it("直接回车提交默认第一项", async () => {
-    render(<GuessInputBar onGuess={onGuess} guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "灵梦" } });
     await waitFor(() => expect(screen.getAllByRole("button").some((b) => b.id === "suggestion-0")).toBe(true));
@@ -66,7 +65,7 @@ describe("GuessInputBar", () => {
   });
 
   it("在多人底部输入栏展示共用反馈图例", () => {
-    render(<GuessInputBar onGuess={onGuess} guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "查看图例" }));
 

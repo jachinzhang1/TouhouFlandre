@@ -6,6 +6,8 @@ import { SingleGamePage } from "./SingleGamePage";
 
 const playingSession = {
   id: "sess-1",
+  mode: "daily",
+  contentType: "character",
   status: "playing",
   puzzleKey: "2026-08-05",
   maxGuesses: 8,
@@ -26,13 +28,22 @@ const wonSession = {
   ],
   answer: {
     id: "patchouli_knowledge",
-    names: { zhHans: "帕秋莉·诺蕾姬" },
+    names: {
+      zhHans: "帕秋莉·诺蕾姬",
+      ja: "パチュリー・ノーレッジ",
+      en: "Patchouli Knowledge",
+      aliases: [],
+    },
     avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
     firstAppearance: {
       workId: "th06_eosd",
       workTitle: "东方红魔乡",
       mainlineIndex: 6,
     },
+    species: ["魔法使"],
+    abilityDisplay: "操纵火水木金土日月的能力",
+    locations: ["红魔馆地下图书馆"],
+    roles: ["魔法使", "图书馆管理员"],
   },
 } as unknown as PublicGameSession;
 
@@ -56,14 +67,7 @@ const forfeitedSession = {
   endedAt: new Date().toISOString(),
   guesses: sessionWithGuess.guesses,
   answer: {
-    id: "patchouli_knowledge",
-    names: { zhHans: "帕秋莉·诺蕾姬" },
-    avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
-    firstAppearance: {
-      workId: "th06_eosd",
-      workTitle: "东方红魔乡",
-      mainlineIndex: 6,
-    },
+    ...wonSession.answer,
   },
 } as unknown as PublicGameSession;
 
@@ -124,6 +128,10 @@ describe("SingleGamePage", () => {
       retry: vi.fn(),
     });
     localStorage.clear();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
   it("creates a daily puzzle and shows initial progress", async () => {
@@ -173,6 +181,7 @@ describe("SingleGamePage", () => {
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toBeTruthy();
+    expect(tooltip.parentElement).toBe(document.body);
     expect(screen.getByText("该属性完全命中")).toBeTruthy();
     expect(screen.getByText("该属性仅部分命中")).toBeTruthy();
     expect(screen.getByText("该属性正确答案的数值高于本条猜测")).toBeTruthy();
@@ -182,7 +191,7 @@ describe("SingleGamePage", () => {
       screen.getByText("属性值缺失或无法判断，若遇到请反馈"),
     ).toBeTruthy();
     expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-minus")).toBeTruthy();
+    expect(tooltip.querySelector(".lucide-triangle")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-down")).toBeTruthy();
     expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);
@@ -212,7 +221,18 @@ describe("SingleGamePage", () => {
 
     expect(await screen.findByText("猜中了")).toBeTruthy();
     expect(screen.getByText(/共使用 1 次猜测/)).toBeTruthy();
-    expect(screen.queryByText("复制分享")).toBeNull();
+    expect(screen.getByText("パチュリー・ノーレッジ")).toBeTruthy();
+    expect(screen.getByText("东方红魔乡")).toBeTruthy();
+    expect(screen.getByText("魔法使", { selector: "dd" })).toBeTruthy();
+    expect(screen.getByText("操纵火水木金土日月的能力")).toBeTruthy();
+    expect(screen.getByText("红魔馆地下图书馆")).toBeTruthy();
+    expect(screen.getByText("魔法使、图书馆管理员")).toBeTruthy();
+    expect(screen.queryByText("th06_eosd")).toBeNull();
+    await userEvent.click(screen.getByText("复制分享"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining(window.location.origin),
+    );
+    expect(await screen.findByText("分享文本已复制")).toBeTruthy();
     expect(screen.queryByText("再来一局")).toBeNull();
   });
 
