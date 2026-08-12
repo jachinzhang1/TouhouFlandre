@@ -691,7 +691,16 @@ input:focus-visible {
 
 .announcement-markdown ul,
 .announcement-markdown ol {
+  list-style-position: outside;
   padding-left: 1.25rem;
+}
+
+.announcement-markdown ul {
+  list-style-type: disc;
+}
+
+.announcement-markdown ol {
+  list-style-type: decimal;
 }
 
 .announcement-markdown code {
