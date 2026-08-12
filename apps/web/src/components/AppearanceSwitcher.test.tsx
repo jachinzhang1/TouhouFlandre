@@ -46,7 +46,7 @@ describe("AppearanceSwitcher", () => {
     ).toBe("#0f1413");
   });
 
-  it("toggles mode and stores an explicit preference", async () => {
+  it("opens the palette before toggling mode and stores the explicit preference", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
 
@@ -54,18 +54,26 @@ describe("AppearanceSwitcher", () => {
       expect(document.documentElement.dataset.themeMode).toBe("light");
     });
 
+    const paletteButton = screen.getByRole("button", {
+      name: "打开主题颜色",
+    });
+    await user.click(paletteButton);
+
+    expect(document.documentElement.dataset.themeMode).toBe("light");
+    expect(paletteButton.getAttribute("aria-expanded")).toBe("true");
+
     await user.click(screen.getByRole("button", { name: "切换到深色模式" }));
 
     expect(document.documentElement.dataset.themeMode).toBe("dark");
-    expect(document.documentElement.classList.contains("theme-transitioning")).toBe(
-      true,
-    );
-    expect(JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? "{}")).toEqual(
-      {
-        color: "scarlet",
-        mode: "dark",
-      },
-    );
+    expect(
+      document.documentElement.classList.contains("theme-transitioning"),
+    ).toBe(true);
+    expect(
+      JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? "{}"),
+    ).toEqual({
+      color: "scarlet",
+      mode: "dark",
+    });
   });
 
   it("selects a color theme without freezing the system mode default", async () => {
@@ -76,9 +84,11 @@ describe("AppearanceSwitcher", () => {
     await user.click(screen.getByRole("button", { name: "樱粉主题" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
-    expect(screen.getByRole("button", { name: "樱粉主题" }).getAttribute(
-      "aria-pressed",
-    )).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "樱粉主题" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
       JSON.stringify({ color: sakura?.id }),
     );

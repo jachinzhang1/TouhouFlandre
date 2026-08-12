@@ -1,8 +1,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { Moon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Moon, Palette, Sun } from "lucide-react";
 import {
   applyAppearance,
   COLOR_THEMES,
@@ -28,10 +28,12 @@ const defaultAppearance: ResolvedAppearance = {
 };
 
 export function AppearanceSwitcher() {
-  const [settings, setSettings] =
-    useState<AppearanceSettings>(defaultSettings);
+  const [settings, setSettings] = useState<AppearanceSettings>(defaultSettings);
   const [appearance, setAppearance] =
     useState<ResolvedAppearance>(defaultAppearance);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const nextSettings = readAppearanceSettings();
@@ -59,6 +61,35 @@ export function AppearanceSwitcher() {
     media.addEventListener("change", handleSystemModeChange);
     return () => media.removeEventListener("change", handleSystemModeChange);
   }, [settings]);
+  useEffect(() => {
+    const closePalette = () => {
+      setPaletteOpen(false);
+      if (
+        document.activeElement instanceof HTMLElement &&
+        switcherRef.current?.contains(document.activeElement)
+      ) {
+        document.activeElement.blur();
+      }
+    };
+    const handleOutsidePointer = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !switcherRef.current?.contains(event.target)
+      ) {
+        closePalette();
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePalette();
+    };
+
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointer);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   const activeTheme = useMemo(
     () =>
@@ -87,11 +118,35 @@ export function AppearanceSwitcher() {
     writeAppearanceSettings(nextSettings);
     applyAppearance(nextAppearance);
   };
+  const paletteVisible = paletteOpen || hoverOpen;
+  const handleToggleClick = () => {
+    if (!paletteVisible) {
+      setPaletteOpen(true);
+      return;
+    }
+    handleModeToggle();
+  };
 
   return (
-    <div className="appearance-switcher">
-      <div className="appearance-palette" role="group" aria-label="主题色">
-        {COLOR_THEMES.map((theme) => (
+    <div
+      ref={switcherRef}
+      className="appearance-switcher"
+      data-open={paletteOpen ? "true" : "false"}
+      data-hovered={hoverOpen ? "true" : "false"}
+      onPointerEnter={() => {
+        if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          setHoverOpen(true);
+        }
+      }}
+      onPointerLeave={() => setHoverOpen(false)}
+    >
+      <div
+        id="appearance-palette"
+        className="appearance-palette"
+        role="group"
+        aria-label="主题色"
+      >
+        {COLOR_THEMES.map((theme, index) => (
           <button
             key={theme.id}
             type="button"
@@ -104,6 +159,7 @@ export function AppearanceSwitcher() {
               {
                 "--swatch-light": theme.light,
                 "--swatch-dark": theme.dark,
+                "--swatch-index": index,
               } as CSSProperties
             }
             aria-label={`${theme.label}主题`}
@@ -115,17 +171,40 @@ export function AppearanceSwitcher() {
           </button>
         ))}
       </div>
+      <span className="appearance-corner-surface" aria-hidden="true" />
+      <span className="appearance-fold-flap" aria-hidden="true" />
       <button
         type="button"
         className="appearance-toggle"
         aria-label={
-          appearance.mode === "dark" ? "切换到浅色模式" : "切换到深色模式"
+          paletteVisible
+            ? appearance.mode === "dark"
+              ? "切换到浅色模式"
+              : "切换到深色模式"
+            : "打开主题颜色"
         }
-        aria-pressed={appearance.mode === "dark"}
-        title={appearance.mode === "dark" ? "切换到浅色模式" : "切换到深色模式"}
-        onClick={handleModeToggle}
+        aria-controls="appearance-palette"
+        aria-expanded={paletteVisible}
+        aria-pressed={paletteVisible ? appearance.mode === "dark" : undefined}
+        title={
+          paletteVisible
+            ? appearance.mode === "dark"
+              ? "切换到浅色模式"
+              : "切换到深色模式"
+            : "打开主题颜色"
+        }
+        onClick={handleToggleClick}
       >
-        <Moon size={22} aria-hidden="true" />
+        <Palette
+          className="appearance-palette-icon"
+          size={22}
+          aria-hidden="true"
+        />
+        {appearance.mode === "dark" ? (
+          <Sun className="appearance-mode-icon" size={22} aria-hidden="true" />
+        ) : (
+          <Moon className="appearance-mode-icon" size={22} aria-hidden="true" />
+        )}
       </button>
     </div>
   );

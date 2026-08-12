@@ -1099,77 +1099,160 @@ input:focus-visible {
 
 .appearance-switcher {
   position: fixed;
-  right: max(22px, env(safe-area-inset-right));
-  bottom: max(22px, env(safe-area-inset-bottom));
-  z-index: 60;
-  display: grid;
-  justify-items: end;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  width: 280px;
+  height: 280px;
+  isolation: isolate;
+  pointer-events: none;
 }
 
-.appearance-switcher::before {
+.appearance-corner-surface,
+.appearance-fold-flap {
   position: absolute;
-  right: 0;
-  bottom: 100%;
-  width: 48px;
-  height: 14px;
-  content: "";
+  inset: 0;
+  display: block;
+  transform-origin: right bottom;
+}
+
+.appearance-corner-surface {
+  clip-path: polygon(72% 100%, 100% 72%, 100% 100%);
+  z-index: 0;
+  background-color: var(--vermilion);
+  background-image: var(--paper-tinted-ornament);
+  background-size: var(--paper-tinted-ornament-size);
+  pointer-events: auto;
+  transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.appearance-fold-flap {
+  clip-path: polygon(78% 100%, 100% 78%, 100% 100%);
+  z-index: 1;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 56%),
+    var(--surface-strong);
+  transform-style: preserve-3d;
+  pointer-events: none;
+  transition:
+    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 180ms ease,
+    transform 280ms cubic-bezier(0.77, 0, 0.175, 1);
+  will-change: clip-path, transform;
 }
 
 .appearance-toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  color: var(--accent-contrast);
-  background: var(--vermilion);
-  box-shadow:
-    0 12px 28px var(--accent-shadow),
-    0 0 0 5px color-mix(in srgb, var(--paper-muted) 72%, transparent);
-  transition:
-    transform 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: auto;
 }
 
 .appearance-toggle:hover {
-  border-color: var(--vermilion-dark);
-  box-shadow:
-    0 16px 34px var(--accent-shadow-strong),
-    0 0 0 5px color-mix(in srgb, var(--paper-muted) 72%, transparent);
-  transform: translateY(-1px);
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .appearance-toggle:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 3px;
+  outline: 3px solid rgba(255, 255, 255, 0.72);
+  outline-offset: -5px;
+}
+
+.appearance-mode-icon {
+  display: none;
+}
+
+.appearance-switcher[data-open="true"] .appearance-palette-icon {
+  display: none;
+}
+
+.appearance-switcher[data-open="true"] .appearance-mode-icon {
+  display: block;
 }
 
 .appearance-palette {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 10px);
-  display: grid;
-  gap: 8px;
-  padding: 9px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface-glass);
-
-  box-shadow: var(--shadow-lg);
-  opacity: 0;
+  inset: 0;
+  z-index: 4;
+  border: 0;
+  background: transparent;
+  visibility: visible;
   pointer-events: none;
-  transform: translateY(6px);
-  visibility: hidden;
-  backdrop-filter: blur(14px);
-  transition:
-    opacity 150ms ease,
-    transform 150ms ease,
-    visibility 150ms ease;
-  transition-delay: 260ms;
+  clip-path: polygon(72% 100%, 100% 72%, 100% 100%);
+  transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
 }
+
+.appearance-swatch {
+  position: absolute;
+  right: calc(18px + (5 - var(--swatch-index)) * 22px);
+  bottom: calc(24px + var(--swatch-index) * 22px);
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--swatch-light);
+  box-shadow:
+    0 0 0 1px var(--line-strong),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+  pointer-events: none;
+  transition: box-shadow 150ms ease;
+}
+
+.appearance-switcher[data-open="true"] .appearance-corner-surface,
+.appearance-switcher[data-open="true"] .appearance-fold-flap,
+.appearance-switcher[data-open="true"] .appearance-palette {
+  clip-path: polygon(32% 100%, 100% 32%, 100% 100%);
+}
+
+.appearance-switcher[data-open="true"] .appearance-fold-flap {
+  opacity: 0.84;
+  transform: perspective(420px) rotateY(-68deg);
+}
+
+.appearance-switcher[data-open="true"] .appearance-swatch {
+  pointer-events: auto;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .appearance-switcher:hover .appearance-palette-icon {
+    display: none;
+  }
+
+  .appearance-switcher:hover .appearance-mode-icon {
+    display: block;
+  }
+
+  .appearance-switcher:hover .appearance-corner-surface,
+  .appearance-switcher:hover .appearance-fold-flap,
+  .appearance-switcher:hover .appearance-palette {
+    clip-path: polygon(32% 100%, 100% 32%, 100% 100%);
+  }
+
+  .appearance-switcher:hover .appearance-fold-flap {
+    opacity: 0.84;
+    transform: perspective(420px) rotateY(-68deg);
+  }
+
+  .appearance-switcher:hover .appearance-swatch {
+    pointer-events: auto;
+  }
+
+  .appearance-switcher:hover .appearance-swatch:hover {
+    transform: scale(1.08);
+  }
+}
+
 @media (min-width: 901px) {
   body:has(.home-hero) main {
     padding-bottom: 0;
@@ -1178,30 +1261,6 @@ input:focus-visible {
   body:has(.home-hero) .site-footer {
     margin-top: -66px;
   }
-}
-
-.appearance-switcher:hover .appearance-palette,
-.appearance-switcher:focus-within .appearance-palette {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  visibility: visible;
-  transition-delay: 0ms;
-}
-
-.appearance-swatch {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--swatch-light);
-  box-shadow:
-    0 0 0 1px var(--line-strong),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.24);
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease;
 }
 
 html[data-theme-mode="dark"] .appearance-swatch {
@@ -2340,11 +2399,6 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
   .home-hero::before {
     background-image: var(--hero-overlay-mobile);
-  }
-
-  .appearance-switcher {
-    right: max(14px, env(safe-area-inset-right));
-    bottom: calc(82px + env(safe-area-inset-bottom));
   }
 
   .nav-link {
