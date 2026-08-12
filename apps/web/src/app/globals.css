@@ -633,6 +633,24 @@ input:focus-visible {
 
 .site-footer {
   z-index: 21;
+  color: var(--subtle-text);
+  background: transparent;
+}
+
+.site-footer::before {
+  display: none;
+}
+
+.site-footer a {
+  color: var(--neutral-text);
+}
+
+.site-footer a:hover {
+  color: var(--vermilion);
+  background: var(--vermilion-soft);
+}
+
+body:has(.home-hero) .site-footer {
   color: rgba(255, 255, 255, 0.78);
   background: linear-gradient(
     to bottom,
@@ -641,19 +659,20 @@ input:focus-visible {
   );
 }
 
-.site-footer::before {
+body:has(.home-hero) .site-footer::before {
   position: absolute;
   inset: -72px 0 100%;
+  display: block;
   background: linear-gradient(to bottom, transparent, rgba(6, 8, 7, 0.34));
   content: "";
   pointer-events: none;
 }
 
-.site-footer a {
+body:has(.home-hero) .site-footer a {
   color: rgba(255, 255, 255, 0.82);
 }
 
-.site-footer a:hover {
+body:has(.home-hero) .site-footer a:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
 }
