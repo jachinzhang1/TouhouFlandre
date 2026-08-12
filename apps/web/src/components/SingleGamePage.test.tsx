@@ -190,7 +190,7 @@ describe("SingleGamePage", () => {
       screen.getByText("属性值缺失或无法判断，若遇到请反馈"),
     ).toBeTruthy();
     expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-minus")).toBeTruthy();
+    expect(tooltip.querySelector(".lucide-triangle")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-down")).toBeTruthy();
     expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);

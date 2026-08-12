@@ -136,6 +136,14 @@
   --error-border-strong: #dca9a1;
   --error-bg: #fbe7e4;
   --error-bg-soft: #fff7f5;
+  --feedback-higher-text: #8f2824;
+  --feedback-higher-border: #edc3bd;
+  --feedback-higher-bg: #fbe7e4;
+  --feedback-higher-mark: #ad3334;
+  --feedback-lower-text: #285f8f;
+  --feedback-lower-border: #b9d3e8;
+  --feedback-lower-bg: #e8f2fa;
+  --feedback-lower-mark: #3478b4;
   --neutral-text: #596762;
   --neutral-border: #d4dcd8;
   --neutral-bg: #edf1ef;
@@ -222,6 +230,14 @@ html[data-theme-mode="dark"] {
   --error-border-strong: rgba(224, 112, 108, 0.48);
   --error-bg: rgba(224, 112, 108, 0.15);
   --error-bg-soft: rgba(224, 112, 108, 0.11);
+  --feedback-higher-text: #ffaaa5;
+  --feedback-higher-border: rgba(224, 112, 108, 0.36);
+  --feedback-higher-bg: rgba(224, 112, 108, 0.15);
+  --feedback-higher-mark: #e0706c;
+  --feedback-lower-text: #9ac9f0;
+  --feedback-lower-border: rgba(91, 151, 201, 0.48);
+  --feedback-lower-bg: rgba(52, 120, 180, 0.18);
+  --feedback-lower-mark: #6ca6d9;
   --neutral-text: #a6b5ae;
   --neutral-border: #44534e;
   --neutral-bg: #26302d;
@@ -1469,10 +1485,16 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   color: var(--jade);
 }
 
-.feedback-legend-tooltip .feedback-legend-partial,
-.feedback-legend-tooltip .feedback-legend-higher,
-.feedback-legend-tooltip .feedback-legend-lower {
+.feedback-legend-tooltip .feedback-legend-partial {
   color: var(--amber);
+}
+
+.feedback-legend-tooltip .feedback-legend-higher {
+  color: var(--feedback-higher-text);
+}
+
+.feedback-legend-tooltip .feedback-legend-lower {
+  color: var(--feedback-lower-text);
 }
 
 .feedback-legend-tooltip .feedback-legend-miss,
@@ -1734,18 +1756,34 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   background: var(--jade);
 }
 
-.feedback-partial,
-.feedback-higher,
-.feedback-lower {
+.feedback-partial {
   color: var(--amber-strong);
   border-color: var(--amber-border);
   background: var(--amber-soft);
 }
 
-.feedback-partial b,
-.feedback-higher b,
-.feedback-lower b {
+.feedback-partial b {
   background: var(--amber);
+}
+
+.feedback-higher {
+  color: var(--feedback-higher-text);
+  border-color: var(--feedback-higher-border);
+  background: var(--feedback-higher-bg);
+}
+
+.feedback-higher b {
+  background: var(--feedback-higher-mark);
+}
+
+.feedback-lower {
+  color: var(--feedback-lower-text);
+  border-color: var(--feedback-lower-border);
+  background: var(--feedback-lower-bg);
+}
+
+.feedback-lower b {
+  background: var(--feedback-lower-mark);
 }
 
 .feedback-miss,

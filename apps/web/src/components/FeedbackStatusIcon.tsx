@@ -2,7 +2,7 @@ import {
   Check,
   ChevronsDown,
   ChevronsUp,
-  Minus,
+  Triangle,
   X,
 } from "lucide-react";
 import type { SVGProps } from "react";
@@ -57,7 +57,7 @@ export function FeedbackStatusIcon({
     : { "aria-label": ICON_LABEL[status] };
 
   if (status === "exact") return <Check size={size} {...accessibilityProps} />;
-  if (status === "partial") return <Minus size={size} {...accessibilityProps} />;
+  if (status === "partial") return <Triangle size={size} {...accessibilityProps} />;
   if (status === "higher")
     return <ChevronsUp size={size} {...accessibilityProps} />;
   if (status === "lower")
