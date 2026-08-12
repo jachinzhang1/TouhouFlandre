@@ -1127,7 +1127,7 @@ input:focus-visible {
 }
 
 .appearance-fold-flap {
-  clip-path: polygon(69% 97%, 97% 69%, 100% 72%, 72% 100%);
+  clip-path: polygon(72% 100%, 100% 72%, 72% 72%);
   z-index: 1;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 58%),
@@ -1191,8 +1191,9 @@ input:focus-visible {
 
 .appearance-swatch {
   position: absolute;
-  right: calc(1px + (5 - var(--swatch-index)) * 30px);
-  bottom: calc(1px + var(--swatch-index) * 30px);
+  /* 24px circles + five 15px diagonal gaps + two 21px edge paddings. */
+  right: calc(11.3px + (5 - var(--swatch-index)) * 27.58px);
+  bottom: calc(11.3px + var(--swatch-index) * 27.58px);
   width: 24px;
   height: 24px;
   border: 2px solid var(--surface);
@@ -1207,11 +1208,11 @@ input:focus-visible {
 
 .appearance-switcher[data-open="true"] .appearance-corner-surface,
 .appearance-switcher[data-open="true"] .appearance-palette {
-  clip-path: polygon(37% 100%, 100% 37%, 100% 100%);
+  clip-path: polygon(34% 100%, 100% 34%, 100% 100%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-fold-flap {
-  clip-path: polygon(34% 97%, 97% 34%, 100% 37%, 37% 100%);
+  clip-path: polygon(34% 100%, 100% 34%, 34% 34%);
 }
 
 .appearance-switcher[data-open="true"] .appearance-swatch {
@@ -1229,11 +1230,11 @@ input:focus-visible {
 
   .appearance-switcher:hover .appearance-corner-surface,
   .appearance-switcher:hover .appearance-palette {
-    clip-path: polygon(37% 100%, 100% 37%, 100% 100%);
+    clip-path: polygon(34% 100%, 100% 34%, 100% 100%);
   }
 
   .appearance-switcher:hover .appearance-fold-flap {
-    clip-path: polygon(34% 97%, 97% 34%, 100% 37%, 37% 100%);
+    clip-path: polygon(34% 100%, 100% 34%, 34% 34%);
   }
 
   .appearance-switcher:hover .appearance-swatch {
