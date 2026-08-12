@@ -127,7 +127,7 @@ export function SiteNav() {
         aria-label="返回首页"
       >
         <Paper
-          className="brand-paper-mark inline-flex size-[38px] items-center justify-center text-[var(--accent-contrast)] max-[680px]:size-[34px]"
+          className="brand-paper-mark inline-flex size-[38px] items-center justify-center max-[680px]:size-[34px]"
           variant="tinted"
           foldSize={8}
           unfoldOnHover={false}
