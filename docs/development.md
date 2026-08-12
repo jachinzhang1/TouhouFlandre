@@ -90,7 +90,7 @@ apps/api/
   internal/multi/          多人模式领域逻辑
   migrations/              goose 版本化迁移
   sql/queries/             sqlc 查询源
-packages/shared/src/       前端共享类型、字段、模式、搜索归一化与分享文本
+packages/shared/src/       前端共享类型、字段、模式、题库校验辅助与分享文本
 packages/data/src/         角色、作品数据与 Zod schema
 contracts/openapi/         HTTP 契约
 contracts/ws/              WebSocket 协议
@@ -114,12 +114,12 @@ contracts/ws/              WebSocket 协议
 - 进行中的会话不得返回隐藏答案。
 - 可预期业务错误返回统一 `ErrorResponse` 和稳定错误码。
 - handler 实现 oapi-codegen 生成的 strict server interface。
-- 游戏规则与答案选择逻辑位于 `internal/game`，与 handler 分离。
+- 游戏规则、答案选择和角色搜索逻辑位于 `internal/game`，与 handler 分离。
 - 多人状态以 Postgres 为权威，Go 内存只保存活动连接和热点投影。
 
 ### 共享逻辑
 
-- `packages/shared` 只保留前端展示和数据校验需要的类型、字段、模式、搜索归一化与分享文本。
+- `packages/shared` 只保留前端展示和数据校验需要的类型、字段、模式、校验辅助与分享文本；运行时角色搜索不在前端重复实现。
 - 比较、每日题、随机题、会话和并发写入规则以 Go `internal/game` 与 handler 实现为准。
 - 反馈规则相关工作必须添加覆盖边界情况的 Go 测试。
 - 扩展内容类型时同步更新 OpenAPI、Go 规则、前端展示和测试。
