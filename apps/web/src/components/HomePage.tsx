@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
@@ -10,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { GAME_CONTENT_DEFINITIONS } from "@touhouflandre/shared";
+import { Paper } from "./Paper";
 import { useCatalogSummary } from "../hooks/useCatalogSummary";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
@@ -78,6 +78,7 @@ function HeroShortcutMosaic() {
         title="每日题"
         text="今天的每日角色会是谁呢……？"
         href="/single/daily"
+        foldDelayMs={80}
         featured
       />
       <PaperShortcut
@@ -85,18 +86,21 @@ function HeroShortcutMosaic() {
         title="随机题"
         text="随时开始一局新的推理"
         href="/single/random"
+        foldDelayMs={140}
       />
       <PaperShortcut
         icon={LayoutGrid}
         title="其他模式"
         text="单人与多人模式一览"
         href="/single"
+        foldDelayMs={200}
       />
       <PaperShortcut
         icon={Search}
         title="题库索引"
         text="按名称、别名或作品检索"
         href="/search"
+        foldDelayMs={260}
       />
     </section>
   );
@@ -107,20 +111,25 @@ function PaperShortcut({
   title,
   text,
   href,
+  foldDelayMs,
   featured = false,
 }: {
   icon: LucideIcon;
   title: string;
   text: string;
   href: string;
+  foldDelayMs: number;
   featured?: boolean;
 }) {
   return (
-    <Link
-      className={`paper-shortcut folded-paper group ${
+    <Paper
+      className={`paper-shortcut group ${
         featured ? "paper-shortcut-featured" : ""
       }`}
       href={href}
+      variant={featured ? "tinted" : "plain"}
+      foldDelayMs={foldDelayMs}
+      foldSize={24}
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="paper-shortcut-icon inline-flex size-12 shrink-0 items-center justify-center border border-[var(--accent-hover-border)] bg-vermilion-soft text-vermilion">
@@ -138,6 +147,6 @@ function PaperShortcut({
         size={19}
         aria-hidden="true"
       />
-    </Link>
+    </Paper>
   );
 }
