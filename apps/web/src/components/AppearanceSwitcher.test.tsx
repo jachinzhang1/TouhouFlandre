@@ -81,12 +81,12 @@ describe("AppearanceSwitcher", () => {
     render(<AppearanceSwitcher />);
     const sakura = COLOR_THEMES.find((theme) => theme.id === "sakura");
 
-    await user.click(screen.getByRole("button", { name: "樱粉主题" }));
+    await user.click(screen.getByRole("button", { name: "古明地觉主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
     expect(
       screen
-        .getByRole("button", { name: "樱粉主题" })
+        .getByRole("button", { name: "古明地觉主题色" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
@@ -94,11 +94,24 @@ describe("AppearanceSwitcher", () => {
     );
   });
 
-  it("offers the blue color theme", async () => {
+  it("offers all six character theme colors", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
 
-    await user.click(screen.getByRole("button", { name: "蓝色主题" }));
+    for (const name of [
+      "博丽灵梦主题色",
+      "古明地觉主题色",
+      "八云紫主题色",
+      "东风谷早苗主题色",
+      "雾雨魔理沙主题色",
+      "比那名居天子主题色",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeTruthy();
+    }
+
+    await user.click(
+      screen.getByRole("button", { name: "比那名居天子主题色" }),
+    );
 
     expect(document.documentElement.dataset.themeColor).toBe("azure");
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(

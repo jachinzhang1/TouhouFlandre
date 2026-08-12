@@ -144,7 +144,7 @@ export function AppearanceSwitcher() {
         id="appearance-palette"
         className="appearance-palette"
         role="group"
-        aria-label="主题色"
+        aria-label="角色主题色"
       >
         {COLOR_THEMES.map((theme, index) => (
           <button
@@ -162,12 +162,12 @@ export function AppearanceSwitcher() {
                 "--swatch-index": index,
               } as CSSProperties
             }
-            aria-label={`${theme.label}主题`}
+            aria-label={`${theme.label}主题色`}
             aria-pressed={theme.id === activeTheme.id}
-            title={`${theme.label}主题`}
+            title={`${theme.label}主题色`}
             onClick={() => handleColorSelect(theme.id)}
           >
-            <span className="sr-only">{theme.label}主题</span>
+            <span className="sr-only">{theme.label}主题色</span>
           </button>
         ))}
       </div>
