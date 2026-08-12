@@ -23,6 +23,7 @@ export function GuessInputBar({
 }) {
   const [query, setQuery] = useState("");
   const { results, loading, error } = useCharacterSearch(query, {
+    enabled: Boolean(catalogVersion) && !disabled,
     limit: GAME_SEARCH_RESULT_LIMIT,
     version: catalogVersion,
   });

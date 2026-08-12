@@ -89,6 +89,7 @@ const WORK_COLUMNS = [
   { path: "titleJa", kind: "string" },
   { path: "titleEn", kind: "string?" },
   { path: "shortName", kind: "string" },
+  { path: "pinyinInitials", kind: "string[]" },
   { path: "type", kind: "string" },
   { path: "releaseYear", kind: "number" },
   { path: "mainlineIndex", kind: "number?" },

@@ -203,10 +203,12 @@ CharacterSearchResult:
       type: string
     searchText:
       type: string
-      description: 归一化可搜文本（seed 计算，与 Go 搜索 ILIKE 同一来源；客户端本地搜索直接复用）。
+      deprecated: true
+      description: 已弃用的字段边界搜索文本；新客户端不得据此自行执行搜索。
     nameSortKey:
       type: string
-      description: 名称排序键（seed 计算；客户端名称排序直接复用，保证与服务器一致）。
+      deprecated: true
+      description: 已弃用的名称排序键；新客户端由搜索 API 请求排序结果。
     firstAppearance:
       type: object
       required:
@@ -300,7 +302,8 @@ CatalogSummary:
 
 CatalogCharacters:
   type: object
-  description: 完整可猜角色表（客户端本地搜索用；version 为 CatalogState.currentVersion）。
+  deprecated: true
+  description: 已弃用的完整可猜角色表；仅为旧客户端保留一个兼容版本。
   required:
     - version
     - characters

@@ -118,15 +118,16 @@ func (q *Queries) UpsertCharacter(ctx context.Context, arg UpsertCharacterParams
 
 const upsertWork = `-- name: UpsertWork :exec
 INSERT INTO work (
-    id, title_zh, title_ja, title_en, short_name, type, release_year, mainline_index, era
+    id, title_zh, title_ja, title_en, short_name, pinyin_initials, type, release_year, mainline_index, era
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
 ON CONFLICT (id) DO UPDATE SET
     title_zh = EXCLUDED.title_zh,
     title_ja = EXCLUDED.title_ja,
     title_en = EXCLUDED.title_en,
     short_name = EXCLUDED.short_name,
+    pinyin_initials = EXCLUDED.pinyin_initials,
     type = EXCLUDED.type,
     release_year = EXCLUDED.release_year,
     mainline_index = EXCLUDED.mainline_index,
@@ -135,15 +136,16 @@ ON CONFLICT (id) DO UPDATE SET
 `
 
 type UpsertWorkParams struct {
-	ID            string      `json:"id"`
-	TitleZh       string      `json:"title_zh"`
-	TitleJa       string      `json:"title_ja"`
-	TitleEn       pgtype.Text `json:"title_en"`
-	ShortName     string      `json:"short_name"`
-	Type          string      `json:"type"`
-	ReleaseYear   int32       `json:"release_year"`
-	MainlineIndex pgtype.Int4 `json:"mainline_index"`
-	Era           pgtype.Text `json:"era"`
+	ID             string      `json:"id"`
+	TitleZh        string      `json:"title_zh"`
+	TitleJa        string      `json:"title_ja"`
+	TitleEn        pgtype.Text `json:"title_en"`
+	ShortName      string      `json:"short_name"`
+	PinyinInitials []byte      `json:"pinyin_initials"`
+	Type           string      `json:"type"`
+	ReleaseYear    int32       `json:"release_year"`
+	MainlineIndex  pgtype.Int4 `json:"mainline_index"`
+	Era            pgtype.Text `json:"era"`
 }
 
 // seed：作品与角色写入
@@ -154,6 +156,7 @@ func (q *Queries) UpsertWork(ctx context.Context, arg UpsertWorkParams) error {
 		arg.TitleJa,
 		arg.TitleEn,
 		arg.ShortName,
+		arg.PinyinInitials,
 		arg.Type,
 		arg.ReleaseYear,
 		arg.MainlineIndex,

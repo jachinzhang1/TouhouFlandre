@@ -36,8 +36,7 @@ const listGuessCharacters = `-- name: ListGuessCharacters :many
 SELECT id, avatar_url, display_name, name_sort_key, search_text, appearance_order, first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags, affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess, difficulty_tier, source_refs, created_at, updated_at FROM character WHERE enabled_as_guess ORDER BY name_sort_key, id ASC
 `
 
-// 完整可猜角色表（客户端本地搜索缓存源）：与猜测校验集一致（enabled_as_guess），
-// 按名称排序键输出（名称排序与服务器 ILIKE 搜索一致）。
+// 兼容期内保留的完整可猜角色表。
 func (q *Queries) ListGuessCharacters(ctx context.Context) ([]Character, error) {
 	rows, err := q.db.Query(ctx, listGuessCharacters)
 	if err != nil {
@@ -83,19 +82,7 @@ func (q *Queries) ListGuessCharacters(ctx context.Context) ([]Character, error) 
 }
 
 const listWorks = `-- name: ListWorks :many
-SELECT
-    id,
-    title_zh,
-    title_ja,
-    title_en,
-    short_name,
-    type,
-    release_year,
-    mainline_index,
-    era,
-    created_at,
-    updated_at
-FROM work
+SELECT id, title_zh, title_ja, title_en, short_name, type, release_year, mainline_index, era, created_at, updated_at, pinyin_initials FROM work
 ORDER BY release_year ASC, mainline_index ASC NULLS LAST, short_name ASC, id ASC
 `
 
@@ -120,6 +107,7 @@ func (q *Queries) ListWorks(ctx context.Context) ([]Work, error) {
 			&i.Era,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PinyinInitials,
 		); err != nil {
 			return nil, err
 		}

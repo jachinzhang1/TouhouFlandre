@@ -21,6 +21,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
@@ -346,6 +347,77 @@ func TestSearchReimu(t *testing.T) {
 	}
 }
 
+func TestSearchByWorkPinyinInitialsAndFieldBoundary(t *testing.T) {
+	for _, query := range []string{"hmx", "dfhmx"} {
+		resp, payload := request(http.MethodGet, "/api/characters/search?q="+query+"&sort=appearance", nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s status %d: %s", query, resp.StatusCode, payload)
+		}
+		var search openapi.CharacterSearchResponse
+		if err := json.Unmarshal(payload, &search); err != nil {
+			t.Fatal(err)
+		}
+		if search.Total != 9 || len(search.Results) != 9 {
+			t.Fatalf("%s should return the 9 EoSD characters, got %+v", query, search)
+		}
+		for _, result := range search.Results {
+			if result.WorkId != "th06_eosd" {
+				t.Fatalf("%s returned a character from %s: %+v", query, result.WorkId, result)
+			}
+		}
+	}
+
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=%E6%A2%A6%E4%B8%9C", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("boundary status %d: %s", resp.StatusCode, payload)
+	}
+	var boundary openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &boundary); err != nil {
+		t.Fatal(err)
+	}
+	if boundary.Total != 0 {
+		t.Fatalf("query must not match across name/work boundaries: %+v", boundary)
+	}
+}
+
+func TestSearchCatalogVersionAndScopeValidation(t *testing.T) {
+	var version string
+	if err := pool.QueryRow(ctx, `SELECT current_version FROM catalog_state WHERE id = 'current'`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=hmx&catalogVersion="+version, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("version search status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if search.Total != 9 {
+		t.Fatalf("version-bound search differs from current catalog: %+v", search)
+	}
+
+	conflictResp, conflictPayload := request(
+		http.MethodGet,
+		"/api/characters/search?sessionId=one&catalogVersion="+version,
+		nil,
+	)
+	if conflictResp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("scope conflict status %d: %s", conflictResp.StatusCode, conflictPayload)
+	}
+	if apiErr := decodeError(t, conflictPayload); apiErr.Code != "INVALID_REQUEST" {
+		t.Fatalf("unexpected conflict error: %+v", apiErr)
+	}
+
+	missingResp, missingPayload := request(http.MethodGet, "/api/characters/search?catalogVersion=missing", nil)
+	if missingResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing version status %d: %s", missingResp.StatusCode, missingPayload)
+	}
+	if apiErr := decodeError(t, missingPayload); apiErr.Code != "CATALOG_VERSION_NOT_FOUND" {
+		t.Fatalf("unexpected missing version error: %+v", apiErr)
+	}
+}
+
 func TestSearchFiltersByWorkIDs(t *testing.T) {
 	resp, payload := request(http.MethodGet, "/api/characters/search?workIds=th01_hrtp&q=%E7%81%B5%E6%A2%A6", nil)
 	if resp.StatusCode != http.StatusOK {
@@ -392,16 +464,44 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := pool.Exec(ctx,
-		`UPDATE character SET enabled_as_guess = false WHERE id = 'reimu_hakurei'`,
-	); err != nil {
+	var originalVersion string
+	var originalSnapshot []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT state.current_version, snapshot.characters
+		FROM catalog_state state
+		JOIN catalog_snapshot snapshot ON snapshot.version = state.current_version
+		WHERE state.id = 'current'
+	`).Scan(&originalVersion, &originalSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	var currentCharacters []game.Character
+	if err := json.Unmarshal(originalSnapshot, &currentCharacters); err != nil {
+		t.Fatal(err)
+	}
+	withoutReimu := make([]game.Character, 0, len(currentCharacters)-1)
+	for _, character := range currentCharacters {
+		if character.ID != "reimu_hakurei" {
+			withoutReimu = append(withoutReimu, character)
+		}
+	}
+	newSnapshot, err := json.Marshal(withoutReimu)
+	if err != nil {
+		t.Fatal(err)
+	}
+	temporaryVersion := originalVersion + "-without-reimu"
+	if _, err := pool.Exec(ctx, `INSERT INTO catalog_snapshot (version, characters) VALUES ($1, $2)`, temporaryVersion, newSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE catalog_state SET current_version = $1 WHERE id = 'current'`, temporaryVersion); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if _, err := pool.Exec(ctx,
-			`UPDATE character SET enabled_as_guess = true WHERE id = 'reimu_hakurei'`,
-		); err != nil {
-			t.Errorf("restore current catalog: %v", err)
+		if _, restoreErr := pool.Exec(ctx, `UPDATE catalog_state SET current_version = $1 WHERE id = 'current'`, originalVersion); restoreErr != nil {
+			t.Errorf("restore current catalog version: %v", restoreErr)
+			return
+		}
+		if _, deleteErr := pool.Exec(ctx, `DELETE FROM catalog_snapshot WHERE version = $1`, temporaryVersion); deleteErr != nil {
+			t.Errorf("delete temporary catalog snapshot: %v", deleteErr)
 		}
 	}()
 

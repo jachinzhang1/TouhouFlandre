@@ -1,15 +1,16 @@
 -- seed：作品与角色写入
 -- name: UpsertWork :exec
 INSERT INTO work (
-    id, title_zh, title_ja, title_en, short_name, type, release_year, mainline_index, era
+    id, title_zh, title_ja, title_en, short_name, pinyin_initials, type, release_year, mainline_index, era
 ) VALUES (
-    @id, @title_zh, @title_ja, @title_en, @short_name, @type, @release_year, @mainline_index, @era
+    @id, @title_zh, @title_ja, @title_en, @short_name, @pinyin_initials, @type, @release_year, @mainline_index, @era
 )
 ON CONFLICT (id) DO UPDATE SET
     title_zh = EXCLUDED.title_zh,
     title_ja = EXCLUDED.title_ja,
     title_en = EXCLUDED.title_en,
     short_name = EXCLUDED.short_name,
+    pinyin_initials = EXCLUDED.pinyin_initials,
     type = EXCLUDED.type,
     release_year = EXCLUDED.release_year,
     mainline_index = EXCLUDED.mainline_index,

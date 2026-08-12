@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 
@@ -98,149 +97,78 @@ func (s *Server) SiteVisitsCreate(ctx context.Context, _ openapi.SiteVisitsCreat
 	return openapi.SiteVisitsCreate200JSONResponse(openapi.SiteVisitResponse{Count: count}), nil
 }
 
-// CharactersSearch 搜索角色（行表 + ILIKE）。
+// CharactersSearch searches the current catalog or a version-bound snapshot.
 func (s *Server) CharactersSearch(ctx context.Context, request openapi.CharactersSearchRequestObject) (openapi.CharactersSearchResponseObject, error) {
 	query := ""
 	if request.Params.Q != nil {
 		query = *request.Params.Q
 	}
-	workIDs := ""
+	workIDs := []string{}
 	filterByWork := request.Params.WorkIds != nil
 	if request.Params.WorkIds != nil {
-		workIDs = *request.Params.WorkIds
+		for _, workID := range strings.Split(*request.Params.WorkIds, ",") {
+			workID = strings.TrimSpace(workID)
+			if workID != "" {
+				workIDs = append(workIDs, workID)
+			}
+		}
 	}
-	limit := int32(50)
+	limit := 50
 	if request.Params.Limit != nil {
-		limit = int32(*request.Params.Limit)
+		limit = *request.Params.Limit
 	}
-	offset := int32(0)
+	offset := 0
 	if request.Params.Offset != nil {
-		offset = int32(*request.Params.Offset)
+		offset = *request.Params.Offset
 	}
 	direction := "asc"
 	if request.Params.Direction != nil {
 		direction = string(*request.Params.Direction)
 	}
+	if request.Params.SessionId != nil && request.Params.CatalogVersion != nil {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "sessionId 与 catalogVersion 不能同时提供。"}
+	}
+
+	var characters []game.Character
 	if request.Params.SessionId != nil {
-		return s.searchSessionCharacters(ctx, *request.Params.SessionId, query, workIDs, filterByWork, request.Params.Sort, direction, int(offset), int(limit))
-	}
-
-	var rows []repo.Character
-	var err error
-	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
-		rows, err = s.q.SearchCharactersByAppearance(ctx, repo.SearchCharactersByAppearanceParams{
-			Q: query, WorkIds: workIDs, FilterByWork: filterByWork, Direction: direction, PageOffset: offset, MaxResults: limit,
-		})
-	} else {
-		rows, err = s.q.SearchCharactersByName(ctx, repo.SearchCharactersByNameParams{
-			Q: query, WorkIds: workIDs, FilterByWork: filterByWork, Direction: direction, PageOffset: offset, MaxResults: limit,
-		})
-	}
-	if err != nil {
-		return nil, internalError(err)
-	}
-
-	results := make([]openapi.CharacterSearchResult, 0, len(rows))
-	for _, row := range rows {
-		character, err := characterFromRow(row)
+		session, err := s.q.GetSession(ctx, *request.Params.SessionId)
 		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &ApiError{Status: http.StatusNotFound, Code: codeSessionNotFound, Message: "没有找到这一局游戏。"}
+			}
 			return nil, internalError(err)
 		}
-		results = append(results, toSearchResult(character, row.SearchText, row.NameSortKey))
+		characters, err = s.charactersForVersion(ctx, session.CatalogVersion)
+		if err != nil {
+			return nil, err
+		}
+	} else if request.Params.CatalogVersion != nil {
+		var err error
+		characters, err = s.charactersForRequestedVersion(ctx, *request.Params.CatalogVersion)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		_, currentCharacters, err := s.getCurrentCatalog(ctx)
+		if err != nil {
+			return nil, err
+		}
+		characters = currentCharacters
 	}
 
-	total, err := s.q.CountSearchCharacters(ctx, repo.CountSearchCharactersParams{
-		Q: query, WorkIds: workIDs, FilterByWork: filterByWork,
+	sortBy := "name"
+	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
+		sortBy = "appearance"
+	}
+	page := game.SearchCharacters(characters, game.CharacterSearchOptions{
+		Query: query, WorkIDs: workIDs, FilterByWork: filterByWork,
+		SortBy: sortBy, Descending: direction == "desc", Offset: offset, Limit: limit,
 	})
-	if err != nil {
-		return nil, internalError(err)
+	results := make([]openapi.CharacterSearchResult, 0, len(page.Characters))
+	for _, character := range page.Characters {
+		results = append(results, toSearchResult(character, game.CharacterSearchText(character), game.CharacterNameSortKey(character)))
 	}
-	return openapi.CharactersSearch200JSONResponse{
-		Results: results,
-		Total:   int(total),
-	}, nil
-}
-
-func (s *Server) searchSessionCharacters(
-	ctx context.Context,
-	sessionID string,
-	query string,
-	workIDs string,
-	filterByWork bool,
-	sortBy *openapi.CharactersSearchParamsSort,
-	direction string,
-	offset int,
-	limit int,
-) (openapi.CharactersSearchResponseObject, error) {
-	session, err := s.q.GetSession(ctx, sessionID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, &ApiError{Status: http.StatusNotFound, Code: codeSessionNotFound, Message: "没有找到这一局游戏。"}
-		}
-		return nil, internalError(err)
-	}
-	characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	normalizedQuery := game.NormalizeSearchText(query)
-	allowedWorkIDs := map[string]struct{}{}
-	if filterByWork {
-		for _, workID := range strings.Split(workIDs, ",") {
-			workID = strings.TrimSpace(workID)
-			if workID != "" {
-				allowedWorkIDs[workID] = struct{}{}
-			}
-		}
-	}
-	matches := make([]game.Character, 0, len(characters))
-	for _, character := range characters {
-		if !character.EnabledAsGuess {
-			continue
-		}
-		if filterByWork {
-			if _, ok := allowedWorkIDs[character.FirstAppearance.WorkID]; !ok {
-				continue
-			}
-		}
-		searchText := game.NormalizeSearchText(game.CharacterSearchText(character))
-		if normalizedQuery == "" || strings.Contains(searchText, normalizedQuery) {
-			matches = append(matches, character)
-		}
-	}
-
-	sort.Slice(matches, func(i, j int) bool {
-		left, right := matches[i], matches[j]
-		comparison := 0
-		if sortBy != nil && *sortBy == openapi.Appearance {
-			comparison = left.AppearanceOrder - right.AppearanceOrder
-		} else {
-			comparison = strings.Compare(game.CharacterNameSortKey(left), game.CharacterNameSortKey(right))
-		}
-		if comparison == 0 {
-			return left.ID < right.ID
-		}
-		if direction == "desc" {
-			return comparison > 0
-		}
-		return comparison < 0
-	})
-
-	total := len(matches)
-	if offset > total {
-		offset = total
-	}
-	end := min(offset+limit, total)
-	results := make([]openapi.CharacterSearchResult, 0, end-offset)
-	for _, character := range matches[offset:end] {
-		results = append(results, toSearchResult(
-			character,
-			game.NormalizeSearchText(game.CharacterSearchText(character)),
-			game.CharacterNameSortKey(character),
-		))
-	}
-	return openapi.CharactersSearch200JSONResponse{Results: results, Total: total}, nil
+	return openapi.CharactersSearch200JSONResponse{Results: results, Total: page.Total}, nil
 }
 
 // CatalogGet 题库摘要；题库未初始化时返回 503。
@@ -285,8 +213,7 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 	return openapi.CatalogGet200JSONResponse(summary), nil
 }
 
-// CatalogCharacters 完整可猜角色表 + 当前版本（客户端本地搜索缓存源，08 §10.x）。
-// 行表与猜测校验同一来源（enabled_as_guess）；version 供客户端检测表更新（seed 后变化）。
+// CatalogCharacters 在兼容期内返回完整可猜角色表和当前版本。
 func (s *Server) CatalogCharacters(ctx context.Context, _ openapi.CatalogCharactersRequestObject) (openapi.CatalogCharactersResponseObject, error) {
 	state, err := s.q.GetCatalogState(ctx)
 	if err != nil {

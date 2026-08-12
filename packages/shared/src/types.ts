@@ -60,6 +60,7 @@ export type FirstAppearance = {
   releaseYear: number;
   mainlineIndex?: number;
   era?: "pc98" | "windows" | "other";
+  workPinyinInitials?: string[];
 };
 
 export type Work = {
@@ -68,6 +69,7 @@ export type Work = {
   titleJa: string;
   titleEn?: string;
   shortName: string;
+  pinyinInitials: string[];
   type: WorkType;
   releaseYear: number;
   mainlineIndex?: number;

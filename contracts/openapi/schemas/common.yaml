@@ -17,6 +17,7 @@ ErrorResponse:
         - CONCURRENT_UPDATE
         - UNSUPPORTED_CONTENT_TYPE
         - CATALOG_NOT_READY
+        - CATALOG_VERSION_NOT_FOUND
         - INTERNAL
         # 多人模式（08 §7.2）
         - ROOM_NOT_FOUND

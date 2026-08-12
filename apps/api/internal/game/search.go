@@ -2,14 +2,14 @@ package game
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"unicode"
 
 	"golang.org/x/text/unicode/norm"
 )
 
-// NormalizeSearchText 对应 shared 的 normalizeSearchText：
-// 小写 → NFKC 归一化 → 去除空白与符号（_ . ・ · -）。
+// NormalizeSearchText applies the shared search normalization to one value.
 func NormalizeSearchText(value string) string {
 	lowered := strings.Map(unicode.ToLower, value)
 	normalized := norm.NFKC.String(lowered)
@@ -24,7 +24,6 @@ func NormalizeSearchText(value string) string {
 	return builder.String()
 }
 
-// CharacterNameSortKey 对应 shared 的 characterNameSortKey（seed 派生用）。
 func CharacterNameSortKey(character Character) string {
 	name := character.Names.En
 	if character.Names.Romaji != nil {
@@ -33,24 +32,126 @@ func CharacterNameSortKey(character Character) string {
 	return NormalizeSearchText(name)
 }
 
-// CharacterSearchText 对应 shared 的 characterSearchText：拼接全部可搜索字段。
-func CharacterSearchText(character Character) string {
-	parts := []string{character.Names.ZhHans}
+// CharacterSearchTerms normalizes each searchable field independently. A
+// query must match one term, so adjacent fields can never create a match.
+func CharacterSearchTerms(character Character) []string {
+	values := []string{character.Names.ZhHans}
 	if character.Names.ZhHant != nil {
-		parts = append(parts, *character.Names.ZhHant)
+		values = append(values, *character.Names.ZhHant)
 	}
-	parts = append(parts, character.Names.Ja, character.Names.En)
+	values = append(values, character.Names.Ja, character.Names.En)
 	if character.Names.Romaji != nil {
-		parts = append(parts, *character.Names.Romaji)
+		values = append(values, *character.Names.Romaji)
 	}
-	parts = append(parts, character.Names.Aliases...)
-	parts = append(parts, character.FirstAppearance.WorkTitle, character.FirstAppearance.WorkID)
+	values = append(values, character.Names.Aliases...)
+	values = append(values,
+		character.FirstAppearance.WorkTitle,
+		character.FirstAppearance.WorkID,
+	)
+	values = append(values, character.FirstAppearance.WorkPinyinInitials...)
 	if character.FirstAppearance.MainlineIndex != nil {
-		index := *character.FirstAppearance.MainlineIndex
-		parts = append(parts,
-			fmt.Sprintf("TH%02d", index),
-			fmt.Sprintf("th%02d", index),
-		)
+		values = append(values, fmt.Sprintf("TH%02d", *character.FirstAppearance.MainlineIndex))
 	}
-	return strings.Join(parts, " ")
+
+	terms := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		term := NormalizeSearchText(value)
+		if term == "" {
+			continue
+		}
+		if _, exists := seen[term]; exists {
+			continue
+		}
+		seen[term] = struct{}{}
+		terms = append(terms, term)
+	}
+	return terms
+}
+
+// CharacterSearchText is retained for the deprecated catalog search payload.
+// Spaces are intentional field boundaries and are never removed here.
+func CharacterSearchText(character Character) string {
+	return strings.Join(CharacterSearchTerms(character), " ")
+}
+
+func MatchCharacterQuery(character Character, query string) bool {
+	normalizedQuery := NormalizeSearchText(query)
+	if normalizedQuery == "" {
+		return true
+	}
+	for _, term := range CharacterSearchTerms(character) {
+		if strings.Contains(term, normalizedQuery) {
+			return true
+		}
+	}
+	return false
+}
+
+type CharacterSearchOptions struct {
+	Query        string
+	WorkIDs      []string
+	FilterByWork bool
+	SortBy       string
+	Descending   bool
+	Offset       int
+	Limit        int
+}
+
+type CharacterSearchPage struct {
+	Characters []Character
+	Total      int
+}
+
+// SearchCharacters is the only authoritative character search implementation.
+func SearchCharacters(characters []Character, options CharacterSearchOptions) CharacterSearchPage {
+	allowedWorks := make(map[string]struct{}, len(options.WorkIDs))
+	for _, workID := range options.WorkIDs {
+		if workID != "" {
+			allowedWorks[workID] = struct{}{}
+		}
+	}
+
+	matches := make([]Character, 0, len(characters))
+	for _, character := range characters {
+		if !character.EnabledAsGuess {
+			continue
+		}
+		if options.FilterByWork {
+			if _, allowed := allowedWorks[character.FirstAppearance.WorkID]; !allowed {
+				continue
+			}
+		}
+		if MatchCharacterQuery(character, options.Query) {
+			matches = append(matches, character)
+		}
+	}
+
+	sort.Slice(matches, func(i, j int) bool {
+		left, right := matches[i], matches[j]
+		comparison := 0
+		if options.SortBy == "appearance" {
+			comparison = left.AppearanceOrder - right.AppearanceOrder
+		} else {
+			comparison = strings.Compare(CharacterNameSortKey(left), CharacterNameSortKey(right))
+		}
+		if comparison == 0 {
+			return left.ID < right.ID
+		}
+		if options.Descending {
+			return comparison > 0
+		}
+		return comparison < 0
+	})
+
+	total := len(matches)
+	start := max(options.Offset, 0)
+	if start > total {
+		start = total
+	}
+	end := total
+	if options.Limit >= 0 {
+		end = min(start+options.Limit, total)
+	}
+	return CharacterSearchPage{Characters: matches[start:end], Total: total}
 }

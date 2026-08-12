@@ -16,6 +16,7 @@ const work = (id: string, mainlineIndex: number): Work => ({
   titleZh: id,
   titleJa: id,
   shortName: id.toUpperCase(),
+  pinyinInitials: [id],
   type: "game",
   releaseYear: 2002 + mainlineIndex,
   mainlineIndex,

@@ -18,6 +18,7 @@ Work:
     - titleZh
     - titleJa
     - shortName
+    - pinyinInitials
     - type
     - releaseYear
   properties:
@@ -35,6 +36,13 @@ Work:
     shortName:
       type: string
       minLength: 1
+    pinyinInitials:
+      type: array
+      description: 作品中文标题的稳定拼音首字母检索词（简称与全称）。
+      minItems: 1
+      items:
+        type: string
+        pattern: "^[a-z0-9]+$"
     type:
       $ref: "#/WorkType"
     releaseYear:

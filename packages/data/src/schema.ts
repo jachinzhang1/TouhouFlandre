@@ -12,6 +12,12 @@ const uniqueStringArray = z
   .refine((values) => new Set(values).size === values.length, {
     message: "Values must be unique.",
   });
+const pinyinInitialsSchema = z
+  .array(z.string().regex(/^[a-z0-9]+$/u))
+  .min(1)
+  .refine((values) => new Set(values).size === values.length, {
+    message: "Pinyin initials must be unique within a work.",
+  });
 
 export const workSchema = z.object({
   id: z.string().min(1),
@@ -19,6 +25,7 @@ export const workSchema = z.object({
   titleJa: z.string().min(1),
   titleEn: z.string().optional(),
   shortName: z.string().min(1),
+  pinyinInitials: pinyinInitialsSchema,
   type: z.enum(WORK_TYPES),
   releaseYear: z.number().int(),
   mainlineIndex: z.number().int().optional(),
@@ -66,6 +73,7 @@ export const characterRuntimeSchema = characterSourceSchema.extend({
     releaseYear: z.number().int(),
     mainlineIndex: z.number().int().optional(),
     era: z.enum(["pc98", "windows", "other"]).optional(),
+    workPinyinInitials: pinyinInitialsSchema,
   }),
 });
 export const characterRuntimeListSchema = z.array(characterRuntimeSchema);

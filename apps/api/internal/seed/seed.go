@@ -19,22 +19,23 @@ import (
 
 // sourceWork 对应 packages/data 的 works.demo.json（workSchema 解析结果）。
 type sourceWork struct {
-	ID            string  `json:"id"`
-	TitleZh       string  `json:"titleZh"`
-	TitleJa       string  `json:"titleJa"`
-	TitleEn       *string `json:"titleEn,omitempty"`
-	ShortName     string  `json:"shortName"`
-	Type          string  `json:"type"`
-	ReleaseYear   int     `json:"releaseYear"`
-	MainlineIndex *int    `json:"mainlineIndex,omitempty"`
-	Era           *string `json:"era,omitempty"`
+	ID             string   `json:"id"`
+	TitleZh        string   `json:"titleZh"`
+	TitleJa        string   `json:"titleJa"`
+	TitleEn        *string  `json:"titleEn,omitempty"`
+	ShortName      string   `json:"shortName"`
+	PinyinInitials []string `json:"pinyinInitials"`
+	Type           string   `json:"type"`
+	ReleaseYear    int      `json:"releaseYear"`
+	MainlineIndex  *int     `json:"mainlineIndex,omitempty"`
+	Era            *string  `json:"era,omitempty"`
 }
 
 // sourceCharacter 对应 characters.demo.json 的源形态（firstAppearance 只含 workId）。
 type sourceCharacter struct {
-	ID              string               `json:"id"`
-	AvatarURL       string               `json:"avatarUrl"`
-	Names           game.LocalizedNames  `json:"names"`
+	ID              string              `json:"id"`
+	AvatarURL       string              `json:"avatarUrl"`
+	Names           game.LocalizedNames `json:"names"`
 	FirstAppearance struct {
 		WorkID string `json:"workId"`
 	} `json:"firstAppearance"`
@@ -116,12 +117,13 @@ func loadCharacters(path string, works []sourceWork) ([]game.Character, error) {
 			DifficultyTier:  source.DifficultyTier,
 			SourceRefs:      source.SourceRefs,
 			FirstAppearance: game.FirstAppearance{
-				WorkID:        work.ID,
-				WorkTitle:     work.TitleZh,
-				WorkType:      work.Type,
-				ReleaseYear:   work.ReleaseYear,
-				MainlineIndex: work.MainlineIndex,
-				Era:           work.Era,
+				WorkID:             work.ID,
+				WorkTitle:          work.TitleZh,
+				WorkType:           work.Type,
+				ReleaseYear:        work.ReleaseYear,
+				MainlineIndex:      work.MainlineIndex,
+				Era:                work.Era,
+				WorkPinyinInitials: append([]string{}, work.PinyinInitials...),
 			},
 			AppearanceOrder: order,
 		}
@@ -195,16 +197,21 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dataDir string) (string, error
 	q := repo.New(tx)
 
 	for _, work := range works {
+		pinyinInitials, err := json.Marshal(work.PinyinInitials)
+		if err != nil {
+			return "", err
+		}
 		params := repo.UpsertWorkParams{
-			ID:            work.ID,
-			TitleZh:       work.TitleZh,
-			TitleJa:       work.TitleJa,
-			TitleEn:       textPtr(work.TitleEn),
-			ShortName:     work.ShortName,
-			Type:          work.Type,
-			ReleaseYear:   int32(work.ReleaseYear),
-			MainlineIndex: intPtr(work.MainlineIndex),
-			Era:           textPtr(work.Era),
+			ID:             work.ID,
+			TitleZh:        work.TitleZh,
+			TitleJa:        work.TitleJa,
+			TitleEn:        textPtr(work.TitleEn),
+			ShortName:      work.ShortName,
+			PinyinInitials: pinyinInitials,
+			Type:           work.Type,
+			ReleaseYear:    int32(work.ReleaseYear),
+			MainlineIndex:  intPtr(work.MainlineIndex),
+			Era:            textPtr(work.Era),
 		}
 		if err := q.UpsertWork(ctx, params); err != nil {
 			return "", fmt.Errorf("upsert work %s: %w", work.ID, err)
@@ -252,7 +259,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dataDir string) (string, error
 			AvatarUrl:             character.AvatarURL,
 			DisplayName:           character.Names.ZhHans,
 			NameSortKey:           game.CharacterNameSortKey(character),
-			SearchText:            game.NormalizeSearchText(game.CharacterSearchText(character)),
+			SearchText:            game.CharacterSearchText(character),
 			AppearanceOrder:       int32(character.AppearanceOrder),
 			FirstAppearanceWorkID: character.FirstAppearance.WorkID,
 			Names:                 names,

@@ -128,6 +128,16 @@ describe("works excel conversion", () => {
     expect(rows[0].releaseYear).toBe(works[0].releaseYear);
   });
 
+  it("exports work pinyin initials as a multi-value column", () => {
+    const workbook = buildWorksWorkbook(works);
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+      workbook.Sheets["works"]!,
+      { raw: true },
+    );
+    const eosd = rows.find((row) => row.id === "th06_eosd");
+    expect(eosd?.pinyinInitials).toBe("hmx|dfhmx");
+  });
+
   it("maps blank optional string and number cells to undefined", () => {
     const workbook = buildWorksWorkbook(works);
     const worksheet = workbook.Sheets["works"]!;

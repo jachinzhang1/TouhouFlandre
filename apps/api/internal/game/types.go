@@ -68,12 +68,13 @@ type LocalizedNames struct {
 
 // FirstAppearance 对应 shared 的 FirstAppearance。
 type FirstAppearance struct {
-	WorkID        string  `json:"workId"`
-	WorkTitle     string  `json:"workTitle"`
-	WorkType      string  `json:"workType"`
-	ReleaseYear   int     `json:"releaseYear"`
-	MainlineIndex *int    `json:"mainlineIndex,omitempty"`
-	Era           *string `json:"era,omitempty"`
+	WorkID             string   `json:"workId"`
+	WorkTitle          string   `json:"workTitle"`
+	WorkType           string   `json:"workType"`
+	ReleaseYear        int      `json:"releaseYear"`
+	MainlineIndex      *int     `json:"mainlineIndex,omitempty"`
+	Era                *string  `json:"era,omitempty"`
+	WorkPinyinInitials []string `json:"workPinyinInitials,omitempty"`
 }
 
 // Character 对应 shared 的 Character。
