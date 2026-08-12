@@ -615,7 +615,7 @@ input:focus-visible {
   }
 
   .site-nav::before {
-    top: calc(100% - 1px);
+    top: 100%;
     z-index: -1;
     height: 6px;
     background:
@@ -632,14 +632,14 @@ input:focus-visible {
   }
 
   .site-nav::after {
-    top: calc(100% + 2px);
+    top: calc(100% + 3px);
     z-index: -2;
     height: 6px;
     background: var(--nav-paper-layer-2);
   }
 
   .site-nav-paper-layer {
-    top: calc(100% + 5px);
+    top: calc(100% + 6px);
     z-index: -3;
     height: 6px;
     background: var(--nav-paper-layer-3);
