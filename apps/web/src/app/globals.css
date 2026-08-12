@@ -293,6 +293,15 @@ html[data-theme-color="amber"] {
   --accent-hover-border: #c49a54;
 }
 
+html[data-theme-color="azure"] {
+  --accent: #3478b4;
+  --accent-strong: #285f8f;
+  --accent-soft: #e8f2fa;
+  --accent-shadow: rgba(52, 120, 180, 0.2);
+  --accent-shadow-strong: rgba(52, 120, 180, 0.25);
+  --accent-hover-border: #78a7cc;
+}
+
 html[data-theme-mode="dark"][data-theme-color="scarlet"] {
   --accent: #e0706c;
   --accent-strong: #ffaaa5;
@@ -336,6 +345,15 @@ html[data-theme-mode="dark"][data-theme-color="amber"] {
   --accent-shadow: rgba(214, 154, 67, 0.28);
   --accent-shadow-strong: rgba(214, 154, 67, 0.34);
   --accent-hover-border: #9b7337;
+}
+
+html[data-theme-mode="dark"][data-theme-color="azure"] {
+  --accent: #6ca6d9;
+  --accent-strong: #9ac9f0;
+  --accent-soft: #20374b;
+  --accent-shadow: rgba(108, 166, 217, 0.28);
+  --accent-shadow-strong: rgba(108, 166, 217, 0.34);
+  --accent-hover-border: #557f9f;
 }
 
 html.theme-transitioning,
@@ -1640,6 +1658,13 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   color: var(--jade-strong);
   border-color: var(--jade-border);
   background: var(--jade-soft);
+}
+
+.ant-message .ant-message-notice-wrapper .ant-message-notice-content {
+  color: var(--ink) !important;
+  border: 1px solid var(--line);
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-lg);
 }
 
 .table-wrap {
