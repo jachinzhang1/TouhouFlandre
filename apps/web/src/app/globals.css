@@ -81,6 +81,8 @@
   --nav-text: #53625d;
   --nav-hover-bg: rgba(255, 255, 255, 0.66);
   --nav-bg: rgba(251, 252, 251, 0.78);
+  --nav-paper-layer-1: rgba(238, 242, 239, 0.84);
+  --nav-paper-layer-2: rgba(227, 233, 229, 0.46);
   --mobile-nav-shadow: 0 -8px 24px rgba(25, 46, 39, 0.08);
   --surface: #ffffff;
   --surface-hover: #ffffff;
@@ -175,6 +177,8 @@ html[data-theme-mode="dark"] {
   --nav-text: #a5b4ae;
   --nav-hover-bg: rgba(255, 255, 255, 0.07);
   --nav-bg: rgba(16, 22, 20, 0.74);
+  --nav-paper-layer-1: rgba(32, 43, 39, 0.86);
+  --nav-paper-layer-2: rgba(39, 52, 47, 0.5);
   --mobile-nav-shadow: 0 -10px 28px rgba(0, 0, 0, 0.34);
   --surface: #1a2421;
   --surface-hover: #24302c;
@@ -610,7 +614,7 @@ input:focus-visible {
 
   .site-nav::before {
     top: calc(100% - 2px);
-    height: 14px;
+    height: 10px;
     background:
       repeating-linear-gradient(
         13deg,
@@ -621,62 +625,13 @@ input:focus-visible {
         transparent 9px,
         transparent 20px
       ),
-      color-mix(in srgb, var(--paper) 72%, transparent);
-    clip-path: polygon(
-      0 0,
-      100% 0,
-      100% 58%,
-      98.6% 58%,
-      98% 100%,
-      97.1% 62%,
-      94.5% 74%,
-      91.8% 54%,
-      88.6% 82%,
-      84.4% 57%,
-      80.2% 76%,
-      74.9% 55%,
-      70.8% 88%,
-      66% 59%,
-      61.7% 78%,
-      56.9% 52%,
-      51.1% 83%,
-      45.5% 58%,
-      40.3% 74%,
-      34.2% 55%,
-      29.8% 88%,
-      24.4% 58%,
-      18.8% 77%,
-      13% 54%,
-      8.1% 84%,
-      3.5% 60%,
-      0 72%
-    );
+      var(--nav-paper-layer-1);
   }
 
   .site-nav::after {
     top: calc(100% + 5px);
-    height: 16px;
-    background: color-mix(in srgb, var(--paper) 38%, transparent);
-    clip-path: polygon(
-      0 0,
-      100% 0,
-      100% 42%,
-      95.2% 68%,
-      89.4% 38%,
-      83.7% 78%,
-      76.6% 41%,
-      69.8% 72%,
-      63.2% 35%,
-      56.3% 80%,
-      48.9% 39%,
-      41.7% 72%,
-      34.5% 36%,
-      27.1% 77%,
-      20.4% 43%,
-      13.1% 70%,
-      6.8% 39%,
-      0 62%
-    );
+    height: 8px;
+    background: var(--nav-paper-layer-2);
   }
 }
 
@@ -1092,6 +1047,10 @@ input:focus-visible {
 @media (min-width: 901px) {
   body:has(.home-hero) main {
     padding-bottom: 0;
+  }
+
+  body:has(.home-hero) .site-footer {
+    margin-top: -66px;
   }
 }
 

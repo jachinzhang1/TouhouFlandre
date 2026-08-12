@@ -21,8 +21,8 @@ export function HomePage() {
   );
 
   return (
-    <section className="home-hero relative isolate flex min-h-[550px] items-center overflow-hidden min-[901px]:left-1/2 min-[901px]:-mt-[98px] min-[901px]:min-h-[calc(100svh-66px)] min-[901px]:w-[100dvw] min-[901px]:-translate-x-1/2 max-[900px]:min-h-[510px] max-[680px]:min-h-[420px]">
-      <div className="mx-auto flex min-h-[inherit] w-full items-center min-[901px]:min-h-[calc(100svh-66px)] min-[901px]:w-[min(1240px,calc(100%-40px))] min-[901px]:flex-col min-[901px]:items-stretch min-[901px]:justify-center min-[901px]:gap-[clamp(28px,4vh,48px)] min-[901px]:pt-[80px] min-[901px]:pb-[36px]">
+    <section className="home-hero relative isolate flex min-h-[550px] items-center overflow-hidden min-[901px]:left-1/2 min-[901px]:-mt-[98px] min-[901px]:min-h-[100svh] min-[901px]:w-[100dvw] min-[901px]:-translate-x-1/2 max-[900px]:min-h-[510px] max-[680px]:min-h-[420px]">
+      <div className="mx-auto flex min-h-[inherit] w-full items-center min-[901px]:min-h-[100svh] min-[901px]:w-[min(1240px,calc(100%-40px))] min-[901px]:flex-col min-[901px]:items-stretch min-[901px]:justify-center min-[901px]:gap-[clamp(28px,4vh,48px)] min-[901px]:pt-[80px] min-[901px]:pb-[36px]">
         <div className="w-[min(610px,58%)] py-[58px] pl-[56px] animate-[hero-enter_650ms_cubic-bezier(0.2,0.75,0.25,1)_both] min-[901px]:w-[min(680px,62%)] min-[901px]:py-0 min-[901px]:pl-0 max-[900px]:w-[68%] max-[900px]:pl-[34px] max-[680px]:w-full max-[680px]:px-[22px] max-[680px]:py-[38px]">
           <p className="mt-0 mb-[18px] inline-flex items-center gap-2 text-[0.78rem] font-extrabold text-jade">
             <span
@@ -35,7 +35,7 @@ export function HomePage() {
             东方芙一把
           </h1>
           <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[var(--hero-copy)] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
-            根据初登场作品、年份、种族、阵营、地点和发色等属性一点点缩小范围，猜出今天的东方角色吧！
+            根据初登场作品、年份、种族、阵营、地点和发色属性一点点缩小范围，猜出今天的东方角色吧！
           </p>
           <div
             className="mt-7 flex gap-[22px] text-[0.78rem] text-[var(--hero-meta)] max-[680px]:gap-[14px] max-[420px]:justify-between max-[420px]:gap-[6px]"
