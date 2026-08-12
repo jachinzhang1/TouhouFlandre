@@ -21,10 +21,12 @@ const feedback = (statuses: FeedbackStatus[]) =>
 describe("createShareText", () => {
   it("creates a compact Wordle-style result", () => {
     const session = {
+      id: "session-1",
       mode: "daily",
       contentType: "character",
       status: "won",
       maxGuesses: 8,
+      startedAt: "2026-08-11T00:00:00.000Z",
       guesses: [
         {
           guessId: "one",
@@ -45,7 +47,7 @@ describe("createShareText", () => {
           feedback: feedback(["exact", "exact", "exact", "exact", "exact", "exact"]),
         },
       ],
-    } as PublicGameSession;
+    } satisfies PublicGameSession;
 
     expect(
       createShareText(
