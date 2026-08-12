@@ -181,6 +181,7 @@ describe("SingleGamePage", () => {
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toBeTruthy();
+    expect(tooltip.parentElement).toBe(document.body);
     expect(screen.getByText("该属性完全命中")).toBeTruthy();
     expect(screen.getByText("该属性仅部分命中")).toBeTruthy();
     expect(screen.getByText("该属性正确答案的数值高于本条猜测")).toBeTruthy();

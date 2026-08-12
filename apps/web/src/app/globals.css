@@ -1439,11 +1439,8 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .feedback-legend-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
   z-index: 80;
-  width: min(360px, calc(100vw - 36px));
   padding: 12px;
   border: 1px solid var(--line-strong);
   border-radius: 4px;
@@ -1455,7 +1452,6 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
 .feedback-legend-tooltip-above {
   top: auto;
-  bottom: calc(100% + 8px);
 }
 
 .feedback-legend-tooltip::before {
@@ -2199,7 +2195,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   }
 
   .feedback-legend-tooltip {
-    right: 0;
+    max-width: calc(100vw - 36px);
   }
 
   .message {

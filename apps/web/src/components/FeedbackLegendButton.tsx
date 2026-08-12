@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { FeedbackStatus } from "@touhouflandre/shared";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 
@@ -27,9 +28,42 @@ export function FeedbackLegendButton({
   const legendId = useId();
   const controlRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{
+    bottom?: number;
+    left: number;
+    top?: number;
+    width: number;
+  } | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const element = controlRef.current;
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const margin = 18;
+      const gap = 8;
+      const width = Math.min(360, window.innerWidth - margin * 2);
+      const left = Math.min(
+        Math.max(margin, rect.right - width),
+        window.innerWidth - width - margin,
+      );
+
+      setPosition({
+        bottom:
+          placement === "above"
+            ? window.innerHeight - rect.top + gap
+            : undefined,
+        left,
+        top: placement === "below" ? rect.bottom + gap : undefined,
+        width,
+      });
+    };
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -38,9 +72,16 @@ export function FeedbackLegendButton({
       setOpen(false);
     };
 
+    updatePosition();
     document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [open]);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, placement]);
 
   return (
     <div className={`legend-control ${className}`.trim()} ref={controlRef}>
@@ -54,36 +95,40 @@ export function FeedbackLegendButton({
         <Search size={18} aria-hidden="true" />
         <span>查看图例</span>
       </button>
-      {open ? (
-        <div
-          className={`feedback-legend-tooltip feedback-legend-tooltip-${placement}`}
-          id={legendId}
-          role="tooltip"
-        >
-          <ul>
-            {FEEDBACK_LEGEND_ITEMS.map((item) => (
-              <li
-                className={`feedback-legend-item feedback-legend-${item.status}`}
-                key={item.status}
-              >
-                <span
-                  className={`feedback-legend-icon feedback-${item.status}`}
-                  aria-hidden="true"
-                >
-                  <b>
-                    <FeedbackStatusIcon
-                      decorative
-                      size={14}
-                      status={item.status}
-                    />
-                  </b>
-                </span>
-                <span>{item.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {open && position
+        ? createPortal(
+            <div
+              className={`feedback-legend-tooltip feedback-legend-tooltip-${placement}`}
+              id={legendId}
+              role="tooltip"
+              style={position}
+            >
+              <ul>
+                {FEEDBACK_LEGEND_ITEMS.map((item) => (
+                  <li
+                    className={`feedback-legend-item feedback-legend-${item.status}`}
+                    key={item.status}
+                  >
+                    <span
+                      className={`feedback-legend-icon feedback-${item.status}`}
+                      aria-hidden="true"
+                    >
+                      <b>
+                        <FeedbackStatusIcon
+                          decorative
+                          size={14}
+                          status={item.status}
+                        />
+                      </b>
+                    </span>
+                    <span>{item.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
