@@ -3,32 +3,16 @@
 // 多人房间客户端状态机（08 §10.3）：状态以事件 + 快照为唯一权威；
 // 客户端不自行计算反馈；localStorage 只做恢复入口。
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  Envelope,
-  MatchEndedPayload,
-  MatchRematchPayload,
-  MatchStartedPayload,
-  MultiRoomFormat,
-  MultiplayerMode,
-  QuestionScopeConfig,
-  MultiRoomStatus,
-  RoundEndedPayload,
-  RoundOpponentGuessPayload,
-  RoundPlayingPayload,
-  RoundSharedGuessPayload,
-  RoundStartedPayload,
-  RoundTurnTimeoutPayload,
-  RoundTurnPassPayload,
-  RoomClosedPayload,
-  RoomUpdatedPayload,
-} from "@touhouflandre/shared";
+import type { Envelope, RoundEndedPayload } from "@touhouflandre/shared";
+import {
+  applySnapshot,
+  initialRoomState,
+  roomReducer,
+  type RoomUiState,
+} from "../domain/roomState";
 import type { components } from "../generated/api";
 
-type GuessResult = components["schemas"]["GuessResult"];
-type MatchView = components["schemas"]["MatchView"];
-type MemberView = components["schemas"]["MemberView"];
 type RoomSnapshot = components["schemas"]["RoomSnapshot"];
-type RoundView = components["schemas"]["RoundView"];
 import { ApiRequestError, api, roomWsUrl } from "../lib/api";
 import { ForegroundTimer } from "../stats/timer";
 import {
@@ -38,292 +22,8 @@ import {
   updateMultiplayerTiming,
   type MultiplayerTimingSnapshot,
 } from "../stats/multiplayerRecorder";
-
-export type RoomConnection = "connecting" | "connected" | "reconnecting";
 const SNAPSHOT_FALLBACK_INTERVAL_MS = 5000;
 const CONNECTION_ISSUE_MESSAGE = "实时同步连接中断，正在自动恢复。";
-
-export interface RoundSummary {
-  roundIndex: number;
-  result: "win" | "loss" | "draw";
-}
-
-export interface RoomUiState {
-  connection: RoomConnection;
-  connectionIssue: string | null;
-  room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus } | null;
-  members: MemberView[];
-  match: MatchView | null;
-  round: RoundView | null;
-  /** 本局绑定题库版本（match.started 载荷；本地角色表按版本键缓存）。 */
-  catalogVersion: string | null;
-  /** 本场绑定的题库范围；只影响本场展示和统计，不写入本地题库设置。 */
-  questionScope: QuestionScopeConfig | null;
-  /** 局末弹窗数据（round.ended 事件）。 */
-  roundResult: RoundEndedPayload | null;
-  /** 整场结果弹窗数据（match.ended 事件）。 */
-  matchResult: MatchEndedPayload | null;
-  /** 对方确认再来一局（索引 0/1 对应 slot 1/2）。 */
-  rematchReady: [boolean, boolean];
-  /** 历史局摘要（第 N 局 胜/负/平）。 */
-  history: RoundSummary[];
-  lastSequence: number;
-}
-
-export const initialRoomState: RoomUiState = {
-  connection: "connecting",
-  connectionIssue: null,
-  room: null,
-  members: [],
-  match: null,
-  round: null,
-  catalogVersion: null,
-  questionScope: null,
-  roundResult: null,
-  matchResult: null,
-  rematchReady: [false, false],
-  history: [],
-  lastSequence: 0,
-};
-
-/** 局结束 → 历史摘要与比分。 */
-function roundSummary(result: string): "win" | "loss" | "draw" {
-  if (result === "win" || result === "loss" || result === "draw") return result;
-  return "draw";
-}
-
-/** 按 sequence 应用事件（08 §10.3 reducer；乱序/重复由调用方去重）。 */
-export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
-  switch (event.type) {
-    case "room.updated": {
-      const payload = event.payload as unknown as RoomUpdatedPayload;
-      return {
-        ...state,
-        members: payload.members,
-        room: state.room
-          ? { ...state.room, format: payload.format, mode: payload.mode, turnSeconds: payload.turnSeconds }
-          : state.room,
-      };
-    }
-    case "match.started": {
-      const payload = event.payload as unknown as MatchStartedPayload;
-      // 新场：比分/抽题池自然重置（服务端新场行），本地同步清零并清空历史
-      return {
-        ...state,
-        catalogVersion: payload.catalogVersion ?? null,
-        questionScope: payload.questionScope ?? state.questionScope,
-        room: state.room
-          ? { ...state.room, status: "playing", mode: payload.mode, turnSeconds: payload.turnSeconds }
-          : state.room,
-        match: {
-          matchIndex: payload.matchIndex,
-          targetWins: payload.targetWins,
-          scoreSlot1: 0,
-          scoreSlot2: 0,
-          roundIndex: 0,
-          maxRounds: maxRoundsFor(payload.format),
-          rematchReady: [false, false],
-          catalogVersion: payload.catalogVersion,
-        },
-        round: null,
-        roundResult: null,
-        matchResult: null,
-        rematchReady: [false, false],
-        history: [],
-      };
-    }
-    case "match.rematch": {
-      const payload = event.payload as unknown as MatchRematchPayload;
-      const rematchReady: [boolean, boolean] = [...state.rematchReady];
-      rematchReady[payload.memberSlot - 1] = true;
-      return { ...state, rematchReady };
-    }
-    case "round.started": {
-      const payload = event.payload as unknown as RoundStartedPayload;
-      // 新局棋盘就绪；roundResult 保留到 round.playing（局末弹窗显示下一局倒计时）
-      return {
-        ...state,
-        round: {
-          status: "countdown",
-          startsAt: payload.startsAt,
-          deadline: payload.deadline,
-          maxGuesses: payload.maxGuesses,
-          maxTurnsPerPlayer: payload.maxTurnsPerPlayer,
-          maxSkipsPerPlayer: payload.maxSkipsPerPlayer,
-          turnSlot: payload.turnSlot,
-          turnDeadline: payload.turnDeadline,
-          self: { guesses: [] },
-          opponent: { rows: [] },
-          ...(payload.maxTurnsPerPlayer ? { shared: { rows: [] } } : {}),
-        },
-        match: state.match
-          ? { ...state.match, roundIndex: payload.roundIndex }
-          : state.match,
-      };
-    }
-    case "round.playing": {
-      const _ = event.payload as unknown as RoundPlayingPayload;
-      return {
-        ...state,
-        round: state.round ? { ...state.round, status: "playing" } : state.round,
-        roundResult: null, // 到点强制开新局，弹窗关闭
-      };
-    }
-    case "round.opponent.guess": {
-      const payload = event.payload as unknown as RoundOpponentGuessPayload;
-      if (!state.round) return state;
-      return {
-        ...state,
-        round: {
-          ...state.round,
-          opponent: {
-            ...state.round.opponent,
-            rows: [
-              ...state.round.opponent.rows,
-              { index: payload.rowIndex, statuses: payload.statuses },
-            ],
-          },
-        },
-      };
-    }
-    case "round.shared.guess": {
-      const payload = event.payload as unknown as RoundSharedGuessPayload;
-      if (!state.round) return state;
-      return {
-        ...state,
-        round: {
-          ...state.round,
-          shared: {
-            rows: [...(state.round.shared?.rows ?? []), payload.row],
-          },
-          turnSlot: payload.nextTurnSlot,
-          turnDeadline: payload.nextTurnDeadline,
-        },
-      };
-    }
-    case "round.turn.timeout": {
-      const payload = event.payload as unknown as RoundTurnTimeoutPayload;
-      if (!state.round) return state;
-      return {
-        ...state,
-        round: {
-          ...state.round,
-          shared: {
-            rows: [...(state.round.shared?.rows ?? []), payload.row],
-          },
-          turnSlot: payload.nextTurnSlot,
-          turnDeadline: payload.nextTurnDeadline,
-        },
-      };
-    }
-    case "round.turn.pass": {
-      const payload = event.payload as unknown as RoundTurnPassPayload;
-      if (!state.round) return state;
-      return {
-        ...state,
-        round: {
-          ...state.round,
-          shared: {
-            rows: [...(state.round.shared?.rows ?? []), payload.row],
-          },
-          turnSlot: payload.nextTurnSlot,
-          turnDeadline: payload.nextTurnDeadline,
-        },
-      };
-    }
-    case "round.ended": {
-      const payload = event.payload as unknown as RoundEndedPayload;
-      return {
-        ...state,
-        round: state.round
-          ? {
-              ...state.round,
-              status: "ended",
-              ...(payload.turns ? { shared: { rows: payload.turns } } : {}),
-              turnSlot: undefined,
-              turnDeadline: undefined,
-            }
-          : state.round,
-        roundResult: payload,
-        history: [
-          ...state.history,
-          { roundIndex: payload.roundIndex, result: roundSummary(payload.result) },
-        ],
-        match: state.match
-          ? {
-              ...state.match,
-              scoreSlot1: payload.scores.slot1,
-              scoreSlot2: payload.scores.slot2,
-            }
-          : state.match,
-      };
-    }
-    case "match.ended": {
-      const payload = event.payload as unknown as MatchEndedPayload;
-      return {
-        ...state,
-        matchResult: payload,
-        match: state.match
-          ? {
-              ...state.match,
-              scoreSlot1: payload.scores.slot1,
-              scoreSlot2: payload.scores.slot2,
-            }
-          : state.match,
-        room: state.room ? { ...state.room, status: "finished" } : state.room,
-      };
-    }
-    case "room.closed": {
-      const _ = event.payload as unknown as RoomClosedPayload;
-      return {
-        ...state,
-        room: state.room ? { ...state.room, status: "closed" } : state.room,
-      };
-    }
-    default:
-      return state;
-  }
-}
-
-/** 赛制 → 总局数安全上限（与后端 multi.MaxRounds 一致）。 */
-export function maxRoundsFor(format: MultiRoomFormat): number {
-  const n = format === "bo1" ? 1 : format === "bo3" ? 3 : format === "bo5" ? 5 : 7;
-  return 3 * n;
-}
-
-/** 快照应用：状态（room/members/match/round 权威视图）+ 事件回放（去重）。 */
-export function applySnapshot(
-  state: RoomUiState,
-  snapshot: RoomSnapshot,
-): RoomUiState {
-  // 先回放事件（历史摘要/比分），后置权威状态（room/members/match/round）
-  // ——避免事件回放（如 match.started 的重置语义）覆盖快照状态。
-  let next: RoomUiState = { ...state };
-  for (const event of snapshot.events) {
-    if (event.sequence <= next.lastSequence) continue;
-    next = roomReducer(next, event);
-    next.lastSequence = event.sequence;
-  }
-  return {
-    ...next,
-    room: {
-      roomId: snapshot.roomId,
-      roomCode: snapshot.roomCode,
-      format: snapshot.format,
-      mode: snapshot.mode,
-      turnSeconds: snapshot.turnSeconds,
-      status: snapshot.status,
-    },
-    members: snapshot.members,
-    match: snapshot.match ?? null,
-    catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
-    questionScope: (snapshot.match?.questionScope ?? snapshot.questionScope ?? next.questionScope) as QuestionScopeConfig | null,
-    round: snapshot.round ?? null,
-    rematchReady: snapshot.match
-      ? [snapshot.match.rematchReady[0] ?? false, snapshot.match.rematchReady[1] ?? false]
-      : [false, false],
-  };
-}
 
 export interface RoomActions {
   setReady: () => Promise<void>;
@@ -378,41 +78,48 @@ export function useRoom(
     [mySlot],
   );
 
-  const applyEvent = useCallback((event: Envelope) => {
-    if (event.sequence <= lastAppliedRef.current) return; // 按 sequence 去重
-    lastAppliedRef.current = event.sequence;
-    let timing: MultiplayerTimingSnapshot | undefined;
-    if (event.type === "match.started" || event.type === "round.started") {
-      timerRef.current?.setActive(false);
-      timerRef.current?.reset(0);
-      guessCompletedRef.current = [];
-      pendingGuessRef.current = null;
-    } else if (event.type === "round.playing") {
-      timerRef.current?.setActive(true);
-    } else if (event.type === "round.ended") {
-      const payload = event.payload as unknown as RoundEndedPayload;
-      const board = mySlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
-      if (
-        pendingGuessRef.current !== null &&
-        guessCompletedRef.current.length < board.length
-      ) {
-        guessCompletedRef.current = [
-          ...guessCompletedRef.current,
-          pendingGuessRef.current,
-        ];
+  const applyEvent = useCallback(
+    (event: Envelope) => {
+      if (event.sequence <= lastAppliedRef.current) return; // 按 sequence 去重
+      lastAppliedRef.current = event.sequence;
+      let timing: MultiplayerTimingSnapshot | undefined;
+      if (event.type === "match.started" || event.type === "round.started") {
+        timerRef.current?.setActive(false);
+        timerRef.current?.reset(0);
+        guessCompletedRef.current = [];
+        pendingGuessRef.current = null;
+      } else if (event.type === "round.playing") {
+        timerRef.current?.setActive(true);
+      } else if (event.type === "round.ended") {
+        const payload = event.payload as unknown as RoundEndedPayload;
+        const board =
+          mySlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
+        if (
+          pendingGuessRef.current !== null &&
+          guessCompletedRef.current.length < board.length
+        ) {
+          guessCompletedRef.current = [
+            ...guessCompletedRef.current,
+            pendingGuessRef.current,
+          ];
+        }
+        timing = {
+          activeElapsedMs: timerRef.current?.snapshot() ?? 0,
+          guessCompletedElapsedMs: [...guessCompletedRef.current],
+        };
+        timerRef.current?.setActive(false);
+        pendingGuessRef.current = null;
+      } else if (event.type === "match.ended") {
+        timerRef.current?.setActive(false);
       }
-      timing = {
-        activeElapsedMs: timerRef.current?.snapshot() ?? 0,
-        guessCompletedElapsedMs: [...guessCompletedRef.current],
-      };
-      timerRef.current?.setActive(false);
-      pendingGuessRef.current = null;
-    } else if (event.type === "match.ended") {
-      timerRef.current?.setActive(false);
-    }
-    void queueStatsEvent(event, timing);
-    setState((s) => ({ ...roomReducer(s, event), lastSequence: event.sequence }));
-  }, [mySlot, queueStatsEvent]);
+      void queueStatsEvent(event, timing);
+      setState((s) => ({
+        ...roomReducer(s, event),
+        lastSequence: event.sequence,
+      }));
+    },
+    [mySlot, queueStatsEvent],
+  );
 
   const syncSnapshot = useCallback(
     async (snapshot: RoomSnapshot) => {
@@ -520,7 +227,11 @@ export function useRoom(
         if (msg.type === "hello-ok") {
           retry = 0;
           stopSnapshotFallback();
-          setState((s) => ({ ...s, connection: "connected", connectionIssue: null }));
+          setState((s) => ({
+            ...s,
+            connection: "connected",
+            connectionIssue: null,
+          }));
           // 快照对齐（room/members/match/round 权威视图 + 历史事件）；
           // 重放事件由服务端在 hello-ok 后推送，reducer 按 sequence 去重。
           api
@@ -557,7 +268,8 @@ export function useRoom(
         connectionIssue: CONNECTION_ISSUE_MESSAGE,
       }));
       startSnapshotFallback();
-      const delay = Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
+      const delay =
+        Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
       window.setTimeout(() => connect(lastAppliedRef.current), delay);
     };
@@ -643,10 +355,15 @@ export function useRoom(
     leave: async () => {
       try {
         if (state.match && state.round?.status === "playing") {
-          await updateMultiplayerTiming(roomId, state.match.matchIndex, mySlot, {
-            activeElapsedMs: timerRef.current?.snapshot() ?? 0,
-            guessCompletedElapsedMs: [...guessCompletedRef.current],
-          });
+          await updateMultiplayerTiming(
+            roomId,
+            state.match.matchIndex,
+            mySlot,
+            {
+              activeElapsedMs: timerRef.current?.snapshot() ?? 0,
+              guessCompletedElapsedMs: [...guessCompletedRef.current],
+            },
+          );
         }
         const self = state.members.find((member) => member.slot === mySlot);
         if (self?.status !== "left") await api.leaveRoom(roomId, token);
@@ -666,14 +383,15 @@ export function useRoom(
     },
     submitGuess: async (guessId: string) => {
       setGuessError("");
-      if (!state.round || state.round.status !== "playing" || !state.match) return;
+      if (!state.round || state.round.status !== "playing" || !state.match)
+        return;
       const idempotencyKey = crypto.randomUUID();
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
       const isRelay = state.room?.mode === "relay";
       const completedGuessCount = isRelay
-        ? state.round.shared?.rows.filter(
+        ? (state.round.shared?.rows.filter(
             (row) => row.kind === "guess" && row.memberSlot === mySlot,
-          ).length ?? 0
+          ).length ?? 0)
         : state.round.self.guesses.length;
       const expectedGuessCount = completedGuessCount + 1;
       pendingGuessRef.current = completedElapsedMs;
@@ -718,7 +436,8 @@ export function useRoom(
     forfeitRound: async () => {
       setGuessError("");
       pendingGuessRef.current = null;
-      if (!state.round || state.round.status !== "playing" || !state.match) return;
+      if (!state.round || state.round.status !== "playing" || !state.match)
+        return;
       try {
         await api.forfeitRound(roomId, token, state.match.roundIndex);
       } catch (e) {
