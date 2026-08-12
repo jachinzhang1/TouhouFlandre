@@ -874,6 +874,33 @@ body:has(.home-hero) .site-footer a:hover {
 .nav-links[data-indicator-ready="true"] .nav-active-indicator {
   opacity: 1;
 }
+.nav-active-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent-contrast);
+  pointer-events: none;
+  clip-path: inset(
+    var(--nav-active-y, 0)
+      calc(100% - var(--nav-active-x, 0) - var(--nav-active-width, 0))
+      calc(100% - var(--nav-active-y, 0) - var(--nav-active-height, 0))
+      var(--nav-active-x, 0)
+  );
+}
+
+.nav-links[data-indicator-animated="true"] .nav-active-copy {
+  transition: clip-path 260ms cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.nav-active-copy .nav-link-copy {
+  z-index: auto;
+  flex: 0 0 auto;
+  color: var(--accent-contrast);
+}
+
 .nav-links[data-indicator-moving="true"] .nav-active-indicator,
 .nav-links:has(.nav-link.active:hover) .nav-active-indicator {
   clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
@@ -896,7 +923,6 @@ body:has(.home-hero) .site-footer a:hover {
   font-size: 0.88rem;
   font-weight: 700;
   transition:
-    color 160ms ease,
     background 160ms ease,
     box-shadow 160ms ease;
 }
@@ -907,9 +933,14 @@ body:has(.home-hero) .site-footer a:hover {
 }
 
 .nav-link.active {
-  color: var(--accent-contrast);
+  color: var(--nav-text);
   background: transparent;
   box-shadow: none;
+}
+
+.nav-link.active:hover {
+  color: var(--nav-text);
+  background: transparent;
 }
 
 .nav-link:focus-visible {
@@ -2444,6 +2475,13 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
     min-height: 56px;
     padding: 0;
     font-size: 0.64rem;
+  }
+  .nav-active-copy {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 5px max(5px, env(safe-area-inset-right));
+    padding-bottom: max(5px, env(safe-area-inset-bottom));
   }
 
   .nav-link-label {

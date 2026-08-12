@@ -18,7 +18,7 @@ describe("SiteNav", () => {
 
   it("隐藏排行榜入口并保留其他导航项", async () => {
     mockAnnouncementSummary([]);
-    render(<SiteNav />);
+    const { container } = render(<SiteNav />);
 
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
     const navigation = screen.getByRole("navigation", { name: "站点导航" });
@@ -26,10 +26,15 @@ describe("SiteNav", () => {
     for (const label of ["首页", "游戏", "搜索", "统计", "公告"]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
+    const activeCopy = container.querySelector(".nav-active-copy");
+    expect(activeCopy?.getAttribute("aria-hidden")).toBe("true");
+    expect(activeCopy?.querySelector("a")).toBeNull();
   });
 
   it("公告存在未读时显示导航红点", async () => {
-    mockAnnouncementSummary([{ id: "notice-a", title: "公告", date: "2026-08-08" }]);
+    mockAnnouncementSummary([
+      { id: "notice-a", title: "公告", date: "2026-08-08" },
+    ]);
     const { container } = render(<SiteNav />);
 
     expect(
@@ -43,7 +48,9 @@ describe("SiteNav", () => {
       ANNOUNCEMENTS_READ_STORAGE_KEY,
       JSON.stringify(["notice-a"]),
     );
-    mockAnnouncementSummary([{ id: "notice-a", title: "公告", date: "2026-08-08" }]);
+    mockAnnouncementSummary([
+      { id: "notice-a", title: "公告", date: "2026-08-08" },
+    ]);
     const { container } = render(<SiteNav />);
 
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
