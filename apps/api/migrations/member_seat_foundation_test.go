@@ -3,6 +3,7 @@ package migrations_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 )
@@ -101,6 +103,76 @@ func TestMemberSeatMigrationPreservesExistingParticipants(t *testing.T) {
 			t.Errorf("migrated participant %s = %+v, want seat=%+v displayName=%q role=%q",
 				want.id, participant, want.slot, want.displayName, want.role)
 		}
+	}
+}
+
+func TestMemberSeatConstraints(t *testing.T) {
+	db, migrationsDir := newMigrationTestDatabase(t)
+	if err := goose.Up(db, migrationsDir); err != nil {
+		t.Fatalf("migrate member/seat schema: %v", err)
+	}
+
+	insertMigrationTestRoom(t, db, "seat-room-a", "SEATA1")
+	insertMigrationTestRoom(t, db, "seat-room-b", "SEATB1")
+	insertParticipant := func(id, roomID string, seat any, role, tokenHash string) error {
+		_, err := db.Exec(`
+			INSERT INTO multi_member (id, room_id, seat, display_name, token_hash, role)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, roomID, seat, id, tokenHash, role)
+		return err
+	}
+
+	if err := insertParticipant("seat-three", "seat-room-a", 3, "player", "seat-three-token"); err != nil {
+		t.Fatalf("seat 3 should be available to players: %v", err)
+	}
+	if err := insertParticipant("same-seat-other-room", "seat-room-b", 3, "player", "other-room-token"); err != nil {
+		t.Fatalf("same seat in another room should be available: %v", err)
+	}
+	if err := insertParticipant("spectator-without-seat", "seat-room-a", nil, "spectator", "spectator-token"); err != nil {
+		t.Fatalf("spectator without seat should be valid: %v", err)
+	}
+
+	assertPostgresCode(t,
+		insertParticipant("duplicate-seat", "seat-room-a", 3, "player", "duplicate-seat-token"),
+		"23505",
+	)
+	assertPostgresCode(t,
+		insertParticipant("player-without-seat", "seat-room-a", nil, "player", "player-without-seat-token"),
+		"23514",
+	)
+	assertPostgresCode(t,
+		insertParticipant("player-zero-seat", "seat-room-a", 0, "player", "player-zero-seat-token"),
+		"23514",
+	)
+	assertPostgresCode(t,
+		insertParticipant("spectator-with-seat", "seat-room-a", 4, "spectator", "spectator-with-seat-token"),
+		"23514",
+	)
+	assertPostgresCode(t,
+		insertParticipant("duplicate-token", "seat-room-a", 4, "player", "seat-three-token"),
+		"23505",
+	)
+}
+
+func insertMigrationTestRoom(t *testing.T, db *sql.DB, id, code string) {
+	t.Helper()
+	if _, err := db.Exec(`
+		INSERT INTO multi_room (id, code, format, status, expires_at)
+		VALUES ($1, $2, 'bo3', 'lobby', now() + interval '1 hour')`, id, code); err != nil {
+		t.Fatalf("insert migration test room %s: %v", id, err)
+	}
+}
+
+func assertPostgresCode(t *testing.T, err error, want string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("operation succeeded, want PostgreSQL error %s", want)
+	}
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		t.Fatalf("error %v is not a PostgreSQL error", err)
+	}
+	if pgErr.Code != want {
+		t.Fatalf("PostgreSQL error = %s (%s), want %s", pgErr.Code, pgErr.ConstraintName, want)
 	}
 }
 
