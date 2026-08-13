@@ -11,6 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimMemberSeat = `-- name: ClaimMemberSeat :one
+UPDATE multi_member
+SET role = 'player', seat = $1::integer, ready = false, rematch_ready = false
+WHERE id = $2 AND role = 'spectator' AND status = 'connected'
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+`
+
+type ClaimMemberSeatParams struct {
+	Seat int32  `json:"seat"`
+	ID   string `json:"id"`
+}
+
+func (q *Queries) ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, claimMemberSeat, arg.Seat, arg.ID)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Seat,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
 const closeRoom = `-- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
 `

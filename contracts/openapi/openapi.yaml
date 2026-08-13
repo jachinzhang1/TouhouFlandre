@@ -59,6 +59,8 @@ paths:
     $ref: ./paths/room-snapshot.yaml
   /api/rooms/{roomId}/ready:
     $ref: ./paths/room-ready.yaml
+  /api/rooms/{roomId}/claim-seat:
+    $ref: ./paths/room-claim-seat.yaml
   /api/rooms/{roomId}/rematch:
     $ref: ./paths/room-rematch.yaml
   /api/rooms/{roomId}/leave:

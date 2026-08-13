@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)

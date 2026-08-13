@@ -375,6 +375,86 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	}, nil
 }
 
+// ---- RoomsClaimSeat：观战者显式认领大厅空席位 ----
+
+func (s *Server) RoomsClaimSeat(ctx context.Context, request openapi.RoomsClaimSeatRequestObject) (openapi.RoomsClaimSeatResponseObject, error) {
+	member, ok := GuestMemberFromContext(ctx)
+	if !ok {
+		return nil, guestUnauthorized("缺少鉴权上下文。")
+	}
+	if multi.IsPlayer(*member) {
+		return nil, spectatorReadOnly()
+	}
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+
+	// 与 join/final-ready 共用房间行锁：角色转换和开局只能按提交顺序线性化。
+	room, err := q.GetRoomForUpdate(ctx, request.RoomId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, roomNotFound()
+		}
+		return nil, internalError(err)
+	}
+	if room.Status != string(multi.RoomStatusLobby) {
+		return nil, &ApiError{Status: http.StatusConflict, Code: codeMatchAlreadyStarted, Message: "对局已开始。"}
+	}
+
+	current, err := q.GetMember(ctx, member.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, guestUnauthorized("令牌无效。")
+		}
+		return nil, internalError(err)
+	}
+	if current.RoomID != request.RoomId {
+		return nil, guestUnauthorized("令牌不属于该房间。")
+	}
+	if current.Status != string(multi.MemberStatusConnected) {
+		return nil, guestUnauthorized("成员未连接，请先重新连接房间。")
+	}
+	if multi.IsPlayer(current) {
+		return nil, spectatorReadOnly()
+	}
+
+	players, err := q.ListMembers(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	seat, available := nextPlayerSeat(players, int(room.PlayerLimit))
+	if !available {
+		return nil, roomFull()
+	}
+	if _, err := q.ClaimMemberSeat(ctx, repo.ClaimMemberSeatParams{ID: member.ID, Seat: seat}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, guestUnauthorized("成员状态已变化，请重新连接房间。")
+		}
+		return nil, mapRoomWriteError(err)
+	}
+
+	after, err := q.ListMembers(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	spectatorCount, err := q.CountSpectators(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(room, after, int(spectatorCount))); err != nil {
+		return nil, internalError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	s.publish(request.RoomId)
+	return openapi.RoomsClaimSeat204Response{}, nil
+}
+
 // ---- RoomsSetReady：就绪（幂等） ----
 
 // RoomsSetReady 就绪（08 §6.1 lobby 段）。成员令牌；本阶段只置位并写 room.updated 事件

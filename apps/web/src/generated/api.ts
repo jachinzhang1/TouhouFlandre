@@ -298,6 +298,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/claim-seat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 认领玩家席位
+         * @description connected spectator 可在 lobby 明确认领空席位。服务端在房间行锁下复用原 memberId/token，
+         *     分配最小可用 seat，并转换为 ready=false 的 player；不会自动提升其他 spectator。
+         */
+        post: operations["rooms_claimSeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms/{roomId}/rematch": {
         parameters: {
             query?: never;
@@ -1687,6 +1708,62 @@ export interface operations {
                 };
             };
             /** @description 房间状态不允许（ROOM_CLOSED）或对局已开始（MATCH_ALREADY_STARTED） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_claimSeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已认领席位；客户端应使用同一 token 重新连接以取得 player 视图 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌无效或成员未连接（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 当前成员不是 spectator（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间已满（ROOM_FULL）或对局已开始（MATCH_ALREADY_STARTED） */
             409: {
                 headers: {
                     [name: string]: unknown;
