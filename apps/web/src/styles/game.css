@@ -28,16 +28,34 @@
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+.game-mode-entry-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    to right,
+    transparent 18%,
+    color-mix(in srgb, var(--paper-tinted-bg) 22%, transparent) 54%,
+    var(--paper-tinted-bg) 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
 .game-mode-entry-icon {
   position: absolute;
   top: 50%;
-  left: 4px;
-  z-index: 0;
+  right: 4px;
+  z-index: 1;
   display: inline-flex;
   color: var(--vermilion);
   opacity: 0.08;
   pointer-events: none;
   transform: translateY(-50%);
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
 }
 
 html[data-theme-mode="dark"] .game-mode-entry-icon {
@@ -46,7 +64,7 @@ html[data-theme-mode="dark"] .game-mode-entry-icon {
 
 .game-mode-entry-copy {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: grid;
   min-width: 0;
   gap: 7px;
@@ -80,6 +98,24 @@ html[data-theme-mode="dark"] .game-mode-entry-icon {
   .game-mode-entry:hover {
     transform: translateY(-3px);
   }
+
+  .game-mode-entry:hover .game-mode-entry-wash {
+    opacity: 1;
+  }
+
+  .game-mode-entry:hover .game-mode-entry-icon {
+    color: #fff;
+    opacity: 0.46;
+  }
+}
+
+.game-mode-entry:focus-visible .game-mode-entry-wash {
+  opacity: 1;
+}
+
+.game-mode-entry:focus-visible .game-mode-entry-icon {
+  color: #fff;
+  opacity: 0.46;
 }
 
 @media (max-width: 680px) {

@@ -80,6 +80,7 @@ function GameModeEntry({
       onClick={onClick}
       variant="plain"
     >
+      <span className="game-mode-entry-wash" aria-hidden="true" />
       <span className="game-mode-entry-icon" aria-hidden="true">
         <Icon size={118} strokeWidth={1.05} />
       </span>
