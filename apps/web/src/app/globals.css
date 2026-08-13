@@ -1770,7 +1770,8 @@ html[data-theme-mode="dark"] .appearance-swatch {
   pointer-events: none;
 }
 
-.home-hero::after {
+.home-hero::after,
+.home-hero-layout::before {
   display: none;
   content: "";
   pointer-events: none;
@@ -1781,30 +1782,67 @@ html[data-theme-mode="dark"] .appearance-swatch {
     min-height: max(786px, 100svh);
   }
 
-  .home-hero::after {
+  .home-hero::after,
+  .home-hero-layout::before {
+    --hero-progressive-scrim: linear-gradient(transparent, transparent);
     position: absolute;
-    inset: 44% 0 0;
-    z-index: 0;
+    inset: -12px;
     display: block;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      color-mix(in srgb, var(--hero-bg) 14%, transparent) 46%,
-      color-mix(in srgb, var(--hero-bg) 34%, transparent)
-    );
-    -webkit-backdrop-filter: blur(14px) saturate(82%);
-    backdrop-filter: blur(14px) saturate(82%);
+    background-color: var(--hero-bg);
+    background-image:
+      var(--hero-progressive-scrim), var(--hero-overlay-wide),
+      image-set(
+        url("/hero-touhou-collage-desktop.webp") type("image/webp"),
+        url("/hero-touhou-collage.jpg") type("image/jpeg")
+      );
+    background-position:
+      0 0,
+      0 0,
+      48% top;
+    background-repeat: no-repeat;
+    background-size:
+      100% 100%,
+      100% 100%,
+      cover;
+  }
+
+  .home-hero::after {
+    z-index: 0;
+    filter: blur(6px) saturate(90%);
     -webkit-mask-image: linear-gradient(
       to bottom,
-      transparent,
-      rgba(0, 0, 0, 0.72) 28%,
-      #000 48%
+      transparent 34%,
+      rgba(0, 0, 0, 0.64) 48%,
+      #000 60%
     );
     mask-image: linear-gradient(
       to bottom,
-      transparent,
-      rgba(0, 0, 0, 0.72) 28%,
-      #000 48%
+      transparent 34%,
+      rgba(0, 0, 0, 0.64) 48%,
+      #000 60%
+    );
+  }
+
+  .home-hero-layout::before {
+    --hero-progressive-scrim: linear-gradient(
+      to bottom,
+      transparent 0 46%,
+      color-mix(in srgb, var(--hero-bg) 14%, transparent) 72%,
+      color-mix(in srgb, var(--hero-bg) 34%, transparent)
+    );
+    z-index: -1;
+    filter: blur(10px) saturate(84%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 52%,
+      rgba(0, 0, 0, 0.68) 66%,
+      #000 80%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 52%,
+      rgba(0, 0, 0, 0.68) 66%,
+      #000 80%
     );
   }
 
