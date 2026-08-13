@@ -17,14 +17,16 @@ type Platform = {
 };
 
 const platformStyles = {
-  bilibili: "text-[#fb7299]",
-  github: "text-ink",
-  pixiv: "text-[#0096fa]",
+  bilibili: "brand-icon-bilibili",
+  github: "brand-icon-github",
+  pixiv: "brand-icon-pixiv",
 } as const;
 
 const assetCredits = [
   {
-    title: "苗库里 - 哔哩哔哩个人空间",
+    title: "苗库里 - 东方像素肖像素材包",
+    avatarUrl:
+      "https://i1.hdslb.com/bfs/face/1672120a2cd546f9046f33abde0f5f388e810b5c.jpg@160w_160h_1c_1s.webp",
     subtitle: "东方全角色像素肖像素材包原作者",
     links: [
       {
@@ -36,7 +38,7 @@ const assetCredits = [
     ],
   },
   {
-    title: "pixiv 作品 50752377",
+    title: "うらないし - Pixiv 作品 50752377",
     subtitle: "首页视觉素材来源",
     links: [
       {
@@ -49,9 +51,15 @@ const assetCredits = [
   },
 ];
 
-const developers: Array<{ name: string; role: string; links: Platform[] }> = [
+const developers: Array<{
+  avatarUrl?: string;
+  name: string;
+  role: string;
+  links: Platform[];
+}> = [
   {
     name: "Vitamin X",
+    avatarUrl: "https://avatars.githubusercontent.com/u/59960003?s=160&v=4",
     role: "核心功能开发",
     links: [
       {
@@ -70,6 +78,7 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
   },
   {
     name: "常乐凯特",
+    avatarUrl: "https://avatars.githubusercontent.com/u/118893731?s=160&v=4",
     role: "核心功能开发",
     links: [
       {
@@ -100,6 +109,8 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
   },
   {
     name: "存在的虚无",
+    avatarUrl:
+      "https://i1.hdslb.com/bfs/face/e9c4a7ca6259c6f1f193fee422e51edfc9180fbb.webp@160w_160h_1c_1s.webp",
     role: "数据校对、站点推广",
     links: [
       {
@@ -112,6 +123,8 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
   },
   {
     name: "赤色侠盗",
+    avatarUrl:
+      "https://i2.hdslb.com/bfs/face/6be4cbcd861067b97e53ebf5f894de5ee0c8852d.jpg@160w_160h_1c_1s.webp",
     role: "数据校对",
     links: [
       {
@@ -124,6 +137,8 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
   },
   {
     name: "陌望",
+    avatarUrl:
+      "https://i1.hdslb.com/bfs/face/af61b97e617171a4383a4c3fb9ca24d9839e7e53.jpg@160w_160h_1c_1s.webp",
     role: "站点推广",
     links: [
       {
@@ -139,6 +154,8 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
 const friendLinks = [
   {
     title: "西电 Shining 动漫社 B站主页",
+    avatarUrl:
+      "https://i2.hdslb.com/bfs/face/590cea03dbeb3f4b47aa5fe53e53b31c088ad5ed.jpg@160w_160h_1c_1s.webp",
     subtitle: "西电 Shining 动漫社官方哔哩哔哩空间",
     links: [
       {
@@ -176,6 +193,7 @@ export default function LinksPage() {
           {developers.map((developer) => (
             <CreditEntryButton
               key={developer.name}
+              avatarUrl={developer.avatarUrl}
               links={developer.links}
               subtitle={developer.role}
               title={developer.name}
@@ -228,10 +246,12 @@ function CreditEntryGroup({ children }: { children: ReactNode }) {
 }
 
 function CreditEntryButton({
+  avatarUrl,
   links,
   subtitle,
   title,
 }: {
+  avatarUrl?: string;
   links: Platform[];
   subtitle: string;
   title: string;
@@ -239,10 +259,20 @@ function CreditEntryButton({
   return (
     <Paper
       as="article"
-      className="paper-sticker-shadow grid min-h-[96px] grid-cols-[minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
+      className="paper-sticker-shadow grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
       foldSize={18}
       variant="plain"
     >
+      <span className="credit-avatar" aria-hidden="true">
+        {avatarUrl ? (
+          <img
+            alt=""
+            decoding="async"
+            referrerPolicy="no-referrer"
+            src={avatarUrl}
+          />
+        ) : null}
+      </span>
       <span className="grid min-w-0">
         <strong className="text-[1.05rem] font-bold leading-[1.4]">
           {title}
@@ -255,16 +285,14 @@ function CreditEntryButton({
         {links.map(({ className, href, Icon, name }) => (
           <a
             aria-label={`${title} 的 ${name} 主页`}
-            className="theme-icon-tile theme-icon-link inline-flex size-11 items-center justify-center no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-[var(--focus-ring)]"
+            className={`brand-icon-link ${className} inline-flex size-11 items-center justify-center no-underline hover:-translate-y-px focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-[var(--focus-ring)]`}
             href={href}
             key={href}
             rel="noreferrer"
             target="_blank"
             title={`${title} - ${name}`}
           >
-            <span className={className} aria-hidden="true">
-              <Icon size={22} />
-            </span>
+            <Icon size={22} aria-hidden="true" />
           </a>
         ))}
       </span>
