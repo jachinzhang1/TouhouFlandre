@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Megaphone, Pin } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Megaphone, Pin } from "lucide-react";
 import { fetchAnnouncements } from "../announcements/client";
 import {
   ANNOUNCEMENTS_READ_STORAGE_KEY,
@@ -23,6 +23,8 @@ export function AnnouncementPage({
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState("");
+  const [tearingIds, setTearingIds] = useState<Set<string>>(() => new Set());
+  const tearTimersRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const syncReadIds = () => setReadIds(readAnnouncementIds());
@@ -69,10 +71,29 @@ export function AnnouncementPage({
     return () => controller.abort();
   }, [refreshAnnouncements]);
 
-  const handleMarkRead = (id: string) => {
-    if (readIds.has(id)) return;
+  useEffect(
+    () => () => {
+      for (const timer of tearTimersRef.current) window.clearTimeout(timer);
+    },
+    [],
+  );
+
+  const handleTearReadCorner = (id: string) => {
+    if (readIds.has(id) || tearingIds.has(id)) return;
+
+    setTearingIds((current) => new Set(current).add(id));
     markAnnouncementRead(id);
     setReadIds(readAnnouncementIds());
+
+    const timer = window.setTimeout(() => {
+      tearTimersRef.current.delete(timer);
+      setTearingIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }, 340);
+    tearTimersRef.current.add(timer);
   };
 
   return (
@@ -101,64 +122,80 @@ export function AnnouncementPage({
 
       {announcements.length ? (
         <div className="mt-6 grid gap-4">
-          {announcements.map((announcement, index) => {
+          {announcements.map((announcement) => {
             const unread = !readIds.has(announcement.id);
+            const tearing = tearingIds.has(announcement.id);
             return (
-              <Paper
-                as="article"
-                variant="plain"
-                foldSize={20}
-                foldDelayMs={Math.min(index, 6) * 45}
-                className="announcement-paper relative p-5 pb-16 max-[680px]:p-4 max-[680px]:pb-16"
-                key={announcement.id}
-              >
-                {unread ? (
-                  <span
-                    className="absolute right-4 top-4 size-[9px] rounded-full bg-[#e5484d] shadow-[0_0_0_4px_rgba(229,72,77,0.16)]"
-                    aria-label="未读公告"
-                    title="未读公告"
-                  />
-                ) : null}
-                <div className="flex flex-wrap items-center gap-2 pr-5">
-                  {announcement.pinned ? (
-                    <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-vermilion-soft px-2 text-[0.72rem] font-black text-vermilion">
-                      <Pin size={13} aria-hidden="true" />
-                      置顶
-                    </span>
-                  ) : null}
-                  <time
-                    className="font-brand text-[0.82rem] font-bold text-ink-soft"
-                    dateTime={announcement.date}
-                  >
-                    {announcement.date}
-                  </time>
-                </div>
-                <h2 className="mt-3 mb-0 font-brand text-[1.55rem] font-bold leading-[1.25] text-ink max-[680px]:text-[1.34rem]">
-                  {announcement.title}
-                </h2>
-                <div className="mt-4">
-                  <AnnouncementMarkdown body={announcement.body} />
-                </div>
-                <button
-                  type="button"
-                  className={`absolute right-6 bottom-5 inline-flex min-h-8 items-center gap-1.5 px-3 text-xs font-bold transition-[color,background-color,box-shadow] duration-150 max-[680px]:right-5 ${
-                    unread
-                      ? "bg-vermilion text-[var(--paper-tinted-ink)] shadow-[0_4px_12px_var(--accent-shadow)] hover:bg-vermilion-dark"
-                      : "cursor-default bg-transparent text-[var(--neutral-text)]"
-                  }`}
-                  aria-label={
-                    unread
-                      ? `将${announcement.title}标记为已读`
-                      : `${announcement.title}已读`
-                  }
-                  aria-pressed={!unread}
-                  disabled={!unread}
-                  onClick={() => handleMarkRead(announcement.id)}
+              <div className="announcement-entry-shell" key={announcement.id}>
+                <article
+                  className="announcement-entry relative p-5 pb-14 max-[680px]:p-4 max-[680px]:pb-14"
+                  data-read={unread ? "false" : "true"}
+                  data-tearing={tearing ? "true" : "false"}
                 >
-                  <Check size={15} aria-hidden="true" />
-                  已读
-                </button>
-              </Paper>
+                  {unread ? (
+                    <span
+                      className="absolute right-4 top-4 size-[9px] rounded-full bg-[#e5484d] shadow-[0_0_0_4px_rgba(229,72,77,0.16)]"
+                      aria-label="未读公告"
+                      title="未读公告"
+                    />
+                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2 pr-5">
+                    {announcement.pinned ? (
+                      <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-vermilion-soft px-2 text-[0.72rem] font-black text-vermilion">
+                        <Pin size={13} aria-hidden="true" />
+                        置顶
+                      </span>
+                    ) : null}
+                    <time
+                      className="font-brand text-[0.82rem] font-bold text-ink-soft"
+                      dateTime={announcement.date}
+                    >
+                      {announcement.date}
+                    </time>
+                  </div>
+                  <h2 className="mt-3 mb-0 font-brand text-[1.55rem] font-bold leading-[1.25] text-ink max-[680px]:text-[1.34rem]">
+                    {announcement.title}
+                  </h2>
+                  <div className="mt-4">
+                    <AnnouncementMarkdown body={announcement.body} />
+                  </div>
+                  <span
+                    className="announcement-entry-cut-line"
+                    aria-hidden="true"
+                  />
+                </article>
+                {unread || tearing ? (
+                  <span
+                    className="announcement-tear-corner"
+                    data-tearing={tearing ? "true" : "false"}
+                    role={!tearing ? "button" : undefined}
+                    tabIndex={!tearing ? 0 : -1}
+                    aria-label={
+                      !tearing
+                        ? `确认已读：${announcement.title}`
+                        : `${announcement.title}正在标记为已读`
+                    }
+                    aria-disabled={tearing || undefined}
+                    onClick={() => handleTearReadCorner(announcement.id)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      handleTearReadCorner(announcement.id);
+                    }}
+                  >
+                    <span
+                      className="announcement-tear-line"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="announcement-tear-label"
+                      aria-hidden="true"
+                    >
+                      确认
+                    </span>
+                  </span>
+                ) : null}
+              </div>
             );
           })}
         </div>

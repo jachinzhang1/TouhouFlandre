@@ -53,32 +53,42 @@ describe("AnnouncementPage", () => {
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
   });
 
-  it("only marks an unread announcement through its explicit read control", async () => {
+  it("only marks an unread announcement through its tear-off corner", async () => {
     const user = userEvent.setup();
-    render(<AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />);
+    const { container } = render(
+      <AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />,
+    );
 
     const article = screen.getByText("格式公告").closest("article")!;
     expect(screen.getByLabelText("未读公告")).toBeTruthy();
     await user.click(article);
     expect(screen.getByLabelText("未读公告")).toBeTruthy();
 
-    const unreadButton = screen.getByRole("button", {
-      name: "将格式公告标记为已读",
+    const tearCorner = screen.getByRole("button", {
+      name: "确认已读：格式公告",
     });
-    expect(unreadButton.className).toContain("bg-vermilion");
-    await user.click(unreadButton);
+    expect(tearCorner.tagName).toBe("SPAN");
+    await user.click(tearCorner);
 
+    expect(article.dataset.read).toBe("true");
+    expect(
+      container.querySelector('.announcement-tear-corner[data-tearing="true"]'),
+    ).toBeTruthy();
     expect(screen.queryByLabelText("未读公告")).toBeNull();
-    const readButton = screen.getByRole("button", { name: "格式公告已读" });
-    expect(readButton.hasAttribute("disabled")).toBe(true);
-    expect(readButton.className).toContain("bg-transparent");
-    expect(readButton.className).toContain("text-[var(--neutral-text)]");
     expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toContain(
       "notice-markdown",
     );
+    await waitFor(() =>
+      expect(container.querySelector(".announcement-tear-corner")).toBeNull(),
+    );
+    expect(article.querySelector(".announcement-entry-cut-line")).toBeTruthy();
 
     act(() => resetAnnouncementReadStatus());
     await waitFor(() => expect(screen.getByLabelText("未读公告")).toBeTruthy());
+    expect(
+      screen.getByRole("button", { name: "确认已读：格式公告" }),
+    ).toBeTruthy();
+    expect(article.dataset.read).toBe("false");
     expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toBeNull();
   });
 

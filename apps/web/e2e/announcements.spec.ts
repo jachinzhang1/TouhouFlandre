@@ -22,12 +22,18 @@ test.describe("公告页", () => {
     const navNotice = page
       .locator(".nav-link", { hasText: "公告" })
       .locator(".nav-unread-dot");
-    const card = page.locator("article", { hasText: "公告页启用" });
+    const entry = page.locator(".announcement-entry-shell", {
+      hasText: "公告页启用",
+    });
+    const card = entry.locator("article");
 
     await expect(navNotice).toBeVisible();
     await expect(card.getByLabel("未读公告")).toBeVisible();
 
-    await card.getByRole("button", { name: "将公告页启用标记为已读" }).click();
+    await entry.getByRole("button", { name: "确认已读：公告页启用" }).click();
+    await expect(card).toHaveAttribute("data-read", "true");
+    await expect(entry.locator(".announcement-tear-corner")).toHaveCount(0);
+    await expect(card.locator(".announcement-entry-cut-line")).toBeVisible();
     await expect(card.getByLabel("未读公告")).toHaveCount(0);
     await expect(navNotice).toHaveCount(0);
     await expect(page.getByRole("button", { name: "刷新公告" })).toHaveCount(0);
