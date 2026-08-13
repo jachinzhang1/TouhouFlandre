@@ -131,7 +131,7 @@ export function SiteNav() {
         aria-label="返回首页"
       >
         <Paper
-          className="brand-paper-mark inline-flex size-[38px] items-center justify-center max-[680px]:size-[34px]"
+          className="brand-paper-mark nav-contrast-paper inline-flex size-[38px] items-center justify-center max-[680px]:size-[34px]"
           variant="tinted"
           foldSize={8}
           unfoldOnHover={false}
@@ -149,10 +149,10 @@ export function SiteNav() {
       </Link>
       <div
         ref={navLinksRef}
-        className="nav-links flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[24px]"
+        className="nav-links flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--nav-shell-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[24px]"
       >
         <Paper
-          className="nav-active-indicator"
+          className="nav-active-indicator nav-contrast-paper"
           animateOnMount={false}
           variant="tinted"
           unfoldOnHover={false}

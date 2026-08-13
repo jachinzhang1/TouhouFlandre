@@ -101,6 +101,7 @@
   --nav-text: #53625d;
   --nav-hover-bg: rgba(255, 255, 255, 0.66);
   --nav-bg: rgba(251, 252, 251, 0.78);
+  --nav-shell-bg: var(--paper);
   --nav-paper-layer-1: rgba(238, 242, 239, 0.84);
   --nav-paper-layer-2: rgba(227, 233, 229, 0.46);
   --nav-paper-layer-3: rgba(218, 226, 221, 0.3);
@@ -230,27 +231,20 @@ html[data-theme-mode="dark"] {
   --amber-soft: #42331e;
   --amber-strong: #f2c071;
   --amber-border: #6a5026;
-  --nav-text: #a5b4ae;
-  --nav-hover-bg: rgba(255, 255, 255, 0.07);
-  --nav-bg: color-mix(
-    in srgb,
-    rgba(16, 18, 17, 0.86) 88%,
-    var(--dark-theme-blend)
-  );
-  --nav-paper-layer-1: color-mix(
-    in srgb,
-    rgba(38, 42, 40, 0.86) 88%,
-    var(--dark-theme-blend)
-  );
+  --nav-text: rgba(255, 255, 255, 0.78);
+  --nav-hover-bg: transparent;
+  --nav-bg: var(--paper-tinted-bg);
+  --nav-shell-bg: var(--paper-tinted-bg);
+  --nav-paper-layer-1: color-mix(in srgb, var(--paper-tinted-bg) 82%, #0d0f0e);
   --nav-paper-layer-2: color-mix(
     in srgb,
-    rgba(46, 51, 48, 0.5) 86%,
-    var(--dark-theme-blend)
+    var(--paper-tinted-bg) 62%,
+    transparent
   );
   --nav-paper-layer-3: color-mix(
     in srgb,
-    rgba(54, 60, 56, 0.34) 84%,
-    var(--dark-theme-blend)
+    var(--paper-tinted-bg) 42%,
+    transparent
   );
   --mobile-nav-shadow: 0 -10px 28px rgba(0, 0, 0, 0.34);
   --surface: color-mix(in srgb, #1c201e 88%, var(--dark-theme-blend));
@@ -352,13 +346,8 @@ html[data-theme-color="sakura"] {
   --accent-shadow-strong: rgba(192, 90, 134, 0.25);
   --accent-hover-border: #c58aa5;
   --paper-tinted-base: #b9507f;
-  --paper-tinted-ornament: radial-gradient(
-    circle,
-    transparent 0 4px,
-    rgba(255, 255, 255, 0.065) 4px 5px,
-    transparent 5px
-  );
-  --paper-tinted-ornament-size: 18px 18px;
+  --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='156' height='96' viewBox='0 0 156 96'%3E%3Cg fill='none' stroke='white' stroke-opacity='.065' stroke-width='1'%3E%3Ccircle cx='10' cy='12' r='5'/%3E%3Ccircle cx='36' cy='23' r='2.5'/%3E%3Ccircle cx='64' cy='35' r='5'/%3E%3Ccircle cx='93' cy='47' r='2.5'/%3E%3Ccircle cx='122' cy='60' r='5'/%3E%3Ccircle cx='149' cy='71' r='2.5'/%3E%3Ccircle cx='13' cy='78' r='2.5'/%3E%3Ccircle cx='42' cy='89' r='5'/%3E%3C/g%3E%3C/svg%3E");
+  --paper-tinted-ornament-size: 156px 96px;
 }
 
 html[data-theme-color="iris"] {
@@ -369,20 +358,8 @@ html[data-theme-color="iris"] {
   --accent-shadow-strong: rgba(111, 99, 182, 0.25);
   --accent-hover-border: #9289c8;
   --paper-tinted-base: #6f63b6;
-  --paper-tinted-ornament:
-    linear-gradient(
-      45deg,
-      transparent 46%,
-      rgba(255, 255, 255, 0.065) 47% 53%,
-      transparent 54%
-    ),
-    linear-gradient(
-      -45deg,
-      transparent 46%,
-      rgba(255, 255, 255, 0.065) 47% 53%,
-      transparent 54%
-    );
-  --paper-tinted-ornament-size: 20px 20px;
+  --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='24' viewBox='0 0 36 24'%3E%3Cg fill='none' stroke='white' stroke-opacity='.065' stroke-width='1' stroke-linejoin='round'%3E%3Cpath d='M1 12 L18 1 L35 12 L18 23 Z'/%3E%3Cpath d='M7 12 L18 5 L29 12 L18 19 Z'/%3E%3C/g%3E%3C/svg%3E");
+  --paper-tinted-ornament-size: 36px 24px;
 }
 
 html[data-theme-color="jade"] {
@@ -393,12 +370,18 @@ html[data-theme-color="jade"] {
   --accent-shadow-strong: rgba(36, 117, 104, 0.25);
   --accent-hover-border: #7baea4;
   --paper-tinted-base: #247568;
-  --paper-tinted-ornament: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.065) 0 1.5px,
-    transparent 2px
-  );
-  --paper-tinted-ornament-size: 14px 14px;
+  --paper-tinted-ornament:
+    radial-gradient(
+      circle at 4px 3px,
+      rgba(255, 255, 255, 0.065) 0 1.4px,
+      transparent 1.9px
+    ),
+    radial-gradient(
+      circle at 15px 12px,
+      rgba(255, 255, 255, 0.065) 0 1.4px,
+      transparent 1.9px
+    );
+  --paper-tinted-ornament-size: 22px 18px;
 }
 
 html[data-theme-color="amber"] {
@@ -426,13 +409,8 @@ html[data-theme-color="azure"] {
   --accent-shadow-strong: rgba(52, 120, 180, 0.25);
   --paper-tinted-base: #3478b4;
   --accent-hover-border: #78a7cc;
-  --paper-tinted-ornament: radial-gradient(
-    circle,
-    transparent 0 5px,
-    rgba(255, 255, 255, 0.065) 5px 6px,
-    transparent 6px
-  );
-  --paper-tinted-ornament-size: 22px 22px;
+  --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cpath d='M0 10 C6 2 18 2 24 10 S42 18 48 10' fill='none' stroke='white' stroke-opacity='.075' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
+  --paper-tinted-ornament-size: 48px 20px;
 }
 
 html[data-theme-mode="dark"][data-theme-color="scarlet"] {
@@ -704,7 +682,12 @@ input:focus-visible {
       transparent 8px,
       transparent 18px
     ),
-    var(--paper);
+    var(--nav-shell-bg);
+}
+html[data-theme-mode="dark"] .site-nav {
+  background-color: var(--paper-tinted-bg);
+  background-image: var(--paper-tinted-ornament);
+  background-size: var(--paper-tinted-ornament-size);
 }
 
 .announcement-entry-shell {
@@ -1081,6 +1064,24 @@ body:has(.home-hero) .site-footer a:hover {
 
 .brand-paper-mark {
   filter: drop-shadow(4px 4px 0 var(--accent-shadow-strong));
+}
+
+html[data-theme-mode="dark"] .nav-contrast-paper {
+  --paper-fold-shade: #d8dedb;
+  --paper-ornament-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 8px,
+    rgba(23, 35, 31, 0.09) 9px
+  );
+  --paper-ornament-size: auto;
+  color: #17231f;
+  background: #f7f8f7;
+}
+
+html[data-theme-mode="dark"] .nav-active-copy,
+html[data-theme-mode="dark"] .nav-active-copy .nav-link-copy {
+  color: #17231f;
 }
 
 .nav-links {
@@ -2784,6 +2785,12 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
   .nav-links {
     position: fixed;
+  }
+
+  html[data-theme-mode="dark"] .nav-links {
+    background-color: var(--paper-tinted-bg);
+    background-image: var(--paper-tinted-ornament);
+    background-size: var(--paper-tinted-ornament-size);
   }
 }
 
