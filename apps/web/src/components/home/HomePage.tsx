@@ -26,13 +26,6 @@ export function HomePage() {
       <span className="home-hero-blur-strong" aria-hidden="true" />
       <div className="home-hero-layout relative z-[3] mx-auto flex min-h-[inherit] w-full items-center min-[901px]:min-h-[100svh] min-[901px]:w-[min(1240px,calc(100%-40px))] min-[901px]:flex-col min-[901px]:items-stretch min-[901px]:justify-center min-[901px]:gap-[clamp(28px,4vh,48px)] min-[901px]:pt-[80px] min-[901px]:pb-[36px]">
         <div className="home-hero-copy w-[min(610px,58%)] py-[58px] pl-[56px] animate-[hero-enter_650ms_cubic-bezier(0.2,0.75,0.25,1)_both] min-[901px]:w-[min(680px,62%)] min-[901px]:py-0 min-[901px]:pl-0 max-[900px]:w-[68%] max-[900px]:pl-[34px] max-[680px]:w-full max-[680px]:px-[22px] max-[680px]:py-[38px]">
-          <p className="mt-0 mb-[18px] inline-flex items-center gap-2 text-[0.78rem] font-extrabold text-jade">
-            <span
-              className="size-[7px] rounded-full bg-jade shadow-[0_0_0_5px_var(--jade-focus-soft)] animate-[status-pulse_2.6s_ease-in-out_infinite]"
-              aria-hidden="true"
-            />
-            今日题已开放
-          </p>
           <h1 className="m-0 font-brand text-[4.5rem] font-bold leading-none text-[var(--hero-title)] max-[900px]:text-[3.5rem] max-[680px]:text-[2.65rem] max-[680px]:overflow-wrap-anywhere max-[420px]:text-[2.35rem]">
             东方芙一把
           </h1>
