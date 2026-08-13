@@ -3,6 +3,8 @@ package multi
 import (
 	"strings"
 	"unicode"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
 // DefaultDisplayName 空昵称时的默认展示名（08 §5.2）。
@@ -21,6 +23,24 @@ func ValidPlayerLimit(mode MultiplayerMode, playerLimit int) bool {
 	default:
 		return false
 	}
+}
+
+// ReadyRoster reports whether the room's current player collection may be
+// frozen as a match roster. The capacity is an upper bound, not a target.
+func ReadyRoster(players []repo.MultiMember, playerLimit int) bool {
+	if len(players) < MinPlayers || len(players) > playerLimit {
+		return false
+	}
+	hostReady := false
+	for _, player := range players {
+		if !IsPlayer(player) || player.Status != string(MemberStatusConnected) || !player.Ready {
+			return false
+		}
+		if MemberSeat(player) == 1 {
+			hostReady = true
+		}
+	}
+	return hostReady
 }
 
 // NormalizeDisplayName 昵称规范化（08 §5.2）：trim + 去控制字符 + ≤16 字符；

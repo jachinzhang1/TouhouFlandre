@@ -428,11 +428,8 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	if err != nil {
 		return nil, internalError(err)
 	}
-	// 双方就绪且都 connected → 同一事务开局（绑版本、抽题、建 round 1；08 §6.1）
-	bothReady := len(after) == 2 && after[0].Ready && after[1].Ready
-	bothConnected := len(after) == 2 &&
-		after[0].Status == string(multi.MemberStatusConnected) && after[1].Status == string(multi.MemberStatusConnected)
-	if bothReady && bothConnected {
+	// 当前 2..playerLimit 名玩家全员 connected + ready 时，在同一房间锁内冻结阵容并开局。
+	if multi.ReadyRoster(after, int(room.PlayerLimit)) {
 		if err := s.startMatchTx(ctx, q, room, multi.RoomFormat(room.Format)); err != nil {
 			return nil, err
 		}

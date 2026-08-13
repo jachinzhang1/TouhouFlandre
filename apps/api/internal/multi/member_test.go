@@ -2,6 +2,10 @@ package multi
 
 import (
 	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
 func TestNormalizeDisplayName(t *testing.T) {
@@ -48,6 +52,39 @@ func TestValidPlayerLimit(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if got := ValidPlayerLimit(test.mode, test.playerLimit); got != test.want {
 				t.Fatalf("ValidPlayerLimit(%q, %d) = %t, want %t", test.mode, test.playerLimit, got, test.want)
+			}
+		})
+	}
+}
+
+func TestReadyRoster(t *testing.T) {
+	player := func(seat int32, ready bool, status MemberStatus) repo.MultiMember {
+		return repo.MultiMember{
+			Seat:   pgtype.Int4{Int32: seat, Valid: true},
+			Role:   string(ParticipantRolePlayer),
+			Ready:  ready,
+			Status: string(status),
+		}
+	}
+	tests := []struct {
+		name    string
+		players []repo.MultiMember
+		limit   int
+		want    bool
+	}{
+		{name: "minimum ready", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected)}, limit: 8, want: true},
+		{name: "partially filled ready", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 8, want: true},
+		{name: "at capacity ready", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 3, want: true},
+		{name: "below minimum", players: []repo.MultiMember{player(1, true, MemberStatusConnected)}, limit: 8},
+		{name: "over capacity", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 2},
+		{name: "unready member", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, false, MemberStatusConnected)}, limit: 8},
+		{name: "disconnected member", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusDisconnected)}, limit: 8},
+		{name: "missing host", players: []repo.MultiMember{player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 8},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := ReadyRoster(test.players, test.limit); got != test.want {
+				t.Fatalf("ReadyRoster() = %t, want %t", got, test.want)
 			}
 		})
 	}

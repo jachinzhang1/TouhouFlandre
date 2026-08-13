@@ -293,6 +293,111 @@ func TestMultiMatchStart(t *testing.T) {
 	}
 }
 
+func TestMultiFlexibleRaceRosterStart(t *testing.T) {
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{
+		"format": "bo1",
+		"mode":   "race",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create: %d %s", resp.StatusCode, payload)
+	}
+	var created openapi.CreateRoomResponse
+	if err := json.Unmarshal(payload, &created); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 8 WHERE id = $1", created.RoomId); err != nil {
+		t.Fatal(err)
+	}
+	tokens := []string{string(created.GuestToken)}
+	wantPlayers := map[string]bool{created.Viewer.MemberId: true}
+	for i := 0; i < 2; i++ {
+		resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+created.RoomCode+"/join", map[string]string{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join player %d: %d %s", i+2, resp.StatusCode, payload)
+		}
+		var joined openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &joined); err != nil {
+			t.Fatal(err)
+		}
+		if joined.JoinRole != openapi.ParticipantRolePlayer {
+			t.Fatalf("join player %d role = %s", i+2, joined.JoinRole)
+		}
+		tokens = append(tokens, string(joined.GuestToken))
+		wantPlayers[joined.Viewer.MemberId] = true
+	}
+
+	// 两名已准备玩家不能绕过第三名未准备玩家开局。
+	for _, token := range tokens[:2] {
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", token, nil)
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("partial ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	var roomStatus string
+	var matchCount int
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, count(m.id)
+		FROM multi_room r LEFT JOIN multi_match m ON m.room_id = r.id
+		WHERE r.id = $1 GROUP BY r.status`, created.RoomId).Scan(&roomStatus, &matchCount); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusLobby) || matchCount != 0 {
+		t.Fatalf("unready player was bypassed: status=%s matches=%d", roomStatus, matchCount)
+	}
+
+	// 第三名准备后以 3/8 的未满阵容开局。
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", tokens[2], nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("final ready: %d %s", resp.StatusCode, payload)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, count(m.id)
+		FROM multi_room r LEFT JOIN multi_match m ON m.room_id = r.id
+		WHERE r.id = $1 GROUP BY r.status`, created.RoomId).Scan(&roomStatus, &matchCount); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusPlaying) || matchCount != 1 {
+		t.Fatalf("3/8 ready roster did not start: status=%s matches=%d", roomStatus, matchCount)
+	}
+
+	// 开局后新 member 只能观战，隐式冻结的 player 集合保持不变。
+	resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+created.RoomCode+"/join", map[string]string{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("post-start spectator join: %d %s", resp.StatusCode, payload)
+	}
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.JoinRole != openapi.ParticipantRoleSpectator {
+		t.Fatalf("post-start join role = %s, want spectator", spectator.JoinRole)
+	}
+	rows, err := pool.Query(ctx, "SELECT id FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat", created.RoomId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	gotPlayers := map[string]bool{}
+	for rows.Next() {
+		var memberID string
+		if err := rows.Scan(&memberID); err != nil {
+			t.Fatal(err)
+		}
+		gotPlayers[memberID] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(gotPlayers) != len(wantPlayers) {
+		t.Fatalf("frozen players = %v, want %v", gotPlayers, wantPlayers)
+	}
+	for memberID := range wantPlayers {
+		if !gotPlayers[memberID] {
+			t.Fatalf("frozen roster lost member %s: %v", memberID, gotPlayers)
+		}
+	}
+}
+
 func TestMultiGuessWin(t *testing.T) {
 	fixture := createMatchFixture(t)
 	startMatch(t, fixture)
