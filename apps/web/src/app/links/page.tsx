@@ -96,6 +96,25 @@ const developers: Array<{
     ],
   },
   {
+    name: "KrLite",
+    avatarUrl: "https://avatars.githubusercontent.com/u/68179735?s=160&v=4",
+    role: "前端开发与UX设计",
+    links: [
+      {
+        name: "GitHub",
+        href: "https://github.com/KrLite",
+        Icon: Github,
+        className: platformStyles.github,
+      },
+      {
+        name: "Bilibili",
+        href: "https://space.bilibili.com/399487383",
+        Icon: BilibiliIcon,
+        className: platformStyles.bilibili,
+      },
+    ],
+  },
+  {
     name: "哲狗",
     role: "基础设施提供",
     links: [

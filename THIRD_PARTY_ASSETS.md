@@ -21,7 +21,7 @@
 | 项目     | 内容                                      |
 | -------- | ----------------------------------------- |
 | 素材     | 首页封面图                                |
-| 来源     | pixiv 作品 50752377                       |
+| 来源     | Pixiv 作品 50752377                       |
 | 来源链接 | https://www.pixiv.net/artworks/50752377   |
 | 仓库位置 | `apps/web/public/hero-touhou-collage.jpg` |
 | 用途     | 首页首屏背景视觉                          |
@@ -52,9 +52,9 @@
 | 素材               | 来源                                  | 许可证  | 仓库位置                                   |
 | ------------------ | ------------------------------------- | ------- | ------------------------------------------ |
 | Bilibili Mono icon | https://github.com/lobehub/lobe-icons | MIT     | `apps/web/src/components/BilibiliIcon.tsx` |
-| pixiv icon         | https://simpleicons.org/              | CC0-1.0 | `apps/web/src/components/PixivIcon.tsx`    |
+| Pixiv icon         | https://simpleicons.org/              | CC0-1.0 | `apps/web/src/components/PixivIcon.tsx`    |
 
-Bilibili 与 pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
+Bilibili 与 Pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
 
 ## 项目自制图形
 
