@@ -41,6 +41,42 @@
 | player 进行中视图 | 自己完整棋盘；每名对手独立匿名矩阵 | 双方共享完整棋盘 |
 | spectator 进行中视图 | roster 所有玩家的完整棋盘 | 完整共享棋盘 |
 
+## 状态 × 角色 × 动作权限
+
+下表是服务端授权矩阵。`允许`仍须通过请求格式、限流和玩法规则校验；`条件允许`的附加条件在表后冻结。所有写命令均要求 token 对应 member 为 `connected`，`disconnected` 必须先重连，`left` 不得写入。
+
+| 动作 | 无房间身份 | lobby host player | lobby 其他 player | lobby spectator | playing roster player | playing spectator | finished 原 roster player | finished spectator / retained left | closed |
+|---|---|---|---|---|---|---|---|---|---|
+| 创建房间 | 允许 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 | 允许创建另一房间 |
+| 公开预检 / 加入 | 条件允许 A | 不适用 | 不适用 | 不适用 | 不适用 | 不适用 | 不适用 | 不适用 | 拒绝 |
+| claim-seat | 无身份拒绝 | 不适用 | 不适用 | 条件允许 B | 状态拒绝 | 状态拒绝 | 状态拒绝 | 状态拒绝 | 拒绝 |
+| 准备 `ready=true` | 无身份拒绝 | 允许 | 允许 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 拒绝 |
+| 取消准备 `ready=false` | 无身份拒绝 | 允许 | 允许 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 拒绝 |
+| 设置 `playerLimit` | 无身份拒绝 | 条件允许 C | 非房主拒绝 | 只读拒绝 | 配置锁定 | 只读拒绝 | 配置锁定 | 只读拒绝 | 拒绝 |
+| 猜测 | 无身份拒绝 | 状态拒绝 | 状态拒绝 | 只读拒绝 | 条件允许 D | 只读拒绝 | 状态拒绝 | 只读拒绝 | 拒绝 |
+| 放弃当前小局 | 无身份拒绝 | 状态拒绝 | 状态拒绝 | 只读拒绝 | 条件允许 E | 只读拒绝 | 状态拒绝 | 只读拒绝 | 拒绝 |
+| relay 空过 | 无身份拒绝 | 状态拒绝 | 状态拒绝 | 只读拒绝 | 条件允许 F | 只读拒绝 | 状态拒绝 | 只读拒绝 | 拒绝 |
+| 请求 rematch | 无身份拒绝 | 状态拒绝 | 状态拒绝 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 条件允许 G | 只读拒绝 | 拒绝 |
+| 主动离开 | 无身份拒绝 | 允许并关闭房间 | 允许并释放 seat | 允许 | 条件允许 H | 允许且不改变赛果 | 允许并使 rematch 不再可用 | 允许且不改变赛果 | 幂等拒绝 |
+| 房主关闭房间 | 无身份拒绝 | 允许 | 非房主拒绝 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 状态拒绝 | 只读拒绝 | 幂等拒绝 |
+| 发聊天消息 | 无身份拒绝 | 条件允许 I | 条件允许 I | 条件允许 I | 条件允许 I | 条件允许 I | 条件允许 I | left 拒绝；connected spectator 条件允许 I | 拒绝 |
+| 看房间/游戏状态 | 仅公开预检 | 允许 | 允许 | 允许 | 允许 | 允许 | 允许 | 保留期内允许只读终态 | 不允许 |
+| 看聊天历史/实时 | 无身份拒绝 | 按当前 role 授权 | 按当前 role 授权 | 按当前 role 授权 | 按当前 role 授权 | 按当前 role 授权 | 按当前 role 授权 | retained member 按最后有效 role 只读授权 | 不允许 |
+
+条件定义：
+
+- A：目标房间未 closed 且未超过保留期。lobby 有 player 空位时签发 player 身份，否则签发 spectator；playing/finished 只能签发 spectator；spectator 已达 32 人则稳定拒绝，不创建 member 行。
+- B：仅 connected spectator 本人可在 lobby、match 尚未创建且 `playerCount < playerLimit` 时认领；事务内复用原 `memberId`/token、分配最小可用 seat、设置 `ready=false`，随后旧 WS 必须失效。
+- C：仅 race、match 未创建、当前无人 ready 且新值处于 2..8 并不小于当前 player 数时允许；relay 固定 2。降容须先按旧 seat、`memberId` 稳定压紧非房主 seat。
+- D：当前 round 已进入 playing，race 中该 roster member 仍可参与且未超猜测上限；relay 中还必须轮到该 `turnMemberId`。
+- E：当前 round 为 playing 且该 roster member 尚未 forfeited/left；race 只退出该小局，relay 保持两人判负规则。
+- F：仅 relay 当前 round 为 playing、轮到该 `turnMemberId` 且其共享空过额度未触发判负前可提交；race 稳定拒绝。
+- G：原 match roster 完整、无人 left、全员 connected 且由原 roster member 提交；每人确认幂等，全部确认后按原 roster 开新 match，任何新 member/spectator 均不能补位。
+- H：race 离开等价于将该 roster member 标记 left 并退出当前小局，剩余 roster 按模式终态规则继续；relay 保持离开者判负。finished 离开保留终态记录但永久破坏该 roster 的 rematch 完整性。
+- I：房间未 closed/过期、sender 为 connected member、内容与限流校验通过；服务端从当前 role 派生 channel，客户端只提交内容和幂等键。
+
+角色变化和 member 状态变化必须在每次 REST 请求鉴权时重新读取；WS 不得在 claim-seat 后继续使用连接建立时缓存的 role/capability。公开 `memberId`、seat、昵称或某条历史消息都不授予任何矩阵外动作。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案
@@ -53,4 +89,3 @@
 | 本轮预建 team/私聊模型 | 没有已冻结的团队玩法消费者，却会扩大迁移、权限、投影和游标安全面 |
 | 由客户端提交 capability/channel | 可伪造越权范围；服务端必须从令牌绑定 member 和当前状态派生 |
 | 用 game sequence 承载聊天 | 不可见 spectator 消息会为 player 制造假缺口，聊天历史也无法独立分页与保留 |
-
