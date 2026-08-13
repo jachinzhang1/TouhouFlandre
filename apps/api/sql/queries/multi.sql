@@ -63,7 +63,14 @@ DELETE FROM multi_room WHERE id = $1;
 
 -- name: CreateMember :one
 INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
-VALUES ($1, $2, $3::integer, 'player', $4, $5)
+VALUES (
+    sqlc.arg(id),
+    sqlc.arg(room_id),
+    sqlc.arg(slot)::integer,
+    'player',
+    sqlc.arg(display_name),
+    sqlc.arg(token_hash)
+)
 RETURNING *;
 
 -- name: CreateSpectatorMember :one

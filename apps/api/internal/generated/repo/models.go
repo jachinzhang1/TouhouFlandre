@@ -103,7 +103,6 @@ type MultiMember struct {
 	ID           string             `json:"id"`
 	RoomID       string             `json:"room_id"`
 	Slot         pgtype.Int4        `json:"slot"`
-	Role         string             `json:"role"`
 	DisplayName  string             `json:"display_name"`
 	TokenHash    string             `json:"token_hash"`
 	Status       string             `json:"status"`
@@ -111,6 +110,7 @@ type MultiMember struct {
 	RematchReady bool               `json:"rematch_ready"`
 	GraceUntil   pgtype.Timestamptz `json:"grace_until"`
 	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
+	Role         string             `json:"role"`
 }
 
 type MultiRoom struct {

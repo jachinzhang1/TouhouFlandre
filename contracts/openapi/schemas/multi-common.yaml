@@ -40,6 +40,9 @@ ParticipantRole:
   enum:
     - player
     - spectator
+  x-enum-varnames:
+    - ParticipantRolePlayer
+    - ParticipantRoleSpectator
 
 RoundStatus:
   type: string

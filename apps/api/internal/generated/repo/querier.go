@@ -19,15 +19,14 @@ type Querier interface {
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
-	CountSpectators(ctx context.Context, roomID string) (int32, error)
 	CountSkipsForRoundMember(ctx context.Context, arg CountSkipsForRoundMemberParams) (int64, error)
+	CountSpectators(ctx context.Context, roomID string) (int32, error)
 	CountTurnsForRound(ctx context.Context, roundID string) (int64, error)
 	CountTurnsForRoundMember(ctx context.Context, arg CountTurnsForRoundMemberParams) (int64, error)
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
-	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error)
@@ -37,6 +36,7 @@ type Querier interface {
 	CreateRound(ctx context.Context, arg CreateRoundParams) (MultiRound, error)
 	// 会话：创建、查询、乐观锁更新
 	CreateSession(ctx context.Context, arg CreateSessionParams) (GameSession, error)
+	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
 	DeleteCharactersNotIn(ctx context.Context, ids []string) error
 	DeleteMember(ctx context.Context, id string) error
 	DeleteRoom(ctx context.Context, id string) error
