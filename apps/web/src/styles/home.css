@@ -185,7 +185,7 @@
 .paper-shortcut-icon {
   color: var(--ink);
   opacity: 0.24;
-  transition: opacity 160ms ease 80ms;
+  transition: opacity 180ms ease;
 }
 
 .paper-shortcut-hover-arrow {
@@ -193,8 +193,8 @@
   opacity: 0;
   transform: translateX(-37.5%);
   transition:
-    opacity 160ms ease 80ms,
-    transform 240ms ease;
+    opacity 180ms ease,
+    transform 0ms linear 180ms;
 }
 
 .paper-shortcut-title,
@@ -209,6 +209,7 @@
 .paper-shortcut:focus-visible .paper-shortcut-title,
 .paper-shortcut:focus-visible .paper-shortcut-description {
   transition-duration: 0ms;
+  transition-delay: 0ms;
 }
 
 @media (hover: hover) and (pointer: fine) {
