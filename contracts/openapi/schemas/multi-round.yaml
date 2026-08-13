@@ -13,7 +13,7 @@ OpponentRow:
       description: 该成员局内猜测序号（1 起）。
     statuses:
       type: array
-      description: 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+      description: 当前可见字段位置的状态；服务端秘密 HMAC 绑定 round、observer、subject、schemaVersion 后列置换，客户端拿不到真实列序。
       items:
         $ref: "./session.yaml#/FeedbackStatus"
 

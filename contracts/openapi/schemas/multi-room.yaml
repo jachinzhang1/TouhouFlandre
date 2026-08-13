@@ -178,7 +178,7 @@ JoinRoomResponse:
 RoomSnapshot:
   type: object
   description: |
-    逐观察者投影的房间权威快照：self（完整棋盘）、opponents（匿名矩阵 + 对方列置换）。
+    逐观察者投影的房间权威快照：self（完整棋盘）、opponents（每名对手独立匿名矩阵与 HMAC 列置换）。
     gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
     被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
     round 仅在局处于 countdown/playing 时存在。

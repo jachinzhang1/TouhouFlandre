@@ -5,7 +5,7 @@ post:
   tags:
     - rooms
   summary: 确认再来一局
-  description: 幂等。仅 finished 态可用；双方确认且都 connected 时开新对局（事件驱动）。
+  description: 幂等。仅 finished 态且原 match roster 无人 left 时可用；原 roster 全员确认且都 connected 后开新对局（事件驱动）。
   parameters:
     - name: roomId
       in: path

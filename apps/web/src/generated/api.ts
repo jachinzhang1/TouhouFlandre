@@ -331,7 +331,7 @@ export interface paths {
         put?: never;
         /**
          * 确认再来一局
-         * @description 幂等。仅 finished 态可用；双方确认且都 connected 时开新对局（事件驱动）。
+         * @description 幂等。仅 finished 态且原 match roster 无人 left 时可用；原 roster 全员确认且都 connected 后开新对局（事件驱动）。
          */
         post: operations["rooms_rematch"];
         delete?: never;
@@ -352,7 +352,8 @@ export interface paths {
         /**
          * 离开房间
          * @description 大厅：加入者删除成员行释放 slot，房主离开则房间关闭（reason=host_left）；
-         *     对局中：弃赛判对方胜（reason=forfeit）；对局结束后离开 → 房间关闭。
+         *     对局中：race 将该 roster member 标记为 left，剩余玩家继续，仅剩一名 active member 时其直接赢得整场；
+         *     relay 固定两人，离开者弃赛并判对方胜（reason=forfeit）。对局结束后仅标记成员 left，房间等待保留期关闭。
          */
         post: operations["rooms_leave"];
         delete?: never;
@@ -414,7 +415,7 @@ export interface paths {
         put?: never;
         /**
          * 提交猜测
-         * @description 成员令牌鉴权。竞速模式：无回合交替，任何时刻（局处于 playing）双方都可提交。
+         * @description 成员令牌鉴权。竞速模式：无回合交替，局处于 playing 时每名 active round roster player 都可提交。
          *     接力模式：仅当前 turnSlot 可提交，提交或超时空过都会消耗该玩家一次轮次。
          *     携带 idempotencyKey（客户端 UUID），重试返回首次结果。
          *     响应为自视角完整反馈；竞速局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影），
@@ -438,8 +439,9 @@ export interface paths {
         put?: never;
         /**
          * 放弃本局
-         * @description 成员令牌鉴权。仅结束当前小局：放弃者判负，对手获得本局胜利。
-         *     多局赛制下由既有局间推进机制进入下一小局；若对手因此达到 targetWins，则整场结束。
+         * @description 成员令牌鉴权。race 仅将该玩家在当前小局标记为 forfeited；只剩一名 active 玩家时该玩家赢得本局，
+         *     否则本局继续，放弃者下一局恢复 active。relay 固定两人，仍由对方赢得本局。
+         *     多局赛制下由既有局间推进机制进入下一小局；若本局胜者因此达到 targetWins，则整场结束。
          */
         post: operations["rooms_forfeitRound"];
         delete?: never;
@@ -869,7 +871,7 @@ export interface components {
             viewer: components["schemas"]["ParticipantView"];
         };
         /**
-         * @description 逐观察者投影的房间权威快照：self（完整棋盘）、opponents（匿名矩阵 + 对方列置换）。
+         * @description 逐观察者投影的房间权威快照：self（完整棋盘）、opponents（每名对手独立匿名矩阵与 HMAC 列置换）。
          *     gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
          *     被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
          *     round 仅在局处于 countdown/playing 时存在。
@@ -982,7 +984,7 @@ export interface components {
         OpponentRow: {
             /** @description 该成员局内猜测序号（1 起）。 */
             index: number;
-            /** @description 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。 */
+            /** @description 当前可见字段位置的状态；服务端秘密 HMAC 绑定 round、observer、subject、schemaVersion 后列置换，客户端拿不到真实列序。 */
             statuses: components["schemas"]["FeedbackStatus"][];
         };
         /** @description 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。 */

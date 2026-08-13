@@ -136,7 +136,7 @@ events:
 
   - type: match.started
     observer: all
-    summary: 双方就绪 / 双方确认再来一局（新场次开始，比分与抽题池自然重置）。
+    summary: 当前完整 roster 就绪 / 确认再来一局（新场次开始，比分与抽题池自然重置）。
     payload:
       type: object
       additionalProperties: false
@@ -175,7 +175,7 @@ events:
 
   - type: match.rematch
     observer: all
-    summary: 成员点击「再来一局」确认（等待对方）。
+    summary: 成员点击「再来一局」确认（等待原 roster 其他成员）。
     payload:
       type: object
       additionalProperties: false
@@ -236,7 +236,7 @@ events:
 
   - type: round.playing
     observer: all
-    summary: 倒计时结束，双方可开猜。
+    summary: 倒计时结束；race 的 active roster players 可并行开猜，relay 仅当前行动者可猜。
     payload:
       type: object
       additionalProperties: false
@@ -253,7 +253,8 @@ events:
     observer: opponent
     summary: |
       对手每次被接受的猜测（唯一逐观察者事件）。
-      statuses 为当前可见字段位置的状态，已按观察者 (roundId, observerMemberId) 种子列置换；
+      statuses 为当前可见字段位置的状态；服务端秘密 HMAC 绑定
+      (roundId, observerMemberId, subjectMemberId, schemaVersion) 后派生列置换；
       不含角色名/字段标签/值（08 §4.5 数据最小化）。
     payload:
       type: object
@@ -742,7 +743,7 @@ examples:
               ready: false
           spectatorCount: 0
 
-    - label: match.started（双方就绪）
+    - label: match.started（完整 roster 就绪）
       message:
         type: match.started
         eventId: evt_01J8Z0
@@ -974,6 +975,12 @@ examples:
                       status: miss
                       symbol: "X"
                       displayValue: [东方红魔乡]
+            - memberId: member-third
+              seat: 3
+              guesses: []
+            - memberId: member-fourth
+              seat: 4
+              guesses: []
           scores:
             - memberId: member-host
               seat: 1
@@ -981,12 +988,24 @@ examples:
             - memberId: member-guest
               seat: 2
               score: 0
+            - memberId: member-third
+              seat: 3
+              score: 0
+            - memberId: member-fourth
+              seat: 4
+              score: 0
           results:
             - memberId: member-host
               seat: 1
               result: win
             - memberId: member-guest
               seat: 2
+              result: loss
+            - memberId: member-third
+              seat: 3
+              result: loss
+            - memberId: member-fourth
+              seat: 4
               result: loss
           nextStartsAt: "2026-08-06T12:00:18Z"
 
@@ -1008,12 +1027,24 @@ examples:
             - memberId: member-guest
               seat: 2
               score: 0
+            - memberId: member-third
+              seat: 3
+              score: 1
+            - memberId: member-fourth
+              seat: 4
+              score: 0
           results:
             - memberId: member-host
               seat: 1
               result: win
             - memberId: member-guest
               seat: 2
+              result: loss
+            - memberId: member-third
+              seat: 3
+              result: loss
+            - memberId: member-fourth
+              seat: 4
               result: loss
           reason: normal
           retentionEndsAt: "2026-08-06T12:30:00Z"
@@ -1171,6 +1202,33 @@ examples:
             workCode: TH01
           boards: []
           scores: []
+          results: []
+
+    - label: round.ended 拒绝旧 slot 棋盘和比分形状
+      expectFail: schema
+      message:
+        type: round.ended
+        eventId: evt_legacy_slots
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 12
+        occurredAt: "2026-08-06T12:00:14Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          winnerMemberId: null
+          answer:
+            id: reimu_hakurei
+            name: 博丽灵梦
+            avatarUrl: https://example.com/avatars/reimu.png
+            workId: th01
+            workTitle: 东方灵异传
+            workCode: TH01
+          boards:
+            slot1: []
+            slot2: []
+          scores:
+            slot1: 0
+            slot2: 0
           results: []
 
     - label: match.ended reason 非法枚举
