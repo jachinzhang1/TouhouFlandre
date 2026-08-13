@@ -11,10 +11,16 @@ import {
   List,
   ListOrdered,
   Loader2,
-  Search,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CharacterSort, SortDirection, Work } from "@touhouflandre/shared";
+import { Paper } from "../../components/Paper";
+import { PaperSearchInput } from "../../components/controls/PaperSearchInput";
+import {
+  PaperSegmentButton,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "../../components/controls/PaperSegmentedControl";
 import { CharacterAvatar } from "../../components/game/CharacterAvatar";
 import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
@@ -90,104 +96,94 @@ export default function SearchPage() {
 
   return (
     <section
-      className="px-[18px] pt-12 pb-6 max-[680px]:pt-[34px] max-[680px]:pb-[18px]"
+      className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]"
       aria-busy={loading}
     >
-      <div className="max-w-[720px]">
-        <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
-          ARCHIVE
-        </p>
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
+      <header className="text-center">
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-black leading-[1.15] max-[680px]:text-[2.05rem]">
           角色搜索
         </h1>
-        <p className="mt-3 mb-0 leading-[1.75] text-ink-soft">
+        <p className="mx-auto mt-3 mb-0 flex min-h-7 max-w-[720px] items-center justify-center text-center font-brand leading-[1.75] text-ink-soft">
           浏览当前题库中的可猜角色。
         </p>
-      </div>
+      </header>
 
-      <div className="mt-[26px] flex items-center justify-between gap-3 max-[680px]:mt-0 max-[680px]:grid max-[680px]:gap-[9px]">
-        <label className="catalog-search-box flex min-h-[48px] min-w-0 flex-1 items-center gap-[11px] rounded-[4px] border border-line-strong bg-[var(--surface)] px-[14px] text-[var(--muted-text)] transition-[border-color,box-shadow] duration-150 focus-within:border-jade focus-within:text-jade focus-within:shadow-[0_0_0_4px_var(--jade-focus-soft)] max-[680px]:mt-[26px]">
-          <Search size={18} aria-hidden="true" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="例如 灵梦 / Reimu / 红白"
-            aria-label="搜索角色"
-            className="catalog-search-input w-full min-w-0 border-0 bg-transparent text-ink placeholder:text-[var(--placeholder-text)]"
-          />
-        </label>
+      <div className="catalog-querybar">
+        <PaperSearchInput
+          ariaLabel="搜索角色"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="输入关键词搜索：灵梦 / Reimu / 红白……"
+          value={query}
+        />
         <div className="catalog-controls" aria-label="角色目录显示设置">
-          <div className="catalog-segment" role="group" aria-label="显示方式">
-            <button
-              className={`catalog-segment-button${view === "grid" ? " active" : ""}`}
-              type="button"
+          <PaperSegmentGroup label="显示方式">
+            <PaperSegmentButton
+              active={view === "grid"}
+              ariaLabel="图标视图"
               onClick={() => setView("grid")}
               title="图标视图"
-              aria-label="图标视图"
-              aria-pressed={view === "grid"}
             >
               <LayoutGrid size={17} aria-hidden="true" />
-            </button>
-            <button
-              className={`catalog-segment-button${view === "list" ? " active" : ""}`}
-              type="button"
+            </PaperSegmentButton>
+            <PaperSegmentSeparator />
+            <PaperSegmentButton
+              active={view === "list"}
+              ariaLabel="列表视图"
               onClick={() => setView("list")}
               title="列表视图"
-              aria-label="列表视图"
-              aria-pressed={view === "list"}
             >
               <List size={17} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="catalog-segment" role="group" aria-label="排序字段">
-            <button
-              className={`catalog-segment-button${sort === "appearance" ? " active" : ""}`}
-              type="button"
+            </PaperSegmentButton>
+          </PaperSegmentGroup>
+          <PaperSegmentGroup label="排序字段">
+            <PaperSegmentButton
+              active={sort === "appearance"}
               onClick={() => setSort("appearance")}
-              aria-pressed={sort === "appearance"}
             >
               <ListOrdered size={17} aria-hidden="true" />
               <span>登场</span>
-            </button>
-            <button
-              className={`catalog-segment-button${sort === "name" ? " active" : ""}`}
-              type="button"
+            </PaperSegmentButton>
+            <PaperSegmentSeparator />
+            <PaperSegmentButton
+              active={sort === "name"}
               onClick={() => setSort("name")}
-              aria-pressed={sort === "name"}
             >
               <ArrowDownAZ size={17} aria-hidden="true" />
               <span>名称</span>
-            </button>
-          </div>
-          <div className="catalog-segment" role="group" aria-label="排序方向">
-            <button
-              className={`catalog-segment-button${direction === "asc" ? " active" : ""}`}
-              type="button"
+            </PaperSegmentButton>
+          </PaperSegmentGroup>
+          <PaperSegmentGroup label="排序方向">
+            <PaperSegmentButton
+              active={direction === "asc"}
+              ariaLabel="正序"
               onClick={() => setDirection("asc")}
               title="正序"
-              aria-label="正序"
-              aria-pressed={direction === "asc"}
             >
               <ArrowUp size={17} aria-hidden="true" />
-            </button>
-            <button
-              className={`catalog-segment-button${direction === "desc" ? " active" : ""}`}
-              type="button"
+            </PaperSegmentButton>
+            <PaperSegmentSeparator />
+            <PaperSegmentButton
+              active={direction === "desc"}
+              ariaLabel="倒序"
               onClick={() => setDirection("desc")}
               title="倒序"
-              aria-label="倒序"
-              aria-pressed={direction === "desc"}
             >
               <ArrowDown size={17} aria-hidden="true" />
-            </button>
-          </div>
+            </PaperSegmentButton>
+          </PaperSegmentGroup>
         </div>
       </div>
 
-      <div className="mt-[12px] rounded-[4px] border border-line bg-paper">
+      <Paper
+        as="div"
+        className="catalog-filter-paper mt-[12px]"
+        folded={false}
+        sticker={false}
+        variant="plain"
+      >
         <button
           type="button"
-          className="flex min-h-[50px] w-full items-center justify-between gap-3 px-[14px] text-left"
+          className="catalog-filter-toggle"
           onClick={() => setFilterExpanded((current) => !current)}
           aria-expanded={filterExpanded}
         >
@@ -209,32 +205,35 @@ export default function SearchPage() {
           </span>
         </button>
         {filterExpanded ? (
-          <div className="border-t border-line px-[14px] py-[14px]">
+          <div className="catalog-filter-content">
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-[var(--surface)] px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[var(--control-border-hover)] hover:bg-[var(--surface-hover)]"
+              <Paper
+                as="button"
+                className="catalog-flat-button"
+                disabled={works.length === 0}
+                folded={false}
                 onClick={() => setSelectedWorkIds(workIds)}
-                disabled={workIds.length === 0}
+                sticker={false}
+                variant="plain"
               >
                 全选
-              </button>
-              <button
-                type="button"
-                className="inline-flex min-h-[34px] items-center rounded-[4px] border border-line-strong bg-[var(--surface)] px-3 text-[0.76rem] font-extrabold text-ink transition-[border-color,background] duration-150 hover:border-[var(--control-border-hover)] hover:bg-[var(--surface-hover)]"
+              </Paper>
+              <Paper
+                as="button"
+                className="catalog-flat-button"
+                disabled={works.length === 0}
+                folded={false}
                 onClick={() => setSelectedWorkIds([])}
-                disabled={workIds.length === 0}
+                sticker={false}
+                variant="plain"
               >
                 全不选
-              </button>
+              </Paper>
             </div>
             <div className="mt-[12px] grid gap-2 max-[680px]:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {works.length > 0 ? (
                 works.map((work) => (
-                  <label
-                    key={work.id}
-                    className="flex min-h-[48px] items-center gap-3 rounded-[4px] border border-line bg-[var(--surface)] px-[12px] py-[10px] text-[0.84rem] text-ink"
-                  >
+                  <label key={work.id} className="catalog-work-option">
                     <input
                       type="checkbox"
                       checked={selectedWorkIdSet.has(work.id)}
@@ -245,7 +244,7 @@ export default function SearchPage() {
                             : [...current, work.id],
                         );
                       }}
-                      className="size-4 shrink-0 accent-jade"
+                      className="catalog-work-checkbox size-4 shrink-0"
                     />
                     <span className="min-w-0 flex-1">
                       <strong className="block truncate font-bold">
@@ -258,21 +257,26 @@ export default function SearchPage() {
                   </label>
                 ))
               ) : (
-                <div className="rounded-[4px] border border-dashed border-line bg-[var(--surface)] px-[12px] py-[14px] text-[0.82rem] text-ink-soft">
-                  正在读取作品列表。
-                </div>
+                <div className="catalog-work-loading">正在读取作品列表。</div>
               )}
             </div>
           </div>
         ) : null}
-      </div>
+      </Paper>
 
       {error ? (
         <div className="catalog-feedback" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={retry}>
+          <Paper
+            as="button"
+            className="catalog-feedback-button"
+            folded={false}
+            onClick={retry}
+            sticker={false}
+            variant="plain"
+          >
             重新加载
-          </button>
+          </Paper>
         </div>
       ) : null}
       <div
@@ -294,15 +298,24 @@ export default function SearchPage() {
           <span>正在加载题库</span>
         </div>
       ) : error ? null : !results.length ? (
-        <div className="mt-[10px] grid min-h-[180px] place-items-center rounded-[4px] border border-line bg-paper text-ink-soft">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="catalog-empty-result grid min-h-[180px] place-items-center text-ink-soft"
+          foldSize={16}
+        >
           没有找到匹配的角色。
-        </div>
+        </Paper>
       ) : view === "grid" ? (
-        <div className="mt-[10px] grid grid-cols-[repeat(auto-fit,minmax(255px,1fr))] gap-[9px]">
-          {results.map((result) => (
-            <article
-              className="grid min-h-[64px] cursor-default grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-[11px] rounded-[4px] border border-line bg-paper p-[10px] text-ink transition-[border-color,background] duration-150 hover:border-[var(--accent-hover-border)] hover:bg-[var(--surface-hover)]"
+        <div className="catalog-result-grid">
+          {results.map((result, index) => (
+            <Paper
+              animateOnMount={false}
+              as="article"
+              className="catalog-result-card"
+              foldSize={14}
               key={result.id}
+              stackOrder={results.length - index}
             >
               <CharacterAvatar
                 avatarUrl={result.avatarUrl}
@@ -315,11 +328,16 @@ export default function SearchPage() {
                   {result.subtitle}
                 </small>
               </span>
-            </article>
+            </Paper>
           ))}
         </div>
       ) : (
-        <div className="mt-[10px] overflow-x-auto rounded-[6px] border border-line bg-paper shadow-sm">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="catalog-results-table mt-[10px] overflow-x-auto"
+          foldSize={16}
+        >
           <table className="w-full min-w-[980px] border-collapse text-left">
             <thead>
               <tr>
@@ -382,7 +400,7 @@ export default function SearchPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Paper>
       )}
     </section>
   );

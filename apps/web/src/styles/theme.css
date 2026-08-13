@@ -50,7 +50,7 @@
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
   --ink: #17231f;
-  --ink-soft: #52615b;
+  --ink-soft: color-mix(in srgb, var(--ink) 72%, transparent);
   --paper: #fbfcfb;
   --paper-muted: #f2f5f3;
   --line: #d7dfdb;
@@ -123,9 +123,9 @@
   --surface-muted: #eef2f0;
   --surface-glass: rgba(251, 252, 251, 0.9);
   --surface-strong: #e7edeb;
-  --muted-text: #64726d;
-  --subtle-text: #73817c;
-  --placeholder-text: #87938e;
+  --muted-text: color-mix(in srgb, var(--ink) 66%, transparent);
+  --subtle-text: color-mix(in srgb, var(--ink) 58%, transparent);
+  --placeholder-text: color-mix(in srgb, var(--ink) 48%, transparent);
   --disabled-text: #f2f4f3;
   --disabled-bg: #8e9b96;
   --control-border-hover: #8fa29a;
@@ -178,10 +178,10 @@
   --feedback-lower-border: #b9d3e8;
   --feedback-lower-bg: #e8f2fa;
   --feedback-lower-mark: #3478b4;
-  --neutral-text: #596762;
+  --neutral-text: color-mix(in srgb, var(--ink) 68%, transparent);
   --neutral-border: #d4dcd8;
   --neutral-bg: #edf1ef;
-  --neutral-mark: #697873;
+  --neutral-mark: color-mix(in srgb, var(--ink) 58%, transparent);
   --scrollbar-thumb: #9aaba4;
   --scrollbar-track: #edf1ef;
   --shadow-sm: 0 8px 24px rgba(25, 46, 39, 0.07);
@@ -192,7 +192,6 @@ html[data-theme-mode="dark"] {
   color-scheme: dark;
   --dark-theme-blend: color-mix(in srgb, var(--theme-color) 45%, #777c79);
   --ink: #edf4f1;
-  --ink-soft: #aab8b2;
   --paper: color-mix(in srgb, #191c1a 88%, var(--dark-theme-blend));
   --paper-muted: #111312;
   --line: #343936;
@@ -269,9 +268,6 @@ html[data-theme-mode="dark"] {
     var(--dark-theme-blend)
   );
   --surface-strong: color-mix(in srgb, #2b302d 84%, var(--dark-theme-blend));
-  --muted-text: #a0afa9;
-  --subtle-text: #94a49d;
-  --placeholder-text: #7f8f88;
   --disabled-text: #98a7a0;
   --disabled-bg: #35443f;
   --control-border-hover: #657a72;
@@ -323,10 +319,8 @@ html[data-theme-mode="dark"] {
   --feedback-lower-border: rgba(91, 151, 201, 0.48);
   --feedback-lower-bg: rgba(52, 120, 180, 0.18);
   --feedback-lower-mark: #6ca6d9;
-  --neutral-text: #a6b5ae;
   --neutral-border: #44534e;
   --neutral-bg: #26302d;
-  --neutral-mark: #74847d;
   --scrollbar-thumb: #596b63;
   --scrollbar-track: #16201c;
   --shadow-sm: 0 10px 28px rgba(0, 0, 0, 0.26);

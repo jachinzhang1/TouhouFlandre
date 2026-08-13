@@ -139,7 +139,7 @@ export function SiteNav() {
         >
           <YinYangMark className="size-[23px]" />
         </Paper>
-        <span className="grid gap-0 leading-none">
+        <span className="grid gap-[0.2em] leading-none">
           <strong className="font-brand text-[1.16rem] leading-none">
             东方芙一把
           </strong>

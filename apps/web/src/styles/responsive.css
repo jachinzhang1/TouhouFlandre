@@ -78,18 +78,25 @@
     display: block;
   }
 
+  .catalog-querybar {
+    display: grid;
+    gap: 8px;
+    margin-top: 26px;
+  }
+
   .catalog-controls {
     display: grid;
     grid-template-columns: 0.8fr 1.4fr 0.8fr;
+    gap: 8px;
   }
 
-  .catalog-segment {
+  .paper-segment-group {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
   }
 
-  .catalog-segment-button {
-    min-width: 0;
+  .paper-segment-button {
+    min-width: 44px;
     padding: 0 7px;
   }
 

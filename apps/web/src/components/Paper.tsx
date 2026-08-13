@@ -1,41 +1,56 @@
 import Link from "next/link";
-import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
+import type {
+  AriaRole,
+  CSSProperties,
+  MouseEventHandler,
+  ReactNode,
+} from "react";
 
 export type PaperVariant = "plain" | "tinted";
 
 interface PaperProps {
+  ariaLabel?: string;
+  ariaPressed?: boolean;
   animateOnMount?: boolean;
   as?: "article" | "button" | "div" | "span";
   children?: ReactNode;
   className?: string;
+  disabled?: boolean;
   folded?: boolean;
   foldSize?: number;
   href?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   foldDelayMs?: number;
+  role?: AriaRole;
   stackOrder?: number;
   sticker?: boolean;
   unfoldOnHover?: boolean;
   unfolded?: boolean;
   ariaHidden?: boolean;
+  title?: string;
   variant?: PaperVariant;
 }
 
 export function Paper({
+  ariaLabel,
+  ariaPressed,
   animateOnMount = true,
   as = "span",
   children,
   className = "",
+  disabled,
   folded = true,
   foldSize = 12,
   href,
   onClick,
   foldDelayMs = 0,
+  role,
   stackOrder,
   sticker = true,
   unfoldOnHover = true,
   unfolded = false,
   ariaHidden,
+  title,
   variant = "plain",
 }: PaperProps) {
   const paperClassName = ["paper-surface", className].filter(Boolean).join(" ");
@@ -52,6 +67,10 @@ export function Paper({
     style: paperStyle,
     "data-paper-unfolded": unfolded ? "true" : undefined,
     "aria-hidden": ariaHidden || undefined,
+    "aria-label": ariaLabel,
+    "aria-pressed": ariaPressed,
+    role,
+    title,
   } as const;
 
   let surface: ReactNode;
@@ -63,7 +82,12 @@ export function Paper({
     );
   } else if (as === "button") {
     surface = (
-      <button type="button" onClick={onClick} {...paperProps}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        {...paperProps}
+      >
         {children}
       </button>
     );
