@@ -34,6 +34,9 @@ UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_se
 -- name: GetRoom :one
 SELECT * FROM multi_room WHERE id = $1;
 
+-- name: HasRoomMatch :one
+SELECT EXISTS (SELECT 1 FROM multi_match WHERE room_id = $1);
+
 -- name: GetRoomSnapshotState :one
 -- 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，
 -- 展示组装（名称/头像/标签/列置换）在 Go 投影层按场 catalog_version 快照水合。
@@ -97,6 +100,9 @@ SELECT * FROM multi_member WHERE id = $1;
 -- name: ListMembers :many
 SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat;
 
+-- name: ListParticipants :many
+SELECT * FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id;
+
 -- name: ListMembersForRematch :many
 SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY seat;
 
@@ -111,6 +117,12 @@ UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING *;
 
 -- name: SetMemberReady :one
 UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING *;
+
+-- name: ClaimMemberSeat :one
+UPDATE multi_member
+SET role = 'player', seat = sqlc.arg(seat)::integer, ready = false, rematch_ready = false
+WHERE id = sqlc.arg(id) AND role = 'spectator' AND status = 'connected'
+RETURNING *;
 
 -- name: SetMemberRematchReady :one
 UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;

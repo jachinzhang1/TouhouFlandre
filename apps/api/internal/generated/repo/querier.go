@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)
@@ -77,6 +78,7 @@ type Querier interface {
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
+	HasRoomMatch(ctx context.Context, roomID string) (bool, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 站点级计数器
@@ -101,6 +103,7 @@ type Querier interface {
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)

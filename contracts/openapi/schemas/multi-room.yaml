@@ -28,6 +28,27 @@ MemberView:
       type: boolean
       description: 大厅就绪态（仅 lobby 态使用）。
 
+PublicMemberView:
+  type: object
+  description: 公开房间预检中的玩家摘要；不含昵称或任何鉴权凭据。
+  required:
+    - memberId
+    - seat
+    - status
+    - ready
+  properties:
+    memberId:
+      type: string
+      description: 房间内稳定、可公开的成员标识；不是鉴权凭据。
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    status:
+      $ref: "./multi-common.yaml#/MemberStatus"
+    ready:
+      type: boolean
+
 ParticipantView:
   type: object
   description: 当前访问者视图。观战者不占玩家 seat。
@@ -54,17 +75,20 @@ ParticipantView:
 
 RoomInfo:
   type: object
-  description: 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
+  description: 公开只读预检（加入前可见赛制，08 §4.2）。成员集合不含昵称/token。
   required:
     - roomCode
     - format
     - mode
     - turnSeconds
     - status
-    - memberCount
+    - members
+    - playerCount
     - spectatorCount
     - joinRole
     - playerLimit
+    - minPlayers
+    - availableSeats
   properties:
     roomCode:
       type: string
@@ -79,7 +103,12 @@ RoomInfo:
       description: 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
-    memberCount:
+    members:
+      type: array
+      description: 当前玩家的公开身份与席位摘要，不含观战者。
+      items:
+        $ref: "#/PublicMemberView"
+    playerCount:
       type: integer
       minimum: 0
       maximum: 8
@@ -95,6 +124,15 @@ RoomInfo:
       minimum: 2
       maximum: 8
       description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    minPlayers:
+      type: integer
+      enum: [2]
+      description: 服务端固定的最少开局玩家数。
+    availableSeats:
+      type: integer
+      minimum: 0
+      maximum: 8
+      description: playerLimit 与当前玩家数之间的空余席位数。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -124,12 +162,16 @@ JoinRoomResponse:
   required:
     - roomId
     - guestToken
+    - joinRole
     - viewer
   properties:
     roomId:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
+    joinRole:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+      description: 此次加入实际获得的角色；满 playerLimit 后明确为 spectator。
     viewer:
       $ref: "#/ParticipantView"
 
@@ -150,8 +192,11 @@ RoomSnapshot:
     - expiresAt
     - viewer
     - members
+    - playerCount
     - spectatorCount
     - playerLimit
+    - minPlayers
+    - availableSeats
     - gameSequence
     - events
   properties:
@@ -181,6 +226,10 @@ RoomSnapshot:
       description: PK 玩家视图，不含观战者。
       items:
         $ref: "#/MemberView"
+    playerCount:
+      type: integer
+      minimum: 0
+      maximum: 8
     spectatorCount:
       type: integer
       minimum: 0
@@ -189,6 +238,15 @@ RoomSnapshot:
       minimum: 2
       maximum: 8
       description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    minPlayers:
+      type: integer
+      enum: [2]
+      description: 服务端固定的最少开局玩家数。
+    availableSeats:
+      type: integer
+      minimum: 0
+      maximum: 8
+      description: playerLimit 与当前玩家数之间的空余席位数。
     gameSequence:
       type: integer
       minimum: 0

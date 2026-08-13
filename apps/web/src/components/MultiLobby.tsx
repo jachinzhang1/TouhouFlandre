@@ -333,7 +333,7 @@ export function MultiLobby() {
                   info.mode}
                 {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
                 {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家{" "}
-                {info.memberCount}/2
+                {info.playerCount}/{info.playerLimit} · 最少 {info.minPlayers} 人开局
                 {info.spectatorCount > 0
                   ? ` · 观战 ${info.spectatorCount}`
                   : ""}

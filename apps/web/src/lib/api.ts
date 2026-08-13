@@ -142,11 +142,12 @@ export const api = {
         headers: guestAuthHeader(token),
       }),
     ),
-  setReady: (roomId: string, token: string) =>
+  setReady: (roomId: string, token: string, ready: boolean) =>
     requestApi(
       client.POST("/api/rooms/{roomId}/ready", {
         params: { path: { roomId } },
         headers: guestAuthHeader(token),
+        body: { ready },
       }),
     ),
   rematch: (roomId: string, token: string) =>

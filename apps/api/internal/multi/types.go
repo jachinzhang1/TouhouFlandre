@@ -37,12 +37,16 @@ var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 const RelayMaxSkipsPerPlayer = 2
 
 const (
+	// MinPlayers is the fixed minimum roster size for race and relay matches.
+	MinPlayers = 2
 	// DefaultPlayerLimit is the room capacity used until MPX-005 exposes configuration.
 	DefaultPlayerLimit = 2
 	// ServerMaxRacePlayers is the hard upper bound for a race room.
 	ServerMaxRacePlayers = 8
 	// RelayPlayerLimit keeps the current relay engine on its two-player rule set.
 	RelayPlayerLimit = 2
+	// SpectatorCap bounds inactive room membership and websocket fan-out.
+	SpectatorCap = 32
 )
 
 // MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。
@@ -67,6 +71,30 @@ func MemberViews(rows []repo.MultiMember) []MemberView {
 		return views[i].Seat < views[j].Seat
 	})
 	return views
+}
+
+// RoomCapacityView is the shared capacity projection used by room info,
+// snapshots, and room.updated. AvailableSeats represents unoccupied player
+// seats; admission rules such as lobby-only claims remain separate.
+type RoomCapacityView struct {
+	PlayerLimit    int
+	MinPlayers     int
+	PlayerCount    int
+	AvailableSeats int
+}
+
+// RoomCapacity derives every public capacity value from one player roster.
+func RoomCapacity(playerCount, playerLimit int) RoomCapacityView {
+	availableSeats := playerLimit - playerCount
+	if availableSeats < 0 {
+		availableSeats = 0
+	}
+	return RoomCapacityView{
+		PlayerLimit:    playerLimit,
+		MinPlayers:     MinPlayers,
+		PlayerCount:    playerCount,
+		AvailableSeats: availableSeats,
+	}
 }
 
 func MemberSeat(m repo.MultiMember) int {
@@ -268,8 +296,29 @@ type RoomUpdatedPayload struct {
 	Mode           MultiplayerMode `json:"mode"`
 	TurnSeconds    int             `json:"turnSeconds"`
 	PlayerLimit    int             `json:"playerLimit"`
+	MinPlayers     int             `json:"minPlayers"`
+	PlayerCount    int             `json:"playerCount"`
+	AvailableSeats int             `json:"availableSeats"`
 	Members        []MemberView    `json:"members"`
 	SpectatorCount int             `json:"spectatorCount"`
+}
+
+// NewRoomUpdatedPayload keeps the event projection identical across request,
+// websocket disconnect, and sweeper paths.
+func NewRoomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int) RoomUpdatedPayload {
+	views := MemberViews(members)
+	capacity := RoomCapacity(len(views), int(room.PlayerLimit))
+	return RoomUpdatedPayload{
+		Format:         RoomFormat(room.Format),
+		Mode:           MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    capacity.PlayerLimit,
+		MinPlayers:     capacity.MinPlayers,
+		PlayerCount:    capacity.PlayerCount,
+		AvailableSeats: capacity.AvailableSeats,
+		Members:        views,
+		SpectatorCount: spectatorCount,
+	}
 }
 
 // MatchStartedPayload match.started：新场次开始。

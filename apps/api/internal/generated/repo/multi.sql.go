@@ -11,6 +11,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimMemberSeat = `-- name: ClaimMemberSeat :one
+UPDATE multi_member
+SET role = 'player', seat = $1::integer, ready = false, rematch_ready = false
+WHERE id = $2 AND role = 'spectator' AND status = 'connected'
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+`
+
+type ClaimMemberSeatParams struct {
+	Seat int32  `json:"seat"`
+	ID   string `json:"id"`
+}
+
+func (q *Queries) ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, claimMemberSeat, arg.Seat, arg.ID)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Seat,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
 const closeRoom = `-- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
 `
@@ -933,6 +964,17 @@ func (q *Queries) GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdem
 	return i, err
 }
 
+const hasRoomMatch = `-- name: HasRoomMatch :one
+SELECT EXISTS (SELECT 1 FROM multi_match WHERE room_id = $1)
+`
+
+func (q *Queries) HasRoomMatch(ctx context.Context, roomID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRoomMatch, roomID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const incrementRoomEventSeq = `-- name: IncrementRoomEventSeq :one
 UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_seq
 `
@@ -1435,6 +1477,42 @@ SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready
 
 func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error) {
 	rows, err := q.db.Query(ctx, listMembersForRematch, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiMember{}
+	for rows.Next() {
+		var i MultiMember
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.Seat,
+			&i.DisplayName,
+			&i.TokenHash,
+			&i.Status,
+			&i.Ready,
+			&i.RematchReady,
+			&i.GraceUntil,
+			&i.JoinedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listParticipants = `-- name: ListParticipants :many
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id
+`
+
+func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error) {
+	rows, err := q.db.Query(ctx, listParticipants, roomID)
 	if err != nil {
 		return nil, err
 	}

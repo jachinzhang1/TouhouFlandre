@@ -177,15 +177,16 @@ func (s *Server) markMemberConnected(ctx context.Context, roomID, memberID strin
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
+	// 所有成员状态写入与大厅命令保持 room -> member 锁序，避免与 claim-seat 互锁。
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		return internalError(err)
+	}
 	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
 		ID:         memberID,
 		Status:     string(multi.MemberStatusConnected),
 		GraceUntil: pgtype.Timestamptz{},
 	}); err != nil {
-		return internalError(err)
-	}
-	room, err := q.GetRoomForUpdate(ctx, roomID)
-	if err != nil {
 		return internalError(err)
 	}
 	members, err := q.ListMembers(ctx, roomID)

@@ -59,6 +59,8 @@ paths:
     $ref: ./paths/room-snapshot.yaml
   /api/rooms/{roomId}/ready:
     $ref: ./paths/room-ready.yaml
+  /api/rooms/{roomId}/claim-seat:
+    $ref: ./paths/room-claim-seat.yaml
   /api/rooms/{roomId}/rematch:
     $ref: ./paths/room-rematch.yaml
   /api/rooms/{roomId}/leave:
@@ -175,6 +177,8 @@ components:
       $ref: ./schemas/multi-common.yaml#/RoomEventEnvelope
     MemberView:
       $ref: ./schemas/multi-room.yaml#/MemberView
+    PublicMemberView:
+      $ref: ./schemas/multi-room.yaml#/PublicMemberView
     ParticipantView:
       $ref: ./schemas/multi-room.yaml#/ParticipantView
     RoomInfo:

@@ -107,14 +107,7 @@ func appendBarrierEvent(t *testing.T, roomID string) int64 {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:         multi.RoomFormat(room.Format),
-		Mode:           multi.MultiplayerMode(room.Mode),
-		TurnSeconds:    int(room.TurnSeconds),
-		PlayerLimit:    int(room.PlayerLimit),
-		Members:        multi.MemberViews(members),
-		SpectatorCount: int(spectators),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectators))); err != nil {
 		t.Fatal(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -157,7 +150,7 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	}
 
 	// 实时广播：REST ready → WS 收到 room.updated
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
@@ -418,13 +411,93 @@ func TestMultiWSReplaced(t *testing.T) {
 		t.Fatal("old conn should be closed after replaced")
 	}
 	// 新连接仍存活（事件仍可达）
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
 	live := wsRead(t, second)
 	if live["type"] != "room.updated" {
 		t.Fatalf("second conn live event = %v", live)
+	}
+}
+
+func TestMultiWSClaimSeatInvalidatesStaleSpectator(t *testing.T) {
+	fixture := createLifecycleRoom(t, 1)
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 3 WHERE id = $1", fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
+	spectator := fixture.spectators[0]
+	token := string(spectator.GuestToken)
+	memberID := spectator.Viewer.MemberId
+
+	old := wsDial(t, fixture.roomID, token, 0, nil)
+	complete := readUntilType(t, old, "sync.complete", 16)
+	originalWatermark := int64(complete["gameSequence"].(float64))
+
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/claim-seat", token, nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("claim seat: %d %s", resp.StatusCode, payload)
+	}
+
+	// claim 提交后，旧连接先收到身份失效控制帧，而不是按缓存 spectator 角色投影的新事件。
+	changed := wsRead(t, old)
+	if changed["type"] != "replaced" || changed["reason"] != "member_changed" {
+		t.Fatalf("old spectator frame after claim = %v", changed)
+	}
+	readCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, _, err := old.Read(readCtx); err == nil {
+		t.Fatal("old spectator connection remained open after member_changed")
+	}
+
+	// 服务端主动失效不能把刚认领的玩家误记为 disconnected，memberId/token 均保持不变。
+	time.Sleep(20 * time.Millisecond)
+	var role, status, tokenHash string
+	var seat int
+	var ready bool
+	if err := pool.QueryRow(ctx, `
+		SELECT role, status, token_hash, seat, ready
+		FROM multi_member WHERE id = $1`, memberID).Scan(&role, &status, &tokenHash, &seat, &ready); err != nil {
+		t.Fatal(err)
+	}
+	if role != string(multi.ParticipantRolePlayer) || status != string(multi.MemberStatusConnected) || seat != 3 || ready || tokenHash != multi.HashToken(token) {
+		t.Fatalf("claimed member role=%s status=%s seat=%d ready=%v tokenPreserved=%v", role, status, seat, ready, tokenHash == multi.HashToken(token))
+	}
+
+	// 同一 token 从旧 sync.complete 水位重连，补齐 claim 期间事件并取得 player 视图。
+	reconnected := wsDial(t, fixture.roomID, token, originalWatermark, nil)
+	if hello := wsRead(t, reconnected); hello["type"] != "hello-ok" {
+		t.Fatalf("reconnect hello = %v", hello)
+	}
+	watermark := originalWatermark
+	var synced int64
+	for i := 0; i < 16; i++ {
+		frame := wsRead(t, reconnected)
+		if sequence, ok := frame["sequence"].(float64); ok {
+			if int64(sequence) != watermark+1 {
+				t.Fatalf("reconnect gap after claim: previous=%d frame=%v", watermark, frame)
+			}
+			watermark = int64(sequence)
+		}
+		if frame["type"] == "sync.complete" {
+			synced = int64(frame["gameSequence"].(float64))
+			break
+		}
+	}
+	if synced <= originalWatermark || synced != watermark {
+		t.Fatalf("claim reconnect watermark original=%d replayed=%d complete=%d", originalWatermark, watermark, synced)
+	}
+
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", token, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("player snapshot after claim: %d %s", resp.StatusCode, payload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Viewer.MemberId != memberID || snapshot.Viewer.Role != openapi.ParticipantRolePlayer || snapshot.Viewer.Seat == nil || *snapshot.Viewer.Seat != 3 {
+		t.Fatalf("reconnected player viewer = %+v", snapshot.Viewer)
 	}
 }
 
@@ -437,7 +510,7 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	drainUntilType(t, joinerConn, "sync.complete", 12)
 	// 双方 ready → 对局开始；各自推进到 round.playing（容忍重放/连接事件的帧数差异）
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -531,7 +604,7 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	drainUntilType(t, joinerConn, "sync.complete", 12)
 
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -599,13 +672,13 @@ func TestMultiWSV2SpectatorReadOnlyAndFinishedRetention(t *testing.T) {
 	spectatorConn := wsDial(t, fixture.roomID, spectatorToken, 0, nil)
 	drainUntilType(t, spectatorConn, "sync.complete", 16)
 
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", spectatorToken, nil)
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", spectatorToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
 		t.Fatalf("spectator ready = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
 	}
 
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -691,6 +764,78 @@ func TestMultiWSDisconnectMarksMember(t *testing.T) {
 	t.Fatal("member not marked disconnected after ws close")
 }
 
+func TestMultiWSDisconnectedPlayerKeepsSeatAndReconnects(t *testing.T) {
+	fixture := createMatchFixture(t)
+	var memberID string
+	var seat int
+	if err := pool.QueryRow(ctx, "SELECT id, seat FROM multi_member WHERE room_id = $1 AND seat = 2", fixture.roomID).Scan(&memberID, &seat); err != nil {
+		t.Fatal(err)
+	}
+
+	first := wsDial(t, fixture.roomID, fixture.joinerToken, 0, nil)
+	complete := readUntilType(t, first, "sync.complete", 12)
+	lastCompleted := int64(complete["gameSequence"].(float64))
+	_ = first.CloseNow()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var status string
+		if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE id = $1", memberID).Scan(&status); err != nil {
+			t.Fatal(err)
+		}
+		if status == string(multi.MemberStatusDisconnected) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("player did not enter disconnect grace")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "宽限期加入者"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("join during disconnect grace: %d %s", resp.StatusCode, payload)
+	}
+	var joined openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &joined); err != nil {
+		t.Fatal(err)
+	}
+	if joined.JoinRole != openapi.ParticipantRoleSpectator || joined.Viewer.Role != openapi.ParticipantRoleSpectator {
+		t.Fatalf("disconnect grace seat was stolen: %+v", joined)
+	}
+
+	second := wsDial(t, fixture.roomID, fixture.joinerToken, lastCompleted, nil)
+	if hello := wsRead(t, second); hello["type"] != "hello-ok" {
+		t.Fatalf("reconnect hello = %v", hello)
+	}
+	reconnected := readUntilType(t, second, "sync.complete", 12)
+	if int64(reconnected["gameSequence"].(float64)) <= lastCompleted {
+		t.Fatalf("reconnect did not replay disconnect gap: before=%d complete=%v", lastCompleted, reconnected)
+	}
+
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.joinerToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reconnected snapshot: %d %s", resp.StatusCode, payload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Viewer.MemberId != memberID || snapshot.Viewer.Seat == nil || *snapshot.Viewer.Seat != seat || snapshot.Viewer.Status != openapi.Connected {
+		t.Fatalf("reconnected viewer = %+v, want member %s seat %d connected", snapshot.Viewer, memberID, seat)
+	}
+	var players, spectators int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*) FILTER (WHERE role = 'player'),
+		       count(*) FILTER (WHERE role = 'spectator' AND status <> 'left')
+		FROM multi_member WHERE room_id = $1`, fixture.roomID).Scan(&players, &spectators); err != nil {
+		t.Fatal(err)
+	}
+	if players != 2 || spectators != 1 {
+		t.Fatalf("membership after reconnect players=%d spectators=%d, want 2/1", players, spectators)
+	}
+}
+
 func TestMultiWSReplayAfterReconnect(t *testing.T) {
 	fixture := createMatchFixture(t)
 
@@ -710,7 +855,7 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 	_ = first.CloseNow()
 
 	// 断开期间发生事件（ready）
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}

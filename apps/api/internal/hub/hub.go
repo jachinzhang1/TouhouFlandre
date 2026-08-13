@@ -125,14 +125,7 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
-		Format:         multi.RoomFormat(room.Format),
-		Mode:           multi.MultiplayerMode(room.Mode),
-		TurnSeconds:    int(room.TurnSeconds),
-		PlayerLimit:    int(room.PlayerLimit),
-		Members:        multi.MemberViews(members),
-		SpectatorCount: int(spectatorCount),
-	}); err != nil {
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectatorCount))); err != nil {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
@@ -186,11 +179,25 @@ func (h *Hub) Publish(roomID string) {
 	for _, m := range members {
 		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
+	participants, err := h.q.ListParticipants(ctx, roomID)
+	if err != nil {
+		slog.Error("hub publish: list participants", "room_id", roomID, "error", err)
+		return
+	}
+	participantByID := make(map[string]repo.MultiMember, len(participants))
+	for _, participant := range participants {
+		participantByID[participant.ID] = participant
+	}
 	charCache := map[string]map[string]game.Character{}
 
 	for _, event := range events {
 		for _, c := range conns {
 			if !c.alive() {
+				continue
+			}
+			current, exists := participantByID[c.member.ID]
+			if !exists || current.Role != c.member.Role || multi.MemberSeat(current) != multi.MemberSeat(c.member) {
+				c.sendMemberChangedAndClose()
 				continue
 			}
 			projected, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
@@ -216,6 +223,20 @@ func (h *Hub) Publish(roomID string) {
 			rh.lastSeq = event.Sequence
 		}
 		h.mu.Unlock()
+	}
+}
+
+// InvalidateMember 使指定 member 的旧连接停止使用握手时缓存的 role/seat，并以
+// member_changed 控制帧要求客户端使用同一 token 重新鉴权连接。
+func (h *Hub) InvalidateMember(roomID, memberID string) {
+	h.mu.Lock()
+	var conn *Conn
+	if room := h.rooms[roomID]; room != nil {
+		conn = room.conns[memberID]
+	}
+	h.mu.Unlock()
+	if conn != nil {
+		conn.sendMemberChangedAndClose()
 	}
 }
 

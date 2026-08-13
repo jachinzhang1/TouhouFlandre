@@ -308,6 +308,18 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if err != nil {
 		return nil, internalError(err)
 	}
+	requesterConnected := false
+	for _, rosterMember := range members {
+		if rosterMember.Status == string(multi.MemberStatusLeft) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "原对局阵容已有成员离开，无法再来一局。"}
+		}
+		if rosterMember.ID == member.ID && rosterMember.Status == string(multi.MemberStatusConnected) {
+			requesterConnected = true
+		}
+	}
+	if !requesterConnected {
+		return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "请先重新连接房间后再确认。"}
+	}
 	for _, m := range members {
 		if m.ID == member.ID && m.RematchReady {
 			alreadyConfirmed = true
@@ -329,10 +341,8 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if err != nil {
 		return nil, internalError(err)
 	}
-	// 双方确认且都 connected → 开新场（同一事务，锁房间行）
-	bothReady := len(after) == 2 && after[0].RematchReady && after[1].RematchReady
-	bothConnected := len(after) == 2 && after[0].Status == string(multi.MemberStatusConnected) && after[1].Status == string(multi.MemberStatusConnected)
-	if bothReady && bothConnected {
+	// 原冻结 player 集合全员 connected + confirmed → 按原阵容开新场。
+	if multi.RematchRosterReady(after, int(room.PlayerLimit)) {
 		format := multi.RoomFormat(room.Format)
 		if err := s.startMatchTx(ctx, q, room, format); err != nil {
 			return nil, err
