@@ -30,9 +30,9 @@ const defaultAppearance: ResolvedAppearance = {
 const themeControlLabel = (label: string) =>
   `${label}主题色${label === "雾雨魔理沙" ? "DA☆ZE" : ""}`;
 
-const FAN_APEX_Y = (64 / 220) * 100;
-const FAN_BASE_START = (316 / 760) * 100;
-const FAN_BASE_END = (604 / 760) * 100;
+const FAN_APEX_Y = (130 / 220) * 100;
+const FAN_BASE_START = (382 / 760) * 100;
+const FAN_BASE_END = (670 / 760) * 100;
 const FAN_STEP = (FAN_BASE_END - FAN_BASE_START) / COLOR_THEMES.length;
 
 function getFanTriangle(index: number) {

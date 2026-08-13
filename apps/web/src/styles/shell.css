@@ -285,9 +285,9 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-link-copy {
 }
 
 .appearance-switcher {
-  --appearance-apex-y: 29.0909%;
-  --appearance-base-start: 41.5789%;
-  --appearance-diagonal-end: 79.4737%;
+  --appearance-apex-y: 59.0909%;
+  --appearance-base-start: 50.2632%;
+  --appearance-diagonal-end: 88.1579%;
   --appearance-collapsed-leg: 90px;
   --appearance-rest-color: color-mix(
     in oklab,
@@ -541,11 +541,37 @@ html[data-theme-mode="dark"] .appearance-swatch {
   opacity: 1;
 }
 
+.appearance-swatch:focus-visible::after {
+  animation: none;
+}
+
+@keyframes appearance-selection-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.12;
+  }
+}
+
 @media (hover: hover) and (pointer: fine) {
   .appearance-swatch:hover {
     z-index: 3;
     filter: brightness(1.08) saturate(1.04);
   }
+}
+
+.appearance-switcher:is([data-open="true"], [data-hovered="true"])
+  .appearance-swatch.active::after {
+  animation: appearance-selection-flicker 1600ms ease-in-out infinite;
+}
+
+.appearance-switcher:is([data-open="true"], [data-hovered="true"])
+  .appearance-swatch:focus-visible::after {
+  animation: none;
+  opacity: 1;
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
@@ -582,9 +608,9 @@ html[data-theme-mode="dark"] .appearance-swatch {
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
   .appearance-fold-flap {
   clip-path: polygon(
-    var(--appearance-diagonal-end) 100%,
+    var(--appearance-base-start) 100%,
     100% var(--appearance-apex-y),
-    var(--appearance-diagonal-end) 100%
+    var(--appearance-base-start) 100%
   );
   background-color: var(--paper-tinted-fold);
   opacity: 0;
