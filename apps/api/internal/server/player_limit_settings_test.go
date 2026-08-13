@@ -2,7 +2,9 @@ package server_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 
 	"github.com/coder/websocket"
@@ -441,5 +443,67 @@ func TestMultiRacePlayerLimitKeepsSpectatorsExplicitAndAuthoritative(t *testing.
 	}
 	if !foundClaimant {
 		t.Fatal("explicit claimant identity/seat missing from snapshot")
+	}
+}
+
+func TestMultiRacePlayerLimitConcurrentJoinBoundary(t *testing.T) {
+	for _, limit := range []int{2, 4, 8} {
+		limit := limit
+		t.Run(fmt.Sprintf("limit_%d", limit), func(t *testing.T) {
+			room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": limit})
+			attempts := limit + 5
+			start := make(chan struct{})
+			results := make(chan lifecycleParticipantResponse, attempts)
+			var wg sync.WaitGroup
+			for range attempts {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					<-start
+					resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+					results <- lifecycleParticipantResponse{response: lifecycleResponse{status: resp.StatusCode, payload: payload}}
+				}()
+			}
+			close(start)
+			wg.Wait()
+			close(results)
+
+			playerResponses := 0
+			spectatorResponses := 0
+			for result := range results {
+				if result.response.status != http.StatusCreated {
+					t.Fatalf("concurrent join = %d %s", result.response.status, result.response.payload)
+				}
+				var participant openapi.JoinRoomResponse
+				if err := json.Unmarshal(result.response.payload, &participant); err != nil {
+					t.Fatal(err)
+				}
+				switch participant.JoinRole {
+				case openapi.ParticipantRolePlayer:
+					playerResponses++
+				case openapi.ParticipantRoleSpectator:
+					spectatorResponses++
+				default:
+					t.Fatalf("unexpected joinRole %s", participant.JoinRole)
+				}
+			}
+			if playerResponses != limit-1 || spectatorResponses != attempts-(limit-1) {
+				t.Fatalf("response roles players=%d spectators=%d, want %d/%d", playerResponses, spectatorResponses, limit-1, attempts-(limit-1))
+			}
+
+			var playerCount, spectatorCount, uniqueSeats, maxSeat int
+			if err := pool.QueryRow(ctx, `
+				SELECT
+					count(*) FILTER (WHERE role = 'player')::int,
+					count(*) FILTER (WHERE role = 'spectator' AND status <> 'left')::int,
+					count(DISTINCT seat) FILTER (WHERE role = 'player')::int,
+					COALESCE(max(seat) FILTER (WHERE role = 'player'), 0)::int
+				FROM multi_member WHERE room_id = $1`, room.roomID).Scan(&playerCount, &spectatorCount, &uniqueSeats, &maxSeat); err != nil {
+				t.Fatal(err)
+			}
+			if playerCount != limit || uniqueSeats != limit || maxSeat != limit || spectatorCount != spectatorResponses {
+				t.Fatalf("database boundary players=%d uniqueSeats=%d maxSeat=%d spectators=%d, want %d/%d/%d/%d", playerCount, uniqueSeats, maxSeat, spectatorCount, limit, limit, limit, spectatorResponses)
+			}
+		})
 	}
 }
