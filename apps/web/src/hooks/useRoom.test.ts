@@ -518,6 +518,7 @@ describe("applySnapshot", () => {
         self: { memberId: "member-host", seat: 1, guesses: [] },
         opponents: [{ memberId: "member-guest", seat: 2, rows: [] }],
       },
+      gameSequence: 1,
       events: [
         event("match.started", 1, {
           format: "bo3",
@@ -535,7 +536,7 @@ describe("applySnapshot", () => {
     expect(state.viewer?.role).toBe("player");
     expect(state.match?.matchIndex).toBe(0);
     expect(state.round?.status).toBe("playing");
-    expect(state.lastSequence).toBe(1);
+    expect(state.appliedGameSequence).toBe(1);
   });
 
   it("preserves the current sequence when a fallback snapshot has no new events", () => {
@@ -567,15 +568,16 @@ describe("applySnapshot", () => {
       spectatorCount: 0,
       match: null,
       round: null,
+      gameSequence: 12,
       events: [],
     };
 
     const state = applySnapshot(
-      { ...initialRoomState, lastSequence: 12 },
+      { ...initialRoomState, appliedGameSequence: 12 },
       snapshot as never,
     );
 
-    expect(state.lastSequence).toBe(12);
+    expect(state.appliedGameSequence).toBe(12);
     expect(state.room?.roomCode).toBe("ABC123");
   });
 });

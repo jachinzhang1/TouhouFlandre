@@ -136,8 +136,9 @@ JoinRoomResponse:
 RoomSnapshot:
   type: object
   description: |
-    逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
-    events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+    逐观察者投影的房间权威快照：self（完整棋盘）、opponents（匿名矩阵 + 对方列置换）。
+    gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
+    被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
     round 仅在局处于 countdown/playing 时存在。
   required:
     - roomId
@@ -151,6 +152,7 @@ RoomSnapshot:
     - members
     - spectatorCount
     - playerLimit
+    - gameSequence
     - events
   properties:
     roomId:
@@ -187,6 +189,10 @@ RoomSnapshot:
       minimum: 2
       maximum: 8
       description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    gameSequence:
+      type: integer
+      minimum: 0
+      description: 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。
     match:
       type: object
       description: 当前场次（lobby 态不存在；含 finished 等待再来一局）。

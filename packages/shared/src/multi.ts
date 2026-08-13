@@ -53,7 +53,7 @@ export const MULTI_ROOM_CLOSE_REASONS = [
 ] as const;
 export type MultiRoomCloseReason = (typeof MULTI_ROOM_CLOSE_REASONS)[number];
 
-// 事件信封（08 §8.2）：sequence 房间内单调递增，客户端按 sequence 去重排序、缺口拉快照补齐。
+// v2 游戏事件信封：每个 room_event.sequence 对观察者表现为业务事件或 room.cursor。
 export interface Envelope {
   type: string;
   eventId: string;
@@ -62,6 +62,16 @@ export interface Envelope {
   occurredAt: string;
   payload: Record<string, unknown>;
 }
+
+export interface RoomCursorEnvelope {
+  type: "room.cursor";
+  eventId: string;
+  roomId: string;
+  sequence: number;
+  occurredAt: string;
+}
+
+export type GameSequenceFrame = Envelope | RoomCursorEnvelope;
 
 // ---------- 事件 payload（08 §8.3 事件表） ----------
 
@@ -233,7 +243,19 @@ export interface RoomClosedPayload {
 export interface HelloOkMessage {
   type: "hello-ok";
   roomId: string;
-  nextSequence: number;
+  targetGameSequence: number;
+}
+
+export interface SyncCompleteMessage {
+  type: "sync.complete";
+  gameSequence: number;
+}
+
+export interface ResyncRequiredMessage {
+  type: "resync.required";
+  scope: "game";
+  reason: "negative_sequence" | "ahead_of_server" | "history_unavailable";
+  gameSequence: number;
 }
 
 export interface ReplacedMessage {
@@ -246,12 +268,12 @@ export interface ReplacedMessage {
 export interface HelloMessage {
   type: "hello";
   token: string;
-  lastSequence: number;
+  lastGameSequence: number;
 }
 
 export interface AckMessage {
   type: "ack";
-  lastSequence: number;
+  gameSequence: number;
 }
 
 // 事件类型集合（08 §8.3 全表；round.opponent.guess 是唯一逐观察者事件）。

@@ -30,11 +30,11 @@ const HeartbeatInterval = 30 * time.Second
 
 // Conn 单成员连接。
 type Conn struct {
-	hub          *Hub
-	ws           *websocket.Conn
-	roomID       string
-	member       repo.MultiMember
-	lastSequence int64 // hello 携带的客户端水位（重放起点）
+	hub              *Hub
+	ws               *websocket.Conn
+	roomID           string
+	member           repo.MultiMember
+	lastGameSequence int64 // hello 携带的客户端已确认游戏水位（重放起点）
 
 	send          chan []byte
 	closeOnce     sync.Once
@@ -48,20 +48,20 @@ type Conn struct {
 }
 
 // NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。发送队列长度取自 hub 配置。
-func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMember, lastSequence int64) *Conn {
+func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMember, lastGameSequence int64) *Conn {
 	queue := hub.sendQueue
 	if queue <= 0 {
 		queue = SendQueueSize
 	}
 	return &Conn{
-		hub:          hub,
-		ws:           ws,
-		roomID:       roomID,
-		member:       member,
-		lastSequence: lastSequence,
-		send:         make(chan []byte, queue),
-		closed:       make(chan struct{}),
-		isAlive:      true,
+		hub:              hub,
+		ws:               ws,
+		roomID:           roomID,
+		member:           member,
+		lastGameSequence: lastGameSequence,
+		send:             make(chan []byte, queue),
+		closed:           make(chan struct{}),
+		isAlive:          true,
 	}
 }
 
@@ -98,7 +98,7 @@ func (c *Conn) enqueue(frame []byte) bool {
 	}
 }
 
-// Serve 阻塞运行连接：注册（替换旧连接）→ hello-ok → 重放 → 补推 → 读写循环。
+// Serve 阻塞运行连接：注册（替换旧连接）→ hello-ok → 重放 → sync.complete → 实时流。
 func (c *Conn) Serve() {
 	defer c.cleanup()
 
@@ -106,14 +106,24 @@ func (c *Conn) Serve() {
 	if old := c.hub.Register(c); old != nil {
 		old.sendReplacedAndClose()
 	}
-	if err := c.writeText(multi.HelloOkMessage{Type: "hello-ok", RoomId: c.roomID, NextSequence: c.hub.roomEventSeq(c.roomID)}); err != nil {
+	targetGameSequence := c.hub.roomEventSeq(c.roomID)
+	if err := c.writeText(multi.HelloOkMessage{Type: "hello-ok", RoomID: c.roomID, TargetGameSequence: targetGameSequence}); err != nil {
 		c.setCloseReason("hello_ok_failed")
 		slog.Error("ws: hello-ok write failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
 		return
 	}
-	if err := c.replay(); err != nil {
+	deliveredGameSequence, err := c.replay()
+	if err != nil {
 		c.setCloseReason("replay_failed")
 		slog.Error("ws: replay failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
+		return
+	}
+	if deliveredGameSequence < targetGameSequence {
+		deliveredGameSequence = targetGameSequence
+	}
+	complete, _ := json.Marshal(multi.SyncCompleteMessage{Type: "sync.complete", GameSequence: deliveredGameSequence})
+	if !c.enqueue(complete) {
+		c.closeSlow()
 		return
 	}
 	c.hub.Publish(c.roomID) // 注册与重放间隙产生的事件立即补推（水位已被 Register 校准）
@@ -129,22 +139,22 @@ func (c *Conn) Serve() {
 	wg.Wait()
 }
 
-// replay 从 lastSequence+1 重放缺口事件（逐观察者投影，08 §8.4）。
-func (c *Conn) replay() error {
+// replay 从 lastGameSequence+1 重放缺口；每个 sequence 投递业务事件或 cursor。
+func (c *Conn) replay() (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	events, err := c.hub.q.ListEventsAfterSeq(ctx, repo.ListEventsAfterSeqParams{
-		RoomID: c.roomID, Sequence: c.lastSequence,
+		RoomID: c.roomID, Sequence: c.lastGameSequence,
 	})
 	if err != nil {
-		return err
+		return c.lastGameSequence, err
 	}
 	if len(events) == 0 {
-		return nil
+		return c.lastGameSequence, nil
 	}
 	members, err := c.hub.q.ListMembers(ctx, c.roomID)
 	if err != nil {
-		return err
+		return c.lastGameSequence, err
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
@@ -153,22 +163,19 @@ func (c *Conn) replay() error {
 	charCache := map[string]map[string]game.Character{}
 	for _, event := range events {
 		projected, skip, err := multi.ProjectEvent(ctx, c.hub.q, event, c.roomID, c.member, memberSlotByID, charCache)
-		if err != nil || skip {
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		frame, err := envelopeFrame(event, projected)
 		if err != nil {
-			return err
+			return c.lastGameSequence, err
+		}
+		frame, err := gameFrame(event, projected, skip)
+		if err != nil {
+			return c.lastGameSequence, err
 		}
 		if !c.enqueue(frame) {
 			c.closeSlow()
-			return nil
+			return event.Sequence, nil
 		}
 	}
-	return nil
+	return events[len(events)-1].Sequence, nil
 }
 
 // writeLoop 推送队列帧并定期心跳。

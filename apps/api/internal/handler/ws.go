@@ -22,7 +22,7 @@ import (
 )
 
 // wsSubprotocol 子协议版本协商（08 §8.1）。
-const wsSubprotocol = "touhouflandre-multi.v1"
+const wsSubprotocol = "touhouflandre-multi.v2"
 
 // helloTimeout 首帧 hello 等待上限（10s）。
 const helloTimeout = 10 * time.Second
@@ -97,7 +97,7 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	}
 
 	// 注册/重放/实时流（阻塞直到断开；返回 nil 由 strict handler 正常结束）
-	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastSequence)
+	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastGameSequence)
 	conn.Serve()
 	return nil, nil
 }

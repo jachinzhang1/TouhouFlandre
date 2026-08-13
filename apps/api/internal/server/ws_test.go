@@ -16,7 +16,7 @@ import (
 
 const (
 	wsTestOrigin  = "http://localhost:5173"
-	wsTestProto   = "touhouflandre-multi.v1"
+	wsTestProto   = "touhouflandre-multi.v2"
 	wsInvalidOrig = "http://evil.example.com"
 )
 
@@ -26,7 +26,7 @@ func wsURL(roomID string) string {
 }
 
 // wsDial 建立 WS（可指定 Origin/子协议；nil opts 用合法默认）。
-func wsDial(t *testing.T, roomID, token string, lastSeq int64, opts *websocket.DialOptions) *websocket.Conn {
+func wsDial(t *testing.T, roomID, token string, lastGameSequence int64, opts *websocket.DialOptions) *websocket.Conn {
 	t.Helper()
 	if opts == nil {
 		opts = &websocket.DialOptions{
@@ -42,7 +42,7 @@ func wsDial(t *testing.T, roomID, token string, lastSeq int64, opts *websocket.D
 	}
 	t.Cleanup(func() { _ = conn.CloseNow() })
 	// hello 首帧
-	hello, _ := json.Marshal(multi.HelloMessage{Type: "hello", Token: token, LastSequence: lastSeq})
+	hello, _ := json.Marshal(multi.HelloMessage{Type: "hello", Token: token, LastGameSequence: lastGameSequence})
 	writeCtx, wCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer wCancel()
 	if err := conn.Write(writeCtx, websocket.MessageText, hello); err != nil {
@@ -70,13 +70,19 @@ func wsRead(t *testing.T, conn *websocket.Conn) map[string]any {
 // drainUntilType 读取帧直到出现目标类型（容忍多余帧；max 为读取上限）。
 func drainUntilType(t *testing.T, conn *websocket.Conn, target string, max int) {
 	t.Helper()
+	_ = readUntilType(t, conn, target, max)
+}
+
+func readUntilType(t *testing.T, conn *websocket.Conn, target string, max int) map[string]any {
+	t.Helper()
 	for i := 0; i < max; i++ {
 		msg := wsRead(t, conn)
 		if msg["type"] == target {
-			return
+			return msg
 		}
 	}
 	t.Fatalf("drain %s: 未见 %s（已读 %d 帧）", target, target, max)
+	return nil
 }
 
 func TestMultiWSConnectAndReplay(t *testing.T) {
@@ -87,9 +93,9 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	if first["type"] != "hello-ok" {
 		t.Fatalf("first frame = %v, want hello-ok", first)
 	}
-	next, _ := first["nextSequence"].(float64)
-	if next < 1 {
-		t.Fatalf("nextSequence = %v, want >= 1", next)
+	target, _ := first["targetGameSequence"].(float64)
+	if target < 1 {
+		t.Fatalf("targetGameSequence = %v, want >= 1", target)
 	}
 	// 重放：连接/创建/加入的 room.updated 事件
 	types := []string{}
@@ -101,6 +107,10 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 		if typ != "room.updated" {
 			t.Fatalf("replay events = %v", types)
 		}
+	}
+	complete := wsRead(t, conn)
+	if complete["type"] != "sync.complete" || complete["gameSequence"] != target {
+		t.Fatalf("sync completion = %v, want target %v", complete, target)
 	}
 
 	// 实时广播：REST ready → WS 收到 room.updated
@@ -154,7 +164,7 @@ func TestMultiWSFirstFrameMustBeHello(t *testing.T) {
 	}
 	defer conn.CloseNow()
 	// 首帧 ack → 服务端以策略违规关闭
-	if err := conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ack","lastSequence":0}`)); err != nil {
+	if err := conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ack","gameSequence":0}`)); err != nil {
 		t.Fatal(err)
 	}
 	_, _, err = conn.Read(ctx)
@@ -234,8 +244,8 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	drainUntilType(t, hostConn, "round.playing", 12)
-	drainUntilType(t, joinerConn, "round.playing", 12)
+	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
 
 	// host 猜中 → joiner 收到 round.opponent.guess（匿名投影）+ round.ended
 	answer := currentAnswer(t, fixture.roomID)
@@ -244,11 +254,13 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
 	}
 	gotGuess, gotEnded := false, false
+	var joinerGuess, joinerEnded map[string]any
 	for i := 0; i < 2; i++ { // 恰好两帧：round.opponent.guess + round.ended（同事务、顺序广播）
 		msg := wsRead(t, joinerConn)
 		switch msg["type"] {
 		case "round.opponent.guess":
 			gotGuess = true
+			joinerGuess = msg
 			p, _ := msg["payload"].(map[string]any)
 			statuses, _ := p["statuses"].([]any)
 			if len(statuses) != 6 {
@@ -259,6 +271,7 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 			}
 		case "round.ended":
 			gotEnded = true
+			joinerEnded = msg
 			p, _ := msg["payload"].(map[string]any)
 			if p["viewerResult"] != "loss" {
 				t.Fatalf("joiner round.ended viewerResult = %v, want loss", p["viewerResult"])
@@ -268,13 +281,27 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	if !gotGuess || !gotEnded {
 		t.Fatalf("joiner missed events: guess=%v ended=%v", gotGuess, gotEnded)
 	}
-	// host 视角：自己的猜测事件被过滤，只收到 round.ended
-	msg := wsRead(t, hostConn)
-	if msg["type"] == "round.opponent.guess" {
-		t.Fatalf("host received own guess event: %v", msg)
+	if joinerGuess["sequence"] != joinerPlaying["sequence"].(float64)+1 ||
+		joinerEnded["sequence"] != joinerGuess["sequence"].(float64)+1 {
+		t.Fatalf("joiner game sequence not continuous: playing=%v guess=%v ended=%v", joinerPlaying, joinerGuess, joinerEnded)
 	}
-	if msg["type"] != "round.ended" {
-		t.Fatalf("host frame = %v, want round.ended", msg["type"])
+	// host 视角：自己的猜测事件以同 sequence cursor 占位，随后收到 round.ended
+	msg := wsRead(t, hostConn)
+	if msg["type"] != "room.cursor" {
+		t.Fatalf("host own guess frame = %v, want room.cursor", msg)
+	}
+	if _, leaked := msg["payload"]; leaked || len(msg) != 5 {
+		t.Fatalf("room.cursor leaked business metadata: %v", msg)
+	}
+	if msg["eventId"] != joinerGuess["eventId"] || msg["sequence"] != hostPlaying["sequence"].(float64)+1 {
+		t.Fatalf("cursor identity/sequence = %v, business frame = %v", msg, joinerGuess)
+	}
+	ended := wsRead(t, hostConn)
+	if ended["type"] != "round.ended" {
+		t.Fatalf("host frame = %v, want round.ended", ended["type"])
+	}
+	if ended["sequence"] != msg["sequence"].(float64)+1 {
+		t.Fatalf("host game sequence not continuous: playing=%v cursor=%v ended=%v", hostPlaying, msg, ended)
 	}
 }
 
@@ -303,11 +330,18 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 	fixture := createMatchFixture(t)
 
 	first := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
-	for i := 0; i < 3; i++ {
-		_ = wsRead(t, first) // hello-ok + room.updated（连接/创建/加入）
+	var lastSeq float64
+	for i := 0; i < 8; i++ {
+		msg := wsRead(t, first)
+		if msg["type"] == "sync.complete" {
+			lastSeq, _ = msg["gameSequence"].(float64)
+			break
+		}
 	}
-	// 记录水位后断开（hello-ok 后 3 条事件）
-	var lastSeq float64 = 3
+	if lastSeq < 1 {
+		t.Fatalf("initial sync gameSequence = %v", lastSeq)
+	}
+	// 记录已完成水位后断开。
 	_ = first.CloseNow()
 
 	// 断开期间发生事件（ready）
@@ -316,7 +350,7 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
 
-	// 重连携带 lastSequence → 只重放缺口事件（room.updated）
+	// 重连携带 lastGameSequence → 只重放缺口游戏帧。
 	second := wsDial(t, fixture.roomID, fixture.hostToken, int64(lastSeq), nil)
 	msg := wsRead(t, second)
 	if msg["type"] != "hello-ok" {

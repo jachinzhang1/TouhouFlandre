@@ -233,6 +233,15 @@ type Envelope struct {
 	Payload    json.RawMessage `json:"payload"`
 }
 
+// CursorEnvelope 为观察者隐藏或无需消费的业务事件保留连续 sequence，不携带 payload。
+type CursorEnvelope struct {
+	Type       string    `json:"type"`
+	EventID    string    `json:"eventId"`
+	RoomID     string    `json:"roomId"`
+	Sequence   int64     `json:"sequence"`
+	OccurredAt time.Time `json:"occurredAt"`
+}
+
 // ---- 事件 payload（与 protocol.yaml 字段一一对应） ----
 
 // MemberView 房间成员视图。
@@ -496,11 +505,25 @@ type MatchEndedEventPayload struct {
 
 // ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----
 
-// HelloOkMessage hello-ok：鉴权通过，随后从 lastSequence+1 重放事件。
+// HelloOkMessage hello-ok：鉴权通过并声明本次同步目标，不表示重放已完成。
 type HelloOkMessage struct {
+	Type               string `json:"type"`
+	RoomID             string `json:"roomId"`
+	TargetGameSequence int64  `json:"targetGameSequence"`
+}
+
+// SyncCompleteMessage 标记 FIFO 中此前游戏帧已交付，可确认完成水位。
+type SyncCompleteMessage struct {
 	Type         string `json:"type"`
-	RoomId       string `json:"roomId"`
-	NextSequence int64  `json:"nextSequence"`
+	GameSequence int64  `json:"gameSequence"`
+}
+
+// ResyncRequiredMessage 要求客户端以权威 snapshot 重置游戏水位。
+type ResyncRequiredMessage struct {
+	Type         string `json:"type"`
+	Scope        string `json:"scope"`
+	Reason       string `json:"reason"`
+	GameSequence int64  `json:"gameSequence"`
 }
 
 // ReplacedMessage replaced：同成员新连接注册，本连接被替换。
@@ -513,13 +536,13 @@ type ReplacedMessage struct {
 
 // HelloMessage hello：首帧必发；鉴权前不收发房间事件。
 type HelloMessage struct {
-	Type         string `json:"type"`
-	Token        string `json:"token"`
-	LastSequence int64  `json:"lastSequence"`
+	Type             string `json:"type"`
+	Token            string `json:"token"`
+	LastGameSequence int64  `json:"lastGameSequence"`
 }
 
 // AckMessage ack：水位推进。
 type AckMessage struct {
 	Type         string `json:"type"`
-	LastSequence int64  `json:"lastSequence"`
+	GameSequence int64  `json:"gameSequence"`
 }

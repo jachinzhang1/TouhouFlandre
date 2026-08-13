@@ -173,10 +173,7 @@ func (h *Hub) Publish(roomID string) {
 				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
 				continue
 			}
-			if skip {
-				continue
-			}
-			frame, err := envelopeFrame(event, projected)
+			frame, err := gameFrame(event, projected, skip)
 			if err != nil {
 				slog.Error("hub publish: marshal event", "room_id", roomID, "sequence", event.Sequence, "error", err)
 				continue
@@ -206,10 +203,10 @@ func (h *Hub) Register(c *Conn) *Conn {
 	old := rh.conns[c.member.ID]
 	rh.conns[c.member.ID] = c
 	multi.DefaultMetrics.AddWsConnections(1)
-	if c.lastSequence > 0 {
+	if c.lastGameSequence > 0 {
 		multi.DefaultMetrics.IncReconnects()
 	}
-	slog.Info("ws: member connected", "room_id", c.roomID, "member_id", c.member.ID, "reconnect", c.lastSequence > 0)
+	slog.Info("ws: member connected", "room_id", c.roomID, "member_id", c.member.ID, "reconnect", c.lastGameSequence > 0)
 	// 广播水位推进到当前事件序号（新连接经 hello 重放补齐自身缺口；发布在后的新事件才会推给它）
 	if current := h.roomEventSeq(c.roomID); current > rh.lastSeq {
 		rh.lastSeq = current
@@ -258,8 +255,17 @@ func (h *Hub) roomEventSeq(roomID string) int64 {
 	return room.EventSeq
 }
 
-// envelopeFrame 组装事件信封（08 §8.2）。
-func envelopeFrame(event repo.RoomEvent, projected multi.ProjectedEvent) ([]byte, error) {
+// gameFrame 为每个持久化 sequence 组装业务事件或不泄露业务类型/payload 的 cursor。
+func gameFrame(event repo.RoomEvent, projected multi.ProjectedEvent, cursor bool) ([]byte, error) {
+	if cursor {
+		return json.Marshal(multi.CursorEnvelope{
+			Type:       "room.cursor",
+			EventID:    strconv.FormatInt(event.ID, 10),
+			RoomID:     event.RoomID,
+			Sequence:   event.Sequence,
+			OccurredAt: event.OccurredAt.Time,
+		})
+	}
 	payloadBytes, err := json.Marshal(projected.Payload)
 	if err != nil {
 		return nil, err
