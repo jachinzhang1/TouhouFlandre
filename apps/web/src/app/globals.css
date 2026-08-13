@@ -185,22 +185,27 @@
 
 html[data-theme-mode="dark"] {
   color-scheme: dark;
+  --dark-theme-blend: color-mix(in srgb, var(--accent) 45%, #777c79);
   --ink: #edf4f1;
   --ink-soft: #aab8b2;
-  --paper: #17201d;
-  --paper-muted: #0f1413;
-  --line: #2b3934;
-  --line-strong: #3e514a;
+  --paper: color-mix(in srgb, #191c1a 88%, var(--dark-theme-blend));
+  --paper-muted: #111312;
+  --line: #343936;
+  --line-strong: #4a514d;
   --accent-contrast: #1a1413;
   --page-background: color-mix(
     in srgb,
-    var(--paper-muted) 90%,
-    var(--paper-tinted-base)
+    var(--paper-muted) 82%,
+    var(--dark-theme-blend)
   );
-  --paper-plain-bg: #202523;
-  --paper-plain-bg-hover: #262d2a;
+  --paper-plain-bg: color-mix(in srgb, #222422 84%, var(--dark-theme-blend));
+  --paper-plain-bg-hover: color-mix(
+    in srgb,
+    #2a2d2a 82%,
+    var(--dark-theme-blend)
+  );
   --paper-plain-line: rgba(237, 244, 241, 0.065);
-  --paper-plain-fold: color-mix(in srgb, #2b312e 90%, var(--paper-tinted-base));
+  --paper-plain-fold: color-mix(in srgb, #303431 84%, var(--dark-theme-blend));
   --paper-tinted-bg: var(--paper-tinted-base);
   --paper-tinted-fold: color-mix(
     in srgb,
@@ -226,17 +231,37 @@ html[data-theme-mode="dark"] {
   --amber-border: #6a5026;
   --nav-text: #a5b4ae;
   --nav-hover-bg: rgba(255, 255, 255, 0.07);
-  --nav-bg: rgba(16, 22, 20, 0.74);
-  --nav-paper-layer-1: rgba(32, 43, 39, 0.86);
-  --nav-paper-layer-2: rgba(39, 52, 47, 0.5);
-  --nav-paper-layer-3: rgba(47, 61, 55, 0.34);
+  --nav-bg: color-mix(
+    in srgb,
+    rgba(16, 18, 17, 0.86) 88%,
+    var(--dark-theme-blend)
+  );
+  --nav-paper-layer-1: color-mix(
+    in srgb,
+    rgba(38, 42, 40, 0.86) 88%,
+    var(--dark-theme-blend)
+  );
+  --nav-paper-layer-2: color-mix(
+    in srgb,
+    rgba(46, 51, 48, 0.5) 86%,
+    var(--dark-theme-blend)
+  );
+  --nav-paper-layer-3: color-mix(
+    in srgb,
+    rgba(54, 60, 56, 0.34) 84%,
+    var(--dark-theme-blend)
+  );
   --mobile-nav-shadow: 0 -10px 28px rgba(0, 0, 0, 0.34);
-  --surface: #1a2421;
-  --surface-hover: #24302c;
-  --surface-soft: #141c19;
-  --surface-muted: #202b27;
-  --surface-glass: rgba(26, 36, 33, 0.88);
-  --surface-strong: #26332f;
+  --surface: color-mix(in srgb, #1c201e 88%, var(--dark-theme-blend));
+  --surface-hover: color-mix(in srgb, #272b28 84%, var(--dark-theme-blend));
+  --surface-soft: color-mix(in srgb, #171a18 92%, var(--dark-theme-blend));
+  --surface-muted: color-mix(in srgb, #242825 88%, var(--dark-theme-blend));
+  --surface-glass: color-mix(
+    in srgb,
+    rgba(28, 32, 30, 0.88) 88%,
+    var(--dark-theme-blend)
+  );
+  --surface-strong: color-mix(in srgb, #2b302d 84%, var(--dark-theme-blend));
   --muted-text: #a0afa9;
   --subtle-text: #94a49d;
   --placeholder-text: #7f8f88;
