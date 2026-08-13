@@ -678,6 +678,10 @@ input:focus-visible {
   color: var(--neutral-text);
 }
 
+.footer-yin-yang {
+  color: var(--neutral-text);
+}
+
 .site-footer a:hover {
   color: var(--vermilion);
   background: var(--vermilion-soft);
@@ -702,6 +706,10 @@ body:has(.home-hero) .site-footer::before {
 }
 
 body:has(.home-hero) .site-footer a {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+body:has(.home-hero) .footer-yin-yang {
   color: rgba(255, 255, 255, 0.82);
 }
 

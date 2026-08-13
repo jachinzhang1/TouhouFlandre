@@ -3,6 +3,7 @@
 import { Github, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { YinYangMark } from "./YinYangMark";
 import { api } from "../lib/api";
 
 let siteVisitPromise: Promise<number | null> | null = null;
@@ -38,9 +39,15 @@ export function SiteFooter() {
 
   return (
     <footer className="site-footer flex min-h-[66px] flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-[0.72rem]">
-      <span className="min-w-0 basis-96 grow break-words">
-        TouhouFlandre · 非官方东方 Project 同人项目 · 访问数{" "}
-        {visitCount === null ? "--" : visitCount.toLocaleString("zh-CN")}
+      <span className="flex min-w-0 basis-96 grow flex-wrap items-center gap-x-2 gap-y-1 break-words">
+        <span>TouhouFlandre</span>
+        <FooterSeparator />
+        <span>非官方东方 Project 同人项目</span>
+        <FooterSeparator />
+        <span>
+          访问数{" "}
+          {visitCount === null ? "--" : visitCount.toLocaleString("zh-CN")}
+        </span>
       </span>
       <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
         <Link
@@ -63,5 +70,14 @@ export function SiteFooter() {
         </Link>
       </div>
     </footer>
+  );
+}
+
+function FooterSeparator() {
+  return (
+    <YinYangMark
+      className="footer-yin-yang size-2.5 shrink-0"
+      variant="separator"
+    />
   );
 }

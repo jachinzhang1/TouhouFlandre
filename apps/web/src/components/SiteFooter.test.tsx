@@ -21,11 +21,13 @@ describe("SiteFooter", () => {
   it("显示访问数占位并在记录成功后展示格式化数字", async () => {
     recordSiteVisitMock.mockResolvedValue({ count: 12345 });
 
-    render(<SiteFooter />);
+    const { container } = render(<SiteFooter />);
 
     expect(screen.getByText(/访问数 --/)).toBeTruthy();
     expect(await screen.findByText(/访问数 12,345/)).toBeTruthy();
     expect(recordSiteVisitMock).toHaveBeenCalledOnce();
+    expect(container.querySelectorAll(".footer-yin-yang")).toHaveLength(2);
+    expect(container.textContent).not.toContain(" · ");
   });
 
   it("重复渲染时只记录一次访问", async () => {
