@@ -89,7 +89,7 @@ func toOpenAPIParticipantView(v multi.ParticipantView) openapi.ParticipantView {
 }
 
 func joinRoleFor(room repo.MultiRoom, playerCount int, now time.Time) multi.ParticipantRole {
-	if room.Status == string(multi.RoomStatusLobby) && playerCount < 2 {
+	if room.Status == string(multi.RoomStatusLobby) && playerCount < int(room.PlayerLimit) {
 		return multi.ParticipantRolePlayer
 	}
 	if room.Status == string(multi.RoomStatusClosed) {
@@ -101,14 +101,14 @@ func joinRoleFor(room repo.MultiRoom, playerCount int, now time.Time) multi.Part
 	return multi.ParticipantRoleSpectator
 }
 
-func nextPlayerSeat(members []repo.MultiMember) (int32, bool) {
+func nextPlayerSeat(members []repo.MultiMember, playerLimit int) (int32, bool) {
 	used := map[int]bool{}
 	for _, member := range members {
 		used[multi.MemberSeat(member)] = true
 	}
-	for slot := 1; slot <= 2; slot++ {
-		if !used[slot] {
-			return int32(slot), true
+	for seat := 1; seat <= playerLimit; seat++ {
+		if !used[seat] {
+			return int32(seat), true
 		}
 	}
 	return 0, false
@@ -274,7 +274,7 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	}, nil
 }
 
-// ---- RoomsJoin：加入房间（入座 slot 2） ----
+// ---- RoomsJoin：加入房间（分配 player seat 或 spectator） ----
 
 // RoomsJoin 加入房间（08 §4.1）。无鉴权；按 IP 限流（中间件）。
 func (s *Server) RoomsJoin(ctx context.Context, request openapi.RoomsJoinRequestObject) (openapi.RoomsJoinResponseObject, error) {
@@ -297,7 +297,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
 
-	// 加入路径锁房间行；当前玩法仍只开放 seat 1/2。
+	// 加入路径先锁房间行，使容量判断和最小可用 seat 分配线性化。
 	room, err := q.GetRoomByCodeForUpdate(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -316,6 +316,13 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	if role == "" {
 		return nil, roomClosed()
 	}
+	spectatorCount, err := q.CountSpectators(ctx, room.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if role == multi.ParticipantRoleSpectator && spectatorCount >= multi.SpectatorCap {
+		return nil, roomFull()
+	}
 
 	token, err := multi.GenerateGuestToken()
 	if err != nil {
@@ -323,7 +330,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	}
 	var participant repo.MultiMember
 	if role == multi.ParticipantRolePlayer {
-		seat, ok := nextPlayerSeat(players)
+		seat, ok := nextPlayerSeat(players, int(room.PlayerLimit))
 		if !ok {
 			return nil, internalError(errors.New("no available player seat"))
 		}
@@ -349,7 +356,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	if err != nil {
 		return nil, internalError(err)
 	}
-	spectatorCount, err := q.CountSpectators(ctx, room.ID)
+	spectatorCount, err = q.CountSpectators(ctx, room.ID)
 	if err != nil {
 		return nil, internalError(err)
 	}
@@ -364,6 +371,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 		RoomId:     room.ID,
 		GuestToken: openapi.GuestToken(token),
 		Viewer:     toOpenAPIParticipantView(multi.ParticipantViewFor(participant)),
+		JoinRole:   openapi.ParticipantRole(role),
 	}, nil
 }
 

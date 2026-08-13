@@ -124,12 +124,16 @@ JoinRoomResponse:
   required:
     - roomId
     - guestToken
+    - joinRole
     - viewer
   properties:
     roomId:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
+    joinRole:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+      description: 此次加入实际获得的角色；满 playerLimit 后明确为 spectator。
     viewer:
       $ref: "#/ParticipantView"
 

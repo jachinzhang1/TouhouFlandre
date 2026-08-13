@@ -37,12 +37,16 @@ var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 const RelayMaxSkipsPerPlayer = 2
 
 const (
+	// MinPlayers is the fixed minimum roster size for race and relay matches.
+	MinPlayers = 2
 	// DefaultPlayerLimit is the room capacity used until MPX-005 exposes configuration.
 	DefaultPlayerLimit = 2
 	// ServerMaxRacePlayers is the hard upper bound for a race room.
 	ServerMaxRacePlayers = 8
 	// RelayPlayerLimit keeps the current relay engine on its two-player rule set.
 	RelayPlayerLimit = 2
+	// SpectatorCap bounds inactive room membership and websocket fan-out.
+	SpectatorCap = 32
 )
 
 // MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。

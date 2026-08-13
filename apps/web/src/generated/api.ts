@@ -246,7 +246,8 @@ export interface paths {
         put?: never;
         /**
          * 加入房间
-         * @description 无鉴权。校验：房间存在且处于 lobby、未满 2 人，否则 ROOM_NOT_FOUND / ROOM_FULL / ROOM_CLOSED。
+         * @description 无鉴权。lobby 在 playerLimit 内分配最小可用 player seat；满员或对局已开始后以 spectator 加入。
+         *     spectatorCap 固定为 32，达到上限后返回 ROOM_FULL 且不创建 member。
          *     房间号输入归一化（去空格/连字符、转大写）。与公开预检共用按 IP 速率限制。
          */
         post: operations["rooms_join"];
@@ -824,6 +825,8 @@ export interface components {
         JoinRoomResponse: {
             roomId: string;
             guestToken: components["schemas"]["GuestToken"];
+            /** @description 此次加入实际获得的角色；满 playerLimit 后明确为 spectator。 */
+            joinRole: components["schemas"]["ParticipantRole"];
             viewer: components["schemas"]["ParticipantView"];
         };
         /**
@@ -1584,7 +1587,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 房间已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED） */
+            /** @description spectatorCap 已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED） */
             409: {
                 headers: {
                     [name: string]: unknown;
