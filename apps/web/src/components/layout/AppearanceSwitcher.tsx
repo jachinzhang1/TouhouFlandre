@@ -221,8 +221,7 @@ export function AppearanceSwitcher() {
               data-theme-color={theme.id}
               style={
                 {
-                  "--swatch-light": theme.light,
-                  "--swatch-dark": theme.dark,
+                  "--swatch-color": theme.color,
                   "--swatch-clip": triangleClip,
                 } as CSSProperties
               }
@@ -238,7 +237,6 @@ export function AppearanceSwitcher() {
         })}
       </div>
       <span className="appearance-corner-surface" aria-hidden="true" />
-      <span className="appearance-fold-flap" aria-hidden="true" />
       <button
         type="button"
         className="appearance-toggle"

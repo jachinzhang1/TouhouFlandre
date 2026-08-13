@@ -47,8 +47,9 @@ describe("AnnouncementPage", () => {
     );
 
     expect(screen.getByText("格式公告")).toBeTruthy();
-    expect(screen.getByText("置顶")).toBeTruthy();
-    expect(container.querySelector(".announcement-pin-tag")).toBeTruthy();
+    expect(screen.queryByText("置顶")).toBeNull();
+    expect(screen.getByLabelText("置顶公告")).toBeTruthy();
+    expect(container.querySelector(".announcement-pin-corner")).toBeTruthy();
     expect(container.querySelector(".announcement-unread-dot")).toBeTruthy();
     expect(
       container.querySelector(".announcement-title-separator"),
@@ -75,6 +76,7 @@ describe("AnnouncementPage", () => {
       name: "确认已读：格式公告",
     });
     expect(tearCorner.tagName).toBe("SPAN");
+    expect(tearCorner.textContent).toContain("未读");
     await user.click(tearCorner);
 
     expect(article.dataset.read).toBe("true");

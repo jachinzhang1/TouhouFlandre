@@ -238,8 +238,4 @@
   .paper-shortcut-hover-arrow {
     transform: none !important;
   }
-
-  .appearance-fold-flap {
-    transition-delay: 0ms !important;
-  }
 }

@@ -8,12 +8,12 @@ export const THEME_MODES = ["light", "dark"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
 
 export const COLOR_THEMES = [
-  { id: "scarlet", label: "博丽灵梦", light: "#ad3334", dark: "#e0706c" },
-  { id: "sakura", label: "古明地觉", light: "#c05a86", dark: "#dd82aa" },
-  { id: "iris", label: "八云紫", light: "#6f63b6", dark: "#9b91e0" },
-  { id: "jade", label: "东风谷早苗", light: "#247568", dark: "#59b9a7" },
-  { id: "amber", label: "雾雨魔理沙", light: "#a76916", dark: "#d69a43" },
-  { id: "azure", label: "比那名居天子", light: "#3478b4", dark: "#6ca6d9" },
+  { id: "scarlet", label: "博丽灵梦", color: "#ad3334" },
+  { id: "sakura", label: "古明地觉", color: "#b9507f" },
+  { id: "iris", label: "八云紫", color: "#6f63b6" },
+  { id: "jade", label: "东风谷早苗", color: "#247568" },
+  { id: "amber", label: "雾雨魔理沙", color: "#a36714" },
+  { id: "azure", label: "比那名居天子", color: "#3478b4" },
 ] as const;
 
 export type ThemeColor = (typeof COLOR_THEMES)[number]["id"];

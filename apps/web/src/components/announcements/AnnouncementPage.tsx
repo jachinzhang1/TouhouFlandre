@@ -130,10 +130,26 @@ export function AnnouncementPage({
                 className="announcement-entry-shell paper-sticker-shadow"
                 key={announcement.id}
               >
+                {announcement.pinned ? (
+                  <span
+                    className="announcement-pin-corner"
+                    aria-label="置顶公告"
+                    title="置顶公告"
+                  >
+                    <Pin
+                      className="announcement-pin-corner-icon"
+                      size={16}
+                      fill="currentColor"
+                      strokeWidth={1.8}
+                      aria-hidden="true"
+                    />
+                  </span>
+                ) : null}
                 <article
                   className="announcement-entry relative p-5 pb-14 max-[680px]:p-4 max-[680px]:pb-14"
                   data-read={unread ? "false" : "true"}
                   data-tearing={tearing ? "true" : "false"}
+                  data-pinned={announcement.pinned ? "true" : "false"}
                 >
                   {unread ? (
                     <span
@@ -142,13 +158,7 @@ export function AnnouncementPage({
                       title="未读公告"
                     />
                   ) : null}
-                  <div className="flex flex-wrap items-center gap-2 pr-5">
-                    {announcement.pinned ? (
-                      <span className="announcement-pin-tag">
-                        <Pin size={13} aria-hidden="true" />
-                        置顶
-                      </span>
-                    ) : null}
+                  <div className="announcement-meta flex flex-wrap items-center gap-2 pr-5">
                     <time
                       className="font-brand text-[0.82rem] font-bold text-ink-soft"
                       dateTime={announcement.date}
@@ -198,7 +208,7 @@ export function AnnouncementPage({
                       className="announcement-tear-label"
                       aria-hidden="true"
                     >
-                      确认
+                      未读
                     </span>
                   </span>
                 ) : null}

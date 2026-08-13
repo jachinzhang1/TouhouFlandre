@@ -311,13 +311,9 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
   --appearance-corner-rest: color-mix(
     in oklab,
     var(--appearance-rest-color) 84%,
-    var(--paper-tinted-base)
+    var(--theme-color)
   );
-  --appearance-fold-rest: color-mix(
-    in oklab,
-    var(--appearance-rest-color) 97%,
-    #000
-  );
+  --appearance-corner-shadow: rgba(25, 46, 39, 0.12);
   position: fixed;
   right: 0;
   bottom: 0;
@@ -332,25 +328,16 @@ html[data-theme-mode="dark"] .appearance-switcher {
   --appearance-corner-rest: color-mix(
     in oklab,
     color-mix(in oklab, var(--appearance-rest-color) 90%, #000) 96%,
-    var(--paper-tinted-base)
+    var(--theme-color)
   );
-  --appearance-fold-rest: color-mix(
-    in oklab,
-    var(--appearance-rest-color) 95%,
-    #fff
-  );
-}
-
-.appearance-corner-surface,
-.appearance-fold-flap {
-  position: absolute;
-  inset: 0;
-  display: block;
-  transform-origin: right bottom;
+  --appearance-corner-shadow: rgba(0, 0, 0, 0.2);
 }
 
 .appearance-corner-surface {
+  position: absolute;
+  inset: 0;
   z-index: 0;
+  display: block;
   clip-path: polygon(
     calc(100% - var(--appearance-collapsed-leg)) 100%,
     100% calc(100% - var(--appearance-collapsed-leg)),
@@ -360,40 +347,32 @@ html[data-theme-mode="dark"] .appearance-switcher {
   background-image: var(--paper-tinted-ornament);
   background-size: var(--paper-tinted-ornament-size);
   pointer-events: auto;
+  transform-origin: right bottom;
   transition:
     background-color 240ms ease,
     clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: clip-path;
 }
 
-.appearance-fold-flap {
-  z-index: 1;
+.appearance-corner-surface::after {
+  position: absolute;
+  inset: 0;
+  background: var(--appearance-corner-shadow);
   clip-path: polygon(
     calc(100% - var(--appearance-collapsed-leg)) 100%,
     100% calc(100% - var(--appearance-collapsed-leg)),
-    calc(100% - 42px) calc(100% - 76px)
+    100% calc(100% - var(--appearance-collapsed-leg) + 18px),
+    calc(100% - var(--appearance-collapsed-leg) + 18px) 100%
   );
-  background-color: var(--appearance-fold-rest);
-  background-image: repeating-linear-gradient(
-    8deg,
-    transparent 0 10px,
-    rgba(255, 255, 255, 0.04) 10px 11px
-  );
+  content: "";
+  filter: blur(10px);
   opacity: 1;
   pointer-events: none;
-  transition:
-    background-color 240ms ease,
-    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1),
-    opacity 100ms ease;
-  will-change: clip-path, opacity;
+  transition: opacity 180ms ease;
 }
 
 body:has(.home-hero) .appearance-corner-surface {
   background-color: var(--paper-tinted-bg);
-}
-
-body:has(.home-hero) .appearance-fold-flap {
-  background-color: var(--paper-tinted-fold);
 }
 
 body:has(.home-hero) .appearance-toggle {
@@ -432,6 +411,7 @@ body:has(.home-hero) .appearance-toggle {
 .appearance-palette-icon,
 .appearance-mode-icon {
   position: absolute;
+  translate: 2px 2px;
   transition:
     opacity 150ms ease,
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -468,7 +448,7 @@ body:has(.home-hero) .appearance-toggle {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background-color: var(--swatch-light);
+  background-color: var(--swatch-color);
   background-image: var(--swatch-pattern);
   background-position: center;
   background-size: var(--swatch-pattern-size);
@@ -485,10 +465,6 @@ body:has(.home-hero) .appearance-toggle {
 
 .appearance-swatch[data-selected="true"] {
   opacity: 0;
-}
-
-html[data-theme-mode="dark"] .appearance-swatch {
-  background-color: var(--swatch-dark);
 }
 
 .appearance-swatch[data-theme-color="scarlet"] {
@@ -589,27 +565,17 @@ html[data-theme-mode="dark"] .appearance-swatch {
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
+  .appearance-corner-surface::after {
+  opacity: 0;
+}
+
+.appearance-switcher:is([data-open="true"], [data-hovered="true"])
   .appearance-palette {
   clip-path: polygon(
     var(--appearance-base-start) 100%,
     100% var(--appearance-apex-y),
     var(--appearance-diagonal-end) 100%
   );
-}
-
-.appearance-switcher:is([data-open="true"], [data-hovered="true"])
-  .appearance-fold-flap {
-  clip-path: polygon(
-    var(--appearance-base-start) 100%,
-    100% var(--appearance-apex-y),
-    var(--appearance-base-start) 100%
-  );
-  background-color: var(--paper-tinted-fold);
-  opacity: 0;
-  transition:
-    background-color 240ms ease,
-    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1),
-    opacity 100ms ease 180ms;
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])

@@ -49,6 +49,7 @@ describe("AppearanceSwitcher", () => {
   it("opens the palette before toggling mode and stores the explicit preference", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
+    expect(document.querySelector(".appearance-fold-flap")).toBeNull();
 
     await waitFor(() => {
       expect(document.documentElement.dataset.themeMode).toBe("light");
@@ -133,6 +134,13 @@ describe("AppearanceSwitcher", () => {
     ]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
     }
+    const sakuraButton = screen.getByRole("button", {
+      name: "古明地觉主题色",
+    });
+    expect(sakuraButton.style.getPropertyValue("--swatch-color")).toBe(
+      "#b9507f",
+    );
+    expect(sakuraButton.style.getPropertyValue("--swatch-dark")).toBe("");
 
     await user.click(
       screen.getByRole("button", { name: "比那名居天子主题色" }),

@@ -189,7 +189,7 @@
 }
 
 .paper-shortcut-hover-arrow {
-  color: var(--vermilion);
+  color: var(--ink);
   opacity: 0;
   transform: translateX(-37.5%);
   transition:
@@ -201,13 +201,10 @@
 .paper-shortcut-description {
   position: relative;
   z-index: 1;
-  transition: color 240ms ease;
 }
 
 .paper-shortcut:focus-visible .paper-shortcut-icon,
-.paper-shortcut:focus-visible .paper-shortcut-hover-arrow,
-.paper-shortcut:focus-visible .paper-shortcut-title,
-.paper-shortcut:focus-visible .paper-shortcut-description {
+.paper-shortcut:focus-visible .paper-shortcut-hover-arrow {
   transition-duration: 0ms;
   transition-delay: 0ms;
 }
@@ -225,12 +222,6 @@
       opacity 240ms ease,
       transform 280ms ease;
   }
-
-  .paper-shortcut:not(.paper-shortcut-featured):hover .paper-shortcut-title,
-  .paper-shortcut:not(.paper-shortcut-featured):hover
-    .paper-shortcut-description {
-    color: var(--vermilion);
-  }
 }
 
 .paper-shortcut:focus-visible .paper-shortcut-icon {
@@ -240,13 +231,6 @@
 .paper-shortcut:focus-visible .paper-shortcut-hover-arrow {
   opacity: 1;
   transform: translateX(0);
-}
-
-.paper-shortcut:not(.paper-shortcut-featured):focus-visible
-  .paper-shortcut-title,
-.paper-shortcut:not(.paper-shortcut-featured):focus-visible
-  .paper-shortcut-description {
-  color: var(--vermilion);
 }
 
 .paper-shortcut-featured {
