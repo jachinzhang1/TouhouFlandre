@@ -5,6 +5,8 @@
 **依赖**：MPX-004、MPX-005  
 **建议标签**：`type:feature` `area:web` `area:a11y`
 
+**决策依据**：[术语与生命周期](./decisions.md#术语与生命周期)、[WS v2 游戏 sequence 与同步屏障](./decisions.md#ws-v2-游戏-sequence-与同步屏障)、[隐私投影与可观察元数据](./decisions.md#隐私投影与可观察元数据)
+
 ## 要解决的问题
 
 现有 `RoomPage`、`MatchBoard`、`SpectatorRaceBoards` 和状态 hook 仍通过 `playerSlot: 1 | 2`、`slot1/slot2` 和双栏布局组织视图；`apps/web/src/stats/` 也把多人记录保存为 `scoreSelf/scoreOpponent`。三名以上玩家加入后，页面和本地统计都必须按稳定 memberId 工作，不能因数组重排错配身份。

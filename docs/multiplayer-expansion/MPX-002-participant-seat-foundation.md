@@ -8,6 +8,8 @@
 
 **建议标签**：`type:planning` `area:db` `area:contracts` `area:shared`
 
+**决策依据**：[MPX 多人扩展决策记录](./decisions.md)
+
 ## 为什么拆分
 
 最初的 MPX-002 同时承担三类工作：

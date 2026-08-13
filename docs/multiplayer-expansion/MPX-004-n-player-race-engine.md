@@ -5,13 +5,15 @@
 **依赖**：MPX-003  
 **建议标签**：`type:feature` `area:api` `area:multi` `area:contracts`
 
+**决策依据**：[模式能力边界](./decisions.md#模式能力边界)、[隐私投影与可观察元数据](./decisions.md#隐私投影与可观察元数据)
+
 ## 要解决的问题
 
 当前 race 的胜者、比分和投影仍是两个 slot：`score_slot1/score_slot2`、`winner_slot`、`BoardsView{slot1,slot2}`，放弃/断线还依赖 `OtherSlot`。增加人数设置之前，服务端必须先能冻结 N 人 roster、可靠处理多人同时竞猜，并明确一名玩家放弃或离开时其余玩家如何继续。
 
 ## 目标
 
-只扩展 `race`，支持一个房间内 2..N 名玩家按 member 独立计分。N 是开局事务冻结的实际 match roster 人数，满足 `2 <= N <= playerLimit`；`playerLimit` 另受服务端硬上限保护（推荐首版上限 8，最终值由 MPX-001 决策记录冻结）。
+只扩展 `race`，支持一个房间内 2..N 名玩家按 member 独立计分。N 是开局事务冻结的实际 match roster 人数，满足 `2 <= N <= playerLimit`；`playerLimit` 另受[决策记录](./decisions.md#术语与生命周期)冻结的首版服务端硬上限 8 保护。
 
 建议将 roster/计分/结果主体改为稳定 memberId 的集合，而不是继续增加 `slot3`、`slot4` 字段：
 
@@ -29,7 +31,7 @@ N 人退出语义固定如下：该小局主动放弃只将该玩家标记为本
 - Go 规则层、投影层和 v2 事件 payload；玩家只能看到自己的完整棋盘及其他玩家按 memberId 分组的匿名矩阵，spectator 可看到全部完整棋盘。
 - 多玩家最大猜测次数、超时、放弃、断线判负和场结束条件。
 - 移除内部 `score_slot1/2`、`winner_slot` 和 `OtherSlot` 依赖，让 MPX-002A/MPX-002B 已冻结的 memberId/seat/v2 集合承载 N 人；spectator 的 `viewerResult` 缺省，不伪装成 loss。
-- 多对手匿名列置换以 `(roundId, observerMemberId, subjectMemberId)` 为种子，避免不同对手棋盘共享同一映射。
+- 多对手匿名列置换按[决策记录](./decisions.md#隐私投影与可观察元数据)使用服务端秘密对 `(roundId, observerMemberId, subjectMemberId, schemaVersion)` 做 HMAC 派生，避免公开 ID 可复算或不同对手棋盘共享同一映射。
 - race 核心单元测试、并发集成测试、投影隐私测试和 snapshot/replay 测试。
 
 ## 不属于本 Issue

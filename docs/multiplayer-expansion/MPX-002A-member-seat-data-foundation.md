@@ -8,6 +8,8 @@
 
 **建议标签**：`type:feature` `area:db` `area:contracts` `area:shared`
 
+**决策依据**：[术语与生命周期](./decisions.md#术语与生命周期)、[模式能力边界](./decisions.md#模式能力边界)
+
 ## 要解决的问题
 
 `apps/api/migrations/0007_spectators.sql` 已将观战者从玩家席位中分离，但玩家仍被约束为 slot `1/2`，公开成员视图也没有稳定 `memberId`。如果不先稳定“谁是谁、坐哪儿、最多几人”，后续 N 人竞速、聊天授权和本地统计都会继续依赖数组顺序或 slot 猜测。

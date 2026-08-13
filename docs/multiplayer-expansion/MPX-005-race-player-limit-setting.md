@@ -8,6 +8,8 @@
 
 **建议标签**：`type:feature` `area:api` `area:contracts`
 
+**决策依据**：[大厅串行化与开局冻结](./decisions.md#大厅串行化与开局冻结)、[状态 × 角色 × 动作权限](./decisions.md#状态--角色--动作权限)
+
 ## 要解决的问题
 
 房间底座有 `player_limit` 并不等于用户能设置。房主需要选择竞速房间允许入座的最大玩家数；它是容量上限，不是必须凑满的目标人数。当前玩家达到服务端固定的 `minPlayers=2` 且全员准备后，可以按当时阵容开局。该设置必须经过服务端校验、对非房主只读展示，并且只允许在当前无人 ready 时修改，避免准备期间改变容量。
@@ -15,7 +17,7 @@
 ## 目标行为
 
 - 创建 race 房间时可提交 `playerLimit`；lobby 中房主可通过受权的房间设置命令修改。
-- 默认值为 2，允许范围为 `2..serverMaxRacePlayers`（首版推荐 8）；relay 仍固定现有两名玩家并拒绝 race 专属设置。
+- 默认值为 2，允许范围为 `2..serverMaxRacePlayers`（[决策记录](./decisions.md#术语与生命周期)冻结首版为 8）；relay 仍固定现有两名玩家并拒绝 race 专属设置。
 - room info/`room.updated` 显示 `playerLimit`、固定的 `minPlayers`、当前玩家数、可用席位和 spectator 数。
 - 达到上限后新加入者进入 spectator；已经入座的玩家不因后来观战者加入而被替换。
 - 提高上限只产生可认领的空席位，不自动把既有 spectator 变成 player；spectator 使用 MPX-003 的 claim-seat 明确接受玩家权限与开局责任。
@@ -42,7 +44,7 @@
 - 房主调用设置命令后，race 房间可在 lobby 使用 2、3、4…首版上限；非法值、relay 设置、非房主修改和当前有人 ready 时修改均有稳定错误；所有人取消准备后恢复可修改。
 - 设置变化通过 `room.updated` 同步给玩家和观战者，刷新/重连后从服务端恢复。
 - 提高上限后 spectator 可显式认领空席位；降低上限或空席位再次被占用时，前端能从权威事件得到稳定结果，不发生自动晋升。
-- 在容量边界并发 join 下，最多产生 `playerLimit` 个玩家，其余在 spectator cap 未满时进入观战。
+- 在容量边界并发 join 下，最多产生 `playerLimit` 个玩家，其余在 spectatorCap 未满时进入观战。
 - 并发修改上限、join、ready 时结果符合房间行锁的提交顺序，事件中的 `playerLimit`、当前玩家数和冻结 roster 与数据库终态一致。
 - 对 seat 有空洞的 lobby 降容后，活动玩家 seat 连续落在 `1..currentPlayers`，memberId/令牌/房主不变；客户端不会把 seat 变化当成身份变化。
 - `playerLimit=8` 的 2、3、5、8 人阵容都能在全员 connected + ready 后开局；少于 `minPlayers`、存在未准备/断线玩家时不开始。

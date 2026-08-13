@@ -5,6 +5,8 @@
 **依赖**：MPX-006、MPX-009  
 **建议标签**：`type:quality` `area:test` `area:security` `area:ops`
 
+**决策依据**：[MPX 多人扩展决策记录](./decisions.md)全部章节；集成发现语义冲突时回到对应 MPX-002A 至 MPX-009 修正
+
 ## 要解决的问题
 
 多人扩展同时触碰迁移、实时协议、并发规则和前端状态。单个 PR 的单测通过并不能证明不存在越权、序列缺口、容量竞态或移动端不可用。需要一个独立的发布闸门，避免未完成的能力被默认暴露。
@@ -14,7 +16,7 @@
 - 从旧 slot1/slot2 数据迁移到 member roster/score 的升级演练；Down 只在一次性测试库验证，生产应用回滚保留 expand schema 和新数据。
 - WS v1 短期房间的停止新建、排空/关闭、前端刷新提示和 v2 切换演练；不维护长期双协议。
 - race 2/3/4/8 人、relay 两人、单局放弃/对局离场、spectator、断线重连、finished retention、聊天可见性和闭麦的完整 e2e 矩阵。
-- 并发 join/claim-seat/final-ready/playerLimit、guess/forfeit/send、spectator cap 与上限 fan-out、限流、慢消费者、游戏事件重放/snapshot 补齐、独立 chat cursor/history 补齐和服务重启终态测试。
+- 并发 join/claim-seat/final-ready/playerLimit、guess/forfeit/send、spectatorCap 与上限 fan-out、限流、慢消费者、游戏事件重放/snapshot 补齐、独立 chat cursor/history 补齐和服务重启终态测试。
 - 隐私审计：玩家对手匿名字段、spectator 消息不向 player 投影、聊天纯文本/XSS、日志/错误/前端 DOM 不泄漏 token、答案或未授权消息，本地统计落盘/导出不含房间或成员身份。
 - 指标、告警、feature flag、灰度策略、应用回滚说明，以及 `docs/multiplayer.md`/README 的发布状态同步；本地多人统计 v3→新 schema 的导入/聚合回归也纳入发布闸门。
 - 准备并发布面向用户的公告：说明 N 人竞速、`playerLimit`、房间聊天/闭麦的使用方式，强调不必等到房间满员即可开局，并列出未纳入范围的组队、N 人接力、图片消息等能力。公告还需包含旧页面需要刷新、短期 v1 房间会排空/关闭、灰度期间功能可能分批开放等兼容提示。

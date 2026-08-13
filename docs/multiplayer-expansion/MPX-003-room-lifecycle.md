@@ -8,6 +8,8 @@
 
 **建议标签**：`type:feature` `area:api` `area:multi` `area:contracts`
 
+**决策依据**：[大厅串行化与开局冻结](./decisions.md#大厅串行化与开局冻结)、[状态 × 角色 × 动作权限](./decisions.md#状态--角色--动作权限)
+
 ## 要解决的问题
 
 member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、准备、离开、重连和再来一局仍用 `len(members)==2`、`OtherSlot` 或“找 slot 1/2”的判断，底层模型仍不可扩展。本 Issue 负责把房间级命令改成读取容量、最少开局人数和参与者能力；竞速局内规则仍由 MPX-004 接管。
@@ -18,7 +20,7 @@ member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、�
 - 容量统计包含 connected 和仍在断线宽限期内的 disconnected 玩家；宽限期内保留原 seat，新 join 不能抢占。只有 lobby 成员明确离开或宽限到期并完成删除后才释放 seat，playing/finished 始终以冻结 roster 为准。
 - lobby 出现空席位时，connected spectator 可显式 claim-seat：服务端在房间锁下复用原 memberId/token，将其转换为 `ready=false` 的 player 并分配最小可用 seat。容量增加或玩家离开都不自动提升 spectator 权限；playing/finished、满员或 disconnected spectator 的认领返回稳定错误。提交后 hub 立即使该 member 的旧 WS 身份失效并以 `member_changed` 要求重连，不能继续用连接建立时缓存的 spectator role 做投影。
 - 只允许符合模式能力矩阵的玩家入座；spectator 永远不占玩家容量，也不能因为断线影响比赛。
-- spectator 不占 `playerLimit`，但受服务端 `maxSpectatorsPerRoom` 硬上限约束；达到上限后 join 返回稳定的房间容量错误，不能无限创建成员行和 WS fan-out。
+- spectator 不占 `playerLimit`，但受固定为 32 的 `spectatorCap` 硬上限约束（服务端配置名可用 `maxSpectatorsPerRoom`）；达到上限后 join 返回稳定的房间容量错误，不能无限创建成员行和 WS fan-out。该值及术语以[决策记录](./decisions.md#术语与生命周期)为准。
 - race 的服务端固定 `minPlayers=2`。玩家数处于 `2..playerLimit`、所有玩家均 connected + ready 且房主保持 ready 时，以该时刻玩家集合冻结 match roster 并开局；不要求填满上限。例如 `playerLimit=8` 的房间允许 3、5 或 8 人开局。
 - ready 命令改为显式设置 `ready: boolean`，允许开局前取消准备。房主通过保持未准备来继续等待玩家，房主 ready 表示确认可以按该阵容开始；设置上限本身不触发开局。
 - join/claim-seat 的入座、ready 状态更新、开局条件检查和 match roster 创建必须在同一房间行锁下串行化：若最终 ready 先提交，房间按当时 roster 开局，随后加入者只能观战且 claim-seat 被拒绝；若 join/claim-seat 先提交并取得玩家席位，新玩家进入未准备状态并阻止该次开局。
@@ -41,7 +43,7 @@ member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、�
 
 ## 验收标准
 
-- 在同一个事务并发加入时不会重复分配 seat；达到 `playerLimit` 后的加入者在 spectator cap 未满时得到明确的 spectator `joinRole`，cap 已满时得到稳定容量错误。
+- 在同一个事务并发加入时不会重复分配 seat；达到 `playerLimit` 后的加入者在 spectatorCap 未满时得到明确的 spectator `joinRole`，spectatorCap 已满时得到稳定容量错误。
 - disconnected 玩家在宽限期内仍占容量并可用原 token 回到原 memberId/seat；其他加入者不能借断线窗口超过 `playerLimit` 或替换其身份。
 - race lobby 在 2..playerLimit 名玩家全部 connected + ready 时开始，并把这些 member 冻结为 match roster；未填满上限不会阻止开局，少于 2 人或任一玩家未准备不会开局。
 - 并发 join/claim-seat 与最终 ready 只有上述两种串行化结果，不会出现已开局后玩家被补入 roster、入座成功却未进入 roster，或绕过未准备成员开局。多个 spectator 并发认领最后席位时至多一人成功。
@@ -50,7 +52,7 @@ member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、�
 - 完整 roster 的 rematch 需原 roster 全员确认且 connected；任一 roster 成员 left 时明确拒绝，新加入者不能替代其身份或比分。
 - 两人基线下玩家离开/断线的判负语义与现有规则一致（N 人语义由 MPX-004 冻结），spectator 离开不会改变比分、比赛状态或胜负。
 - room info、snapshot、`room.updated` 对所有观察者都给出一致的 memberId/seat/playerLimit/minPlayers，不泄漏令牌。
-- 覆盖并发 player/spectator join、claim-seat、重连、满员转观战、spectator cap、房主离开、finished 保留期和 room close 的 API/集成测试。
+- 覆盖并发 player/spectator join、claim-seat、重连、满员转观战、spectatorCap、房主离开、finished 保留期和 room close 的 API/集成测试。
 
 ## 可能涉及的代码
 

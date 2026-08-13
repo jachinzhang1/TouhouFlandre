@@ -142,6 +142,17 @@ func (q *Queries) CountSkipsForRoundMember(ctx context.Context, arg CountSkipsFo
 	return count, err
 }
 
+const countSpectators = `-- name: CountSpectators :one
+SELECT count(*)::int FROM multi_member WHERE room_id = $1 AND role = 'spectator' AND status <> 'left'
+`
+
+func (q *Queries) CountSpectators(ctx context.Context, roomID string) (int32, error) {
+	row := q.db.QueryRow(ctx, countSpectators, roomID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const countTurnsForRound = `-- name: CountTurnsForRound :one
 SELECT COUNT(*) FROM multi_turn WHERE round_id = $1
 `
@@ -215,8 +226,15 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 
 const createMember = `-- name: CreateMember :one
 INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
-VALUES ($1, $2, $3::integer, 'player', $4, $5)
-RETURNING id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at
+VALUES (
+    $1,
+    $2,
+    $3::integer,
+    'player',
+    $4,
+    $5
+)
+RETURNING id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
 `
 
 type CreateMemberParams struct {
@@ -240,7 +258,6 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 		&i.ID,
 		&i.RoomID,
 		&i.Slot,
-		&i.Role,
 		&i.DisplayName,
 		&i.TokenHash,
 		&i.Status,
@@ -248,43 +265,7 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
-	)
-	return i, err
-}
-
-const createSpectatorMember = `-- name: CreateSpectatorMember :one
-INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
-VALUES ($1, $2, NULL, 'spectator', $3, $4)
-RETURNING id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at
-`
-
-type CreateSpectatorMemberParams struct {
-	ID          string `json:"id"`
-	RoomID      string `json:"room_id"`
-	DisplayName string `json:"display_name"`
-	TokenHash   string `json:"token_hash"`
-}
-
-func (q *Queries) CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error) {
-	row := q.db.QueryRow(ctx, createSpectatorMember,
-		arg.ID,
-		arg.RoomID,
-		arg.DisplayName,
-		arg.TokenHash,
-	)
-	var i MultiMember
-	err := row.Scan(
-		&i.ID,
-		&i.RoomID,
-		&i.Slot,
 		&i.Role,
-		&i.DisplayName,
-		&i.TokenHash,
-		&i.Status,
-		&i.Ready,
-		&i.RematchReady,
-		&i.GraceUntil,
-		&i.JoinedAt,
 	)
 	return i, err
 }
@@ -387,6 +368,43 @@ func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (Multi
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+	)
+	return i, err
+}
+
+const createSpectatorMember = `-- name: CreateSpectatorMember :one
+INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
+VALUES ($1, $2, NULL, 'spectator', $3, $4)
+RETURNING id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+`
+
+type CreateSpectatorMemberParams struct {
+	ID          string `json:"id"`
+	RoomID      string `json:"room_id"`
+	DisplayName string `json:"display_name"`
+	TokenHash   string `json:"token_hash"`
+}
+
+func (q *Queries) CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, createSpectatorMember,
+		arg.ID,
+		arg.RoomID,
+		arg.DisplayName,
+		arg.TokenHash,
+	)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Slot,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -634,31 +652,8 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch,
 	return i, err
 }
 
-const getMemberByTokenHash = `-- name: GetMemberByTokenHash :one
-SELECT id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at FROM multi_member WHERE token_hash = $1
-`
-
-func (q *Queries) GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error) {
-	row := q.db.QueryRow(ctx, getMemberByTokenHash, tokenHash)
-	var i MultiMember
-	err := row.Scan(
-		&i.ID,
-		&i.RoomID,
-		&i.Slot,
-		&i.Role,
-		&i.DisplayName,
-		&i.TokenHash,
-		&i.Status,
-		&i.Ready,
-		&i.RematchReady,
-		&i.GraceUntil,
-		&i.JoinedAt,
-	)
-	return i, err
-}
-
 const getMember = `-- name: GetMember :one
-SELECT id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at FROM multi_member WHERE id = $1
+SELECT id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE id = $1
 `
 
 func (q *Queries) GetMember(ctx context.Context, id string) (MultiMember, error) {
@@ -668,7 +663,6 @@ func (q *Queries) GetMember(ctx context.Context, id string) (MultiMember, error)
 		&i.ID,
 		&i.RoomID,
 		&i.Slot,
-		&i.Role,
 		&i.DisplayName,
 		&i.TokenHash,
 		&i.Status,
@@ -676,6 +670,30 @@ func (q *Queries) GetMember(ctx context.Context, id string) (MultiMember, error)
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getMemberByTokenHash = `-- name: GetMemberByTokenHash :one
+SELECT id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE token_hash = $1
+`
+
+func (q *Queries) GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, getMemberByTokenHash, tokenHash)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Slot,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -1335,19 +1353,8 @@ func (q *Queries) ListGuessesForRound(ctx context.Context, roundID string) ([]Mu
 	return items, nil
 }
 
-const countSpectators = `-- name: CountSpectators :one
-SELECT count(*)::int FROM multi_member WHERE room_id = $1 AND role = 'spectator' AND status <> 'left'
-`
-
-func (q *Queries) CountSpectators(ctx context.Context, roomID string) (int32, error) {
-	row := q.db.QueryRow(ctx, countSpectators, roomID)
-	var count int32
-	err := row.Scan(&count)
-	return count, err
-}
-
 const listMembers = `-- name: ListMembers :many
-SELECT id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY slot
+SELECT id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY slot
 `
 
 func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember, error) {
@@ -1363,7 +1370,6 @@ func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember
 			&i.ID,
 			&i.RoomID,
 			&i.Slot,
-			&i.Role,
 			&i.DisplayName,
 			&i.TokenHash,
 			&i.Status,
@@ -1371,6 +1377,7 @@ func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember
 			&i.RematchReady,
 			&i.GraceUntil,
 			&i.JoinedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1383,7 +1390,7 @@ func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember
 }
 
 const listMembersForRematch = `-- name: ListMembersForRematch :many
-SELECT id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY slot
+SELECT id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY slot
 `
 
 func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error) {
@@ -1399,7 +1406,6 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 			&i.ID,
 			&i.RoomID,
 			&i.Slot,
-			&i.Role,
 			&i.DisplayName,
 			&i.TokenHash,
 			&i.Status,
@@ -1407,6 +1413,7 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 			&i.RematchReady,
 			&i.GraceUntil,
 			&i.JoinedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1520,7 +1527,7 @@ func (q *Queries) ListRoundsForMatch(ctx context.Context, matchID string) ([]Mul
 }
 
 const listTimedOutMembers = `-- name: ListTimedOutMembers :many
-SELECT id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at FROM multi_member WHERE status = 'disconnected' AND grace_until <= now() ORDER BY grace_until
+SELECT id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE status = 'disconnected' AND grace_until <= now() ORDER BY grace_until
 `
 
 func (q *Queries) ListTimedOutMembers(ctx context.Context) ([]MultiMember, error) {
@@ -1536,7 +1543,6 @@ func (q *Queries) ListTimedOutMembers(ctx context.Context) ([]MultiMember, error
 			&i.ID,
 			&i.RoomID,
 			&i.Slot,
-			&i.Role,
 			&i.DisplayName,
 			&i.TokenHash,
 			&i.Status,
@@ -1544,6 +1550,7 @@ func (q *Queries) ListTimedOutMembers(ctx context.Context) ([]MultiMember, error
 			&i.RematchReady,
 			&i.GraceUntil,
 			&i.JoinedAt,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -1615,7 +1622,7 @@ func (q *Queries) ListUsedAnswersForMatch(ctx context.Context, matchID string) (
 }
 
 const setMemberReady = `-- name: SetMemberReady :one
-UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at
+UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
 `
 
 type SetMemberReadyParams struct {
@@ -1630,7 +1637,6 @@ func (q *Queries) SetMemberReady(ctx context.Context, arg SetMemberReadyParams) 
 		&i.ID,
 		&i.RoomID,
 		&i.Slot,
-		&i.Role,
 		&i.DisplayName,
 		&i.TokenHash,
 		&i.Status,
@@ -1638,12 +1644,13 @@ func (q *Queries) SetMemberReady(ctx context.Context, arg SetMemberReadyParams) 
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const setMemberRematchReady = `-- name: SetMemberRematchReady :one
-UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at
+UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
 `
 
 type SetMemberRematchReadyParams struct {
@@ -1658,7 +1665,6 @@ func (q *Queries) SetMemberRematchReady(ctx context.Context, arg SetMemberRematc
 		&i.ID,
 		&i.RoomID,
 		&i.Slot,
-		&i.Role,
 		&i.DisplayName,
 		&i.TokenHash,
 		&i.Status,
@@ -1666,6 +1672,7 @@ func (q *Queries) SetMemberRematchReady(ctx context.Context, arg SetMemberRematc
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
+		&i.Role,
 	)
 	return i, err
 }
@@ -1725,7 +1732,7 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 }
 
 const updateMemberStatus = `-- name: UpdateMemberStatus :one
-UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING id, room_id, slot, role, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at
+UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING id, room_id, slot, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
 `
 
 type UpdateMemberStatusParams struct {
@@ -1741,7 +1748,6 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 		&i.ID,
 		&i.RoomID,
 		&i.Slot,
-		&i.Role,
 		&i.DisplayName,
 		&i.TokenHash,
 		&i.Status,
@@ -1749,6 +1755,7 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 		&i.RematchReady,
 		&i.GraceUntil,
 		&i.JoinedAt,
+		&i.Role,
 	)
 	return i, err
 }
