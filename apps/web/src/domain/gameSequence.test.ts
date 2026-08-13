@@ -24,7 +24,7 @@ function cursor(sequence: number): RoomCursorEnvelope {
 }
 
 describe("GameSequenceCoordinator", () => {
-  it("advances cursor frames without applying a business event", () => {
+  it("applies business events while cursor frames only advance the watermark", () => {
     const applyEvent = vi.fn();
     const advance = vi.fn();
     const coordinator = new GameSequenceCoordinator(0, {
@@ -33,11 +33,13 @@ describe("GameSequenceCoordinator", () => {
       resync: vi.fn(),
     });
 
-    coordinator.receive(cursor(1));
+    coordinator.receive(event(1));
+    coordinator.receive(cursor(2));
 
-    expect(applyEvent).not.toHaveBeenCalled();
-    expect(advance).toHaveBeenCalledWith(1);
-    expect(coordinator.appliedSequence).toBe(1);
+    expect(applyEvent).toHaveBeenCalledOnce();
+    expect(applyEvent).toHaveBeenCalledWith(event(1));
+    expect(advance.mock.calls).toEqual([[1], [2]]);
+    expect(coordinator.appliedSequence).toBe(2);
   });
 
   it("uses one snapshot for a true gap and applies buffered duplicates once", async () => {
@@ -71,8 +73,9 @@ describe("GameSequenceCoordinator", () => {
 
   it("does not persist replay progress before sync.complete", () => {
     const persist = vi.fn();
+    const applyEvent = vi.fn();
     const coordinator = new GameSequenceCoordinator(0, {
-      applyEvent: vi.fn(),
+      applyEvent,
       advance: vi.fn(),
       persist,
       resync: vi.fn(),
@@ -89,7 +92,10 @@ describe("GameSequenceCoordinator", () => {
     expect(persist).toHaveBeenLastCalledWith(2);
 
     coordinator.receive(event(3));
+    coordinator.receive(event(3));
     expect(coordinator.completedSequence).toBe(3);
     expect(persist).toHaveBeenLastCalledWith(3);
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(applyEvent.mock.calls).toEqual([[event(1)], [event(3)]]);
   });
 });

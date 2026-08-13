@@ -11,6 +11,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
@@ -578,6 +579,94 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 		if p["viewerResult"] != wantResult {
 			t.Fatalf("%s match.ended viewerResult = %v, want %s", name, p["viewerResult"], wantResult)
 		}
+	}
+}
+
+func TestMultiWSV2SpectatorReadOnlyAndFinishedRetention(t *testing.T) {
+	fixture := createMatchFixtureMode(t, "bo1", "race", 60)
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "观战者"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("spectator join: %d %s", resp.StatusCode, payload)
+	}
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Seat != nil {
+		t.Fatalf("spectator identity = %+v", spectator.Viewer)
+	}
+	spectatorToken := string(spectator.GuestToken)
+	spectatorConn := wsDial(t, fixture.roomID, spectatorToken, 0, nil)
+	drainUntilType(t, spectatorConn, "sync.complete", 16)
+
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", spectatorToken, nil)
+	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
+		t.Fatalf("spectator ready = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
+	}
+
+	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	time.Sleep(10 * time.Millisecond)
+	if err := fastSweeper().SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	playing := readUntilType(t, spectatorConn, "round.playing", 16)
+
+	answer := currentAnswer(t, fixture.roomID)
+	resp, payload = guess(t, fixture.roomID, spectatorToken, 1, answer, "spectator-write")
+	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
+		t.Fatalf("spectator guess = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
+	}
+	resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, answer, "spectator-view")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("winning guess: %d %s", resp.StatusCode, payload)
+	}
+
+	guessEvent := wsRead(t, spectatorConn)
+	roundEnded := wsRead(t, spectatorConn)
+	matchEnded := wsRead(t, spectatorConn)
+	if guessEvent["type"] != "round.spectator.guess" || guessEvent["sequence"] != playing["sequence"].(float64)+1 ||
+		roundEnded["type"] != "round.ended" || roundEnded["sequence"] != guessEvent["sequence"].(float64)+1 ||
+		matchEnded["type"] != "match.ended" || matchEnded["sequence"] != roundEnded["sequence"].(float64)+1 {
+		t.Fatalf("spectator terminal sequence is not continuous: playing=%v guess=%v round=%v match=%v", playing, guessEvent, roundEnded, matchEnded)
+	}
+	guessPayload, _ := guessEvent["payload"].(map[string]any)
+	if guessPayload["seat"] != float64(1) || guessPayload["guess"] == nil {
+		t.Fatalf("spectator did not receive the full authorized guess: %v", guessPayload)
+	}
+	for _, event := range []map[string]any{roundEnded, matchEnded} {
+		p, _ := event["payload"].(map[string]any)
+		if p["viewerResult"] != nil {
+			t.Fatalf("spectator terminal event exposes a player result: %v", p)
+		}
+	}
+
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", spectatorToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("finished spectator snapshot: %d %s", resp.StatusCode, payload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Status != openapi.RoomStatusFinished || snapshot.Viewer.Role != openapi.ParticipantRoleSpectator {
+		t.Fatalf("finished spectator snapshot = %+v", snapshot)
+	}
+
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET expires_at = now() - interval '1 second' WHERE id = $1", fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
+	if err := fastSweeper().SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	closed := wsRead(t, spectatorConn)
+	closedPayload, _ := closed["payload"].(map[string]any)
+	if closed["type"] != "room.closed" || closed["sequence"] != matchEnded["sequence"].(float64)+1 || closedPayload["reason"] != "retention" {
+		t.Fatalf("finished retention close = %v, want continuous room.closed(retention)", closed)
 	}
 }
 

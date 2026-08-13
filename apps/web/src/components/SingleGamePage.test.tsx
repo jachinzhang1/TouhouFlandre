@@ -71,8 +71,9 @@ const forfeitedSession = {
   },
 } as unknown as PublicGameSession;
 
-const { searchHookMock } = vi.hoisted(() => ({
+const { searchHookMock, timerCheckpointMock } = vi.hoisted(() => ({
   searchHookMock: vi.fn(),
+  timerCheckpointMock: vi.fn(() => 65_000),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -94,6 +95,17 @@ vi.mock("../hooks/useCharacterSearch", () => ({
   useCharacterSearch: searchHookMock,
 }));
 
+vi.mock("../stats/timer", () => ({
+  useForegroundTimer: () => ({
+    elapsedMs: 65_000,
+    checkpoint: timerCheckpointMock,
+  }),
+  useWallClockTimer: () => ({
+    elapsedMs: 65_000,
+    checkpoint: timerCheckpointMock,
+  }),
+}));
+
 import { api } from "../lib/api";
 
 describe("SingleGamePage", () => {
@@ -104,6 +116,7 @@ describe("SingleGamePage", () => {
     vi.mocked(api.createPuzzle).mockReset();
     vi.mocked(api.submitGuess).mockReset();
     vi.mocked(api.forfeitSession).mockReset();
+    timerCheckpointMock.mockClear();
     vi.mocked(api.catalogFull).mockResolvedValue({
       version: "v2",
       works: [],
