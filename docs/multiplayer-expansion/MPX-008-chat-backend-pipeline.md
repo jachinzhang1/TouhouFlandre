@@ -5,6 +5,8 @@
 **依赖**：MPX-007  
 **建议标签**：`type:feature` `area:api` `area:db` `area:contracts` `area:security`
 
+**决策依据**：[聊天 channel × 接收角色](./decisions.md#聊天-channel--接收角色)、[独立聊天持久化、cursor 与本地闭麦](./decisions.md#独立聊天持久化cursor-与本地闭麦)、[WS v2 游戏 sequence 与同步屏障](./decisions.md#ws-v2-游戏-sequence-与同步屏障)
+
 ## 要解决的问题
 
 `room_event` 承载游戏状态且使用房间级连续 sequence。聊天必须可重连、可分页回看、可按查看者安全投影，同时不能让 spectator 消息出现在 PK 玩家流中，也不能被恶意客户端伪造发送者或 channel；未授权聊天更不能让游戏 reducer 误判丢帧。

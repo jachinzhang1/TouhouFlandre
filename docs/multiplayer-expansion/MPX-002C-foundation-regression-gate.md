@@ -8,6 +8,8 @@
 
 **建议标签**：`type:quality` `area:test` `area:contracts`
 
+**决策依据**：[术语与生命周期](./decisions.md#术语与生命周期)、[WS v2 游戏 sequence 与同步屏障](./decisions.md#ws-v2-游戏-sequence-与同步屏障)
+
 ## 要解决的问题
 
 MPX-002A 会改变数据底座，MPX-002B 会改变实时同步语义。即使两个 PR 各自测试通过，也可能在组合后出现旧数据迁移漂移、生成物不一致、双人流程回归、重连水位错误或客户端状态误用 memberId/seat 的问题。MPX-003 之后会开始改房间生命周期，一旦带着这些问题继续推进，定位成本会迅速升高。

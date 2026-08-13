@@ -8,6 +8,8 @@
 
 **建议标签**：`type:feature` `area:contracts` `area:ws` `area:web`
 
+**决策依据**：[WS v2 游戏 sequence 与同步屏障](./decisions.md#ws-v2-游戏-sequence-与同步屏障)
+
 ## 要解决的问题
 
 当前 WebSocket 使用单一 `lastSequence` 和房间级连续 `room_event.sequence` 做重放，但投影可能对不同观察者跳过业务 payload。客户端又只去重并推进水位，无法区分“服务端有意隐藏/跳过”和“真的丢了一帧”。一旦 N 人集合和聊天扩展叠上来，旧语义会让客户端误判缺口、提前持久化水位，或者在重连时漏掉事件。

@@ -6,6 +6,8 @@
 
 **建议标签**：`type:design` `area:docs` `area:contracts` `area:security`
 
+**决策依据**：[聊天 channel × 接收角色](./decisions.md#聊天-channel--接收角色)、[独立聊天持久化、cursor 与本地闭麦](./decisions.md#独立聊天持久化cursor-与本地闭麦)
+
 ## 要解决的问题
 
 聊天不是“给 WebSocket 加一个字符串事件”。它需要稳定的发送者身份、服务器推导的接收范围、可分页重连的独立游标，以及不破坏现有游戏事件重放的 frame 语义。尤其不能把客户端闭麦当成访问控制，也不能让 spectator 消息造成 player 的游戏 sequence 假缺口。

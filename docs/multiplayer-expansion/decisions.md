@@ -233,6 +233,26 @@ spectator 依据矩阵获权查看所有完整棋盘，但这项权限不扩展�
 
 隐私回归至少包含：对 player 的每个 opponent payload 做递归 denylist 检查、验证不同 observer/subject 的列置换不可相关、验证 spectator 完整视图的正例、验证 cross-room token/memberId 与伪造 sender/channel 均不能扩大权限。浏览器本地多人统计只保留 `self`/`other` 归一化结果，落盘和导出剥离 `memberId`、displayName、roomId、roomCode 与 token。
 
+## Issue 依赖与完成定义追踪
+
+下表把每个实现节点绑定到本文的不变量。各 Issue 的验收清单仍是完整完成定义；本表列出其进入下一节点前必须证明的决策结果。
+
+| Issue | 直接依赖 | 必须保持的不变量 | 决策层完成定义 |
+|---|---|---|---|
+| [MPX-002A](./MPX-002A-member-seat-data-foundation.md) | MPX-001 | memberId 是身份键、seat 仅排序；race 上限 8、relay 2、spectator 32 | 旧双人/观战数据升级后公开模型以 memberId + seat 集合表达，默认 `playerLimit=2` 且数据库/生成类型无漂移 |
+| [MPX-002B](./MPX-002B-ws-v2-game-sync-foundation.md) | MPX-002A | v2 每个 game sequence 为业务事件或 cursor；屏障末尾才 `sync.complete` | race/relay 双人流程在 v2 连续重放，并对真缺口单次 snapshot；无效水位不被静默接受 |
+| [MPX-002C](./MPX-002C-foundation-regression-gate.md) | MPX-002B | 002A 数据底座与 002B 同步语义组合后仍一致 | 迁移、生成、两人 race/relay、观战、finished retention、cursor/重连全绿并形成 MPX-003 可复用基线 |
+| [MPX-003](./MPX-003-room-lifecycle-and-team-assignment.md) | MPX-002C | room 行锁线性化 join/claim/final ready；2..`playerLimit` 灵活开局 | 并发结果只出现本文两种提交顺序，seat/capacity/role 变化不越权，原 roster rematch 不可补位 |
+| [MPX-004](./MPX-004-n-player-race-engine.md) | MPX-003 | race 按 roster memberId 独立计分；relay 保持两人；对手隐私由服务端投影 | 2/3/4/8 人竞速终态、并发胜者、离场/超时与 HMAC 匿名矩阵测试通过，旧双人结果不变 |
+| [MPX-005](./MPX-005-race-player-limit-setting.md) | MPX-004 | 上限是容量而非开局目标；仅 lobby host 且无人 ready 可改 | 2..8 配置、降容压紧、claim-seat 及与 join/ready 的并发终态和事件视图一致 |
+| [MPX-006](./MPX-006-n-player-race-web-ui.md) | MPX-004、MPX-005 | Web 只以 memberId 关联、seat 仅展示；player 看匿名对手 | 桌面/移动 2/3/4/8 人、claim-seat/压紧/重连及统计迁移通过，落盘/导出无成员或房间身份 |
+| [MPX-007](./MPX-007-chat-policy-and-protocol.md) | 逻辑依赖 MPX-002B；合并顺序在 MPX-005 后 | channel 完全服务端派生；chat cursor 独立且不透明 | sender/channel/receiver、内容限制、cursor、空页扫描、屏障与威胁模型均能直接生成 MPX-008 授权测试 |
+| [MPX-008](./MPX-008-chat-backend-pipeline.md) | MPX-007 | 消息先持久化后广播，不进入 room_event；history/replay/realtime 共用投影 | 幂等、限流、24 小时保留、channel 授权、cursor 异常和 game/chat 无缺口屏障集成测试通过 |
+| [MPX-009](./MPX-009-chat-web-and-mute.md) | MPX-008 | `receiveChat` 只影响本地渲染；role 变化清除过期权限缓存 | 历史/实时去重、空页推进、闭麦/未读、claim-seat 重建、移动端与 XSS 回归通过 |
+| [MPX-010](./MPX-010-integration-security-rollout.md) | MPX-006、MPX-009 | 本文全部安全、并发、迁移、协议和隐私不变量 | 全量自动化、容量/fan-out 性能、v1 排空、灰度与生产保留 expand schema 的回滚演练通过后方可默认开放 |
+
+关键安全语义在 MPX-001 已全部冻结：角色与 seat 生命周期、容量硬上限、开局/并发顺序、N 人离场、rematch 完整性、channel 授权、消息字符/大小/频率/保留期、game/chat 水位、role 变化重鉴权和隐私元数据边界均不得留给实现临时决定。允许后续 Issue 自行选择的仅是不会改变 wire/授权语义的内部函数拆分、索引名称、组件视觉细节和等价存储优化。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案

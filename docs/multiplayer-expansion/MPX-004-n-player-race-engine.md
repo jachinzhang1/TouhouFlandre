@@ -5,6 +5,8 @@
 **依赖**：MPX-003  
 **建议标签**：`type:feature` `area:api` `area:multi` `area:contracts`
 
+**决策依据**：[模式能力边界](./decisions.md#模式能力边界)、[隐私投影与可观察元数据](./decisions.md#隐私投影与可观察元数据)
+
 ## 要解决的问题
 
 当前 race 的胜者、比分和投影仍是两个 slot：`score_slot1/score_slot2`、`winner_slot`、`BoardsView{slot1,slot2}`，放弃/断线还依赖 `OtherSlot`。增加人数设置之前，服务端必须先能冻结 N 人 roster、可靠处理多人同时竞猜，并明确一名玩家放弃或离开时其余玩家如何继续。

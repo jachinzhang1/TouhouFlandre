@@ -8,6 +8,8 @@
 
 **建议标签**：`type:feature` `area:api` `area:multi` `area:contracts`
 
+**决策依据**：[大厅串行化与开局冻结](./decisions.md#大厅串行化与开局冻结)、[状态 × 角色 × 动作权限](./decisions.md#状态--角色--动作权限)
+
 ## 要解决的问题
 
 member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、准备、离开、重连和再来一局仍用 `len(members)==2`、`OtherSlot` 或“找 slot 1/2”的判断，底层模型仍不可扩展。本 Issue 负责把房间级命令改成读取容量、最少开局人数和参与者能力；竞速局内规则仍由 MPX-004 接管。
