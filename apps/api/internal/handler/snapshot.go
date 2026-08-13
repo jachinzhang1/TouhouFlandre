@@ -177,6 +177,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	for _, view := range multi.MemberViews(state.Members) {
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
+	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
 	snapshot := openapi.RoomSnapshot{
 		RoomId:         state.Room.ID,
 		RoomCode:       state.Room.Code,
@@ -187,8 +188,11 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		ExpiresAt:      state.Room.ExpiresAt.Time,
 		Viewer:         toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
 		Members:        memberViews,
+		PlayerCount:    capacity.PlayerCount,
 		SpectatorCount: int(state.SpectatorCount),
-		PlayerLimit:    int(state.Room.PlayerLimit),
+		PlayerLimit:    capacity.PlayerLimit,
+		MinPlayers:     openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
+		AvailableSeats: capacity.AvailableSeats,
 		GameSequence:   int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)

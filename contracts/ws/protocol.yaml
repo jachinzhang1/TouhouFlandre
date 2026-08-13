@@ -83,7 +83,7 @@ events:
       type: object
       additionalProperties: false
       required:
-        [format, mode, turnSeconds, playerLimit, members, spectatorCount]
+        [format, mode, turnSeconds, playerLimit, minPlayers, playerCount, availableSeats, members, spectatorCount]
       properties:
         format:
           type: string
@@ -97,6 +97,17 @@ events:
         playerLimit:
           type: integer
           minimum: 2
+          maximum: 8
+        minPlayers:
+          type: integer
+          enum: [2]
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 8
+        availableSeats:
+          type: integer
+          minimum: 0
           maximum: 8
         members:
           type: array
@@ -715,6 +726,9 @@ examples:
           mode: race
           turnSeconds: 60
           playerLimit: 2
+          minPlayers: 2
+          playerCount: 2
+          availableSeats: 0
           members:
             - memberId: member-host
               seat: 1

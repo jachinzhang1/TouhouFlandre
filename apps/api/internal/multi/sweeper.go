@@ -521,14 +521,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, RoomUpdatedPayload{
-		Format:         RoomFormat(room.Format),
-		Mode:           MultiplayerMode(room.Mode),
-		TurnSeconds:    int(room.TurnSeconds),
-		PlayerLimit:    int(room.PlayerLimit),
-		Members:        MemberViews(remaining),
-		SpectatorCount: int(spectatorCount),
-	}); err != nil {
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -612,14 +605,7 @@ func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.Mult
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, RoomUpdatedPayload{
-		Format:         RoomFormat(lockedRoom.Format),
-		Mode:           MultiplayerMode(lockedRoom.Mode),
-		TurnSeconds:    int(lockedRoom.TurnSeconds),
-		PlayerLimit:    int(lockedRoom.PlayerLimit),
-		Members:        MemberViews(players),
-		SpectatorCount: int(spectatorCount),
-	}); err != nil {
+	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {

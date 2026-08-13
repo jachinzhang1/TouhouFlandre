@@ -63,6 +63,9 @@ export interface RoomUiState {
     mode: MultiplayerMode;
     turnSeconds: number;
     playerLimit: number;
+    minPlayers: number;
+    playerCount: number;
+    availableSeats: number;
     status: MultiRoomStatus;
     expiresAt: string;
     spectatorCount: number;
@@ -127,6 +130,9 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               mode: payload.mode,
               turnSeconds: payload.turnSeconds,
               playerLimit: payload.playerLimit,
+              minPlayers: payload.minPlayers,
+              playerCount: payload.playerCount,
+              availableSeats: payload.availableSeats,
               spectatorCount: payload.spectatorCount,
             }
           : state.room,
@@ -431,6 +437,9 @@ export function applySnapshot(
       mode: snapshot.mode,
       turnSeconds: snapshot.turnSeconds,
       playerLimit: snapshot.playerLimit,
+      minPlayers: snapshot.minPlayers,
+      playerCount: snapshot.playerCount,
+      availableSeats: snapshot.availableSeats,
       status: snapshot.status,
       expiresAt: snapshot.expiresAt,
       spectatorCount: snapshot.spectatorCount,

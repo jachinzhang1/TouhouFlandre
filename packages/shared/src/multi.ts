@@ -88,6 +88,9 @@ export interface RoomUpdatedPayload {
   mode: MultiplayerMode;
   turnSeconds: number;
   playerLimit: number;
+  minPlayers: number;
+  playerCount: number;
+  availableSeats: number;
   members: MemberView[];
   spectatorCount: number;
 }

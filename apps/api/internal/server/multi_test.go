@@ -123,7 +123,7 @@ func TestMultiRoomInfo(t *testing.T) {
 	if err := json.Unmarshal(payload, &info); err != nil {
 		t.Fatal(err)
 	}
-	if info.Format != openapi.Bo3 || info.Status != openapi.RoomStatusLobby || info.MemberCount != 1 {
+	if info.Format != openapi.Bo3 || info.Status != openapi.RoomStatusLobby || info.PlayerCount != 1 {
 		t.Fatalf("unexpected info: %+v", info)
 	}
 

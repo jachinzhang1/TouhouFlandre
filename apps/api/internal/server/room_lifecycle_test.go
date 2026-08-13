@@ -3,6 +3,8 @@ package server_test
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -67,6 +69,141 @@ func createLifecycleRoom(t *testing.T, spectatorCount int) lifecycleRoom {
 type lifecycleResponse struct {
 	status  int
 	payload []byte
+}
+
+type lifecycleMemberIdentity struct {
+	MemberID string
+	Seat     int
+}
+
+func publicMemberIdentities(members []openapi.PublicMemberView) []lifecycleMemberIdentity {
+	identities := make([]lifecycleMemberIdentity, 0, len(members))
+	for _, member := range members {
+		identities = append(identities, lifecycleMemberIdentity{MemberID: member.MemberId, Seat: member.Seat})
+	}
+	return identities
+}
+
+func snapshotMemberIdentities(members []openapi.MemberView) []lifecycleMemberIdentity {
+	identities := make([]lifecycleMemberIdentity, 0, len(members))
+	for _, member := range members {
+		identities = append(identities, lifecycleMemberIdentity{MemberID: member.MemberId, Seat: member.Seat})
+	}
+	return identities
+}
+
+func latestRoomUpdatedPayload(t *testing.T, snapshot openapi.RoomSnapshot) multi.RoomUpdatedPayload {
+	t.Helper()
+	for index := len(snapshot.Events) - 1; index >= 0; index-- {
+		if snapshot.Events[index].Type != string(multi.EventRoomUpdated) {
+			continue
+		}
+		payload, err := json.Marshal(snapshot.Events[index].Payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var updated multi.RoomUpdatedPayload
+		if err := json.Unmarshal(payload, &updated); err != nil {
+			t.Fatal(err)
+		}
+		return updated
+	}
+	t.Fatal("snapshot has no room.updated event")
+	return multi.RoomUpdatedPayload{}
+}
+
+func TestMultiRoomObserversShareCapacityAndPublicIdentity(t *testing.T) {
+	fixture := createLifecycleRoom(t, 1)
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 3 WHERE id = $1", fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
+	// Emit a fresh room.updated after the capacity change without starting the match.
+	if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true}); resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
+	}
+
+	infoResp, infoPayload := fastRequest(http.MethodGet, "/api/rooms/"+fixture.roomCode, nil)
+	if infoResp.StatusCode != http.StatusOK {
+		t.Fatalf("room info: %d %s", infoResp.StatusCode, infoPayload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(infoPayload, &info); err != nil {
+		t.Fatal(err)
+	}
+
+	hostResp, hostPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.hostToken, nil)
+	if hostResp.StatusCode != http.StatusOK {
+		t.Fatalf("host snapshot: %d %s", hostResp.StatusCode, hostPayload)
+	}
+	var hostSnapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(hostPayload, &hostSnapshot); err != nil {
+		t.Fatal(err)
+	}
+
+	spectatorToken := string(fixture.spectators[0].GuestToken)
+	spectatorResp, spectatorPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", spectatorToken, nil)
+	if spectatorResp.StatusCode != http.StatusOK {
+		t.Fatalf("spectator snapshot: %d %s", spectatorResp.StatusCode, spectatorPayload)
+	}
+	var spectatorSnapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(spectatorPayload, &spectatorSnapshot); err != nil {
+		t.Fatal(err)
+	}
+
+	hostUpdated := latestRoomUpdatedPayload(t, hostSnapshot)
+	spectatorUpdated := latestRoomUpdatedPayload(t, spectatorSnapshot)
+	for observer, capacity := range map[string][5]int{
+		"room info":          {info.PlayerLimit, int(info.MinPlayers), info.PlayerCount, info.AvailableSeats, info.SpectatorCount},
+		"host snapshot":      {hostSnapshot.PlayerLimit, int(hostSnapshot.MinPlayers), hostSnapshot.PlayerCount, hostSnapshot.AvailableSeats, hostSnapshot.SpectatorCount},
+		"spectator snapshot": {spectatorSnapshot.PlayerLimit, int(spectatorSnapshot.MinPlayers), spectatorSnapshot.PlayerCount, spectatorSnapshot.AvailableSeats, spectatorSnapshot.SpectatorCount},
+		"host room.updated":  {hostUpdated.PlayerLimit, hostUpdated.MinPlayers, hostUpdated.PlayerCount, hostUpdated.AvailableSeats, hostUpdated.SpectatorCount},
+		"guest room.updated": {spectatorUpdated.PlayerLimit, spectatorUpdated.MinPlayers, spectatorUpdated.PlayerCount, spectatorUpdated.AvailableSeats, spectatorUpdated.SpectatorCount},
+	} {
+		if capacity != [5]int{3, multi.MinPlayers, 2, 1, 1} {
+			t.Fatalf("%s capacity = %v, want [3 2 2 1 1]", observer, capacity)
+		}
+	}
+
+	wantMembers := publicMemberIdentities(info.Members)
+	for observer, gotMembers := range map[string][]lifecycleMemberIdentity{
+		"host snapshot":      snapshotMemberIdentities(hostSnapshot.Members),
+		"spectator snapshot": snapshotMemberIdentities(spectatorSnapshot.Members),
+		"host room.updated":  snapshotMemberIdentitiesFromDomain(hostUpdated.Members),
+		"guest room.updated": snapshotMemberIdentitiesFromDomain(spectatorUpdated.Members),
+	} {
+		if !reflect.DeepEqual(gotMembers, wantMembers) {
+			t.Fatalf("%s members = %v, want %v", observer, gotMembers, wantMembers)
+		}
+	}
+
+	serialized := string(infoPayload) + string(hostPayload) + string(spectatorPayload)
+	if strings.Contains(string(infoPayload), `"displayName"`) {
+		t.Fatalf("public room info leaked display names: %s", infoPayload)
+	}
+	for _, forbiddenKey := range []string{`"guestToken"`, `"token"`, `"tokenHash"`} {
+		if strings.Contains(serialized, forbiddenKey) {
+			t.Fatalf("observer payload leaked forbidden key %s", forbiddenKey)
+		}
+	}
+	var tokenHashes []string
+	if err := pool.QueryRow(ctx, `
+		SELECT COALESCE(array_agg(token_hash ORDER BY id), ARRAY[]::text[])
+		FROM multi_member WHERE room_id = $1`, fixture.roomID).Scan(&tokenHashes); err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range append(tokenHashes, fixture.hostToken, fixture.joinerToken, spectatorToken) {
+		if strings.Contains(serialized, secret) {
+			t.Fatal("observer payload leaked a member credential")
+		}
+	}
+}
+
+func snapshotMemberIdentitiesFromDomain(members []multi.MemberView) []lifecycleMemberIdentity {
+	identities := make([]lifecycleMemberIdentity, 0, len(members))
+	for _, member := range members {
+		identities = append(identities, lifecycleMemberIdentity{MemberID: member.MemberID, Seat: member.Seat})
+	}
+	return identities
 }
 
 func TestMultiJoinVsFinalReadyLinearizes(t *testing.T) {

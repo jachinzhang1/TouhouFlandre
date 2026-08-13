@@ -55,14 +55,7 @@ var validRoomFormats = map[multi.RoomFormat]bool{
 }
 
 func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int) multi.RoomUpdatedPayload {
-	return multi.RoomUpdatedPayload{
-		Format:         multi.RoomFormat(room.Format),
-		Mode:           multi.MultiplayerMode(room.Mode),
-		TurnSeconds:    int(room.TurnSeconds),
-		PlayerLimit:    int(room.PlayerLimit),
-		Members:        multi.MemberViews(members),
-		SpectatorCount: spectatorCount,
-	}
+	return multi.NewRoomUpdatedPayload(room, members, spectatorCount)
 }
 
 func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
@@ -72,6 +65,15 @@ func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 		DisplayName: m.DisplayName,
 		Status:      openapi.MemberStatus(m.Status),
 		Ready:       m.Ready,
+	}
+}
+
+func toOpenAPIPublicMemberView(m multi.MemberView) openapi.PublicMemberView {
+	return openapi.PublicMemberView{
+		MemberId: m.MemberID,
+		Seat:     m.Seat,
+		Status:   openapi.MemberStatus(m.Status),
+		Ready:    m.Ready,
 	}
 }
 
@@ -260,16 +262,25 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 		return nil, internalError(err)
 	}
 	openapiScope := toOpenAPIQuestionScope(scope)
+	memberViews := multi.MemberViews(members)
+	publicMembers := make([]openapi.PublicMemberView, 0, len(memberViews))
+	for _, member := range memberViews {
+		publicMembers = append(publicMembers, toOpenAPIPublicMemberView(member))
+	}
+	capacity := multi.RoomCapacity(len(memberViews), int(room.PlayerLimit))
 	return openapi.RoomsGetInfo200JSONResponse{
 		RoomCode:       room.Code,
 		Format:         openapi.RoomFormat(room.Format),
 		Mode:           openapi.MultiplayerMode(room.Mode),
 		TurnSeconds:    openapi.RoomInfoTurnSeconds(room.TurnSeconds),
 		Status:         openapi.RoomStatus(room.Status),
-		MemberCount:    len(members),
+		Members:        publicMembers,
+		PlayerCount:    capacity.PlayerCount,
 		SpectatorCount: int(spectatorCount),
 		JoinRole:       openapi.ParticipantRole(joinRole),
-		PlayerLimit:    int(room.PlayerLimit),
+		PlayerLimit:    capacity.PlayerLimit,
+		MinPlayers:     openapi.RoomInfoMinPlayers(capacity.MinPlayers),
+		AvailableSeats: capacity.AvailableSeats,
 		QuestionScope:  &openapiScope,
 	}, nil
 }

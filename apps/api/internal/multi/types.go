@@ -73,6 +73,30 @@ func MemberViews(rows []repo.MultiMember) []MemberView {
 	return views
 }
 
+// RoomCapacityView is the shared capacity projection used by room info,
+// snapshots, and room.updated. AvailableSeats represents unoccupied player
+// seats; admission rules such as lobby-only claims remain separate.
+type RoomCapacityView struct {
+	PlayerLimit    int
+	MinPlayers     int
+	PlayerCount    int
+	AvailableSeats int
+}
+
+// RoomCapacity derives every public capacity value from one player roster.
+func RoomCapacity(playerCount, playerLimit int) RoomCapacityView {
+	availableSeats := playerLimit - playerCount
+	if availableSeats < 0 {
+		availableSeats = 0
+	}
+	return RoomCapacityView{
+		PlayerLimit:    playerLimit,
+		MinPlayers:     MinPlayers,
+		PlayerCount:    playerCount,
+		AvailableSeats: availableSeats,
+	}
+}
+
 func MemberSeat(m repo.MultiMember) int {
 	switch seat := any(m.Seat).(type) {
 	case int32:
@@ -272,8 +296,29 @@ type RoomUpdatedPayload struct {
 	Mode           MultiplayerMode `json:"mode"`
 	TurnSeconds    int             `json:"turnSeconds"`
 	PlayerLimit    int             `json:"playerLimit"`
+	MinPlayers     int             `json:"minPlayers"`
+	PlayerCount    int             `json:"playerCount"`
+	AvailableSeats int             `json:"availableSeats"`
 	Members        []MemberView    `json:"members"`
 	SpectatorCount int             `json:"spectatorCount"`
+}
+
+// NewRoomUpdatedPayload keeps the event projection identical across request,
+// websocket disconnect, and sweeper paths.
+func NewRoomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int) RoomUpdatedPayload {
+	views := MemberViews(members)
+	capacity := RoomCapacity(len(views), int(room.PlayerLimit))
+	return RoomUpdatedPayload{
+		Format:         RoomFormat(room.Format),
+		Mode:           MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    capacity.PlayerLimit,
+		MinPlayers:     capacity.MinPlayers,
+		PlayerCount:    capacity.PlayerCount,
+		AvailableSeats: capacity.AvailableSeats,
+		Members:        views,
+		SpectatorCount: spectatorCount,
+	}
 }
 
 // MatchStartedPayload match.started：新场次开始。

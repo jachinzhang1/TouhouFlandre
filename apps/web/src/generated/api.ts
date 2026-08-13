@@ -804,6 +804,14 @@ export interface components {
             /** @description 大厅就绪态（仅 lobby 态使用）。 */
             ready: boolean;
         };
+        /** @description 公开房间预检中的玩家摘要；不含昵称或任何鉴权凭据。 */
+        PublicMemberView: {
+            /** @description 房间内稳定、可公开的成员标识；不是鉴权凭据。 */
+            memberId: string;
+            seat: number;
+            status: components["schemas"]["MemberStatus"];
+            ready: boolean;
+        };
         /** @description 当前访问者视图。观战者不占玩家 seat。 */
         ParticipantView: {
             /** @description 当前访问者在房间内的稳定成员标识。 */
@@ -814,7 +822,7 @@ export interface components {
             displayName: string;
             status: components["schemas"]["MemberStatus"];
         };
-        /** @description 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。 */
+        /** @description 公开只读预检（加入前可见赛制，08 §4.2）。成员集合不含昵称/token。 */
         RoomInfo: {
             /** @description 6 位房间号。 */
             roomCode: string;
@@ -826,13 +834,22 @@ export interface components {
              */
             turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
+            /** @description 当前玩家的公开身份与席位摘要，不含观战者。 */
+            members: components["schemas"]["PublicMemberView"][];
             /** @description 当前 PK 玩家数（不含观战者）。 */
-            memberCount: number;
+            playerCount: number;
             /** @description 当前未离开的观战者数量。 */
             spectatorCount: number;
             joinRole: components["schemas"]["ParticipantRole"];
             /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
             playerLimit: number;
+            /**
+             * @description 服务端固定的最少开局玩家数。
+             * @enum {integer}
+             */
+            minPlayers: 2;
+            /** @description playerLimit 与当前玩家数之间的空余席位数。 */
+            availableSeats: number;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 创建房间响应。guestToken 明文仅此一次返回。 */
@@ -874,9 +891,17 @@ export interface components {
             viewer: components["schemas"]["ParticipantView"];
             /** @description PK 玩家视图，不含观战者。 */
             members: components["schemas"]["MemberView"][];
+            playerCount: number;
             spectatorCount: number;
             /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
             playerLimit: number;
+            /**
+             * @description 服务端固定的最少开局玩家数。
+             * @enum {integer}
+             */
+            minPlayers: 2;
+            /** @description playerLimit 与当前玩家数之间的空余席位数。 */
+            availableSeats: number;
             /** @description 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。 */
             gameSequence: number;
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
