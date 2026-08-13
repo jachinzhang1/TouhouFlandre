@@ -413,8 +413,8 @@ func TestMultiJoinRateLimit(t *testing.T) {
 	if code := doJoin(); code != http.StatusCreated {
 		t.Fatalf("1st join status %d", code)
 	}
-	if code := doJoin(); code != http.StatusConflict { // 满房（409 ROOM_FULL）优先于限流
-		t.Fatalf("2nd join status %d, want 409", code)
+	if code := doJoin(); code != http.StatusCreated { // 玩家满员后仍可在限流配额内作为 spectator 加入
+		t.Fatalf("2nd join status %d, want 201 spectator", code)
 	}
 	if code := doJoin(); code != http.StatusTooManyRequests {
 		t.Fatalf("3rd join status %d, want 429", code)

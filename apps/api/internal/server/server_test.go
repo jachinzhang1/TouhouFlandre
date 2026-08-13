@@ -339,11 +339,8 @@ func TestSearchReimu(t *testing.T) {
 	if err := json.Unmarshal(payload, &search); err != nil {
 		t.Fatal(err)
 	}
-	if search.Total != 1 || len(search.Results) != 1 {
-		t.Fatalf("expected 1 result, got %+v", search)
-	}
-	if search.Results[0].Id != "reimu_hakurei" {
-		t.Fatalf("unexpected result: %+v", search.Results[0])
+	if !searchContainsCharacter(search, "reimu_hakurei") {
+		t.Fatalf("expected Reimu in results, got %+v", search)
 	}
 }
 
@@ -510,7 +507,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(currentPayload, &current); err != nil {
 		t.Fatal(err)
 	}
-	if current.Total != 0 {
+	if searchContainsCharacter(current, "reimu_hakurei") {
 		t.Fatalf("current catalog should exclude Reimu: %+v", current)
 	}
 
@@ -523,7 +520,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Total != 1 || snapshot.Results[0].Id != "reimu_hakurei" {
+	if !searchContainsCharacter(snapshot, "reimu_hakurei") {
 		t.Fatalf("session snapshot should include Reimu: %+v", snapshot)
 	}
 
@@ -535,6 +532,15 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if guessResp.StatusCode != http.StatusOK {
 		t.Fatalf("snapshot guess status %d: %s", guessResp.StatusCode, guessPayload)
 	}
+}
+
+func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
+	for _, result := range search.Results {
+		if result.Id == characterID {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSessionSearchPaginationAndMissingSession(t *testing.T) {

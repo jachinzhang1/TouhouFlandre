@@ -991,7 +991,7 @@ func TestMultiRematch(t *testing.T) {
 	}
 }
 
-func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
+func TestMultiFinishedLeaveRetainsRoom(t *testing.T) {
 	fixture := createMatchFixtureFormat(t, "bo1")
 	startMatch(t, fixture)
 
@@ -1001,7 +1001,7 @@ func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("win: %d %s", resp.StatusCode, payload)
 	}
-	// host 确认 rematch，等待期 joiner 离开 → 房间关闭
+	// host 确认 rematch，等待期 joiner 离开；finished 房间仍保留用于终态恢复/观战。
 	resp, _ = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host rematch: %d", resp.StatusCode)
@@ -1010,12 +1010,22 @@ func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("joiner leave: %d %s", resp.StatusCode, payload)
 	}
-	// 房间已关闭 → rematch ROOM_CLOSED
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
-	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("rematch on closed: %d %s", resp.StatusCode, payload)
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.hostToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("retained snapshot: %d %s", resp.StatusCode, payload)
 	}
-	if err := decodeError(t, payload); err.Code != "ROOM_CLOSED" {
-		t.Fatalf("want ROOM_CLOSED, got %s", err.Code)
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Status != openapi.RoomStatusFinished {
+		t.Fatalf("room status after finished leave = %s, want finished", snapshot.Status)
+	}
+	var status string
+	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 2", fixture.roomID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != string(multi.MemberStatusLeft) {
+		t.Fatalf("joiner status after leave = %s, want left", status)
 	}
 }
