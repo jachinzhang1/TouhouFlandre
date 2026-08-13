@@ -1033,6 +1033,88 @@ func TestMultiDisconnectGrace(t *testing.T) {
 	if ended.Payload["reason"] != "disconnect" {
 		t.Fatalf("reason = %v, want disconnect", ended.Payload["reason"])
 	}
+	winner := collectionEntryAtSeat(t, ended.Payload, "results", 1)
+	if ended.Payload["winnerMemberId"] != winner["memberId"] || winner["result"] != "win" {
+		t.Fatalf("disconnect winner = %v, want unchanged seat 1 winner", ended.Payload)
+	}
+	var roomStatus, matchStatus, memberStatus string
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, m.status, p.status
+		FROM multi_room r
+		JOIN multi_match m ON m.room_id = r.id AND m.match_index = 0
+		JOIN multi_member p ON p.room_id = r.id AND p.seat = 2
+		WHERE r.id = $1`, fixture.roomID).Scan(&roomStatus, &matchStatus, &memberStatus); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusFinished) || matchStatus != "finished" || memberStatus != string(multi.MemberStatusLeft) {
+		t.Fatalf("disconnect terminal state room=%s match=%s member=%s", roomStatus, matchStatus, memberStatus)
+	}
+}
+
+func TestMultiSpectatorLeaveDoesNotAffectMatch(t *testing.T) {
+	type matchState struct {
+		roomStatus  string
+		matchStatus string
+		score1      int32
+		score2      int32
+		endReason   string
+		winnerSeat  string
+	}
+	stateOf := func(t *testing.T, roomID string) matchState {
+		t.Helper()
+		var state matchState
+		if err := pool.QueryRow(ctx, `
+			SELECT r.status,
+			       (SELECT status FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       (SELECT score_slot1 FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       (SELECT score_slot2 FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       COALESCE((SELECT payload->>'reason' FROM room_event WHERE room_id = r.id AND type = 'match.ended' ORDER BY sequence DESC LIMIT 1), ''),
+			       COALESCE((SELECT payload->>'winnerSlot' FROM room_event WHERE room_id = r.id AND type = 'match.ended' ORDER BY sequence DESC LIMIT 1), '')
+			FROM multi_room r WHERE r.id = $1`, roomID).Scan(
+			&state.roomStatus, &state.matchStatus, &state.score1, &state.score2, &state.endReason, &state.winnerSeat,
+		); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+
+	for _, phase := range []string{"playing", "finished"} {
+		t.Run(phase, func(t *testing.T) {
+			fixture := createMatchFixtureFormat(t, "bo1")
+			resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "旁观者"})
+			if resp.StatusCode != http.StatusCreated {
+				t.Fatalf("spectator join: %d %s", resp.StatusCode, payload)
+			}
+			var spectator openapi.JoinRoomResponse
+			if err := json.Unmarshal(payload, &spectator); err != nil {
+				t.Fatal(err)
+			}
+			startMatch(t, fixture)
+			if phase == "finished" {
+				answer := currentAnswer(t, fixture.roomID)
+				if resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, answer, "spectator-leave-finish"); resp.StatusCode != http.StatusOK {
+					t.Fatalf("finish match: %d %s", resp.StatusCode, payload)
+				}
+			}
+
+			before := stateOf(t, fixture.roomID)
+			resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", string(spectator.GuestToken), nil)
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("spectator leave: %d %s", resp.StatusCode, payload)
+			}
+			after := stateOf(t, fixture.roomID)
+			if after != before {
+				t.Fatalf("spectator leave changed match state: before=%+v after=%+v", before, after)
+			}
+			var spectatorStatus string
+			if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE id = $1", spectator.Viewer.MemberId).Scan(&spectatorStatus); err != nil {
+				t.Fatal(err)
+			}
+			if spectatorStatus != string(multi.MemberStatusLeft) {
+				t.Fatalf("spectator status = %s, want left", spectatorStatus)
+			}
+		})
+	}
 }
 
 func TestMultiRestartTermination(t *testing.T) {
