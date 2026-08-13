@@ -83,7 +83,9 @@ export function Paper({
       data-paper-sticker="true"
       style={stackOrder === undefined ? undefined : { zIndex: stackOrder }}
     >
-      <span className="paper-sticker-cast" aria-hidden="true" />
+      <span className="paper-sticker-cast" aria-hidden="true">
+        <span className="paper-sticker-soft-blur" />
+      </span>
       {surface}
     </div>
   );

@@ -28,7 +28,7 @@
 }
 
 .paper-sticker-cast::before,
-.paper-sticker-cast::after {
+.paper-sticker-soft-blur::before {
   position: absolute;
   content: "";
   pointer-events: none;
@@ -51,35 +51,26 @@
   filter: blur(3px);
 }
 
-.paper-sticker-cast::after {
-  inset: 30% 0 0;
+.paper-sticker-soft-blur {
+  position: absolute;
+  inset: calc(30% - 14px) -14px -14px;
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.paper-sticker-soft-blur::before {
+  inset: 14px;
   background: linear-gradient(
     to bottom,
     var(--paper-cast-mid) 0%,
     var(--paper-cast-soft) 52%,
     transparent 100%
   );
-  filter: blur(14px);
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.72) 24%,
-    #000 56%,
-    rgba(0, 0, 0, 0.72) 78%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.72) 24%,
-    #000 56%,
-    rgba(0, 0, 0, 0.72) 78%,
-    transparent 100%
-  );
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 100%, 0 100%);
 }
 
 .paper-sticker > .paper-surface {
-  filter: drop-shadow(0 0 0 transparent);
+  filter: drop-shadow(0 0 0 transparent) drop-shadow(0 0 0 transparent);
   transition: filter 180ms ease;
 }
 
@@ -94,7 +85,8 @@
   }
 
   .paper-sticker:hover > .paper-surface {
-    filter: drop-shadow(0 14px 18px var(--paper-lift-shadow));
+    filter: drop-shadow(0 7px 8px var(--paper-lift-shadow-near))
+      drop-shadow(0 18px 24px var(--paper-lift-shadow-far));
   }
 }
 

@@ -131,7 +131,9 @@ export function AnnouncementPage({
                 key={announcement.id}
                 style={{ zIndex: announcements.length - index }}
               >
-                <span className="paper-sticker-cast" aria-hidden="true" />
+                <span className="paper-sticker-cast" aria-hidden="true">
+                  <span className="paper-sticker-soft-blur" />
+                </span>
                 {announcement.pinned ? (
                   <span
                     className="announcement-pin-corner"

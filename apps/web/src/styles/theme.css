@@ -87,7 +87,8 @@
   --paper-cast-hard: rgba(25, 46, 39, 0.22);
   --paper-cast-mid: rgba(25, 46, 39, 0.12);
   --paper-cast-soft: rgba(25, 46, 39, 0.045);
-  --paper-lift-shadow: rgba(25, 46, 39, 0.18);
+  --paper-lift-shadow-near: rgba(25, 46, 39, 0.24);
+  --paper-lift-shadow-far: rgba(25, 46, 39, 0.12);
   --vermilion: var(--accent);
   --vermilion-dark: var(--accent-strong);
   --vermilion-soft: var(--accent-soft);
@@ -230,7 +231,8 @@ html[data-theme-mode="dark"] {
   --paper-cast-hard: rgba(0, 0, 0, 0.42);
   --paper-cast-mid: rgba(0, 0, 0, 0.22);
   --paper-cast-soft: rgba(0, 0, 0, 0.08);
-  --paper-lift-shadow: rgba(0, 0, 0, 0.36);
+  --paper-lift-shadow-near: rgba(0, 0, 0, 0.52);
+  --paper-lift-shadow-far: rgba(0, 0, 0, 0.24);
   --jade: #59b9a7;
   --jade-soft: #1d3d38;
   --jade-strong: #84d9ca;
