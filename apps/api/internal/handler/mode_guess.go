@@ -48,6 +48,16 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	fields := multi.FieldsForMatch(match)
 	storageFields := multi.StorageFieldsForMatch(match)
 	maxGuesses := multi.MaxGuessesForMatch(match)
+	roundPlayer, err := q.GetRoundPlayer(ctx, repo.GetRoundPlayerParams{RoundID: round.ID, MemberID: member.ID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return submitGuessResult{}, roundNotActiveError("你不在本局阵容中。")
+		}
+		return submitGuessResult{}, internalError(err)
+	}
+	if roundPlayer.Status != "active" {
+		return submitGuessResult{}, roundNotActiveError("你已放弃本局。")
+	}
 
 	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {

@@ -557,7 +557,8 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 
 // RoomsLeave 离开房间（08 §4.6）。
 // 大厅：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot（房主 ready 保留）；
-// 对局中：弃赛判对方胜（reason=forfeit，锁序 局→场→房间 由 ForfeitMemberMatch 保证）；
+// 对局中：race 标记 roster left 并让剩余玩家继续，relay 仍判对方胜；
+// 锁序 局→场→房间由 ForfeitMemberMatch 保证；
 // 对局结束后：房间关闭（无继续对局的可能）。
 func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveRequestObject) (openapi.RoomsLeaveResponseObject, error) {
 	member, ok := GuestMemberFromContext(ctx)

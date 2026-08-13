@@ -145,6 +145,14 @@ RETURNING *;
 -- name: ListMatchPlayers :many
 SELECT * FROM multi_match_player WHERE match_id = $1 ORDER BY seat;
 
+-- name: ListActiveMatchPlayers :many
+SELECT * FROM multi_match_player WHERE match_id = $1 AND status = 'active' ORDER BY seat;
+
+-- name: MarkMatchPlayerLeft :execrows
+UPDATE multi_match_player
+SET status = 'left'
+WHERE match_id = $1 AND member_id = $2 AND status = 'active';
+
 -- name: IncrementMatchPlayerWin :one
 UPDATE multi_match_player
 SET wins = wins + 1
@@ -200,11 +208,22 @@ SELECT * FROM multi_round WHERE id = $1 FOR UPDATE;
 INSERT INTO multi_round_player (round_id, member_id, status)
 SELECT $1, member_id, 'active'
 FROM multi_match_player
-WHERE match_id = $2
+WHERE match_id = $2 AND status = 'active'
 ON CONFLICT (round_id, member_id) DO NOTHING;
 
 -- name: ListRoundPlayers :many
 SELECT * FROM multi_round_player WHERE round_id = $1 ORDER BY member_id;
+
+-- name: GetRoundPlayer :one
+SELECT * FROM multi_round_player WHERE round_id = $1 AND member_id = $2;
+
+-- name: ListActiveRoundPlayers :many
+SELECT * FROM multi_round_player WHERE round_id = $1 AND status = 'active' ORDER BY member_id;
+
+-- name: ForfeitRoundPlayer :execrows
+UPDATE multi_round_player
+SET status = 'forfeited'
+WHERE round_id = $1 AND member_id = $2 AND status = 'active';
 
 -- name: ListRoundPlayerGuessCounts :many
 SELECT player.member_id, count(guess.id)::int AS guess_count

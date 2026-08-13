@@ -448,7 +448,7 @@ const createRoundPlayersForMatch = `-- name: CreateRoundPlayersForMatch :exec
 INSERT INTO multi_round_player (round_id, member_id, status)
 SELECT $1, member_id, 'active'
 FROM multi_match_player
-WHERE match_id = $2
+WHERE match_id = $2 AND status = 'active'
 ON CONFLICT (round_id, member_id) DO NOTHING
 `
 
@@ -676,6 +676,25 @@ func (q *Queries) EndRound(ctx context.Context, arg EndRoundParams) (MultiRound,
 		&i.WinnerMemberID,
 	)
 	return i, err
+}
+
+const forfeitRoundPlayer = `-- name: ForfeitRoundPlayer :execrows
+UPDATE multi_round_player
+SET status = 'forfeited'
+WHERE round_id = $1 AND member_id = $2 AND status = 'active'
+`
+
+type ForfeitRoundPlayerParams struct {
+	RoundID  string `json:"round_id"`
+	MemberID string `json:"member_id"`
+}
+
+func (q *Queries) ForfeitRoundPlayer(ctx context.Context, arg ForfeitRoundPlayerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, forfeitRoundPlayer, arg.RoundID, arg.MemberID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getActiveMatchForUpdate = `-- name: GetActiveMatchForUpdate :one
@@ -1091,6 +1110,22 @@ func (q *Queries) GetRoundForUpdate(ctx context.Context, id string) (MultiRound,
 	return i, err
 }
 
+const getRoundPlayer = `-- name: GetRoundPlayer :one
+SELECT round_id, member_id, status FROM multi_round_player WHERE round_id = $1 AND member_id = $2
+`
+
+type GetRoundPlayerParams struct {
+	RoundID  string `json:"round_id"`
+	MemberID string `json:"member_id"`
+}
+
+func (q *Queries) GetRoundPlayer(ctx context.Context, arg GetRoundPlayerParams) (MultiRoundPlayer, error) {
+	row := q.db.QueryRow(ctx, getRoundPlayer, arg.RoundID, arg.MemberID)
+	var i MultiRoundPlayer
+	err := row.Scan(&i.RoundID, &i.MemberID, &i.Status)
+	return i, err
+}
+
 const getTurnByIdempotencyKey = `-- name: GetTurnByIdempotencyKey :one
 SELECT id, round_id, member_id, turn_index, kind, guess_id, statuses, is_correct, idempotency_key, created_at FROM multi_turn WHERE round_id = $1 AND member_id = $2 AND idempotency_key = $3
 `
@@ -1293,6 +1328,36 @@ func (q *Queries) InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTu
 	return i, err
 }
 
+const listActiveMatchPlayers = `-- name: ListActiveMatchPlayers :many
+SELECT match_id, member_id, seat, wins, status FROM multi_match_player WHERE match_id = $1 AND status = 'active' ORDER BY seat
+`
+
+func (q *Queries) ListActiveMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error) {
+	rows, err := q.db.Query(ctx, listActiveMatchPlayers, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiMatchPlayer{}
+	for rows.Next() {
+		var i MultiMatchPlayer
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.MemberID,
+			&i.Seat,
+			&i.Wins,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveMatches = `-- name: ListActiveMatches :many
 SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match WHERE status = 'playing' ORDER BY started_at
 `
@@ -1322,6 +1387,30 @@ func (q *Queries) ListActiveMatches(ctx context.Context) ([]MultiMatch, error) {
 			&i.QuestionScope,
 			&i.WinnerMemberID,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveRoundPlayers = `-- name: ListActiveRoundPlayers :many
+SELECT round_id, member_id, status FROM multi_round_player WHERE round_id = $1 AND status = 'active' ORDER BY member_id
+`
+
+func (q *Queries) ListActiveRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error) {
+	rows, err := q.db.Query(ctx, listActiveRoundPlayers, roundID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRoundPlayer{}
+	for rows.Next() {
+		var i MultiRoundPlayer
+		if err := rows.Scan(&i.RoundID, &i.MemberID, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2014,6 +2103,25 @@ func (q *Queries) ListUsedAnswersForMatch(ctx context.Context, matchID string) (
 		return nil, err
 	}
 	return items, nil
+}
+
+const markMatchPlayerLeft = `-- name: MarkMatchPlayerLeft :execrows
+UPDATE multi_match_player
+SET status = 'left'
+WHERE match_id = $1 AND member_id = $2 AND status = 'active'
+`
+
+type MarkMatchPlayerLeftParams struct {
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+}
+
+func (q *Queries) MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markMatchPlayerLeft, arg.MatchID, arg.MemberID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setMemberReady = `-- name: SetMemberReady :one

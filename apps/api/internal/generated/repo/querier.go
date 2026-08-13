@@ -48,6 +48,7 @@ type Querier interface {
 	EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (MultiMatch, error)
 	EndRaceRound(ctx context.Context, arg EndRaceRoundParams) (MultiRound, error)
 	EndRound(ctx context.Context, arg EndRoundParams) (MultiRound, error)
+	ForfeitRoundPlayer(ctx context.Context, arg ForfeitRoundPlayerParams) (int64, error)
 	// 房间当前进行中的场（forfeit/重启终止路径）。
 	GetActiveMatchForUpdate(ctx context.Context, roomID string) (MultiMatch, error)
 	// 房间当前进行中的局（countdown|playing；对局中 leave/sweeper 结算取当前局）。
@@ -79,6 +80,7 @@ type Querier interface {
 	GetRoomSnapshotState(ctx context.Context, id string) ([]byte, error)
 	GetRound(ctx context.Context, id string) (MultiRound, error)
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
+	GetRoundPlayer(ctx context.Context, arg GetRoundPlayerParams) (MultiRoundPlayer, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
@@ -94,8 +96,10 @@ type Querier interface {
 	InsertGuess(ctx context.Context, arg InsertGuessParams) (MultiGuess, error)
 	InsertRoomEvent(ctx context.Context, arg InsertRoomEventParams) (RoomEvent, error)
 	InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTurn, error)
+	ListActiveMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
 	// 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
 	ListActiveMatches(ctx context.Context) ([]MultiMatch, error)
+	ListActiveRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeqParams) ([]RoomEvent, error)
 	ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error)
 	ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error)
@@ -119,6 +123,7 @@ type Querier interface {
 	ListTurnsForRound(ctx context.Context, roundID string) ([]MultiTurn, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
 	ListWorks(ctx context.Context) ([]Work, error)
+	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
 	SetMemberReady(ctx context.Context, arg SetMemberReadyParams) (MultiMember, error)
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。

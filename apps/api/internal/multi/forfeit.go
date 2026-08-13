@@ -15,10 +15,16 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
-// ForfeitMemberMatch 弃赛/断线判负：
-// 结束当前局（对方胜，若有 countdown/playing 局）→ 场次与房间 finished（reason=forfeit/disconnect）
-// → 成员行置 left。判对方胜不要求对方在线（双方离线先逾期者触发，确定性优先，08 §4.6）。
+// ForfeitMemberMatch 处理对局级弃赛/断线：race 委托 N 人 roster 终态表；
+// relay 保持两人规则（结束当前局、对方胜、整场 finished），08 §4.6。
 func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig) error {
+	room, err := repo.New(pool).GetRoom(ctx, member.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		return ForfeitRaceMembersMatch(ctx, pool, []repo.MultiMember{member}, reason, now, timing)
+	}
 	DefaultMetrics.IncForfeits(string(reason))
 	slog.Info("match forfeited", "room_id", member.RoomID, "member_id", member.ID, "reason", string(reason))
 	tx, err := pool.Begin(ctx)

@@ -57,6 +57,21 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 	if locked.Status != string(MatchStatusPlaying) {
 		return tx.Commit(ctx)
 	}
+	room, err := q.GetRoomForUpdate(ctx, locked.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		if hasRound {
+			if err := EndRaceRoundWithoutScoreTx(ctx, q, room, round, locked, "", "", now, timing); err != nil {
+				return err
+			}
+		}
+		if _, err := EndRaceMatchTx(ctx, q, room, locked, "", MatchEndReasonServerRestart, now, timing); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
 	// 3. 终止当前局（平局；含 countdown 态局）
 	if hasRound {
 		if _, err := q.EndRound(ctx, repo.EndRoundParams{
