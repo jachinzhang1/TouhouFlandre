@@ -163,6 +163,54 @@ v2 游戏同步帧冻结为：
 
 `lastGameSequence < 0`、高于当前 room 高水位、与 room 不匹配、格式错误或早于最老可重放事件时不得静默夹取到合法范围。协议版本/格式错误关闭连接；可通过完整 snapshot 恢复的情况返回 `resync.required`，客户端重置为 snapshot 明示的权威水位后重新握手。
 
+## 独立聊天持久化、cursor 与本地闭麦
+
+聊天必须使用独立的 `multi_chat_message`（或等价）持久化和房间内单调位置，不得写入 `room_event`、分配 game sequence 或作为 room event payload 搭车。消息成功提交数据库后才可广播；聊天写入失败不得产生实时帧。
+
+### 消息模型与默认限制
+
+持久化消息至少包含：`messageId`、`roomId`、`senderMemberId`、发送时 `senderDisplayName`/`senderRole`/`senderSeat` 快照、`clientMessageId`、`kind`、规范化内容、服务端派生 `channel`、房间内 chat position/cursor、`createdAt`。不公开预留删除、撤回、审核、team 或私聊字段。
+
+首版产品默认值冻结如下：
+
+| 项目 | 默认规则 |
+|---|---|
+| `kind=text` | CRLF/CR 先转 LF，再做 Unicode NFC 和首尾 Unicode 空白裁剪；结果须为 1..280 个扩展字素簇、UTF-8 不超过 1024 字节且最多 4 行 |
+| 文本字符 | 允许普通文本与 Unicode emoji；拒绝除 LF 外的 C0/C1 控制字符及 U+202A..U+202E、U+2066..U+2069 双向覆盖/隔离控制；不解析 HTML 或 Markdown |
+| `kind=emoji` | 只接受共享契约公布的单个快捷 emoji：😀、😂、😍、🤔、😭、😡、👍、👎、🎉、❤️、✨、🌸；服务端保存对应 Unicode 字符，不接受客户端自定义图片/URL |
+| member 发送频率 | token bucket 容量 5，每 2 秒补 1 个；幂等重试不重复扣 token |
+| room 聚合频率 | token bucket 容量 20，每 500 毫秒补 1 个；player 与 spectator 共用，防止 WS fan-out 被单一 channel 绕过 |
+| 保留期 | 消息创建后最多 24 小时；room tree 更早删除时随 room 清理，closed 后即使物理行尚未清理也不再对外提供访问 |
+| history 页大小 | 默认扫描 50 个原始位置，客户端可请求 1..100；服务端单次最多扫描 200 个原始位置以跨过不可见 channel |
+
+规范化后的空消息稳定拒绝。服务端和客户端都必须把内容作为纯文本渲染；客户端转义是纵深防御，不能替代服务端大小/字符校验。超限返回稳定错误并可携带 `retryAfterMs`，不得把被拒绝内容写入日志。
+
+发送以 `(roomId, senderMemberId, clientMessageId)` 唯一。首次成功插入后，相同 key 与相同规范化 payload 返回原消息，不再次广播或计入限流；同 key 不同 payload 返回幂等冲突，不能覆盖历史。
+
+### 不透明 cursor 与分页
+
+chat cursor 是服务端签发并完整性校验的 versioned opaque token，至少绑定 room、chat position、用途/方向和当前保留代际。公开协议不承诺其编码、数值连续性或可比较性：
+
+- `after`/`lastChatCursor` 用于重连和向新方向扫描；`before` 用于加载更早历史，两种 token 不可互换。
+- history `after` 请求捕获 chat high watermark 后，从 cursor 之后按原始 position 最多扫描一页，再按当前 viewer role 投影；响应消息按 position 升序。
+- 响应必须返回服务端实际检查到的 `scannedCursor` 和相对所捕获高水位的 `hasMore`。即使这一页所有消息都因 channel 不可见而得到空数组，也推进 `scannedCursor`；客户端按 `hasMore` 继续，不能因空页停止。
+- `before` 请求同样按绑定方向扫描更早位置，返回升序消息和新的 `beforeCursor`；不得用当前可见数组下标或时间戳作为下一页位置。
+- REST history、WS replay 与 realtime 必须复用同一授权投影和 cursor 校验。WS `chat.message` frame 携带 `messageId` 与服务端 cursor，不含 game sequence；客户端以 roomId + messageId/cursor 去重。
+
+cursor 格式/签名错误、属于其他 room/方向/代际、超过当前 high watermark 分别稳定返回 `CHAT_CURSOR_INVALID` 或 `CHAT_CURSOR_AHEAD`。cursor 早于最老保留位置时返回 `CHAT_RESYNC_REQUIRED` 及服务端签发的 `oldestAvailableCursor`/当前 high watermark；不得静默跳到开头或当前而掩盖历史缺失。
+
+v2 hello 的可选 `lastChatCursor` 与 `lastGameSequence` 进入同一个连接屏障：先注册同时缓冲游戏和聊天，再分别捕获高水位和授权重放，排空两类缓冲后在 FIFO 队尾发送一个 `sync.complete(gameSequence, chatCursor)`。`chatCursor` 是已扫描而非最后一条可见消息的位置；即使 player 无权看到期间全部 spectator 消息也必须推进。同步中途断线时两种水位都保持上一次完成值。
+
+### `receiveChat` 本地语义
+
+`receiveChat` 是当前浏览器 localStorage 中的 viewer 偏好，默认 true，不同步到服务端：
+
+- false 时不渲染他人的获授权消息，但自己的、且按当前 role 仍获授权的消息继续显示；隐藏消息仍可计入本地未读提示。
+- 客户端仍接收实时帧、查询授权历史、处理空页并推进 `lastChatCursor`；不得通过停止同步实现闭麦。
+- 重新开启后，可以从仍在内存缓存或 24 小时服务端保留范围内恢复获授权消息；超出保留期不承诺恢复。
+- 偏好不改变发送 channel、服务端投影、其他 viewer 的显示、任何 game sequence 或 chat cursor。
+- role 变化时先按新 role 清理/重建可见缓存，再应用该偏好；本地曾缓存的 spectator 消息不能在 claim-seat 后以 player 身份重新显示。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案
