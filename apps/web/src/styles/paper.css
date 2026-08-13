@@ -1,5 +1,104 @@
-.paper-sticker-shadow {
-  filter: var(--paper-sticker-shadow);
+.paper-sticker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  isolation: isolate;
+  transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+}
+
+.paper-sticker > .paper-surface {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.paper-sticker-cast,
+.paper-sticker-lift-shadow {
+  position: absolute;
+  pointer-events: none;
+}
+
+.paper-sticker-cast {
+  inset: 0 -10px -22px;
+  z-index: 0;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.paper-sticker-cast::before,
+.paper-sticker-cast::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.paper-sticker-cast::before {
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    var(--paper-cast-hard) 0%,
+    var(--paper-cast-mid) 34%,
+    transparent 72%
+  );
+  clip-path: polygon(
+    10px 0,
+    calc(100% - 10px) 0,
+    calc(100% - 4px) 68%,
+    4px 68%
+  );
+}
+
+.paper-sticker-cast::after {
+  inset: 38% 0 0;
+  background: linear-gradient(
+    to bottom,
+    var(--paper-cast-mid) 0%,
+    var(--paper-cast-soft) 46%,
+    transparent 100%
+  );
+  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
+  filter: blur(8px);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 76%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 76%,
+    transparent 100%
+  );
+}
+
+.paper-sticker-lift-shadow {
+  inset: 1px;
+  z-index: 1;
+  border-radius: 2px;
+  box-shadow: 0 16px 34px var(--paper-lift-shadow);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-sticker:hover {
+    z-index: 100 !important;
+    transform: translateY(-3px);
+  }
+
+  .paper-sticker:hover .paper-sticker-cast {
+    opacity: 0;
+  }
+
+  .paper-sticker:hover .paper-sticker-lift-shadow {
+    opacity: 1;
+  }
 }
 
 .paper-surface {

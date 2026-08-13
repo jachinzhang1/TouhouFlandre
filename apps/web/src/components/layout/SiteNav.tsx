@@ -134,6 +134,7 @@ export function SiteNav() {
           className="brand-paper-mark nav-contrast-paper inline-flex size-[38px] items-center justify-center max-[680px]:size-[34px]"
           variant="tinted"
           foldSize={8}
+          sticker={false}
           unfoldOnHover={false}
         >
           <YinYangMark className="size-[23px]" />
@@ -155,6 +156,7 @@ export function SiteNav() {
           className="nav-active-indicator nav-contrast-paper"
           animateOnMount={false}
           variant="tinted"
+          sticker={false}
           unfoldOnHover={false}
           foldSize={10}
           ariaHidden

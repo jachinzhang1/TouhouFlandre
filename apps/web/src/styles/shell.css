@@ -216,7 +216,6 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-link-copy {
 
 .nav-active-copy .nav-link-copy {
   z-index: auto;
-  flex: 0 0 auto;
   color: var(--paper-tinted-ink);
 }
 

@@ -68,6 +68,7 @@
 }
 
 .announcement-entry {
+  z-index: 2;
   overflow: hidden;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
 }

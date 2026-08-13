@@ -199,19 +199,24 @@ export default function LinksPage() {
 
       <CreditSection title="素材提供">
         <CreditEntryGroup>
-          {assetCredits.map((item) => (
-            <CreditEntryButton key={item.title} {...item} />
+          {assetCredits.map((item, index) => (
+            <CreditEntryButton
+              key={item.title}
+              stackOrder={assetCredits.length - index}
+              {...item}
+            />
           ))}
         </CreditEntryGroup>
       </CreditSection>
 
       <CreditSection title="开发者">
         <CreditEntryGroup>
-          {developers.map((developer) => (
+          {developers.map((developer, index) => (
             <CreditEntryButton
               key={developer.name}
               avatarUrl={developer.avatarUrl}
               links={developer.links}
+              stackOrder={developers.length - index}
               subtitle={developer.role}
               title={developer.name}
             />
@@ -221,8 +226,12 @@ export default function LinksPage() {
 
       <CreditSection title="友情链接">
         <CreditEntryGroup>
-          {friendLinks.map((item) => (
-            <CreditEntryButton key={item.title} {...item} />
+          {friendLinks.map((item, index) => (
+            <CreditEntryButton
+              key={item.title}
+              stackOrder={friendLinks.length - index}
+              {...item}
+            />
           ))}
         </CreditEntryGroup>
       </CreditSection>
@@ -266,18 +275,21 @@ function CreditEntryButton({
   avatarUrl,
   links,
   subtitle,
+  stackOrder,
   title,
 }: {
   avatarUrl?: string;
   links: Platform[];
   subtitle: string;
+  stackOrder: number;
   title: string;
 }) {
   return (
     <Paper
       as="article"
-      className="credit-entry-card paper-sticker-shadow grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
+      className="credit-entry-card grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
       foldSize={18}
+      stackOrder={stackOrder}
       variant="plain"
     >
       <span className="credit-avatar" aria-hidden="true">

@@ -122,14 +122,20 @@ export function AnnouncementPage({
 
       {announcements.length ? (
         <div className="mt-6 grid gap-4">
-          {announcements.map((announcement) => {
+          {announcements.map((announcement, index) => {
             const unread = !readIds.has(announcement.id);
             const tearing = tearingIds.has(announcement.id);
             return (
               <div
-                className="announcement-entry-shell paper-sticker-shadow"
+                className="announcement-entry-shell paper-sticker"
                 key={announcement.id}
+                style={{ zIndex: announcements.length - index }}
               >
+                <span className="paper-sticker-cast" aria-hidden="true" />
+                <span
+                  className="paper-sticker-lift-shadow"
+                  aria-hidden="true"
+                />
                 {announcement.pinned ? (
                   <span
                     className="announcement-pin-corner"
@@ -221,7 +227,7 @@ export function AnnouncementPage({
           as="div"
           variant="plain"
           foldSize={20}
-          className="paper-sticker-shadow mt-8 flex min-h-[260px] items-start gap-[18px] p-6"
+          className="mt-8 flex min-h-[260px] items-start gap-[18px] p-6"
         >
           <span className="inline-flex size-[48px] shrink-0 items-center justify-center rounded-[6px] bg-vermilion-soft text-vermilion">
             <Megaphone size={24} aria-hidden="true" />

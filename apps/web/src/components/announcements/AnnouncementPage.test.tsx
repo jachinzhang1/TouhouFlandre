@@ -54,6 +54,8 @@ describe("AnnouncementPage", () => {
     expect(
       container.querySelector(".announcement-title-separator"),
     ).toBeTruthy();
+    expect(container.querySelector(".paper-sticker-cast")).toBeTruthy();
+    expect(container.querySelector(".paper-sticker-lift-shadow")).toBeTruthy();
     expect(screen.getByTestId("announcement-markdown").textContent).toContain(
       "加粗",
     );

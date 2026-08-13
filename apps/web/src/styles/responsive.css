@@ -229,9 +229,7 @@
     transition-duration: 0.01ms !important;
   }
 
-  .credit-entry-card:hover,
-  .game-mode-entry:hover,
-  .paper-shortcut:hover {
+  .paper-sticker:hover {
     transform: none !important;
   }
 

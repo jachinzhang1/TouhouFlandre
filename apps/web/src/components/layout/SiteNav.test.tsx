@@ -32,6 +32,7 @@ describe("SiteNav", () => {
     const activeCopy = container.querySelector(".nav-active-copy");
     expect(activeCopy?.getAttribute("aria-hidden")).toBe("true");
     expect(activeCopy?.querySelector("a")).toBeNull();
+    expect(container.querySelector(".site-nav .paper-sticker")).toBeNull();
   });
 
   it("没有匹配页签时不渲染白色遮罩副本", async () => {

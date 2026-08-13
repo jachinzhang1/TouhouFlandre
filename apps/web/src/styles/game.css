@@ -24,8 +24,7 @@
 .paper-surface.game-mode-entry[data-paper-folded="true"] {
   transition:
     background-color 160ms ease,
-    clip-path 180ms ease,
-    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    clip-path 180ms ease;
 }
 
 .game-mode-entry-wash {
@@ -91,10 +90,6 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .game-mode-entry:hover {
-    transform: translateY(-3px);
-  }
-
   .game-mode-entry:hover .game-mode-entry-wash {
     opacity: 1;
   }

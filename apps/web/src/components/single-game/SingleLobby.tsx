@@ -23,13 +23,14 @@ export function SingleLobby() {
         </header>
 
         <div className="game-mode-grid">
-          {SINGLE_PLAYER_MODE_IDS.map((modeId) => {
+          {SINGLE_PLAYER_MODE_IDS.map((modeId, index) => {
             const config = modeConfig[modeId];
             return (
               <GameModeEntry
                 href={`/single/${modeId}`}
                 icon={config.icon}
                 key={modeId}
+                stackOrder={SINGLE_PLAYER_MODE_IDS.length + 2 - index}
                 subtitle={config.description}
                 title={config.label}
               />
@@ -39,11 +40,13 @@ export function SingleLobby() {
             href="/multi"
             icon={Users}
             subtitle="与好友在同一个房间中共同推理。"
+            stackOrder={2}
             title="多人大厅"
           />
           <GameModeEntry
             icon={Settings}
             onClick={() => setScopeOpen(true)}
+            stackOrder={1}
             subtitle="自定义出题范围。"
             title="题库设置"
           />
@@ -61,11 +64,13 @@ function GameModeEntry({
   href,
   icon: Icon,
   onClick,
+  stackOrder,
   subtitle,
   title,
 }: {
   href?: string;
   icon: LucideIcon;
+  stackOrder: number;
   onClick?: () => void;
   subtitle: string;
   title: string;
@@ -74,10 +79,11 @@ function GameModeEntry({
     <Paper
       animateOnMount={false}
       as={href ? "span" : "button"}
-      className="game-mode-entry paper-sticker-shadow"
+      className="game-mode-entry"
       foldSize={20}
       href={href}
       onClick={onClick}
+      stackOrder={stackOrder}
       variant="plain"
     >
       <span className="game-mode-entry-wash" aria-hidden="true" />

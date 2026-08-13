@@ -84,10 +84,10 @@
   --paper-tinted-fold: color-mix(in srgb, var(--theme-color) 72%, #111);
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.84);
-  --paper-sticker-shadow: drop-shadow(0 2px 0 rgba(25, 46, 39, 0.1))
-    drop-shadow(-5px 12px 6px rgba(25, 46, 39, 0.05))
-    drop-shadow(5px 12px 6px rgba(25, 46, 39, 0.05))
-    drop-shadow(0 21px 11px rgba(25, 46, 39, 0.04));
+  --paper-cast-hard: rgba(25, 46, 39, 0.22);
+  --paper-cast-mid: rgba(25, 46, 39, 0.12);
+  --paper-cast-soft: rgba(25, 46, 39, 0.045);
+  --paper-lift-shadow: rgba(25, 46, 39, 0.18);
   --vermilion: var(--accent);
   --vermilion-dark: var(--accent-strong);
   --vermilion-soft: var(--accent-soft);
@@ -227,10 +227,10 @@ html[data-theme-mode="dark"] {
   --paper-tinted-fold: color-mix(in srgb, var(--theme-color) 68%, #0b0e0d);
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
-  --paper-sticker-shadow: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.26))
-    drop-shadow(-5px 13px 7px rgba(0, 0, 0, 0.11))
-    drop-shadow(5px 13px 7px rgba(0, 0, 0, 0.11))
-    drop-shadow(0 22px 12px rgba(0, 0, 0, 0.08));
+  --paper-cast-hard: rgba(0, 0, 0, 0.42);
+  --paper-cast-mid: rgba(0, 0, 0, 0.22);
+  --paper-cast-soft: rgba(0, 0, 0, 0.08);
+  --paper-lift-shadow: rgba(0, 0, 0, 0.36);
   --jade: #59b9a7;
   --jade-soft: #1d3d38;
   --jade-strong: #84d9ca;

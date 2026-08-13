@@ -118,9 +118,7 @@ function PaperShortcut({
 }) {
   return (
     <Paper
-      className={`paper-shortcut paper-sticker-shadow group ${
-        featured ? "paper-shortcut-featured" : ""
-      }`}
+      className={`paper-shortcut group ${featured ? "paper-shortcut-featured" : ""}`}
       href={href}
       variant={featured ? "tinted" : "plain"}
       foldDelayMs={foldDelayMs}

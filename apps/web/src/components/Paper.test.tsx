@@ -5,7 +5,7 @@ import { Paper } from "./Paper";
 describe("Paper", () => {
   it("renders a linked tinted folded paper with hover unfolding enabled", () => {
     render(
-      <Paper href="/single/daily" variant="tinted" foldSize={24}>
+      <Paper href="/single/daily" variant="tinted" foldSize={24} stackOrder={4}>
         每日题
       </Paper>,
     );
@@ -16,6 +16,11 @@ describe("Paper", () => {
     expect(paper.dataset.paperUnfoldHover).toBe("true");
     expect(paper.dataset.paperAnimateMount).toBe("true");
     expect(paper.style.getPropertyValue("--paper-fold-size")).toBe("24px");
+    const sticker = paper.closest(".paper-sticker") as HTMLElement;
+    expect(sticker.dataset.paperSticker).toBe("true");
+    expect(sticker.style.zIndex).toBe("4");
+    expect(sticker.querySelector(".paper-sticker-cast")).toBeTruthy();
+    expect(sticker.querySelector(".paper-sticker-lift-shadow")).toBeTruthy();
   });
 
   it("supports interactive button papers", () => {
@@ -28,6 +33,15 @@ describe("Paper", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "题库设置" }));
     expect(clicks).toBe(1);
+  });
+
+  it("can disable sticker effects for structural papers", () => {
+    const { container } = render(<Paper sticker={false}>导航纸片</Paper>);
+
+    expect(container.querySelector(".paper-sticker")).toBeNull();
+    expect(container.querySelector(".paper-surface")?.textContent).toBe(
+      "导航纸片",
+    );
   });
 
   it("supports plain unfolded non-link surfaces", () => {
