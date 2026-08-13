@@ -81,9 +81,10 @@
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.84);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.15);
   --paper-tinted-icon-border: rgba(255, 255, 255, 0.24);
-  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(25, 46, 39, 0.12))
-    drop-shadow(0 8px 7px rgba(25, 46, 39, 0.075))
-    drop-shadow(0 16px 14px rgba(25, 46, 39, 0.035));
+  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(25, 46, 39, 0.14))
+    drop-shadow(-5px 10px 7px rgba(25, 46, 39, 0.045))
+    drop-shadow(5px 10px 7px rgba(25, 46, 39, 0.045))
+    drop-shadow(0 18px 15px rgba(25, 46, 39, 0.035));
   --vermilion: var(--accent);
   --vermilion-dark: var(--accent-strong);
   --vermilion-soft: var(--accent-soft);
@@ -215,9 +216,10 @@ html[data-theme-mode="dark"] {
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.09);
   --paper-tinted-icon-border: rgba(255, 255, 255, 0.16);
-  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28))
-    drop-shadow(0 9px 9px rgba(0, 0, 0, 0.18))
-    drop-shadow(0 16px 16px rgba(0, 0, 0, 0.08));
+  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.32))
+    drop-shadow(-5px 11px 8px rgba(0, 0, 0, 0.1))
+    drop-shadow(5px 11px 8px rgba(0, 0, 0, 0.1))
+    drop-shadow(0 19px 16px rgba(0, 0, 0, 0.07));
   --jade: #59b9a7;
   --jade-soft: #1d3d38;
   --jade-strong: #84d9ca;
@@ -1403,17 +1405,35 @@ body:has(.home-hero) .site-footer a:hover {
   width: 280px;
   height: 280px;
   isolation: isolate;
+  --appearance-rest-color: color-mix(
+    in oklab,
+    var(--accent-soft) 42%,
+    var(--page-background)
+  );
   --appearance-corner-rest: color-mix(
     in oklab,
-    color-mix(in oklab, var(--accent-soft) 78%, var(--surface-strong)) 94%,
-    #000
+    var(--appearance-rest-color) 84%,
+    var(--paper-tinted-base)
   );
   --appearance-fold-rest: color-mix(
     in oklab,
-    var(--accent-soft) 84%,
-    var(--paper-tinted-fold)
+    var(--appearance-rest-color) 97%,
+    #000
   );
   pointer-events: none;
+}
+
+html[data-theme-mode="dark"] .appearance-switcher {
+  --appearance-corner-rest: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--appearance-rest-color) 90%, #000) 96%,
+    var(--paper-tinted-base)
+  );
+  --appearance-fold-rest: color-mix(
+    in oklab,
+    var(--appearance-rest-color) 95%,
+    #fff
+  );
 }
 
 .appearance-corner-surface,
@@ -1450,6 +1470,18 @@ body:has(.home-hero) .site-footer a:hover {
     background-color 240ms ease,
     clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: clip-path;
+}
+
+body:has(.home-hero) .appearance-corner-surface {
+  background-color: var(--paper-tinted-bg);
+}
+
+body:has(.home-hero) .appearance-fold-flap {
+  background-color: var(--paper-tinted-fold);
+}
+
+body:has(.home-hero) .appearance-toggle {
+  color: var(--paper-tinted-ink);
 }
 
 .appearance-toggle {
