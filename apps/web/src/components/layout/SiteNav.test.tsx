@@ -44,7 +44,7 @@ describe("SiteNav", () => {
     expect(container.querySelector('[aria-current="page"]')).toBeNull();
   });
 
-  it("公告存在未读时显示导航红点", async () => {
+  it("公告存在未读时显示导航提示点及遮罩副本", async () => {
     mockAnnouncementSummary([
       { id: "notice-a", title: "公告", date: "2026-08-08" },
     ]);
@@ -53,7 +53,10 @@ describe("SiteNav", () => {
     expect(
       await screen.findByRole("link", { name: "公告，有未读公告" }),
     ).toBeTruthy();
-    expect(container.querySelector(".nav-unread-dot")).toBeTruthy();
+    expect(container.querySelectorAll(".nav-unread-dot")).toHaveLength(2);
+    expect(
+      container.querySelector(".nav-active-copy .nav-unread-dot"),
+    ).toBeTruthy();
   });
 
   it("公告已读时不显示导航红点", async () => {

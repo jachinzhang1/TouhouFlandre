@@ -137,14 +137,14 @@ export function AnnouncementPage({
                 >
                   {unread ? (
                     <span
-                      className="absolute right-4 top-4 size-[9px] rounded-full bg-[#e5484d] shadow-[0_0_0_4px_rgba(229,72,77,0.16)]"
+                      className="announcement-unread-dot"
                       aria-label="未读公告"
                       title="未读公告"
                     />
                   ) : null}
                   <div className="flex flex-wrap items-center gap-2 pr-5">
                     {announcement.pinned ? (
-                      <span className="inline-flex h-6 items-center gap-1 rounded-[4px] bg-vermilion-soft px-2 text-[0.72rem] font-black text-vermilion">
+                      <span className="announcement-pin-tag">
                         <Pin size={13} aria-hidden="true" />
                         置顶
                       </span>
@@ -159,6 +159,10 @@ export function AnnouncementPage({
                   <h2 className="mt-3 mb-0 font-brand text-[1.55rem] font-bold leading-[1.25] text-ink max-[680px]:text-[1.34rem]">
                     {announcement.title}
                   </h2>
+                  <span
+                    className="announcement-title-separator"
+                    aria-hidden="true"
+                  />
                   <div className="mt-4">
                     <AnnouncementMarkdown body={announcement.body} />
                   </div>

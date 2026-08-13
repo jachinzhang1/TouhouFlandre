@@ -42,10 +42,17 @@ describe("AnnouncementPage", () => {
   });
 
   it("renders announcement metadata and body without manual refresh controls", async () => {
-    render(<AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />);
+    const { container } = render(
+      <AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />,
+    );
 
     expect(screen.getByText("格式公告")).toBeTruthy();
     expect(screen.getByText("置顶")).toBeTruthy();
+    expect(container.querySelector(".announcement-pin-tag")).toBeTruthy();
+    expect(container.querySelector(".announcement-unread-dot")).toBeTruthy();
+    expect(
+      container.querySelector(".announcement-title-separator"),
+    ).toBeTruthy();
     expect(screen.getByTestId("announcement-markdown").textContent).toContain(
       "加粗",
     );

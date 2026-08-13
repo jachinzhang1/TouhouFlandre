@@ -163,10 +163,15 @@ export function SiteNav() {
           <div className="nav-active-copy" aria-hidden="true">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
+              const hasUnread =
+                item.href === "/announcement" && unreadAnnouncements > 0;
               return (
                 <span className="nav-link nav-link-copy" key={item.label}>
                   <Icon size={16} aria-hidden="true" />
                   <span className="nav-link-label">{item.label}</span>
+                  {hasUnread ? (
+                    <span className="nav-unread-dot" aria-hidden="true" />
+                  ) : null}
                 </span>
               );
             })}

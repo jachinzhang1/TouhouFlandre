@@ -271,22 +271,36 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-link-copy {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--feedback-higher-mark);
+  background: var(--vermilion);
   box-shadow:
     0 0 0 3px var(--nav-bg),
-    0 0 0 6px var(--feedback-higher-bg);
+    0 0 0 6px color-mix(in srgb, var(--vermilion) 18%, transparent);
 }
 
-.nav-link.active .nav-unread-dot {
+.nav-active-copy .nav-unread-dot {
   background: var(--accent-contrast);
   box-shadow:
     0 0 0 2px var(--vermilion),
     0 0 0 4px color-mix(in srgb, var(--accent-contrast) 58%, transparent);
 }
 
+html[data-theme-mode="dark"] .nav-unread-dot {
+  background: var(--nav-text);
+  box-shadow:
+    0 0 0 3px var(--paper-tinted-bg),
+    0 0 0 6px color-mix(in srgb, var(--nav-text) 18%, transparent);
+}
+
+html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
+  background: var(--vermilion);
+  box-shadow:
+    0 0 0 2px #f7f8f7,
+    0 0 0 4px color-mix(in srgb, var(--vermilion) 28%, transparent);
+}
+
 .appearance-switcher {
   --appearance-apex-y: 59.0909%;
-  --appearance-base-start: 67.4641%;
+  --appearance-base-start: 63.5537%;
   --appearance-diagonal-end: 88.1579%;
   --appearance-collapsed-leg: 90px;
   --appearance-rest-color: color-mix(

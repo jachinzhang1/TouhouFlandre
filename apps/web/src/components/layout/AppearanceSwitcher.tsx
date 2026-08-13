@@ -36,10 +36,12 @@ const FAN_APEX_X = FAN_WIDTH;
 const FAN_APEX_Y_PX = 130;
 const FAN_BASE_Y = FAN_HEIGHT;
 const FAN_NEAR_ANGLE = 45;
-const FAN_ANGLE_SPAN = 25;
+const FAN_STRIPE_ANGLES = [3.5, 4.3, 5.2, 6.3, 7.7] as const;
+const FAN_ANGLE_SPAN = FAN_STRIPE_ANGLES.reduce(
+  (total, angle) => total + angle,
+  0,
+);
 const FAN_FAR_ANGLE = FAN_NEAR_ANGLE + FAN_ANGLE_SPAN;
-const FAN_STRIPE_COUNT = COLOR_THEMES.length - 1;
-const FAN_ANGLE_STEP = FAN_ANGLE_SPAN / FAN_STRIPE_COUNT;
 const FAN_APEX_Y = (FAN_APEX_Y_PX / FAN_HEIGHT) * 100;
 
 function getBasePercent(angle: number) {
@@ -48,12 +50,18 @@ function getBasePercent(angle: number) {
   return ((FAN_APEX_X - run) / FAN_WIDTH) * 100;
 }
 
-const FAN_BASE_START = getBasePercent(FAN_FAR_ANGLE);
-const FAN_BASE_END = getBasePercent(FAN_NEAR_ANGLE);
+const FAN_BOUNDARY_ANGLES = [FAN_FAR_ANGLE];
+for (const stripeAngle of FAN_STRIPE_ANGLES) {
+  FAN_BOUNDARY_ANGLES.push(
+    FAN_BOUNDARY_ANGLES[FAN_BOUNDARY_ANGLES.length - 1] - stripeAngle,
+  );
+}
+const FAN_BOUNDARIES = FAN_BOUNDARY_ANGLES.map(getBasePercent);
+const FAN_BASE_START = FAN_BOUNDARIES[0];
+const FAN_BASE_END = FAN_BOUNDARIES[FAN_BOUNDARIES.length - 1];
 
 function getFanBoundary(index: number) {
-  const angle = FAN_FAR_ANGLE - FAN_ANGLE_STEP * index;
-  return getBasePercent(angle);
+  return FAN_BOUNDARIES[index];
 }
 
 function getFanTriangle(index: number) {
