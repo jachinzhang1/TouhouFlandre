@@ -15,9 +15,10 @@ import (
 )
 
 type playerLimitRoom struct {
-	roomID    string
-	roomCode  string
-	hostToken string
+	roomID       string
+	roomCode     string
+	hostToken    string
+	hostMemberID string
 }
 
 func createPlayerLimitRoom(t *testing.T, body map[string]any) playerLimitRoom {
@@ -30,7 +31,7 @@ func createPlayerLimitRoom(t *testing.T, body map[string]any) playerLimitRoom {
 	if err := json.Unmarshal(payload, &created); err != nil {
 		t.Fatal(err)
 	}
-	return playerLimitRoom{roomID: created.RoomId, roomCode: created.RoomCode, hostToken: string(created.GuestToken)}
+	return playerLimitRoom{roomID: created.RoomId, roomCode: created.RoomCode, hostToken: string(created.GuestToken), hostMemberID: created.Viewer.MemberId}
 }
 
 func roomPlayerLimit(t *testing.T, roomCode string) int {
@@ -748,5 +749,155 @@ func TestMultiRacePlayerLimitSettingsJoinFinalReadyLinearizes(t *testing.T) {
 			t.Fatalf("unexpected concurrent join role %s", participant.JoinRole)
 		}
 		requireTerminalEventCapacity(t, room.roomID, limit, players, spectators)
+	}
+}
+
+func TestMultiRacePlayerLimitShrinkCompactsSeatsWithoutChangingIdentity(t *testing.T) {
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 5})
+	players := make([]openapi.JoinRoomResponse, 0, 4)
+	for range 4 {
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join player: %d %s", resp.StatusCode, payload)
+		}
+		var participant openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &participant); err != nil {
+			t.Fatal(err)
+		}
+		players = append(players, participant)
+	}
+
+	var historicalSequence int64
+	var historicalRaw []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT sequence, payload FROM room_event
+		WHERE room_id = $1 AND type = 'room.updated'
+		ORDER BY sequence DESC LIMIT 1`, room.roomID).Scan(&historicalSequence, &historicalRaw); err != nil {
+		t.Fatal(err)
+	}
+	var historical multi.RoomUpdatedPayload
+	if err := json.Unmarshal(historicalRaw, &historical); err != nil {
+		t.Fatal(err)
+	}
+	if len(historical.Members) != 5 {
+		t.Fatalf("historical roster = %+v", historical.Members)
+	}
+
+	for _, leaver := range []openapi.JoinRoomResponse{players[0], players[2]} {
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/leave", string(leaver.GuestToken), nil)
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("leave seat %v: %d %s", leaver.Viewer.Seat, resp.StatusCode, payload)
+		}
+	}
+	remainingSecond := players[1]
+	remainingThird := players[3]
+	if remainingSecond.Viewer.Seat == nil || *remainingSecond.Viewer.Seat != 3 || remainingThird.Viewer.Seat == nil || *remainingThird.Viewer.Seat != 5 {
+		t.Fatalf("pre-compaction seats = %v/%v, want 3/5", remainingSecond.Viewer.Seat, remainingThird.Viewer.Seat)
+	}
+
+	conn := wsDial(t, room.roomID, string(remainingSecond.GuestToken), 0, nil)
+	drainUntilType(t, conn, "sync.complete", 24)
+	resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 3})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("shrink with holes: %d %s", resp.StatusCode, payload)
+	}
+	updated, _ := roomCapacityEvent(t, conn, 3, 3, 0)
+	requirePlayerLimitPayload(t, updated, 3, 3, 0)
+	wantSeats := map[string]int{
+		room.hostMemberID:               1,
+		remainingSecond.Viewer.MemberId: 2,
+		remainingThird.Viewer.MemberId:  3,
+	}
+	members, ok := updated["members"].([]any)
+	if !ok || len(members) != 3 {
+		t.Fatalf("compacted event members = %#v", updated["members"])
+	}
+	for _, raw := range members {
+		member, ok := raw.(map[string]any)
+		if !ok {
+			t.Fatalf("member payload = %#v", raw)
+		}
+		memberID, _ := member["memberId"].(string)
+		seat, _ := member["seat"].(float64)
+		if int(seat) != wantSeats[memberID] {
+			t.Fatalf("event member %s seat=%d, want %d", memberID, int(seat), wantSeats[memberID])
+		}
+		delete(wantSeats, memberID)
+	}
+	if len(wantSeats) != 0 {
+		t.Fatalf("event missing identities: %v", wantSeats)
+	}
+
+	wantDatabaseSeats := map[string]int{
+		room.hostMemberID:               1,
+		remainingSecond.Viewer.MemberId: 2,
+		remainingThird.Viewer.MemberId:  3,
+	}
+	rows, err := pool.Query(ctx, `SELECT id, seat, token_hash FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat`, room.roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	seen := 0
+	for rows.Next() {
+		var memberID, tokenHash string
+		var seat int
+		if err := rows.Scan(&memberID, &seat, &tokenHash); err != nil {
+			t.Fatal(err)
+		}
+		if seat != wantDatabaseSeats[memberID] {
+			t.Fatalf("database member %s seat=%d, want %d", memberID, seat, wantDatabaseSeats[memberID])
+		}
+		switch memberID {
+		case room.hostMemberID:
+			if tokenHash != multi.HashToken(room.hostToken) {
+				t.Fatal("host token changed during compaction")
+			}
+		case remainingSecond.Viewer.MemberId:
+			if tokenHash != multi.HashToken(string(remainingSecond.GuestToken)) {
+				t.Fatal("seat 2 token changed during compaction")
+			}
+		case remainingThird.Viewer.MemberId:
+			if tokenHash != multi.HashToken(string(remainingThird.GuestToken)) {
+				t.Fatal("seat 3 token changed during compaction")
+			}
+		default:
+			t.Fatalf("unexpected active player %s", memberID)
+		}
+		seen++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if seen != 3 {
+		t.Fatalf("active players = %d, want 3", seen)
+	}
+
+	var historicalAfter []byte
+	if err := pool.QueryRow(ctx, `SELECT payload FROM room_event WHERE room_id = $1 AND sequence = $2`, room.roomID, historicalSequence).Scan(&historicalAfter); err != nil {
+		t.Fatal(err)
+	}
+	var preserved multi.RoomUpdatedPayload
+	if err := json.Unmarshal(historicalAfter, &preserved); err != nil {
+		t.Fatal(err)
+	}
+	preservedSeats := map[string]int{}
+	for _, member := range preserved.Members {
+		preservedSeats[member.MemberID] = member.Seat
+	}
+	if preservedSeats[remainingSecond.Viewer.MemberId] != 3 || preservedSeats[remainingThird.Viewer.MemberId] != 5 {
+		t.Fatalf("historical seat snapshot was rewritten: %v", preservedSeats)
+	}
+
+	snapshotResp, snapshotPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+room.roomID+"/snapshot", string(remainingSecond.GuestToken), nil)
+	if snapshotResp.StatusCode != http.StatusOK {
+		t.Fatalf("compacted player snapshot: %d %s", snapshotResp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Viewer.MemberId != remainingSecond.Viewer.MemberId || snapshot.Viewer.Seat == nil || *snapshot.Viewer.Seat != 2 || snapshot.PlayerLimit != 3 || snapshot.PlayerCount != 3 {
+		t.Fatalf("compacted viewer/snapshot = %+v", snapshot)
 	}
 }

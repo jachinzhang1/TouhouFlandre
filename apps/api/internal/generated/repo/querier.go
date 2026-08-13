@@ -129,6 +129,7 @@ type Querier interface {
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
 	StartRound(ctx context.Context, id string) (MultiRound, error)
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error)
+	UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatParams) (MultiMember, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
 	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)

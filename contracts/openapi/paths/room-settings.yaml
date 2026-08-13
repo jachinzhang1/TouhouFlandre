@@ -7,7 +7,8 @@ patch:
   description: |
     仅 connected 的 lobby 房主可用。race 的 playerLimit 可设为 2..8，且不得低于当前玩家数；
     relay 固定两人并拒绝该竞速设置。任一玩家 ready 或 match 已创建后配置锁定，
-    所有玩家取消准备后可再次修改。修改设置本身不触发开局。
+    所有玩家取消准备后可再次修改。降容时按旧 seat、memberId 稳定压紧非房主 seat，
+    memberId、token 和房主不变；修改设置本身不触发开局。
   parameters:
     - name: roomId
       in: path

@@ -2267,6 +2267,38 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 	return i, err
 }
 
+const updateMemberSeat = `-- name: UpdateMemberSeat :one
+UPDATE multi_member
+SET seat = $1::integer
+WHERE id = $2 AND room_id = $3 AND role = 'player'
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+`
+
+type UpdateMemberSeatParams struct {
+	Seat   int32  `json:"seat"`
+	ID     string `json:"id"`
+	RoomID string `json:"room_id"`
+}
+
+func (q *Queries) UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatParams) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, updateMemberSeat, arg.Seat, arg.ID, arg.RoomID)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Seat,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
 const updateMemberStatus = `-- name: UpdateMemberStatus :one
 UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
 `

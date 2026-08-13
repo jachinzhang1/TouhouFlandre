@@ -121,6 +121,12 @@ UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING *;
 -- name: SetMemberReady :one
 UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING *;
 
+-- name: UpdateMemberSeat :one
+UPDATE multi_member
+SET seat = sqlc.arg(seat)::integer
+WHERE id = sqlc.arg(id) AND room_id = sqlc.arg(room_id) AND role = 'player'
+RETURNING *;
+
 -- name: ClaimMemberSeat :one
 UPDATE multi_member
 SET role = 'player', seat = sqlc.arg(seat)::integer, ready = false, rematch_ready = false

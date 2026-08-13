@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -315,6 +316,34 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 			return nil, internalError(err)
 		}
 		return openapi.RoomsUpdateSettings204Response{}, nil
+	}
+	if desiredLimit < int(room.PlayerLimit) {
+		sort.Slice(players, func(i, j int) bool {
+			leftSeat := multi.MemberSeat(players[i])
+			rightSeat := multi.MemberSeat(players[j])
+			if leftSeat == rightSeat {
+				return players[i].ID < players[j].ID
+			}
+			return leftSeat < rightSeat
+		})
+		if len(players) == 0 || players[0].ID != member.ID || multi.MemberSeat(players[0]) != 1 {
+			return nil, internalError(errors.New("room host seat invariant violated"))
+		}
+		for index := 1; index < len(players); index++ {
+			targetSeat := int32(index + 1)
+			if multi.MemberSeat(players[index]) == int(targetSeat) {
+				continue
+			}
+			updated, err := q.UpdateMemberSeat(ctx, repo.UpdateMemberSeatParams{
+				Seat:   targetSeat,
+				ID:     players[index].ID,
+				RoomID: request.RoomId,
+			})
+			if err != nil {
+				return nil, mapRoomWriteError(err)
+			}
+			players[index] = updated
+		}
 	}
 	updatedRoom, err := q.UpdateRoomPlayerLimit(ctx, repo.UpdateRoomPlayerLimitParams{ID: request.RoomId, PlayerLimit: int32(desiredLimit)})
 	if err != nil {

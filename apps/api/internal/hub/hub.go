@@ -203,11 +203,13 @@ func (h *Hub) Publish(roomID string) {
 				continue
 			}
 			current, exists := participantByID[c.member.ID]
-			if !exists || current.Role != c.member.Role || multi.MemberSeat(current) != multi.MemberSeat(c.member) {
+			if !exists || current.Role != c.member.Role {
 				c.sendMemberChangedAndClose()
 				continue
 			}
-			projected, skip, err := multi.ProjectEvent(ctx, h.q, h.projectionSecret, event, roomID, c.member, memberSlotByID, charCache)
+			// seat 是展示顺序而非身份或能力。大厅降容会保留 memberId/role 并压紧 seat，
+			// 因此同一连接继续有效，但事件投影必须使用数据库中的最新成员视图。
+			projected, skip, err := multi.ProjectEvent(ctx, h.q, h.projectionSecret, event, roomID, current, memberSlotByID, charCache)
 			if err != nil {
 				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
 				c.setCloseReason("projection_error")
