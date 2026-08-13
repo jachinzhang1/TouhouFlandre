@@ -901,3 +901,138 @@ func TestMultiRacePlayerLimitShrinkCompactsSeatsWithoutChangingIdentity(t *testi
 		t.Fatalf("compacted viewer/snapshot = %+v", snapshot)
 	}
 }
+
+func createEightLimitRoster(t *testing.T, playerCount int) (playerLimitRoom, []openapi.JoinRoomResponse, []string) {
+	t.Helper()
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 8})
+	members := []openapi.JoinRoomResponse{{
+		GuestToken: openapi.GuestToken(room.hostToken),
+		Viewer: openapi.ParticipantView{
+			MemberId: room.hostMemberID,
+			Role:     openapi.ParticipantRolePlayer,
+		},
+		JoinRole: openapi.ParticipantRolePlayer,
+	}}
+	tokens := []string{room.hostToken}
+	for seat := 2; seat <= playerCount; seat++ {
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join seat %d: %d %s", seat, resp.StatusCode, payload)
+		}
+		var participant openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &participant); err != nil {
+			t.Fatal(err)
+		}
+		if participant.JoinRole != openapi.ParticipantRolePlayer || participant.Viewer.Seat == nil || *participant.Viewer.Seat != seat {
+			t.Fatalf("seat %d participant = %+v", seat, participant)
+		}
+		members = append(members, participant)
+		tokens = append(tokens, string(participant.GuestToken))
+	}
+	return room, members, tokens
+}
+
+func TestMultiRacePlayerLimitEightFlexibleStartMatrix(t *testing.T) {
+	for _, playerCount := range []int{2, 3, 5, 8} {
+		playerCount := playerCount
+		t.Run(fmt.Sprintf("players_%d", playerCount), func(t *testing.T) {
+			room, members, tokens := createEightLimitRoster(t, playerCount)
+			for index, token := range tokens {
+				resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", token, map[string]bool{"ready": true})
+				if resp.StatusCode != http.StatusNoContent {
+					t.Fatalf("ready seat %d: %d %s", index+1, resp.StatusCode, payload)
+				}
+			}
+
+			limit, players, spectators, overLimit, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+			if limit != 8 || players != playerCount || spectators != 0 || overLimit != 0 || matches != 1 || status != string(multi.RoomStatusPlaying) {
+				t.Fatalf("start terminal limit=%d players=%d spectators=%d over=%d matches=%d status=%s", limit, players, spectators, overLimit, matches, status)
+			}
+			rows, err := pool.Query(ctx, `
+				SELECT mp.member_id, mp.seat
+				FROM multi_match_player mp
+				JOIN multi_match mm ON mm.id = mp.match_id
+				WHERE mm.room_id = $1 ORDER BY mp.seat`, room.roomID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			roster := map[string]int{}
+			for rows.Next() {
+				var memberID string
+				var seat int
+				if err := rows.Scan(&memberID, &seat); err != nil {
+					t.Fatal(err)
+				}
+				roster[memberID] = seat
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatal(err)
+			}
+			if len(roster) != playerCount {
+				t.Fatalf("frozen roster size = %d, want %d", len(roster), playerCount)
+			}
+			for seat, member := range members {
+				if roster[member.Viewer.MemberId] != seat+1 {
+					t.Fatalf("member %s roster seat=%d, want %d", member.Viewer.MemberId, roster[member.Viewer.MemberId], seat+1)
+				}
+			}
+		})
+	}
+}
+
+func TestMultiRacePlayerLimitEightStartGuards(t *testing.T) {
+	t.Run("below minimum", func(t *testing.T) {
+		room, _, tokens := createEightLimitRoster(t, 1)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", tokens[0], map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
+		}
+		_, players, _, _, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		if players != 1 || matches != 0 || status != string(multi.RoomStatusLobby) {
+			t.Fatalf("below-minimum start players=%d matches=%d status=%s", players, matches, status)
+		}
+	})
+
+	t.Run("unready player", func(t *testing.T) {
+		room, _, tokens := createEightLimitRoster(t, 3)
+		for _, token := range tokens[:2] {
+			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", token, map[string]bool{"ready": true})
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("partial ready: %d %s", resp.StatusCode, payload)
+			}
+		}
+		_, players, _, _, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		if players != 3 || matches != 0 || status != string(multi.RoomStatusLobby) {
+			t.Fatalf("unready-player start players=%d matches=%d status=%s", players, matches, status)
+		}
+	})
+
+	t.Run("disconnected ready player", func(t *testing.T) {
+		room, members, tokens := createEightLimitRoster(t, 3)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", tokens[2], map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("third ready: %d %s", resp.StatusCode, payload)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE multi_member SET status = 'disconnected', grace_until = now() + interval '30 seconds' WHERE id = $1`, members[2].Viewer.MemberId); err != nil {
+			t.Fatal(err)
+		}
+		for _, token := range tokens[:2] {
+			resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", token, map[string]bool{"ready": true})
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("connected ready: %d %s", resp.StatusCode, payload)
+			}
+		}
+		_, players, _, _, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		var readyCount, disconnectedCount int
+		if err := pool.QueryRow(ctx, `
+			SELECT count(*) FILTER (WHERE ready)::int,
+			       count(*) FILTER (WHERE status = 'disconnected')::int
+			FROM multi_member WHERE room_id = $1 AND role = 'player'`, room.roomID).Scan(&readyCount, &disconnectedCount); err != nil {
+			t.Fatal(err)
+		}
+		if players != 3 || readyCount != 3 || disconnectedCount != 1 || matches != 0 || status != string(multi.RoomStatusLobby) {
+			t.Fatalf("disconnected-player start players=%d ready=%d disconnected=%d matches=%d status=%s", players, readyCount, disconnectedCount, matches, status)
+		}
+	})
+}
