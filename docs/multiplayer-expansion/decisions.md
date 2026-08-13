@@ -102,6 +102,26 @@ race 的 `playerLimit` 只表示入座容量，不表示开局必须人数。开
 
 角色变化和 member 状态变化必须在每次 REST 请求鉴权时重新读取；WS 不得在 claim-seat 后继续使用连接建立时缓存的 role/capability。公开 `memberId`、seat、昵称或某条历史消息都不授予任何矩阵外动作。
 
+## 聊天 channel × 接收角色
+
+发送请求只允许客户端提交 `clientMessageId`、`kind` 和对应内容。`senderMemberId`、displayName/role/seat 发送时快照与 channel 必须由服务端从 token 对应的当前 member 派生；请求中出现这些授权字段不能覆盖服务端结果，并应以稳定的非法请求错误拒绝。
+
+| 服务端 channel | 唯一允许的发送者当前 role | player 接收实时/历史 | spectator 接收实时/历史 | 说明 |
+|---|---|---|---|---|
+| `room` | player | 可见 | 可见 | PK 玩家消息对本房间所有获授权 player 与 spectator 可见 |
+| `spectator` | spectator | 不可见且历史查询不得返回 | 可见 | 观战者消息只在本房间 spectator 之间可见 |
+
+发送者 × channel 的其他组合全部禁止：player 不能发送 `spectator`，spectator 不能发送 `room`，任何 member 都不能选择 `team`、`member` 或私聊范围。服务端授权投影必须同时用于 REST history、WS replay 和 WS realtime，不能依赖前端隐藏消息。
+
+消息保存不可变的发送时 `senderMemberId`、displayName、role、seat 快照及派生 channel。seat 后续压紧或被新 member 占用不得改写历史发送者；member 行在 lobby 删除也不得级联删除消息。spectator claim-seat 后：
+
+- 旧 WS 立即失效，不能继续以 spectator capability 接收或发送；
+- 同一 token 重连后以 player 授权，后续消息只进入 `room`；
+- 过去的 spectator 消息仍保留原快照和 `spectator` channel，但该 member 当前作为 player 不再获权查询或恢复它们；
+- 重新成为某角色不会追溯改写消息 channel，也不会把不可见历史复制到新 channel。
+
+retained left member 只可在房间保留期内按其最后有效 role 读取原本获授权的历史，不得发送；closed/已清理房间不再提供聊天访问。`receiveChat` 关闭不会改变本表中的接收授权。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案
