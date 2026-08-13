@@ -1,0 +1,64 @@
+# PATCH /api/rooms/{roomId}/settings — 房主更新大厅竞速设置
+patch:
+  operationId: rooms_updateSettings
+  tags:
+    - rooms
+  summary: 更新房间设置
+  description: |
+    仅 connected 的 lobby 房主可用。race 的 playerLimit 可设为 2..8，且不得低于当前玩家数；
+    relay 固定两人并拒绝该竞速设置。任一玩家 ready 或 match 已创建后配置锁定，
+    所有玩家取消准备后可再次修改。修改设置本身不触发开局。
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required:
+            - playerLimit
+          properties:
+            playerLimit:
+              type: integer
+              minimum: 2
+              maximum: 8
+              x-go-type: "*int"
+  responses:
+    "204":
+      description: 设置已更新；重复提交相同值不产生事件
+    "400":
+      description: 缺少或非法请求体（INVALID_REQUEST）或上限不合法/低于当前玩家数（INVALID_PLAYER_LIMIT）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "401":
+      description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 房间不存在（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 非 lobby、已有 match 或当前有人 ready（ROOM_SETTINGS_LOCKED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

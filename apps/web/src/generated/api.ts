@@ -299,6 +299,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新房间设置
+         * @description 仅 connected 的 lobby 房主可用。race 的 playerLimit 可设为 2..8，且不得低于当前玩家数；
+         *     relay 固定两人并拒绝该竞速设置。任一玩家 ready 或 match 已创建后配置锁定，
+         *     所有玩家取消准备后可再次修改。修改设置本身不触发开局。
+         */
+        patch: operations["rooms_updateSettings"];
+        trace?: never;
+    };
     "/api/rooms/{roomId}/claim-seat": {
         parameters: {
             query?: never;
@@ -479,7 +501,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -1519,6 +1541,11 @@ export interface operations {
                     /** @description 可选玩法模式；缺省为 race（竞速）。 */
                     mode?: components["schemas"]["MultiplayerMode"];
                     /**
+                     * @description race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
+                     * @default 2
+                     */
+                    playerLimit?: number;
+                    /**
                      * @description 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
                      * @default 60
                      * @enum {integer}
@@ -1540,7 +1567,7 @@ export interface operations {
                     "application/json": components["schemas"]["CreateRoomResponse"];
                 };
             };
-            /** @description 非法赛制（INVALID_FORMAT） */
+            /** @description 非法赛制（INVALID_FORMAT）或玩家上限（INVALID_PLAYER_LIMIT） */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1760,6 +1787,77 @@ export interface operations {
                 };
             };
             /** @description 房间状态不允许（ROOM_CLOSED）或对局已开始（MATCH_ALREADY_STARTED） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    playerLimit: number;
+                };
+            };
+        };
+        responses: {
+            /** @description 设置已更新；重复提交相同值不产生事件 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 缺少或非法请求体（INVALID_REQUEST）或上限不合法/低于当前玩家数（INVALID_PLAYER_LIMIT） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 非 lobby、已有 match 或当前有人 ready（ROOM_SETTINGS_LOCKED） */
             409: {
                 headers: {
                     [name: string]: unknown;

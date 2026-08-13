@@ -38,6 +38,8 @@ const (
 	codeGuestUnauthorized   openapi.ErrorResponseCode = "GUEST_UNAUTHORIZED"
 	codeSpectatorReadOnly   openapi.ErrorResponseCode = "SPECTATOR_READ_ONLY"
 	codeInvalidFormat       openapi.ErrorResponseCode = "INVALID_FORMAT"
+	codeInvalidPlayerLimit  openapi.ErrorResponseCode = "INVALID_PLAYER_LIMIT"
+	codeRoomSettingsLocked  openapi.ErrorResponseCode = "ROOM_SETTINGS_LOCKED"
 	codeMatchAlreadyStarted openapi.ErrorResponseCode = "MATCH_ALREADY_STARTED"
 	codeRematchNotAvailable openapi.ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
 	codeRoundNotActive      openapi.ErrorResponseCode = "ROUND_NOT_ACTIVE"

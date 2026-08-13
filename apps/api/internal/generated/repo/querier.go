@@ -130,6 +130,7 @@ type Querier interface {
 	StartRound(ctx context.Context, id string) (MultiRound, error)
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
+	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
 	UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams) (MultiRound, error)

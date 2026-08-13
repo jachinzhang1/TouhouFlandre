@@ -39,7 +39,7 @@ const RelayMaxSkipsPerPlayer = 2
 const (
 	// MinPlayers is the fixed minimum roster size for race and relay matches.
 	MinPlayers = 2
-	// DefaultPlayerLimit is the room capacity used until MPX-005 exposes configuration.
+	// DefaultPlayerLimit is the capacity used when a race room omits playerLimit.
 	DefaultPlayerLimit = 2
 	// ServerMaxRacePlayers is the hard upper bound for a race room.
 	ServerMaxRacePlayers = 8

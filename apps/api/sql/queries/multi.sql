@@ -68,6 +68,9 @@ UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING *;
 -- name: UpdateRoomQuestionScope :one
 UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING *;
 
+-- name: UpdateRoomPlayerLimit :one
+UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING *;
+
 -- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING *;
 

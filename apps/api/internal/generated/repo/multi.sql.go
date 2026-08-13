@@ -2296,6 +2296,34 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 	return i, err
 }
 
+const updateRoomPlayerLimit = `-- name: UpdateRoomPlayerLimit :one
+UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+`
+
+type UpdateRoomPlayerLimitParams struct {
+	ID          string `json:"id"`
+	PlayerLimit int32  `json:"player_limit"`
+}
+
+func (q *Queries) UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error) {
+	row := q.db.QueryRow(ctx, updateRoomPlayerLimit, arg.ID, arg.PlayerLimit)
+	var i MultiRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Format,
+		&i.Status,
+		&i.EventSeq,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Mode,
+		&i.TurnSeconds,
+		&i.QuestionScope,
+		&i.PlayerLimit,
+	)
+	return i, err
+}
+
 const updateRoomQuestionScope = `-- name: UpdateRoomQuestionScope :one
 UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
 `
