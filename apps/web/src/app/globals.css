@@ -1771,6 +1771,7 @@ html[data-theme-mode="dark"] .appearance-swatch {
 }
 
 .home-hero::after,
+.home-hero-blur-gentle,
 .home-hero-blur-strong {
   display: none;
   pointer-events: none;
@@ -1786,6 +1787,7 @@ html[data-theme-mode="dark"] .appearance-swatch {
   }
 
   .home-hero::after,
+  .home-hero-blur-gentle,
   .home-hero-blur-strong {
     --hero-progressive-scrim: linear-gradient(transparent, transparent);
     position: absolute;
@@ -1809,8 +1811,25 @@ html[data-theme-mode="dark"] .appearance-swatch {
       cover;
   }
 
-  .home-hero::after {
+  .home-hero-blur-gentle {
     z-index: 0;
+    filter: blur(2px) saturate(96%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 22%,
+      rgba(0, 0, 0, 0.58) 34%,
+      #000 44%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 22%,
+      rgba(0, 0, 0, 0.58) 34%,
+      #000 44%
+    );
+  }
+
+  .home-hero::after {
+    z-index: 1;
     filter: blur(6px) saturate(90%);
     -webkit-mask-image: linear-gradient(
       to bottom,
@@ -1833,7 +1852,7 @@ html[data-theme-mode="dark"] .appearance-swatch {
       color-mix(in srgb, var(--hero-bg) 14%, transparent) 72%,
       color-mix(in srgb, var(--hero-bg) 34%, transparent)
     );
-    z-index: 1;
+    z-index: 2;
     filter: blur(10px) saturate(84%);
     -webkit-mask-image: linear-gradient(
       to bottom,
