@@ -202,7 +202,7 @@ Issue 之间应保持“一 Issue 一主题、一 PR 可回滚”。生成代码
 | 6. 交付聊天 Web | MPX-009：聊天面板、历史、重连、未读和 `receiveChat` | B | MPX-008 合并；可与已完成的 MPX-006 汇合 | 玩家/观战者可见性、角色变化、闭麦、断线和移动端 e2e 通过 |
 | 7. 集成与发布闸门 | MPX-010：迁移、并发、安全、性能、灰度、回滚、文档和用户公告 | 两人共同 | MPX-006、009 均合并 | 全量检查、v1 房间排空和生产回滚演练完成；用户公告评审通过，并在默认开放时同步发布，之后才完成发布流程 |
 
-步骤 0 的实测命令、生成物收口和已知限制记录在[多人扩展施工基线](./baseline.md)。后续节点发现基线语义变化时，应在拥有该变化的 Issue 中更新记录，不能覆盖原始结果。
+步骤 0 的原始结果保留在[多人扩展施工基线](./baseline.md)。MPX-002A 与 MPX-002B 合并后的实测命令、生成物范围、迁移回滚边界和后续风险记录在 [MPX-003 共享底座进入闸门](./foundation-gate.md)。后续节点发现基线语义变化时，应在拥有该变化的 Issue 中更新记录，不能覆盖原始结果。
 
 步骤 5A 与 5B 是本路线图的主要并行窗口：MPX-005 合并后，B 开始 MPX-006，A 同时按 MPX-007 → MPX-008 推进；B 在 MPX-008 合并后再开始 MPX-009。功能依赖链分别为 `001 → 002A → 002B → 002C → 003 → 004 → 005 → 006 → 010` 和 `001 → 002A → 002B → 002C → 007 → 008 → 009 → 010`；为避免 A 的契约、SQL 和生成代码冲突，实际合并顺序固定为 `001 → 002A → 002B → 002C → 003 → 004 → 005 → (006 ∥ 007 → 008) → 009 → 010`。
 
@@ -245,7 +245,7 @@ flowchart TD
 5. 每个节点使用独立短期分支和独立 PR；后续节点从最新的集成分支创建。不要让一个长期分支同时承载多个 Issue，也不要把一个 Issue 拆成跨两位协作者的互相等待 PR。
 6. 两位协作者不要直接向集成分支推送。PR 目标统一为 `feature/multipalyer_mode_backend`，推荐合并顺序为 `001 → 002 → 003 → 004 → 005 → (006 ∥ 007 → 008) → 009 → 010`。其中协作者 B 开始 006 后，协作者 A 可继续 007/008。
 7. A 是 `contracts/ws/protocol.yaml`、OpenAPI 源、SQL 查询、migration、Go handler/domain 的唯一实现负责人；B 只消费生成后的契约。B 可以审查这些变更，但不在自己的功能 PR 中手改同一套源文件。
-8. 每次合并后在集成分支运行至少 `pnpm typecheck`、`pnpm test`、`pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol` 和 `cd apps/api && go test ./...`。涉及契约或 SQL 时运行 `task gen`，并确认 `apps/api/internal/generated` 与 `apps/web/src/generated` 均无未预期漂移；`task check:generated` 只覆盖 Go 生成目录，不能替代 Web 生成物检查。
+8. 每次合并后在集成分支运行至少 `pnpm typecheck`、`pnpm test`、`pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol` 和 `cd apps/api && go test ./...`。涉及契约或 SQL 时运行 `task check:generated`；该任务会执行完整 `task gen`，并同时确认 `apps/api/internal/generated` 与 `apps/web/src/generated` 无未预期漂移。
 9. MPX-010 由两位协作者共同完成，包含迁移、应用回滚、并发、安全、e2e 和移动端回归。迁移 Down 只在一次性测试库演练；生产回滚保留 expand schema，不通过 Down 删除已有新数据。只有 MPX-010 通过后，才将整个集成分支作为一个完整多人扩展合并到 `main`。
 
 ### 推荐的 worktree
