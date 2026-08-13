@@ -108,6 +108,137 @@ func TestMemberSeatMigrationPreservesExistingParticipants(t *testing.T) {
 	}
 }
 
+func TestMemberSeatMigrationDownRehearsal(t *testing.T) {
+	db, migrationsDir := newMigrationTestDatabase(t)
+	if err := goose.UpTo(db, migrationsDir, 8); err != nil {
+		t.Fatalf("migrate to legacy schema: %v", err)
+	}
+
+	const roomID = "down-rehearsal-room"
+	if _, err := db.Exec(`
+		INSERT INTO multi_room (id, code, format, status, expires_at)
+		VALUES ($1, 'DOWN01', 'bo3', 'lobby', now() + interval '1 hour')`, roomID); err != nil {
+		t.Fatalf("insert legacy room: %v", err)
+	}
+	for _, participant := range []struct {
+		id   string
+		slot any
+		role string
+	}{
+		{id: "down-host", slot: 1, role: "player"},
+		{id: "down-guest", slot: 2, role: "player"},
+		{id: "down-spectator", slot: nil, role: "spectator"},
+	} {
+		if _, err := db.Exec(`
+			INSERT INTO multi_member (id, room_id, slot, display_name, token_hash, role)
+			VALUES ($1, $2, $3, $1, $1 || '-token', $4)`,
+			participant.id, roomID, participant.slot, participant.role); err != nil {
+			t.Fatalf("insert legacy participant %s: %v", participant.id, err)
+		}
+	}
+
+	if err := goose.UpTo(db, migrationsDir, 9); err != nil {
+		t.Fatalf("upgrade to member/seat schema: %v", err)
+	}
+	assertMigrationColumn(t, db, "multi_member", "seat", true)
+	assertMigrationColumn(t, db, "multi_member", "slot", false)
+	assertRoomPlayerLimit(t, db, roomID, 2)
+	assertMigrationParticipants(t, db, roomID, "seat")
+
+	// Down 只在本测试创建的一次性数据库执行；生产应用回滚保留 expand schema。
+	if err := goose.DownTo(db, migrationsDir, 8); err != nil {
+		t.Fatalf("down to legacy schema: %v", err)
+	}
+	assertMigrationColumn(t, db, "multi_member", "seat", false)
+	assertMigrationColumn(t, db, "multi_member", "slot", true)
+	assertMigrationColumn(t, db, "multi_room", "player_limit", false)
+	assertMigrationParticipants(t, db, roomID, "slot")
+
+	if err := goose.UpTo(db, migrationsDir, 9); err != nil {
+		t.Fatalf("re-upgrade member/seat schema: %v", err)
+	}
+	assertMigrationColumn(t, db, "multi_member", "seat", true)
+	assertMigrationColumn(t, db, "multi_member", "slot", false)
+	assertRoomPlayerLimit(t, db, roomID, 2)
+	assertMigrationParticipants(t, db, roomID, "seat")
+}
+
+func assertMigrationColumn(t *testing.T, db *sql.DB, table, column string, want bool) {
+	t.Helper()
+	var exists bool
+	if err := db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+		)`, table, column).Scan(&exists); err != nil {
+		t.Fatalf("inspect %s.%s: %v", table, column, err)
+	}
+	if exists != want {
+		t.Fatalf("column %s.%s exists = %v, want %v", table, column, exists, want)
+	}
+}
+
+func assertRoomPlayerLimit(t *testing.T, db *sql.DB, roomID string, want int) {
+	t.Helper()
+	var got int
+	if err := db.QueryRow(`SELECT player_limit FROM multi_room WHERE id = $1`, roomID).Scan(&got); err != nil {
+		t.Fatalf("read room player limit: %v", err)
+	}
+	if got != want {
+		t.Fatalf("room player_limit = %d, want %d", got, want)
+	}
+}
+
+func assertMigrationParticipants(t *testing.T, db *sql.DB, roomID, seatColumn string) {
+	t.Helper()
+	query := fmt.Sprintf(`
+		SELECT id, %s, role
+		FROM multi_member
+		WHERE room_id = $1
+		ORDER BY id`, pgx.Identifier{seatColumn}.Sanitize())
+	rows, err := db.Query(query, roomID)
+	if err != nil {
+		t.Fatalf("read migration participants: %v", err)
+	}
+	defer rows.Close()
+
+	want := map[string]struct {
+		seat sql.NullInt64
+		role string
+	}{
+		"down-host":      {seat: sql.NullInt64{Int64: 1, Valid: true}, role: "player"},
+		"down-guest":     {seat: sql.NullInt64{Int64: 2, Valid: true}, role: "player"},
+		"down-spectator": {seat: sql.NullInt64{}, role: "spectator"},
+	}
+	got := make(map[string]struct {
+		seat sql.NullInt64
+		role string
+	})
+	for rows.Next() {
+		var id string
+		var participant struct {
+			seat sql.NullInt64
+			role string
+		}
+		if err := rows.Scan(&id, &participant.seat, &participant.role); err != nil {
+			t.Fatalf("scan migration participant: %v", err)
+		}
+		got[id] = participant
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate migration participants: %v", err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("migration participants = %#v, want %#v", got, want)
+	}
+	for id, expected := range want {
+		if got[id] != expected {
+			t.Errorf("migration participant %s = %+v, want %+v", id, got[id], expected)
+		}
+	}
+}
+
 func TestMemberSeatConstraints(t *testing.T) {
 	db, migrationsDir := newMigrationTestDatabase(t)
 	if err := goose.Up(db, migrationsDir); err != nil {
