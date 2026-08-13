@@ -71,7 +71,7 @@ handshake:
   - step: complete
     detail: FIFO 队尾发送 sync.complete{gameSequence} 后切入实时流。
   - step: replace
-    detail: 同成员新连接注册或 member role/seat 变化时，旧连接收到 replaced 帧后关闭并重新鉴权。
+    detail: 同成员新连接注册或 member role 变化时，旧连接收到 replaced 帧后关闭并重新鉴权；仅降容压紧 seat 时保留同一连接和 memberId，并使用最新 seat 投影。
 
 # 服务端 → 客户端事件（08 §8.3 全表）
 # observer: all = 全体成员；opponent = 仅对手；spectator = 仅观战者（逐观察者投影）

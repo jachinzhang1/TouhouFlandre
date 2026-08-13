@@ -92,10 +92,11 @@ stateDiagram-v2
 
 | 方法 | 路径 | 用途 |
 |---|---|---|
-| `POST` | `/api/rooms` | 创建房间；请求体包含赛制、玩法模式、接力回合秒数和显示名。 |
+| `POST` | `/api/rooms` | 创建房间；race 可设置 `playerLimit=2..8`（默认 2），relay 固定 2 人。 |
 | `GET` | `/api/rooms/{roomCode}` | 加入前公开预检。 |
 | `POST` | `/api/rooms/{roomCode}/join` | 加入房间。 |
 | `POST` | `/api/rooms/{roomId}/ready` | 幂等设置准备状态。 |
+| `PATCH` | `/api/rooms/{roomId}/settings` | 房主在无人 ready 的 lobby 修改 race 玩家上限。 |
 | `POST` | `/api/rooms/{roomId}/leave` | 离开房间。 |
 | `DELETE` | `/api/rooms/{roomId}` | 房主关闭房间。 |
 | `GET` | `/api/rooms/{roomId}/snapshot` | 获取房间快照和事件补齐。 |
@@ -106,6 +107,9 @@ stateDiagram-v2
 | `GET` | `/api/rooms/{roomId}/ws` | WebSocket 事件通道。 |
 
 REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令牌，不放入 URL。
+`playerLimit` 是容量上限而非开局目标；`minPlayers` 固定为 2，当前 2..`playerLimit`
+名玩家全部 connected + ready 后即按当时阵容开局。`room.info`、`room.updated` 与 snapshot
+统一返回 `playerCount`、`playerLimit`、`minPlayers`、`availableSeats` 和 `spectatorCount`。
 
 ## WebSocket 协议
 
@@ -132,7 +136,7 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 
 | 事件 | 用途 |
 |---|---|
-| `room.updated` | 房间成员、准备状态、赛制或模式投影变化。 |
+| `room.updated` | 房间成员、准备状态、容量计数、赛制或模式投影变化。 |
 | `match.started` | 新对局开始，携带赛制、模式、目标胜场和题库版本。 |
 | `match.rematch` | 成员确认再来一局。 |
 | `round.started` | 小局创建；接力模式额外携带 `turnMemberId`、`turnSeat`、`turnDeadline`、`maxTurnsPerPlayer`、`maxSkipsPerPlayer`。 |

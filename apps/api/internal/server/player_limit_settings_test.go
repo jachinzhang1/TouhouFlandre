@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -1035,4 +1036,113 @@ func TestMultiRacePlayerLimitEightStartGuards(t *testing.T) {
 			t.Fatalf("disconnected-player start players=%d ready=%d disconnected=%d matches=%d status=%s", players, readyCount, disconnectedCount, matches, status)
 		}
 	})
+}
+
+func TestMultiRacePlayerLimitPublicCapacitySurfaces(t *testing.T) {
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 4})
+	participants := make([]openapi.JoinRoomResponse, 0, 5)
+	for range 5 {
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join participant: %d %s", resp.StatusCode, payload)
+		}
+		var participant openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &participant); err != nil {
+			t.Fatal(err)
+		}
+		participants = append(participants, participant)
+	}
+	if participants[0].JoinRole != openapi.ParticipantRolePlayer || participants[1].JoinRole != openapi.ParticipantRolePlayer || participants[2].JoinRole != openapi.ParticipantRolePlayer {
+		t.Fatalf("expected seats 2..4 to be players: %+v", participants[:3])
+	}
+	for _, spectator := range participants[3:] {
+		if spectator.JoinRole != openapi.ParticipantRoleSpectator {
+			t.Fatalf("expected spectator after capacity: %+v", spectator)
+		}
+	}
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/leave", string(participants[0].GuestToken), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("leave seat two: %d %s", resp.StatusCode, payload)
+	}
+
+	infoResp, infoPayload := fastRequest(http.MethodGet, "/api/rooms/"+room.roomCode, nil)
+	if infoResp.StatusCode != http.StatusOK {
+		t.Fatalf("room info: %d %s", infoResp.StatusCode, infoPayload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(infoPayload, &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.PlayerLimit != 4 || info.MinPlayers != 2 || info.PlayerCount != 3 || info.AvailableSeats != 1 || info.SpectatorCount != 2 || len(info.Members) != 3 || info.JoinRole != openapi.ParticipantRolePlayer {
+		t.Fatalf("room.info capacity = %+v", info)
+	}
+
+	event := latestPlayerLimitRoomUpdated(t, room.roomID)
+	if event.PlayerLimit != 4 || event.MinPlayers != 2 || event.PlayerCount != 3 || event.AvailableSeats != 1 || event.SpectatorCount != 2 || len(event.Members) != 3 {
+		t.Fatalf("room.updated capacity = %+v", event)
+	}
+	snapshotResp, snapshotPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+room.roomID+"/snapshot", string(participants[3].GuestToken), nil)
+	if snapshotResp.StatusCode != http.StatusOK {
+		t.Fatalf("snapshot: %d %s", snapshotResp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.PlayerLimit != 4 || snapshot.MinPlayers != 2 || snapshot.PlayerCount != 3 || snapshot.AvailableSeats != 1 || snapshot.SpectatorCount != 2 || len(snapshot.Members) != 3 {
+		t.Fatalf("snapshot capacity = %+v", snapshot)
+	}
+
+	infoSeats := map[string]int{}
+	eventSeats := map[string]int{}
+	snapshotSeats := map[string]int{}
+	for _, member := range info.Members {
+		infoSeats[member.MemberId] = member.Seat
+	}
+	for _, member := range event.Members {
+		eventSeats[member.MemberID] = member.Seat
+	}
+	for _, member := range snapshot.Members {
+		snapshotSeats[member.MemberId] = member.Seat
+	}
+	if !reflect.DeepEqual(infoSeats, eventSeats) || !reflect.DeepEqual(infoSeats, snapshotSeats) {
+		t.Fatalf("capacity surfaces disagree info=%v event=%v snapshot=%v", infoSeats, eventSeats, snapshotSeats)
+	}
+}
+
+func TestMultiRacePlayerLimitDefaultTwoPlayerRegression(t *testing.T) {
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race"})
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("join second: %d %s", resp.StatusCode, payload)
+	}
+	var second openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &second); err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{room.hostToken, string(second.GuestToken)} {
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", token, map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("two-player ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+
+	snapshotResp, snapshotPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+room.roomID+"/snapshot", room.hostToken, nil)
+	if snapshotResp.StatusCode != http.StatusOK {
+		t.Fatalf("two-player snapshot: %d %s", snapshotResp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Status != openapi.RoomStatusPlaying || snapshot.PlayerLimit != 2 || snapshot.MinPlayers != 2 || snapshot.PlayerCount != 2 || snapshot.AvailableSeats != 0 || snapshot.SpectatorCount != 0 || len(snapshot.Members) != 2 || snapshot.Match == nil || snapshot.Round == nil {
+		t.Fatalf("default two-player regression snapshot = %+v", snapshot)
+	}
+	var rosterCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*)::int FROM multi_match_player mp JOIN multi_match mm ON mm.id = mp.match_id WHERE mm.room_id = $1`, room.roomID).Scan(&rosterCount); err != nil {
+		t.Fatal(err)
+	}
+	if rosterCount != 2 {
+		t.Fatalf("default two-player roster = %d", rosterCount)
+	}
 }
