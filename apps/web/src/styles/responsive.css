@@ -1,0 +1,235 @@
+@media (max-width: 900px) {
+  .home-hero {
+    background-image: url("/hero-touhou-collage.jpg");
+    background-image: image-set(
+      url("/hero-touhou-collage-tablet.webp") type("image/webp"),
+      url("/hero-touhou-collage.jpg") type("image/jpeg")
+    );
+    background-position: center top;
+  }
+
+  .home-hero::before {
+    background-image: var(--hero-overlay-tablet);
+  }
+
+  .nav-link {
+    padding: 0 8px;
+  }
+
+  .nav-link-label {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .site-nav,
+  .site-footer {
+    padding-inline: 14px;
+  }
+
+  .site-nav-paper-layer {
+    position: absolute;
+  }
+
+  .nav-links {
+    position: fixed;
+  }
+
+  html[data-theme-mode="dark"] .nav-links {
+    background-color: var(--paper-tinted-bg);
+    background-image: var(--paper-tinted-ornament);
+    background-size: var(--paper-tinted-ornament-size);
+  }
+}
+
+@media (max-width: 680px) {
+  .home-hero {
+    background-image: url("/hero-touhou-collage.jpg");
+    background-image: image-set(
+      url("/hero-touhou-collage-mobile.webp") type("image/webp"),
+      url("/hero-touhou-collage.jpg") type("image/jpeg")
+    );
+    background-position: center top;
+  }
+
+  .home-hero::before {
+    background-image: var(--hero-overlay-mobile);
+  }
+
+  .nav-link {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    min-width: 0;
+    min-height: 56px;
+    padding: 0;
+    font-size: 0.64rem;
+  }
+  .nav-active-copy {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 5px max(5px, env(safe-area-inset-right));
+    padding-bottom: max(5px, env(safe-area-inset-bottom));
+  }
+
+  .nav-link-label {
+    display: block;
+  }
+
+  .catalog-controls {
+    display: grid;
+    grid-template-columns: 0.8fr 1.4fr 0.8fr;
+  }
+
+  .catalog-segment {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-segment-button {
+    min-width: 0;
+    padding: 0 7px;
+  }
+
+  .game-surface {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .topbar {
+    display: grid;
+    gap: 20px;
+    padding: 22px 18px;
+    border-radius: 0;
+  }
+
+  .game-emblem {
+    width: 42px;
+    height: 42px;
+  }
+
+  .topbar h1 {
+    font-size: 1.45rem;
+  }
+
+  .status-strip {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    padding: 15px 18px;
+  }
+
+  .status-strip.daily {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .puzzle-status {
+    grid-column: 1 / -1;
+  }
+
+  .status-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .progress-track {
+    width: 100%;
+  }
+
+  .guess-form {
+    grid-template-columns: 1fr;
+    padding: 16px 18px 14px;
+  }
+
+  .guess-form-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .guess-form-actions .primary-button,
+  .legend-button {
+    width: 100%;
+    padding: 0 12px;
+  }
+
+  .feedback-legend-tooltip {
+    max-width: calc(100vw - 36px);
+  }
+
+  .message {
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+
+  .table-wrap {
+    position: relative;
+  }
+
+  .guess-table {
+    min-width: 900px;
+  }
+
+  .guess-table thead th:first-child,
+  .guess-table tbody th {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--paper);
+    box-shadow: 1px 0 0 var(--line);
+  }
+
+  .guess-table thead th:first-child {
+    z-index: 3;
+    background: var(--surface-soft);
+  }
+
+  .result-panel {
+    grid-template-columns: 1fr auto;
+    margin: 12px;
+  }
+
+  .result-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .answer-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .result-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .answer-token {
+    grid-row: 1;
+  }
+
+  .result-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .answer-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .credit-entry-card:hover {
+    transform: none !important;
+  }
+}

@@ -14,12 +14,8 @@ import {
   Search,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type {
-  CharacterSort,
-  SortDirection,
-  Work,
-} from "@touhouflandre/shared";
-import { CharacterAvatar } from "../../components/CharacterAvatar";
+import type { CharacterSort, SortDirection, Work } from "@touhouflandre/shared";
+import { CharacterAvatar } from "../../components/game/CharacterAvatar";
 import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { joinValues } from "../../domain/format";

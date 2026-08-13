@@ -1,5 +1,5 @@
 import { readAnnouncements } from "../../announcements/catalog";
-import { AnnouncementPage } from "../../components/AnnouncementPage";
+import { AnnouncementPage } from "../../components/announcements/AnnouncementPage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

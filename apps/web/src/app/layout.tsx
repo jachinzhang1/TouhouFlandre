@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { AppearanceSwitcher } from "../components/AppearanceSwitcher";
-import { SiteFooter } from "../components/SiteFooter";
-import { SiteNav } from "../components/SiteNav";
+import { AppearanceSwitcher } from "../components/layout/AppearanceSwitcher";
+import { SiteFooter } from "../components/layout/SiteFooter";
+import { SiteNav } from "../components/layout/SiteNav";
 import "./globals.css";
 
 export const metadata: Metadata = {

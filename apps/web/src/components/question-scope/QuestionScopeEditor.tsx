@@ -24,7 +24,7 @@ import {
   type QuestionScopeConfig,
   type QuestionScopeRules,
 } from "@touhouflandre/shared";
-import { CharacterAvatar } from "../CharacterAvatar";
+import { CharacterAvatar } from "../game/CharacterAvatar";
 
 const FIELD_TOGGLE_LABELS = [
   ["firstAppearance", "初登场作品"],

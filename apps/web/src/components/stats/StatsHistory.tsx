@@ -15,7 +15,7 @@ import type {
   StatsRecord,
   StatsRound,
 } from "../../stats/types";
-import { CharacterAvatar } from "../CharacterAvatar";
+import { CharacterAvatar } from "../game/CharacterAvatar";
 
 const OUTCOME_LABELS: Record<StatsOutcome, string> = {
   win: "成功",

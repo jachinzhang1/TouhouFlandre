@@ -18,8 +18,8 @@ import {
   type QuestionDifficultyPreset,
   type SinglePlayerGameMode,
 } from "@touhouflandre/shared";
-import { CharacterAvatar } from "../CharacterAvatar";
-import { FeedbackStatusIcon } from "../FeedbackStatusIcon";
+import { CharacterAvatar } from "../game/CharacterAvatar";
+import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 
 export type DailySessionStatus = "won" | "lost" | "playing" | null;
 

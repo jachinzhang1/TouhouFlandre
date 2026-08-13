@@ -1,0 +1,66 @@
+.topbar h1,
+.result-panel h2 {
+  font-family: "Iowan Old Style", "Noto Serif SC", "Songti SC", serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.primary-button,
+.secondary-button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-weight: 800;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.primary-button {
+  padding: 0 19px;
+  color: var(--accent-contrast);
+  background: var(--vermilion);
+  box-shadow: 0 7px 16px var(--accent-shadow);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--vermilion-dark);
+  box-shadow: 0 10px 22px var(--accent-shadow-strong);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  color: var(--disabled-text);
+  background: var(--disabled-bg);
+  box-shadow: none;
+}
+
+.secondary-button,
+.icon-button {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-glass);
+}
+
+.secondary-button {
+  padding: 0 17px;
+}
+
+.secondary-button:hover,
+.icon-button:hover {
+  border-color: var(--control-border-hover);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.icon-button {
+  width: 44px;
+  padding: 0;
+}
