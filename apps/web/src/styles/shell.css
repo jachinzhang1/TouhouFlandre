@@ -313,7 +313,7 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
     var(--appearance-rest-color) 84%,
     var(--theme-color)
   );
-  --appearance-corner-shadow: rgba(25, 46, 39, 0.12);
+  --appearance-corner-shadow: rgba(25, 46, 39, 0.16);
   position: fixed;
   right: 0;
   bottom: 0;
@@ -330,7 +330,7 @@ html[data-theme-mode="dark"] .appearance-switcher {
     color-mix(in oklab, var(--appearance-rest-color) 90%, #000) 96%,
     var(--theme-color)
   );
-  --appearance-corner-shadow: rgba(0, 0, 0, 0.2);
+  --appearance-corner-shadow: rgba(0, 0, 0, 0.26);
 }
 
 .appearance-corner-surface {
@@ -356,18 +356,20 @@ html[data-theme-mode="dark"] .appearance-switcher {
 
 .appearance-corner-surface::after {
   position: absolute;
-  inset: 0;
-  background: var(--appearance-corner-shadow);
-  clip-path: polygon(
-    calc(100% - var(--appearance-collapsed-leg)) 100%,
-    100% calc(100% - var(--appearance-collapsed-leg)),
-    100% calc(100% - var(--appearance-collapsed-leg) + 18px),
-    calc(100% - var(--appearance-collapsed-leg) + 18px) 100%
+  top: 100%;
+  left: calc(100% - var(--appearance-collapsed-leg));
+  width: 128px;
+  height: 36px;
+  background: linear-gradient(
+    to bottom,
+    var(--appearance-corner-shadow),
+    transparent
   );
   content: "";
-  filter: blur(10px);
   opacity: 1;
   pointer-events: none;
+  transform: rotate(-45deg);
+  transform-origin: left top;
   transition: opacity 180ms ease;
 }
 
