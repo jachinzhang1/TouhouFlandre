@@ -7,6 +7,7 @@ import type { components } from "../generated/api";
 import type { GuessField, RoundEndedPayload } from "@touhouflandre/shared";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
+import { boardAtSeat, scoreAtSeat } from "../domain/memberCollections";
 import { OpponentBoard } from "./OpponentBoard";
 import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "./GuessTable";
@@ -46,13 +47,15 @@ export function MatchBoard({
     <section className="px-[18px] pt-5 pb-28">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
-          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}
+          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
+            format}
         </span>
         <span className="text-[0.95rem] font-black tabular-nums">
-          {match.scoreSlot1} : {match.scoreSlot2}
+          {scoreAtSeat(match.scores, 1)} : {scoreAtSeat(match.scores, 2)}
         </span>
         <span className="text-[0.75rem] text-ink-soft">
-          第 {match.roundIndex} 局{match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}
+          第 {match.roundIndex} 局
+          {match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}
         </span>
         {round && !ended && (
           <span className="text-[0.72rem] text-ink-soft tabular-nums">
@@ -64,13 +67,15 @@ export function MatchBoard({
 
       <div
         className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
-          ended
-            ? "grid-cols-2"
-            : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+          ended ? "grid-cols-2" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
         }`}
       >
         {ended && roundResult ? (
-          <EndedBoards roundResult={roundResult} mySlot={mySlot} fields={fields} />
+          <EndedBoards
+            roundResult={roundResult}
+            mySlot={mySlot}
+            fields={fields}
+          />
         ) : (
           <>
             <SelfBoard
@@ -79,7 +84,13 @@ export function MatchBoard({
               maxGuesses={round?.maxGuesses}
               fields={fields}
             />
-            <OpponentBoard rows={round?.opponent.rows ?? []} fields={fields} />
+            <OpponentBoard
+              rows={
+                round?.opponents.find((opponent) => opponent.seat !== mySlot)
+                  ?.rows ?? []
+              }
+              fields={fields}
+            />
           </>
         )}
       </div>
@@ -99,7 +110,7 @@ function EndedBoards({
   fields?: readonly GuessField[];
 }) {
   const toRows = (slot: 1 | 2): GuessRow[] => {
-    const board = slot === 1 ? roundResult.boards.slot1 : roundResult.boards.slot2;
+    const board = boardAtSeat(roundResult.boards, slot);
     return board.map((guess) => ({
       key: guess.guessId,
       name: guess.guessName,
@@ -113,8 +124,18 @@ function EndedBoards({
   };
   return (
     <>
-      <GuessTable title="我" rows={toRows(mySlot)} emptyLabel="本局未猜测。" fields={fields} />
-      <GuessTable title="对手（局末揭示）" rows={toRows(mySlot === 1 ? 2 : 1)} emptyLabel="对手本局未猜测。" fields={fields} />
+      <GuessTable
+        title="我"
+        rows={toRows(mySlot)}
+        emptyLabel="本局未猜测。"
+        fields={fields}
+      />
+      <GuessTable
+        title="对手（局末揭示）"
+        rows={toRows(mySlot === 1 ? 2 : 1)}
+        emptyLabel="对手本局未猜测。"
+        fields={fields}
+      />
     </>
   );
 }

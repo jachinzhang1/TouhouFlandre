@@ -36,7 +36,7 @@ func RelayTurnCounts(ctx context.Context, q *repo.Queries, roomID, roundID strin
 	}
 	membersBySlot := map[int]repo.MultiMember{}
 	for _, member := range members {
-		membersBySlot[MemberSlot(member)] = member
+		membersBySlot[MemberSeat(member)] = member
 	}
 	counts := [2]int{}
 	for slot := 1; slot <= 2; slot++ {
@@ -83,7 +83,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	} else {
 		found := false
 		for _, candidate := range members {
-			if MemberSlot(candidate) == expiredSlot {
+			if MemberSeat(candidate) == expiredSlot {
 				member = candidate
 				found = true
 				break
@@ -116,13 +116,14 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return RelayTimeoutResult{}, err
 	}
-	memberSlot := MemberSlot(member)
-	row := RelayTurnRow{Index: int(turn.TurnIndex), MemberSlot: memberSlot, Kind: kind.turnKind}
+	memberSlot := MemberSeat(member)
+	row := RelayTurnRow{Index: int(turn.TurnIndex), MemberID: member.ID, Seat: memberSlot, Kind: kind.turnKind}
+	var nextTurnMemberID *string
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
 	maxTurnsPerPlayer := MaxGuessesForMatch(match)
 	if skipCountBefore >= RelayMaxSkipsPerPlayer {
-		if err := AppendEvent(ctx, q, room.ID, kind.eventType, relaySkipPayload(kind.turnKind, match, round, row, nil, nil)); err != nil {
+		if err := AppendEvent(ctx, q, room.ID, kind.eventType, relaySkipPayload(kind.turnKind, match, round, row, nil, nil, nil)); err != nil {
 			return RelayTimeoutResult{}, err
 		}
 		if _, err := CompleteRoundTx(ctx, q, room, round, match, OtherSlot(memberSlot), now, timing); err != nil {
@@ -133,7 +134,8 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	advance := AdvanceRelayTurn(false, memberSlot, counts, maxTurnsPerPlayer)
 	if !advance.RoundEnded {
 		nextSlot := advance.NextTurnSlot
-		if _, ok := membersBySlot[nextSlot]; !ok {
+		nextMember, ok := membersBySlot[nextSlot]
+		if !ok {
 			return RelayTimeoutResult{}, errors.New("relay: next member missing")
 		}
 		updated, err := q.UpdateRoundTurn(ctx, repo.UpdateRoundTurnParams{
@@ -145,10 +147,12 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 			return RelayTimeoutResult{}, err
 		}
 		round = updated
+		nextMemberID := nextMember.ID
+		nextTurnMemberID = &nextMemberID
 		nextTurnSlot = &nextSlot
 		nextTurnDeadline = &nextDeadline
 	}
-	if err := AppendEvent(ctx, q, room.ID, kind.eventType, relaySkipPayload(kind.turnKind, match, round, row, nextTurnSlot, nextTurnDeadline)); err != nil {
+	if err := AppendEvent(ctx, q, room.ID, kind.eventType, relaySkipPayload(kind.turnKind, match, round, row, nextTurnMemberID, nextTurnSlot, nextTurnDeadline)); err != nil {
 		return RelayTimeoutResult{}, err
 	}
 	if advance.RoundEnded {
@@ -159,14 +163,15 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	return RelayTimeoutResult{Round: round, RoundEnded: advance.RoundEnded, ExpiredSlot: memberSlot}, nil
 }
 
-func relaySkipPayload(kind RelayTurnKind, match repo.MultiMatch, round repo.MultiRound, row RelayTurnRow, nextTurnSlot *int, nextTurnDeadline *time.Time) any {
+func relaySkipPayload(kind RelayTurnKind, match repo.MultiMatch, round repo.MultiRound, row RelayTurnRow, nextTurnMemberID *string, nextTurnSeat *int, nextTurnDeadline *time.Time) any {
 	switch kind {
 	case RelayTurnKindPass:
 		return RoundTurnPassPayload{
 			MatchIndex:       int(match.MatchIndex),
 			RoundIndex:       int(round.RoundIndex),
 			Row:              row,
-			NextTurnSlot:     nextTurnSlot,
+			NextTurnMemberID: nextTurnMemberID,
+			NextTurnSeat:     nextTurnSeat,
 			NextTurnDeadline: nextTurnDeadline,
 		}
 	default:
@@ -174,7 +179,8 @@ func relaySkipPayload(kind RelayTurnKind, match repo.MultiMatch, round repo.Mult
 			MatchIndex:       int(match.MatchIndex),
 			RoundIndex:       int(round.RoundIndex),
 			Row:              row,
-			NextTurnSlot:     nextTurnSlot,
+			NextTurnMemberID: nextTurnMemberID,
+			NextTurnSeat:     nextTurnSeat,
 			NextTurnDeadline: nextTurnDeadline,
 		}
 	}

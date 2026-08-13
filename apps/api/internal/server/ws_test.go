@@ -260,8 +260,8 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 		case "round.ended":
 			gotEnded = true
 			p, _ := msg["payload"].(map[string]any)
-			if p["result"] != "loss" {
-				t.Fatalf("joiner round.ended result = %v, want loss", p["result"])
+			if p["viewerResult"] != "loss" {
+				t.Fatalf("joiner round.ended viewerResult = %v, want loss", p["viewerResult"])
 			}
 		}
 	}
@@ -288,7 +288,7 @@ func TestMultiWSDisconnectMarksMember(t *testing.T) {
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		var status string
-		if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&status); err != nil {
+		if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&status); err != nil {
 			t.Fatal(err)
 		}
 		if status == "disconnected" {

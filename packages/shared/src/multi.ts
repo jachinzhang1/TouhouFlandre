@@ -12,10 +12,19 @@ export type MultiRoomFormat = (typeof MULTI_ROOM_FORMATS)[number];
 export const MULTIPLAYER_MODES = ["race", "relay"] as const;
 export type MultiplayerMode = (typeof MULTIPLAYER_MODES)[number];
 
-export const MULTI_ROOM_STATUSES = ["lobby", "playing", "finished", "closed"] as const;
+export const MULTI_ROOM_STATUSES = [
+  "lobby",
+  "playing",
+  "finished",
+  "closed",
+] as const;
 export type MultiRoomStatus = (typeof MULTI_ROOM_STATUSES)[number];
 
-export const MULTI_MEMBER_STATUSES = ["connected", "disconnected", "left"] as const;
+export const MULTI_MEMBER_STATUSES = [
+  "connected",
+  "disconnected",
+  "left",
+] as const;
 export type MultiMemberStatus = (typeof MULTI_MEMBER_STATUSES)[number];
 
 export const MULTI_PARTICIPANT_ROLES = ["player", "spectator"] as const;
@@ -27,10 +36,21 @@ export type MultiRoundStatus = (typeof MULTI_ROUND_STATUSES)[number];
 export const MULTI_MATCH_RESULTS = ["win", "loss", "draw"] as const;
 export type MultiMatchResult = (typeof MULTI_MATCH_RESULTS)[number];
 
-export const MULTI_MATCH_END_REASONS = ["normal", "forfeit", "disconnect", "server_restart", "round_cap"] as const;
+export const MULTI_MATCH_END_REASONS = [
+  "normal",
+  "forfeit",
+  "disconnect",
+  "server_restart",
+  "round_cap",
+] as const;
 export type MultiMatchEndReason = (typeof MULTI_MATCH_END_REASONS)[number];
 
-export const MULTI_ROOM_CLOSE_REASONS = ["host_left", "member_left", "ttl", "retention"] as const;
+export const MULTI_ROOM_CLOSE_REASONS = [
+  "host_left",
+  "member_left",
+  "ttl",
+  "retention",
+] as const;
 export type MultiRoomCloseReason = (typeof MULTI_ROOM_CLOSE_REASONS)[number];
 
 // 事件信封（08 §8.2）：sequence 房间内单调递增，客户端按 sequence 去重排序、缺口拉快照补齐。
@@ -46,7 +66,8 @@ export interface Envelope {
 // ---------- 事件 payload（08 §8.3 事件表） ----------
 
 export interface MemberView {
-  slot: number;
+  memberId: string;
+  seat: number;
   displayName: string;
   status: MultiMemberStatus;
   ready: boolean;
@@ -56,6 +77,7 @@ export interface RoomUpdatedPayload {
   format: MultiRoomFormat;
   mode: MultiplayerMode;
   turnSeconds: number;
+  playerLimit: number;
   members: MemberView[];
   spectatorCount: number;
 }
@@ -71,7 +93,8 @@ export interface MatchStartedPayload {
 }
 
 export interface MatchRematchPayload {
-  memberSlot: number;
+  memberId: string;
+  seat: number;
 }
 
 export interface RoundStartedPayload {
@@ -80,7 +103,8 @@ export interface RoundStartedPayload {
   startsAt: string;
   deadline: string;
   maxGuesses: number;
-  turnSlot?: number;
+  turnMemberId?: string;
+  turnSeat?: number;
   turnDeadline?: string;
   maxTurnsPerPlayer?: number;
   maxSkipsPerPlayer?: number;
@@ -94,6 +118,8 @@ export interface RoundPlayingPayload {
 export interface RoundOpponentGuessPayload {
   matchIndex: number;
   roundIndex: number;
+  memberId: string;
+  seat: number;
   rowIndex: number;
   statuses: FeedbackStatus[];
 }
@@ -101,7 +127,8 @@ export interface RoundOpponentGuessPayload {
 export interface RoundSpectatorGuessPayload {
   matchIndex: number;
   roundIndex: number;
-  memberSlot: number;
+  memberId: string;
+  seat: number;
   rowIndex: number;
   guess: NormalizedGuessResult;
 }
@@ -112,7 +139,8 @@ export type NormalizedGuessResult = GuessResult & {
 
 export interface RelayTurnRow {
   index: number;
-  memberSlot: number;
+  memberId: string;
+  seat: number;
   kind: "guess" | "timeout" | "pass";
   guess?: NormalizedGuessResult;
 }
@@ -121,7 +149,8 @@ export interface RoundSharedGuessPayload {
   matchIndex: number;
   roundIndex: number;
   row: RelayTurnRow;
-  nextTurnSlot?: number;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
   nextTurnDeadline?: string;
 }
 
@@ -129,7 +158,8 @@ export interface RoundTurnTimeoutPayload {
   matchIndex: number;
   roundIndex: number;
   row: RelayTurnRow;
-  nextTurnSlot?: number;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
   nextTurnDeadline?: string;
 }
 
@@ -137,7 +167,8 @@ export interface RoundTurnPassPayload {
   matchIndex: number;
   roundIndex: number;
   row: RelayTurnRow;
-  nextTurnSlot?: number;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
   nextTurnDeadline?: string;
 }
 
@@ -153,24 +184,44 @@ export interface RoundAnswerPayload {
 export interface RoundEndedPayload {
   matchIndex: number;
   roundIndex: number;
-  result: MultiMatchResult;
-  winnerSlot: number | null;
-  forfeitedSlot?: number;
+  viewerResult?: MultiMatchResult;
+  winnerMemberId: string | null;
+  forfeitedMemberId?: string;
   answer: RoundAnswerPayload;
-  boards: { slot1: GuessResult[]; slot2: GuessResult[] };
+  boards: MemberBoardView[];
   turns?: RelayTurnRow[];
-  scores: { slot1: number; slot2: number };
+  scores: MemberScoreView[];
+  results: MemberResultView[];
   /** 下一局 startsAt（本局 ended_at + INTERMISSION，服务端驱动；对局结束则为空）。 */
   nextStartsAt?: string;
 }
 
 export interface MatchEndedPayload {
   matchIndex: number;
-  result: MultiMatchResult;
-  winnerSlot: number | null;
-  scores: { slot1: number; slot2: number };
+  viewerResult?: MultiMatchResult;
+  winnerMemberId: string | null;
+  scores: MemberScoreView[];
+  results: MemberResultView[];
   reason: MultiMatchEndReason;
   retentionEndsAt: string;
+}
+
+export interface MemberBoardView {
+  memberId: string;
+  seat: number;
+  guesses: GuessResult[];
+}
+
+export interface MemberScoreView {
+  memberId: string;
+  seat: number;
+  score: number;
+}
+
+export interface MemberResultView {
+  memberId: string;
+  seat: number;
+  result: MultiMatchResult;
 }
 
 export interface RoomClosedPayload {

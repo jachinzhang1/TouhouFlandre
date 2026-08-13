@@ -20,6 +20,11 @@ import {
   saveMultiRoom,
 } from "../domain/multiRoom";
 import type { StoredMultiRoom } from "../domain/multiRoom";
+import {
+  boardAtSeat,
+  scoreAtSeat,
+  seatForMemberId,
+} from "../domain/memberCollections";
 import { useRoom, type RoomUiState } from "../hooks/useRoom";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { api } from "../lib/api";
@@ -34,22 +39,31 @@ import { RoundResultOverlay } from "./RoundResultOverlay";
 
 type SpectatorBoardGuess =
   | components["schemas"]["GuessResult"]
-  | RoundEndedPayload["boards"]["slot1"][number];
+  | RoundEndedPayload["boards"][number]["guesses"][number];
 
-type SpectatorBoards = {
-  slot1: SpectatorBoardGuess[];
-  slot2: SpectatorBoardGuess[];
-};
+type SpectatorBoards = Array<{
+  memberId: string;
+  seat: number;
+  guesses: SpectatorBoardGuess[];
+}>;
 
 export function RoomView({ code }: { code: string }) {
   const router = useRouter();
   const normalized = normalizeRoomCode(code);
-  const [stored, setStored] = useState<StoredMultiRoom | null | undefined>(undefined);
+  const [stored, setStored] = useState<StoredMultiRoom | null | undefined>(
+    undefined,
+  );
   const [redirecting, setRedirecting] = useState(false);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
-  const [roundActionBusy, setRoundActionBusy] = useState<"forfeit" | "pass" | null>(null);
-  const [dismissedRoundResultKey, setDismissedRoundResultKey] = useState<string | null>(null);
-  const [selectedArchiveKey, setSelectedArchiveKey] = useState<string | null>(null);
+  const [roundActionBusy, setRoundActionBusy] = useState<
+    "forfeit" | "pass" | null
+  >(null);
+  const [dismissedRoundResultKey, setDismissedRoundResultKey] = useState<
+    string | null
+  >(null);
+  const [selectedArchiveKey, setSelectedArchiveKey] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     setStored(loadMultiRoom());
@@ -99,7 +113,7 @@ export function RoomView({ code }: { code: string }) {
   const { state, mySlot, role, actions, guessError, roomUnavailable } = useRoom(
     stored?.roomId ?? "",
     stored?.guestToken ?? "",
-    stored?.role === "spectator" ? null : stored?.memberSlot ?? 1,
+    stored?.role === "spectator" ? null : (stored?.memberSlot ?? 1),
     stored?.role ?? "player",
   );
 
@@ -135,9 +149,9 @@ export function RoomView({ code }: { code: string }) {
   const showRoundResult = Boolean(state.roundResult && !roundResultDismissed);
   const showingFinalRoundResult = Boolean(
     status === "finished" &&
-      state.matchResult &&
-      state.roundResult &&
-      !roundResultDismissed,
+    state.matchResult &&
+    state.roundResult &&
+    !roundResultDismissed,
   );
 
   useEffect(() => {
@@ -173,7 +187,8 @@ export function RoomView({ code }: { code: string }) {
   };
 
   const handlePassRelayTurn = async () => {
-    if (mode !== "relay" || !state.match || state.round?.status !== "playing") return;
+    if (mode !== "relay" || !state.match || state.round?.status !== "playing")
+      return;
     setRoundActionBusy("pass");
     try {
       await actions.passRelayTurn();
@@ -237,7 +252,7 @@ export function RoomView({ code }: { code: string }) {
     const relayCanGuess =
       mode === "relay" &&
       state.round?.status === "playing" &&
-      state.round.turnSlot === playerSlot &&
+      state.round.turnSeat === playerSlot &&
       hasOpponent;
     const relayRows = state.round?.shared?.rows ?? [];
     const relayMaxSkips = state.round?.maxSkipsPerPlayer ?? 2;
@@ -324,7 +339,12 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
-  if (status === "finished" && state.matchResult && showRoundResult && state.roundResult) {
+  if (
+    status === "finished" &&
+    state.matchResult &&
+    showRoundResult &&
+    state.roundResult
+  ) {
     return (
       <>
         <RoundResultOverlay
@@ -399,33 +419,46 @@ function SpectatorRoom({
 }) {
   const selectedArchive =
     state.roundArchives.find(
-      (archive) => `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
+      (archive) =>
+        `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
     ) ?? null;
   const latestArchive = state.roundArchives.at(-1) ?? null;
   const displayArchive =
     selectedArchive ??
-    (state.room?.status === "finished" || state.round?.status === "ended" || !state.round ? latestArchive : null);
-  const retentionUntil = state.matchResult?.retentionEndsAt ?? state.room?.expiresAt ?? null;
-  const remaining = useRoomClock(state.room?.status === "finished" ? retentionUntil : null);
+    (state.room?.status === "finished" ||
+    state.round?.status === "ended" ||
+    !state.round
+      ? latestArchive
+      : null);
+  const retentionUntil =
+    state.matchResult?.retentionEndsAt ?? state.room?.expiresAt ?? null;
+  const remaining = useRoomClock(
+    state.room?.status === "finished" ? retentionUntil : null,
+  );
   const waitingToStart = state.room?.status === "lobby" && !state.match;
   const preparingNextRound = Boolean(
     !state.matchResult &&
-      state.roundResult &&
-      state.round?.status !== "playing",
+    state.roundResult &&
+    state.round?.status !== "playing",
   );
-  const winnerName =
-    state.matchResult?.winnerSlot === 1
-      ? state.members.find((member) => member.slot === 1)?.displayName ?? "玩家 1"
-      : state.matchResult?.winnerSlot === 2
-        ? state.members.find((member) => member.slot === 2)?.displayName ?? "玩家 2"
-        : null;
+  const winnerName = state.matchResult?.winnerMemberId
+    ? (state.members.find(
+        (member) => member.memberId === state.matchResult?.winnerMemberId,
+      )?.displayName ?? null)
+    : null;
 
   return (
     <section className="px-[18px] pt-5 pb-16">
       <div className="mx-auto max-w-[1280px]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
           <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.72rem] font-black text-jade">
-            观战席 · {MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ?? mode} · {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}
+            观战席 ·{" "}
+            {MULTIPLAYER_MODE_LABELS[
+              mode as keyof typeof MULTIPLAYER_MODE_LABELS
+            ] ?? mode}{" "}
+            ·{" "}
+            {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
+              format}
           </span>
           {waitingToStart ? (
             <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.82rem] font-black text-vermilion">
@@ -433,7 +466,8 @@ function SpectatorRoom({
             </span>
           ) : (
             <span className="text-[0.95rem] font-black tabular-nums">
-              {state.match?.scoreSlot1 ?? 0} : {state.match?.scoreSlot2 ?? 0}
+              {scoreAtSeat(state.match?.scores, 1)} :{" "}
+              {scoreAtSeat(state.match?.scores, 2)}
             </span>
           )}
           <span className="text-[0.75rem] text-ink-soft">
@@ -465,7 +499,11 @@ function SpectatorRoom({
 
         <SpectatorArchiveBar
           archives={state.roundArchives}
-          selectedKey={displayArchive ? `${displayArchive.matchIndex}:${displayArchive.roundIndex}` : null}
+          selectedKey={
+            displayArchive
+              ? `${displayArchive.matchIndex}:${displayArchive.roundIndex}`
+              : null
+          }
           showCurrent={!state.matchResult && state.room?.status !== "finished"}
           onSelect={onSelectArchive}
         />
@@ -483,7 +521,7 @@ function SpectatorRoom({
           />
         ) : (
           <SpectatorRaceBoards
-            boards={displayArchive?.boards ?? state.round?.boards ?? { slot1: [], slot2: [] }}
+            boards={displayArchive?.boards ?? state.round?.boards ?? []}
             members={state.members}
             fields={fields}
             archive={displayArchive}
@@ -545,8 +583,9 @@ function SpectatorRaceBoards({
   fields: readonly GuessField[];
   archive: RoundEndedPayload | null;
 }) {
+  const forfeitedSeat = seatForMemberId(members, archive?.forfeitedMemberId);
   const toRows = (slot: 1 | 2): GuessRow[] => {
-    const board = slot === 1 ? boards.slot1 : boards.slot2;
+    const board = boardAtSeat(boards, slot);
     const rows: GuessRow[] = board.map((guess, index) => ({
       key: `${slot}:${guess.guessId}:${index}`,
       name: guess.guessName,
@@ -557,7 +596,7 @@ function SpectatorRaceBoards({
         value: field.displayValue.join("、"),
       })),
     }));
-    if (archive?.forfeitedSlot === slot) {
+    if (archive && forfeitedSeat === slot) {
       rows.push({
         key: `${slot}:forfeit:${archive.matchIndex}:${archive.roundIndex}`,
         notice: "玩家放弃此局",
@@ -571,25 +610,30 @@ function SpectatorRaceBoards({
       胜利
     </span>
   );
+  const winnerSeat = seatForMemberId(members, archive?.winnerMemberId);
   return (
     <div className="grid grid-cols-2 items-start gap-3 max-[1100px]:grid-cols-1">
       <GuessTable
-        title={members.find((member) => member.slot === 1)?.displayName ?? "玩家 1"}
+        title={
+          members.find((member) => member.seat === 1)?.displayName ?? "玩家 1"
+        }
         subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-        headerExtra={archive?.winnerSlot === 1 ? winnerBadge : null}
+        headerExtra={winnerSeat === 1 ? winnerBadge : null}
         rows={toRows(1)}
         emptyLabel="该玩家暂无猜测。"
         fields={fields}
-        highlight={archive?.winnerSlot === 1}
+        highlight={winnerSeat === 1}
       />
       <GuessTable
-        title={members.find((member) => member.slot === 2)?.displayName ?? "玩家 2"}
+        title={
+          members.find((member) => member.seat === 2)?.displayName ?? "玩家 2"
+        }
         subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-        headerExtra={archive?.winnerSlot === 2 ? winnerBadge : null}
+        headerExtra={winnerSeat === 2 ? winnerBadge : null}
         rows={toRows(2)}
         emptyLabel="该玩家暂无猜测。"
         fields={fields}
-        highlight={archive?.winnerSlot === 2}
+        highlight={winnerSeat === 2}
       />
     </div>
   );
@@ -622,9 +666,7 @@ function RoundActionButtons({
         : "放弃本局";
   const passDisabled = actionBusy !== null || !relayCanPass;
   const passTitle =
-    relaySkipsRemaining <= 0
-      ? "本局空过次数已用完"
-      : "主动空过本轮猜测";
+    relaySkipsRemaining <= 0 ? "本局空过次数已用完" : "主动空过本轮猜测";
 
   return (
     <div className="flex flex-wrap items-center gap-2">

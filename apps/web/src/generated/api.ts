@@ -771,19 +771,23 @@ export interface components {
         };
         /** @description 房间成员视图。 */
         MemberView: {
-            /** @description 席位；slot 1 = 房主（DELETE 权限判定）。 */
-            slot: number;
+            /** @description 房间内稳定、可公开的成员标识；不是鉴权凭据。 */
+            memberId: string;
+            /** @description 房间内展示顺序；seat 1 为房主，但身份关联使用 memberId。 */
+            seat: number;
             /** @description 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。 */
             displayName: string;
             status: components["schemas"]["MemberStatus"];
             /** @description 大厅就绪态（仅 lobby 态使用）。 */
             ready: boolean;
         };
-        /** @description 当前访问者视图。观战者不占玩家 slot。 */
+        /** @description 当前访问者视图。观战者不占玩家 seat。 */
         ParticipantView: {
+            /** @description 当前访问者在房间内的稳定成员标识。 */
+            memberId: string;
             role: components["schemas"]["ParticipantRole"];
             /** @description 玩家席位；观战者缺省。 */
-            slot?: number;
+            seat?: number;
             displayName: string;
             status: components["schemas"]["MemberStatus"];
         };
@@ -804,6 +808,8 @@ export interface components {
             /** @description 当前未离开的观战者数量。 */
             spectatorCount: number;
             joinRole: components["schemas"]["ParticipantRole"];
+            /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
+            playerLimit: number;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 创建房间响应。guestToken 明文仅此一次返回。 */
@@ -843,6 +849,8 @@ export interface components {
             /** @description PK 玩家视图，不含观战者。 */
             members: components["schemas"]["MemberView"][];
             spectatorCount: number;
+            /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
+            playerLimit: number;
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
             match?: components["schemas"]["MatchView"];
             /** @description 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。 */
@@ -856,24 +864,22 @@ export interface components {
             matchIndex: number;
             /** @description 目标胜场 = (N+1)/2。 */
             targetWins: number;
-            /** @description slot 1 已胜局数（平局不计入）。 */
-            scoreSlot1: number;
-            /** @description slot 2 已胜局数（平局不计入）。 */
-            scoreSlot2: number;
+            /** @description 按 seat 稳定排序的公开比分；身份关联使用 memberId。 */
+            scores: components["schemas"]["MemberScoreView"][];
             /** @description 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。 */
             roundIndex: number;
             /** @description 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。 */
             maxRounds: number;
-            /** @description 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。 */
-            rematchReady: boolean[];
+            /** @description 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。 */
+            rematchReady: components["schemas"]["MemberRematchReadyView"][];
             /** @description 本场绑定的题库版本。 */
             catalogVersion: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-         *     opponent 为匿名矩阵（只含状态颜色序列）。观战者会额外收到 boards 双方完整棋盘。
-         *     接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
+         *     opponents 为按 seat 排序的匿名矩阵集合（只含状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
+         *     接力模式额外提供 shared.rows、turnMemberId、turnSeat、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
          */
         RoundView: {
             status: components["schemas"]["RoundStatus"];
@@ -891,23 +897,24 @@ export interface components {
             maxGuesses: number;
             /** @description 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。 */
             self: {
+                /** @description 玩家视角为本人 memberId；观战者缺省。 */
+                memberId?: string;
+                /** @description 玩家视角为本人 seat；观战者缺省。 */
+                seat?: number;
                 guesses: components["schemas"]["GuessResult"][];
             };
-            /** @description 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。 */
-            opponent: {
-                rows: components["schemas"]["OpponentRow"][];
-            };
-            /** @description 观战者当前局完整双棋盘；玩家视角缺省，避免泄露对手猜测明细。 */
-            boards?: {
-                slot1: components["schemas"]["GuessResult"][];
-                slot2: components["schemas"]["GuessResult"][];
-            };
+            /** @description 对手匿名矩阵集合；按 seat 稳定排序并以 memberId 关联。 */
+            opponents: components["schemas"]["OpponentBoardView"][];
+            /** @description 观战者当前局完整棋盘集合；玩家视角缺省，避免泄露对手猜测明细。 */
+            boards?: components["schemas"]["MemberBoardView"][];
             /** @description 接力模式共享棋盘；竞速模式为空或缺省。 */
             shared?: {
                 rows: components["schemas"]["RelayTurnRow"][];
             };
-            /** @description 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。 */
-            turnSlot?: number;
+            /** @description 接力模式当前可提交玩家的稳定成员标识。 */
+            turnMemberId?: string;
+            /** @description 接力模式当前可提交玩家的展示席位。 */
+            turnSeat?: number;
             /**
              * Format: date-time
              * @description 接力模式当前玩家本轮截止时刻。
@@ -929,8 +936,10 @@ export interface components {
         RelayTurnRow: {
             /** @description 本局共享轮次序号（1 起）。 */
             index: number;
-            /** @description 本轮归属玩家 slot。 */
-            memberSlot: number;
+            /** @description 本轮归属玩家的稳定成员标识。 */
+            memberId: string;
+            /** @description 本轮发生时的展示席位。 */
+            seat: number;
             /** @enum {string} */
             kind: "guess" | "timeout" | "pass";
             guess?: components["schemas"]["GuessResult"];
@@ -948,6 +957,26 @@ export interface components {
             /** @description 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。 */
             version: string;
             characters: components["schemas"]["CharacterSearchResult"][];
+        };
+        MemberScoreView: {
+            memberId: string;
+            seat: number;
+            score: number;
+        };
+        MemberRematchReadyView: {
+            memberId: string;
+            seat: number;
+            ready: boolean;
+        };
+        OpponentBoardView: {
+            memberId: string;
+            seat: number;
+            rows: components["schemas"]["OpponentRow"][];
+        };
+        MemberBoardView: {
+            memberId: string;
+            seat: number;
+            guesses: components["schemas"]["GuessResult"][];
         };
     };
     responses: never;

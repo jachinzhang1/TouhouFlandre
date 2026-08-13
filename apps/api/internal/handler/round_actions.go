@@ -76,8 +76,8 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	winnerSlot := multi.OtherSlot(multi.MemberSlot(*member))
-	if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSlot(*member)); err != nil {
+	winnerSlot := multi.OtherSlot(multi.MemberSeat(*member))
+	if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSeat(*member)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -116,7 +116,7 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		if err != nil {
 			return nil, internalError(err)
 		}
-		if result.ExpiredSlot == multi.MemberSlot(*member) {
+		if result.ExpiredSlot == multi.MemberSeat(*member) {
 			expiredOwnTurn = true
 		}
 		round = result.Round
@@ -135,7 +135,7 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		s.publish(request.RoomId)
 		return nil, turnExpiredError("本轮已超时空过。")
 	}
-	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSlot(*member) {
+	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSeat(*member) {
 		return nil, notYourTurnError()
 	}
 	if _, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing); err != nil {

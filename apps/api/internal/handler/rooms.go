@@ -59,6 +59,7 @@ func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectat
 		Format:         multi.RoomFormat(room.Format),
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
 		Members:        multi.MemberViews(members),
 		SpectatorCount: spectatorCount,
 	}
@@ -66,7 +67,8 @@ func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectat
 
 func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 	return openapi.MemberView{
-		Slot:        m.Slot,
+		MemberId:    m.MemberID,
+		Seat:        m.Seat,
 		DisplayName: m.DisplayName,
 		Status:      openapi.MemberStatus(m.Status),
 		Ready:       m.Ready,
@@ -75,12 +77,13 @@ func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 
 func toOpenAPIParticipantView(v multi.ParticipantView) openapi.ParticipantView {
 	view := openapi.ParticipantView{
+		MemberId:    v.MemberID,
 		Role:        openapi.ParticipantRole(v.Role),
 		DisplayName: v.DisplayName,
 		Status:      openapi.MemberStatus(v.Status),
 	}
-	if v.Slot != nil {
-		view.Slot = v.Slot
+	if v.Seat != nil {
+		view.Seat = v.Seat
 	}
 	return view
 }
@@ -98,10 +101,10 @@ func joinRoleFor(room repo.MultiRoom, playerCount int, now time.Time) multi.Part
 	return multi.ParticipantRoleSpectator
 }
 
-func nextPlayerSlot(members []repo.MultiMember) (int32, bool) {
+func nextPlayerSeat(members []repo.MultiMember) (int32, bool) {
 	used := map[int]bool{}
 	for _, member := range members {
-		used[multi.MemberSlot(member)] = true
+		used[multi.MemberSeat(member)] = true
 	}
 	for slot := 1; slot <= 2; slot++ {
 		if !used[slot] {
@@ -194,6 +197,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 		Format:        string(format),
 		Mode:          string(mode),
 		TurnSeconds:   int32(turnSeconds),
+		PlayerLimit:   multi.DefaultPlayerLimit,
 		ExpiresAt:     timestamptz(s.now().Add(s.lobbyTTL)),
 		QuestionScope: scopeJSON,
 	})
@@ -203,7 +207,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 	member, err := q.CreateMember(ctx, repo.CreateMemberParams{
 		ID:          newSessionID(),
 		RoomID:      roomID,
-		Slot:        1,
+		Seat:        1,
 		DisplayName: displayName,
 		TokenHash:   multi.HashToken(token),
 	})
@@ -265,6 +269,7 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 		MemberCount:    len(members),
 		SpectatorCount: int(spectatorCount),
 		JoinRole:       openapi.ParticipantRole(joinRole),
+		PlayerLimit:    int(room.PlayerLimit),
 		QuestionScope:  &openapiScope,
 	}, nil
 }
@@ -292,7 +297,7 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
 
-	// 加入路径锁房间行；真正参与规则的玩家仍只有 slot 1/2。
+	// 加入路径锁房间行；当前玩法仍只开放 seat 1/2。
 	room, err := q.GetRoomByCodeForUpdate(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -318,14 +323,14 @@ func (s *Server) joinRoom(ctx context.Context, code, displayName string) (openap
 	}
 	var participant repo.MultiMember
 	if role == multi.ParticipantRolePlayer {
-		slot, ok := nextPlayerSlot(players)
+		seat, ok := nextPlayerSeat(players)
 		if !ok {
-			return nil, internalError(errors.New("no available player slot"))
+			return nil, internalError(errors.New("no available player seat"))
 		}
 		participant, err = q.CreateMember(ctx, repo.CreateMemberParams{
 			ID:          newSessionID(),
 			RoomID:      room.ID,
-			Slot:        slot,
+			Seat:        seat,
 			DisplayName: displayName,
 			TokenHash:   multi.HashToken(token),
 		})
@@ -511,7 +516,7 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		s.publish(request.RoomId)
 		return openapi.RoomsLeave204Response{}, nil
 	}
-	if multi.MemberSlot(*member) == 1 {
+	if multi.MemberSeat(*member) == 1 {
 		if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
 			ID:        request.RoomId,
 			ExpiresAt: timestamptz(s.now().Add(s.eventRetention)),
@@ -583,7 +588,7 @@ func (s *Server) RoomsClose(ctx context.Context, request openapi.RoomsCloseReque
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
-	if multi.MemberSlot(*member) != 1 {
+	if multi.MemberSeat(*member) != 1 {
 		return nil, &ApiError{Status: http.StatusForbidden, Code: codeGuestUnauthorized, Message: "只有房主可以关闭房间。"}
 	}
 	tx, err := s.pool.Begin(ctx)

@@ -32,10 +32,10 @@ describe("isValidRoomCode", () => {
 describe("relay skip quota", () => {
   it("主动空过与超时空过按成员共享计数", () => {
     const rows = [
-      { memberSlot: 1, kind: "pass" },
-      { memberSlot: 1, kind: "timeout" },
-      { memberSlot: 1, kind: "guess" },
-      { memberSlot: 2, kind: "timeout" },
+      { seat: 1, kind: "pass" },
+      { seat: 1, kind: "timeout" },
+      { seat: 1, kind: "guess" },
+      { seat: 2, kind: "timeout" },
     ];
 
     expect(countRelaySkips(rows, 1)).toBe(2);

@@ -69,16 +69,59 @@ func TestPermuteStatuses(t *testing.T) {
 	}
 }
 
-// TestHydrateBoardsEmptySlots 回归：空槽必须是非 nil 空切片（JSON 序列化为 []，前端按数组消费）。
-func TestHydrateBoardsEmptySlots(t *testing.T) {
-	boards := hydrateBoards(nil, nil, nil)
-	if boards.Slot1 == nil || len(boards.Slot1) != 0 {
-		t.Fatalf("Slot1 = %#v, want 非 nil 空切片", boards.Slot1)
+// TestPublicCollectionsEmptyJSON 回归：所有公开集合必须序列化为 []，不能是 null。
+func TestPublicCollectionsEmptyJSON(t *testing.T) {
+	collections := map[string]any{
+		"members": MemberViews(nil),
+		"boards":  hydrateBoards(nil, nil, nil),
+		"scores":  MemberScoresForLegacy(ScoresView{}, nil),
+		"results": MemberResults(nil, nil),
 	}
-	if boards.Slot2 == nil || len(boards.Slot2) != 0 {
-		t.Fatalf("Slot2 = %#v, want 非 nil 空切片", boards.Slot2)
+	for name, collection := range collections {
+		data, err := json.Marshal(collection)
+		if err != nil || string(data) != `[]` {
+			t.Errorf("%s marshal = %s (%v), want []", name, data, err)
+		}
 	}
-	if data, err := json.Marshal(boards); err != nil || string(data) != `{"slot1":[],"slot2":[]}` {
-		t.Fatalf("marshal = %s (%v), want {\"slot1\":[],\"slot2\":[]}", data, err)
+
+	payload, err := json.Marshal(RoundEndedPayload{
+		Boards:  collections["boards"].([]MemberBoardView),
+		Scores:  collections["scores"].([]MemberScoreView),
+		Results: collections["results"].([]MemberResultView),
+	})
+	if err != nil {
+		t.Fatalf("marshal round.ended: %v", err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &fields); err != nil {
+		t.Fatalf("unmarshal round.ended: %v", err)
+	}
+	for _, name := range []string{"boards", "scores", "results"} {
+		if string(fields[name]) != `[]` {
+			t.Errorf("round.ended %s = %s, want []", name, fields[name])
+		}
+	}
+}
+
+func TestPublicCollectionsOrderedBySeat(t *testing.T) {
+	memberSeatByID := map[string]int32{
+		"member-three": 3,
+		"member-one":   1,
+		"member-two":   2,
+	}
+	winner := "member-two"
+
+	scores := MemberScoresForLegacy(ScoresView{Slot1: 4, Slot2: 5}, memberSeatByID)
+	results := MemberResults(&winner, memberSeatByID)
+	for i, wantSeat := range []int{1, 2, 3} {
+		if scores[i].Seat != wantSeat || results[i].Seat != wantSeat {
+			t.Fatalf("index %d seats = score:%d result:%d, want %d", i, scores[i].Seat, results[i].Seat, wantSeat)
+		}
+	}
+	if scores[0].Score != 4 || scores[1].Score != 5 || scores[2].Score != 0 {
+		t.Fatalf("scores = %#v, want legacy seats 1/2 plus zero-valued seat 3", scores)
+	}
+	if results[0].Result != MatchResultLoss || results[1].Result != MatchResultWin || results[2].Result != MatchResultLoss {
+		t.Fatalf("results = %#v, want loss/win/loss", results)
 	}
 }

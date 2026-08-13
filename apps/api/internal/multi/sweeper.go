@@ -401,7 +401,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		Deadline:   startsAt.Add(s.cfg.Timing.RoundSeconds),
 		MaxGuesses: MaxGuessesForMatch(match),
 	}
-	AddRelayRoundStartedFields(&roundStarted, room, int(newRound.RoundIndex), startsAt)
+	members, err := q.ListMembers(ctx, room.ID)
+	if err != nil {
+		return err
+	}
+	AddRelayRoundStartedFields(&roundStarted, room, members, int(newRound.RoundIndex), startsAt)
 	if err := AppendEvent(ctx, q, roomID, EventRoundStarted, roundStarted); err != nil {
 		return err
 	}
@@ -490,7 +494,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if room.Status != string(RoomStatusLobby) {
 		return tx.Commit(ctx)
 	}
-	if MemberSlot(member) == 1 {
+	if MemberSeat(member) == 1 {
 		if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
 			ID:        room.ID,
 			ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
@@ -521,6 +525,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 		Format:         RoomFormat(room.Format),
 		Mode:           MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
 		Members:        MemberViews(remaining),
 		SpectatorCount: int(spectatorCount),
 	}); err != nil {
@@ -611,6 +616,7 @@ func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.Mult
 		Format:         RoomFormat(lockedRoom.Format),
 		Mode:           MultiplayerMode(lockedRoom.Mode),
 		TurnSeconds:    int(lockedRoom.TurnSeconds),
+		PlayerLimit:    int(lockedRoom.PlayerLimit),
 		Members:        MemberViews(players),
 		SpectatorCount: int(spectatorCount),
 	}); err != nil {

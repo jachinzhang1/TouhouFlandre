@@ -52,7 +52,7 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 		}
 		return err
 	}
-	opponentSlot := OtherSlot(MemberSlot(member))
+	opponentSlot := OtherSlot(MemberSeat(member))
 
 	// 3. 结束当前局（对方胜）——仅 countdown/playing 局；已 ended 的局保持原结果
 	if hasRound && round.Status != string(RoundStatusEnded) {
@@ -62,7 +62,7 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 		}
 		scores := ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)}
 		nextStarts := now.Add(timing.Intermission)
-		forfeitedSlot := MemberSlot(member)
+		forfeitedSlot := MemberSeat(member)
 		if err := AppendEvent(ctx, q, member.RoomID, EventRoundEnded, RoundEndedEventPayload{
 			RoundID:       round.ID,
 			MatchIndex:    int(match.MatchIndex),

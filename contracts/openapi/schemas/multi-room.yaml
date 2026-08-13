@@ -5,16 +5,20 @@ MemberView:
   type: object
   description: 房间成员视图。
   required:
-    - slot
+    - memberId
+    - seat
     - displayName
     - status
     - ready
   properties:
-    slot:
+    memberId:
+      type: string
+      description: 房间内稳定、可公开的成员标识；不是鉴权凭据。
+    seat:
       type: integer
       minimum: 1
-      maximum: 2
-      description: 席位；slot 1 = 房主（DELETE 权限判定）。
+      maximum: 8
+      description: 房间内展示顺序；seat 1 为房主，但身份关联使用 memberId。
     displayName:
       type: string
       description: 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。
@@ -26,18 +30,22 @@ MemberView:
 
 ParticipantView:
   type: object
-  description: 当前访问者视图。观战者不占玩家 slot。
+  description: 当前访问者视图。观战者不占玩家 seat。
   required:
+    - memberId
     - role
     - displayName
     - status
   properties:
+    memberId:
+      type: string
+      description: 当前访问者在房间内的稳定成员标识。
     role:
       $ref: "./multi-common.yaml#/ParticipantRole"
-    slot:
+    seat:
       type: integer
       minimum: 1
-      maximum: 2
+      maximum: 8
       description: 玩家席位；观战者缺省。
     displayName:
       type: string
@@ -56,6 +64,7 @@ RoomInfo:
     - memberCount
     - spectatorCount
     - joinRole
+    - playerLimit
   properties:
     roomCode:
       type: string
@@ -73,7 +82,7 @@ RoomInfo:
     memberCount:
       type: integer
       minimum: 0
-      maximum: 2
+      maximum: 8
       description: 当前 PK 玩家数（不含观战者）。
     spectatorCount:
       type: integer
@@ -81,6 +90,11 @@ RoomInfo:
       description: 当前未离开的观战者数量。
     joinRole:
       $ref: "./multi-common.yaml#/ParticipantRole"
+    playerLimit:
+      type: integer
+      minimum: 2
+      maximum: 8
+      description: 允许同时入座的最大玩家数；不表示开局必须凑满。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -136,6 +150,7 @@ RoomSnapshot:
     - viewer
     - members
     - spectatorCount
+    - playerLimit
     - events
   properties:
     roomId:
@@ -167,6 +182,11 @@ RoomSnapshot:
     spectatorCount:
       type: integer
       minimum: 0
+    playerLimit:
+      type: integer
+      minimum: 2
+      maximum: 8
+      description: 允许同时入座的最大玩家数；不表示开局必须凑满。
     match:
       type: object
       description: 当前场次（lobby 态不存在；含 finished 等待再来一局）。

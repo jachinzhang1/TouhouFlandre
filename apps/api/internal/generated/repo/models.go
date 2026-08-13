@@ -102,7 +102,7 @@ type MultiMatch struct {
 type MultiMember struct {
 	ID           string             `json:"id"`
 	RoomID       string             `json:"room_id"`
-	Slot         pgtype.Int4        `json:"slot"`
+	Seat         pgtype.Int4        `json:"seat"`
 	DisplayName  string             `json:"display_name"`
 	TokenHash    string             `json:"token_hash"`
 	Status       string             `json:"status"`
@@ -124,6 +124,7 @@ type MultiRoom struct {
 	Mode          string             `json:"mode"`
 	TurnSeconds   int32              `json:"turn_seconds"`
 	QuestionScope []byte             `json:"question_scope"`
+	PlayerLimit   int32              `json:"player_limit"`
 }
 
 type MultiRound struct {

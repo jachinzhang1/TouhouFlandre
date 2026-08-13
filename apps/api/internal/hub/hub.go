@@ -108,6 +108,7 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		Format:         multi.RoomFormat(room.Format),
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
 		Members:        multi.MemberViews(members),
 		SpectatorCount: int(spectatorCount),
 	}); err != nil {
@@ -158,7 +159,7 @@ func (h *Hub) Publish(roomID string) {
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
-		memberSlotByID[m.ID] = int32(multi.MemberSlot(m))
+		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
 	charCache := map[string]map[string]game.Character{}
 

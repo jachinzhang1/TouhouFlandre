@@ -59,7 +59,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, members, spectatorCount]
+      required: [format, mode, turnSeconds, playerLimit, members, spectatorCount]
       properties:
         format:
           type: string
@@ -70,18 +70,24 @@ events:
         turnSeconds:
           type: integer
           enum: [30, 60, 90, 120]
+        playerLimit:
+          type: integer
+          minimum: 2
+          maximum: 8
         members:
           type: array
           description: PK 玩家视图，不含观战者。
           items:
             type: object
             additionalProperties: false
-            required: [slot, displayName, status, ready]
+            required: [memberId, seat, displayName, status, ready]
             properties:
-              slot:
+              memberId:
+                type: string
+              seat:
                 type: integer
                 minimum: 1
-                maximum: 2
+                maximum: 8
               displayName:
                 type: string
               status:
@@ -129,12 +135,14 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [memberSlot]
+      required: [memberId, seat]
       properties:
-        memberSlot:
+        memberId:
+          type: string
+        seat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
 
   - type: round.started
     observer: all
@@ -161,10 +169,13 @@ events:
         maxGuesses:
           type: integer
           minimum: 1
-        turnSlot:
+        turnMemberId:
+          type: string
+          description: 接力模式首个可提交玩家的稳定成员标识；竞速模式缺省。
+        turnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
           description: 接力模式首个可提交玩家；竞速模式缺省。
         turnDeadline:
           type: string
@@ -203,7 +214,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, rowIndex, statuses]
+      required: [matchIndex, roundIndex, memberId, seat, rowIndex, statuses]
       properties:
         matchIndex:
           type: integer
@@ -211,6 +222,13 @@ events:
         roundIndex:
           type: integer
           minimum: 1
+        memberId:
+          type: string
+          description: 匿名矩阵所属对手的稳定成员标识。
+        seat:
+          type: integer
+          minimum: 1
+          maximum: 8
         rowIndex:
           type: integer
           minimum: 1
@@ -228,7 +246,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, memberSlot, rowIndex, guess]
+      required: [matchIndex, roundIndex, memberId, seat, rowIndex, guess]
       properties:
         matchIndex:
           type: integer
@@ -236,10 +254,12 @@ events:
         roundIndex:
           type: integer
           minimum: 1
-        memberSlot:
+        memberId:
+          type: string
+        seat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         rowIndex:
           type: integer
           minimum: 1
@@ -262,10 +282,12 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
@@ -286,10 +308,12 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
@@ -310,21 +334,23 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
 
   - type: round.ended
     observer: all
-    summary: 局结束（猜中/双方用尽/超时/对局被终止）。result 为观察者视角；揭示答案与双方完整棋盘。
+    summary: 局结束（猜中/玩家用尽/超时/对局被终止）。viewerResult 为观察者视角；揭示答案与按 seat 排序的成员棋盘。
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, result, winnerSlot, answer, boards, scores]
+      required: [matchIndex, roundIndex, winnerMemberId, answer, boards, scores, results]
       properties:
         matchIndex:
           type: integer
@@ -332,21 +358,18 @@ events:
         roundIndex:
           type: integer
           minimum: 1
-        result:
+        viewerResult:
           type: string
           enum: [win, loss, draw]
-        winnerSlot:
+          description: 玩家观察者的自身结果；观战者可缺省。
+        winnerMemberId:
           oneOf:
-            - type: integer
-              minimum: 1
-              maximum: 2
+            - type: string
             - type: "null"
           description: 平局为 null。
-        forfeitedSlot:
-          type: integer
-          minimum: 1
-          maximum: 2
-          description: 主动放弃本局的玩家 slot；非放弃结算时缺省。
+        forfeitedMemberId:
+          type: string
+          description: 主动放弃本局的玩家 memberId；非放弃结算时缺省。
         answer:
           type: object
           additionalProperties: false
@@ -373,16 +396,13 @@ events:
           items:
             $ref: "#/definitions/RelayTurnRow"
         scores:
-          type: object
-          additionalProperties: false
-          required: [slot1, slot2]
-          properties:
-            slot1:
-              type: integer
-              minimum: 0
-            slot2:
-              type: integer
-              minimum: 0
+          type: array
+          items:
+            $ref: "#/definitions/MemberScore"
+        results:
+          type: array
+          items:
+            $ref: "#/definitions/MemberResult"
         nextStartsAt:
           type: string
           format: date-time
@@ -394,32 +414,28 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, result, winnerSlot, scores, reason, retentionEndsAt]
+      required: [matchIndex, winnerMemberId, scores, results, reason, retentionEndsAt]
       properties:
         matchIndex:
           type: integer
           minimum: 0
-        result:
+        viewerResult:
           type: string
           enum: [win, loss, draw]
-        winnerSlot:
+          description: 玩家观察者的自身结果；观战者可缺省。
+        winnerMemberId:
           oneOf:
-            - type: integer
-              minimum: 1
-              maximum: 2
+            - type: string
             - type: "null"
           description: 平局为 null。
         scores:
-          type: object
-          additionalProperties: false
-          required: [slot1, slot2]
-          properties:
-            slot1:
-              type: integer
-              minimum: 0
-            slot2:
-              type: integer
-              minimum: 0
+          type: array
+          items:
+            $ref: "#/definitions/MemberScore"
+        results:
+          type: array
+          items:
+            $ref: "#/definitions/MemberResult"
         reason:
           type: string
           enum: [normal, forfeit, disconnect, server_restart, round_cap]
@@ -547,29 +563,67 @@ definitions:
   RelayTurnRow:
     type: object
     additionalProperties: false
-    required: [index, memberSlot, kind]
+    required: [index, memberId, seat, kind]
     properties:
       index:
         type: integer
         minimum: 1
-      memberSlot:
+      memberId:
+        type: string
+      seat:
         type: integer
         minimum: 1
-        maximum: 2
+        maximum: 8
       kind:
         type: string
         enum: [guess, timeout, pass]
       guess:
         $ref: "#/definitions/GuessResult"
   Boards:
+    type: array
+    items:
+      $ref: "#/definitions/MemberBoard"
+  MemberBoard:
     type: object
     additionalProperties: false
-    required: [slot1, slot2]
+    required: [memberId, seat, guesses]
     properties:
-      slot1:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      guesses:
         $ref: "#/definitions/GuessList"
-      slot2:
-        $ref: "#/definitions/GuessList"
+  MemberScore:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, score]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      score:
+        type: integer
+        minimum: 0
+  MemberResult:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, result]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      result:
+        type: string
+        enum: [win, loss, draw]
 
 # 有效示例：每个事件 1 个 + hello/ack/hello-ok/replaced 各 1 个
 examples:
@@ -585,12 +639,15 @@ examples:
           format: bo3
           mode: race
           turnSeconds: 60
+          playerLimit: 2
           members:
-            - slot: 1
+            - memberId: member-host
+              seat: 1
               displayName: 房主
               status: connected
               ready: false
-            - slot: 2
+            - memberId: member-guest
+              seat: 2
               displayName: 匿名玩家
               status: connected
               ready: false
@@ -640,7 +697,8 @@ examples:
         sequence: 30
         occurredAt: "2026-08-06T12:30:00Z"
         payload:
-          memberSlot: 1
+          memberId: member-host
+          seat: 1
 
     - label: round.started（首局 countdown）
       message:
@@ -677,6 +735,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
+          memberId: member-guest
+          seat: 2
           rowIndex: 1
           statuses: [miss, exact, partial, lower, miss, unknown]
 
@@ -690,7 +750,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
-          memberSlot: 1
+          memberId: member-host
+          seat: 1
           rowIndex: 1
           guess:
             guessId: reimu
@@ -716,7 +777,8 @@ examples:
           roundIndex: 1
           row:
             index: 1
-            memberSlot: 1
+            memberId: member-host
+            seat: 1
             kind: guess
             guess:
               guessId: marisa_kirisame
@@ -728,7 +790,8 @@ examples:
                   status: partial
                   symbol: "~"
                   displayValue: [游戏]
-          nextTurnSlot: 2
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
           nextTurnDeadline: "2026-08-06T12:01:14Z"
 
     - label: round.turn.timeout（接力超时空过）
@@ -743,9 +806,11 @@ examples:
           roundIndex: 1
           row:
             index: 2
-            memberSlot: 2
+            memberId: member-guest
+            seat: 2
             kind: timeout
-          nextTurnSlot: 1
+          nextTurnMemberId: member-host
+          nextTurnSeat: 1
           nextTurnDeadline: "2026-08-06T12:02:14Z"
 
     - label: round.turn.pass（接力主动空过）
@@ -760,9 +825,11 @@ examples:
           roundIndex: 1
           row:
             index: 3
-            memberSlot: 1
+            memberId: member-host
+            seat: 1
             kind: pass
-          nextTurnSlot: 2
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
           nextTurnDeadline: "2026-08-06T12:03:00Z"
 
     - label: round.ended（玩家1猜中）
@@ -775,8 +842,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
-          result: win
-          winnerSlot: 1
+          viewerResult: win
+          winnerMemberId: member-host
           answer:
             id: reimu_hakurei
             name: 博丽灵梦
@@ -785,7 +852,9 @@ examples:
             workTitle: 东方灵异传
             workCode: TH01
           boards:
-            slot1:
+            - memberId: member-host
+              seat: 1
+              guesses:
               - guessId: marisa_kirisame
                 guessName: 雾雨魔理沙
                 isCorrect: false
@@ -804,7 +873,9 @@ examples:
                     status: exact
                     symbol: "O"
                     displayValue: [东方灵异传]
-            slot2:
+            - memberId: member-guest
+              seat: 2
+              guesses:
               - guessId: remilia_scarlet
                 guessName: 蕾米莉亚·斯卡蕾特
                 isCorrect: false
@@ -815,8 +886,19 @@ examples:
                     symbol: "X"
                     displayValue: [东方红魔乡]
           scores:
-            slot1: 1
-            slot2: 0
+            - memberId: member-host
+              seat: 1
+              score: 1
+            - memberId: member-guest
+              seat: 2
+              score: 0
+          results:
+            - memberId: member-host
+              seat: 1
+              result: win
+            - memberId: member-guest
+              seat: 2
+              result: loss
           nextStartsAt: "2026-08-06T12:00:18Z"
 
     - label: match.ended（达到 targetWins）
@@ -828,11 +910,22 @@ examples:
         occurredAt: "2026-08-06T12:20:00Z"
         payload:
           matchIndex: 0
-          result: win
-          winnerSlot: 1
+          viewerResult: win
+          winnerMemberId: member-host
           scores:
-            slot1: 2
-            slot2: 0
+            - memberId: member-host
+              seat: 1
+              score: 2
+            - memberId: member-guest
+              seat: 2
+              score: 0
+          results:
+            - memberId: member-host
+              seat: 1
+              result: win
+            - memberId: member-guest
+              seat: 2
+              result: loss
           reason: normal
           retentionEndsAt: "2026-08-06T12:30:00Z"
 
@@ -928,6 +1021,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
+          memberId: member_guest
+          seat: 2
           rowIndex: 1
 
     - label: round.ended result 非法枚举
@@ -941,8 +1036,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
-          result: timeout
-          winnerSlot: null
+          viewerResult: timeout
+          winnerMemberId: null
           answer:
             id: reimu_hakurei
             name: 博丽灵梦
@@ -950,12 +1045,9 @@ examples:
             workId: th01
             workTitle: 东方灵异传
             workCode: TH01
-          boards:
-            slot1: []
-            slot2: []
-          scores:
-            slot1: 0
-            slot2: 0
+          boards: []
+          scores: []
+          results: []
 
     - label: match.ended reason 非法枚举
       expectFail: schema
@@ -967,12 +1059,12 @@ examples:
         occurredAt: "2026-08-06T12:20:00Z"
         payload:
           matchIndex: 0
-          result: draw
-          winnerSlot: null
-          scores:
-            slot1: 0
-            slot2: 0
+          viewerResult: draw
+          winnerMemberId: null
+          scores: []
+          results: []
           reason: host_left
+          retentionEndsAt: "2026-08-06T13:20:00Z"
 
     - label: 信封缺 occurredAt
       expectFail: schema

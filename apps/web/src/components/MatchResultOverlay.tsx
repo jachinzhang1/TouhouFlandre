@@ -4,6 +4,7 @@
 import { RotateCcw, Trophy } from "lucide-react";
 import type { MatchEndedPayload } from "@touhouflandre/shared";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
+import { resultAtSeat, scoreAtSeat } from "../domain/memberCollections";
 
 const REASON_LABEL: Record<string, string> = {
   normal: "正常完赛",
@@ -28,7 +29,9 @@ export function MatchResultOverlay({
   onRematch: () => void;
   onLeave: () => void;
 }) {
-  const won = result.result === "win";
+  const viewerResult =
+    result.viewerResult ?? resultAtSeat(result.results, mySlot) ?? "draw";
+  const won = viewerResult === "win";
   const mine = rematchReady[mySlot - 1];
   const theirs = rematchReady[mySlot === 1 ? 1 : 0];
 
@@ -40,15 +43,19 @@ export function MatchResultOverlay({
           className={`mx-auto mb-2 ${won ? "text-vermilion" : "text-ink-soft"}`}
           aria-hidden="true"
         />
-        <p className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-vermilion" : "text-ink-soft"}`}>
-          MATCH {result.matchIndex} · {won ? "对局获胜" : result.result === "draw" ? "对局平局" : "对局失利"}
+        <p
+          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-vermilion" : "text-ink-soft"}`}
+        >
+          MATCH {result.matchIndex} ·{" "}
+          {won ? "对局获胜" : viewerResult === "draw" ? "对局平局" : "对局失利"}
         </p>
         <p className="mb-2 font-brand text-[1.6rem]">
-          {result.scores.slot1} : {result.scores.slot2}
+          {scoreAtSeat(result.scores, 1)} : {scoreAtSeat(result.scores, 2)}
         </p>
         <p className="mb-4 text-[0.8rem] text-ink-soft">
-          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format} ·{" "}
-          {REASON_LABEL[result.reason] ?? result.reason}
+          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
+            format}{" "}
+          · {REASON_LABEL[result.reason] ?? result.reason}
         </p>
         <div className="grid gap-2">
           <button

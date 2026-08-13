@@ -8,6 +8,7 @@ package multi
 import (
 	"crypto/rand"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
@@ -35,6 +36,15 @@ var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 // RelayMaxSkipsPerPlayer 接力模式每局每名玩家可空过次数上限（主动空过与超时空过共享）。
 const RelayMaxSkipsPerPlayer = 2
 
+const (
+	// DefaultPlayerLimit is the room capacity used until MPX-005 exposes configuration.
+	DefaultPlayerLimit = 2
+	// ServerMaxRacePlayers is the hard upper bound for a race room.
+	ServerMaxRacePlayers = 8
+	// RelayPlayerLimit keeps the current relay engine on its two-player rule set.
+	RelayPlayerLimit = 2
+)
+
 // MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。
 func MemberViews(rows []repo.MultiMember) []MemberView {
 	views := make([]MemberView, 0, len(rows))
@@ -43,24 +53,31 @@ func MemberViews(rows []repo.MultiMember) []MemberView {
 			continue
 		}
 		views = append(views, MemberView{
-			Slot:        MemberSlot(m),
+			MemberID:    m.ID,
+			Seat:        MemberSeat(m),
 			DisplayName: m.DisplayName,
 			Status:      MemberStatus(m.Status),
 			Ready:       m.Ready,
 		})
 	}
+	sort.Slice(views, func(i, j int) bool {
+		if views[i].Seat == views[j].Seat {
+			return views[i].MemberID < views[j].MemberID
+		}
+		return views[i].Seat < views[j].Seat
+	})
 	return views
 }
 
-func MemberSlot(m repo.MultiMember) int {
-	switch slot := any(m.Slot).(type) {
+func MemberSeat(m repo.MultiMember) int {
+	switch seat := any(m.Seat).(type) {
 	case int32:
-		return int(slot)
+		return int(seat)
 	case pgtype.Int4:
-		if !slot.Valid {
+		if !seat.Valid {
 			return 0
 		}
-		return int(slot.Int32)
+		return int(seat.Int32)
 	default:
 		return 0
 	}
@@ -76,6 +93,7 @@ func IsSpectator(m repo.MultiMember) bool {
 
 func ParticipantViewFor(m repo.MultiMember) ParticipantView {
 	view := ParticipantView{
+		MemberID:    m.ID,
 		Role:        ParticipantRole(m.Role),
 		DisplayName: m.DisplayName,
 		Status:      MemberStatus(m.Status),
@@ -84,8 +102,8 @@ func ParticipantViewFor(m repo.MultiMember) ParticipantView {
 		view.Role = ParticipantRolePlayer
 	}
 	if IsPlayer(m) {
-		slot := MemberSlot(m)
-		view.Slot = &slot
+		seat := MemberSeat(m)
+		view.Seat = &seat
 	}
 	return view
 }
@@ -219,16 +237,18 @@ type Envelope struct {
 
 // MemberView 房间成员视图。
 type MemberView struct {
-	Slot        int          `json:"slot"`
+	MemberID    string       `json:"memberId"`
+	Seat        int          `json:"seat"`
 	DisplayName string       `json:"displayName"`
 	Status      MemberStatus `json:"status"`
 	Ready       bool         `json:"ready"`
 }
 
-// ParticipantView 当前访问者视图；观战者不占玩家 slot。
+// ParticipantView 当前访问者视图；观战者不占玩家 seat。
 type ParticipantView struct {
+	MemberID    string          `json:"memberId"`
 	Role        ParticipantRole `json:"role"`
-	Slot        *int            `json:"slot,omitempty"`
+	Seat        *int            `json:"seat,omitempty"`
 	DisplayName string          `json:"displayName"`
 	Status      MemberStatus    `json:"status"`
 }
@@ -238,6 +258,7 @@ type RoomUpdatedPayload struct {
 	Format         RoomFormat      `json:"format"`
 	Mode           MultiplayerMode `json:"mode"`
 	TurnSeconds    int             `json:"turnSeconds"`
+	PlayerLimit    int             `json:"playerLimit"`
 	Members        []MemberView    `json:"members"`
 	SpectatorCount int             `json:"spectatorCount"`
 }
@@ -255,7 +276,8 @@ type MatchStartedPayload struct {
 
 // MatchRematchPayload match.rematch：成员确认再来一局。
 type MatchRematchPayload struct {
-	MemberSlot int `json:"memberSlot"`
+	MemberID string `json:"memberId"`
+	Seat     int    `json:"seat"`
 }
 
 // RoundStartedPayload round.started：每局创建（countdown 态）。
@@ -265,7 +287,8 @@ type RoundStartedPayload struct {
 	StartsAt          time.Time  `json:"startsAt"`
 	Deadline          time.Time  `json:"deadline"`
 	MaxGuesses        int        `json:"maxGuesses"`
-	TurnSlot          *int       `json:"turnSlot,omitempty"`
+	TurnMemberID      *string    `json:"turnMemberId,omitempty"`
+	TurnSeat          *int       `json:"turnSeat,omitempty"`
 	TurnDeadline      *time.Time `json:"turnDeadline,omitempty"`
 	MaxTurnsPerPlayer *int       `json:"maxTurnsPerPlayer,omitempty"`
 	MaxSkipsPerPlayer *int       `json:"maxSkipsPerPlayer,omitempty"`
@@ -281,6 +304,8 @@ type RoundPlayingPayload struct {
 type RoundOpponentGuessPayload struct {
 	MatchIndex int      `json:"matchIndex"`
 	RoundIndex int      `json:"roundIndex"`
+	MemberID   string   `json:"memberId"`
+	Seat       int      `json:"seat"`
 	RowIndex   int      `json:"rowIndex"`
 	Statuses   []string `json:"statuses"`
 }
@@ -289,7 +314,8 @@ type RoundOpponentGuessPayload struct {
 type RoundSpectatorGuessPayload struct {
 	MatchIndex int             `json:"matchIndex"`
 	RoundIndex int             `json:"roundIndex"`
-	MemberSlot int             `json:"memberSlot"`
+	MemberID   string          `json:"memberId"`
+	Seat       int             `json:"seat"`
 	RowIndex   int             `json:"rowIndex"`
 	Guess      GuessResultView `json:"guess"`
 }
@@ -305,10 +331,11 @@ const (
 
 // RelayTurnRow 接力模式共享棋盘行。
 type RelayTurnRow struct {
-	Index      int              `json:"index"`
-	MemberSlot int              `json:"memberSlot"`
-	Kind       RelayTurnKind    `json:"kind"`
-	Guess      *GuessResultView `json:"guess,omitempty"`
+	Index    int              `json:"index"`
+	MemberID string           `json:"memberId"`
+	Seat     int              `json:"seat"`
+	Kind     RelayTurnKind    `json:"kind"`
+	Guess    *GuessResultView `json:"guess,omitempty"`
 }
 
 // RoundSharedGuessPayload round.shared.guess：接力共享猜测行。
@@ -316,7 +343,8 @@ type RoundSharedGuessPayload struct {
 	MatchIndex       int          `json:"matchIndex"`
 	RoundIndex       int          `json:"roundIndex"`
 	Row              RelayTurnRow `json:"row"`
-	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnMemberID *string      `json:"nextTurnMemberId,omitempty"`
+	NextTurnSeat     *int         `json:"nextTurnSeat,omitempty"`
 	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
 }
 
@@ -325,7 +353,8 @@ type RoundTurnTimeoutPayload struct {
 	MatchIndex       int          `json:"matchIndex"`
 	RoundIndex       int          `json:"roundIndex"`
 	Row              RelayTurnRow `json:"row"`
-	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnMemberID *string      `json:"nextTurnMemberId,omitempty"`
+	NextTurnSeat     *int         `json:"nextTurnSeat,omitempty"`
 	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
 }
 
@@ -334,22 +363,24 @@ type RoundTurnPassPayload struct {
 	MatchIndex       int          `json:"matchIndex"`
 	RoundIndex       int          `json:"roundIndex"`
 	Row              RelayTurnRow `json:"row"`
-	NextTurnSlot     *int         `json:"nextTurnSlot,omitempty"`
+	NextTurnMemberID *string      `json:"nextTurnMemberId,omitempty"`
+	NextTurnSeat     *int         `json:"nextTurnSeat,omitempty"`
 	NextTurnDeadline *time.Time   `json:"nextTurnDeadline,omitempty"`
 }
 
-// RoundEndedPayload round.ended：局结束（result 为观察者视角；揭示答案与双方完整棋盘）。
+// RoundEndedPayload round.ended：局结束（viewerResult 为观察者视角；揭示答案与成员棋盘集合）。
 type RoundEndedPayload struct {
-	MatchIndex    int            `json:"matchIndex"`
-	RoundIndex    int            `json:"roundIndex"`
-	Result        MatchResult    `json:"result"`
-	WinnerSlot    *int           `json:"winnerSlot"`
-	ForfeitedSlot *int           `json:"forfeitedSlot,omitempty"`
-	Answer        AnswerView     `json:"answer"`
-	Boards        BoardsView     `json:"boards"`
-	Turns         []RelayTurnRow `json:"turns,omitempty"`
-	Scores        ScoresView     `json:"scores"`
-	NextStartsAt  *time.Time     `json:"nextStartsAt,omitempty"`
+	MatchIndex        int                `json:"matchIndex"`
+	RoundIndex        int                `json:"roundIndex"`
+	ViewerResult      *MatchResult       `json:"viewerResult,omitempty"`
+	WinnerMemberID    *string            `json:"winnerMemberId"`
+	ForfeitedMemberID *string            `json:"forfeitedMemberId,omitempty"`
+	Answer            AnswerView         `json:"answer"`
+	Boards            []MemberBoardView  `json:"boards"`
+	Turns             []RelayTurnRow     `json:"turns,omitempty"`
+	Scores            []MemberScoreView  `json:"scores"`
+	Results           []MemberResultView `json:"results"`
+	NextStartsAt      *time.Time         `json:"nextStartsAt,omitempty"`
 }
 
 // AnswerView 揭示的答案角色与作品快照。
@@ -362,16 +393,31 @@ type AnswerView struct {
 	WorkCode  string `json:"workCode"`
 }
 
-// ScoresView 比分。
+// ScoresView is the legacy two-column score stored in canonical events until MPX-004.
 type ScoresView struct {
 	Slot1 int `json:"slot1"`
 	Slot2 int `json:"slot2"`
 }
 
-// BoardsView 双方完整棋盘（局末揭示）。
-type BoardsView struct {
-	Slot1 []GuessResultView `json:"slot1"`
-	Slot2 []GuessResultView `json:"slot2"`
+// MemberBoardView is one public board in seat order.
+type MemberBoardView struct {
+	MemberID string            `json:"memberId"`
+	Seat     int               `json:"seat"`
+	Guesses  []GuessResultView `json:"guesses"`
+}
+
+// MemberScoreView is one public score in seat order.
+type MemberScoreView struct {
+	MemberID string `json:"memberId"`
+	Seat     int    `json:"seat"`
+	Score    int    `json:"score"`
+}
+
+// MemberResultView is one public result in seat order.
+type MemberResultView struct {
+	MemberID string      `json:"memberId"`
+	Seat     int         `json:"seat"`
+	Result   MatchResult `json:"result"`
 }
 
 // GuessResultView 猜测反馈（与单人 GuessResult 同构，字段对齐 packages/shared GuessResult）。
@@ -394,12 +440,13 @@ type FieldFeedbackView struct {
 
 // MatchEndedPayload match.ended：对局结束。
 type MatchEndedPayload struct {
-	MatchIndex      int            `json:"matchIndex"`
-	Result          MatchResult    `json:"result"`
-	WinnerSlot      *int           `json:"winnerSlot"`
-	Scores          ScoresView     `json:"scores"`
-	Reason          MatchEndReason `json:"reason"`
-	RetentionEndsAt time.Time      `json:"retentionEndsAt"`
+	MatchIndex      int                `json:"matchIndex"`
+	ViewerResult    *MatchResult       `json:"viewerResult,omitempty"`
+	WinnerMemberID  *string            `json:"winnerMemberId"`
+	Scores          []MemberScoreView  `json:"scores"`
+	Results         []MemberResultView `json:"results"`
+	Reason          MatchEndReason     `json:"reason"`
+	RetentionEndsAt time.Time          `json:"retentionEndsAt"`
 }
 
 // RoomClosedPayload room.closed：房间关闭（终态）。
