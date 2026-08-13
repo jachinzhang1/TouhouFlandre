@@ -11,6 +11,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
@@ -85,6 +86,47 @@ func readUntilType(t *testing.T, conn *websocket.Conn, target string, max int) m
 	return nil
 }
 
+func appendBarrierEvent(t *testing.T, roomID string) int64 {
+	t.Helper()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	members, err := q.ListMembers(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spectators, err := q.CountSpectators(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
+		Format:         multi.RoomFormat(room.Format),
+		Mode:           multi.MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
+		Members:        multi.MemberViews(members),
+		SpectatorCount: int(spectators),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fastHub.Publish(roomID)
+	updated, err := repo.New(pool).GetRoom(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return updated.EventSeq
+}
+
 func TestMultiWSConnectAndReplay(t *testing.T) {
 	fixture := createMatchFixture(t)
 
@@ -121,6 +163,68 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	live := wsRead(t, conn)
 	if live["type"] != "room.updated" {
 		t.Fatalf("live event = %v, want room.updated", live)
+	}
+}
+
+func TestMultiWSSyncBarrierClosesAllWriteWindows(t *testing.T) {
+	fixture := createMatchFixture(t)
+	stages := []string{}
+	stageSequences := map[string]int64{}
+	fastHub.SetSyncTestHook(func(stage string) {
+		stages = append(stages, stage)
+		stageSequences[stage] = appendBarrierEvent(t, fixture.roomID)
+	})
+	t.Cleanup(func() { fastHub.SetSyncTestHook(nil) })
+
+	conn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	hello := wsRead(t, conn)
+	if hello["type"] != "hello-ok" {
+		t.Fatalf("first frame = %v, want hello-ok", hello)
+	}
+	target := int64(hello["targetGameSequence"].(float64))
+	if target != stageSequences["registered"] {
+		t.Fatalf("target = %d, want registered-stage watermark %d", target, stageSequences["registered"])
+	}
+
+	sequences := []int64{}
+	var complete int64
+	var firstLive int64
+	for i := 0; i < 32; i++ {
+		msg := wsRead(t, conn)
+		switch msg["type"] {
+		case "sync.complete":
+			complete = int64(msg["gameSequence"].(float64))
+		case "room.updated", "room.cursor":
+			sequence := int64(msg["sequence"].(float64))
+			sequences = append(sequences, sequence)
+			if complete > 0 && sequence > complete {
+				firstLive = sequence
+			}
+		}
+		if firstLive > 0 {
+			break
+		}
+	}
+	if complete != stageSequences["replay_complete"] {
+		t.Fatalf("sync.complete = %d, want replay-stage event %d", complete, stageSequences["replay_complete"])
+	}
+	if firstLive != stageSequences["live"] || firstLive != complete+1 {
+		t.Fatalf("first live = %d, complete = %d, live-stage event = %d", firstLive, complete, stageSequences["live"])
+	}
+	for i, sequence := range sequences {
+		want := int64(i + 1)
+		if sequence != want {
+			t.Fatalf("delivered sequences = %v, want continuous unique sequence at %d", sequences, want)
+		}
+	}
+	wantStages := []string{"registered", "watermark_captured", "replay_complete", "live"}
+	if len(stages) != len(wantStages) {
+		t.Fatalf("barrier stages = %v, want %v", stages, wantStages)
+	}
+	for i := range wantStages {
+		if stages[i] != wantStages[i] {
+			t.Fatalf("barrier stages = %v, want %v", stages, wantStages)
+		}
 	}
 }
 
