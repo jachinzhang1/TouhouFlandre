@@ -101,10 +101,7 @@ jobs:
           DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
         run: go test ./...
 
-      - name: Generated Go code is up to date
-        working-directory: apps/api
+      - name: Generated Go and Web code is up to date
         env:
           DATABASE_URL_PG: postgres://touhouflandre:touhouflandre-ci@127.0.0.1:5433/touhouflandre?sslmode=disable
-        run: |
-          task gen
-          git diff --exit-code -- apps/api/internal/generated
+        run: task check:generated
