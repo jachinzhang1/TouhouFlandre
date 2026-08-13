@@ -43,6 +43,24 @@ func ReadyRoster(players []repo.MultiMember, playerLimit int) bool {
 	return hostReady
 }
 
+// RematchRosterReady reports whether the preserved player collection is a
+// complete, connected roster whose members have all confirmed the next match.
+func RematchRosterReady(players []repo.MultiMember, playerLimit int) bool {
+	if len(players) < MinPlayers || len(players) > playerLimit {
+		return false
+	}
+	hasHost := false
+	for _, player := range players {
+		if !IsPlayer(player) || player.Status != string(MemberStatusConnected) || !player.RematchReady {
+			return false
+		}
+		if MemberSeat(player) == 1 {
+			hasHost = true
+		}
+	}
+	return hasHost
+}
+
 // NormalizeDisplayName 昵称规范化（08 §5.2）：trim + 去控制字符 + ≤16 字符；
 // 结果为空则给默认「匿名玩家」。
 func NormalizeDisplayName(name string) string {

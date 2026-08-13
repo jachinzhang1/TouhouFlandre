@@ -89,3 +89,36 @@ func TestReadyRoster(t *testing.T) {
 		})
 	}
 }
+
+func TestRematchRosterReady(t *testing.T) {
+	player := func(seat int32, confirmed bool, status MemberStatus) repo.MultiMember {
+		return repo.MultiMember{
+			Seat:         pgtype.Int4{Int32: seat, Valid: true},
+			Role:         string(ParticipantRolePlayer),
+			RematchReady: confirmed,
+			Status:       string(status),
+		}
+	}
+	tests := []struct {
+		name    string
+		players []repo.MultiMember
+		limit   int
+		want    bool
+	}{
+		{name: "complete two player roster", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected)}, limit: 2, want: true},
+		{name: "complete flexible roster", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 8, want: true},
+		{name: "confirmation missing", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, false, MemberStatusConnected)}, limit: 2},
+		{name: "disconnected member", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusDisconnected)}, limit: 2},
+		{name: "left member", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusLeft)}, limit: 2},
+		{name: "missing host", players: []repo.MultiMember{player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 3},
+		{name: "below minimum", players: []repo.MultiMember{player(1, true, MemberStatusConnected)}, limit: 2},
+		{name: "over capacity", players: []repo.MultiMember{player(1, true, MemberStatusConnected), player(2, true, MemberStatusConnected), player(3, true, MemberStatusConnected)}, limit: 2},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := RematchRosterReady(test.players, test.limit); got != test.want {
+				t.Fatalf("RematchRosterReady() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}

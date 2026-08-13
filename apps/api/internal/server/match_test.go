@@ -1131,8 +1131,13 @@ func TestMultiRematch(t *testing.T) {
 			advanceRounds(t)
 		}
 	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_member SET status = 'disconnected', grace_until = now() + interval '30 seconds'
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
 
-	// 单方 rematch → 等待态（match.rematch 事件，matchIndex 仍 0）
+	// 单方 rematch → 等待态；断线的原 roster 成员不能确认或触发新场。
 	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host rematch: %d %s", resp.StatusCode, payload)
@@ -1141,8 +1146,17 @@ func TestMultiRematch(t *testing.T) {
 	if snap.Match == nil || snap.Match.MatchIndex != 0 {
 		t.Fatalf("single rematch should not start new match: %+v", snap.Match)
 	}
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.joinerToken, nil)
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "REMATCH_NOT_AVAILABLE" {
+		t.Fatalf("disconnected roster rematch = %d %s, want REMATCH_NOT_AVAILABLE", resp.StatusCode, payload)
+	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_member SET status = 'connected', grace_until = NULL
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
 
-	// 双方 rematch → 新场行（matchIndex 1、比分清零、版本重绑）
+	// 原 roster 恢复 connected 且双方确认 → 新场行（matchIndex 1、比分清零、版本重绑）。
 	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.joinerToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("joiner rematch: %d %s", resp.StatusCode, payload)
@@ -1215,5 +1229,26 @@ func TestMultiFinishedLeaveRetainsRoom(t *testing.T) {
 	}
 	if status != string(multi.MemberStatusLeft) {
 		t.Fatalf("joiner status after leave = %s, want left", status)
+	}
+
+	// 任一原 roster 成员 left 后明确拒绝 rematch；新加入者只能观战，不能替代原身份。
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "REMATCH_NOT_AVAILABLE" {
+		t.Fatalf("rematch with left roster member = %d %s, want REMATCH_NOT_AVAILABLE", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "新加入者"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("finished join: %d %s", resp.StatusCode, payload)
+	}
+	var newcomer openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &newcomer); err != nil {
+		t.Fatal(err)
+	}
+	if newcomer.JoinRole != openapi.ParticipantRoleSpectator {
+		t.Fatalf("finished newcomer role = %s, want spectator", newcomer.JoinRole)
+	}
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", string(newcomer.GuestToken), nil)
+	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
+		t.Fatalf("newcomer rematch = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
 	}
 }
