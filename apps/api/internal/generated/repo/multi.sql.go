@@ -782,6 +782,26 @@ func (q *Queries) GetRoomByCodeForUpdate(ctx context.Context, code string) (Mult
 	return i, err
 }
 
+const getRoomEventReplayBounds = `-- name: GetRoomEventReplayBounds :one
+SELECT COALESCE(MIN(sequence), 0)::bigint AS min_sequence,
+       COALESCE(MAX(sequence), 0)::bigint AS max_sequence
+FROM room_event
+WHERE room_id = $1
+`
+
+type GetRoomEventReplayBoundsRow struct {
+	MinSequence int64 `json:"min_sequence"`
+	MaxSequence int64 `json:"max_sequence"`
+}
+
+// 当前房间可重放历史边界；空事件房间用 0/0 表示。
+func (q *Queries) GetRoomEventReplayBounds(ctx context.Context, roomID string) (GetRoomEventReplayBoundsRow, error) {
+	row := q.db.QueryRow(ctx, getRoomEventReplayBounds, roomID)
+	var i GetRoomEventReplayBoundsRow
+	err := row.Scan(&i.MinSequence, &i.MaxSequence)
+	return i, err
+}
+
 const getRoomForUpdate = `-- name: GetRoomForUpdate :one
 SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE id = $1 FOR UPDATE
 `

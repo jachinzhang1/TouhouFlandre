@@ -65,6 +65,8 @@ type Querier interface {
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)
 	// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
 	GetRoomByCodeForUpdate(ctx context.Context, code string) (MultiRoom, error)
+	// 当前房间可重放历史边界；空事件房间用 0/0 表示。
+	GetRoomEventReplayBounds(ctx context.Context, roomID string) (GetRoomEventReplayBoundsRow, error)
 	// 大厅命令（ready/leave/close）锁房间行。
 	GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, error)
 	// 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，

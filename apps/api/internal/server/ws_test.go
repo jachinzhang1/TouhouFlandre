@@ -253,6 +253,101 @@ func TestMultiWSUpgradeRejections(t *testing.T) {
 	if _, _, err := conn.Read(ctx); err == nil {
 		t.Fatal("missing subprotocol should be closed by server")
 	}
+
+	// v1 页面不得与 v2 服务端表面连接成功。
+	v1, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
+		HTTPHeader:   http.Header{"Origin": []string{wsTestOrigin}},
+		Subprotocols: []string{"touhouflandre-multi.v1"},
+	})
+	if err != nil {
+		return
+	}
+	defer v1.CloseNow()
+	if _, _, err := v1.Read(ctx); err == nil {
+		t.Fatal("v1 protocol should be rejected by v2 server")
+	}
+}
+
+func TestMultiWSRejectsInvalidGameWatermarks(t *testing.T) {
+	tests := []struct {
+		name       string
+		sequence   int64
+		prepare    func(t *testing.T, fixture matchFixture)
+		wantReason string
+	}{
+		{name: "negative", sequence: -1, wantReason: "negative_sequence"},
+		{name: "ahead", sequence: 999, wantReason: "ahead_of_server"},
+		{
+			name:     "history unavailable",
+			sequence: 1,
+			prepare: func(t *testing.T, fixture matchFixture) {
+				for i := 0; i < 3; i++ {
+					_ = appendBarrierEvent(t, fixture.roomID)
+				}
+				if _, err := pool.Exec(ctx, "DELETE FROM room_event WHERE room_id = $1 AND sequence <= 3", fixture.roomID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "history_unavailable",
+		},
+		{
+			name:     "all history unavailable",
+			sequence: 0,
+			prepare: func(t *testing.T, fixture matchFixture) {
+				if _, err := pool.Exec(ctx, "DELETE FROM room_event WHERE room_id = $1", fixture.roomID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "history_unavailable",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := createMatchFixture(t)
+			if test.prepare != nil {
+				test.prepare(t, fixture)
+			}
+			conn := wsDial(t, fixture.roomID, fixture.hostToken, test.sequence, nil)
+			msg := wsRead(t, conn)
+			if msg["type"] != "resync.required" || msg["scope"] != "game" || msg["reason"] != test.wantReason {
+				t.Fatalf("resync frame = %v, want reason %s", msg, test.wantReason)
+			}
+			if msg["gameSequence"] == nil {
+				t.Fatalf("resync frame missing server watermark: %v", msg)
+			}
+		})
+	}
+}
+
+func TestMultiWSRejectsMalformedHello(t *testing.T) {
+	fixture := createMatchFixture(t)
+	for _, raw := range []string{
+		`{"type":"hello","token":"` + fixture.hostToken + `"}`,
+		`{"type":"hello","token":"` + fixture.hostToken + `","lastGameSequence":0,"lastSequence":0}`,
+		`{"type":"hello","token":"` + fixture.hostToken + `","lastGameSequence":"0"}`,
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		conn, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
+			HTTPHeader:   http.Header{"Origin": []string{wsTestOrigin}},
+			Subprotocols: []string{wsTestProto},
+		})
+		if err != nil {
+			cancel()
+			t.Fatal(err)
+		}
+		if err := conn.Write(ctx, websocket.MessageText, []byte(raw)); err != nil {
+			cancel()
+			_ = conn.CloseNow()
+			t.Fatal(err)
+		}
+		if _, _, err := conn.Read(ctx); err == nil {
+			cancel()
+			_ = conn.CloseNow()
+			t.Fatalf("malformed hello was accepted: %s", raw)
+		}
+		cancel()
+		_ = conn.CloseNow()
+	}
 }
 
 func TestMultiWSFirstFrameMustBeHello(t *testing.T) {
