@@ -1,16 +1,17 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
 
 export type PaperVariant = "plain" | "tinted";
 
 interface PaperProps {
   animateOnMount?: boolean;
-  as?: "article" | "div" | "span";
+  as?: "article" | "button" | "div" | "span";
   children?: ReactNode;
   className?: string;
   folded?: boolean;
   foldSize?: number;
   href?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   foldDelayMs?: number;
   unfoldOnHover?: boolean;
   unfolded?: boolean;
@@ -26,6 +27,7 @@ export function Paper({
   folded = true,
   foldSize = 12,
   href,
+  onClick,
   foldDelayMs = 0,
   unfoldOnHover = true,
   unfolded = false,
@@ -53,6 +55,14 @@ export function Paper({
       <Link href={href} {...paperProps}>
         {children}
       </Link>
+    );
+  }
+
+  if (as === "button") {
+    return (
+      <button type="button" onClick={onClick} {...paperProps}>
+        {children}
+      </button>
     );
   }
 

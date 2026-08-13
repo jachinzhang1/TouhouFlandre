@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Paper } from "./Paper";
 
@@ -16,6 +16,18 @@ describe("Paper", () => {
     expect(paper.dataset.paperUnfoldHover).toBe("true");
     expect(paper.dataset.paperAnimateMount).toBe("true");
     expect(paper.style.getPropertyValue("--paper-fold-size")).toBe("24px");
+  });
+
+  it("supports interactive button papers", () => {
+    let clicks = 0;
+    render(
+      <Paper as="button" onClick={() => (clicks += 1)}>
+        题库设置
+      </Paper>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "题库设置" }));
+    expect(clicks).toBe(1);
   });
 
   it("supports plain unfolded non-link surfaces", () => {
