@@ -81,10 +81,9 @@
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.84);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.15);
   --paper-tinted-icon-border: rgba(255, 255, 255, 0.24);
-  --paper-shadow:
-    0 10px 28px rgba(25, 46, 39, 0.12), 0 2px 7px rgba(25, 46, 39, 0.06);
-  --paper-shadow-hover:
-    0 16px 38px rgba(25, 46, 39, 0.15), 0 4px 10px rgba(25, 46, 39, 0.08);
+  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(25, 46, 39, 0.12))
+    drop-shadow(0 8px 7px rgba(25, 46, 39, 0.075))
+    drop-shadow(0 16px 14px rgba(25, 46, 39, 0.035));
   --vermilion: var(--accent);
   --vermilion-dark: var(--accent-strong);
   --vermilion-soft: var(--accent-soft);
@@ -216,9 +215,9 @@ html[data-theme-mode="dark"] {
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.09);
   --paper-tinted-icon-border: rgba(255, 255, 255, 0.16);
-  --paper-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.18);
-  --paper-shadow-hover:
-    0 18px 42px rgba(0, 0, 0, 0.38), 0 4px 12px rgba(0, 0, 0, 0.22);
+  --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28))
+    drop-shadow(0 9px 9px rgba(0, 0, 0, 0.18))
+    drop-shadow(0 16px 16px rgba(0, 0, 0, 0.08));
   --jade: #59b9a7;
   --jade-soft: #1d3d38;
   --jade-strong: #84d9ca;
@@ -706,10 +705,6 @@ input:focus-visible {
     var(--paper);
 }
 
-.announcement-paper {
-  box-shadow: var(--paper-shadow);
-}
-
 .announcement-entry-shell {
   --announcement-tear-size: 92px;
   --announcement-perforation-color: color-mix(
@@ -718,11 +713,10 @@ input:focus-visible {
     transparent
   );
   position: relative;
-  filter: drop-shadow(0 10px 18px rgba(25, 46, 39, 0.12));
 }
 
-html[data-theme-mode="dark"] .announcement-entry-shell {
-  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.3));
+.paper-sticker-shadow {
+  filter: var(--paper-sticker-shadow);
 }
 
 .announcement-entry,
@@ -740,7 +734,6 @@ html[data-theme-mode="dark"] .announcement-entry-shell {
 .announcement-entry {
   overflow: hidden;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
-  transition: clip-path 240ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .announcement-entry[data-read="true"] {
@@ -751,7 +744,6 @@ html[data-theme-mode="dark"] .announcement-entry-shell {
     calc(100% - var(--announcement-tear-size)) 100%,
     0 100%
   );
-  transition-delay: 70ms;
 }
 
 .announcement-tear-corner {
@@ -812,7 +804,7 @@ html[data-theme-mode="dark"] .announcement-entry-shell {
   right: 12px;
   bottom: 15px;
   font-family: var(--font-brand);
-  font-size: 0.78rem;
+  font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   transform: rotate(-45deg);
@@ -1411,6 +1403,16 @@ body:has(.home-hero) .site-footer a:hover {
   width: 280px;
   height: 280px;
   isolation: isolate;
+  --appearance-corner-rest: color-mix(
+    in oklab,
+    var(--accent-soft) 78%,
+    var(--surface-strong)
+  );
+  --appearance-fold-rest: color-mix(
+    in oklab,
+    var(--accent-soft) 84%,
+    var(--paper-tinted-fold)
+  );
   pointer-events: none;
 }
 
@@ -1425,25 +1427,28 @@ body:has(.home-hero) .site-footer a:hover {
 .appearance-corner-surface {
   clip-path: polygon(68% 100%, 100% 68%, 100% 100%);
   z-index: 0;
-  background-color: var(--paper-tinted-bg);
+  background-color: var(--appearance-corner-rest);
   background-image: var(--paper-tinted-ornament);
   background-size: var(--paper-tinted-ornament-size);
   pointer-events: auto;
-  transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
+  transition:
+    background-color 240ms ease,
+    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .appearance-fold-flap {
   clip-path: polygon(68% 100%, 100% 68%, 86% 73%);
   z-index: 1;
-  background:
-    repeating-linear-gradient(
-      8deg,
-      transparent 0 10px,
-      rgba(255, 255, 255, 0.04) 10px 11px
-    ),
-    var(--paper-tinted-fold);
+  background-color: var(--appearance-fold-rest);
+  background-image: repeating-linear-gradient(
+    8deg,
+    transparent 0 10px,
+    rgba(255, 255, 255, 0.04) 10px 11px
+  );
   pointer-events: none;
-  transition: clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
+  transition:
+    background-color 240ms ease,
+    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: clip-path;
 }
 
@@ -1460,10 +1465,11 @@ body:has(.home-hero) .site-footer a:hover {
   padding: 0;
   border: 0;
   border-radius: 0;
-  color: var(--paper-tinted-ink);
+  color: var(--vermilion-dark);
   background: transparent;
   box-shadow: none;
   pointer-events: auto;
+  transition: color 180ms ease;
 }
 
 .appearance-toggle:hover {
@@ -1539,6 +1545,18 @@ body:has(.home-hero) .site-footer a:hover {
   clip-path: polygon(44% 100%, 100% 44%, 100% 100%);
 }
 
+.appearance-switcher[data-open="true"] .appearance-corner-surface {
+  background-color: var(--paper-tinted-bg);
+}
+
+.appearance-switcher[data-open="true"] .appearance-fold-flap {
+  background-color: var(--paper-tinted-fold);
+}
+
+.appearance-switcher[data-open="true"] .appearance-toggle {
+  color: var(--paper-tinted-ink);
+}
+
 .appearance-switcher[data-open="true"] .appearance-fold-flap {
   clip-path: polygon(44% 100%, 100% 44%, 78% 50%);
 }
@@ -1565,6 +1583,18 @@ body:has(.home-hero) .site-footer a:hover {
 
   .appearance-switcher:hover .appearance-fold-flap {
     clip-path: polygon(44% 100%, 100% 44%, 78% 50%);
+  }
+
+  .appearance-switcher:hover .appearance-corner-surface {
+    background-color: var(--paper-tinted-bg);
+  }
+
+  .appearance-switcher:hover .appearance-fold-flap {
+    background-color: var(--paper-tinted-fold);
+  }
+
+  .appearance-switcher:hover .appearance-toggle {
+    color: var(--paper-tinted-ink);
   }
 
   .appearance-switcher:hover .appearance-swatch {
@@ -1634,19 +1664,16 @@ html[data-theme-mode="dark"] .appearance-swatch {
   border: 0;
   color: var(--ink);
   text-decoration: none;
-  box-shadow: var(--paper-shadow);
 }
 .paper-shortcut[data-paper-folded="true"] {
   transition:
     background-color 180ms ease,
-    box-shadow 180ms ease,
     clip-path 180ms ease,
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .paper-shortcut:hover {
-    box-shadow: var(--paper-shadow-hover);
     transform: translateY(-3px);
   }
 }

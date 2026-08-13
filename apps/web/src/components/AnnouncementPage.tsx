@@ -126,7 +126,10 @@ export function AnnouncementPage({
             const unread = !readIds.has(announcement.id);
             const tearing = tearingIds.has(announcement.id);
             return (
-              <div className="announcement-entry-shell" key={announcement.id}>
+              <div
+                className="announcement-entry-shell paper-sticker-shadow"
+                key={announcement.id}
+              >
                 <article
                   className="announcement-entry relative p-5 pb-14 max-[680px]:p-4 max-[680px]:pb-14"
                   data-read={unread ? "false" : "true"}
@@ -204,7 +207,7 @@ export function AnnouncementPage({
           as="div"
           variant="plain"
           foldSize={20}
-          className="announcement-paper mt-8 flex min-h-[260px] items-start gap-[18px] p-6"
+          className="paper-sticker-shadow mt-8 flex min-h-[260px] items-start gap-[18px] p-6"
         >
           <span className="inline-flex size-[48px] shrink-0 items-center justify-center rounded-[6px] bg-vermilion-soft text-vermilion">
             <Megaphone size={24} aria-hidden="true" />
