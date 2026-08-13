@@ -1496,6 +1496,42 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 	return items, nil
 }
 
+const listParticipants = `-- name: ListParticipants :many
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id
+`
+
+func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error) {
+	rows, err := q.db.Query(ctx, listParticipants, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiMember{}
+	for rows.Next() {
+		var i MultiMember
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.Seat,
+			&i.DisplayName,
+			&i.TokenHash,
+			&i.Status,
+			&i.Ready,
+			&i.RematchReady,
+			&i.GraceUntil,
+			&i.JoinedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoundsAwaitingAdvance = `-- name: ListRoundsAwaitingAdvance :many
 SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, m.room_id AS room_id
 FROM multi_round r

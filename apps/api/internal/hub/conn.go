@@ -39,15 +39,21 @@ type Conn struct {
 	buffering        bool
 	buffered         map[int64][]byte
 
-	send          chan []byte
-	closeOnce     sync.Once
-	closed        chan struct{}
-	aliveMu       sync.Mutex
-	isAlive       bool
-	afterReplaced atomic.Bool // replaced 帧已入队（写出后关闭连接）
+	send           chan outboundFrame
+	closeOnce      sync.Once
+	closed         chan struct{}
+	aliveMu        sync.Mutex
+	isAlive        bool
+	invalidated    atomic.Bool // role/seat 已变化，停止使用连接建立时的缓存身份
+	skipDisconnect atomic.Bool // 服务端身份失效关闭不应写入 disconnected
 
 	reasonMu    sync.Mutex
 	closeReason string // 断开原因（cleanup 统一记录；首个设置者生效）
+}
+
+type outboundFrame struct {
+	data       []byte
+	closeAfter bool
 }
 
 // NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。发送队列长度取自 hub 配置。
@@ -64,7 +70,7 @@ func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMembe
 		lastGameSequence: lastGameSequence,
 		buffering:        true,
 		buffered:         make(map[int64][]byte),
-		send:             make(chan []byte, queue),
+		send:             make(chan outboundFrame, queue),
 		closed:           make(chan struct{}),
 		isAlive:          true,
 	}
@@ -96,7 +102,7 @@ func (c *Conn) alive() bool {
 // enqueue 非阻塞入队；队列写满返回 false（慢消费者，08 §8.5）。
 func (c *Conn) enqueue(frame []byte) bool {
 	select {
-	case c.send <- frame:
+	case c.send <- outboundFrame{data: frame}:
 		return true
 	default:
 		return false
@@ -107,6 +113,9 @@ func (c *Conn) enqueue(frame []byte) bool {
 func (c *Conn) deliverGameFrame(sequence int64, frame []byte) bool {
 	c.barrierMu.Lock()
 	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		return true
+	}
 	if c.buffering {
 		if _, exists := c.buffered[sequence]; !exists {
 			c.buffered[sequence] = frame
@@ -155,7 +164,7 @@ func (c *Conn) Serve() {
 		c.writeLoop()
 	}()
 	c.readLoop()
-	close(c.send)
+	c.closeQuietly()
 	wg.Wait()
 }
 
@@ -193,18 +202,32 @@ func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 		if err != nil {
 			return c.lastGameSequence, err
 		}
-		if !c.enqueue(frame) {
+		delivered, invalidated := c.deliverReplayFrame(event.Sequence, frame)
+		if invalidated {
+			return c.lastGameSequence, nil
+		}
+		if !delivered {
 			c.closeSlow()
 			return event.Sequence, nil
 		}
-		c.barrierMu.Lock()
-		delete(c.buffered, event.Sequence)
-		c.barrierMu.Unlock()
 		if event.Sequence > c.lastGameSequence {
 			c.lastGameSequence = event.Sequence
 		}
 	}
 	return c.lastGameSequence, nil
+}
+
+func (c *Conn) deliverReplayFrame(sequence int64, frame []byte) (delivered bool, invalidated bool) {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		return false, true
+	}
+	if !c.enqueue(frame) {
+		return false, false
+	}
+	delete(c.buffered, sequence)
+	return true, false
 }
 
 // finishBarrier drains buffered publications in sequence order while new publications
@@ -213,6 +236,10 @@ func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 func (c *Conn) finishBarrier(deliveredGameSequence int64) bool {
 	c.barrierMu.Lock()
 	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		clear(c.buffered)
+		return true
+	}
 
 	for {
 		frame, ok := c.buffered[deliveredGameSequence+1]
@@ -249,15 +276,15 @@ func (c *Conn) writeLoop() {
 				return
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
-			err := c.ws.Write(ctx, websocket.MessageText, frame)
+			err := c.ws.Write(ctx, websocket.MessageText, frame.data)
 			cancel()
 			if err != nil {
 				c.setCloseReason("write_error")
 				c.closeQuietly()
 				return
 			}
-			if c.afterReplaced.Load() && len(c.send) == 0 {
-				c.closeQuietly() // replaced 帧已送达（队列排空），关闭旧连接
+			if frame.closeAfter {
+				c.closeQuietly()
 				return
 			}
 		case <-heartbeat.C:
@@ -312,11 +339,33 @@ func (c *Conn) sendReplacedAndClose() {
 	c.setCloseReason("replaced")
 	frame, _ := json.Marshal(multi.ReplacedMessage{Type: "replaced", Reason: "replaced"})
 	select {
-	case c.send <- frame:
-		c.afterReplaced.Store(true)
+	case c.send <- outboundFrame{data: frame, closeAfter: true}:
 	default:
 		c.closeQuietly()
 	}
+}
+
+// sendMemberChangedAndClose 使连接建立时缓存的 role/seat 立即失效。该关闭由服务端
+// 身份转换触发，不应把仍在线的 member 误记为 disconnected。
+func (c *Conn) sendMemberChangedAndClose() {
+	if !c.invalidated.CompareAndSwap(false, true) {
+		return
+	}
+	c.setCloseReason("member_changed")
+	c.skipDisconnect.Store(true)
+	c.aliveMu.Lock()
+	c.isAlive = false
+	c.aliveMu.Unlock()
+
+	c.barrierMu.Lock()
+	clear(c.buffered)
+	frame, _ := json.Marshal(multi.ReplacedMessage{Type: "replaced", Reason: "member_changed"})
+	select {
+	case c.send <- outboundFrame{data: frame, closeAfter: true}:
+	default:
+		c.closeQuietly()
+	}
+	c.barrierMu.Unlock()
 }
 
 // closeSlow 慢消费者：发送队列写满 → 1013（08 §8.5），不阻塞房间广播。
@@ -358,7 +407,9 @@ func (c *Conn) closeQuietly() {
 func (c *Conn) cleanup() {
 	c.closeQuietly()
 	c.hub.Unregister(c)
-	c.hub.markDisconnected(c.member.ID, c.roomID)
+	if !c.skipDisconnect.Load() {
+		c.hub.markDisconnected(c.member.ID, c.roomID)
+	}
 	reason := c.closeReasonValue()
 	if reason == "" {
 		reason = "unknown"

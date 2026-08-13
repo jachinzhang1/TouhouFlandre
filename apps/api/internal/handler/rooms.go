@@ -451,6 +451,9 @@ func (s *Server) RoomsClaimSeat(ctx context.Context, request openapi.RoomsClaimS
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
+	if s.hub != nil {
+		s.hub.InvalidateMember(request.RoomId, member.ID)
+	}
 	s.publish(request.RoomId)
 	return openapi.RoomsClaimSeat204Response{}, nil
 }

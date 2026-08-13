@@ -97,6 +97,9 @@ SELECT * FROM multi_member WHERE id = $1;
 -- name: ListMembers :many
 SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat;
 
+-- name: ListParticipants :many
+SELECT * FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id;
+
 -- name: ListMembersForRematch :many
 SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY seat;
 

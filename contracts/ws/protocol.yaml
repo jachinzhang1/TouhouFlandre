@@ -71,7 +71,7 @@ handshake:
   - step: complete
     detail: FIFO 队尾发送 sync.complete{gameSequence} 后切入实时流。
   - step: replace
-    detail: 同成员新连接注册时，旧连接收到 replaced 帧后关闭（每成员单活跃连接）。
+    detail: 同成员新连接注册或 member role/seat 变化时，旧连接收到 replaced 帧后关闭并重新鉴权。
 
 # 服务端 → 客户端事件（08 §8.3 全表）
 # observer: all = 全体成员；opponent = 仅对手；spectator = 仅观战者（逐观察者投影）
@@ -549,7 +549,7 @@ control:
           type: integer
           minimum: 0
   - type: replaced
-    summary: 同成员新连接注册，本连接被替换。
+    summary: 同成员新连接注册，或当前连接缓存的 member role/seat 已失效。
     payload:
       type: object
       additionalProperties: false
@@ -560,7 +560,7 @@ control:
           const: replaced
         reason:
           type: string
-          enum: [replaced]
+          enum: [replaced, member_changed]
 
 # 客户端 → 服务端消息（仅两类；均为平铺消息，无信封）
 clientMessages:
@@ -1044,6 +1044,11 @@ examples:
       message:
         type: replaced
         reason: replaced
+
+    - label: replaced（成员身份变化，必须重连）
+      message:
+        type: replaced
+        reason: member_changed
 
     - label: hello（首帧）
       message:

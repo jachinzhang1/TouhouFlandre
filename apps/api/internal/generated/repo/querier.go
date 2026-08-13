@@ -102,6 +102,7 @@ type Querier interface {
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
