@@ -27,6 +27,9 @@ const defaultAppearance: ResolvedAppearance = {
   color: DEFAULT_THEME_COLOR,
 };
 
+const themeControlLabel = (label: string) =>
+  `${label}主题色${label === "雾雨魔理沙" ? "DA☆ZE" : ""}`;
+
 export function AppearanceSwitcher() {
   const [settings, setSettings] = useState<AppearanceSettings>(defaultSettings);
   const [appearance, setAppearance] =
@@ -162,12 +165,12 @@ export function AppearanceSwitcher() {
                 "--swatch-index": index,
               } as CSSProperties
             }
-            aria-label={`${theme.label}主题色`}
+            aria-label={themeControlLabel(theme.label)}
             aria-pressed={theme.id === activeTheme.id}
-            title={`${theme.label}主题色`}
+            title={themeControlLabel(theme.label)}
             onClick={() => handleColorSelect(theme.id)}
           >
-            <span className="sr-only">{theme.label}主题色</span>
+            <span className="sr-only">{themeControlLabel(theme.label)}</span>
           </button>
         ))}
       </div>

@@ -103,7 +103,7 @@ describe("AppearanceSwitcher", () => {
       "古明地觉主题色",
       "八云紫主题色",
       "东风谷早苗主题色",
-      "雾雨魔理沙主题色",
+      "雾雨魔理沙主题色DA☆ZE",
       "比那名居天子主题色",
     ]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
