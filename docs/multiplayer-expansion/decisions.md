@@ -41,6 +41,31 @@
 | player 进行中视图 | 自己完整棋盘；每名对手独立匿名矩阵 | 双方共享完整棋盘 |
 | spectator 进行中视图 | roster 所有玩家的完整棋盘 | 完整共享棋盘 |
 
+## 大厅串行化与开局冻结
+
+race 的 `playerLimit` 只表示入座容量，不表示开局必须人数。开局判定使用以下唯一算法：
+
+1. join、claim-seat、ready/unready、`playerLimit` 修改和首次 match 创建都必须在数据库事务内先锁定同一 room 行。
+2. 容量统计包含 lobby 中 `connected` player 和仍在断线宽限期内的 `disconnected` player；后者保留原 seat，其他 member 不能抢占。lobby player 明确离开或宽限期届满并完成删除后才释放 seat。
+3. ready 命令显式提交布尔值。`ready=false` 仅在 lobby 且 match 尚未创建时允许并保持幂等；房主可保持未准备以继续等人，设置 `playerLimit` 本身不得触发开局。
+4. `ready=true` 更新后，在同一 room 锁和事务中重新读取全部活动 player。只有 `2 <= playerCount <= playerLimit`、每名 player 均为 `connected + ready`、seat 1 房主仍为 `ready` 且尚无 match 时，才以此刻按 seat 排序的 player `memberId` 集合冻结 match roster 并进入 playing。
+5. roster 行、match/首局状态和对应 room events 必须在同一事务提交。提交后才广播；任何消费者不得从 `members.length` 或事件到达先后自行推导另一套 roster。
+
+例如 `playerLimit=8` 时，2、3、5 或 8 名当前 player 均可在全员 connected + ready 后开局；第 9 个参与者不影响已冻结 roster。少于 2 人、任一 player 未准备或处于 disconnected 时均不得开始。
+
+并发只允许以下线性化结果：
+
+| 竞争 | 先获得 room 锁的事务 | 后获得 room 锁的事务 | 权威结果 |
+|---|---|---|---|
+| final ready vs join | final ready 冻结当时 roster 并将房间转为 playing | join 重新读到 playing，只能在 spectator cap 内加入为 spectator | 新 member 不进入 roster |
+| final ready vs claim-seat | final ready 冻结当时 roster 并转为 playing | claim-seat 重新读到非 lobby，稳定失败 | spectator 不补入已开始 match |
+| join vs final ready | join 取得 player seat 并以 `ready=false` 提交 | final ready 重新读取到该未准备 player | 不开局，直到新 player 也准备 |
+| claim-seat vs final ready | claim-seat 复用 memberId、取得 seat 并以 `ready=false` 提交 | final ready 重新读取到该未准备 player | 不开局，claim 成功者进入候选 roster |
+| 多个 claim-seat 竞争最后席位 | 首个事务分配最小可用 seat | 后续事务重新读取到满员 | 至多一人成功 |
+| 修改上限 vs join/claim-seat | 修改先提交则后续按新上限判断 | 入座先提交则修改不得低于新的 player 数 | 不出现超额 player 或 `seat > playerLimit` |
+
+服务端不得依赖可重试事务的偶然执行次数发布事件；只有最终提交事务分配 sequence 并广播。序列化失败可安全重试，但同一幂等命令最终只能形成一次状态变化。
+
 ## 状态 × 角色 × 动作权限
 
 下表是服务端授权矩阵。`允许`仍须通过请求格式、限流和玩法规则校验；`条件允许`的附加条件在表后冻结。所有写命令均要求 token 对应 member 为 `connected`，`disconnected` 必须先重连，`left` 不得写入。
