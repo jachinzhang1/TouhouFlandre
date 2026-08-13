@@ -46,20 +46,13 @@
 .game-mode-entry-icon {
   position: absolute;
   top: 50%;
-  right: 4px;
+  right: 22px;
   z-index: 1;
   display: inline-flex;
-  color: var(--vermilion);
-  opacity: 0.08;
+  color: var(--line-strong);
   pointer-events: none;
   transform: translateY(-50%);
-  transition:
-    color 160ms ease,
-    opacity 160ms ease;
-}
-
-html[data-theme-mode="dark"] .game-mode-entry-icon {
-  opacity: 0.12;
+  transition: color 160ms ease;
 }
 
 .game-mode-entry-copy {
@@ -105,7 +98,6 @@ html[data-theme-mode="dark"] .game-mode-entry-icon {
 
   .game-mode-entry:hover .game-mode-entry-icon {
     color: #fff;
-    opacity: 0.46;
   }
 }
 
@@ -115,7 +107,6 @@ html[data-theme-mode="dark"] .game-mode-entry-icon {
 
 .game-mode-entry:focus-visible .game-mode-entry-icon {
   color: #fff;
-  opacity: 0.46;
 }
 
 @media (max-width: 680px) {

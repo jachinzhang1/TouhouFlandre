@@ -82,7 +82,7 @@ function GameModeEntry({
     >
       <span className="game-mode-entry-wash" aria-hidden="true" />
       <span className="game-mode-entry-icon" aria-hidden="true">
-        <Icon size={118} strokeWidth={1.05} />
+        <Icon size={88} strokeWidth={1.2} />
       </span>
       <span className="game-mode-entry-copy">
         <strong>{title}</strong>
