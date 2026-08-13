@@ -153,7 +153,7 @@ const developers: Array<{
 
 const friendLinks = [
   {
-    title: "西电 Shining 动漫社 B站主页",
+    title: "西电 Shining 动漫社",
     avatarUrl:
       "https://i2.hdslb.com/bfs/face/590cea03dbeb3f4b47aa5fe53e53b31c088ad5ed.jpg@160w_160h_1c_1s.webp",
     subtitle: "西电 Shining 动漫社官方哔哩哔哩空间",
@@ -259,7 +259,7 @@ function CreditEntryButton({
   return (
     <Paper
       as="article"
-      className="paper-sticker-shadow grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
+      className="credit-entry-card paper-sticker-shadow grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
       foldSize={18}
       variant="plain"
     >
