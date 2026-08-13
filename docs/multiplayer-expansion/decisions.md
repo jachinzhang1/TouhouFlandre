@@ -122,6 +122,47 @@ race 的 `playerLimit` 只表示入座容量，不表示开局必须人数。开
 
 retained left member 只可在房间保留期内按其最后有效 role 读取原本获授权的历史，不得发送；closed/已清理房间不再提供聊天访问。`receiveChat` 关闭不会改变本表中的接收授权。
 
+## WS v2 游戏 sequence 与同步屏障
+
+多人扩展直接使用子协议 `touhouflandre-multi.v2`。v1 的 `lastSequence` 不扩展；v2 hello 使用 `lastGameSequence`，并为聊天预留独立的可选 `lastChatCursor`。旧页面连接 v2 时必须在握手阶段失败并提示刷新，不能表面连接后忽略集合或控制帧。
+
+`room_event.sequence` 是房间级、从 1 严格递增的游戏/生命周期序列。对于数据库中每个 sequence，服务端对每个已鉴权 observer 必须恰好投递以下一种游戏帧：
+
+- observer 获权查看业务 payload：投递该业务 room event envelope；
+- observer 不获权查看业务 payload，或事件对自己无需 reducer 处理：投递同 `eventId`、`roomId`、`sequence`、`occurredAt` 的 `room.cursor` envelope，不带业务 `payload`，也不泄露原事件类型。
+
+因此任一连接看到的游戏 sequence 连续；授权投影不得通过“什么都不发”形成跳号。`room.cursor` 只推进游戏水位，不进入游戏 reducer、统计记录或用户通知。
+
+v2 游戏同步帧冻结为：
+
+| frame | 关键字段 | 语义 |
+|---|---|---|
+| `hello` | token、`lastGameSequence`、可选 `lastChatCursor` | 客户端提交上一次已完整确认的水位 |
+| `hello-ok` | `targetGameSequence`、可选 `targetChatCursor` | 只确认鉴权成功和捕获的目标高水位，不代表重放完成 |
+| room event | `eventId`、`roomId`、`sequence`、`occurredAt`、业务 type/payload | 授权后的游戏/生命周期事件 |
+| `room.cursor` | `eventId`、`roomId`、`sequence`、`occurredAt` | 无业务 payload 的连续性占位帧 |
+| `sync.complete` | `gameSequence`、可选 `chatCursor` | FIFO 中此前重放/缓冲均已交付，可提交完成水位 |
+| `resync.required` | scope、reason、服务端当前水位 | hello 水位无效或历史不可连续恢复；客户端改拉权威 snapshot |
+
+服务端建立连接的顺序必须为：
+
+1. 校验子协议、Origin、hello 格式、token 与 room 绑定，但尚不向客户端宣告同步完成。
+2. 先把连接注册为 buffering，再捕获数据库的 game high watermark；注册前不得先查历史。
+3. 发送 `hello-ok`，按 sequence 查询 `(lastGameSequence, highWatermark]`，逐 observer 投影为业务事件或 cursor 并按序入 FIFO。
+4. 丢弃缓冲中 `sequence <= highWatermark` 的重叠副本，按序排空更高 sequence；排空期间新事件继续进入同一缓冲队列。
+5. 在连接队列锁内确认缓冲为空，把携带最后实际交付 sequence 的 `sync.complete` 放入 FIFO，再切为 live；此后实时帧只能排在 `sync.complete` 后面。
+
+这一屏障同时覆盖注册前后、捕获水位、查询重放和排空期间的并发写入。重叠帧允许出现，但客户端以 roomId + sequence/eventId 去重并只应用一次；不得用“先查历史、再订阅”留下窗口。
+
+客户端维护 `persistedGameSequence`（上次完整确认）与当前连接的 `appliedGameSequence`：
+
+- 同步阶段收到 `sequence <= appliedGameSequence` 时去重；等于 `appliedGameSequence + 1` 时应用业务事件或仅推进 cursor；大于该值才是真缺口。
+- 真缺口只启动一个 in-flight snapshot 对齐，暂停后续 reducer 并缓冲重叠帧；snapshot 返回权威 game watermark 后再按 sequence 去重排空，不能为同一缺口并发拉多次。
+- 首个 `sync.complete` 之前不得覆盖 `persistedGameSequence`；若中途断线，下一次 hello 仍提交旧的完成水位。处理 `sync.complete` 后持久化其 `gameSequence` 并进入 live，之后每个连续且已应用的 live 游戏帧可推进持久化水位。
+- snapshot/cursor 都不能被当作用户可见业务事件；chat frame 也不得改变任何 game sequence。
+
+`lastGameSequence < 0`、高于当前 room 高水位、与 room 不匹配、格式错误或早于最老可重放事件时不得静默夹取到合法范围。协议版本/格式错误关闭连接；可通过完整 snapshot 恢复的情况返回 `resync.required`，客户端重置为 snapshot 明示的权威水位后重新握手。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案
