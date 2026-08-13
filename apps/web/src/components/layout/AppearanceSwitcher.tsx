@@ -30,18 +30,15 @@ const defaultAppearance: ResolvedAppearance = {
 const themeControlLabel = (label: string) =>
   `${label}主题色${label === "雾雨魔理沙" ? "DA☆ZE" : ""}`;
 
-const FAN_APEX_Y = (36 / 220) * 100;
-const FAN_BASE_START = (24 / 760) * 100;
-const FAN_BASE_END = (576 / 760) * 100;
+const FAN_APEX_Y = (64 / 220) * 100;
+const FAN_BASE_START = (316 / 760) * 100;
+const FAN_BASE_END = (604 / 760) * 100;
 const FAN_STEP = (FAN_BASE_END - FAN_BASE_START) / COLOR_THEMES.length;
 
 function getFanTriangle(index: number) {
   const start = FAN_BASE_START + FAN_STEP * index;
   const end = start + FAN_STEP;
-  return {
-    clipPath: `polygon(100% ${FAN_APEX_Y}%, ${start}% 100%, ${end}% 100%)`,
-    points: `100,${FAN_APEX_Y} ${start},100 ${end},100`,
-  };
+  return `polygon(100% ${FAN_APEX_Y}%, ${start}% 100%, ${end}% 100%)`;
 }
 
 export function AppearanceSwitcher() {
@@ -164,7 +161,7 @@ export function AppearanceSwitcher() {
         aria-label="角色主题色"
       >
         {COLOR_THEMES.map((theme, index) => {
-          const triangle = getFanTriangle(index);
+          const triangleClip = getFanTriangle(index);
           return (
             <button
               key={theme.id}
@@ -179,7 +176,7 @@ export function AppearanceSwitcher() {
                 {
                   "--swatch-light": theme.light,
                   "--swatch-dark": theme.dark,
-                  "--swatch-clip": triangle.clipPath,
+                  "--swatch-clip": triangleClip,
                 } as CSSProperties
               }
               aria-label={themeControlLabel(theme.label)}
@@ -187,17 +184,6 @@ export function AppearanceSwitcher() {
               title={themeControlLabel(theme.label)}
               onClick={() => handleColorSelect(theme.id)}
             >
-              <svg
-                className="appearance-swatch-outline"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <polygon
-                  points={triangle.points}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
               <span className="sr-only">{themeControlLabel(theme.label)}</span>
             </button>
           );
