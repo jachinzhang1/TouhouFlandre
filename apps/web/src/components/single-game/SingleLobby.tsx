@@ -44,7 +44,7 @@ export function SingleLobby() {
           <GameModeEntry
             icon={Settings}
             onClick={() => setScopeOpen(true)}
-            subtitle="自定义出题范围"
+            subtitle="自定义出题范围。"
             title="题库设置"
           />
         </div>
