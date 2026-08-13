@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/coder/websocket"
+
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
 type playerLimitRoom struct {
@@ -189,4 +192,119 @@ func TestMultiRelayRejectsPlayerLimitSettings(t *testing.T) {
 	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "relay"})
 	resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
 	requirePlayerLimitError(t, http.StatusBadRequest, "INVALID_PLAYER_LIMIT", resp, payload)
+}
+
+func playerLimitEventPayload(t *testing.T, conn *websocket.Conn, wantLimit int) (map[string]any, int64) {
+	t.Helper()
+	for range 8 {
+		frame := wsRead(t, conn)
+		if frame["type"] != "room.updated" {
+			continue
+		}
+		payload, ok := frame["payload"].(map[string]any)
+		if !ok {
+			t.Fatalf("room.updated payload = %#v", frame["payload"])
+		}
+		limit, ok := payload["playerLimit"].(float64)
+		if !ok || int(limit) != wantLimit {
+			continue
+		}
+		sequence, ok := frame["sequence"].(float64)
+		if !ok {
+			t.Fatalf("room.updated sequence = %#v", frame["sequence"])
+		}
+		return payload, int64(sequence)
+	}
+	t.Fatalf("未收到 playerLimit=%d 的 room.updated", wantLimit)
+	return nil, 0
+}
+
+func requirePlayerLimitPayload(t *testing.T, payload map[string]any, limit, players, spectators int) {
+	t.Helper()
+	wants := map[string]int{
+		"playerLimit":    limit,
+		"minPlayers":     2,
+		"playerCount":    players,
+		"availableSeats": limit - players,
+		"spectatorCount": spectators,
+	}
+	for field, want := range wants {
+		got, ok := payload[field].(float64)
+		if !ok || int(got) != want {
+			t.Fatalf("room.updated %s = %#v, want %d (payload=%v)", field, payload[field], want, payload)
+		}
+	}
+}
+
+func TestMultiRacePlayerLimitBroadcastSnapshotAndReconnect(t *testing.T) {
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race"})
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("join second player: %d %s", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("join spectator: %d %s", resp.StatusCode, payload)
+	}
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+
+	hostConn := wsDial(t, room.roomID, room.hostToken, 0, nil)
+	spectatorConn := wsDial(t, room.roomID, string(spectator.GuestToken), 0, nil)
+	drainUntilType(t, hostConn, "sync.complete", 16)
+	drainUntilType(t, spectatorConn, "sync.complete", 16)
+
+	settingsPath := "/api/rooms/" + room.roomID + "/settings"
+	resp, payload = fastRequestAuth(http.MethodPatch, settingsPath, room.hostToken, map[string]int{"playerLimit": 4})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("update settings: %d %s", resp.StatusCode, payload)
+	}
+	hostEvent, hostSequence := playerLimitEventPayload(t, hostConn, 4)
+	spectatorEvent, spectatorSequence := playerLimitEventPayload(t, spectatorConn, 4)
+	requirePlayerLimitPayload(t, hostEvent, 4, 2, 1)
+	requirePlayerLimitPayload(t, spectatorEvent, 4, 2, 1)
+	if hostSequence != spectatorSequence {
+		t.Fatalf("broadcast sequences differ: host=%d spectator=%d", hostSequence, spectatorSequence)
+	}
+
+	snapshotResp, snapshotPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+room.roomID+"/snapshot", room.hostToken, nil)
+	if snapshotResp.StatusCode != http.StatusOK {
+		t.Fatalf("snapshot: %d %s", snapshotResp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.PlayerLimit != 4 || snapshot.MinPlayers != 2 || snapshot.PlayerCount != 2 || snapshot.AvailableSeats != 2 || snapshot.SpectatorCount != 1 {
+		t.Fatalf("snapshot capacity = limit:%d min:%d players:%d seats:%d spectators:%d", snapshot.PlayerLimit, snapshot.MinPlayers, snapshot.PlayerCount, snapshot.AvailableSeats, snapshot.SpectatorCount)
+	}
+
+	reconnected := wsDial(t, room.roomID, string(spectator.GuestToken), hostSequence-1, nil)
+	if hello := wsRead(t, reconnected); hello["type"] != "hello-ok" {
+		t.Fatalf("reconnect hello = %v", hello)
+	}
+	replayed, replaySequence := playerLimitEventPayload(t, reconnected, 4)
+	requirePlayerLimitPayload(t, replayed, 4, 2, 1)
+	if replaySequence != hostSequence {
+		t.Fatalf("replayed sequence = %d, want %d", replaySequence, hostSequence)
+	}
+	drainUntilType(t, reconnected, "sync.complete", 4)
+
+	before, err := repo.New(pool).GetRoom(ctx, room.roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, payload = fastRequestAuth(http.MethodPatch, settingsPath, room.hostToken, map[string]int{"playerLimit": 4})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("idempotent settings: %d %s", resp.StatusCode, payload)
+	}
+	after, err := repo.New(pool).GetRoom(ctx, room.roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.EventSeq != before.EventSeq {
+		t.Fatalf("idempotent setting emitted event: before=%d after=%d", before.EventSeq, after.EventSeq)
+	}
 }

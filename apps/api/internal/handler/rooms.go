@@ -247,8 +247,8 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 
 // ---- RoomsUpdateSettings：房主更新大厅竞速容量 ----
 
-// RoomsUpdateSettings 在房间行锁内校验并更新 playerLimit。事件广播由设置同步路径处理；
-// 本命令本身永不隐式触发开局。
+// RoomsUpdateSettings 在房间行锁内校验并更新 playerLimit，同时持久化并广播权威
+// room.updated。本命令本身永不隐式触发开局。
 func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsUpdateSettingsRequestObject) (openapi.RoomsUpdateSettingsResponseObject, error) {
 	member, ok := GuestMemberFromContext(ctx)
 	if !ok {
@@ -316,12 +316,21 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 		}
 		return openapi.RoomsUpdateSettings204Response{}, nil
 	}
-	if _, err := q.UpdateRoomPlayerLimit(ctx, repo.UpdateRoomPlayerLimitParams{ID: request.RoomId, PlayerLimit: int32(desiredLimit)}); err != nil {
+	updatedRoom, err := q.UpdateRoomPlayerLimit(ctx, repo.UpdateRoomPlayerLimitParams{ID: request.RoomId, PlayerLimit: int32(desiredLimit)})
+	if err != nil {
 		return nil, mapRoomWriteError(err)
+	}
+	spectatorCount, err := q.CountSpectators(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(updatedRoom, players, int(spectatorCount))); err != nil {
+		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
+	s.publish(request.RoomId)
 	return openapi.RoomsUpdateSettings204Response{}, nil
 }
 
