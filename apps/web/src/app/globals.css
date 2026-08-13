@@ -1791,7 +1791,7 @@ html[data-theme-mode="dark"] .appearance-swatch {
   .home-hero-blur-strong {
     --hero-progressive-scrim: linear-gradient(transparent, transparent);
     position: absolute;
-    inset: -12px;
+    inset: 0;
     display: block;
     background-color: var(--hero-bg);
     background-image:
