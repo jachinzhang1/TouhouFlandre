@@ -71,6 +71,11 @@ type lifecycleResponse struct {
 	payload []byte
 }
 
+type lifecycleParticipantResponse struct {
+	participant openapi.JoinRoomResponse
+	response    lifecycleResponse
+}
+
 type lifecycleMemberIdentity struct {
 	MemberID string
 	Seat     int
@@ -204,6 +209,229 @@ func snapshotMemberIdentitiesFromDomain(members []multi.MemberView) []lifecycleM
 		identities = append(identities, lifecycleMemberIdentity{MemberID: member.MemberID, Seat: member.Seat})
 	}
 	return identities
+}
+
+func TestMultiCompleteConcurrentRoomLifecycleAndRetention(t *testing.T) {
+	t.Run("concurrent admission claim reconnect host close and cleanup", func(t *testing.T) {
+		fixture := createLifecycleRoom(t, 0)
+		if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 3 WHERE id = $1", fixture.roomID); err != nil {
+			t.Fatal(err)
+		}
+
+		start := make(chan struct{})
+		joinResults := make(chan lifecycleParticipantResponse, 4)
+		var joinWG sync.WaitGroup
+		for range 4 {
+			joinWG.Add(1)
+			go func() {
+				defer joinWG.Done()
+				<-start
+				resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{})
+				result := lifecycleParticipantResponse{response: lifecycleResponse{status: resp.StatusCode, payload: payload}}
+				if resp.StatusCode == http.StatusCreated {
+					if err := json.Unmarshal(payload, &result.participant); err != nil {
+						t.Errorf("decode concurrent join: %v", err)
+						return
+					}
+				}
+				joinResults <- result
+			}()
+		}
+		close(start)
+		joinWG.Wait()
+		close(joinResults)
+
+		concurrentPlayers := make([]openapi.JoinRoomResponse, 0, 1)
+		concurrentSpectators := make([]openapi.JoinRoomResponse, 0, 3)
+		for result := range joinResults {
+			if result.response.status != http.StatusCreated {
+				t.Fatalf("concurrent join = %d %s", result.response.status, result.response.payload)
+			}
+			switch result.participant.JoinRole {
+			case openapi.ParticipantRolePlayer:
+				concurrentPlayers = append(concurrentPlayers, result.participant)
+			case openapi.ParticipantRoleSpectator:
+				concurrentSpectators = append(concurrentSpectators, result.participant)
+			default:
+				t.Fatalf("concurrent join role = %s", result.participant.JoinRole)
+			}
+		}
+		if len(concurrentPlayers) != 1 || len(concurrentSpectators) != 3 || concurrentPlayers[0].Viewer.Seat == nil || *concurrentPlayers[0].Viewer.Seat != 3 {
+			t.Fatalf("concurrent admission players=%+v spectators=%d", concurrentPlayers, len(concurrentSpectators))
+		}
+
+		// Free seat 2 explicitly; spectators remain spectators until an explicit claim.
+		if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", fixture.joinerToken, nil); resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("player leave: %d %s", resp.StatusCode, payload)
+		}
+
+		claimStart := make(chan struct{})
+		claimResults := make(chan lifecycleParticipantResponse, len(concurrentSpectators))
+		var claimWG sync.WaitGroup
+		for _, spectator := range concurrentSpectators {
+			spectator := spectator
+			claimWG.Add(1)
+			go func() {
+				defer claimWG.Done()
+				<-claimStart
+				resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/claim-seat", string(spectator.GuestToken), nil)
+				claimResults <- lifecycleParticipantResponse{
+					participant: spectator,
+					response:    lifecycleResponse{status: resp.StatusCode, payload: payload},
+				}
+			}()
+		}
+		close(claimStart)
+		claimWG.Wait()
+		close(claimResults)
+
+		var claimant openapi.JoinRoomResponse
+		claimSucceeded, claimFull := 0, 0
+		for result := range claimResults {
+			switch result.response.status {
+			case http.StatusNoContent:
+				claimSucceeded++
+				claimant = result.participant
+			case http.StatusConflict:
+				if apiErr := decodeError(t, result.response.payload); apiErr.Code != "ROOM_FULL" {
+					t.Fatalf("losing lifecycle claim = %s", apiErr.Code)
+				}
+				claimFull++
+			default:
+				t.Fatalf("lifecycle claim = %d %s", result.response.status, result.response.payload)
+			}
+		}
+		if claimSucceeded != 1 || claimFull != 2 {
+			t.Fatalf("lifecycle claims succeeded=%d full=%d", claimSucceeded, claimFull)
+		}
+
+		// The same token reauthenticates as the same member with the newly assigned seat.
+		resp, payload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", string(claimant.GuestToken), nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("claimant reconnect snapshot: %d %s", resp.StatusCode, payload)
+		}
+		var claimantSnapshot openapi.RoomSnapshot
+		if err := json.Unmarshal(payload, &claimantSnapshot); err != nil {
+			t.Fatal(err)
+		}
+		if claimantSnapshot.Viewer.MemberId != claimant.Viewer.MemberId || claimantSnapshot.Viewer.Role != openapi.ParticipantRolePlayer || claimantSnapshot.Viewer.Seat == nil || *claimantSnapshot.Viewer.Seat != 2 {
+			t.Fatalf("claimant reconnect identity = %+v, original member = %s", claimantSnapshot.Viewer, claimant.Viewer.MemberId)
+		}
+
+		if resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", fixture.hostToken, nil); resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("host leave: %d %s", resp.StatusCode, payload)
+		}
+		resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", string(claimant.GuestToken), nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("closed room snapshot: %d %s", resp.StatusCode, payload)
+		}
+		var closedSnapshot openapi.RoomSnapshot
+		if err := json.Unmarshal(payload, &closedSnapshot); err != nil {
+			t.Fatal(err)
+		}
+		lastEvent := closedSnapshot.Events[len(closedSnapshot.Events)-1]
+		if closedSnapshot.Status != openapi.RoomStatusClosed || lastEvent.Type != string(multi.EventRoomClosed) || lastEvent.Payload["reason"] != string(multi.RoomCloseReasonHostLeft) {
+			t.Fatalf("host close terminal snapshot = status %s event %+v", closedSnapshot.Status, lastEvent)
+		}
+
+		if _, err := pool.Exec(ctx, "UPDATE multi_room SET expires_at = now() - interval '1 second' WHERE id = $1", fixture.roomID); err != nil {
+			t.Fatal(err)
+		}
+		if err := fastSweeper().SweepOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		var roomCount, memberCount int
+		if err := pool.QueryRow(ctx, `
+			SELECT count(DISTINCT r.id)::int, count(DISTINCT m.id)::int
+			FROM (SELECT $1::text AS id) target
+			LEFT JOIN multi_room r ON r.id = target.id
+			LEFT JOIN multi_member m ON m.room_id = target.id`, fixture.roomID).Scan(&roomCount, &memberCount); err != nil {
+			t.Fatal(err)
+		}
+		if roomCount != 0 || memberCount != 0 {
+			t.Fatalf("closed room cleanup rooms=%d members=%d", roomCount, memberCount)
+		}
+		if resp, _ := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", string(claimant.GuestToken), nil); resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("claimant token after cleanup = %d, want 401", resp.StatusCode)
+		}
+	})
+
+	t.Run("finished spectators survive retention then cascade cleanup", func(t *testing.T) {
+		fixture := createMatchFixtureFormat(t, "bo1")
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("finished lifecycle spectator join: %d %s", resp.StatusCode, payload)
+		}
+		var spectator openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &spectator); err != nil {
+			t.Fatal(err)
+		}
+		if spectator.JoinRole != openapi.ParticipantRoleSpectator {
+			t.Fatalf("finished lifecycle observer role = %s", spectator.JoinRole)
+		}
+
+		startMatch(t, fixture)
+		answer := currentAnswer(t, fixture.roomID)
+		if resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, answer, "complete-lifecycle-finish"); resp.StatusCode != http.StatusOK {
+			t.Fatalf("finish lifecycle match: %d %s", resp.StatusCode, payload)
+		}
+
+		spectatorToken := string(spectator.GuestToken)
+		resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", spectatorToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("finished spectator snapshot: %d %s", resp.StatusCode, payload)
+		}
+		var finishedSnapshot openapi.RoomSnapshot
+		if err := json.Unmarshal(payload, &finishedSnapshot); err != nil {
+			t.Fatal(err)
+		}
+		if finishedSnapshot.Status != openapi.RoomStatusFinished || finishedSnapshot.Viewer.Role != openapi.ParticipantRoleSpectator {
+			t.Fatalf("finished retention snapshot = %+v", finishedSnapshot)
+		}
+
+		if _, err := pool.Exec(ctx, "UPDATE multi_room SET expires_at = now() - interval '1 second' WHERE id = $1", fixture.roomID); err != nil {
+			t.Fatal(err)
+		}
+		if err := fastSweeper().SweepOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", spectatorToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("retention-closed spectator snapshot: %d %s", resp.StatusCode, payload)
+		}
+		var retentionSnapshot openapi.RoomSnapshot
+		if err := json.Unmarshal(payload, &retentionSnapshot); err != nil {
+			t.Fatal(err)
+		}
+		lastEvent := retentionSnapshot.Events[len(retentionSnapshot.Events)-1]
+		if retentionSnapshot.Status != openapi.RoomStatusClosed || lastEvent.Type != string(multi.EventRoomClosed) || lastEvent.Payload["reason"] != string(multi.RoomCloseReasonRetention) {
+			t.Fatalf("retention close snapshot = status %s event %+v", retentionSnapshot.Status, lastEvent)
+		}
+
+		if _, err := pool.Exec(ctx, "UPDATE multi_room SET expires_at = now() - interval '1 second' WHERE id = $1", fixture.roomID); err != nil {
+			t.Fatal(err)
+		}
+		if err := fastSweeper().SweepOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		var roomCount, matchCount, eventCount, memberCount int
+		if err := pool.QueryRow(ctx, `
+			SELECT
+				(SELECT count(*) FROM multi_room WHERE id = $1)::int,
+				(SELECT count(*) FROM multi_match WHERE room_id = $1)::int,
+				(SELECT count(*) FROM room_event WHERE room_id = $1)::int,
+				(SELECT count(*) FROM multi_member WHERE room_id = $1)::int`, fixture.roomID).Scan(&roomCount, &matchCount, &eventCount, &memberCount); err != nil {
+			t.Fatal(err)
+		}
+		if roomCount != 0 || matchCount != 0 || eventCount != 0 || memberCount != 0 {
+			t.Fatalf("retention cleanup rooms=%d matches=%d events=%d members=%d", roomCount, matchCount, eventCount, memberCount)
+		}
+		for _, token := range []string{fixture.hostToken, fixture.joinerToken, spectatorToken} {
+			if resp, _ := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", token, nil); resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("retained credential after cleanup = %d, want 401", resp.StatusCode)
+			}
+		}
+	})
 }
 
 func TestMultiJoinVsFinalReadyLinearizes(t *testing.T) {
