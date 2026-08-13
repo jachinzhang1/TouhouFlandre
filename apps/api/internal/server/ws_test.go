@@ -428,10 +428,12 @@ func TestMultiWSReplaced(t *testing.T) {
 }
 
 func TestMultiWSGuessBroadcast(t *testing.T) {
-	fixture := createMatchFixture(t)
+	fixture := createMatchFixtureMode(t, "bo1", "race", 60)
 
 	hostConn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	drainUntilType(t, hostConn, "sync.complete", 12)
 	joinerConn := wsDial(t, fixture.roomID, fixture.joinerToken, 0, nil)
+	drainUntilType(t, joinerConn, "sync.complete", 12)
 	// 双方 ready → 对局开始；各自推进到 round.playing（容忍重放/连接事件的帧数差异）
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
 		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
@@ -446,15 +448,15 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
 	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
 
-	// host 猜中 → joiner 收到 round.opponent.guess（匿名投影）+ round.ended
+	// host 猜中 → joiner 收到匿名猜测、局末和赛末事件。
 	answer := currentAnswer(t, fixture.roomID)
 	resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, answer, "ws-win")
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
 	}
-	gotGuess, gotEnded := false, false
-	var joinerGuess, joinerEnded map[string]any
-	for i := 0; i < 2; i++ { // 恰好两帧：round.opponent.guess + round.ended（同事务、顺序广播）
+	gotGuess, gotEnded, gotMatchEnded := false, false, false
+	var joinerGuess, joinerEnded, joinerMatchEnded map[string]any
+	for i := 0; i < 3; i++ { // 同事务三帧，按 sequence 广播。
 		msg := wsRead(t, joinerConn)
 		switch msg["type"] {
 		case "round.opponent.guess":
@@ -475,16 +477,24 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 			if p["viewerResult"] != "loss" {
 				t.Fatalf("joiner round.ended viewerResult = %v, want loss", p["viewerResult"])
 			}
+		case "match.ended":
+			gotMatchEnded = true
+			joinerMatchEnded = msg
+			p, _ := msg["payload"].(map[string]any)
+			if p["viewerResult"] != "loss" {
+				t.Fatalf("joiner match.ended viewerResult = %v, want loss", p["viewerResult"])
+			}
 		}
 	}
-	if !gotGuess || !gotEnded {
-		t.Fatalf("joiner missed events: guess=%v ended=%v", gotGuess, gotEnded)
+	if !gotGuess || !gotEnded || !gotMatchEnded {
+		t.Fatalf("joiner missed events: guess=%v ended=%v matchEnded=%v", gotGuess, gotEnded, gotMatchEnded)
 	}
 	if joinerGuess["sequence"] != joinerPlaying["sequence"].(float64)+1 ||
-		joinerEnded["sequence"] != joinerGuess["sequence"].(float64)+1 {
-		t.Fatalf("joiner game sequence not continuous: playing=%v guess=%v ended=%v", joinerPlaying, joinerGuess, joinerEnded)
+		joinerEnded["sequence"] != joinerGuess["sequence"].(float64)+1 ||
+		joinerMatchEnded["sequence"] != joinerEnded["sequence"].(float64)+1 {
+		t.Fatalf("joiner game sequence not continuous: playing=%v guess=%v ended=%v matchEnded=%v", joinerPlaying, joinerGuess, joinerEnded, joinerMatchEnded)
 	}
-	// host 视角：自己的猜测事件以同 sequence cursor 占位，随后收到 round.ended
+	// host 视角：自己的猜测事件以同 sequence cursor 占位，随后收到局末和赛末事件。
 	msg := wsRead(t, hostConn)
 	if msg["type"] != "room.cursor" {
 		t.Fatalf("host own guess frame = %v, want room.cursor", msg)
@@ -501,6 +511,73 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	}
 	if ended["sequence"] != msg["sequence"].(float64)+1 {
 		t.Fatalf("host game sequence not continuous: playing=%v cursor=%v ended=%v", hostPlaying, msg, ended)
+	}
+	matchEnded := wsRead(t, hostConn)
+	if matchEnded["type"] != "match.ended" || matchEnded["sequence"] != ended["sequence"].(float64)+1 {
+		t.Fatalf("host match completion = %v, want continuous match.ended", matchEnded)
+	}
+	p, _ := matchEnded["payload"].(map[string]any)
+	if p["viewerResult"] != "win" {
+		t.Fatalf("host match.ended viewerResult = %v, want win", p["viewerResult"])
+	}
+}
+
+func TestMultiWSRelayBroadcast(t *testing.T) {
+	fixture := createMatchFixtureMode(t, "bo1", "relay", 30)
+	hostConn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	drainUntilType(t, hostConn, "sync.complete", 12)
+	joinerConn := wsDial(t, fixture.roomID, fixture.joinerToken, 0, nil)
+	drainUntilType(t, joinerConn, "sync.complete", 12)
+
+	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	time.Sleep(10 * time.Millisecond)
+	if err := fastSweeper().SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
+
+	answer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, answer, 1)[0]
+	resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, wrong, "ws-relay-host")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("host relay guess: %d %s", resp.StatusCode, payload)
+	}
+	hostFirst := wsRead(t, hostConn)
+	joinerFirst := wsRead(t, joinerConn)
+	if hostFirst["type"] != "round.shared.guess" || joinerFirst["type"] != "round.shared.guess" ||
+		hostFirst["eventId"] != joinerFirst["eventId"] ||
+		hostFirst["sequence"] != hostPlaying["sequence"].(float64)+1 ||
+		joinerFirst["sequence"] != joinerPlaying["sequence"].(float64)+1 {
+		t.Fatalf("first relay broadcast mismatch: host=%v joiner=%v", hostFirst, joinerFirst)
+	}
+
+	resp, payload = guess(t, fixture.roomID, fixture.joinerToken, 1, answer, "ws-relay-joiner-win")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("joiner relay guess: %d %s", resp.StatusCode, payload)
+	}
+	for name, conn := range map[string]*websocket.Conn{"host": hostConn, "joiner": joinerConn} {
+		shared := wsRead(t, conn)
+		roundEnded := wsRead(t, conn)
+		matchEnded := wsRead(t, conn)
+		if shared["type"] != "round.shared.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
+			roundEnded["type"] != "round.ended" || roundEnded["sequence"] != shared["sequence"].(float64)+1 ||
+			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != roundEnded["sequence"].(float64)+1 {
+			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v round=%v match=%v", name, shared, roundEnded, matchEnded)
+		}
+		p, _ := matchEnded["payload"].(map[string]any)
+		wantResult := "loss"
+		if name == "joiner" {
+			wantResult = "win"
+		}
+		if p["viewerResult"] != wantResult {
+			t.Fatalf("%s match.ended viewerResult = %v, want %s", name, p["viewerResult"], wantResult)
+		}
 	}
 }
 
