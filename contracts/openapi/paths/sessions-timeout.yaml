@@ -10,6 +10,16 @@ post:
       required: true
       schema:
         type: string
+  requestBody:
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            expectedGuessCount:
+              type: integer
+              minimum: 0
+              description: 客户端超时时看到的猜测记录数；会话已推进时不重复记录超时。
   responses:
     "200":
       description: 超时空过已记录
