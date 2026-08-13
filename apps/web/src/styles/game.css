@@ -49,10 +49,13 @@
   right: 22px;
   z-index: 1;
   display: inline-flex;
-  color: var(--line-strong);
+  color: var(--ink);
+  opacity: 0.24;
   pointer-events: none;
   transform: translateY(-50%);
-  transition: color 160ms ease;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
 }
 
 .game-mode-entry-copy {
@@ -98,6 +101,7 @@
 
   .game-mode-entry:hover .game-mode-entry-icon {
     color: #fff;
+    opacity: 0.52;
   }
 }
 
@@ -107,6 +111,7 @@
 
 .game-mode-entry:focus-visible .game-mode-entry-icon {
   color: #fff;
+  opacity: 0.52;
 }
 
 @media (max-width: 680px) {
