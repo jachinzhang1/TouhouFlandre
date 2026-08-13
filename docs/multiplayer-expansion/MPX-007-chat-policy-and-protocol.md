@@ -2,7 +2,7 @@
 
 **类型**：设计/契约 Issue  
 **优先级**：P0  
-**依赖**：MPX-002
+**依赖**：MPX-002B（逻辑）；实现顺序上仍放在 MPX-005 之后
 
 **建议标签**：`type:design` `area:docs` `area:contracts` `area:security`
 
@@ -21,15 +21,15 @@
 | `room` | player | 房间内所有获授权的 player 与 spectator |
 | `spectator` | spectator | 房间内所有获授权的 spectator |
 
-当前产品规则固定为：PK 玩家消息对所有 PK 玩家和观战者可见；观战者消息仅对观战者可见。发送请求只提交内容和幂等键，服务器从 token 对应 member 派生 sender 与 channel，拒绝客户端伪造这些字段。
+产品规则固定为：PK 玩家消息对所有 PK 玩家和观战者可见；观战者消息仅对观战者可见。发送请求只提交内容和幂等键，服务器从 token 对应 member 派生 sender 与 channel，拒绝客户端伪造这些字段。
 
-`receiveChat` 是查看者的显示偏好：关闭后客户端不渲染他人消息，但仍可接收/补齐获授权的 chat cursor；自己的、且按当前角色仍获授权的消息仍可在本地显示。spectator claim-seat 后，后续消息按 player 派生为 `room` channel，历史/缓存也按新角色重新过滤，不能继续请求或展示 `spectator` channel。游戏事件继续只推进 `room_event.sequence`，聊天以 message cursor 去重和分页，两者不得共用同一个 `lastSequence`。
+`receiveChat` 是查看者的显示偏好：关闭后客户端不渲染他人消息，但仍可接收/补齐获授权的 chat cursor；自己的、且按该角色仍获授权的消息仍可在本地显示。spectator claim-seat 后，后续消息按 player 派生为 `room` channel，历史/缓存也按新角色重新过滤，不能继续请求或展示 `spectator` channel。游戏事件继续只推进 `room_event.sequence`，聊天以 message cursor 去重和分页，两者不得共用同一个 `lastSequence`。
 
 v2 hello 分别提交 `lastGameSequence` 与可选 `lastChatCursor`。鉴权成功后连接先进入缓冲态，服务端捕获 game/chat high watermark，使用与 REST history 相同的授权投影重放到各自水位，再排空水位后的缓冲帧并切入实时；`hello-ok` 只声明目标水位，FIFO 队列中的 `sync.complete` 才返回真正完成同步的 game sequence 与 scanned chat cursor。即使该观察者没有可见聊天也能在同步完成后推进水位；若同步中途断线，客户端仍使用上一次已完成水位。允许重叠但必须由 eventId/messageId + cursor 去重，不允许在“历史结束”和“实时开始”之间留下丢消息窗口。chat cursor 不可做加一判断。
 
 ## 属于本 Issue
 
-- 消息状态、channel、sender snapshot、生命周期/保留期、稳定分页排序和幂等语义，基于 MPX-002 已冻结的 memberId/role/seat 模型。
+- 消息状态、channel、sender snapshot、生命周期/保留期、稳定分页排序和幂等语义，基于 MPX-002A 已冻结的 memberId/role/seat 模型，并与 MPX-002B 的 v2 同步语义对齐。
 - 纯文本/Unicode emoji 的大小、控制字符、空消息、规范化和频率限制默认值；不接受或解释 HTML/Markdown。
 - 在决策记录中冻结 REST `send/list`、WS v2 `hello`/`hello-ok`/`sync.complete` 和 `chat.message` frame 的 payload、chat cursor/高水位、错误码和权限矩阵；chat frame 不得被游戏 reducer 当作 room event 推进 sequence。MPX-008 再一次性写入生效中的 OpenAPI/WS 源并更新生成代码。
 - 隐私威胁模型：越权观战、claim-seat 后旧 WS 的角色缓存失效/重鉴权、离开后回看、伪造 sender/channel、token 泄漏、重放和日志脱敏。
@@ -47,7 +47,7 @@ v2 hello 分别提交 `lastGameSequence` 与可选 `lastChatCursor`。鉴权成�
 - 明确聊天不写入 `room_event`、不占用游戏 sequence；WS 重连和 REST 历史均通过同一带鉴权的投影按 chat cursor 补齐。
 - WS v2 明确区分 room event envelope、room cursor envelope、chat frame 和 `sync.complete`；客户端分别维护 `lastGameSequence` 与不透明的 `lastChatCursor`，不得对 chat cursor 做 `+1` 缺口判断。
 - `sync.complete`/history 响应即使没有可见聊天，也返回已扫描到的 chat cursor；客户端只按服务端返回的 cursor 推进，不从 messageId 或时间自行构造。
-- chat cursor 与 room、分页方向绑定；格式错误、属于其他房间、超过当前高水位或已不可恢复时返回稳定错误/重同步路径，不能静默回退到“从头”或“当前”而掩盖丢失。
+- chat cursor 与 room、分页方向绑定；格式错误、属于其他房间、超过服务端高水位或已不可恢复时返回稳定错误/重同步路径，不能静默回退到“从头”或“当前”而掩盖丢失。
 - 用并发时序图或测试口径证明“订阅缓冲 → 捕获高水位 → 授权重放 → 排空缓冲 → 实时”期间提交的消息不会丢失，重叠消息只显示一次。
 - 安全维护者确认不存在依赖前端隐藏实现权限的路径。
 

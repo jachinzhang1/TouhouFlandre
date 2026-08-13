@@ -7,7 +7,7 @@
 
 ## 要解决的问题
 
-`room_event` 目前承载游戏状态且使用房间级连续 sequence。聊天必须可重连、可分页回看、可按查看者安全投影，同时不能让 spectator 消息出现在 PK 玩家流中，也不能被恶意客户端伪造发送者或 channel；未授权聊天更不能让游戏 reducer 误判丢帧。
+`room_event` 承载游戏状态且使用房间级连续 sequence。聊天必须可重连、可分页回看、可按查看者安全投影，同时不能让 spectator 消息出现在 PK 玩家流中，也不能被恶意客户端伪造发送者或 channel；未授权聊天更不能让游戏 reducer 误判丢帧。
 
 ## 目标行为
 
@@ -17,7 +17,7 @@
 - 实现 v2 重连屏障：连接鉴权后先订阅并缓冲，捕获游戏/聊天高水位，分别重放到水位，再排空更新帧，在 FIFO 队尾发送 `sync.complete` 后进入实时；WS chat replay 与 REST history 复用同一授权/游标查询，重叠按稳定 ID 去重。同步中途断线时不得提前确认尚未完整交付的水位。
 - 应用房间状态、消息长度/Unicode 控制字符校验、每成员/房间限流和历史/关闭房间保留策略。
 - lobby/playing/finished 保留期内允许发送；closed 禁止发送但持有效、非 left token 者在房间树删除前仍可读取获授权历史，left token 不继续读取离开后的消息。
-- sender/channel 和历史权限始终从请求时的当前 member role 派生；WS 连接不得长期缓存 capability-bearing role。spectator claim-seat 后旧连接立即失效并重鉴权，新消息进入 `room` channel；旧 spectator 消息保留发送时快照，但该 token 作为 player 不再获权读取 spectator 历史。
+- sender/channel 和历史权限始终从请求时的 member role 派生；WS 连接不得长期缓存 capability-bearing role。spectator claim-seat 后旧连接立即失效并重鉴权，新消息进入 `room` channel；旧 spectator 消息保留发送时快照，但该 token 作为 player 不再获权读取 spectator 历史。
 - 对数据库故障、慢消费者、重复发送和 chat cursor 缺口给出稳定错误或历史补齐行为，且不影响游戏 sequence。
 
 ## 属于本 Issue
