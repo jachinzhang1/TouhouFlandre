@@ -167,13 +167,34 @@
   outline-offset: 4px;
 }
 
-.paper-shortcut-icon {
+.paper-shortcut-action {
   position: absolute;
   bottom: 14px;
   left: 18px;
   z-index: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.paper-shortcut-icon,
+.paper-shortcut-hover-arrow {
+  position: absolute;
+  inset: 0;
+}
+
+.paper-shortcut-icon {
   color: var(--ink);
   opacity: 0.24;
+  transition: opacity 180ms ease;
+}
+
+.paper-shortcut-hover-arrow {
+  color: var(--vermilion);
+  opacity: 0;
+  transform: translateX(-25%);
+  transition:
+    opacity 180ms ease,
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .paper-shortcut-title,
@@ -182,8 +203,29 @@
   z-index: 1;
 }
 
-.paper-shortcut-arrow {
-  z-index: 1;
+.paper-shortcut:focus-visible .paper-shortcut-icon,
+.paper-shortcut:focus-visible .paper-shortcut-hover-arrow {
+  transition-duration: 0ms;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-shortcut:hover .paper-shortcut-icon {
+    opacity: 0;
+  }
+
+  .paper-shortcut:hover .paper-shortcut-hover-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.paper-shortcut:focus-visible .paper-shortcut-icon {
+  opacity: 0;
+}
+
+.paper-shortcut:focus-visible .paper-shortcut-hover-arrow {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .paper-shortcut-featured {
@@ -202,8 +244,8 @@
   color: var(--paper-tinted-ink-muted);
 }
 
-.paper-shortcut-featured .paper-shortcut-arrow {
-  color: var(--paper-tinted-ink);
+.paper-shortcut-featured .paper-shortcut-hover-arrow {
+  color: #fff;
 }
 
 @keyframes hero-enter {

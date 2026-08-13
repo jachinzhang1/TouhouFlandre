@@ -230,7 +230,12 @@
   }
 
   .credit-entry-card:hover,
-  .game-mode-entry:hover {
+  .game-mode-entry:hover,
+  .paper-shortcut:hover {
+    transform: none !important;
+  }
+
+  .paper-shortcut-hover-arrow {
     transform: none !important;
   }
 }

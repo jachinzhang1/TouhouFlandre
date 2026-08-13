@@ -132,14 +132,14 @@ function PaperShortcut({
       <span className="paper-shortcut-description text-sm leading-6 text-ink-soft">
         {text}
       </span>
-      <span className="paper-shortcut-icon inline-flex" aria-hidden="true">
-        <Icon size={40} strokeWidth={1.25} />
+      <span className="paper-shortcut-action" aria-hidden="true">
+        <Icon className="paper-shortcut-icon" size={40} strokeWidth={1.25} />
+        <ArrowRight
+          className="paper-shortcut-hover-arrow"
+          size={40}
+          strokeWidth={1.25}
+        />
       </span>
-      <ArrowRight
-        className="paper-shortcut-arrow absolute right-6 bottom-6 text-vermilion transition-transform duration-180 group-hover:translate-x-1"
-        size={19}
-        aria-hidden="true"
-      />
     </Paper>
   );
 }
