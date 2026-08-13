@@ -1,7 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ANNOUNCEMENTS_READ_STORAGE_KEY } from "../announcements/readState";
+import {
+  ANNOUNCEMENTS_READ_STORAGE_KEY,
+  resetAnnouncementReadStatus,
+} from "../announcements/readState";
 import type { Announcement } from "../announcements/types";
 import { AnnouncementPage } from "./AnnouncementPage";
 
@@ -72,6 +75,10 @@ describe("AnnouncementPage", () => {
     expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toContain(
       "notice-markdown",
     );
+
+    act(() => resetAnnouncementReadStatus());
+    await waitFor(() => expect(screen.getByLabelText("未读公告")).toBeTruthy());
+    expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toBeNull();
   });
 
   it("refreshes announcements automatically when the page mounts", async () => {

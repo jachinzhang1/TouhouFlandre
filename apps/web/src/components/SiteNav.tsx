@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { BarChart3, CalendarDays, Home, Megaphone, Search } from "lucide-react";
+import { installAnnouncementDevelopmentTools } from "../announcements/readState";
 import { useAnnouncementUnreadCount } from "../hooks/useAnnouncementUnreadCount";
 import { Paper } from "./Paper";
 import { YinYangMark } from "./YinYangMark";
@@ -47,6 +48,8 @@ export function SiteNav() {
   const unreadAnnouncements = useAnnouncementUnreadCount();
   const navLinksRef = useRef<HTMLDivElement>(null);
   const hasActiveNavItem = NAV_ITEMS.some((item) => item.isActive(pathname));
+
+  useEffect(() => installAnnouncementDevelopmentTools(), []);
 
   useLayoutEffect(() => {
     const navLinks = navLinksRef.current;
