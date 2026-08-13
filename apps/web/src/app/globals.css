@@ -27,7 +27,7 @@
 :root {
   color-scheme: light;
   color: var(--ink);
-  background: var(--paper-muted);
+  background: var(--page-background);
   font-family:
     Inter,
     "Noto Sans SC",
@@ -66,6 +66,11 @@
   --accent-shadow-strong: rgba(173, 51, 52, 0.25);
   --accent-hover-border: #bd8179;
   --paper-tinted-base: #ad3334;
+  --page-background: color-mix(
+    in srgb,
+    var(--paper-muted) 96%,
+    var(--paper-tinted-base)
+  );
   --paper-plain-bg: rgba(255, 255, 255, 0.94);
   --paper-plain-bg-hover: #ffffff;
   --paper-plain-line: rgba(82, 97, 91, 0.12);
@@ -187,6 +192,11 @@ html[data-theme-mode="dark"] {
   --line: #2b3934;
   --line-strong: #3e514a;
   --accent-contrast: #1a1413;
+  --page-background: color-mix(
+    in srgb,
+    var(--paper-muted) 90%,
+    var(--paper-tinted-base)
+  );
   --paper-plain-bg: #202523;
   --paper-plain-bg-hover: #262d2a;
   --paper-plain-line: rgba(237, 244, 241, 0.065);
@@ -486,7 +496,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--paper-muted);
+  background: var(--page-background);
 }
 
 button,
