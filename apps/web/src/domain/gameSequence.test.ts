@@ -68,4 +68,28 @@ describe("GameSequenceCoordinator", () => {
     expect(applyEvent).toHaveBeenCalledWith(event(3));
     expect(coordinator.appliedSequence).toBe(4);
   });
+
+  it("does not persist replay progress before sync.complete", () => {
+    const persist = vi.fn();
+    const coordinator = new GameSequenceCoordinator(0, {
+      applyEvent: vi.fn(),
+      advance: vi.fn(),
+      persist,
+      resync: vi.fn(),
+    });
+
+    coordinator.receive(event(1));
+    coordinator.receive(cursor(2));
+    expect(coordinator.appliedSequence).toBe(2);
+    expect(coordinator.completedSequence).toBe(0);
+    expect(persist).not.toHaveBeenCalled();
+
+    coordinator.complete(2);
+    expect(coordinator.completedSequence).toBe(2);
+    expect(persist).toHaveBeenLastCalledWith(2);
+
+    coordinator.receive(event(3));
+    expect(coordinator.completedSequence).toBe(3);
+    expect(persist).toHaveBeenLastCalledWith(3);
+  });
 });

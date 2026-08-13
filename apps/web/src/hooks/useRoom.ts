@@ -492,6 +492,7 @@ export function useRoom(
   const [guessError, setGuessError] = useState("");
   const [roomUnavailable, setRoomUnavailable] = useState(false);
   const lastAppliedRef = useRef(0);
+  const completedGameSequenceRef = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ForegroundTimer | null>(null);
   const guessCompletedRef = useRef<number[]>([]);
@@ -565,6 +566,10 @@ export function useRoom(
       setState((current) => applySnapshot(current, snapshot));
       lastAppliedRef.current = Math.max(
         lastAppliedRef.current,
+        snapshot.gameSequence,
+      );
+      completedGameSequenceRef.current = Math.max(
+        completedGameSequenceRef.current,
         snapshot.gameSequence,
       );
       await statsQueueRef.current;
@@ -650,29 +655,36 @@ export function useRoom(
         return;
       }
       wsRef.current = ws;
-      const coordinator = new GameSequenceCoordinator(lastAppliedRef.current, {
-        applyEvent,
-        advance: (sequence) => {
-          lastAppliedRef.current = sequence;
-          setState((current) => ({
-            ...current,
-            appliedGameSequence: sequence,
-          }));
+      const coordinator = new GameSequenceCoordinator(
+        lastAppliedRef.current,
+        {
+          applyEvent,
+          advance: (sequence) => {
+            lastAppliedRef.current = sequence;
+            setState((current) => ({
+              ...current,
+              appliedGameSequence: sequence,
+            }));
+          },
+          persist: (sequence) => {
+            completedGameSequenceRef.current = sequence;
+          },
+          resync: async (after) => {
+            const snapshot = await api.roomSnapshot(roomId, token, after);
+            if (disposed) return lastAppliedRef.current;
+            await syncSnapshot(snapshot);
+            return snapshot.gameSequence;
+          },
+          onResyncError: () => startSnapshotFallback(),
         },
-        resync: async (after) => {
-          const snapshot = await api.roomSnapshot(roomId, token, after);
-          if (disposed) return lastAppliedRef.current;
-          await syncSnapshot(snapshot);
-          return snapshot.gameSequence;
-        },
-        onResyncError: () => startSnapshotFallback(),
-      });
+        completedGameSequenceRef.current,
+      );
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
             type: "hello",
             token,
-            lastGameSequence: lastAppliedRef.current,
+            lastGameSequence,
           }),
         );
       };
@@ -693,7 +705,7 @@ export function useRoom(
         }
         if (msg.type === "sync.complete") {
           if (typeof msg.gameSequence === "number") {
-            coordinator.align(msg.gameSequence);
+            coordinator.complete(msg.gameSequence);
           }
           setState((s) => ({
             ...s,
@@ -739,7 +751,7 @@ export function useRoom(
       const delay =
         Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
-      window.setTimeout(() => connect(lastAppliedRef.current), delay);
+      window.setTimeout(() => connect(completedGameSequenceRef.current), delay);
     };
 
     // 先建连（hello → hello-ok → 重放），快照在 hello-ok 后拉取（自视角棋盘/权威状态）。
@@ -767,7 +779,7 @@ export function useRoom(
           return;
         }
       }
-      if (!disposed) connect(lastAppliedRef.current);
+      if (!disposed) connect(completedGameSequenceRef.current);
     };
     if (document.readyState === "loading") {
       window.addEventListener("load", start, { once: true });

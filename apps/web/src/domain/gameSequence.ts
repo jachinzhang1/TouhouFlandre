@@ -7,6 +7,7 @@ import type {
 export interface GameSequenceHandlers {
   applyEvent: (event: Envelope) => void;
   advance: (sequence: number) => void;
+  persist?: (sequence: number) => void;
   resync: (after: number) => Promise<number>;
   onResyncError?: (error: unknown) => void;
 }
@@ -18,18 +19,26 @@ export interface GameSequenceHandlers {
  */
 export class GameSequenceCoordinator {
   private applied: number;
+  private completed: number;
+  private live = false;
   private readonly buffered = new Map<number, GameSequenceFrame>();
   private resyncInFlight: Promise<void> | null = null;
 
   constructor(
     initialSequence: number,
     private readonly handlers: GameSequenceHandlers,
+    completedSequence = initialSequence,
   ) {
     this.applied = initialSequence;
+    this.completed = completedSequence;
   }
 
   get appliedSequence(): number {
     return this.applied;
+  }
+
+  get completedSequence(): number {
+    return this.completed;
   }
 
   receive(frame: GameSequenceFrame): void {
@@ -55,6 +64,13 @@ export class GameSequenceCoordinator {
     this.drainContinuous();
   }
 
+  complete(sequence: number): void {
+    this.align(sequence);
+    this.completed = this.applied;
+    this.live = true;
+    this.handlers.persist?.(this.completed);
+  }
+
   async waitForIdle(): Promise<void> {
     await this.resyncInFlight;
   }
@@ -63,6 +79,10 @@ export class GameSequenceCoordinator {
     if (!isRoomCursor(frame)) this.handlers.applyEvent(frame);
     this.applied = frame.sequence;
     this.handlers.advance(frame.sequence);
+    if (this.live) {
+      this.completed = frame.sequence;
+      this.handlers.persist?.(frame.sequence);
+    }
   }
 
   private drainContinuous(): void {
