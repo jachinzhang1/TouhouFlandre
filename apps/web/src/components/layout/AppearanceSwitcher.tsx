@@ -30,15 +30,41 @@ const defaultAppearance: ResolvedAppearance = {
 const themeControlLabel = (label: string) =>
   `${label}主题色${label === "雾雨魔理沙" ? "DA☆ZE" : ""}`;
 
-const FAN_APEX_Y = (130 / 220) * 100;
-const FAN_BASE_START = (382 / 760) * 100;
-const FAN_BASE_END = (670 / 760) * 100;
-const FAN_STEP = (FAN_BASE_END - FAN_BASE_START) / COLOR_THEMES.length;
+const FAN_WIDTH = 760;
+const FAN_HEIGHT = 220;
+const FAN_APEX_X = FAN_WIDTH;
+const FAN_APEX_Y_PX = 130;
+const FAN_BASE_Y = FAN_HEIGHT;
+const FAN_NEAR_ANGLE = 45;
+const FAN_ANGLE_SPAN = 25;
+const FAN_FAR_ANGLE = FAN_NEAR_ANGLE + FAN_ANGLE_SPAN;
+const FAN_STRIPE_COUNT = COLOR_THEMES.length - 1;
+const FAN_ANGLE_STEP = FAN_ANGLE_SPAN / FAN_STRIPE_COUNT;
+const FAN_APEX_Y = (FAN_APEX_Y_PX / FAN_HEIGHT) * 100;
+
+function getBasePercent(angle: number) {
+  const rise = FAN_BASE_Y - FAN_APEX_Y_PX;
+  const run = rise * Math.tan((angle * Math.PI) / 180);
+  return ((FAN_APEX_X - run) / FAN_WIDTH) * 100;
+}
+
+const FAN_BASE_START = getBasePercent(FAN_FAR_ANGLE);
+const FAN_BASE_END = getBasePercent(FAN_NEAR_ANGLE);
+
+function getFanBoundary(index: number) {
+  const angle = FAN_FAR_ANGLE - FAN_ANGLE_STEP * index;
+  return getBasePercent(angle);
+}
 
 function getFanTriangle(index: number) {
-  const start = FAN_BASE_START + FAN_STEP * index;
-  const end = start + FAN_STEP;
+  const start = getFanBoundary(index);
+  const end = getFanBoundary(index + 1);
   return `polygon(100% ${FAN_APEX_Y}%, ${start}% 100%, ${end}% 100%)`;
+}
+
+function getCollapsedFanTriangle(index: number) {
+  const point = getFanBoundary(index);
+  return `polygon(100% ${FAN_APEX_Y}%, ${point}% 100%, ${point}% 100%)`;
 }
 
 export function AppearanceSwitcher() {
@@ -111,6 +137,10 @@ export function AppearanceSwitcher() {
       COLOR_THEMES[0],
     [appearance.color],
   );
+  const activeThemeIndex = useMemo(
+    () => COLOR_THEMES.findIndex((theme) => theme.id === activeTheme.id),
+    [activeTheme.id],
+  );
 
   const handleModeToggle = () => {
     const nextSettings = {
@@ -147,6 +177,13 @@ export function AppearanceSwitcher() {
       className="appearance-switcher"
       data-open={paletteOpen ? "true" : "false"}
       data-hovered={hoverOpen ? "true" : "false"}
+      style={
+        {
+          "--appearance-apex-y": `${FAN_APEX_Y}%`,
+          "--appearance-base-start": `${FAN_BASE_START}%`,
+          "--appearance-diagonal-end": `${FAN_BASE_END}%`,
+        } as CSSProperties
+      }
       onPointerEnter={() => {
         if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
           setHoverOpen(true);
@@ -161,16 +198,18 @@ export function AppearanceSwitcher() {
         aria-label="角色主题色"
       >
         {COLOR_THEMES.map((theme, index) => {
-          const triangleClip = getFanTriangle(index);
+          const selected = theme.id === activeTheme.id;
+          const slot = index < activeThemeIndex ? index : index - 1;
+          const triangleClip = selected
+            ? getCollapsedFanTriangle(index)
+            : getFanTriangle(slot);
           return (
             <button
               key={theme.id}
               type="button"
-              className={
-                theme.id === activeTheme.id
-                  ? "appearance-swatch active"
-                  : "appearance-swatch"
-              }
+              className="appearance-swatch"
+              data-selected={selected ? "true" : "false"}
+              data-slot={selected ? undefined : slot}
               data-theme-color={theme.id}
               style={
                 {
@@ -179,8 +218,9 @@ export function AppearanceSwitcher() {
                   "--swatch-clip": triangleClip,
                 } as CSSProperties
               }
+              aria-hidden={selected || undefined}
               aria-label={themeControlLabel(theme.label)}
-              aria-pressed={theme.id === activeTheme.id}
+              disabled={selected}
               title={themeControlLabel(theme.label)}
               onClick={() => handleColorSelect(theme.id)}
             >

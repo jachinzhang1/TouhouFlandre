@@ -286,7 +286,7 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-link-copy {
 
 .appearance-switcher {
   --appearance-apex-y: 59.0909%;
-  --appearance-base-start: 50.2632%;
+  --appearance-base-start: 67.4641%;
   --appearance-diagonal-end: 88.1579%;
   --appearance-collapsed-leg: 90px;
   --appearance-rest-color: color-mix(
@@ -460,8 +460,17 @@ body:has(.home-hero) .appearance-toggle {
   background-size: var(--swatch-pattern-size);
   clip-path: var(--swatch-clip);
   outline: 0;
+  opacity: 1;
   pointer-events: none;
-  transition: filter 150ms ease;
+  transition:
+    clip-path 280ms cubic-bezier(0.77, 0, 0.175, 1),
+    filter 150ms ease,
+    opacity 180ms ease;
+  will-change: clip-path, opacity;
+}
+
+.appearance-swatch[data-selected="true"] {
+  opacity: 0;
 }
 
 html[data-theme-mode="dark"] .appearance-swatch {
@@ -532,28 +541,8 @@ html[data-theme-mode="dark"] .appearance-swatch {
   transition: opacity 150ms ease;
 }
 
-.appearance-swatch.active {
-  z-index: 2;
-}
-
-.appearance-swatch.active::after,
 .appearance-swatch:focus-visible::after {
   opacity: 1;
-}
-
-.appearance-swatch:focus-visible::after {
-  animation: none;
-}
-
-@keyframes appearance-selection-flicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.12;
-  }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -561,17 +550,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
     z-index: 3;
     filter: brightness(1.08) saturate(1.04);
   }
-}
-
-.appearance-switcher:is([data-open="true"], [data-hovered="true"])
-  .appearance-swatch.active::after {
-  animation: appearance-selection-flicker 1600ms ease-in-out infinite;
-}
-
-.appearance-switcher:is([data-open="true"], [data-hovered="true"])
-  .appearance-swatch:focus-visible::after {
-  animation: none;
-  opacity: 1;
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
@@ -628,6 +606,11 @@ html[data-theme-mode="dark"] .appearance-swatch {
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
   .appearance-swatch {
   pointer-events: auto;
+}
+
+.appearance-switcher:is([data-open="true"], [data-hovered="true"])
+  .appearance-swatch[data-selected="true"] {
+  pointer-events: none;
 }
 
 @media (min-width: 901px) {

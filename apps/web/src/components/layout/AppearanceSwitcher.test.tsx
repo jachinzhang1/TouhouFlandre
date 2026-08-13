@@ -84,22 +84,47 @@ describe("AppearanceSwitcher", () => {
     await user.click(screen.getByRole("button", { name: "古明地觉主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
-    expect(
-      screen
-        .getByRole("button", { name: "古明地觉主题色" })
-        .getAttribute("aria-pressed"),
-    ).toBe("true");
+    expect(screen.queryByRole("button", { name: "古明地觉主题色" })).toBeNull();
+    expect(screen.getByRole("button", { name: "博丽灵梦主题色" })).toBeTruthy();
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
       JSON.stringify({ color: sakura?.id }),
     );
   });
 
-  it("offers all six character theme colors", async () => {
+  it("moves only the stripes between the old and new selections", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSwitcher />);
+    const slot = (name: string) =>
+      screen.getByRole("button", { name }).dataset.slot;
+
+    expect(slot("古明地觉主题色")).toBe("0");
+    expect(slot("比那名居天子主题色")).toBe("4");
+
+    await user.click(
+      screen.getByRole("button", { name: "雾雨魔理沙主题色DA☆ZE" }),
+    );
+
+    expect(slot("博丽灵梦主题色")).toBe("0");
+    expect(slot("古明地觉主题色")).toBe("1");
+    expect(slot("八云紫主题色")).toBe("2");
+    expect(slot("东风谷早苗主题色")).toBe("3");
+    expect(slot("比那名居天子主题色")).toBe("4");
+
+    await user.click(screen.getByRole("button", { name: "古明地觉主题色" }));
+
+    expect(slot("博丽灵梦主题色")).toBe("0");
+    expect(slot("八云紫主题色")).toBe("1");
+    expect(slot("东风谷早苗主题色")).toBe("2");
+    expect(slot("雾雨魔理沙主题色DA☆ZE")).toBe("3");
+    expect(slot("比那名居天子主题色")).toBe("4");
+  });
+
+  it("offers the five inactive character theme colors", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
 
+    expect(screen.queryByRole("button", { name: "博丽灵梦主题色" })).toBeNull();
     for (const name of [
-      "博丽灵梦主题色",
       "古明地觉主题色",
       "八云紫主题色",
       "东风谷早苗主题色",
@@ -114,6 +139,10 @@ describe("AppearanceSwitcher", () => {
     );
 
     expect(document.documentElement.dataset.themeColor).toBe("azure");
+    expect(
+      screen.queryByRole("button", { name: "比那名居天子主题色" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "博丽灵梦主题色" })).toBeTruthy();
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
       JSON.stringify({ color: "azure" }),
     );

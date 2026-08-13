@@ -242,9 +242,4 @@
   .appearance-fold-flap {
     transition-delay: 0ms !important;
   }
-
-  .appearance-swatch.active::after {
-    animation: none !important;
-    opacity: 1;
-  }
 }
