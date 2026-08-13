@@ -22,7 +22,8 @@ export function HomePage() {
 
   return (
     <section className="home-hero relative isolate flex min-h-[550px] items-center overflow-hidden min-[901px]:left-1/2 min-[901px]:-mt-[98px] min-[901px]:min-h-[100svh] min-[901px]:w-[100dvw] min-[901px]:-translate-x-1/2 max-[900px]:min-h-[510px] max-[680px]:min-h-[420px]">
-      <div className="home-hero-layout relative z-[1] mx-auto flex min-h-[inherit] w-full items-center min-[901px]:min-h-[100svh] min-[901px]:w-[min(1240px,calc(100%-40px))] min-[901px]:flex-col min-[901px]:items-stretch min-[901px]:justify-center min-[901px]:gap-[clamp(28px,4vh,48px)] min-[901px]:pt-[80px] min-[901px]:pb-[36px]">
+      <span className="home-hero-blur-strong" aria-hidden="true" />
+      <div className="home-hero-layout relative z-[2] mx-auto flex min-h-[inherit] w-full items-center min-[901px]:min-h-[100svh] min-[901px]:w-[min(1240px,calc(100%-40px))] min-[901px]:flex-col min-[901px]:items-stretch min-[901px]:justify-center min-[901px]:gap-[clamp(28px,4vh,48px)] min-[901px]:pt-[80px] min-[901px]:pb-[36px]">
         <div className="home-hero-copy w-[min(610px,58%)] py-[58px] pl-[56px] animate-[hero-enter_650ms_cubic-bezier(0.2,0.75,0.25,1)_both] min-[901px]:w-[min(680px,62%)] min-[901px]:py-0 min-[901px]:pl-0 max-[900px]:w-[68%] max-[900px]:pl-[34px] max-[680px]:w-full max-[680px]:px-[22px] max-[680px]:py-[38px]">
           <p className="mt-0 mb-[18px] inline-flex items-center gap-2 text-[0.78rem] font-extrabold text-jade">
             <span
