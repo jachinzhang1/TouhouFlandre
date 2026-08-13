@@ -268,7 +268,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	}
 	byID := multi.CharactersByID(characters)
 	fields := multi.FieldsForMatch(*state.Match)
-	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(fields))
+	permutationByMemberID := make(map[string][]int, len(state.Members))
 
 	self := []openapi.GuessResult{}
 	opponents := make([]openapi.OpponentBoardView, 0, len(state.Members))
@@ -310,6 +310,11 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			self = append(self, toOpenAPIGuessResult(hydrated))
 		} else {
 			visibleStatuses := multi.StatusesForFields(statuses, fields)
+			perm, ok := permutationByMemberID[guess.MemberID]
+			if !ok {
+				perm = multi.ColumnPermutation(s.projectionSecret, state.Round.ID, observer.ID, guess.MemberID, multi.ProjectionSchemaVersion, len(fields))
+				permutationByMemberID[guess.MemberID] = perm
+			}
 			index, ok := opponentIndexByMemberID[guess.MemberID]
 			if !ok {
 				continue
@@ -402,7 +407,7 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 	}
 
 	for _, event := range events {
-		projected, skip, err := multi.ProjectEvent(ctx, s.q, event, state.Room.ID, observer, memberSlotByID, charCache)
+		projected, skip, err := multi.ProjectEvent(ctx, s.q, s.projectionSecret, event, state.Room.ID, observer, memberSlotByID, charCache)
 		if err != nil {
 			return nil, internalError(err)
 		}

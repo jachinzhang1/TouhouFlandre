@@ -6,8 +6,9 @@ import (
 )
 
 func TestColumnPermutationDeterministic(t *testing.T) {
-	a := ColumnPermutation("round-1", "member-a", 6)
-	b := ColumnPermutation("round-1", "member-a", 6)
+	secret := []byte("test-projection-secret")
+	a := ColumnPermutation(secret, "round-1", "member-a", "member-b", ProjectionSchemaVersion, 6)
+	b := ColumnPermutation(secret, "round-1", "member-a", "member-b", ProjectionSchemaVersion, 6)
 	if len(a) != 6 {
 		t.Fatalf("perm length %d", len(a))
 	}
@@ -29,8 +30,9 @@ func TestColumnPermutationDeterministic(t *testing.T) {
 }
 
 func TestColumnPermutationObserverIndependent(t *testing.T) {
-	pa := ColumnPermutation("round-1", "member-a", 6)
-	pb := ColumnPermutation("round-1", "member-b", 6)
+	secret := []byte("test-projection-secret")
+	pa := ColumnPermutation(secret, "round-1", "member-a", "member-c", ProjectionSchemaVersion, 6)
+	pb := ColumnPermutation(secret, "round-1", "member-b", "member-c", ProjectionSchemaVersion, 6)
 	same := true
 	for i := range pa {
 		if pa[i] != pb[i] {
@@ -42,7 +44,7 @@ func TestColumnPermutationObserverIndependent(t *testing.T) {
 		t.Fatalf("A/B 观察者置换相同: %v", pa)
 	}
 	// 不同局不同置换
-	pRound2 := ColumnPermutation("round-2", "member-a", 6)
+	pRound2 := ColumnPermutation(secret, "round-2", "member-a", "member-c", ProjectionSchemaVersion, 6)
 	sameRound := true
 	for i := range pa {
 		if pa[i] != pRound2[i] {
@@ -55,8 +57,35 @@ func TestColumnPermutationObserverIndependent(t *testing.T) {
 	}
 }
 
+func TestColumnPermutationBindsSubjectSchemaAndSecret(t *testing.T) {
+	secret := []byte("test-projection-secret")
+	base := ColumnPermutation(secret, "round-1", "observer", "subject-a", ProjectionSchemaVersion, 8)
+	variants := [][]int{
+		ColumnPermutation(secret, "round-1", "observer", "subject-b", ProjectionSchemaVersion, 8),
+		ColumnPermutation(secret, "round-1", "observer", "subject-a", "opponent-board-v2", 8),
+		ColumnPermutation([]byte("another-secret"), "round-1", "observer", "subject-a", ProjectionSchemaVersion, 8),
+	}
+	for index, variant := range variants {
+		if equalPermutation(base, variant) {
+			t.Fatalf("variant %d reused permutation %v", index, base)
+		}
+	}
+}
+
+func equalPermutation(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestPermuteStatuses(t *testing.T) {
-	perm := ColumnPermutation("r", "o", 6)
+	perm := ColumnPermutation([]byte("test-projection-secret"), "r", "o", "s", ProjectionSchemaVersion, 6)
 	statuses := []string{"exact", "partial", "miss", "higher", "lower", "unknown"}
 	out := PermuteStatuses(statuses, perm)
 	if len(out) != 6 {

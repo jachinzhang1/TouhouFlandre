@@ -1,8 +1,10 @@
 package server_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -309,5 +311,216 @@ func TestMultiRaceConcurrentCorrectGuessHasOneMemberWinner(t *testing.T) {
 	}
 	if winners != 1 {
 		t.Fatalf("projected result winners = %d, want 1", winners)
+	}
+}
+
+func TestMultiRacePlayerProjectionPrivacyAndSpectatorBoards(t *testing.T) {
+	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	answer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, answer, 1)[0]
+
+	for _, participant := range fixture.participants[1:3] {
+		resp, payload := guess(t, fixture.roomID, participant.token, 1, wrong, "privacy-"+strconv.Itoa(participant.seat))
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("seat %d privacy guess: %d %s", participant.seat, resp.StatusCode, payload)
+		}
+	}
+
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("join privacy spectator: %d %s", resp.StatusCode, payload)
+	}
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.JoinRole != openapi.ParticipantRoleSpectator {
+		t.Fatalf("privacy observer role = %s", spectator.JoinRole)
+	}
+
+	type persistedGuess struct {
+		memberID string
+		statuses []string
+	}
+	var roundID string
+	rows, err := pool.Query(ctx, `
+		SELECT round.id, guess.member_id, guess.statuses
+		FROM multi_round AS round
+		JOIN multi_match AS match ON match.id = round.match_id
+		JOIN multi_guess AS guess ON guess.round_id = round.id
+		WHERE match.room_id = $1 AND round.status = 'playing'
+		ORDER BY guess.member_id`, fixture.roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	persisted := map[string][]string{}
+	for rows.Next() {
+		var row persistedGuess
+		var raw []byte
+		if err := rows.Scan(&roundID, &row.memberID, &raw); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(raw, &row.statuses); err != nil {
+			t.Fatal(err)
+		}
+		persisted[row.memberID] = row.statuses
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	playerSnapshots := map[string]openapi.RoomSnapshot{}
+	for _, observer := range []nPlayerRaceParticipant{fixture.participants[0], fixture.participants[1], fixture.participants[3]} {
+		resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", observer.token, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("seat %d privacy snapshot: %d %s", observer.seat, resp.StatusCode, payload)
+		}
+		var snapshot openapi.RoomSnapshot
+		if err := json.Unmarshal(payload, &snapshot); err != nil {
+			t.Fatal(err)
+		}
+		if snapshot.Round == nil || snapshot.Round.Boards != nil || len(snapshot.Round.Opponents) != 3 {
+			t.Fatalf("seat %d projected round = %+v", observer.seat, snapshot.Round)
+		}
+		playerSnapshots[observer.memberID] = snapshot
+	}
+
+	guessingSubject := fixture.participants[1]
+	if own := playerSnapshots[guessingSubject.memberID].Round.Self.Guesses; len(own) != 1 || own[0].GuessId != wrong || len(own[0].Feedback) == 0 {
+		t.Fatalf("player self board is not complete: %+v", own)
+	}
+
+	projectionSecret := []byte("integration-test-projection-secret")
+	for _, observer := range []nPlayerRaceParticipant{fixture.participants[0], fixture.participants[3]} {
+		snapshot := playerSnapshots[observer.memberID]
+		for _, subject := range fixture.participants[1:3] {
+			board := opponentBoardForMember(t, snapshot, subject.memberID)
+			if len(board.Rows) != 1 || board.Rows[0].Index != 1 {
+				t.Fatalf("observer seat %d subject seat %d public rows = %+v", observer.seat, subject.seat, board.Rows)
+			}
+			perm := multi.ColumnPermutation(projectionSecret, roundID, observer.memberID, subject.memberID, multi.ProjectionSchemaVersion, len(persisted[subject.memberID]))
+			want := multi.PermuteStatuses(persisted[subject.memberID], perm)
+			got := feedbackStatusesAsStrings(board.Rows[0].Statuses)
+			if !slices.Equal(got, want) {
+				t.Fatalf("observer seat %d subject seat %d statuses = %v, want HMAC projection %v", observer.seat, subject.seat, got, want)
+			}
+		}
+	}
+
+	for _, snapshot := range playerSnapshots {
+		serializedOpponents, err := json.Marshal(snapshot.Round.Opponents)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, forbidden := range [][]byte{
+			[]byte(`"guessId"`), []byte(`"guessName"`), []byte(`"guessAvatarUrl"`),
+			[]byte(`"field"`), []byte(`"label"`), []byte(`"symbol"`), []byte(`"displayValue"`),
+			[]byte(`"permutation"`), []byte(wrong), []byte(answer), projectionSecret,
+		} {
+			if len(forbidden) > 0 && bytes.Contains(serializedOpponents, forbidden) {
+				t.Fatalf("player opponent boards leaked %q: %s", forbidden, serializedOpponents)
+			}
+		}
+		opponentGuessEvents := 0
+		lastSequence := 0
+		for _, event := range snapshot.Events {
+			if event.Sequence <= lastSequence || event.OccurredAt.IsZero() {
+				t.Fatalf("event order/timing is not public and monotonic: %+v", event)
+			}
+			lastSequence = event.Sequence
+			if event.Type != string(multi.EventRoundOpponentGuess) {
+				if event.Type == string(multi.EventRoundSpectatorGuess) {
+					t.Fatalf("player received spectator-only event: %+v", event)
+				}
+				continue
+			}
+			opponentGuessEvents++
+			assertPayloadKeys(t, event.Payload, "matchIndex", "memberId", "roundIndex", "rowIndex", "seat", "statuses")
+			if event.Payload["memberId"] == snapshot.Viewer.MemberId {
+				t.Fatalf("player received own canonical opponent event: %+v", event)
+			}
+		}
+		wantEvents := 2
+		if snapshot.Viewer.MemberId == guessingSubject.memberID {
+			wantEvents = 1
+		}
+		if opponentGuessEvents != wantEvents {
+			t.Fatalf("viewer %s opponent guess events = %d, want %d", snapshot.Viewer.MemberId, opponentGuessEvents, wantEvents)
+		}
+	}
+
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", string(spectator.GuestToken), nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spectator privacy snapshot: %d %s", resp.StatusCode, payload)
+	}
+	var spectatorSnapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &spectatorSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if spectatorSnapshot.Round == nil || spectatorSnapshot.Round.Boards == nil || len(*spectatorSnapshot.Round.Boards) != 4 || len(spectatorSnapshot.Round.Opponents) != 0 {
+		t.Fatalf("spectator projected round = %+v", spectatorSnapshot.Round)
+	}
+	for _, subject := range fixture.participants[1:3] {
+		board := spectatorBoardForMember(t, *spectatorSnapshot.Round.Boards, subject.memberID)
+		if len(board.Guesses) != 1 || board.Guesses[0].GuessId != wrong || board.Guesses[0].GuessName == "" || len(board.Guesses[0].Feedback) == 0 || len(board.Guesses[0].Feedback[0].DisplayValue) == 0 {
+			t.Fatalf("spectator subject seat %d board is incomplete: %+v", subject.seat, board)
+		}
+	}
+	spectatorGuessEvents := 0
+	for _, event := range spectatorSnapshot.Events {
+		if event.Type != string(multi.EventRoundSpectatorGuess) {
+			continue
+		}
+		spectatorGuessEvents++
+		guessPayload, ok := event.Payload["guess"].(map[string]any)
+		if !ok || guessPayload["guessId"] != wrong || guessPayload["guessName"] == "" || guessPayload["feedback"] == nil {
+			t.Fatalf("spectator guess event is incomplete: %+v", event)
+		}
+	}
+	if spectatorGuessEvents != 2 {
+		t.Fatalf("spectator guess events = %d, want 2", spectatorGuessEvents)
+	}
+}
+
+func opponentBoardForMember(t *testing.T, snapshot openapi.RoomSnapshot, memberID string) openapi.OpponentBoardView {
+	t.Helper()
+	for _, board := range snapshot.Round.Opponents {
+		if board.MemberId == memberID {
+			return board
+		}
+	}
+	t.Fatalf("opponent board for member %s not found", memberID)
+	return openapi.OpponentBoardView{}
+}
+
+func spectatorBoardForMember(t *testing.T, boards []openapi.MemberBoardView, memberID string) openapi.MemberBoardView {
+	t.Helper()
+	for _, board := range boards {
+		if board.MemberId == memberID {
+			return board
+		}
+	}
+	t.Fatalf("spectator board for member %s not found", memberID)
+	return openapi.MemberBoardView{}
+}
+
+func feedbackStatusesAsStrings(statuses []openapi.FeedbackStatus) []string {
+	out := make([]string, len(statuses))
+	for index, status := range statuses {
+		out[index] = string(status)
+	}
+	return out
+}
+
+func assertPayloadKeys(t *testing.T, payload map[string]any, want ...string) {
+	t.Helper()
+	if len(payload) != len(want) {
+		t.Fatalf("payload keys = %+v, want %v", payload, want)
+	}
+	for _, key := range want {
+		if _, ok := payload[key]; !ok {
+			t.Fatalf("payload missing %s: %+v", key, payload)
+		}
 	}
 }

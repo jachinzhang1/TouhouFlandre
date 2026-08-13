@@ -79,6 +79,7 @@ services:
       MULTI_FINISHED_RETENTION: ${MULTI_FINISHED_RETENTION:-30m}
       MULTI_WS_READ_LIMIT: ${MULTI_WS_READ_LIMIT:-4096}
       MULTI_WS_SEND_QUEUE: ${MULTI_WS_SEND_QUEUE:-64}
+      MULTI_PROJECTION_SECRET: ${MULTI_PROJECTION_SECRET:-}
     ports:
       # 可选：cloudflared 第二隧道直连 api 调试；web 代理未启用时前端直连用
       - "4000:4000"

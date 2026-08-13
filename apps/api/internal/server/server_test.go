@@ -151,7 +151,7 @@ func TestMain(m *testing.M) {
 		MaxRoundsFactor:   3,
 		FinishedRetention: time.Hour,
 	}
-	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64)
+	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"))
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithMultiTiming(fastTiming),

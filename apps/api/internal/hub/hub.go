@@ -20,11 +20,12 @@ import (
 
 // Hub 房间事件广播器（单实例，进程内）。
 type Hub struct {
-	pool      *pgxpool.Pool
-	q         *repo.Queries
-	grace     time.Duration // 断线宽限（08 §4.7 DISCONNECT_GRACE）
-	readLimit int64         // 客户端消息读限（08 §8.5）
-	sendQueue int           // 发送队列长度（08 §8.5）
+	pool             *pgxpool.Pool
+	q                *repo.Queries
+	grace            time.Duration // 断线宽限（08 §4.7 DISCONNECT_GRACE）
+	readLimit        int64         // 客户端消息读限（08 §8.5）
+	sendQueue        int           // 发送队列长度（08 §8.5）
+	projectionSecret []byte        // 对手匿名矩阵 HMAC 密钥
 
 	mu    sync.Mutex
 	rooms map[string]*roomHub // roomID → 连接与广播水位
@@ -41,15 +42,21 @@ type roomHub struct {
 }
 
 // New 构造 hub（grace/readLimit/sendQueue 由 internal/config 注入，08 §4.7/§8.5）。
-func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int) *Hub {
+func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int, projectionSecret []byte) *Hub {
 	return &Hub{
-		pool:      pool,
-		q:         repo.New(pool),
-		grace:     grace,
-		readLimit: readLimit,
-		sendQueue: sendQueue,
-		rooms:     map[string]*roomHub{},
+		pool:             pool,
+		q:                repo.New(pool),
+		grace:            grace,
+		readLimit:        readLimit,
+		sendQueue:        sendQueue,
+		projectionSecret: append([]byte(nil), projectionSecret...),
+		rooms:            map[string]*roomHub{},
 	}
+}
+
+// ProjectionSecret 返回快照处理器应复用的投影密钥副本。
+func (h *Hub) ProjectionSecret() []byte {
+	return append([]byte(nil), h.projectionSecret...)
 }
 
 // ReadLimit 客户端消息读限（handler hello 首帧与 conn 读循环共用）。
@@ -200,7 +207,7 @@ func (h *Hub) Publish(roomID string) {
 				c.sendMemberChangedAndClose()
 				continue
 			}
-			projected, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
+			projected, skip, err := multi.ProjectEvent(ctx, h.q, h.projectionSecret, event, roomID, c.member, memberSlotByID, charCache)
 			if err != nil {
 				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
 				c.setCloseReason("projection_error")

@@ -194,7 +194,7 @@ func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 		if event.Sequence > targetGameSequence {
 			break
 		}
-		projected, skip, err := multi.ProjectEvent(ctx, c.hub.q, event, c.roomID, c.member, memberSlotByID, charCache)
+		projected, skip, err := multi.ProjectEvent(ctx, c.hub.q, c.hub.projectionSecret, event, c.roomID, c.member, memberSlotByID, charCache)
 		if err != nil {
 			return c.lastGameSequence, err
 		}

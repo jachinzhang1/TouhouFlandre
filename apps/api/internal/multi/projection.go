@@ -4,14 +4,18 @@ package multi
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"math/rand/v2"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
+
+const ProjectionSchemaVersion = "opponent-board-v1"
 
 // EventBroadcaster 事件广播器（Phase 4 hub 实现；sweeper 事件入库后调用，先入库后广播，07 §7.2）。
 type EventBroadcaster interface {
@@ -19,15 +23,20 @@ type EventBroadcaster interface {
 }
 
 // ColumnPermutation 对 n 列做确定性 Fisher–Yates 置换（08 §4.5）。
-// 种子 = FNV-1a(roundID + "\x00" + observerMemberID)：同一 (round, observer) 恒定，
-// 保证快照/重放/实时三路径一致且跨进程重启稳定；每局每观察者独立。
-func ColumnPermutation(roundID, observerMemberID string, n int) []int {
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(roundID))
-	_, _ = h.Write([]byte{0})
-	_, _ = h.Write([]byte(observerMemberID))
-	seed := h.Sum64()
-	rng := rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15))
+// HMAC 输入绑定 round、observer、subject 与 schemaVersion：同一投影视角三路径恒定，
+// 不同对手之间也无法用同一列顺序建立相关性；服务端秘密阻止客户端反推真实列映射。
+func ColumnPermutation(secret []byte, roundID, observerMemberID, subjectMemberID, schemaVersion string, n int) []int {
+	mac := hmac.New(sha256.New, secret)
+	for _, part := range []string{roundID, observerMemberID, subjectMemberID, schemaVersion} {
+		var length [4]byte
+		binary.BigEndian.PutUint32(length[:], uint32(len(part)))
+		_, _ = mac.Write(length[:])
+		_, _ = mac.Write([]byte(part))
+	}
+	digest := mac.Sum(nil)
+	seed1 := binary.BigEndian.Uint64(digest[:8])
+	seed2 := binary.BigEndian.Uint64(digest[8:16])
+	rng := rand.New(rand.NewPCG(seed1, seed2))
 	perm := make([]int, n)
 	for i := range perm {
 		perm[i] = i
@@ -114,7 +123,7 @@ type ProjectedEvent struct {
 // - match.ended：补 viewerResult 和按 seat 排序的比分/结果集合；
 // - 其余事件原样返回（payload map）。
 // charsCache 跨事件共享角色索引（避免重复读快照）；memberSlotByID 是旧比赛存储到公开 seat 的适配表。
-func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, roomID string,
+func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte, event repo.RoomEvent, roomID string,
 	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, bool, error) {
 
 	switch EventType(event.Type) {
@@ -136,7 +145,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		}
 		fields := FieldsForMatch(match)
 		visibleStatuses := StatusesForFields(payload.Statuses, fields)
-		perm := ColumnPermutation(payload.RoundID, observer.ID, len(fields))
+		perm := ColumnPermutation(projectionSecret, payload.RoundID, observer.ID, payload.MemberID, ProjectionSchemaVersion, len(fields))
 		return ProjectedEvent{
 			Type: EventRoundOpponentGuess,
 			Payload: RoundOpponentGuessPayload{

@@ -24,15 +24,16 @@ import (
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool           *pgxpool.Pool
-	q              *repo.Queries
-	now            func() time.Time
-	rng            *rand.Rand
-	lobbyTTL       time.Duration      // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention time.Duration      // closed 保留期（关闭时 expires_at）
-	joinLimiter    *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
-	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	hub            *hub.Hub           // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	pool             *pgxpool.Pool
+	q                *repo.Queries
+	now              func() time.Time
+	rng              *rand.Rand
+	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
+	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	hub              *hub.Hub           // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	projectionSecret []byte             // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 }
 
 // Option 定制 Server（测试注入用）。
@@ -56,6 +57,7 @@ func WithMultiTiming(timing multi.TimingConfig) Option {
 func WithHub(h *hub.Hub) Option {
 	return func(s *Server) {
 		s.hub = h
+		s.projectionSecret = h.ProjectionSecret()
 	}
 }
 
@@ -68,14 +70,15 @@ func (s *Server) publish(roomID string) {
 
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	s := &Server{
-		pool:           pool,
-		q:              repo.New(pool),
-		now:            time.Now,
-		rng:            rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
-		lobbyTTL:       config.MultiLobbyTTL(),
-		eventRetention: config.MultiEventRetention(),
-		joinLimiter:    newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
-		timing:         multi.DefaultTimingConfig(),
+		pool:             pool,
+		q:                repo.New(pool),
+		now:              time.Now,
+		rng:              rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
+		lobbyTTL:         config.MultiLobbyTTL(),
+		eventRetention:   config.MultiEventRetention(),
+		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		timing:           multi.DefaultTimingConfig(),
+		projectionSecret: config.MultiProjectionSecret(),
 	}
 	for _, opt := range opts {
 		opt(s)

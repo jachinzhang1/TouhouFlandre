@@ -176,6 +176,7 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 | `MULTI_FINISHED_RETENTION` | 结束态保留时长，默认 10 分钟。 |
 | `MULTI_WS_READ_LIMIT` | 客户端 WS 消息读限。 |
 | `MULTI_WS_SEND_QUEUE` | 单连接发送队列长度。 |
+| `MULTI_PROJECTION_SECRET` | 对手匿名棋盘列置换的 HMAC 密钥；生产环境必填，未配置时生成进程级随机值。 |
 
 ## 测试重点
 

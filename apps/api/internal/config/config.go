@@ -2,13 +2,20 @@
 package config
 
 import (
+	"crypto/rand"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+)
+
+var (
+	projectionSecretOnce sync.Once
+	projectionSecret     []byte
 )
 
 // durationFromEnv 读取时长环境变量，非法/缺失时回退默认值。
@@ -137,6 +144,22 @@ func MultiWSSendQueue() int {
 		}
 	}
 	return 64
+}
+
+// MultiProjectionSecret 返回对手棋盘匿名列置换的服务端秘密。
+// 生产环境应显式配置 MULTI_PROJECTION_SECRET；本地/测试未配置时为当前进程生成 256-bit 随机值，
+// 禁止回退到可由公开 room/member 标识推导的固定种子。
+func MultiProjectionSecret() []byte {
+	if raw := os.Getenv("MULTI_PROJECTION_SECRET"); raw != "" {
+		return []byte(raw)
+	}
+	projectionSecretOnce.Do(func() {
+		projectionSecret = make([]byte, 32)
+		if _, err := rand.Read(projectionSecret); err != nil {
+			panic("config: generate multiplayer projection secret: " + err.Error())
+		}
+	})
+	return append([]byte(nil), projectionSecret...)
 }
 
 // MultiTiming 组装对局时间常量（08 §4.7 全量，env 可覆盖）。

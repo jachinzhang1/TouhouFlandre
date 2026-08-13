@@ -28,7 +28,7 @@ func New(pool *pgxpool.Pool) *echo.Echo {
 // NewWithOptions 构建 Echo 应用（opts 透传 handler.NewServer，测试注入用）。
 // 默认创建实时 hub（时间/限流常量来自 internal/config）；显式 WithHub 可覆盖（与 sweeper 共享单实例）。
 func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
-	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue())
+	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret())
 	opts = append([]handler.Option{handler.WithHub(h)}, opts...)
 	e := echo.New()
 	// 请求日志走 slog（echo v5 已移除 middleware.Logger()，统一用 RequestLoggerWithConfig）。
