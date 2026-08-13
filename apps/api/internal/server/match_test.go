@@ -153,7 +153,7 @@ func createMatchFixtureMode(t *testing.T, format, mode string, turnSeconds int) 
 func startMatch(t *testing.T, fixture matchFixture) openapi.RoomSnapshot {
 	t.Helper()
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -245,7 +245,7 @@ func TestMultiMatchStart(t *testing.T) {
 	fixture := createMatchFixture(t)
 
 	// 单方 ready → 不开局
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
 	}
@@ -284,7 +284,7 @@ func TestMultiMatchStart(t *testing.T) {
 	}
 
 	// 对局已开始后的重复 ready → MATCH_ALREADY_STARTED
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, nil)
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusConflict {
 		t.Fatalf("repeat ready status %d: %s", resp.StatusCode, payload)
 	}
@@ -328,7 +328,7 @@ func TestMultiFlexibleRaceRosterStart(t *testing.T) {
 
 	// 两名已准备玩家不能绕过第三名未准备玩家开局。
 	for _, token := range tokens[:2] {
-		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", token, nil)
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("partial ready: %d %s", resp.StatusCode, payload)
 		}
@@ -346,7 +346,7 @@ func TestMultiFlexibleRaceRosterStart(t *testing.T) {
 	}
 
 	// 第三名准备后以 3/8 的未满阵容开局。
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", tokens[2], nil)
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", tokens[2], map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("final ready: %d %s", resp.StatusCode, payload)
 	}

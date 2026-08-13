@@ -75,7 +75,7 @@ func TestMultiJoinVsFinalReadyLinearizes(t *testing.T) {
 		if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 3 WHERE id = $1", fixture.roomID); err != nil {
 			t.Fatal(err)
 		}
-		if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil); resp.StatusCode != http.StatusNoContent {
+		if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true}); resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
 		}
 
@@ -93,7 +93,7 @@ func TestMultiJoinVsFinalReadyLinearizes(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, nil)
+			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, map[string]bool{"ready": true})
 			readyResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
 		}()
 		close(start)
@@ -144,7 +144,7 @@ func TestMultiClaimSeatVsFinalReadyLinearizes(t *testing.T) {
 		if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 3 WHERE id = $1", fixture.roomID); err != nil {
 			t.Fatal(err)
 		}
-		if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil); resp.StatusCode != http.StatusNoContent {
+		if resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true}); resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
 		}
 
@@ -164,7 +164,7 @@ func TestMultiClaimSeatVsFinalReadyLinearizes(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, nil)
+			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, map[string]bool{"ready": true})
 			readyResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
 		}()
 		close(start)
@@ -256,5 +256,59 @@ func TestMultiConcurrentClaimLastSeatAtMostOne(t *testing.T) {
 	}
 	if players != 3 || spectators != 1 || seatThree != 1 || readyPlayers != 0 {
 		t.Fatalf("claim terminal state players=%d spectators=%d seat3=%d ready=%d", players, spectators, seatThree, readyPlayers)
+	}
+}
+
+func TestMultiUnreadyRejectedAfterMatchCreated(t *testing.T) {
+	fixture := createMatchFixtureFormat(t, "bo1")
+	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("start ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": false})
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "MATCH_ALREADY_STARTED" {
+		t.Fatalf("post-match unready = %d %s, want MATCH_ALREADY_STARTED", resp.StatusCode, payload)
+	}
+}
+
+func TestMultiSpectatorWriteCommandsAreReadOnly(t *testing.T) {
+	fixture := createLifecycleRoom(t, 1)
+	token := string(fixture.spectators[0].GuestToken)
+	var initialSequence int64
+	if err := pool.QueryRow(ctx, "SELECT event_seq FROM multi_room WHERE id = $1", fixture.roomID).Scan(&initialSequence); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   any
+	}{
+		{name: "ready", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/ready", body: map[string]bool{"ready": true}},
+		{name: "unready", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/ready", body: map[string]bool{"ready": false}},
+		{name: "forfeit", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/rounds/1/forfeit"},
+		{name: "guess", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/rounds/1/guess", body: map[string]string{"guessId": "spectator", "idempotencyKey": "spectator"}},
+		{name: "pass", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/rounds/1/pass"},
+		{name: "rematch", method: http.MethodPost, path: "/api/rooms/" + fixture.roomID + "/rematch"},
+		{name: "close", method: http.MethodDelete, path: "/api/rooms/" + fixture.roomID},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp, payload := fastRequestAuth(test.method, test.path, token, test.body)
+			if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
+				t.Fatalf("spectator %s = %d %s, want SPECTATOR_READ_ONLY", test.name, resp.StatusCode, payload)
+			}
+		})
+	}
+
+	var finalSequence int64
+	if err := pool.QueryRow(ctx, "SELECT event_seq FROM multi_room WHERE id = $1", fixture.roomID).Scan(&finalSequence); err != nil {
+		t.Fatal(err)
+	}
+	if finalSequence != initialSequence {
+		t.Fatalf("spectator write attempts mutated event sequence: before=%d after=%d", initialSequence, finalSequence)
 	}
 }

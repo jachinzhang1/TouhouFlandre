@@ -34,6 +34,9 @@ UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_se
 -- name: GetRoom :one
 SELECT * FROM multi_room WHERE id = $1;
 
+-- name: HasRoomMatch :one
+SELECT EXISTS (SELECT 1 FROM multi_match WHERE room_id = $1);
+
 -- name: GetRoomSnapshotState :one
 -- 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，
 -- 展示组装（名称/头像/标签/列置换）在 Go 投影层按场 catalog_version 快照水合。

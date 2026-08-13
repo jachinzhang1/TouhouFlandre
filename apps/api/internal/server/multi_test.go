@@ -362,15 +362,19 @@ func TestMultiSnapshotAndEvents(t *testing.T) {
 	}
 }
 
-func TestMultiReadyIdempotent(t *testing.T) {
+func TestMultiReadyUnreadyIdempotent(t *testing.T) {
 	fixture := createRoom(t)
+	var initialSequence int64
+	if err := pool.QueryRow(ctx, "SELECT event_seq FROM multi_room WHERE id = $1", fixture.RoomId).Scan(&initialSequence); err != nil {
+		t.Fatal(err)
+	}
 
-	resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready status %d: %s", resp.StatusCode, payload)
 	}
 	// 幂等：重复 ready 不报错
-	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("repeat ready status %d: %s", resp.StatusCode, payload)
 	}
@@ -382,12 +386,36 @@ func TestMultiReadyIdempotent(t *testing.T) {
 	if !snap.Members[0].Ready {
 		t.Fatalf("host ready not set: %+v", snap.Members[0])
 	}
+	if int64(snap.GameSequence) != initialSequence+1 {
+		t.Fatalf("repeated ready emitted event: initial=%d current=%d", initialSequence, snap.GameSequence)
+	}
+
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": false})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("unready status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": false})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("repeat unready status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = requestAuth(http.MethodGet, "/api/rooms/"+fixture.RoomId+"/snapshot", fixture.GuestToken, nil)
+	if err := json.Unmarshal(payload, &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Members[0].Ready || int64(snap.GameSequence) != initialSequence+2 {
+		t.Fatalf("unready state/event = ready:%v sequence:%d, want false/%d", snap.Members[0].Ready, snap.GameSequence, initialSequence+2)
+	}
+
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	if resp.StatusCode != http.StatusBadRequest || decodeError(t, payload).Code != "INVALID_REQUEST" {
+		t.Fatalf("missing ready body = %d %s, want INVALID_REQUEST", resp.StatusCode, payload)
+	}
 }
 
 func TestMultiLeaveReleasesSlot(t *testing.T) {
 	fixture := createRoom(t)
 	// 房主 ready
-	if resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil); resp.StatusCode != http.StatusNoContent {
+	if resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true}); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host ready status %d: %s", resp.StatusCode, payload)
 	}
 	// 加入者加入并 ready

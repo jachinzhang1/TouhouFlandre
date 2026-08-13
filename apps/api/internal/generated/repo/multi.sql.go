@@ -964,6 +964,17 @@ func (q *Queries) GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdem
 	return i, err
 }
 
+const hasRoomMatch = `-- name: HasRoomMatch :one
+SELECT EXISTS (SELECT 1 FROM multi_match WHERE room_id = $1)
+`
+
+func (q *Queries) HasRoomMatch(ctx context.Context, roomID string) (bool, error) {
+	row := q.db.QueryRow(ctx, hasRoomMatch, roomID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const incrementRoomEventSeq = `-- name: IncrementRoomEventSeq :one
 UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_seq
 `

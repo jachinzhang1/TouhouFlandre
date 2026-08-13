@@ -29,6 +29,12 @@ post:
         application/json:
           schema:
             $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: spectator 不可放弃小局（SPECTATOR_READ_ONLY）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
     "404":
       description: 房间不存在/已过期（ROOM_NOT_FOUND）
       content:

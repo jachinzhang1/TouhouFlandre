@@ -1,20 +1,41 @@
-# POST /api/rooms/{roomId}/ready — 就绪（幂等）
+# POST /api/rooms/{roomId}/ready — 显式设置就绪态（幂等）
 # 对应 docs/multiplayer.md
 post:
   operationId: rooms_setReady
   tags:
     - rooms
-  summary: 就绪
-  description: 幂等置位。双方就绪 → 对局开始（事件驱动，客户端经 WS/快照获知）。
+  summary: 设置就绪态
+  description: |
+    显式提交 ready=true/false 并保持幂等。ready=false 仅允许在尚未创建 match 的 lobby；
+    ready=true 后若当前 2..playerLimit 名玩家均 connected + ready，则冻结当前阵容并开局。
   parameters:
     - name: roomId
       in: path
       required: true
       schema:
         type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: false
+          required:
+            - ready
+          properties:
+            ready:
+              type: boolean
+              x-go-type: "*bool"
   responses:
     "204":
-      description: 已就绪
+      description: 已设置；重复提交相同值不产生事件
+    "400":
+      description: 缺少或非法请求体（INVALID_REQUEST）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
     "401":
       description: 令牌无效（GUEST_UNAUTHORIZED）
       content:
@@ -23,6 +44,12 @@ post:
             $ref: "../schemas/common.yaml#/ErrorResponse"
     "404":
       description: 房间不存在/已过期（ROOM_NOT_FOUND）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: spectator 不可设置准备状态（SPECTATOR_READ_ONLY）
       content:
         application/json:
           schema:

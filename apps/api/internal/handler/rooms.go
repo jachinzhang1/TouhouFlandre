@@ -470,6 +470,10 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
+	if request.Body == nil || request.Body.Ready == nil {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
+	}
+	desiredReady := *request.Body.Ready
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
@@ -490,21 +494,28 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	case string(multi.RoomStatusPlaying), string(multi.RoomStatusFinished):
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeMatchAlreadyStarted, Message: "对局已开始。"}
 	}
+	hasMatch, err := q.HasRoomMatch(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if hasMatch {
+		return nil, &ApiError{Status: http.StatusConflict, Code: codeMatchAlreadyStarted, Message: "对局已创建。"}
+	}
 	members, err := q.ListMembers(ctx, request.RoomId)
 	if err != nil {
 		return nil, internalError(err)
 	}
-	alreadyReady := false
+	alreadyDesired := false
 	for _, m := range members {
-		if m.ID == member.ID && m.Ready {
-			alreadyReady = true
+		if m.ID == member.ID && m.Ready == desiredReady {
+			alreadyDesired = true
 			break
 		}
 	}
-	if alreadyReady {
+	if alreadyDesired {
 		return openapi.RoomsSetReady204Response{}, tx.Commit(ctx) // 幂等：状态未变，不产生事件
 	}
-	if _, err := q.SetMemberReady(ctx, repo.SetMemberReadyParams{ID: member.ID, Ready: true}); err != nil {
+	if _, err := q.SetMemberReady(ctx, repo.SetMemberReadyParams{ID: member.ID, Ready: desiredReady}); err != nil {
 		return nil, internalError(err)
 	}
 	after, err := q.ListMembers(ctx, request.RoomId)
@@ -512,7 +523,7 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 		return nil, internalError(err)
 	}
 	// 当前 2..playerLimit 名玩家全员 connected + ready 时，在同一房间锁内冻结阵容并开局。
-	if multi.ReadyRoster(after, int(room.PlayerLimit)) {
+	if desiredReady && multi.ReadyRoster(after, int(room.PlayerLimit)) {
 		if err := s.startMatchTx(ctx, q, room, multi.RoomFormat(room.Format)); err != nil {
 			return nil, err
 		}

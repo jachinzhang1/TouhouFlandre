@@ -835,7 +835,7 @@ export function useRoom(
   const actions: RoomActions = {
     setReady: async () => {
       try {
-        await api.setReady(roomId, token);
+        await api.setReady(roomId, token, true);
       } catch (e) {
         setGuessError(e instanceof Error ? e.message : "就绪失败。");
       }

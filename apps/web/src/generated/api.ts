@@ -288,8 +288,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 就绪
-         * @description 幂等置位。双方就绪 → 对局开始（事件驱动，客户端经 WS/快照获知）。
+         * 设置就绪态
+         * @description 显式提交 ready=true/false 并保持幂等。ready=false 仅允许在尚未创建 match 的 lobby；
+         *     ready=true 后若当前 2..playerLimit 名玩家均 connected + ready，则冻结当前阵容并开局。
          */
         post: operations["rooms_setReady"];
         delete?: never;
@@ -1680,17 +1681,41 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    ready: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description 已就绪 */
+            /** @description 已设置；重复提交相同值不产生事件 */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+            /** @description 缺少或非法请求体（INVALID_REQUEST） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 令牌无效（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可设置准备状态（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1801,6 +1826,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description spectator 不可确认重赛（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
             404: {
                 headers: {
@@ -1895,7 +1929,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 令牌有效但非房主（GUEST_UNAUTHORIZED，权限不足） */
+            /** @description spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED） */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2020,6 +2054,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description spectator 不可猜测（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
             404: {
                 headers: {
@@ -2074,6 +2117,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description spectator 不可放弃小局（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
             404: {
                 headers: {
@@ -2116,6 +2168,15 @@ export interface operations {
             };
             /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可空过（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

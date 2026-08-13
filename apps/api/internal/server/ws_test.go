@@ -157,7 +157,7 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	}
 
 	// 实时广播：REST ready → WS 收到 room.updated
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
@@ -418,7 +418,7 @@ func TestMultiWSReplaced(t *testing.T) {
 		t.Fatal("old conn should be closed after replaced")
 	}
 	// 新连接仍存活（事件仍可达）
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
@@ -517,7 +517,7 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	drainUntilType(t, joinerConn, "sync.complete", 12)
 	// 双方 ready → 对局开始；各自推进到 round.playing（容忍重放/连接事件的帧数差异）
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -611,7 +611,7 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	drainUntilType(t, joinerConn, "sync.complete", 12)
 
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -679,13 +679,13 @@ func TestMultiWSV2SpectatorReadOnlyAndFinishedRetention(t *testing.T) {
 	spectatorConn := wsDial(t, fixture.roomID, spectatorToken, 0, nil)
 	drainUntilType(t, spectatorConn, "sync.complete", 16)
 
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", spectatorToken, nil)
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", spectatorToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
 		t.Fatalf("spectator ready = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
 	}
 
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -862,7 +862,7 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 	_ = first.CloseNow()
 
 	// 断开期间发生事件（ready）
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
