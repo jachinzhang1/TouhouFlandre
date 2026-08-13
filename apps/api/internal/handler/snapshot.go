@@ -208,18 +208,19 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
 		}
+		roster, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		scoreByMemberID := make(map[string]int, len(roster))
+		for _, player := range roster {
+			scoreByMemberID[player.MemberID] = int(player.Wins)
+		}
 		scores := make([]openapi.MemberScoreView, 0, len(state.Members))
 		rematchReady := make([]openapi.MemberRematchReadyView, 0, len(state.Members))
 		for _, m := range state.Members {
 			seat := multi.MemberSeat(m)
-			score := 0
-			switch seat {
-			case 1:
-				score = int(state.Match.ScoreSlot1)
-			case 2:
-				score = int(state.Match.ScoreSlot2)
-			}
-			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: score})
+			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: scoreByMemberID[m.ID]})
 			rematchReady = append(rematchReady, openapi.MemberRematchReadyView{MemberId: m.ID, Seat: seat, Ready: m.RematchReady})
 		}
 		matchScope, err := storedQuestionScopeFromJSON(state.Match.QuestionScope)

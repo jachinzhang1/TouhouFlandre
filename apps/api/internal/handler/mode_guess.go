@@ -63,7 +63,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, roundNotActiveError("本局尚未开始。")
 	case string(multi.RoundStatusPlaying):
 		if !s.now().Before(round.Deadline.Time) {
-			if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, 0, s.now(), s.timing); err != nil {
+			if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, "", s.now(), s.timing); err != nil {
 				return submitGuessResult{}, internalError(err)
 			}
 			return submitGuessResult{commit: true, publish: true}, roundNotActiveError("本局已超时（按平局结算）。")
@@ -132,31 +132,20 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, internalError(err)
 	}
 
-	members, err := q.ListMembers(ctx, room.ID)
-	if err != nil {
-		return submitGuessResult{}, internalError(err)
-	}
-	opponentID := ""
-	for _, m := range members {
-		if m.ID != member.ID {
-			opponentID = m.ID
-			break
-		}
-	}
-	opponentCount := int64(0)
-	if opponentID != "" {
-		opponentCount, err = q.CountGuessesForRoundMember(ctx, repo.CountGuessesForRoundMemberParams{
-			RoundID: round.ID, MemberID: opponentID,
-		})
+	roundEnded := isCorrect
+	if !roundEnded {
+		counts, err := q.ListRoundPlayerGuessCounts(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
+		roundEnded = len(counts) > 0
+		for _, count := range counts {
+			if int(count.GuessCount) < maxGuesses {
+				roundEnded = false
+				break
+			}
+		}
 	}
-	winnerSlot := 0
-	if isCorrect {
-		winnerSlot = multi.MemberSeat(member)
-	}
-	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, maxGuesses, false)
 
 	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
 		GuessID:   guessChar.ID,
@@ -166,8 +155,12 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, err
 	}
-	if roundEnd.Ended {
-		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, roundEnd.WinnerSlot, s.now(), s.timing); err != nil {
+	if roundEnded {
+		winnerMemberID := ""
+		if isCorrect {
+			winnerMemberID = member.ID
+		}
+		if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, winnerMemberID, s.now(), s.timing); err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
 	}

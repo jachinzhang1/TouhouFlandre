@@ -145,6 +145,12 @@ RETURNING *;
 -- name: ListMatchPlayers :many
 SELECT * FROM multi_match_player WHERE match_id = $1 ORDER BY seat;
 
+-- name: IncrementMatchPlayerWin :one
+UPDATE multi_match_player
+SET wins = wins + 1
+WHERE match_id = $1 AND member_id = $2 AND status = 'active'
+RETURNING *;
+
 -- name: GetActiveMatchForUpdate :one
 -- 房间当前进行中的场（forfeit/重启终止路径）。
 SELECT * FROM multi_match
@@ -199,6 +205,15 @@ ON CONFLICT (round_id, member_id) DO NOTHING;
 
 -- name: ListRoundPlayers :many
 SELECT * FROM multi_round_player WHERE round_id = $1 ORDER BY member_id;
+
+-- name: ListRoundPlayerGuessCounts :many
+SELECT player.member_id, count(guess.id)::int AS guess_count
+FROM multi_round_player AS player
+LEFT JOIN multi_guess AS guess
+  ON guess.round_id = player.round_id AND guess.member_id = player.member_id
+WHERE player.round_id = $1 AND player.status = 'active'
+GROUP BY player.member_id
+ORDER BY player.member_id;
 
 -- name: GetCurrentRoundForUpdateByRoom :one
 -- 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
@@ -303,6 +318,30 @@ SET status = 'ended',
     turn_deadline = NULL
 WHERE round.id = $1
 RETURNING round.*;
+
+-- name: EndRaceRound :one
+UPDATE multi_round AS round
+SET status = 'ended',
+    winner_member_id = sqlc.narg(winner_member_id),
+    winner_slot = (
+        SELECT roster.seat
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = round.match_id
+          AND roster.member_id = sqlc.narg(winner_member_id)
+    ),
+    ended_at = sqlc.arg(ended_at),
+    turn_slot = NULL,
+    turn_deadline = NULL
+WHERE round.id = sqlc.arg(id)
+RETURNING round.*;
+
+-- name: EndRaceMatch :one
+UPDATE multi_match
+SET status = 'finished',
+    ended_at = sqlc.arg(ended_at),
+    winner_member_id = sqlc.narg(winner_member_id)
+WHERE id = sqlc.arg(id)
+RETURNING *;
 
 -- name: UpdateMatchScore :one
 WITH updated AS (

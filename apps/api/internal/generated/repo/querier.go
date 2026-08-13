@@ -45,6 +45,8 @@ type Querier interface {
 	DeleteRoom(ctx context.Context, id string) error
 	DeleteWorksNotIn(ctx context.Context, ids []string) error
 	EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch, error)
+	EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (MultiMatch, error)
+	EndRaceRound(ctx context.Context, arg EndRaceRoundParams) (MultiRound, error)
 	EndRound(ctx context.Context, arg EndRoundParams) (MultiRound, error)
 	// 房间当前进行中的场（forfeit/重启终止路径）。
 	GetActiveMatchForUpdate(ctx context.Context, roomID string) (MultiMatch, error)
@@ -81,6 +83,7 @@ type Querier interface {
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
 	HasRoomMatch(ctx context.Context, roomID string) (bool, error)
+	IncrementMatchPlayerWin(ctx context.Context, arg IncrementMatchPlayerWinParams) (MultiMatchPlayer, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 站点级计数器
@@ -107,6 +110,7 @@ type Querier interface {
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListRoundPlayerGuessCounts(ctx context.Context, roundID string) ([]ListRoundPlayerGuessCountsRow, error)
 	ListRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)

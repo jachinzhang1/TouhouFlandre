@@ -557,6 +557,85 @@ func (q *Queries) EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch,
 	return i, err
 }
 
+const endRaceMatch = `-- name: EndRaceMatch :one
+UPDATE multi_match
+SET status = 'finished',
+    ended_at = $1,
+    winner_member_id = $2
+WHERE id = $3
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id
+`
+
+type EndRaceMatchParams struct {
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	ID             string             `json:"id"`
+}
+
+func (q *Queries) EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (MultiMatch, error) {
+	row := q.db.QueryRow(ctx, endRaceMatch, arg.EndedAt, arg.WinnerMemberID, arg.ID)
+	var i MultiMatch
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.MatchIndex,
+		&i.CatalogVersion,
+		&i.TargetWins,
+		&i.ScoreSlot1,
+		&i.ScoreSlot2,
+		&i.RoundCount,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.QuestionScope,
+		&i.WinnerMemberID,
+	)
+	return i, err
+}
+
+const endRaceRound = `-- name: EndRaceRound :one
+UPDATE multi_round AS round
+SET status = 'ended',
+    winner_member_id = $1,
+    winner_slot = (
+        SELECT roster.seat
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = round.match_id
+          AND roster.member_id = $1
+    ),
+    ended_at = $2,
+    turn_slot = NULL,
+    turn_deadline = NULL
+WHERE round.id = $3
+RETURNING round.id, round.match_id, round.round_index, round.answer_id, round.status, round.winner_slot, round.starts_at, round.deadline, round.ended_at, round.turn_slot, round.turn_deadline, round.winner_member_id
+`
+
+type EndRaceRoundParams struct {
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	ID             string             `json:"id"`
+}
+
+func (q *Queries) EndRaceRound(ctx context.Context, arg EndRaceRoundParams) (MultiRound, error) {
+	row := q.db.QueryRow(ctx, endRaceRound, arg.WinnerMemberID, arg.EndedAt, arg.ID)
+	var i MultiRound
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.RoundIndex,
+		&i.AnswerID,
+		&i.Status,
+		&i.WinnerSlot,
+		&i.StartsAt,
+		&i.Deadline,
+		&i.EndedAt,
+		&i.TurnSlot,
+		&i.TurnDeadline,
+		&i.WinnerMemberID,
+	)
+	return i, err
+}
+
 const endRound = `-- name: EndRound :one
 UPDATE multi_round AS round
 SET status = 'ended',
@@ -1049,6 +1128,31 @@ func (q *Queries) HasRoomMatch(ctx context.Context, roomID string) (bool, error)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const incrementMatchPlayerWin = `-- name: IncrementMatchPlayerWin :one
+UPDATE multi_match_player
+SET wins = wins + 1
+WHERE match_id = $1 AND member_id = $2 AND status = 'active'
+RETURNING match_id, member_id, seat, wins, status
+`
+
+type IncrementMatchPlayerWinParams struct {
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+}
+
+func (q *Queries) IncrementMatchPlayerWin(ctx context.Context, arg IncrementMatchPlayerWinParams) (MultiMatchPlayer, error) {
+	row := q.db.QueryRow(ctx, incrementMatchPlayerWin, arg.MatchID, arg.MemberID)
+	var i MultiMatchPlayer
+	err := row.Scan(
+		&i.MatchID,
+		&i.MemberID,
+		&i.Seat,
+		&i.Wins,
+		&i.Status,
+	)
+	return i, err
 }
 
 const incrementRoomEventSeq = `-- name: IncrementRoomEventSeq :one
@@ -1644,6 +1748,41 @@ func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiM
 			&i.JoinedAt,
 			&i.Role,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoundPlayerGuessCounts = `-- name: ListRoundPlayerGuessCounts :many
+SELECT player.member_id, count(guess.id)::int AS guess_count
+FROM multi_round_player AS player
+LEFT JOIN multi_guess AS guess
+  ON guess.round_id = player.round_id AND guess.member_id = player.member_id
+WHERE player.round_id = $1 AND player.status = 'active'
+GROUP BY player.member_id
+ORDER BY player.member_id
+`
+
+type ListRoundPlayerGuessCountsRow struct {
+	MemberID   string `json:"member_id"`
+	GuessCount int32  `json:"guess_count"`
+}
+
+func (q *Queries) ListRoundPlayerGuessCounts(ctx context.Context, roundID string) ([]ListRoundPlayerGuessCountsRow, error) {
+	rows, err := q.db.Query(ctx, listRoundPlayerGuessCounts, roundID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRoundPlayerGuessCountsRow{}
+	for rows.Next() {
+		var i ListRoundPlayerGuessCountsRow
+		if err := rows.Scan(&i.MemberID, &i.GuessCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

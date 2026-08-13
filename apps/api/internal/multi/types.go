@@ -530,13 +530,16 @@ type RoundGuessPayload struct {
 // RoundEndedEventPayload 局结束事件规范形态（入库，最小化）：
 // roundID + winnerSlot + 比分 + answerId；wire 的 answer/boards/result（观察者视角）由投影按快照水合/推导。
 type RoundEndedEventPayload struct {
-	RoundID       string     `json:"roundId"`
-	MatchIndex    int        `json:"matchIndex"`
-	RoundIndex    int        `json:"roundIndex"`
-	WinnerSlot    *int       `json:"winnerSlot"`
-	ForfeitedSlot *int       `json:"forfeitedSlot,omitempty"`
-	AnswerID      string     `json:"answerId"`
-	Scores        ScoresView `json:"scores"`
+	RoundID           string            `json:"roundId"`
+	MatchIndex        int               `json:"matchIndex"`
+	RoundIndex        int               `json:"roundIndex"`
+	WinnerMemberID    *string           `json:"winnerMemberId,omitempty"`
+	ForfeitedMemberID *string           `json:"forfeitedMemberId,omitempty"`
+	MemberScores      []MemberScoreView `json:"memberScores,omitempty"`
+	WinnerSlot        *int              `json:"winnerSlot,omitempty"`
+	ForfeitedSlot     *int              `json:"forfeitedSlot,omitempty"`
+	AnswerID          string            `json:"answerId"`
+	Scores            ScoresView        `json:"scores"`
 	// NextStartsAt 下一局 startsAt = 本局 ended_at + INTERMISSION（08 §4.3/§4.7 弹窗倒计时，
 	// 服务端驱动；对局结束/无下一局时仍携带，客户端仅等待 round.started 期间使用）。
 	NextStartsAt *time.Time `json:"nextStartsAt,omitempty"`
@@ -545,11 +548,13 @@ type RoundEndedEventPayload struct {
 // MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；
 // wire 的 result（观察者视角）由投影按 winnerSlot 推导。
 type MatchEndedEventPayload struct {
-	MatchIndex      int            `json:"matchIndex"`
-	WinnerSlot      *int           `json:"winnerSlot"`
-	Scores          ScoresView     `json:"scores"`
-	Reason          MatchEndReason `json:"reason"`
-	RetentionEndsAt time.Time      `json:"retentionEndsAt"`
+	MatchIndex      int               `json:"matchIndex"`
+	WinnerMemberID  *string           `json:"winnerMemberId,omitempty"`
+	MemberScores    []MemberScoreView `json:"memberScores,omitempty"`
+	WinnerSlot      *int              `json:"winnerSlot,omitempty"`
+	Scores          ScoresView        `json:"scores"`
+	Reason          MatchEndReason    `json:"reason"`
+	RetentionEndsAt time.Time         `json:"retentionEndsAt"`
 }
 
 // ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----

@@ -180,9 +180,18 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			return ProjectedEvent{}, false, err
 		}
 		answer := chars[payload.AnswerID]
-		winnerMemberID := optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
-		forfeitedMemberID := optionalMemberIDForSeat(payload.ForfeitedSlot, memberSlotByID)
-		scores := MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		winnerMemberID := payload.WinnerMemberID
+		if winnerMemberID == nil {
+			winnerMemberID = optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
+		}
+		forfeitedMemberID := payload.ForfeitedMemberID
+		if forfeitedMemberID == nil {
+			forfeitedMemberID = optionalMemberIDForSeat(payload.ForfeitedSlot, memberSlotByID)
+		}
+		scores := payload.MemberScores
+		if len(scores) == 0 {
+			scores = MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		}
 		results := MemberResults(winnerMemberID, memberSlotByID)
 		var viewerResult *MatchResult
 		if IsPlayer(observer) {
@@ -210,8 +219,14 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return ProjectedEvent{}, false, err
 		}
-		winnerMemberID := optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
-		scores := MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		winnerMemberID := payload.WinnerMemberID
+		if winnerMemberID == nil {
+			winnerMemberID = optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
+		}
+		scores := payload.MemberScores
+		if len(scores) == 0 {
+			scores = MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		}
 		results := MemberResults(winnerMemberID, memberSlotByID)
 		var viewerResult *MatchResult
 		if IsPlayer(observer) {

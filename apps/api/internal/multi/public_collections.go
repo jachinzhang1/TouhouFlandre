@@ -1,6 +1,10 @@
 package multi
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+)
 
 type memberRef struct {
 	MemberID string
@@ -51,6 +55,24 @@ func MemberScoresForLegacy(scores ScoresView, memberSeatByID map[string]int32) [
 		}
 		views = append(views, MemberScoreView{MemberID: ref.MemberID, Seat: ref.Seat, Score: score})
 	}
+	return views
+}
+
+func MemberScoresForRoster(players []repo.MultiMatchPlayer) []MemberScoreView {
+	views := make([]MemberScoreView, 0, len(players))
+	for _, player := range players {
+		views = append(views, MemberScoreView{
+			MemberID: player.MemberID,
+			Seat:     int(player.Seat),
+			Score:    int(player.Wins),
+		})
+	}
+	sort.Slice(views, func(i, j int) bool {
+		if views[i].Seat == views[j].Seat {
+			return views[i].MemberID < views[j].MemberID
+		}
+		return views[i].Seat < views[j].Seat
+	})
 	return views
 }
 

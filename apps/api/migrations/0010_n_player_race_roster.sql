@@ -9,6 +9,13 @@ ALTER TABLE multi_match
 ALTER TABLE multi_round
     ADD COLUMN IF NOT EXISTS winner_member_id text;
 
+ALTER TABLE multi_round
+    DROP CONSTRAINT IF EXISTS multi_round_winner_slot_check;
+
+ALTER TABLE multi_round
+    ADD CONSTRAINT multi_round_winner_slot_check
+    CHECK (winner_slot BETWEEN 1 AND 8);
+
 CREATE TABLE IF NOT EXISTS multi_match_player (
     match_id   text NOT NULL REFERENCES multi_match (id) ON DELETE CASCADE,
     member_id  text NOT NULL REFERENCES multi_member (id) ON DELETE CASCADE,
