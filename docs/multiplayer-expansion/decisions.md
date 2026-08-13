@@ -211,6 +211,28 @@ v2 hello 的可选 `lastChatCursor` 与 `lastGameSequence` 进入同一个连接
 - 偏好不改变发送 channel、服务端投影、其他 viewer 的显示、任何 game sequence 或 chat cursor。
 - role 变化时先按新 role 清理/重建可见缓存，再应用该偏好；本地曾缓存的 spectator 消息不能在 claim-seat 后以 player 身份重新显示。
 
+## 隐私投影与可观察元数据
+
+授权边界由服务端投影保证，前端不得接收后再隐藏。race 进行中，player 对其他每名 subject player 只能得到按 `memberId` 分组的匿名反馈矩阵；以下数据在 `round.ended` 明确揭示前均属于隐藏数据：
+
+- 对手每次猜测的 character ID、角色名、别名、头像、作品 ID/名称/代码、搜索文本或任何可反查角色的标识；
+- 字段标签、字段原始值、标签值、比较输入及能把匿名列还原为具体字段的映射/种子；
+- 答案角色、内部数据库键、token/hash、幂等键、未公开 capability 和其他 channel 的消息；
+- 可将两个 observer 的匿名矩阵关联后恢复字段含义的共享置换。
+
+每个对手矩阵的列置换必须稳定到当前 round + observer + subject，且彼此隔离。种子使用服务端秘密通过 HMAC 派生：`HMAC(secret, roundId || observerMemberId || subjectMemberId || schemaVersion)`；secret、原始字段顺序和派生结果不得进入 wire、日志或客户端代码。只对公开 ID 做无密钥哈希不可接受，因为客户端可以复算映射。
+
+以下内容是玩法所需或传输层不可避免的可观察元数据，可以用于 UI，但文档、产品文案和安全声明不得承诺隐藏：
+
+- 公开 roster 的 `memberId`、displayName、seat、role、连接/准备/left 状态以及公开比分；
+- 某个 subject 已发生猜测的数量、匿名状态行、行序和是否达到公开猜测上限；
+- room event/cursor 的 sequence、`occurredAt`、帧大小级别和客户端实际收到帧的时间；cursor 只隐藏业务类型/payload，不隐藏“房间发生了一个事件”；
+- round/match 的公开倒计时、终态、胜者与结束原因；`round.ended` 后按规则揭示的答案和完整棋盘。
+
+spectator 依据矩阵获权查看所有完整棋盘，但这项权限不扩展到 token、内部身份或 player 无权查看的 spectator channel。viewer 从 spectator claim-seat 为 player 后必须立即重新投影，旧连接和缓存不能继续提供 spectator 游戏/聊天视图。
+
+隐私回归至少包含：对 player 的每个 opponent payload 做递归 denylist 检查、验证不同 observer/subject 的列置换不可相关、验证 spectator 完整视图的正例、验证 cross-room token/memberId 与伪造 sender/channel 均不能扩大权限。浏览器本地多人统计只保留 `self`/`other` 归一化结果，落盘和导出剥离 `memberId`、displayName、roomId、roomCode 与 token。
+
 团队归属、队内轮流、团队计分、队内聊天、N 人 relay、私聊和账号身份均不属于本轮。不得创建 `team` 表、`teamId` 字段或可由客户端选择的 `team`/`member` channel；需要这些能力时必须另开设计 Issue。
 
 ## 被否决的替代方案

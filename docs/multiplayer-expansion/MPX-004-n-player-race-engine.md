@@ -29,7 +29,7 @@ N 人退出语义固定如下：该小局主动放弃只将该玩家标记为本
 - Go 规则层、投影层和 v2 事件 payload；玩家只能看到自己的完整棋盘及其他玩家按 memberId 分组的匿名矩阵，spectator 可看到全部完整棋盘。
 - 多玩家最大猜测次数、超时、放弃、断线判负和场结束条件。
 - 移除内部 `score_slot1/2`、`winner_slot` 和 `OtherSlot` 依赖，让 MPX-002A/MPX-002B 已冻结的 memberId/seat/v2 集合承载 N 人；spectator 的 `viewerResult` 缺省，不伪装成 loss。
-- 多对手匿名列置换以 `(roundId, observerMemberId, subjectMemberId)` 为种子，避免不同对手棋盘共享同一映射。
+- 多对手匿名列置换按[决策记录](./decisions.md#隐私投影与可观察元数据)使用服务端秘密对 `(roundId, observerMemberId, subjectMemberId, schemaVersion)` 做 HMAC 派生，避免公开 ID 可复算或不同对手棋盘共享同一映射。
 - race 核心单元测试、并发集成测试、投影隐私测试和 snapshot/replay 测试。
 
 ## 不属于本 Issue
