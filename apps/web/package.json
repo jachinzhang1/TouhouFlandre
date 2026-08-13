@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript ../../contracts/openapi/openapi.yaml -o src/generated/api.ts"
   },
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.13.0",
     "@touhouflandre/shared": "workspace:*",
     "antd": "^6.5.4",
     "dayjs": "^1.11.21",

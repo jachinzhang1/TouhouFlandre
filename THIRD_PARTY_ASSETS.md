@@ -49,12 +49,11 @@
 
 ## 平台图标
 
-| 素材               | 来源                                  | 许可证  | 仓库位置                                   |
-| ------------------ | ------------------------------------- | ------- | ------------------------------------------ |
-| Bilibili Mono icon | https://github.com/lobehub/lobe-icons | MIT     | `apps/web/src/components/BilibiliIcon.tsx` |
-| Pixiv icon         | https://simpleicons.org/              | CC0-1.0 | `apps/web/src/components/PixivIcon.tsx`    |
+| 素材                         | 来源                                             | 许可证                                          | 仓库位置                              |
+| ---------------------------- | ------------------------------------------------ | ----------------------------------------------- | ------------------------------------- |
+| Bilibili、GitHub、Pixiv 图标 | https://github.com/icons-pack/react-simple-icons | MIT（React 包装）；CC0-1.0（Simple Icons 数据） | `@icons-pack/react-simple-icons` 依赖 |
 
-Bilibili 与 Pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
+Bilibili、GitHub 与 Pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
 
 ## 项目自制图形
 

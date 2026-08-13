@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { Github } from "lucide-react";
-import { BilibiliIcon } from "../../components/BilibiliIcon";
-import { PixivIcon } from "../../components/PixivIcon";
+import { SiBilibili, SiGithub, SiPixiv } from "@icons-pack/react-simple-icons";
 import { Paper } from "../../components/Paper";
 
 type IconComponent = (props: {
@@ -32,7 +30,7 @@ const assetCredits = [
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/152309938",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -44,7 +42,7 @@ const assetCredits = [
       {
         name: "Pixiv",
         href: "https://www.pixiv.net/artworks/50752377",
-        Icon: PixivIcon,
+        Icon: SiPixiv,
         className: platformStyles.pixiv,
       },
     ],
@@ -65,13 +63,13 @@ const developers: Array<{
       {
         name: "GitHub",
         href: "https://github.com/jachinzhang1",
-        Icon: Github,
+        Icon: SiGithub,
         className: platformStyles.github,
       },
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/518197475",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -84,13 +82,13 @@ const developers: Array<{
       {
         name: "GitHub",
         href: "https://github.com/ChangleCat",
-        Icon: Github,
+        Icon: SiGithub,
         className: platformStyles.github,
       },
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/313519315",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -103,13 +101,13 @@ const developers: Array<{
       {
         name: "GitHub",
         href: "https://github.com/KrLite",
-        Icon: Github,
+        Icon: SiGithub,
         className: platformStyles.github,
       },
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/399487383",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -121,7 +119,7 @@ const developers: Array<{
       {
         name: "Pixiv",
         href: "https://www.pixiv.net/users/24991762",
-        Icon: PixivIcon,
+        Icon: SiPixiv,
         className: platformStyles.pixiv,
       },
     ],
@@ -135,7 +133,7 @@ const developers: Array<{
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/452230036",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -149,7 +147,7 @@ const developers: Array<{
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/387814829",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -163,7 +161,7 @@ const developers: Array<{
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/3546908777777221",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],
@@ -180,7 +178,7 @@ const friendLinks = [
       {
         name: "Bilibili",
         href: "https://space.bilibili.com/30032438",
-        Icon: BilibiliIcon,
+        Icon: SiBilibili,
         className: platformStyles.bilibili,
       },
     ],

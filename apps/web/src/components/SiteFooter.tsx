@@ -1,6 +1,7 @@
 "use client";
 
-import { Github, Link as LinkIcon } from "lucide-react";
+import { SiGithub } from "@icons-pack/react-simple-icons";
+import { Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { YinYangMark } from "./YinYangMark";
@@ -58,7 +59,7 @@ export function SiteFooter() {
           target="_blank"
           rel="noreferrer"
         >
-          <Github size={16} aria-hidden="true" />
+          <SiGithub size={16} aria-hidden="true" />
           <span>开源托管于GitHub</span>
         </Link>
         <Link
