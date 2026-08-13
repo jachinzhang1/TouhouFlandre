@@ -133,7 +133,7 @@ function PaperShortcut({
         {text}
       </span>
       <span className="paper-shortcut-icon inline-flex" aria-hidden="true">
-        <Icon size={80} strokeWidth={1.05} />
+        <Icon size={40} strokeWidth={1.25} />
       </span>
       <ArrowRight
         className="paper-shortcut-arrow absolute right-6 bottom-6 text-vermilion transition-transform duration-180 group-hover:translate-x-1"
