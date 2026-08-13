@@ -127,7 +127,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			projected, err := projectSpectatorGuess(ctx, q, roomID, payload, memberSlotByID, charsCache)
 			return projected, false, err
 		}
-		if payload.MemberSlot == MemberSlot(observer) {
+		if payload.MemberSlot == MemberSeat(observer) {
 			return ProjectedEvent{}, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
 		}
 		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
@@ -183,7 +183,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			Payload: RoundEndedPayload{
 				MatchIndex:    payload.MatchIndex,
 				RoundIndex:    payload.RoundIndex,
-				Result:        resultForObserver(payload.WinnerSlot, MemberSlot(observer)),
+				Result:        resultForObserver(payload.WinnerSlot, MemberSeat(observer)),
 				WinnerSlot:    payload.WinnerSlot,
 				ForfeitedSlot: payload.ForfeitedSlot,
 				Answer:        AnswerViewForCharacter(answer),
@@ -203,7 +203,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			Type: EventMatchEnded,
 			Payload: MatchEndedPayload{
 				MatchIndex:      payload.MatchIndex,
-				Result:          resultForObserver(payload.WinnerSlot, MemberSlot(observer)),
+				Result:          resultForObserver(payload.WinnerSlot, MemberSeat(observer)),
 				WinnerSlot:      payload.WinnerSlot,
 				Scores:          payload.Scores,
 				Reason:          payload.Reason,

@@ -2,8 +2,8 @@
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one
-INSERT INTO multi_room (id, code, format, mode, turn_seconds, status, expires_at, question_scope)
-VALUES ($1, $2, $3, $4, $5, 'lobby', $6, $7)
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, status, expires_at, question_scope)
+VALUES ($1, $2, $3, $4, $5, 2, 'lobby', $6, $7)
 RETURNING *;
 
 -- name: GetRoomByCode :one
@@ -39,7 +39,7 @@ active_round AS (
 )
 SELECT jsonb_build_object(
     'room',    (SELECT to_jsonb(mr) FROM multi_room mr WHERE mr.id = $1),
-    'members', (SELECT COALESCE(jsonb_agg(m ORDER BY m.slot), '[]'::jsonb) FROM multi_member m WHERE m.room_id = $1 AND m.role = 'player'),
+    'members', (SELECT COALESCE(jsonb_agg(m ORDER BY m.seat), '[]'::jsonb) FROM multi_member m WHERE m.room_id = $1 AND m.role = 'player'),
     'spectatorCount', (SELECT count(*)::int FROM multi_member m WHERE m.room_id = $1 AND m.role = 'spectator' AND m.status <> 'left'),
     'match',   (SELECT to_jsonb(lm) FROM latest_match lm),
     'round',   (SELECT to_jsonb(ar) FROM active_round ar),
@@ -62,11 +62,11 @@ UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING
 DELETE FROM multi_room WHERE id = $1;
 
 -- name: CreateMember :one
-INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
+INSERT INTO multi_member (id, room_id, seat, role, display_name, token_hash)
 VALUES (
     sqlc.arg(id),
     sqlc.arg(room_id),
-    sqlc.arg(slot)::integer,
+    sqlc.arg(seat)::integer,
     'player',
     sqlc.arg(display_name),
     sqlc.arg(token_hash)
@@ -74,7 +74,7 @@ VALUES (
 RETURNING *;
 
 -- name: CreateSpectatorMember :one
-INSERT INTO multi_member (id, room_id, slot, role, display_name, token_hash)
+INSERT INTO multi_member (id, room_id, seat, role, display_name, token_hash)
 VALUES ($1, $2, NULL, 'spectator', $3, $4)
 RETURNING *;
 
@@ -85,10 +85,10 @@ SELECT * FROM multi_member WHERE token_hash = $1;
 SELECT * FROM multi_member WHERE id = $1;
 
 -- name: ListMembers :many
-SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY slot;
+SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat;
 
 -- name: ListMembersForRematch :many
-SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY slot;
+SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY seat;
 
 -- name: CountSpectators :one
 SELECT count(*)::int FROM multi_member WHERE room_id = $1 AND role = 'spectator' AND status <> 'left';

@@ -315,7 +315,7 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 			return nil, internalError(err)
 		}
 		if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventMatchRematch, multi.MatchRematchPayload{
-			MemberSlot: multi.MemberSlot(*member),
+			MemberSlot: multi.MemberSeat(*member),
 		}); err != nil {
 			return nil, internalError(err)
 		}

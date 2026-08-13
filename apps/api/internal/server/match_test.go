@@ -476,7 +476,7 @@ func TestMultiDuplicateAndIdempotentGuess(t *testing.T) {
 		SELECT count(*) FROM multi_guess g
 		JOIN multi_round r ON r.id = g.round_id
 		JOIN multi_match m ON m.id = r.match_id
-		WHERE m.room_id = $1 AND g.member_id = (SELECT id FROM multi_member WHERE room_id = $1 AND slot = 1)`,
+		WHERE m.room_id = $1 AND g.member_id = (SELECT id FROM multi_member WHERE room_id = $1 AND seat = 1)`,
 		fixture.roomID).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
@@ -788,7 +788,7 @@ func TestMultiForfeit(t *testing.T) {
 	}
 	// 成员行置 left 保留
 	var status string
-	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&status); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
 	if status != "left" {
@@ -826,7 +826,7 @@ func TestMultiDisconnectGrace(t *testing.T) {
 	// joiner 断线且宽限逾期（直改 DB 模拟 Phase 4 的状态）
 	if _, err := pool.Exec(ctx, `
 		UPDATE multi_member SET status = 'disconnected', grace_until = now() - interval '1 second'
-		WHERE room_id = $1 AND slot = 2`, fixture.roomID); err != nil {
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
@@ -983,7 +983,7 @@ func TestMultiRematch(t *testing.T) {
 	}
 	// rematch_ready 已重置
 	var rematchReady bool
-	if err := pool.QueryRow(ctx, "SELECT rematch_ready FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&rematchReady); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT rematch_ready FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&rematchReady); err != nil {
 		t.Fatal(err)
 	}
 	if rematchReady {
@@ -1022,7 +1022,7 @@ func TestMultiFinishedLeaveRetainsRoom(t *testing.T) {
 		t.Fatalf("room status after finished leave = %s, want finished", snapshot.Status)
 	}
 	var status string
-	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 2", fixture.roomID).Scan(&status); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 2", fixture.roomID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
 	if status != string(multi.MemberStatusLeft) {

@@ -158,7 +158,7 @@ func (h *Hub) Publish(roomID string) {
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
-		memberSlotByID[m.ID] = int32(multi.MemberSlot(m))
+		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
 	charCache := map[string]map[string]game.Character{}
 

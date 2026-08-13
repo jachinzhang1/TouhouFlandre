@@ -43,7 +43,7 @@ func MemberViews(rows []repo.MultiMember) []MemberView {
 			continue
 		}
 		views = append(views, MemberView{
-			Slot:        MemberSlot(m),
+			Slot:        MemberSeat(m),
 			DisplayName: m.DisplayName,
 			Status:      MemberStatus(m.Status),
 			Ready:       m.Ready,
@@ -52,15 +52,15 @@ func MemberViews(rows []repo.MultiMember) []MemberView {
 	return views
 }
 
-func MemberSlot(m repo.MultiMember) int {
-	switch slot := any(m.Slot).(type) {
+func MemberSeat(m repo.MultiMember) int {
+	switch seat := any(m.Seat).(type) {
 	case int32:
-		return int(slot)
+		return int(seat)
 	case pgtype.Int4:
-		if !slot.Valid {
+		if !seat.Valid {
 			return 0
 		}
-		return int(slot.Int32)
+		return int(seat.Int32)
 	default:
 		return 0
 	}
@@ -84,8 +84,8 @@ func ParticipantViewFor(m repo.MultiMember) ParticipantView {
 		view.Role = ParticipantRolePlayer
 	}
 	if IsPlayer(m) {
-		slot := MemberSlot(m)
-		view.Slot = &slot
+		seat := MemberSeat(m)
+		view.Slot = &seat
 	}
 	return view
 }

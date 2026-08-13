@@ -288,7 +288,7 @@ func TestMultiWSDisconnectMarksMember(t *testing.T) {
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		var status string
-		if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&status); err != nil {
+		if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&status); err != nil {
 			t.Fatal(err)
 		}
 		if status == "disconnected" {

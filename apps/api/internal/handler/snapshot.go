@@ -40,6 +40,7 @@ type snapshotRoom struct {
 	Mode          string             `json:"mode"`
 	TurnSeconds   int32              `json:"turn_seconds"`
 	QuestionScope json.RawMessage    `json:"question_scope"`
+	PlayerLimit   int32              `json:"player_limit"`
 }
 
 type snapshotMatch struct {
@@ -69,6 +70,7 @@ func (room snapshotRoom) toRepo() repo.MultiRoom {
 		Mode:          room.Mode,
 		TurnSeconds:   room.TurnSeconds,
 		QuestionScope: append([]byte{}, room.QuestionScope...),
+		PlayerLimit:   room.PlayerLimit,
 	}
 }
 
@@ -202,7 +204,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		}
 		rematchReady := [2]bool{}
 		for _, m := range state.Members {
-			if multi.MemberSlot(m) == 1 {
+			if multi.MemberSeat(m) == 1 {
 				rematchReady[0] = m.RematchReady
 			} else {
 				rematchReady[1] = m.RematchReady
@@ -338,7 +340,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 func memberSlotForID(members []repo.MultiMember, memberID string) int {
 	for _, member := range members {
 		if member.ID == memberID {
-			return multi.MemberSlot(member)
+			return multi.MemberSeat(member)
 		}
 	}
 	return 0
@@ -352,7 +354,7 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 	charCache := map[string]map[string]game.Character{}
 	memberSlotByID := map[string]int32{}
 	for _, m := range state.Members {
-		memberSlotByID[m.ID] = int32(multi.MemberSlot(m))
+		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
 
 	for _, event := range events {

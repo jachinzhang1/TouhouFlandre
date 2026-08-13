@@ -490,7 +490,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if room.Status != string(RoomStatusLobby) {
 		return tx.Commit(ctx)
 	}
-	if MemberSlot(member) == 1 {
+	if MemberSeat(member) == 1 {
 		if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
 			ID:        room.ID,
 			ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
