@@ -98,12 +98,12 @@ export function AnnouncementPage({
 
   return (
     <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
-      <header>
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
+      <header className="text-center">
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-black leading-[1.15] max-[680px]:text-[2.05rem]">
           公告
         </h1>
         <p
-          className="mt-3 mb-0 flex min-h-7 items-center leading-[1.75] text-ink-soft"
+          className="mx-auto mt-3 mb-0 flex min-h-7 max-w-[720px] items-center justify-center text-center font-brand leading-[1.75] text-ink-soft"
           role={refreshing ? "status" : undefined}
         >
           {refreshing

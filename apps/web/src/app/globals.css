@@ -704,6 +704,22 @@ html[data-theme-mode="dark"] .site-nav {
   filter: var(--paper-sticker-shadow);
 }
 
+.credit-section-rule {
+  flex: 1 1 0;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--line-strong) 46%, transparent) 48%,
+    var(--line-strong)
+  );
+  clip-path: polygon(0 42%, 100% 0, 100% 100%, 0 58%);
+}
+
+.credit-section-rule-right {
+  transform: scaleX(-1);
+}
+
 .announcement-entry,
 .announcement-tear-corner {
   background:
