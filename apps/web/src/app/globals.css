@@ -1405,8 +1405,8 @@ body:has(.home-hero) .site-footer a:hover {
   isolation: isolate;
   --appearance-corner-rest: color-mix(
     in oklab,
-    var(--accent-soft) 78%,
-    var(--surface-strong)
+    color-mix(in oklab, var(--accent-soft) 78%, var(--surface-strong)) 98%,
+    #000
   );
   --appearance-fold-rest: color-mix(
     in oklab,
