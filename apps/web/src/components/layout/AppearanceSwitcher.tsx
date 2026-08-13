@@ -30,6 +30,20 @@ const defaultAppearance: ResolvedAppearance = {
 const themeControlLabel = (label: string) =>
   `${label}主题色${label === "雾雨魔理沙" ? "DA☆ZE" : ""}`;
 
+const FAN_APEX_Y = (36 / 220) * 100;
+const FAN_BASE_START = (24 / 760) * 100;
+const FAN_BASE_END = (576 / 760) * 100;
+const FAN_STEP = (FAN_BASE_END - FAN_BASE_START) / COLOR_THEMES.length;
+
+function getFanTriangle(index: number) {
+  const start = FAN_BASE_START + FAN_STEP * index;
+  const end = start + FAN_STEP;
+  return {
+    clipPath: `polygon(100% ${FAN_APEX_Y}%, ${start}% 100%, ${end}% 100%)`,
+    points: `100,${FAN_APEX_Y} ${start},100 ${end},100`,
+  };
+}
+
 export function AppearanceSwitcher() {
   const [settings, setSettings] = useState<AppearanceSettings>(defaultSettings);
   const [appearance, setAppearance] =
@@ -149,30 +163,45 @@ export function AppearanceSwitcher() {
         role="group"
         aria-label="角色主题色"
       >
-        {COLOR_THEMES.map((theme, index) => (
-          <button
-            key={theme.id}
-            type="button"
-            className={
-              theme.id === activeTheme.id
-                ? "appearance-swatch active"
-                : "appearance-swatch"
-            }
-            style={
-              {
-                "--swatch-light": theme.light,
-                "--swatch-dark": theme.dark,
-                "--swatch-index": index,
-              } as CSSProperties
-            }
-            aria-label={themeControlLabel(theme.label)}
-            aria-pressed={theme.id === activeTheme.id}
-            title={themeControlLabel(theme.label)}
-            onClick={() => handleColorSelect(theme.id)}
-          >
-            <span className="sr-only">{themeControlLabel(theme.label)}</span>
-          </button>
-        ))}
+        {COLOR_THEMES.map((theme, index) => {
+          const triangle = getFanTriangle(index);
+          return (
+            <button
+              key={theme.id}
+              type="button"
+              className={
+                theme.id === activeTheme.id
+                  ? "appearance-swatch active"
+                  : "appearance-swatch"
+              }
+              data-theme-color={theme.id}
+              style={
+                {
+                  "--swatch-light": theme.light,
+                  "--swatch-dark": theme.dark,
+                  "--swatch-clip": triangle.clipPath,
+                } as CSSProperties
+              }
+              aria-label={themeControlLabel(theme.label)}
+              aria-pressed={theme.id === activeTheme.id}
+              title={themeControlLabel(theme.label)}
+              onClick={() => handleColorSelect(theme.id)}
+            >
+              <svg
+                className="appearance-swatch-outline"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <polygon
+                  points={triangle.points}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
+              <span className="sr-only">{themeControlLabel(theme.label)}</span>
+            </button>
+          );
+        })}
       </div>
       <span className="appearance-corner-surface" aria-hidden="true" />
       <span className="appearance-fold-flap" aria-hidden="true" />
