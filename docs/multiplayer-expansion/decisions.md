@@ -18,7 +18,7 @@
 | viewer | 当前 REST/WS 请求经令牌鉴权后的 member 与 capability 视角 | `memberId` 可公开不代表获得该 viewer 的权限；所有投影在服务端执行 |
 | `playerLimit` | 房间允许同时入座的 player 最大数 | 默认 2；race 允许 2..8，relay 固定 2；它不是必须凑满的开局人数 |
 | `minPlayers` | 允许开局的最少 player 数 | 服务端固定为 2，不开放房主设置；满足下限、全员 connected + ready 即可按当前集合开局 |
-| `maxSpectatorsPerRoom` | 单房间未离开 spectator 的服务端安全上限 | 首版固定 32，不可由房主设置，不占 `playerLimit`；用于限制成员行、WS 连接和广播扇出 |
+| `spectatorCap` | 单房间未离开 spectator 的服务端安全上限 | 首版固定 32，不可由房主设置，不占 `playerLimit`；服务端配置名可用 `maxSpectatorsPerRoom`，公开文档统一称 spectatorCap |
 | chat channel | 聊天消息由服务端派生的授权范围 | 本轮只有 player 对应的 `room` 和 spectator 对应的 `spectator`；客户端不得提交 channel |
 | `receiveChat` | 查看者当前浏览器是否渲染他人聊天的本地偏好 | 不改变服务端授权、历史扫描、chat cursor、游戏 sequence 或其他查看者的显示 |
 | game sequence | `room_event.sequence` 的房间级、从 1 递增的游戏/生命周期事件位置 | v2 对每个授权连接投递业务事件或同 sequence cursor envelope，使连接看到连续序列 |
@@ -57,7 +57,7 @@ race 的 `playerLimit` 只表示入座容量，不表示开局必须人数。开
 
 | 竞争 | 先获得 room 锁的事务 | 后获得 room 锁的事务 | 权威结果 |
 |---|---|---|---|
-| final ready vs join | final ready 冻结当时 roster 并将房间转为 playing | join 重新读到 playing，只能在 spectator cap 内加入为 spectator | 新 member 不进入 roster |
+| final ready vs join | final ready 冻结当时 roster 并将房间转为 playing | join 重新读到 playing，只能在 spectatorCap 内加入为 spectator | 新 member 不进入 roster |
 | final ready vs claim-seat | final ready 冻结当时 roster 并转为 playing | claim-seat 重新读到非 lobby，稳定失败 | spectator 不补入已开始 match |
 | join vs final ready | join 取得 player seat 并以 `ready=false` 提交 | final ready 重新读取到该未准备 player | 不开局，直到新 player 也准备 |
 | claim-seat vs final ready | claim-seat 复用 memberId、取得 seat 并以 `ready=false` 提交 | final ready 重新读取到该未准备 player | 不开局，claim 成功者进入候选 roster |
@@ -242,7 +242,7 @@ spectator 依据矩阵获权查看所有完整棋盘，但这项权限不扩展�
 | [MPX-002A](./MPX-002A-member-seat-data-foundation.md) | MPX-001 | memberId 是身份键、seat 仅排序；race 上限 8、relay 2、spectator 32 | 旧双人/观战数据升级后公开模型以 memberId + seat 集合表达，默认 `playerLimit=2` 且数据库/生成类型无漂移 |
 | [MPX-002B](./MPX-002B-ws-v2-game-sync-foundation.md) | MPX-002A | v2 每个 game sequence 为业务事件或 cursor；屏障末尾才 `sync.complete` | race/relay 双人流程在 v2 连续重放，并对真缺口单次 snapshot；无效水位不被静默接受 |
 | [MPX-002C](./MPX-002C-foundation-regression-gate.md) | MPX-002B | 002A 数据底座与 002B 同步语义组合后仍一致 | 迁移、生成、两人 race/relay、观战、finished retention、cursor/重连全绿并形成 MPX-003 可复用基线 |
-| [MPX-003](./MPX-003-room-lifecycle-and-team-assignment.md) | MPX-002C | room 行锁线性化 join/claim/final ready；2..`playerLimit` 灵活开局 | 并发结果只出现本文两种提交顺序，seat/capacity/role 变化不越权，原 roster rematch 不可补位 |
+| [MPX-003](./MPX-003-room-lifecycle.md) | MPX-002C | room 行锁线性化 join/claim/final ready；2..`playerLimit` 灵活开局 | 并发结果只出现本文两种提交顺序，seat/capacity/role 变化不越权，原 roster rematch 不可补位 |
 | [MPX-004](./MPX-004-n-player-race-engine.md) | MPX-003 | race 按 roster memberId 独立计分；relay 保持两人；对手隐私由服务端投影 | 2/3/4/8 人竞速终态、并发胜者、离场/超时与 HMAC 匿名矩阵测试通过，旧双人结果不变 |
 | [MPX-005](./MPX-005-race-player-limit-setting.md) | MPX-004 | 上限是容量而非开局目标；仅 lobby host 且无人 ready 可改 | 2..8 配置、降容压紧、claim-seat 及与 join/ready 的并发终态和事件视图一致 |
 | [MPX-006](./MPX-006-n-player-race-web-ui.md) | MPX-004、MPX-005 | Web 只以 memberId 关联、seat 仅展示；player 看匿名对手 | 桌面/移动 2/3/4/8 人、claim-seat/压紧/重连及统计迁移通过，落盘/导出无成员或房间身份 |

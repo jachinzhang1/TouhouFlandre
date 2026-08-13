@@ -44,7 +44,7 @@
 - 房主调用设置命令后，race 房间可在 lobby 使用 2、3、4…首版上限；非法值、relay 设置、非房主修改和当前有人 ready 时修改均有稳定错误；所有人取消准备后恢复可修改。
 - 设置变化通过 `room.updated` 同步给玩家和观战者，刷新/重连后从服务端恢复。
 - 提高上限后 spectator 可显式认领空席位；降低上限或空席位再次被占用时，前端能从权威事件得到稳定结果，不发生自动晋升。
-- 在容量边界并发 join 下，最多产生 `playerLimit` 个玩家，其余在 spectator cap 未满时进入观战。
+- 在容量边界并发 join 下，最多产生 `playerLimit` 个玩家，其余在 spectatorCap 未满时进入观战。
 - 并发修改上限、join、ready 时结果符合房间行锁的提交顺序，事件中的 `playerLimit`、当前玩家数和冻结 roster 与数据库终态一致。
 - 对 seat 有空洞的 lobby 降容后，活动玩家 seat 连续落在 `1..currentPlayers`，memberId/令牌/房主不变；客户端不会把 seat 变化当成身份变化。
 - `playerLimit=8` 的 2、3、5、8 人阵容都能在全员 connected + ready 后开局；少于 `minPlayers`、存在未准备/断线玩家时不开始。

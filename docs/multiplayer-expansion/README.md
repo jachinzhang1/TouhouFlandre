@@ -195,7 +195,7 @@ Issue 之间应保持“一 Issue 一主题、一 PR 可回滚”。生成代码
 | 2A. 建立数据底座 | MPX-002A：memberId/seat、`player_limit`、公开 memberId、两人集合适配 | A 实现，B 审查客户端状态 | MPX-001 合并 | 两人 race/relay 的公开数据模型稳定；迁移和生成物通过 |
 | 2B. 建立同步协议 | MPX-002B：WS v2 游戏集合、cursor、`sync.complete` 与 snapshot 屏障 | A 实现，B 审查客户端状态 | MPX-002A 合并 | 两人 race/relay 在 v2 下完整回归；sequence 缺口测试通过 |
 | 2C. 收口回归 | MPX-002C：迁移、生成物、重连和双人回归闸门 | 两人共同 | MPX-002B 合并 | 创建 `mpx-003-base` 共享基线 |
-| 3. 接入共享生命周期 | MPX-003：join/claim-seat、ready/unready、容量、开局冻结、rematch 和 spectator cap | A 实现，B 审查契约 | MPX-002C 合并 | 并发入座/最终 ready 可串行化 |
+| 3. 接入共享生命周期 | MPX-003：join/claim-seat、ready/unready、容量、开局冻结、rematch 和 spectatorCap | A 实现，B 审查契约 | MPX-002C 合并 | 并发入座/最终 ready 可串行化 |
 | 4. 完成竞速服务端 | MPX-004 → MPX-005：N 人 roster/计分/退出语义，再开放房主设置 `playerLimit` | A | MPX-003 合并 | 2/3/4/8 人服务端测试通过；容量设置、降容压紧 seat 和并发边界稳定 |
 | 5A. 交付竞速 Web | MPX-006：N 人大厅、棋盘、观战和本地统计迁移 | B | MPX-004、005 合并 | 桌面/移动端 2/3/4/8 人 e2e、隐私投影和统计 v3 导入回归通过 |
 | 5B. 交付聊天服务端 | MPX-007 → MPX-008：先用文档 PR 冻结聊天契约，再由 MPX-008 在一个实现 PR 中同步落地生效契约、生成物、持久化、授权、历史和实时同步 | A | 操作上等待 MPX-005 合并；逻辑基线为 MPX-002B | channel 权限、幂等、cursor、重连无缺口和 XSS/限流测试通过 |
@@ -270,10 +270,11 @@ git worktree add ../TouhouFlandre-mpx-web \
 | ID | 标题 | 建议标签 | 结果 |
 |---|---|---|---|
 | [MPX-001](./MPX-001-contract-and-invariants.md) | 冻结 member、seat、容量与消息可见性术语 | `type:design`, `area:docs` | 后续实现有唯一口径 |
-| [MPX-002](./MPX-002-participant-seat-team-foundation.md) | 拆分 member/seat 与 WS v2 底座 | `type:planning`, `area:db`, `area:contracts` | 读者能按子任务理解路线 |
+| [MPX-002](./MPX-002-participant-seat-foundation.md) | 拆分 member/seat 与 WS v2 底座 | `type:planning`, `area:db`, `area:contracts` | 读者能按子任务理解路线 |
 | [MPX-002A](./MPX-002A-member-seat-data-foundation.md) | 建立 member/seat 与 player_limit 数据底座 | `type:feature`, `area:db`, `area:contracts` | 集合不再写死 1/2，公开 memberId 可连续校验 |
 | [MPX-002B](./MPX-002B-ws-v2-game-sync-foundation.md) | 建立 WS v2 游戏同步协议 | `type:feature`, `area:contracts`, `area:ws` | 投影序列可连续校验，补齐屏障稳定 |
 | [MPX-002C](./MPX-002C-foundation-regression-gate.md) | 完成底座回归与生成物闸门 | `type:quality`, `area:test`, `area:contracts` | 共享基线可用于后续功能实现 |
+| [MPX-003](./MPX-003-room-lifecycle.md) | 将容量、入座与灵活开局接入房间生命周期 | `type:feature`, `area:api`, `area:multi` | join/claim-seat/final ready 并发可串行化 |
 | [MPX-004](./MPX-004-n-player-race-engine.md) | 将竞速模式扩展为 N 人独立计分 | `type:feature`, `area:multi`, `area:api` | 协作者 A 的竞速服务端起点 |
 | [MPX-005](./MPX-005-race-player-limit-setting.md) | 提供竞速玩家上限配置 API | `type:feature`, `area:api`, `area:contracts` | 房主配置可校验、冻结并广播 |
 | [MPX-006](./MPX-006-n-player-race-web-ui.md) | 实现 N 人竞速大厅、棋盘与观战 Web 体验 | `type:feature`, `area:web` | 协作者 B 消费 004/005 契约 |
