@@ -216,7 +216,7 @@ const createMatch = `-- name: CreateMatch :one
 INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at, question_scope)
 SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5, $6
 FROM multi_match WHERE room_id = $2
-RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id
 `
 
 type CreateMatchParams struct {
@@ -252,6 +252,32 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
+	)
+	return i, err
+}
+
+const createMatchPlayer = `-- name: CreateMatchPlayer :one
+INSERT INTO multi_match_player (match_id, member_id, seat, wins, status)
+VALUES ($1, $2, $3, 0, 'active')
+RETURNING match_id, member_id, seat, wins, status
+`
+
+type CreateMatchPlayerParams struct {
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+	Seat     int32  `json:"seat"`
+}
+
+func (q *Queries) CreateMatchPlayer(ctx context.Context, arg CreateMatchPlayerParams) (MultiMatchPlayer, error) {
+	row := q.db.QueryRow(ctx, createMatchPlayer, arg.MatchID, arg.MemberID, arg.Seat)
+	var i MultiMatchPlayer
+	err := row.Scan(
+		&i.MatchID,
+		&i.MemberID,
+		&i.Seat,
+		&i.Wins,
+		&i.Status,
 	)
 	return i, err
 }
@@ -370,7 +396,7 @@ WITH incremented AS (
 INSERT INTO multi_round (id, match_id, round_index, answer_id, status, starts_at, deadline, turn_slot, turn_deadline)
 SELECT $2, $1, $3, $4, 'countdown', $5, $6, $7, $8
 FROM incremented
-RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline
+RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id
 `
 
 type CreateRoundParams struct {
@@ -413,8 +439,27 @@ func (q *Queries) CreateRound(ctx context.Context, arg CreateRoundParams) (Multi
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
+}
+
+const createRoundPlayersForMatch = `-- name: CreateRoundPlayersForMatch :exec
+INSERT INTO multi_round_player (round_id, member_id, status)
+SELECT $1, member_id, 'active'
+FROM multi_match_player
+WHERE match_id = $2
+ON CONFLICT (round_id, member_id) DO NOTHING
+`
+
+type CreateRoundPlayersForMatchParams struct {
+	RoundID string `json:"round_id"`
+	MatchID string `json:"match_id"`
+}
+
+func (q *Queries) CreateRoundPlayersForMatch(ctx context.Context, arg CreateRoundPlayersForMatchParams) error {
+	_, err := q.db.Exec(ctx, createRoundPlayersForMatch, arg.RoundID, arg.MatchID)
+	return err
 }
 
 const createSpectatorMember = `-- name: CreateSpectatorMember :one
@@ -473,16 +518,26 @@ func (q *Queries) DeleteRoom(ctx context.Context, id string) error {
 }
 
 const endMatch = `-- name: EndMatch :one
-UPDATE multi_match SET status = 'finished', ended_at = $2 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
+UPDATE multi_match AS match
+SET status = 'finished',
+    ended_at = $2,
+    winner_member_id = (
+        SELECT roster.member_id
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = match.id AND roster.seat = $3
+    )
+WHERE match.id = $1
+RETURNING match.id, match.room_id, match.match_index, match.catalog_version, match.target_wins, match.score_slot1, match.score_slot2, match.round_count, match.status, match.started_at, match.ended_at, match.question_scope, match.winner_member_id
 `
 
 type EndMatchParams struct {
-	ID      string             `json:"id"`
-	EndedAt pgtype.Timestamptz `json:"ended_at"`
+	ID         string             `json:"id"`
+	EndedAt    pgtype.Timestamptz `json:"ended_at"`
+	WinnerSeat pgtype.Int4        `json:"winner_seat"`
 }
 
 func (q *Queries) EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch, error) {
-	row := q.db.QueryRow(ctx, endMatch, arg.ID, arg.EndedAt)
+	row := q.db.QueryRow(ctx, endMatch, arg.ID, arg.EndedAt, arg.WinnerSeat)
 	var i MultiMatch
 	err := row.Scan(
 		&i.ID,
@@ -497,12 +552,25 @@ func (q *Queries) EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch,
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const endRound = `-- name: EndRound :one
-UPDATE multi_round SET status = 'ended', winner_slot = $2, ended_at = $3, turn_slot = NULL, turn_deadline = NULL WHERE id = $1 RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline
+UPDATE multi_round AS round
+SET status = 'ended',
+    winner_slot = $2,
+    winner_member_id = (
+        SELECT roster.member_id
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = round.match_id AND roster.seat = $2
+    ),
+    ended_at = $3,
+    turn_slot = NULL,
+    turn_deadline = NULL
+WHERE round.id = $1
+RETURNING round.id, round.match_id, round.round_index, round.answer_id, round.status, round.winner_slot, round.starts_at, round.deadline, round.ended_at, round.turn_slot, round.turn_deadline, round.winner_member_id
 `
 
 type EndRoundParams struct {
@@ -526,12 +594,13 @@ func (q *Queries) EndRound(ctx context.Context, arg EndRoundParams) (MultiRound,
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const getActiveMatchForUpdate = `-- name: GetActiveMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match
 WHERE room_id = $1 AND status = 'playing'
 ORDER BY match_index DESC
 LIMIT 1
@@ -555,12 +624,13 @@ func (q *Queries) GetActiveMatchForUpdate(ctx context.Context, roomID string) (M
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const getActiveRoundForUpdate = `-- name: GetActiveRoundForUpdate :one
-SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline FROM multi_round
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id FROM multi_round
 WHERE match_id = $1 AND status IN ('countdown', 'playing')
 ORDER BY round_index DESC
 LIMIT 1
@@ -583,12 +653,13 @@ func (q *Queries) GetActiveRoundForUpdate(ctx context.Context, matchID string) (
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const getCurrentRoundForUpdateByRoom = `-- name: GetCurrentRoundForUpdateByRoom :one
-SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline FROM multi_round r
+SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r
 JOIN multi_match m ON m.id = r.match_id
 WHERE m.room_id = $1 AND m.status = 'playing'
 ORDER BY r.round_index DESC
@@ -612,6 +683,7 @@ func (q *Queries) GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID str
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
@@ -644,7 +716,7 @@ func (q *Queries) GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessById
 }
 
 const getMatchByIndex = `-- name: GetMatchByIndex :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE room_id = $1 AND match_index = $2
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match WHERE room_id = $1 AND match_index = $2
 `
 
 type GetMatchByIndexParams struct {
@@ -669,12 +741,13 @@ func (q *Queries) GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE id = $1 FOR UPDATE
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error) {
@@ -693,6 +766,7 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch,
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
@@ -859,10 +933,10 @@ func (q *Queries) GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, e
 
 const getRoomSnapshotState = `-- name: GetRoomSnapshotState :one
 WITH latest_match AS (
-    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
+    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
 ),
 active_round AS (
-    SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline FROM multi_round r
+    SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r
     JOIN latest_match lm ON r.match_id = lm.id
     WHERE r.status IN ('countdown', 'playing')
     ORDER BY r.round_index DESC
@@ -891,7 +965,7 @@ func (q *Queries) GetRoomSnapshotState(ctx context.Context, id string) ([]byte, 
 }
 
 const getRound = `-- name: GetRound :one
-SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline FROM multi_round WHERE id = $1
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id FROM multi_round WHERE id = $1
 `
 
 func (q *Queries) GetRound(ctx context.Context, id string) (MultiRound, error) {
@@ -909,12 +983,13 @@ func (q *Queries) GetRound(ctx context.Context, id string) (MultiRound, error) {
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const getRoundForUpdate = `-- name: GetRoundForUpdate :one
-SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline FROM multi_round WHERE id = $1 FOR UPDATE
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id FROM multi_round WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error) {
@@ -932,6 +1007,7 @@ func (q *Queries) GetRoundForUpdate(ctx context.Context, id string) (MultiRound,
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
@@ -1114,7 +1190,7 @@ func (q *Queries) InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTu
 }
 
 const listActiveMatches = `-- name: ListActiveMatches :many
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope FROM multi_match WHERE status = 'playing' ORDER BY started_at
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM multi_match WHERE status = 'playing' ORDER BY started_at
 `
 
 // 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
@@ -1140,6 +1216,7 @@ func (q *Queries) ListActiveMatches(ctx context.Context) ([]MultiMatch, error) {
 			&i.StartedAt,
 			&i.EndedAt,
 			&i.QuestionScope,
+			&i.WinnerMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -1260,7 +1337,7 @@ func (q *Queries) ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error
 }
 
 const listExpiredRelayTurns = `-- name: ListExpiredRelayTurns :many
-SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, m.room_id AS room_id
+SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id, m.room_id AS room_id
 FROM multi_round r
 JOIN multi_match m ON m.id = r.match_id
 JOIN multi_room room ON room.id = m.room_id
@@ -1273,18 +1350,19 @@ ORDER BY r.turn_deadline
 `
 
 type ListExpiredRelayTurnsRow struct {
-	ID           string             `json:"id"`
-	MatchID      string             `json:"match_id"`
-	RoundIndex   int32              `json:"round_index"`
-	AnswerID     string             `json:"answer_id"`
-	Status       string             `json:"status"`
-	WinnerSlot   pgtype.Int4        `json:"winner_slot"`
-	StartsAt     pgtype.Timestamptz `json:"starts_at"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	EndedAt      pgtype.Timestamptz `json:"ended_at"`
-	TurnSlot     pgtype.Int4        `json:"turn_slot"`
-	TurnDeadline pgtype.Timestamptz `json:"turn_deadline"`
-	RoomID       string             `json:"room_id"`
+	ID             string             `json:"id"`
+	MatchID        string             `json:"match_id"`
+	RoundIndex     int32              `json:"round_index"`
+	AnswerID       string             `json:"answer_id"`
+	Status         string             `json:"status"`
+	WinnerSlot     pgtype.Int4        `json:"winner_slot"`
+	StartsAt       pgtype.Timestamptz `json:"starts_at"`
+	Deadline       pgtype.Timestamptz `json:"deadline"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	TurnSlot       pgtype.Int4        `json:"turn_slot"`
+	TurnDeadline   pgtype.Timestamptz `json:"turn_deadline"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	RoomID         string             `json:"room_id"`
 }
 
 func (q *Queries) ListExpiredRelayTurns(ctx context.Context) ([]ListExpiredRelayTurnsRow, error) {
@@ -1308,6 +1386,7 @@ func (q *Queries) ListExpiredRelayTurns(ctx context.Context) ([]ListExpiredRelay
 			&i.EndedAt,
 			&i.TurnSlot,
 			&i.TurnDeadline,
+			&i.WinnerMemberID,
 			&i.RoomID,
 		); err != nil {
 			return nil, err
@@ -1321,7 +1400,7 @@ func (q *Queries) ListExpiredRelayTurns(ctx context.Context) ([]ListExpiredRelay
 }
 
 const listExpiredRounds = `-- name: ListExpiredRounds :many
-SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline FROM multi_round
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id FROM multi_round
 WHERE (status = 'countdown' AND starts_at <= now())
    OR (status = 'playing' AND deadline <= now())
 ORDER BY starts_at
@@ -1348,6 +1427,7 @@ func (q *Queries) ListExpiredRounds(ctx context.Context) ([]MultiRound, error) {
 			&i.EndedAt,
 			&i.TurnSlot,
 			&i.TurnDeadline,
+			&i.WinnerMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -1360,7 +1440,7 @@ func (q *Queries) ListExpiredRounds(ctx context.Context) ([]MultiRound, error) {
 }
 
 const listFinishedMatches = `-- name: ListFinishedMatches :many
-SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at, m.question_scope
+SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at, m.question_scope, m.winner_member_id
 FROM multi_match m
 JOIN multi_room r ON r.id = m.room_id
 WHERE m.status = 'finished' AND r.status = 'finished' AND r.expires_at <= now()
@@ -1390,6 +1470,7 @@ func (q *Queries) ListFinishedMatches(ctx context.Context) ([]MultiMatch, error)
 			&i.StartedAt,
 			&i.EndedAt,
 			&i.QuestionScope,
+			&i.WinnerMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -1424,6 +1505,36 @@ func (q *Queries) ListGuessesForRound(ctx context.Context, roundID string) ([]Mu
 			&i.IsCorrect,
 			&i.IdempotencyKey,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMatchPlayers = `-- name: ListMatchPlayers :many
+SELECT match_id, member_id, seat, wins, status FROM multi_match_player WHERE match_id = $1 ORDER BY seat
+`
+
+func (q *Queries) ListMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error) {
+	rows, err := q.db.Query(ctx, listMatchPlayers, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiMatchPlayer{}
+	for rows.Next() {
+		var i MultiMatchPlayer
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.MemberID,
+			&i.Seat,
+			&i.Wins,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -1543,8 +1654,32 @@ func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiM
 	return items, nil
 }
 
+const listRoundPlayers = `-- name: ListRoundPlayers :many
+SELECT round_id, member_id, status FROM multi_round_player WHERE round_id = $1 ORDER BY member_id
+`
+
+func (q *Queries) ListRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error) {
+	rows, err := q.db.Query(ctx, listRoundPlayers, roundID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRoundPlayer{}
+	for rows.Next() {
+		var i MultiRoundPlayer
+		if err := rows.Scan(&i.RoundID, &i.MemberID, &i.Status); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoundsAwaitingAdvance = `-- name: ListRoundsAwaitingAdvance :many
-SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, m.room_id AS room_id
+SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id, m.room_id AS room_id
 FROM multi_round r
 JOIN multi_match m ON m.id = r.match_id
 WHERE m.status = 'playing'
@@ -1560,18 +1695,19 @@ ORDER BY r.ended_at
 `
 
 type ListRoundsAwaitingAdvanceRow struct {
-	ID           string             `json:"id"`
-	MatchID      string             `json:"match_id"`
-	RoundIndex   int32              `json:"round_index"`
-	AnswerID     string             `json:"answer_id"`
-	Status       string             `json:"status"`
-	WinnerSlot   pgtype.Int4        `json:"winner_slot"`
-	StartsAt     pgtype.Timestamptz `json:"starts_at"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	EndedAt      pgtype.Timestamptz `json:"ended_at"`
-	TurnSlot     pgtype.Int4        `json:"turn_slot"`
-	TurnDeadline pgtype.Timestamptz `json:"turn_deadline"`
-	RoomID       string             `json:"room_id"`
+	ID             string             `json:"id"`
+	MatchID        string             `json:"match_id"`
+	RoundIndex     int32              `json:"round_index"`
+	AnswerID       string             `json:"answer_id"`
+	Status         string             `json:"status"`
+	WinnerSlot     pgtype.Int4        `json:"winner_slot"`
+	StartsAt       pgtype.Timestamptz `json:"starts_at"`
+	Deadline       pgtype.Timestamptz `json:"deadline"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	TurnSlot       pgtype.Int4        `json:"turn_slot"`
+	TurnDeadline   pgtype.Timestamptz `json:"turn_deadline"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	RoomID         string             `json:"room_id"`
 }
 
 // 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
@@ -1596,6 +1732,7 @@ func (q *Queries) ListRoundsAwaitingAdvance(ctx context.Context, intermission pg
 			&i.EndedAt,
 			&i.TurnSlot,
 			&i.TurnDeadline,
+			&i.WinnerMemberID,
 			&i.RoomID,
 		); err != nil {
 			return nil, err
@@ -1609,7 +1746,7 @@ func (q *Queries) ListRoundsAwaitingAdvance(ctx context.Context, intermission pg
 }
 
 const listRoundsForMatch = `-- name: ListRoundsForMatch :many
-SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline FROM multi_round WHERE match_id = $1 ORDER BY round_index
+SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id FROM multi_round WHERE match_id = $1 ORDER BY round_index
 `
 
 func (q *Queries) ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error) {
@@ -1633,6 +1770,7 @@ func (q *Queries) ListRoundsForMatch(ctx context.Context, matchID string) ([]Mul
 			&i.EndedAt,
 			&i.TurnSlot,
 			&i.TurnDeadline,
+			&i.WinnerMemberID,
 		); err != nil {
 			return nil, err
 		}
@@ -1796,7 +1934,7 @@ func (q *Queries) SetMemberRematchReady(ctx context.Context, arg SetMemberRematc
 }
 
 const startRound = `-- name: StartRound :one
-UPDATE multi_round SET status = 'playing' WHERE id = $1 AND status = 'countdown' RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline
+UPDATE multi_round SET status = 'playing' WHERE id = $1 AND status = 'countdown' RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id
 `
 
 // countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
@@ -1815,12 +1953,28 @@ func (q *Queries) StartRound(ctx context.Context, id string) (MultiRound, error)
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
 
 const updateMatchScore = `-- name: UpdateMatchScore :one
-UPDATE multi_match SET score_slot1 = $2, score_slot2 = $3 WHERE id = $1 RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope
+WITH updated AS (
+    UPDATE multi_match
+    SET score_slot1 = $2, score_slot2 = $3
+    WHERE id = $1
+    RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id
+), roster_scores AS (
+    UPDATE multi_match_player AS roster
+    SET wins = CASE roster.seat
+        WHEN 1 THEN updated.score_slot1
+        WHEN 2 THEN updated.score_slot2
+        ELSE roster.wins
+    END
+    FROM updated
+    WHERE roster.match_id = updated.id AND roster.seat IN (1, 2)
+)
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id FROM updated
 `
 
 type UpdateMatchScoreParams struct {
@@ -1829,9 +1983,25 @@ type UpdateMatchScoreParams struct {
 	ScoreSlot2 int32  `json:"score_slot2"`
 }
 
-func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error) {
+type UpdateMatchScoreRow struct {
+	ID             string             `json:"id"`
+	RoomID         string             `json:"room_id"`
+	MatchIndex     int32              `json:"match_index"`
+	CatalogVersion string             `json:"catalog_version"`
+	TargetWins     int32              `json:"target_wins"`
+	ScoreSlot1     int32              `json:"score_slot1"`
+	ScoreSlot2     int32              `json:"score_slot2"`
+	RoundCount     int32              `json:"round_count"`
+	Status         string             `json:"status"`
+	StartedAt      pgtype.Timestamptz `json:"started_at"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	QuestionScope  []byte             `json:"question_scope"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+}
+
+func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error) {
 	row := q.db.QueryRow(ctx, updateMatchScore, arg.ID, arg.ScoreSlot1, arg.ScoreSlot2)
-	var i MultiMatch
+	var i UpdateMatchScoreRow
 	err := row.Scan(
 		&i.ID,
 		&i.RoomID,
@@ -1845,6 +2015,7 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.QuestionScope,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }
@@ -1936,7 +2107,7 @@ func (q *Queries) UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusPara
 }
 
 const updateRoundTurn = `-- name: UpdateRoundTurn :one
-UPDATE multi_round SET turn_slot = $2, turn_deadline = $3 WHERE id = $1 RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline
+UPDATE multi_round SET turn_slot = $2, turn_deadline = $3 WHERE id = $1 RETURNING id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline, winner_member_id
 `
 
 type UpdateRoundTurnParams struct {
@@ -1960,6 +2131,7 @@ func (q *Queries) UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams
 		&i.EndedAt,
 		&i.TurnSlot,
 		&i.TurnDeadline,
+		&i.WinnerMemberID,
 	)
 	return i, err
 }

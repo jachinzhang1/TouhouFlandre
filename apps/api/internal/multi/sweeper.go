@@ -394,6 +394,12 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		}
 		return err
 	}
+	if err := q.CreateRoundPlayersForMatch(ctx, repo.CreateRoundPlayersForMatchParams{
+		RoundID: newRound.ID,
+		MatchID: match.ID,
+	}); err != nil {
+		return err
+	}
 	roundStarted := RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
@@ -418,7 +424,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 
 // endMatchByCap 3×N 上限判平：场次与房间 finished + match.ended(reason=round_cap, draw)。
 func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, match repo.MultiMatch, now time.Time) error {
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: pgtype.Int4{}}); err != nil {
 		return err
 	}
 	retentionEndsAt := now.Add(s.cfg.Timing.FinishedRetention)

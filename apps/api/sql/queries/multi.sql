@@ -137,6 +137,14 @@ RETURNING *;
 -- name: GetMatchForUpdate :one
 SELECT * FROM multi_match WHERE id = $1 FOR UPDATE;
 
+-- name: CreateMatchPlayer :one
+INSERT INTO multi_match_player (match_id, member_id, seat, wins, status)
+VALUES ($1, $2, $3, 0, 'active')
+RETURNING *;
+
+-- name: ListMatchPlayers :many
+SELECT * FROM multi_match_player WHERE match_id = $1 ORDER BY seat;
+
 -- name: GetActiveMatchForUpdate :one
 -- 房间当前进行中的场（forfeit/重启终止路径）。
 SELECT * FROM multi_match
@@ -150,7 +158,16 @@ FOR UPDATE;
 SELECT * FROM multi_match WHERE status = 'playing' ORDER BY started_at;
 
 -- name: EndMatch :one
-UPDATE multi_match SET status = 'finished', ended_at = $2 WHERE id = $1 RETURNING *;
+UPDATE multi_match AS match
+SET status = 'finished',
+    ended_at = $2,
+    winner_member_id = (
+        SELECT roster.member_id
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = match.id AND roster.seat = sqlc.narg(winner_seat)
+    )
+WHERE match.id = $1
+RETURNING match.*;
 
 -- name: CreateRound :one
 -- 开局事务内 round_count+1 与 3×N 上限检查（§9.2：round_count 的 +1 与上限检查在开局事务内做；
@@ -172,6 +189,16 @@ SELECT * FROM multi_round WHERE id = $1;
 
 -- name: GetRoundForUpdate :one
 SELECT * FROM multi_round WHERE id = $1 FOR UPDATE;
+
+-- name: CreateRoundPlayersForMatch :exec
+INSERT INTO multi_round_player (round_id, member_id, status)
+SELECT $1, member_id, 'active'
+FROM multi_match_player
+WHERE match_id = $2
+ON CONFLICT (round_id, member_id) DO NOTHING;
+
+-- name: ListRoundPlayers :many
+SELECT * FROM multi_round_player WHERE round_id = $1 ORDER BY member_id;
 
 -- name: GetCurrentRoundForUpdateByRoom :one
 -- 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
@@ -263,10 +290,37 @@ SELECT * FROM multi_turn WHERE round_id = $1 ORDER BY turn_index;
 UPDATE multi_round SET turn_slot = $2, turn_deadline = $3 WHERE id = $1 RETURNING *;
 
 -- name: EndRound :one
-UPDATE multi_round SET status = 'ended', winner_slot = $2, ended_at = $3, turn_slot = NULL, turn_deadline = NULL WHERE id = $1 RETURNING *;
+UPDATE multi_round AS round
+SET status = 'ended',
+    winner_slot = $2,
+    winner_member_id = (
+        SELECT roster.member_id
+        FROM multi_match_player AS roster
+        WHERE roster.match_id = round.match_id AND roster.seat = $2
+    ),
+    ended_at = $3,
+    turn_slot = NULL,
+    turn_deadline = NULL
+WHERE round.id = $1
+RETURNING round.*;
 
 -- name: UpdateMatchScore :one
-UPDATE multi_match SET score_slot1 = $2, score_slot2 = $3 WHERE id = $1 RETURNING *;
+WITH updated AS (
+    UPDATE multi_match
+    SET score_slot1 = $2, score_slot2 = $3
+    WHERE id = $1
+    RETURNING *
+), roster_scores AS (
+    UPDATE multi_match_player AS roster
+    SET wins = CASE roster.seat
+        WHEN 1 THEN updated.score_slot1
+        WHEN 2 THEN updated.score_slot2
+        ELSE roster.wins
+    END
+    FROM updated
+    WHERE roster.match_id = updated.id AND roster.seat IN (1, 2)
+)
+SELECT * FROM updated;
 
 -- name: InsertRoomEvent :one
 INSERT INTO room_event (room_id, sequence, type, payload)

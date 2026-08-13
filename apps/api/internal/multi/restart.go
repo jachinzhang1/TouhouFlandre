@@ -80,7 +80,7 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		}
 	}
 	// 4. 场次与房间 finished
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: pgtype.Int4{}}); err != nil {
 		return err
 	}
 	retentionEndsAt := now.Add(timing.FinishedRetention)

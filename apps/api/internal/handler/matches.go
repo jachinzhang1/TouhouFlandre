@@ -108,6 +108,21 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return internalError(err)
 	}
+	for _, member := range members {
+		if _, err := q.CreateMatchPlayer(ctx, repo.CreateMatchPlayerParams{
+			MatchID:  match.ID,
+			MemberID: member.ID,
+			Seat:     int32(multi.MemberSeat(member)),
+		}); err != nil {
+			return mapRoomWriteError(err)
+		}
+	}
+	if err := q.CreateRoundPlayersForMatch(ctx, repo.CreateRoundPlayersForMatchParams{
+		RoundID: round.ID,
+		MatchID: match.ID,
+	}); err != nil {
+		return mapRoomWriteError(err)
+	}
 	roundStarted := multi.RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),

@@ -78,7 +78,11 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 	}
 
 	// 4. 场次与房间 finished
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{
+		ID:         match.ID,
+		EndedAt:    pgtypeTimestamptz(now),
+		WinnerSeat: pgtype.Int4{Int32: int32(opponentSlot), Valid: true},
+	}); err != nil {
 		return err
 	}
 	expires := now.Add(timing.FinishedRetention)

@@ -64,7 +64,11 @@ func CompleteRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, 
 
 	if advance.MatchEnded {
 		retentionEndsAt := now.Add(timing.FinishedRetention)
-		if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+		var winnerSeat pgtype.Int4
+		if advance.WinnerSlot != 0 {
+			winnerSeat = pgtype.Int4{Int32: int32(advance.WinnerSlot), Valid: true}
+		}
+		if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: winnerSeat}); err != nil {
 			return MatchAdvance{}, err
 		}
 		if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{

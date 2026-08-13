@@ -97,6 +97,15 @@ type MultiMatch struct {
 	StartedAt      pgtype.Timestamptz `json:"started_at"`
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
 	QuestionScope  []byte             `json:"question_scope"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+}
+
+type MultiMatchPlayer struct {
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+	Seat     int32  `json:"seat"`
+	Wins     int32  `json:"wins"`
+	Status   string `json:"status"`
 }
 
 type MultiMember struct {
@@ -128,17 +137,24 @@ type MultiRoom struct {
 }
 
 type MultiRound struct {
-	ID           string             `json:"id"`
-	MatchID      string             `json:"match_id"`
-	RoundIndex   int32              `json:"round_index"`
-	AnswerID     string             `json:"answer_id"`
-	Status       string             `json:"status"`
-	WinnerSlot   pgtype.Int4        `json:"winner_slot"`
-	StartsAt     pgtype.Timestamptz `json:"starts_at"`
-	Deadline     pgtype.Timestamptz `json:"deadline"`
-	EndedAt      pgtype.Timestamptz `json:"ended_at"`
-	TurnSlot     pgtype.Int4        `json:"turn_slot"`
-	TurnDeadline pgtype.Timestamptz `json:"turn_deadline"`
+	ID             string             `json:"id"`
+	MatchID        string             `json:"match_id"`
+	RoundIndex     int32              `json:"round_index"`
+	AnswerID       string             `json:"answer_id"`
+	Status         string             `json:"status"`
+	WinnerSlot     pgtype.Int4        `json:"winner_slot"`
+	StartsAt       pgtype.Timestamptz `json:"starts_at"`
+	Deadline       pgtype.Timestamptz `json:"deadline"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	TurnSlot       pgtype.Int4        `json:"turn_slot"`
+	TurnDeadline   pgtype.Timestamptz `json:"turn_deadline"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+}
+
+type MultiRoundPlayer struct {
+	RoundID  string `json:"round_id"`
+	MemberID string `json:"member_id"`
+	Status   string `json:"status"`
 }
 
 type MultiTurn struct {

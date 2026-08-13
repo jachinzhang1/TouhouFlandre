@@ -27,6 +27,7 @@ type Querier interface {
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
+	CreateMatchPlayer(ctx context.Context, arg CreateMatchPlayerParams) (MultiMatchPlayer, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
@@ -35,6 +36,7 @@ type Querier interface {
 	// max_rounds = factor × N，按赛制计算，bo3 为 9 而非 target_wins×factor=6）。
 	// 达到上限（round_count >= max_rounds）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
 	CreateRound(ctx context.Context, arg CreateRoundParams) (MultiRound, error)
+	CreateRoundPlayersForMatch(ctx context.Context, arg CreateRoundPlayersForMatchParams) error
 	// 会话：创建、查询、乐观锁更新
 	CreateSession(ctx context.Context, arg CreateSessionParams) (GameSession, error)
 	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
@@ -101,9 +103,11 @@ type Querier interface {
 	// 兼容期内保留的完整可猜角色表。
 	ListGuessCharacters(ctx context.Context) ([]Character, error)
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
+	ListMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
@@ -115,7 +119,7 @@ type Querier interface {
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
 	StartRound(ctx context.Context, id string) (MultiRound, error)
-	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error)
+	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
