@@ -1769,6 +1769,65 @@ html[data-theme-mode="dark"] .appearance-swatch {
   content: "";
   pointer-events: none;
 }
+
+.home-hero::after {
+  display: none;
+  content: "";
+  pointer-events: none;
+}
+
+@media (min-width: 901px) {
+  .home-hero {
+    min-height: max(786px, 100svh);
+  }
+
+  .home-hero::after {
+    position: absolute;
+    inset: 44% 0 0;
+    z-index: 0;
+    display: block;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--hero-bg) 14%, transparent) 46%,
+      color-mix(in srgb, var(--hero-bg) 34%, transparent)
+    );
+    -webkit-backdrop-filter: blur(14px) saturate(82%);
+    backdrop-filter: blur(14px) saturate(82%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(0, 0, 0, 0.72) 28%,
+      #000 48%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(0, 0, 0, 0.72) 28%,
+      #000 48%
+    );
+  }
+
+  .home-hero-layout {
+    display: block;
+    min-height: inherit;
+    padding: 0;
+  }
+
+  .home-hero-copy {
+    position: absolute;
+    top: 50svh;
+    translate: 0 -50%;
+  }
+
+  .home-hero-shortcuts {
+    position: absolute;
+    top: calc(50svh + 150px);
+    right: 0;
+    left: 0;
+    margin: 0;
+  }
+}
 .paper-shortcut {
   isolation: isolate;
   display: grid;
