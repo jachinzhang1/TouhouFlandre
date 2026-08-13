@@ -80,8 +80,8 @@
 @media (hover: hover) and (pointer: fine) {
   .paper-sticker:hover > .announcement-entry,
   .paper-sticker:hover > .announcement-pin-corner {
-    filter: drop-shadow(0 7px 8px var(--paper-lift-shadow-near))
-      drop-shadow(0 18px 24px var(--paper-lift-shadow-far));
+    filter: drop-shadow(0 8px 10px var(--paper-lift-shadow-near))
+      drop-shadow(0 22px 30px var(--paper-lift-shadow-far));
   }
 }
 
