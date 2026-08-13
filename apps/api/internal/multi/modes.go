@@ -23,7 +23,7 @@ func InitialRelayTurn(roundIndex, turnSeconds int, startsAt time.Time) (int, tim
 }
 
 // AddRelayRoundStartedFields attaches relay-specific fields to round.started payloads.
-func AddRelayRoundStartedFields(payload *RoundStartedPayload, room repo.MultiRoom, roundIndex int, startsAt time.Time) {
+func AddRelayRoundStartedFields(payload *RoundStartedPayload, room repo.MultiRoom, members []repo.MultiMember, roundIndex int, startsAt time.Time) {
 	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
 		return
 	}
@@ -32,7 +32,14 @@ func AddRelayRoundStartedFields(payload *RoundStartedPayload, room repo.MultiRoo
 	if max <= 0 {
 		max = GameMaxGuesses
 	}
-	payload.TurnSlot = &slot
+	for _, member := range members {
+		if MemberSeat(member) == slot {
+			memberID := member.ID
+			payload.TurnMemberID = &memberID
+			break
+		}
+	}
+	payload.TurnSeat = &slot
 	payload.TurnDeadline = &deadline
 	payload.MaxTurnsPerPlayer = &max
 }

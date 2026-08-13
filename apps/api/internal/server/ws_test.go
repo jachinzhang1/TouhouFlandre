@@ -260,8 +260,8 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 		case "round.ended":
 			gotEnded = true
 			p, _ := msg["payload"].(map[string]any)
-			if p["result"] != "loss" {
-				t.Fatalf("joiner round.ended result = %v, want loss", p["result"])
+			if p["viewerResult"] != "loss" {
+				t.Fatalf("joiner round.ended viewerResult = %v, want loss", p["viewerResult"])
 			}
 		}
 	}

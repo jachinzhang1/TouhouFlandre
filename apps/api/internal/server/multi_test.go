@@ -76,8 +76,8 @@ func TestMultiCreateRoom(t *testing.T) {
 	if len(created.RoomCode) != 6 {
 		t.Fatalf("roomCode %q, want 6 chars", created.RoomCode)
 	}
-	if created.Viewer.Slot == nil || *created.Viewer.Slot != 1 {
-		t.Fatalf("host slot = %v, want 1", created.Viewer.Slot)
+	if created.Viewer.Seat == nil || *created.Viewer.Seat != 1 {
+		t.Fatalf("host seat = %v, want 1", created.Viewer.Seat)
 	}
 	if created.Viewer.DisplayName != "房主" {
 		t.Fatalf("displayName = %q, want 房主（trim）", created.Viewer.DisplayName)
@@ -157,7 +157,7 @@ func TestMultiJoinRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &joined); err != nil {
 		t.Fatal(err)
 	}
-	if joined.Viewer.Slot == nil || *joined.Viewer.Slot != 2 || joined.Viewer.DisplayName != "玩家B" {
+	if joined.Viewer.Seat == nil || *joined.Viewer.Seat != 2 || joined.Viewer.DisplayName != "玩家B" {
 		t.Fatalf("unexpected viewer: %+v", joined.Viewer)
 	}
 
@@ -170,7 +170,7 @@ func TestMultiJoinRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &spectator); err != nil {
 		t.Fatal(err)
 	}
-	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Slot != nil {
+	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Seat != nil {
 		t.Fatalf("unexpected spectator viewer: %+v", spectator.Viewer)
 	}
 
@@ -187,7 +187,7 @@ func TestMultiJoinRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &replacement); err != nil {
 		t.Fatal(err)
 	}
-	if replacement.Viewer.Role != openapi.ParticipantRolePlayer || replacement.Viewer.Slot == nil || *replacement.Viewer.Slot != 2 {
+	if replacement.Viewer.Role != openapi.ParticipantRolePlayer || replacement.Viewer.Seat == nil || *replacement.Viewer.Seat != 2 {
 		t.Fatalf("spectator consumed player capacity: %+v", replacement.Viewer)
 	}
 }

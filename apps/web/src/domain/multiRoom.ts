@@ -1,5 +1,9 @@
 // 多人房间持久化与展示工具（08 §10.1）。
-import type { MultiParticipantRole, MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type {
+  MultiParticipantRole,
+  MultiRoomFormat,
+  MultiplayerMode,
+} from "@touhouflandre/shared";
 
 export const MULTI_ROOM_STORAGE_KEY = "touhouflandre:multi-room";
 
@@ -29,7 +33,10 @@ export function loadMultiRoom(): StoredMultiRoom | null {
       typeof (parsed as StoredMultiRoom).guestToken === "string"
     ) {
       const slot = (parsed as StoredMultiRoom).memberSlot;
-      const role = (parsed as StoredMultiRoom).role === "spectator" ? "spectator" : "player";
+      const role =
+        (parsed as StoredMultiRoom).role === "spectator"
+          ? "spectator"
+          : "player";
       return {
         ...(parsed as StoredMultiRoom),
         role,
@@ -84,7 +91,7 @@ export const TURN_SECONDS_OPTIONS = [30, 60, 90, 120] as const;
 export type RelayTurnSeconds = (typeof TURN_SECONDS_OPTIONS)[number];
 
 type RelaySkipRow = {
-  memberSlot: number;
+  seat: number;
   kind: string;
 };
 
@@ -94,7 +101,7 @@ export function countRelaySkips(
 ): number {
   return rows.filter(
     (row) =>
-      row.memberSlot === slot && (row.kind === "timeout" || row.kind === "pass"),
+      row.seat === slot && (row.kind === "timeout" || row.kind === "pass"),
   ).length;
 }
 

@@ -59,6 +59,7 @@ func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectat
 		Format:         multi.RoomFormat(room.Format),
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
 		Members:        multi.MemberViews(members),
 		SpectatorCount: spectatorCount,
 	}
@@ -66,7 +67,8 @@ func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectat
 
 func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 	return openapi.MemberView{
-		Slot:        m.Slot,
+		MemberId:    m.MemberID,
+		Seat:        m.Seat,
 		DisplayName: m.DisplayName,
 		Status:      openapi.MemberStatus(m.Status),
 		Ready:       m.Ready,
@@ -75,12 +77,13 @@ func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 
 func toOpenAPIParticipantView(v multi.ParticipantView) openapi.ParticipantView {
 	view := openapi.ParticipantView{
+		MemberId:    v.MemberID,
 		Role:        openapi.ParticipantRole(v.Role),
 		DisplayName: v.DisplayName,
 		Status:      openapi.MemberStatus(v.Status),
 	}
-	if v.Slot != nil {
-		view.Slot = v.Slot
+	if v.Seat != nil {
+		view.Seat = v.Seat
 	}
 	return view
 }
@@ -266,6 +269,7 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 		MemberCount:    len(members),
 		SpectatorCount: int(spectatorCount),
 		JoinRole:       openapi.ParticipantRole(joinRole),
+		PlayerLimit:    int(room.PlayerLimit),
 		QuestionScope:  &openapiScope,
 	}, nil
 }

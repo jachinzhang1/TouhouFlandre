@@ -104,6 +104,10 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		return internalError(err)
 	}
 	maxGuesses := game.EffectiveQuestionScopeMaxGuesses(scope.Rules)
+	members, err := q.ListMembers(ctx, room.ID)
+	if err != nil {
+		return internalError(err)
+	}
 	roundStarted := multi.RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
@@ -111,7 +115,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		Deadline:   startsAt.Add(s.timing.RoundSeconds),
 		MaxGuesses: maxGuesses,
 	}
-	multi.AddRelayRoundStartedFields(&roundStarted, room, int(round.RoundIndex), startsAt)
+	multi.AddRelayRoundStartedFields(&roundStarted, room, members, int(round.RoundIndex), startsAt)
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {
 		return internalError(err)
 	}
@@ -315,7 +319,8 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 			return nil, internalError(err)
 		}
 		if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventMatchRematch, multi.MatchRematchPayload{
-			MemberSlot: multi.MemberSeat(*member),
+			MemberID: member.ID,
+			Seat:     multi.MemberSeat(*member),
 		}); err != nil {
 			return nil, internalError(err)
 		}

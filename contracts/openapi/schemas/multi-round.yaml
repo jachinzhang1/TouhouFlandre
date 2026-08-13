@@ -22,18 +22,22 @@ RelayTurnRow:
   description: 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
   required:
     - index
-    - memberSlot
+    - memberId
+    - seat
     - kind
   properties:
     index:
       type: integer
       minimum: 1
       description: 本局共享轮次序号（1 起）。
-    memberSlot:
+    memberId:
+      type: string
+      description: 本轮归属玩家的稳定成员标识。
+    seat:
       type: integer
       minimum: 1
-      maximum: 2
-      description: 本轮归属玩家 slot。
+      maximum: 8
+      description: 本轮发生时的展示席位。
     kind:
       type: string
       enum:
@@ -43,19 +47,55 @@ RelayTurnRow:
     guess:
       $ref: "./session.yaml#/GuessResult"
 
+MemberBoardView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - guesses
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    guesses:
+      type: array
+      items:
+        $ref: "./session.yaml#/GuessResult"
+
+OpponentBoardView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - rows
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    rows:
+      type: array
+      items:
+        $ref: "#/OpponentRow"
+
 RoundView:
   type: object
   description: |
     逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-    opponent 为匿名矩阵（只含状态颜色序列）。观战者会额外收到 boards 双方完整棋盘。
-    接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
+    opponents 为按 seat 排序的匿名矩阵集合（只含状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
+    接力模式额外提供 shared.rows、turnMemberId、turnSeat、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
   required:
     - status
     - startsAt
     - deadline
     - maxGuesses
     - self
-    - opponent
+    - opponents
   properties:
     status:
       $ref: "./multi-common.yaml#/RoundStatus"
@@ -77,35 +117,28 @@ RoundView:
       required:
         - guesses
       properties:
+        memberId:
+          type: string
+          description: 玩家视角为本人 memberId；观战者缺省。
+        seat:
+          type: integer
+          minimum: 1
+          maximum: 8
+          description: 玩家视角为本人 seat；观战者缺省。
         guesses:
           type: array
           items:
             $ref: "./session.yaml#/GuessResult"
-    opponent:
-      type: object
-      description: 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。
-      required:
-        - rows
-      properties:
-        rows:
-          type: array
-          items:
-            $ref: "#/OpponentRow"
+    opponents:
+      type: array
+      description: 对手匿名矩阵集合；按 seat 稳定排序并以 memberId 关联。
+      items:
+        $ref: "#/OpponentBoardView"
     boards:
-      type: object
-      description: 观战者当前局完整双棋盘；玩家视角缺省，避免泄露对手猜测明细。
-      required:
-        - slot1
-        - slot2
-      properties:
-        slot1:
-          type: array
-          items:
-            $ref: "./session.yaml#/GuessResult"
-        slot2:
-          type: array
-          items:
-            $ref: "./session.yaml#/GuessResult"
+      type: array
+      description: 观战者当前局完整棋盘集合；玩家视角缺省，避免泄露对手猜测明细。
+      items:
+        $ref: "#/MemberBoardView"
     shared:
       type: object
       description: 接力模式共享棋盘；竞速模式为空或缺省。
@@ -116,11 +149,14 @@ RoundView:
           type: array
           items:
             $ref: "#/RelayTurnRow"
-    turnSlot:
+    turnMemberId:
+      type: string
+      description: 接力模式当前可提交玩家的稳定成员标识。
+    turnSeat:
       type: integer
       minimum: 1
-      maximum: 2
-      description: 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。
+      maximum: 8
+      description: 接力模式当前可提交玩家的展示席位。
     turnDeadline:
       type: string
       format: date-time

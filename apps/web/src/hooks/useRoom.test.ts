@@ -13,6 +13,40 @@ const event = (type: string, sequence: number, payload: unknown): Envelope =>
     payload,
   }) as unknown as Envelope;
 
+const membersFixture = [
+  {
+    memberId: "member-host",
+    seat: 1,
+    displayName: "host",
+    status: "connected" as const,
+    ready: false,
+  },
+  {
+    memberId: "member-guest",
+    seat: 2,
+    displayName: "guest",
+    status: "connected" as const,
+    ready: false,
+  },
+];
+
+const scoresFixture = [
+  { memberId: "member-host", seat: 1, score: 0 },
+  { memberId: "member-guest", seat: 2, score: 0 },
+];
+
+const playerState = (): RoomUiState => ({
+  ...initialRoomState,
+  viewer: {
+    memberId: "member-host",
+    role: "player",
+    seat: 1,
+    displayName: "host",
+    status: "connected",
+  },
+  members: membersFixture,
+});
+
 const roomFixture = (
   status: NonNullable<RoomUiState["room"]>["status"] = "playing",
 ): NonNullable<RoomUiState["room"]> => ({
@@ -21,6 +55,7 @@ const roomFixture = (
   format: "bo3",
   mode: "race",
   turnSeconds: 60,
+  playerLimit: 2,
   status,
   expiresAt: "2026-08-06T12:30:00Z",
   spectatorCount: 0,
@@ -29,11 +64,14 @@ const roomFixture = (
 const matchFixture: NonNullable<RoomUiState["match"]> = {
   matchIndex: 0,
   targetWins: 2,
-  scoreSlot1: 0,
-  scoreSlot2: 0,
+  scores: scoresFixture,
   roundIndex: 1,
   maxRounds: 9,
-  rematchReady: [false, false],
+  rematchReady: membersFixture.map((member) => ({
+    memberId: member.memberId,
+    seat: member.seat,
+    ready: false,
+  })),
   catalogVersion: "v1",
 };
 
@@ -53,9 +91,8 @@ describe("roomReducer", () => {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
-        members: [
-          { slot: 1, displayName: "host", status: "connected", ready: false },
-        ],
+        playerLimit: 2,
+        members: [membersFixture[0]],
         spectatorCount: 1,
       }),
     );
@@ -66,8 +103,11 @@ describe("roomReducer", () => {
 
   it("resets score and history on match.started", () => {
     let state: RoomUiState = {
-      ...initialRoomState,
-      match: { ...matchFixture, scoreSlot1: 1 },
+      ...playerState(),
+      match: {
+        ...matchFixture,
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
+      },
       history: [{ roundIndex: 1, result: "win" }],
     };
 
@@ -84,13 +124,15 @@ describe("roomReducer", () => {
     );
 
     expect(state.match?.matchIndex).toBe(1);
-    expect(state.match?.scoreSlot1).toBe(0);
+    expect(state.match?.scores.find((score) => score.seat === 1)?.score).toBe(
+      0,
+    );
     expect(state.history).toHaveLength(0);
     expect(state.round).toBeNull();
   });
 
   it("builds rounds and clears the result once playing starts", () => {
-    let state: RoomUiState = { ...initialRoomState, match: matchFixture };
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
 
     state = roomReducer(
       state,
@@ -109,14 +151,22 @@ describe("roomReducer", () => {
       event("round.ended", 5, {
         matchIndex: 0,
         roundIndex: 1,
-        result: "win",
-        winnerSlot: 1,
-        scores: { slot1: 1, slot2: 0 },
+        viewerResult: "win",
+        winnerMemberId: "member-host",
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
+        results: [
+          { memberId: "member-host", seat: 1, result: "win" },
+          { memberId: "member-guest", seat: 2, result: "loss" },
+        ],
         answer: { id: "a", name: "A", avatarUrl: "" },
-        boards: { slot1: [], slot2: [] },
+        boards: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          guesses: [],
+        })),
       }),
     );
-    expect(state.roundResult?.result).toBe("win");
+    expect(state.roundResult?.viewerResult).toBe("win");
     expect(state.roundArchives).toHaveLength(1);
 
     state = roomReducer(
@@ -141,7 +191,7 @@ describe("roomReducer", () => {
   });
 
   it("updates opponent rows, score, and history", () => {
-    let state: RoomUiState = { ...initialRoomState, match: matchFixture };
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
 
     state = roomReducer(
       state,
@@ -158,30 +208,52 @@ describe("roomReducer", () => {
       event("round.opponent.guess", 5, {
         matchIndex: 0,
         roundIndex: 1,
+        memberId: "member-guest",
+        seat: 2,
         rowIndex: 1,
         statuses: ["miss", "exact", "partial", "lower", "miss", "unknown"],
       }),
     );
-    expect(state.round?.opponent.rows).toHaveLength(1);
+    expect(state.round?.opponents[0]?.rows).toHaveLength(1);
 
     state = roomReducer(
       state,
       event("round.ended", 6, {
         matchIndex: 0,
         roundIndex: 1,
-        result: "loss",
-        winnerSlot: 2,
-        scores: { slot1: 0, slot2: 1 },
+        viewerResult: "loss",
+        winnerMemberId: "member-guest",
+        scores: [scoresFixture[0], { ...scoresFixture[1], score: 1 }],
+        results: [
+          { memberId: "member-host", seat: 1, result: "loss" },
+          { memberId: "member-guest", seat: 2, result: "win" },
+        ],
         answer: { id: "a", name: "A", avatarUrl: "" },
-        boards: { slot1: [], slot2: [] },
+        boards: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          guesses: [],
+        })),
       }),
     );
-    expect(state.match?.scoreSlot2).toBe(1);
+    expect(state.match?.scores.find((score) => score.seat === 2)?.score).toBe(
+      1,
+    );
     expect(state.history[0]).toEqual({ roundIndex: 1, result: "loss" });
   });
 
   it("adds full spectator guess rows to both boards", () => {
-    let state: RoomUiState = { ...initialRoomState, match: matchFixture };
+    let state: RoomUiState = {
+      ...initialRoomState,
+      viewer: {
+        memberId: "spectator",
+        role: "spectator",
+        displayName: "watcher",
+        status: "connected",
+      },
+      members: membersFixture,
+      match: matchFixture,
+    };
 
     state = roomReducer(
       state,
@@ -198,18 +270,23 @@ describe("roomReducer", () => {
       event("round.spectator.guess", 5, {
         matchIndex: 0,
         roundIndex: 1,
-        memberSlot: 2,
+        memberId: "member-guest",
+        seat: 2,
         rowIndex: 1,
         guess: guessResult,
       }),
     );
 
-    expect(state.round?.boards?.slot1).toHaveLength(0);
-    expect(state.round?.boards?.slot2).toEqual([guessResult]);
+    expect(
+      state.round?.boards?.find((board) => board.seat === 1)?.guesses,
+    ).toHaveLength(0);
+    expect(
+      state.round?.boards?.find((board) => board.seat === 2)?.guesses,
+    ).toEqual([guessResult]);
   });
 
   it("updates relay shared rows and current turn", () => {
-    let state: RoomUiState = { ...initialRoomState, match: matchFixture };
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
 
     state = roomReducer(
       state,
@@ -219,7 +296,8 @@ describe("roomReducer", () => {
         startsAt: "2026-08-06T12:00:03Z",
         deadline: "2026-08-06T12:15:03Z",
         maxGuesses: 8,
-        turnSlot: 1,
+        turnMemberId: "member-host",
+        turnSeat: 1,
         turnDeadline: "2026-08-06T12:01:03Z",
         maxTurnsPerPlayer: 8,
         maxSkipsPerPlayer: 2,
@@ -232,49 +310,62 @@ describe("roomReducer", () => {
       event("round.shared.guess", 5, {
         matchIndex: 0,
         roundIndex: 1,
-        row: { index: 1, memberSlot: 1, kind: "guess", guess: guessResult },
-        nextTurnSlot: 2,
+        row: {
+          index: 1,
+          memberId: "member-host",
+          seat: 1,
+          kind: "guess",
+          guess: guessResult,
+        },
+        nextTurnMemberId: "member-guest",
+        nextTurnSeat: 2,
         nextTurnDeadline: "2026-08-06T12:02:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(1);
-    expect(state.round?.turnSlot).toBe(2);
+    expect(state.round?.turnSeat).toBe(2);
 
     state = roomReducer(
       state,
       event("round.turn.timeout", 6, {
         matchIndex: 0,
         roundIndex: 1,
-        row: { index: 2, memberSlot: 2, kind: "timeout" },
-        nextTurnSlot: 1,
+        row: { index: 2, memberId: "member-guest", seat: 2, kind: "timeout" },
+        nextTurnMemberId: "member-host",
+        nextTurnSeat: 1,
         nextTurnDeadline: "2026-08-06T12:03:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(2);
-    expect(state.round?.turnSlot).toBe(1);
+    expect(state.round?.turnSeat).toBe(1);
 
     state = roomReducer(
       state,
       event("round.turn.pass", 7, {
         matchIndex: 0,
         roundIndex: 1,
-        row: { index: 3, memberSlot: 1, kind: "pass" },
-        nextTurnSlot: 2,
+        row: { index: 3, memberId: "member-host", seat: 1, kind: "pass" },
+        nextTurnMemberId: "member-guest",
+        nextTurnSeat: 2,
         nextTurnDeadline: "2026-08-06T12:04:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(3);
     expect(state.round?.shared?.rows[2]?.kind).toBe("pass");
-    expect(state.round?.turnSlot).toBe(2);
+    expect(state.round?.turnSeat).toBe(2);
   });
 
   it("marks the room finished on match.ended", () => {
     const existingRoundResult = {
       matchIndex: 0,
       roundIndex: 2,
-      result: "win",
-      winnerSlot: 1,
-      scores: { slot1: 2, slot2: 0 },
+      viewerResult: "win",
+      winnerMemberId: "member-host",
+      scores: [{ ...scoresFixture[0], score: 2 }, scoresFixture[1]],
+      results: [
+        { memberId: "member-host", seat: 1, result: "win" },
+        { memberId: "member-guest", seat: 2, result: "loss" },
+      ],
       answer: {
         id: "a",
         name: "A",
@@ -283,28 +374,42 @@ describe("roomReducer", () => {
         workTitle: "TH01",
         workCode: "TH01",
       },
-      boards: { slot1: [], slot2: [] },
+      boards: membersFixture.map((member) => ({
+        memberId: member.memberId,
+        seat: member.seat,
+        guesses: [],
+      })),
     };
     const state = roomReducer(
       {
         ...initialRoomState,
         room: roomFixture("playing"),
-        match: { ...matchFixture, scoreSlot1: 1, roundIndex: 2 },
+        members: membersFixture,
+        viewer: playerState().viewer,
+        match: {
+          ...matchFixture,
+          scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
+          roundIndex: 2,
+        },
         round: {
           status: "ended",
           startsAt: "2026-08-06T12:00:03Z",
           deadline: "2026-08-06T12:15:03Z",
           maxGuesses: 8,
           self: { guesses: [] },
-          opponent: { rows: [] },
+          opponents: [{ memberId: "member-guest", seat: 2, rows: [] }],
         },
         roundResult: existingRoundResult,
       } as RoomUiState,
       event("match.ended", 9, {
         matchIndex: 0,
-        result: "win",
-        winnerSlot: 1,
-        scores: { slot1: 2, slot2: 0 },
+        viewerResult: "win",
+        winnerMemberId: "member-host",
+        scores: [{ ...scoresFixture[0], score: 2 }, scoresFixture[1]],
+        results: [
+          { memberId: "member-host", seat: 1, result: "win" },
+          { memberId: "member-guest", seat: 2, result: "loss" },
+        ],
         reason: "normal",
         retentionEndsAt: "2026-08-06T12:30:00Z",
       }),
@@ -324,11 +429,14 @@ describe("roomReducer", () => {
         room: roomFixture("finished"),
         rematchReady: [false, false],
       } as RoomUiState,
-      event("match.rematch", 10, { memberSlot: 2 }),
+      event("match.rematch", 10, { memberId: "member-guest", seat: 2 }),
     );
     expect(state.rematchReady).toEqual([false, true]);
 
-    state = roomReducer(state, event("room.closed", 11, { reason: "member_left" }));
+    state = roomReducer(
+      state,
+      event("room.closed", 11, { reason: "member_left" }),
+    );
     expect(state.room?.status).toBe("closed");
   });
 
@@ -340,6 +448,7 @@ describe("roomReducer", () => {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
         members: [],
         spectatorCount: 0,
       }),
@@ -347,6 +456,7 @@ describe("roomReducer", () => {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
         members: [],
         spectatorCount: 0,
       }),
@@ -354,6 +464,7 @@ describe("roomReducer", () => {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
         members: [],
         spectatorCount: 0,
       }),
@@ -375,29 +486,37 @@ describe("applySnapshot", () => {
       format: "bo3",
       mode: "race",
       turnSeconds: 60,
+      playerLimit: 2,
       status: "playing",
       expiresAt: "2026-08-06T12:30:00Z",
       viewer: {
+        memberId: "member-host",
         role: "player",
-        slot: 1,
+        seat: 1,
         displayName: "host",
         status: "connected",
       },
       members: [
-        { slot: 1, displayName: "host", status: "connected", ready: true },
+        {
+          memberId: "member-host",
+          seat: 1,
+          displayName: "host",
+          status: "connected",
+          ready: true,
+        },
       ],
       spectatorCount: 0,
       match: {
         ...matchFixture,
-        scoreSlot1: 1,
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
       },
       round: {
         status: "playing",
         startsAt: "2026-08-06T12:00:03Z",
         deadline: "2026-08-06T12:15:03Z",
         maxGuesses: 8,
-        self: { guesses: [] },
-        opponent: { rows: [] },
+        self: { memberId: "member-host", seat: 1, guesses: [] },
+        opponents: [{ memberId: "member-guest", seat: 2, rows: [] }],
       },
       events: [
         event("match.started", 1, {
@@ -426,16 +545,24 @@ describe("applySnapshot", () => {
       format: "bo3",
       mode: "race",
       turnSeconds: 60,
+      playerLimit: 2,
       status: "lobby",
       expiresAt: "2026-08-06T12:30:00Z",
       viewer: {
+        memberId: "member-host",
         role: "player",
-        slot: 1,
+        seat: 1,
         displayName: "host",
         status: "connected",
       },
       members: [
-        { slot: 1, displayName: "host", status: "connected", ready: false },
+        {
+          memberId: "member-host",
+          seat: 1,
+          displayName: "host",
+          status: "connected",
+          ready: false,
+        },
       ],
       spectatorCount: 0,
       match: null,

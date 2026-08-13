@@ -67,9 +67,10 @@ func HydrateRelayTurnRowsWithFields(turns []repo.MultiTurn, chars map[string]gam
 	rows := make([]RelayTurnRow, 0, len(turns))
 	for _, turn := range turns {
 		row := RelayTurnRow{
-			Index:      int(turn.TurnIndex),
-			MemberSlot: int(memberSlotByID[turn.MemberID]),
-			Kind:       RelayTurnKind(turn.Kind),
+			Index:    int(turn.TurnIndex),
+			MemberID: turn.MemberID,
+			Seat:     int(memberSlotByID[turn.MemberID]),
+			Kind:     RelayTurnKind(turn.Kind),
 		}
 		if turn.Kind == string(RelayTurnKindGuess) {
 			var statuses []string

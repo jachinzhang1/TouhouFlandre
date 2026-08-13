@@ -109,11 +109,11 @@ type ProjectedEvent struct {
 }
 
 // ProjectEvent 按观察者投影单个事件为 wire 形状（快照/重放/实时三路径共用）。
-// - round.opponent.guess：仅对手可见（memberSlot == observer 跳过）、列置换、剥离内部字段；
-// - round.ended：result 按观察者推导 + 答案与双方完整棋盘水合（按快照）；
-// - match.ended：result 按观察者推导；
+// - round.opponent.guess：仅对手可见（memberSlot == observer 跳过），列置换并适配为 memberId + seat；
+// - round.ended：补 viewerResult、答案和按 seat 排序的棋盘/比分/结果集合；
+// - match.ended：补 viewerResult 和按 seat 排序的比分/结果集合；
 // - 其余事件原样返回（payload map）。
-// charsCache 跨事件共享角色索引（避免重复读快照）；memberSlotByID 用于棋盘按 slot 分组。
+// charsCache 跨事件共享角色索引（避免重复读快照）；memberSlotByID 是旧比赛存储到公开 seat 的适配表。
 func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, roomID string,
 	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, bool, error) {
 
@@ -142,6 +142,8 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			Payload: RoundOpponentGuessPayload{
 				MatchIndex: payload.MatchIndex,
 				RoundIndex: payload.RoundIndex,
+				MemberID:   payload.MemberID,
+				Seat:       payload.MemberSlot,
 				RowIndex:   payload.RowIndex,
 				Statuses:   PermuteStatuses(visibleStatuses, perm),
 			},
@@ -178,19 +180,28 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 			return ProjectedEvent{}, false, err
 		}
 		answer := chars[payload.AnswerID]
+		winnerMemberID := optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
+		forfeitedMemberID := optionalMemberIDForSeat(payload.ForfeitedSlot, memberSlotByID)
+		scores := MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		results := MemberResults(winnerMemberID, memberSlotByID)
+		var viewerResult *MatchResult
+		if IsPlayer(observer) {
+			viewerResult = ViewerResultForMember(observer.ID, results)
+		}
 		return ProjectedEvent{
 			Type: EventRoundEnded,
 			Payload: RoundEndedPayload{
-				MatchIndex:    payload.MatchIndex,
-				RoundIndex:    payload.RoundIndex,
-				Result:        resultForObserver(payload.WinnerSlot, MemberSeat(observer)),
-				WinnerSlot:    payload.WinnerSlot,
-				ForfeitedSlot: payload.ForfeitedSlot,
-				Answer:        AnswerViewForCharacter(answer),
-				Boards:        hydrateBoards(guesses, chars, memberSlotByID, fields),
-				Turns:         relayRows,
-				Scores:        payload.Scores,
-				NextStartsAt:  payload.NextStartsAt,
+				MatchIndex:        payload.MatchIndex,
+				RoundIndex:        payload.RoundIndex,
+				ViewerResult:      viewerResult,
+				WinnerMemberID:    winnerMemberID,
+				ForfeitedMemberID: forfeitedMemberID,
+				Answer:            AnswerViewForCharacter(answer),
+				Boards:            hydrateBoards(guesses, chars, memberSlotByID, fields),
+				Turns:             relayRows,
+				Scores:            scores,
+				Results:           results,
+				NextStartsAt:      payload.NextStartsAt,
 			},
 		}, false, nil
 
@@ -199,13 +210,21 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, event repo.RoomEvent, ro
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return ProjectedEvent{}, false, err
 		}
+		winnerMemberID := optionalMemberIDForSeat(payload.WinnerSlot, memberSlotByID)
+		scores := MemberScoresForLegacy(payload.Scores, memberSlotByID)
+		results := MemberResults(winnerMemberID, memberSlotByID)
+		var viewerResult *MatchResult
+		if IsPlayer(observer) {
+			viewerResult = ViewerResultForMember(observer.ID, results)
+		}
 		return ProjectedEvent{
 			Type: EventMatchEnded,
 			Payload: MatchEndedPayload{
 				MatchIndex:      payload.MatchIndex,
-				Result:          resultForObserver(payload.WinnerSlot, MemberSeat(observer)),
-				WinnerSlot:      payload.WinnerSlot,
-				Scores:          payload.Scores,
+				ViewerResult:    viewerResult,
+				WinnerMemberID:  winnerMemberID,
+				Scores:          scores,
+				Results:         results,
 				Reason:          payload.Reason,
 				RetentionEndsAt: payload.RetentionEndsAt,
 			},
@@ -276,7 +295,8 @@ func projectSpectatorGuess(ctx context.Context, q *repo.Queries, roomID string, 
 		Payload: RoundSpectatorGuessPayload{
 			MatchIndex: payload.MatchIndex,
 			RoundIndex: payload.RoundIndex,
-			MemberSlot: payload.MemberSlot,
+			MemberID:   payload.MemberID,
+			Seat:       payload.MemberSlot,
 			RowIndex:   payload.RowIndex,
 			Guess:      HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields),
 		},
@@ -297,16 +317,21 @@ func charactersForVersionCached(ctx context.Context, q *repo.Queries, version st
 	return chars, nil
 }
 
-// hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
-func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32, fieldSets ...[]game.GuessField) BoardsView {
+// hydrateBoards 局末完整棋盘集合（按 memberId 分组、seat 排序、组内按时间序）。
+func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32, fieldSets ...[]game.GuessField) []MemberBoardView {
 	fields := game.CharacterGuessFields
 	if len(fieldSets) > 0 {
 		fields = fieldSets[0]
 	}
-	// 空槽必须序列化为 []（JSON 数组），不能是 nil（null）——前端按数组消费。
-	boards := BoardsView{
-		Slot1: []GuessResultView{},
-		Slot2: []GuessResultView{},
+	boards := make([]MemberBoardView, 0, len(memberSlotByID))
+	boardIndexByMemberID := make(map[string]int, len(memberSlotByID))
+	for _, ref := range orderedMemberRefs(memberSlotByID) {
+		boardIndexByMemberID[ref.MemberID] = len(boards)
+		boards = append(boards, MemberBoardView{
+			MemberID: ref.MemberID,
+			Seat:     ref.Seat,
+			Guesses:  []GuessResultView{},
+		})
 	}
 	for _, guess := range guesses {
 		var statuses []string
@@ -318,22 +343,16 @@ func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, m
 			continue
 		}
 		hydrated := HydrateGuessResultViewWithFields(guessChar, statuses, guess.IsCorrect, fields)
-		if memberSlotByID[guess.MemberID] == 1 {
-			boards.Slot1 = append(boards.Slot1, hydrated)
-		} else {
-			boards.Slot2 = append(boards.Slot2, hydrated)
+		if index, ok := boardIndexByMemberID[guess.MemberID]; ok {
+			boards[index].Guesses = append(boards[index].Guesses, hydrated)
 		}
 	}
 	return boards
 }
 
-// resultForObserver 由 winnerSlot 推导观察者视角结果（win/loss/draw）。
-func resultForObserver(winnerSlot *int, observerSlot int) MatchResult {
-	if winnerSlot == nil {
-		return MatchResultDraw
+func optionalMemberIDForSeat(seat *int, memberSeatByID map[string]int32) *string {
+	if seat == nil {
+		return nil
 	}
-	if *winnerSlot == observerSlot {
-		return MatchResultWin
-	}
-	return MatchResultLoss
+	return memberIDForSeat(memberSeatByID, *seat)
 }

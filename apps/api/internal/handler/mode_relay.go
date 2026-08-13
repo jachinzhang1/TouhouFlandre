@@ -160,12 +160,14 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	}
 	memberSlot := multi.MemberSeat(member)
 	advance := multi.AdvanceRelayTurn(isCorrect, memberSlot, counts, maxTurnsPerPlayer)
+	var nextTurnMemberID *string
 	var nextTurnSlot *int
 	var nextTurnDeadline *time.Time
 	if !advance.RoundEnded {
 		nextSlot := advance.NextTurnSlot
 		deadline := now.Add(time.Duration(room.TurnSeconds) * time.Second)
-		if _, ok := membersBySlot[nextSlot]; !ok {
+		nextMember, ok := membersBySlot[nextSlot]
+		if !ok {
 			return submitGuessResult{}, internalError(errors.New("relay: next member missing"))
 		}
 		updated, err := q.UpdateRoundTurn(ctx, repo.UpdateRoundTurnParams{
@@ -177,21 +179,25 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 			return submitGuessResult{}, internalError(err)
 		}
 		round = updated
+		nextMemberID := nextMember.ID
+		nextTurnMemberID = &nextMemberID
 		nextTurnSlot = &nextSlot
 		nextTurnDeadline = &deadline
 	}
 
 	row := multi.RelayTurnRow{
-		Index:      int(turn.TurnIndex),
-		MemberSlot: memberSlot,
-		Kind:       multi.RelayTurnKindGuess,
-		Guess:      ptr(multi.HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields)),
+		Index:    int(turn.TurnIndex),
+		MemberID: member.ID,
+		Seat:     memberSlot,
+		Kind:     multi.RelayTurnKindGuess,
+		Guess:    ptr(multi.HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields)),
 	}
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundSharedGuess, multi.RoundSharedGuessPayload{
 		MatchIndex:       int(match.MatchIndex),
 		RoundIndex:       int(round.RoundIndex),
 		Row:              row,
-		NextTurnSlot:     nextTurnSlot,
+		NextTurnMemberID: nextTurnMemberID,
+		NextTurnSeat:     nextTurnSlot,
 		NextTurnDeadline: nextTurnDeadline,
 	}); err != nil {
 		return submitGuessResult{}, internalError(err)

@@ -188,6 +188,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		Viewer:         toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
 		Members:        memberViews,
 		SpectatorCount: int(state.SpectatorCount),
+		PlayerLimit:    int(state.Room.PlayerLimit),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {
@@ -202,13 +203,19 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
 		}
-		rematchReady := [2]bool{}
+		scores := make([]openapi.MemberScoreView, 0, len(state.Members))
+		rematchReady := make([]openapi.MemberRematchReadyView, 0, len(state.Members))
 		for _, m := range state.Members {
-			if multi.MemberSeat(m) == 1 {
-				rematchReady[0] = m.RematchReady
-			} else {
-				rematchReady[1] = m.RematchReady
+			seat := multi.MemberSeat(m)
+			score := 0
+			switch seat {
+			case 1:
+				score = int(state.Match.ScoreSlot1)
+			case 2:
+				score = int(state.Match.ScoreSlot2)
 			}
+			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: score})
+			rematchReady = append(rematchReady, openapi.MemberRematchReadyView{MemberId: m.ID, Seat: seat, Ready: m.RematchReady})
 		}
 		matchScope, err := storedQuestionScopeFromJSON(state.Match.QuestionScope)
 		if err != nil {
@@ -221,11 +228,10 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		matchView := openapi.MatchView{
 			MatchIndex:     int(state.Match.MatchIndex),
 			TargetWins:     int(state.Match.TargetWins),
-			ScoreSlot1:     int(state.Match.ScoreSlot1),
-			ScoreSlot2:     int(state.Match.ScoreSlot2),
+			Scores:         scores,
 			RoundIndex:     roundIndex,
 			MaxRounds:      multi.MaxRounds(format, s.timing.MaxRoundsFactor),
-			RematchReady:   rematchReady[:],
+			RematchReady:   rematchReady,
 			CatalogVersion: state.Match.CatalogVersion,
 			QuestionScope:  &openapiMatchScope,
 		}
@@ -259,11 +265,27 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(fields))
 
 	self := []openapi.GuessResult{}
-	opponentRows := []openapi.OpponentRow{} // 空对手矩阵序列化为 []（前端按数组消费）
-	spectatorBoards := struct {
-		Slot1 []openapi.GuessResult `json:"slot1"`
-		Slot2 []openapi.GuessResult `json:"slot2"`
-	}{Slot1: []openapi.GuessResult{}, Slot2: []openapi.GuessResult{}}
+	opponents := make([]openapi.OpponentBoardView, 0, len(state.Members))
+	opponentIndexByMemberID := make(map[string]int, len(state.Members))
+	spectatorBoards := make([]openapi.MemberBoardView, 0, len(state.Members))
+	boardIndexByMemberID := make(map[string]int, len(state.Members))
+	for _, member := range state.Members {
+		seat := multi.MemberSeat(member)
+		boardIndexByMemberID[member.ID] = len(spectatorBoards)
+		spectatorBoards = append(spectatorBoards, openapi.MemberBoardView{
+			MemberId: member.ID,
+			Seat:     seat,
+			Guesses:  []openapi.GuessResult{},
+		})
+		if multi.IsPlayer(observer) && member.ID != observer.ID {
+			opponentIndexByMemberID[member.ID] = len(opponents)
+			opponents = append(opponents, openapi.OpponentBoardView{
+				MemberId: member.ID,
+				Seat:     seat,
+				Rows:     []openapi.OpponentRow{},
+			})
+		}
+	}
 	for _, guess := range state.Guesses {
 		statuses := guess.Statuses
 		guessChar, ok := byID[guess.GuessID]
@@ -272,10 +294,8 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		}
 		if multi.IsSpectator(observer) {
 			hydrated := toOpenAPIGuessResult(multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields))
-			if memberSlotForID(state.Members, guess.MemberID) == 1 {
-				spectatorBoards.Slot1 = append(spectatorBoards.Slot1, hydrated)
-			} else {
-				spectatorBoards.Slot2 = append(spectatorBoards.Slot2, hydrated)
+			if index, ok := boardIndexByMemberID[guess.MemberID]; ok {
+				spectatorBoards[index].Guesses = append(spectatorBoards[index].Guesses, hydrated)
 			}
 			continue
 		}
@@ -284,7 +304,11 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			self = append(self, toOpenAPIGuessResult(hydrated))
 		} else {
 			visibleStatuses := multi.StatusesForFields(statuses, fields)
-			opponentRows = append(opponentRows, openapi.OpponentRow{
+			index, ok := opponentIndexByMemberID[guess.MemberID]
+			if !ok {
+				continue
+			}
+			opponents[index].Rows = append(opponents[index].Rows, openapi.OpponentRow{
 				Index:    int(guess.Sequence),
 				Statuses: toOpenAPIFeedbackStatuses(multi.PermuteStatuses(visibleStatuses, perm)),
 			})
@@ -295,9 +319,15 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		StartsAt:   state.Round.StartsAt.Time,
 		Deadline:   state.Round.Deadline.Time,
 		MaxGuesses: multi.MaxGuessesForMatch(*state.Match),
+		Opponents:  opponents,
 	}
 	roundView.Self.Guesses = self
-	roundView.Opponent.Rows = opponentRows
+	if multi.IsPlayer(observer) {
+		memberID := observer.ID
+		seat := multi.MemberSeat(observer)
+		roundView.Self.MemberId = &memberID
+		roundView.Self.Seat = &seat
+	}
 	if multi.IsSpectator(observer) {
 		roundView.Boards = &spectatorBoards
 	}
@@ -305,9 +335,10 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		rows := make([]openapi.RelayTurnRow, 0, len(state.Turns))
 		for _, turn := range state.Turns {
 			row := openapi.RelayTurnRow{
-				Index:      int(turn.TurnIndex),
-				Kind:       openapi.RelayTurnRowKind(turn.Kind),
-				MemberSlot: memberSlotForID(state.Members, turn.MemberID),
+				Index:    int(turn.TurnIndex),
+				Kind:     openapi.RelayTurnRowKind(turn.Kind),
+				MemberId: turn.MemberID,
+				Seat:     memberSlotForID(state.Members, turn.MemberID),
 			}
 			if turn.Kind == string(multi.RelayTurnKindGuess) && turn.GuessID != nil && turn.Statuses != nil {
 				guessChar, ok := byID[*turn.GuessID]
@@ -324,8 +355,15 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			Rows []openapi.RelayTurnRow `json:"rows"`
 		}{Rows: rows}
 		if state.Round.TurnSlot.Valid {
-			slot := int(state.Round.TurnSlot.Int32)
-			roundView.TurnSlot = &slot
+			seat := int(state.Round.TurnSlot.Int32)
+			roundView.TurnSeat = &seat
+			for _, member := range state.Members {
+				if multi.MemberSeat(member) == seat {
+					memberID := member.ID
+					roundView.TurnMemberId = &memberID
+					break
+				}
+			}
 		}
 		if state.Round.TurnDeadline.Valid {
 			deadline := state.Round.TurnDeadline.Time
@@ -347,8 +385,8 @@ func memberSlotForID(members []repo.MultiMember, memberID string) int {
 }
 
 // projectEvents 事件重放投影（08 §4.5 三路径共用投影语义）：
-// round.opponent.guess 仅推对手（剥离 memberSlot/roundID、按观察者列置换）；
-// round.ended/match.ended 的 result 按观察者推导（round.ended 另水合答案与双方完整棋盘）。
+// round.opponent.guess 仅推对手（内部 slot 适配为 memberId + seat、按观察者列置换）；
+// round.ended/match.ended 按观察者补 viewerResult，并生成按 seat 排序的公开集合。
 func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, state snapshotState, observer repo.MultiMember) ([]openapi.RoomEventEnvelope, error) {
 	out := make([]openapi.RoomEventEnvelope, 0, len(events))
 	charCache := map[string]map[string]game.Character{}
@@ -380,40 +418,6 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 	}
 	return out, nil
 }
-
-// hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
-func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32) map[string][]openapi.GuessResult {
-	boards := map[string][]openapi.GuessResult{"slot1": {}, "slot2": {}}
-	for _, guess := range guesses {
-		var statuses []string
-		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
-			continue
-		}
-		guessChar, ok := chars[guess.GuessID]
-		if !ok {
-			continue
-		}
-		slot := memberSlotByID[guess.MemberID]
-		key := "slot2"
-		if slot == 1 {
-			key = "slot1"
-		}
-		boards[key] = append(boards[key], toOpenAPIGuessResult(multi.HydrateGuessResult(guessChar, statuses, guess.IsCorrect)))
-	}
-	return boards
-}
-
-// resultForObserver 由 winnerSlot 推导观察者视角结果（win/loss/draw）。
-func resultForObserver(winnerSlot *int, observerSlot int) string {
-	if winnerSlot == nil {
-		return "draw"
-	}
-	if *winnerSlot == observerSlot {
-		return "win"
-	}
-	return "loss"
-}
-
 func toOpenAPIFeedbackStatuses(statuses []string) []openapi.FeedbackStatus {
 	out := make([]openapi.FeedbackStatus, len(statuses))
 	for i, s := range statuses {

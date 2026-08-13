@@ -6,7 +6,11 @@ import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { MultiRoomFormat, MultiplayerMode, QuestionScopeConfig } from "@touhouflandre/shared";
+import type {
+  MultiRoomFormat,
+  MultiplayerMode,
+  QuestionScopeConfig,
+} from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];
@@ -39,7 +43,8 @@ const MODE_RULES: Record<MultiplayerMode, string> = {
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
 };
 
-const errorMessage = (e: unknown) => (e instanceof Error ? e.message : "操作失败。");
+const errorMessage = (e: unknown) =>
+  e instanceof Error ? e.message : "操作失败。";
 
 export function MultiLobby() {
   const router = useRouter();
@@ -97,7 +102,7 @@ export function MultiLobby() {
         roomCode: created.roomCode,
         guestToken: created.guestToken,
         role: created.viewer.role,
-        memberSlot: created.viewer.slot === 2 ? 2 : 1,
+        memberSlot: created.viewer.seat === 2 ? 2 : 1,
       });
       router.push(`/multi/room/${created.roomCode}`);
     } catch (e) {
@@ -118,7 +123,12 @@ export function MultiLobby() {
         roomCode: normalizedCode,
         guestToken: joined.guestToken,
         role: joined.viewer.role,
-        memberSlot: joined.viewer.role === "spectator" ? undefined : joined.viewer.slot === 2 ? 2 : 1,
+        memberSlot:
+          joined.viewer.role === "spectator"
+            ? undefined
+            : joined.viewer.seat === 2
+              ? 2
+              : 1,
       });
       router.push(`/multi/room/${normalizedCode}`);
     } catch (e) {
@@ -143,7 +153,10 @@ export function MultiLobby() {
         </div>
 
         {error && (
-          <p className="mb-4 rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-3 py-2 text-[0.82rem] text-vermilion" role="alert">
+          <p
+            className="mb-4 rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-3 py-2 text-[0.82rem] text-vermilion"
+            role="alert"
+          >
             {error}
           </p>
         )}
@@ -153,7 +166,11 @@ export function MultiLobby() {
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
-                  <Plus size={17} className="text-vermilion" aria-hidden="true" />
+                  <Plus
+                    size={17}
+                    className="text-vermilion"
+                    aria-hidden="true"
+                  />
                   创建房间
                 </h2>
                 <p className="m-0 text-[0.78rem] text-ink-soft">
@@ -170,7 +187,9 @@ export function MultiLobby() {
               </button>
             </div>
             <fieldset className="mb-4">
-              <legend className="mb-1 text-[0.75rem] text-ink-soft">玩法</legend>
+              <legend className="mb-1 text-[0.75rem] text-ink-soft">
+                玩法
+              </legend>
               <div className="grid grid-cols-2 gap-2">
                 {MODES.map((option) => (
                   <label
@@ -201,7 +220,9 @@ export function MultiLobby() {
             </fieldset>
             {mode === "relay" && (
               <fieldset className="mb-4">
-                <legend className="mb-1 text-[0.75rem] text-ink-soft">单手时限</legend>
+                <legend className="mb-1 text-[0.75rem] text-ink-soft">
+                  单手时限
+                </legend>
                 <div className="grid grid-cols-4 gap-2">
                   {TURN_SECONDS_OPTIONS.map((seconds) => (
                     <label
@@ -255,7 +276,9 @@ export function MultiLobby() {
               </div>
             </fieldset>
             <label className="mb-4 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">昵称（可选，≤16 字符）</span>
+              <span className="mb-1 block text-[0.75rem] text-ink-soft">
+                昵称（可选，≤16 字符）
+              </span>
               <input
                 value={nickname}
                 maxLength={16}
@@ -284,7 +307,9 @@ export function MultiLobby() {
               输入好友分享的 6 位房间号。
             </p>
             <label className="mb-2 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">房间号</span>
+              <span className="mb-1 block text-[0.75rem] text-ink-soft">
+                房间号
+              </span>
               <input
                 value={joinCode}
                 onChange={(e) => {
@@ -298,13 +323,20 @@ export function MultiLobby() {
                 maxLength={12}
               />
             </label>
-            {infoLoading && <p className="mt-0 mb-2 text-[0.72rem] text-ink-soft">查询中……</p>}
+            {infoLoading && (
+              <p className="mt-0 mb-2 text-[0.72rem] text-ink-soft">查询中……</p>
+            )}
             {info && (
               <p className="mt-0 mb-2 text-[0.72rem] text-jade">
-                房间存在 · {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ?? info.mode}
+                房间存在 ·{" "}
+                {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ??
+                  info.mode}
                 {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
-                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家 {info.memberCount}/2
-                {info.spectatorCount > 0 ? ` · 观战 ${info.spectatorCount}` : ""}
+                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家{" "}
+                {info.memberCount}/2
+                {info.spectatorCount > 0
+                  ? ` · 观战 ${info.spectatorCount}`
+                  : ""}
               </p>
             )}
             {codeValid && infoError && !infoLoading && (
@@ -322,7 +354,9 @@ export function MultiLobby() {
               查看房主所设题库
             </button>
             <label className="mb-4 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">昵称（可选，≤16 字符）</span>
+              <span className="mb-1 block text-[0.75rem] text-ink-soft">
+                昵称（可选，≤16 字符）
+              </span>
               <input
                 value={joinNickname}
                 maxLength={16}
@@ -338,7 +372,11 @@ export function MultiLobby() {
               className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <DoorOpen size={16} aria-hidden="true" />
-              {busy === "join" ? "加入中……" : info?.joinRole === "spectator" ? "进入观战" : "加入房间"}
+              {busy === "join"
+                ? "加入中……"
+                : info?.joinRole === "spectator"
+                  ? "进入观战"
+                  : "加入房间"}
             </button>
           </div>
         </div>
@@ -351,7 +389,9 @@ export function MultiLobby() {
         open={hostScopeOpen}
         title="房主题库设置"
         readOnly
-        initialConfig={(info?.questionScope ?? null) as QuestionScopeConfig | null}
+        initialConfig={
+          (info?.questionScope ?? null) as QuestionScopeConfig | null
+        }
         onClose={() => setHostScopeOpen(false)}
       />
     </section>

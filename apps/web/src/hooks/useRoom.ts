@@ -25,6 +25,7 @@ import type {
   RoomUpdatedPayload,
 } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
+import { boardAtSeat, resultForMemberId } from "../domain/memberCollections";
 
 type GuessResult = components["schemas"]["GuessResult"];
 type MatchView = components["schemas"]["MatchView"];
@@ -53,7 +54,17 @@ export interface RoundSummary {
 export interface RoomUiState {
   connection: RoomConnection;
   connectionIssue: string | null;
-  room: { roomId: string; roomCode: string; format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: number; status: MultiRoomStatus; expiresAt: string; spectatorCount: number } | null;
+  room: {
+    roomId: string;
+    roomCode: string;
+    format: MultiRoomFormat;
+    mode: MultiplayerMode;
+    turnSeconds: number;
+    playerLimit: number;
+    status: MultiRoomStatus;
+    expiresAt: string;
+    spectatorCount: number;
+  } | null;
   viewer: components["schemas"]["ParticipantView"] | null;
   members: MemberView[];
   match: MatchView | null;
@@ -108,7 +119,14 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         ...state,
         members: payload.members,
         room: state.room
-          ? { ...state.room, format: payload.format, mode: payload.mode, turnSeconds: payload.turnSeconds, spectatorCount: payload.spectatorCount }
+          ? {
+              ...state.room,
+              format: payload.format,
+              mode: payload.mode,
+              turnSeconds: payload.turnSeconds,
+              playerLimit: payload.playerLimit,
+              spectatorCount: payload.spectatorCount,
+            }
           : state.room,
       };
     }
@@ -120,16 +138,28 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         catalogVersion: payload.catalogVersion ?? null,
         questionScope: payload.questionScope ?? state.questionScope,
         room: state.room
-          ? { ...state.room, status: "playing", mode: payload.mode, turnSeconds: payload.turnSeconds }
+          ? {
+              ...state.room,
+              status: "playing",
+              mode: payload.mode,
+              turnSeconds: payload.turnSeconds,
+            }
           : state.room,
         match: {
           matchIndex: payload.matchIndex,
           targetWins: payload.targetWins,
-          scoreSlot1: 0,
-          scoreSlot2: 0,
+          scores: state.members.map((member) => ({
+            memberId: member.memberId,
+            seat: member.seat,
+            score: 0,
+          })),
           roundIndex: 0,
           maxRounds: maxRoundsFor(payload.format),
-          rematchReady: [false, false],
+          rematchReady: state.members.map((member) => ({
+            memberId: member.memberId,
+            seat: member.seat,
+            ready: false,
+          })),
           catalogVersion: payload.catalogVersion,
         },
         round: null,
@@ -142,11 +172,14 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
     case "match.rematch": {
       const payload = event.payload as unknown as MatchRematchPayload;
       const rematchReady: [boolean, boolean] = [...state.rematchReady];
-      rematchReady[payload.memberSlot - 1] = true;
+      rematchReady[payload.seat - 1] = true;
       return { ...state, rematchReady };
     }
     case "round.started": {
       const payload = event.payload as unknown as RoundStartedPayload;
+      const viewerMemberId = state.viewer?.memberId;
+      const viewerSeat = state.viewer?.seat;
+      const isPlayer = state.viewer?.role === "player";
       // 新局棋盘就绪；roundResult 保留到 round.playing（局末弹窗显示下一局倒计时）
       return {
         ...state,
@@ -157,10 +190,32 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           maxGuesses: payload.maxGuesses,
           maxTurnsPerPlayer: payload.maxTurnsPerPlayer,
           maxSkipsPerPlayer: payload.maxSkipsPerPlayer,
-          turnSlot: payload.turnSlot,
+          turnMemberId: payload.turnMemberId,
+          turnSeat: payload.turnSeat,
           turnDeadline: payload.turnDeadline,
-          self: { guesses: [] },
-          opponent: { rows: [] },
+          self: {
+            ...(isPlayer && viewerMemberId ? { memberId: viewerMemberId } : {}),
+            ...(isPlayer && viewerSeat ? { seat: viewerSeat } : {}),
+            guesses: [],
+          },
+          opponents: isPlayer
+            ? state.members
+                .filter((member) => member.memberId !== viewerMemberId)
+                .map((member) => ({
+                  memberId: member.memberId,
+                  seat: member.seat,
+                  rows: [],
+                }))
+            : [],
+          ...(isPlayer
+            ? {}
+            : {
+                boards: state.members.map((member) => ({
+                  memberId: member.memberId,
+                  seat: member.seat,
+                  guesses: [],
+                })),
+              }),
           ...(payload.maxTurnsPerPlayer ? { shared: { rows: [] } } : {}),
         },
         match: state.match
@@ -172,7 +227,9 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       const _ = event.payload as unknown as RoundPlayingPayload;
       return {
         ...state,
-        round: state.round ? { ...state.round, status: "playing" } : state.round,
+        round: state.round
+          ? { ...state.round, status: "playing" }
+          : state.round,
         roundResult: null, // 到点强制开新局，弹窗关闭
       };
     }
@@ -183,29 +240,39 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         ...state,
         round: {
           ...state.round,
-          opponent: {
-            ...state.round.opponent,
-            rows: [
-              ...state.round.opponent.rows,
-              { index: payload.rowIndex, statuses: payload.statuses },
-            ],
-          },
+          opponents: state.round.opponents.map((opponent) =>
+            opponent.memberId === payload.memberId
+              ? {
+                  ...opponent,
+                  rows: [
+                    ...opponent.rows,
+                    { index: payload.rowIndex, statuses: payload.statuses },
+                  ],
+                }
+              : opponent,
+          ),
         },
       };
     }
     case "round.spectator.guess": {
       const payload = event.payload as unknown as RoundSpectatorGuessPayload;
       if (!state.round) return state;
-      const boards = state.round.boards ?? { slot1: [], slot2: [] };
-      const key = payload.memberSlot === 1 ? "slot1" : "slot2";
+      const boards =
+        state.round.boards ??
+        state.members.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          guesses: [],
+        }));
       return {
         ...state,
         round: {
           ...state.round,
-          boards: {
-            slot1: key === "slot1" ? [...boards.slot1, payload.guess] : boards.slot1,
-            slot2: key === "slot2" ? [...boards.slot2, payload.guess] : boards.slot2,
-          },
+          boards: boards.map((board) =>
+            board.memberId === payload.memberId
+              ? { ...board, guesses: [...board.guesses, payload.guess] }
+              : board,
+          ),
         },
       };
     }
@@ -219,7 +286,8 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           shared: {
             rows: [...(state.round.shared?.rows ?? []), payload.row],
           },
-          turnSlot: payload.nextTurnSlot,
+          turnMemberId: payload.nextTurnMemberId,
+          turnSeat: payload.nextTurnSeat,
           turnDeadline: payload.nextTurnDeadline,
         },
       };
@@ -234,7 +302,8 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           shared: {
             rows: [...(state.round.shared?.rows ?? []), payload.row],
           },
-          turnSlot: payload.nextTurnSlot,
+          turnMemberId: payload.nextTurnMemberId,
+          turnSeat: payload.nextTurnSeat,
           turnDeadline: payload.nextTurnDeadline,
         },
       };
@@ -249,7 +318,8 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           shared: {
             rows: [...(state.round.shared?.rows ?? []), payload.row],
           },
-          turnSlot: payload.nextTurnSlot,
+          turnMemberId: payload.nextTurnMemberId,
+          turnSeat: payload.nextTurnSeat,
           turnDeadline: payload.nextTurnDeadline,
         },
       };
@@ -263,24 +333,37 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               ...state.round,
               status: "ended",
               ...(payload.turns ? { shared: { rows: payload.turns } } : {}),
-              turnSlot: undefined,
+              turnMemberId: undefined,
+              turnSeat: undefined,
               turnDeadline: undefined,
             }
           : state.round,
         roundResult: payload,
         history: [
           ...state.history,
-          { roundIndex: payload.roundIndex, result: roundSummary(payload.result) },
+          {
+            roundIndex: payload.roundIndex,
+            result: roundSummary(
+              payload.viewerResult ??
+                resultForMemberId(payload.results, state.viewer?.memberId) ??
+                "draw",
+            ),
+          },
         ],
         roundArchives: [
-          ...state.roundArchives.filter((archive) => !(archive.matchIndex === payload.matchIndex && archive.roundIndex === payload.roundIndex)),
+          ...state.roundArchives.filter(
+            (archive) =>
+              !(
+                archive.matchIndex === payload.matchIndex &&
+                archive.roundIndex === payload.roundIndex
+              ),
+          ),
           payload,
         ],
         match: state.match
           ? {
               ...state.match,
-              scoreSlot1: payload.scores.slot1,
-              scoreSlot2: payload.scores.slot2,
+              scores: payload.scores,
             }
           : state.match,
       };
@@ -293,11 +376,16 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         match: state.match
           ? {
               ...state.match,
-              scoreSlot1: payload.scores.slot1,
-              scoreSlot2: payload.scores.slot2,
+              scores: payload.scores,
             }
           : state.match,
-        room: state.room ? { ...state.room, status: "finished", expiresAt: payload.retentionEndsAt } : state.room,
+        room: state.room
+          ? {
+              ...state.room,
+              status: "finished",
+              expiresAt: payload.retentionEndsAt,
+            }
+          : state.room,
       };
     }
     case "room.closed": {
@@ -314,7 +402,8 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
 
 /** 赛制 → 总局数安全上限（与后端 multi.MaxRounds 一致）。 */
 export function maxRoundsFor(format: MultiRoomFormat): number {
-  const n = format === "bo1" ? 1 : format === "bo3" ? 3 : format === "bo5" ? 5 : 7;
+  const n =
+    format === "bo1" ? 1 : format === "bo3" ? 3 : format === "bo5" ? 5 : 7;
   return 3 * n;
 }
 
@@ -339,6 +428,7 @@ export function applySnapshot(
       format: snapshot.format,
       mode: snapshot.mode,
       turnSeconds: snapshot.turnSeconds,
+      playerLimit: snapshot.playerLimit,
       status: snapshot.status,
       expiresAt: snapshot.expiresAt,
       spectatorCount: snapshot.spectatorCount,
@@ -347,10 +437,17 @@ export function applySnapshot(
     members: snapshot.members,
     match: snapshot.match ?? null,
     catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
-    questionScope: (snapshot.match?.questionScope ?? snapshot.questionScope ?? next.questionScope) as QuestionScopeConfig | null,
+    questionScope: (snapshot.match?.questionScope ??
+      snapshot.questionScope ??
+      next.questionScope) as QuestionScopeConfig | null,
     round: snapshot.round ?? null,
     rematchReady: snapshot.match
-      ? [snapshot.match.rematchReady[0] ?? false, snapshot.match.rematchReady[1] ?? false]
+      ? [
+          snapshot.match.rematchReady.find((member) => member.seat === 1)
+            ?.ready ?? false,
+          snapshot.match.rematchReady.find((member) => member.seat === 2)
+            ?.ready ?? false,
+        ]
       : [false, false],
   };
 }
@@ -413,41 +510,47 @@ export function useRoom(
     [isSpectator, playerSlot],
   );
 
-  const applyEvent = useCallback((event: Envelope) => {
-    if (event.sequence <= lastAppliedRef.current) return; // 按 sequence 去重
-    lastAppliedRef.current = event.sequence;
-    let timing: MultiplayerTimingSnapshot | undefined;
-    if (event.type === "match.started" || event.type === "round.started") {
-      timerRef.current?.setActive(false);
-      timerRef.current?.reset(0);
-      guessCompletedRef.current = [];
-      pendingGuessRef.current = null;
-    } else if (event.type === "round.playing") {
-      timerRef.current?.setActive(true);
-    } else if (event.type === "round.ended") {
-      const payload = event.payload as unknown as RoundEndedPayload;
-      const board = playerSlot === 1 ? payload.boards.slot1 : payload.boards.slot2;
-      if (
-        pendingGuessRef.current !== null &&
-        guessCompletedRef.current.length < board.length
-      ) {
-        guessCompletedRef.current = [
-          ...guessCompletedRef.current,
-          pendingGuessRef.current,
-        ];
+  const applyEvent = useCallback(
+    (event: Envelope) => {
+      if (event.sequence <= lastAppliedRef.current) return; // 按 sequence 去重
+      lastAppliedRef.current = event.sequence;
+      let timing: MultiplayerTimingSnapshot | undefined;
+      if (event.type === "match.started" || event.type === "round.started") {
+        timerRef.current?.setActive(false);
+        timerRef.current?.reset(0);
+        guessCompletedRef.current = [];
+        pendingGuessRef.current = null;
+      } else if (event.type === "round.playing") {
+        timerRef.current?.setActive(true);
+      } else if (event.type === "round.ended") {
+        const payload = event.payload as unknown as RoundEndedPayload;
+        const board = boardAtSeat(payload.boards, playerSlot);
+        if (
+          pendingGuessRef.current !== null &&
+          guessCompletedRef.current.length < board.length
+        ) {
+          guessCompletedRef.current = [
+            ...guessCompletedRef.current,
+            pendingGuessRef.current,
+          ];
+        }
+        timing = {
+          activeElapsedMs: timerRef.current?.snapshot() ?? 0,
+          guessCompletedElapsedMs: [...guessCompletedRef.current],
+        };
+        timerRef.current?.setActive(false);
+        pendingGuessRef.current = null;
+      } else if (event.type === "match.ended") {
+        timerRef.current?.setActive(false);
       }
-      timing = {
-        activeElapsedMs: timerRef.current?.snapshot() ?? 0,
-        guessCompletedElapsedMs: [...guessCompletedRef.current],
-      };
-      timerRef.current?.setActive(false);
-      pendingGuessRef.current = null;
-    } else if (event.type === "match.ended") {
-      timerRef.current?.setActive(false);
-    }
-    void queueStatsEvent(event, timing);
-    setState((s) => ({ ...roomReducer(s, event), lastSequence: event.sequence }));
-  }, [playerSlot, queueStatsEvent]);
+      void queueStatsEvent(event, timing);
+      setState((s) => ({
+        ...roomReducer(s, event),
+        lastSequence: event.sequence,
+      }));
+    },
+    [playerSlot, queueStatsEvent],
+  );
 
   const syncSnapshot = useCallback(
     async (snapshot: RoomSnapshot) => {
@@ -458,7 +561,11 @@ export function useRoom(
       }
       setState((current) => applySnapshot(current, snapshot));
       await statsQueueRef.current;
-      if (!isSpectator && snapshot.match && snapshot.round?.status === "playing") {
+      if (
+        !isSpectator &&
+        snapshot.match &&
+        snapshot.round?.status === "playing"
+      ) {
         const timing = await loadMultiplayerTiming(
           snapshot.roomId,
           snapshot.match.matchIndex,
@@ -555,7 +662,11 @@ export function useRoom(
         if (msg.type === "hello-ok") {
           retry = 0;
           stopSnapshotFallback();
-          setState((s) => ({ ...s, connection: "connected", connectionIssue: null }));
+          setState((s) => ({
+            ...s,
+            connection: "connected",
+            connectionIssue: null,
+          }));
           // 快照对齐（room/members/match/round 权威视图 + 历史事件）；
           // 重放事件由服务端在 hello-ok 后推送，reducer 按 sequence 去重。
           api
@@ -592,7 +703,8 @@ export function useRoom(
         connectionIssue: CONNECTION_ISSUE_MESSAGE,
       }));
       startSnapshotFallback();
-      const delay = Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
+      const delay =
+        Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
       window.setTimeout(() => connect(lastAppliedRef.current), delay);
     };
@@ -606,7 +718,9 @@ export function useRoom(
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         if (disposed) return;
         await syncSnapshot(snapshot);
-        const self = snapshot.members.find((member: MemberView) => member.slot === playerSlot);
+        const self = snapshot.members.find(
+          (member: MemberView) => member.seat === playerSlot,
+        );
         if (self?.status === "left" || snapshot.status === "closed") {
           setState((current) => ({ ...current, connection: "connected" }));
           return;
@@ -643,7 +757,13 @@ export function useRoom(
   }, []);
 
   useEffect(() => {
-    if (isSpectator || !roomId || !state.match || state.round?.status !== "playing") return;
+    if (
+      isSpectator ||
+      !roomId ||
+      !state.match ||
+      state.round?.status !== "playing"
+    )
+      return;
     const flush = () => {
       const timing = {
         activeElapsedMs: timerRef.current?.snapshot() ?? 0,
@@ -678,12 +798,17 @@ export function useRoom(
     leave: async () => {
       try {
         if (state.match && state.round?.status === "playing") {
-          await updateMultiplayerTiming(roomId, state.match.matchIndex, playerSlot, {
-            activeElapsedMs: timerRef.current?.snapshot() ?? 0,
-            guessCompletedElapsedMs: [...guessCompletedRef.current],
-          });
+          await updateMultiplayerTiming(
+            roomId,
+            state.match.matchIndex,
+            playerSlot,
+            {
+              activeElapsedMs: timerRef.current?.snapshot() ?? 0,
+              guessCompletedElapsedMs: [...guessCompletedRef.current],
+            },
+          );
         }
-        const self = state.members.find((member) => member.slot === playerSlot);
+        const self = state.members.find((member) => member.seat === playerSlot);
         if (self?.status !== "left") await api.leaveRoom(roomId, token);
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         await syncSnapshot(snapshot);
@@ -701,14 +826,20 @@ export function useRoom(
     },
     submitGuess: async (guessId: string) => {
       setGuessError("");
-      if (isSpectator || !state.round || state.round.status !== "playing" || !state.match) return;
+      if (
+        isSpectator ||
+        !state.round ||
+        state.round.status !== "playing" ||
+        !state.match
+      )
+        return;
       const idempotencyKey = crypto.randomUUID();
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
       const isRelay = state.room?.mode === "relay";
       const completedGuessCount = isRelay
-        ? state.round.shared?.rows.filter(
-            (row) => row.kind === "guess" && row.memberSlot === playerSlot,
-          ).length ?? 0
+        ? (state.round.shared?.rows.filter(
+            (row) => row.kind === "guess" && row.seat === playerSlot,
+          ).length ?? 0)
         : state.round.self.guesses.length;
       const expectedGuessCount = completedGuessCount + 1;
       pendingGuessRef.current = completedElapsedMs;
@@ -727,10 +858,15 @@ export function useRoom(
           ];
         }
         pendingGuessRef.current = null;
-        await updateMultiplayerTiming(roomId, state.match.matchIndex, playerSlot, {
-          activeElapsedMs: completedElapsedMs,
-          guessCompletedElapsedMs: [...guessCompletedRef.current],
-        });
+        await updateMultiplayerTiming(
+          roomId,
+          state.match.matchIndex,
+          playerSlot,
+          {
+            activeElapsedMs: completedElapsedMs,
+            guessCompletedElapsedMs: [...guessCompletedRef.current],
+          },
+        );
         if (!isRelay) {
           // 竞速自视角无事件回放：本地追加（08 §10.2）
           setState((s) =>
@@ -753,7 +889,13 @@ export function useRoom(
     forfeitRound: async () => {
       setGuessError("");
       pendingGuessRef.current = null;
-      if (isSpectator || !state.round || state.round.status !== "playing" || !state.match) return;
+      if (
+        isSpectator ||
+        !state.round ||
+        state.round.status !== "playing" ||
+        !state.match
+      )
+        return;
       try {
         await api.forfeitRound(roomId, token, state.match.roundIndex);
       } catch (e) {

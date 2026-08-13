@@ -6,6 +6,7 @@
 import { Check, X } from "lucide-react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { resultAtSeat, scoreAtSeat } from "../domain/memberCollections";
 
 export function RoundResultOverlay({
   result,
@@ -23,7 +24,9 @@ export function RoundResultOverlay({
   const [dismissed, setDismissed] = useState(false);
   const dismissedRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
-  const won = result.result === "win";
+  const viewerResult =
+    result.viewerResult ?? resultAtSeat(result.results, mySlot) ?? "draw";
+  const won = viewerResult === "win";
 
   useEffect(() => {
     onDismissRef.current = onDismiss;
@@ -49,7 +52,10 @@ export function RoundResultOverlay({
       return;
     }
     const tick = () => {
-      const nextRemaining = Math.max(0, new Date(nextRoundStartsAt).getTime() - Date.now());
+      const nextRemaining = Math.max(
+        0,
+        new Date(nextRoundStartsAt).getTime() - Date.now(),
+      );
       setRemaining(nextRemaining);
       if (autoDismissAtCountdownEnd && nextRemaining === 0) dismiss();
     };
@@ -63,15 +69,23 @@ export function RoundResultOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
       <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
-        <p className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-jade" : "text-vermilion"}`}>
-          ROUND {result.roundIndex} · {won ? "本局获胜" : result.result === "draw" ? "本局平局" : "本局失利"}
+        <p
+          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-jade" : "text-vermilion"}`}
+        >
+          ROUND {result.roundIndex} ·{" "}
+          {won ? "本局获胜" : viewerResult === "draw" ? "本局平局" : "本局失利"}
         </p>
         <div className="mb-4 flex items-center justify-center gap-2">
-          {won ? <Check size={18} className="text-jade" /> : <X size={18} className="text-vermilion" />}
+          {won ? (
+            <Check size={18} className="text-jade" />
+          ) : (
+            <X size={18} className="text-vermilion" />
+          )}
           <span className="font-brand text-[1.4rem]">{result.answer.name}</span>
         </div>
         <p className="mb-4 text-[0.8rem] text-ink-soft">
-          答案是 {result.answer.name} · 当前比分 {result.scores.slot1} : {result.scores.slot2}
+          答案是 {result.answer.name} · 当前比分 {scoreAtSeat(result.scores, 1)}{" "}
+          : {scoreAtSeat(result.scores, 2)}
         </p>
         <button
           type="button"

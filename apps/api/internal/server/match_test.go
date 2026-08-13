@@ -83,12 +83,28 @@ func advanceRounds(t *testing.T) {
 	}
 }
 
-// matchFixture 双人房间夹具（host 为房主 slot1，joiner slot2）。
+// matchFixture 双人房间夹具（host 为房主 seat 1，joiner seat 2）。
 type matchFixture struct {
 	roomID      string
 	roomCode    string
 	hostToken   string
 	joinerToken string
+}
+
+func collectionEntryAtSeat(t *testing.T, payload map[string]any, field string, seat int) map[string]any {
+	t.Helper()
+	entries, ok := payload[field].([]any)
+	if !ok || entries == nil {
+		t.Fatalf("%s = %#v, want non-nil array", field, payload[field])
+	}
+	for _, raw := range entries {
+		entry, ok := raw.(map[string]any)
+		if ok && entry["seat"] == float64(seat) {
+			return entry
+		}
+	}
+	t.Fatalf("%s has no seat %d entry: %#v", field, seat, entries)
+	return nil
 }
 
 // createMatchFixture 创建 bo3 双人房间（fast server）。
@@ -297,17 +313,17 @@ func TestMultiGuessWin(t *testing.T) {
 		t.Fatal("round.ended event missing")
 	}
 	payloadMap := ended.Payload
-	if payloadMap["result"] != "win" {
-		t.Fatalf("round.ended result = %v, want win", payloadMap["result"])
+	if payloadMap["viewerResult"] != "win" {
+		t.Fatalf("round.ended viewerResult = %v, want win", payloadMap["viewerResult"])
 	}
 	answerView, _ := payloadMap["answer"].(map[string]any)
 	if answerView["name"] == "" || answerView["avatarUrl"] == "" ||
 		answerView["workId"] == "" || answerView["workTitle"] == "" || answerView["workCode"] == "" {
 		t.Fatalf("round.ended answer not revealed: %v", payloadMap["answer"])
 	}
-	scores, _ := payloadMap["scores"].(map[string]any)
-	if scores["slot1"] != float64(1) || scores["slot2"] != float64(0) {
-		t.Fatalf("round.ended scores = %v", scores)
+	if collectionEntryAtSeat(t, payloadMap, "scores", 1)["score"] != float64(1) ||
+		collectionEntryAtSeat(t, payloadMap, "scores", 2)["score"] != float64(0) {
+		t.Fatalf("round.ended scores = %v", payloadMap["scores"])
 	}
 
 	// 逐观察者：host 自己的猜测事件不在其回放中；joiner 视角可见（已列置换、无 memberSlot/roundId）
@@ -393,7 +409,7 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if snap.Mode != openapi.Relay || int(snap.TurnSeconds) != 30 {
 		t.Fatalf("snapshot mode/turn = %s/%d, want relay/30", snap.Mode, snap.TurnSeconds)
 	}
-	if snap.Round == nil || snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 1 ||
+	if snap.Round == nil || snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 1 ||
 		snap.Round.TurnDeadline == nil || snap.Round.MaxTurnsPerPlayer == nil || *snap.Round.MaxTurnsPerPlayer != 8 {
 		t.Fatalf("relay round fields = %+v", snap.Round)
 	}
@@ -417,11 +433,11 @@ func TestRelayModeSharedTurns(t *testing.T) {
 		t.Fatalf("joiner shared rows = %+v", snap.Round)
 	}
 	row := snap.Round.Shared.Rows[0]
-	if row.Kind != "guess" || row.MemberSlot != 1 || row.Guess == nil || len(row.Guess.Feedback) != 6 {
+	if row.Kind != "guess" || row.Seat != 1 || row.Guess == nil || len(row.Guess.Feedback) != 6 {
 		t.Fatalf("shared guess row = %+v", row)
 	}
-	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
-		t.Fatalf("turn slot after host guess = %+v, want 2", snap.Round.TurnSlot)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 {
+		t.Fatalf("turn seat after host guess = %+v, want 2", snap.Round.TurnSeat)
 	}
 
 	if _, err := pool.Exec(ctx, `
@@ -440,14 +456,14 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if snap.Round == nil || snap.Round.Shared == nil || len(snap.Round.Shared.Rows) != 3 {
 		t.Fatalf("shared rows after timeout = %+v", snap.Round)
 	}
-	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].MemberSlot != 2 {
+	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].Seat != 2 {
 		t.Fatalf("timeout row = %+v", snap.Round.Shared.Rows[1])
 	}
-	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].MemberSlot != 1 {
+	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].Seat != 1 {
 		t.Fatalf("post-timeout guess row = %+v", snap.Round.Shared.Rows[2])
 	}
-	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
-		t.Fatalf("turn slot after post-timeout host guess = %+v, want 2", snap.Round.TurnSlot)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 {
+		t.Fatalf("turn seat after post-timeout host guess = %+v, want 2", snap.Round.TurnSeat)
 	}
 }
 
@@ -536,8 +552,8 @@ func TestMultiGuessLimitAndDraw(t *testing.T) {
 	if ended == nil {
 		t.Fatal("round.ended missing after draw")
 	}
-	if ended.Payload["result"] != "draw" {
-		t.Fatalf("draw result = %v", ended.Payload["result"])
+	if ended.Payload["viewerResult"] != "draw" {
+		t.Fatalf("draw viewerResult = %v", ended.Payload["viewerResult"])
 	}
 }
 
@@ -582,19 +598,14 @@ func TestRoundEndedBoardsNotNull(t *testing.T) {
 	if ended == nil {
 		t.Fatalf("round.ended 事件缺失: %+v", snap.Events)
 	}
-	boards, ok := ended.Payload["boards"].(map[string]any)
-	if !ok {
-		t.Fatalf("boards 缺失: %+v", ended.Payload)
+	seat2 := collectionEntryAtSeat(t, ended.Payload, "boards", 2)
+	seat2Guesses, ok := seat2["guesses"].([]any)
+	if !ok || seat2Guesses == nil || len(seat2Guesses) != 0 {
+		t.Fatalf("seat 2 guesses = %#v, want non-nil empty array", seat2["guesses"])
 	}
-	slot2, ok := boards["slot2"].([]any)
-	if !ok || slot2 == nil {
-		t.Fatalf("slot2 = %#v, want 非 nil 空数组（对手 0 猜测）", boards["slot2"])
-	}
-	if len(slot2) != 0 {
-		t.Fatalf("slot2 len = %d, want 0", len(slot2))
-	}
-	if slot1, ok := boards["slot1"].([]any); !ok || len(slot1) != 1 {
-		t.Fatalf("slot1 = %#v, want 1 条（我方猜测）", boards["slot1"])
+	seat1 := collectionEntryAtSeat(t, ended.Payload, "boards", 1)
+	if seat1Guesses, ok := seat1["guesses"].([]any); !ok || len(seat1Guesses) != 1 {
+		t.Fatalf("seat 1 guesses = %#v, want one guess", seat1["guesses"])
 	}
 	// 弹窗倒计时：nextStartsAt = 本局 ended_at + INTERMISSION（服务端驱动，08 §局末交互）。
 	next, ok := ended.Payload["nextStartsAt"].(string)
@@ -727,12 +738,12 @@ func TestMultiFullBO3AndIntermission(t *testing.T) {
 		t.Fatal("match.ended missing")
 	}
 	p := ended.Payload
-	if p["reason"] != "normal" || p["result"] != "win" {
+	if p["reason"] != "normal" || p["viewerResult"] != "win" {
 		t.Fatalf("match.ended payload = %v", p)
 	}
-	scores := p["scores"].(map[string]any)
-	if scores["slot1"] != float64(2) || scores["slot2"] != float64(0) {
-		t.Fatalf("final scores = %v", scores)
+	if collectionEntryAtSeat(t, p, "scores", 1)["score"] != float64(2) ||
+		collectionEntryAtSeat(t, p, "scores", 2)["score"] != float64(0) {
+		t.Fatalf("final scores = %v", p["scores"])
 	}
 	// 房间 finished（展示期）
 	snap := startMatchSnapshot(t, fixture)
@@ -780,11 +791,12 @@ func TestMultiForfeit(t *testing.T) {
 		t.Fatal("match.ended missing after forfeit")
 	}
 	p := ended.Payload
-	if p["reason"] != "forfeit" || p["result"] != "win" {
+	if p["reason"] != "forfeit" || p["viewerResult"] != "win" {
 		t.Fatalf("forfeit payload = %v（对方视角应为 win）", p)
 	}
-	if p["winnerSlot"] != float64(2) {
-		t.Fatalf("winnerSlot = %v, want 2", p["winnerSlot"])
+	winner := collectionEntryAtSeat(t, p, "results", 2)
+	if p["winnerMemberId"] != winner["memberId"] || winner["result"] != "win" {
+		t.Fatalf("winnerMemberId/results = %v / %v, want seat 2 winner", p["winnerMemberId"], winner)
 	}
 	// 成员行置 left 保留
 	var status string
@@ -809,7 +821,7 @@ func TestMultiForfeit(t *testing.T) {
 			leftEnded = event.Payload
 		}
 	}
-	if leftEnded["result"] != "loss" || leftEnded["reason"] != "forfeit" {
+	if leftEnded["viewerResult"] != "loss" || leftEnded["reason"] != "forfeit" {
 		t.Fatalf("left member terminal event = %v", leftEnded)
 	}
 	// 写命令仍拒绝 left 令牌。
@@ -864,13 +876,13 @@ func TestMultiRestartTermination(t *testing.T) {
 		switch e.Type {
 		case "round.ended":
 			roundEnded = true
-			if e.Payload["result"] != "draw" {
-				t.Fatalf("restart round result = %v, want draw", e.Payload["result"])
+			if e.Payload["viewerResult"] != "draw" {
+				t.Fatalf("restart round viewerResult = %v, want draw", e.Payload["viewerResult"])
 			}
 		case "match.ended":
 			matchEnded = true
 			p := e.Payload
-			if p["reason"] != "server_restart" || p["result"] != "draw" {
+			if p["reason"] != "server_restart" || p["viewerResult"] != "draw" {
 				t.Fatalf("restart match payload = %v", p)
 			}
 		}
@@ -967,7 +979,7 @@ func TestMultiRematch(t *testing.T) {
 	if snap.Status != openapi.RoomStatusPlaying {
 		t.Fatalf("after rematch status = %s, want playing", snap.Status)
 	}
-	if snap.Match == nil || snap.Match.MatchIndex != 1 || snap.Match.ScoreSlot1 != 0 || snap.Match.ScoreSlot2 != 0 {
+	if snap.Match == nil || snap.Match.MatchIndex != 1 || len(snap.Match.Scores) != 2 || snap.Match.Scores[0].Score != 0 || snap.Match.Scores[1].Score != 0 {
 		t.Fatalf("new match view = %+v, want matchIndex 1 score 0-0", snap.Match)
 	}
 	if snap.Round == nil {

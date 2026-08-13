@@ -37,8 +37,8 @@ export function RoomLobby({
   onLeave: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const mine = members.find((m) => m.slot === mySlot);
-  const other = members.find((m) => m.slot !== mySlot);
+  const mine = members.find((m) => m.seat === mySlot);
+  const other = members.find((m) => m.seat !== mySlot);
   const bothReady = members.length === 2 && members.every((m) => m.ready);
 
   const copyCode = async () => {
@@ -61,10 +61,13 @@ export function RoomLobby({
           {roomCode}
         </h1>
         <p className="mb-5 text-[0.8rem] text-ink-soft">
-          {MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ?? mode}
+          {MULTIPLAYER_MODE_LABELS[
+            mode as keyof typeof MULTIPLAYER_MODE_LABELS
+          ] ?? mode}
           {mode === "relay" ? ` ${turnSeconds}s` : ""} ·{" "}
-          {ROOM_FORMAT_LABELS[format as keyof typeof ROOM_FORMAT_LABELS] ?? format} ·
-          把房间号发给好友加入
+          {ROOM_FORMAT_LABELS[format as keyof typeof ROOM_FORMAT_LABELS] ??
+            format}{" "}
+          · 把房间号发给好友加入
         </p>
 
         <button
@@ -72,32 +75,40 @@ export function RoomLobby({
           onClick={copyCode}
           className="mb-6 inline-flex items-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.8rem] font-semibold hover:bg-paper"
         >
-          {copied ? <Check size={14} className="text-jade" /> : <Copy size={14} />}
+          {copied ? (
+            <Check size={14} className="text-jade" />
+          ) : (
+            <Copy size={14} />
+          )}
           {copied ? "已复制" : "复制房间号"}
         </button>
 
         <ul className="mb-6 grid gap-2 text-left">
           {members.map((member) => (
             <li
-              key={member.slot}
+              key={member.memberId}
               className="flex items-center justify-between rounded-[6px] border border-line bg-paper-muted px-3.5 py-2.5"
             >
               <span className="flex items-center gap-2">
                 <span
                   className={`inline-flex size-5 items-center justify-center rounded text-[0.62rem] font-black ${
-                    member.slot === 1 ? "bg-vermilion text-white" : "bg-jade text-white"
+                    member.seat === 1
+                      ? "bg-vermilion text-white"
+                      : "bg-jade text-white"
                   }`}
                 >
-                  {member.slot}
+                  {member.seat}
                 </span>
                 <span className="text-[0.85rem] font-semibold">
                   {member.displayName}
-                  {member.slot === mySlot ? "（我）" : ""}
+                  {member.seat === mySlot ? "（我）" : ""}
                 </span>
               </span>
               <span className="flex items-center gap-2 text-[0.72rem] text-ink-soft">
                 {member.ready ? (
-                  <span className="rounded bg-jade-soft px-1.5 py-0.5 font-bold text-jade">已准备</span>
+                  <span className="rounded bg-jade-soft px-1.5 py-0.5 font-bold text-jade">
+                    已准备
+                  </span>
                 ) : (
                   <span className="rounded bg-paper px-1.5 py-0.5">未准备</span>
                 )}

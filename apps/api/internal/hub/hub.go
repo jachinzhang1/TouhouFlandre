@@ -108,6 +108,7 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		Format:         multi.RoomFormat(room.Format),
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
 		Members:        multi.MemberViews(members),
 		SpectatorCount: int(spectatorCount),
 	}); err != nil {

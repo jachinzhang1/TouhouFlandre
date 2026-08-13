@@ -1,5 +1,38 @@
-# 多人场次 schema：MatchView
+# 多人场次 schema：MatchView 与按 memberId 关联的比分/再来一局集合
 # 对应 docs/multiplayer.md（match 快照）
+
+MemberScoreView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - score
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    score:
+      type: integer
+      minimum: 0
+
+MemberRematchReadyView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - ready
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    ready:
+      type: boolean
 
 MatchView:
   type: object
@@ -7,8 +40,7 @@ MatchView:
   required:
     - matchIndex
     - targetWins
-    - scoreSlot1
-    - scoreSlot2
+    - scores
     - roundIndex
     - maxRounds
     - rematchReady
@@ -22,14 +54,11 @@ MatchView:
       type: integer
       minimum: 1
       description: 目标胜场 = (N+1)/2。
-    scoreSlot1:
-      type: integer
-      minimum: 0
-      description: slot 1 已胜局数（平局不计入）。
-    scoreSlot2:
-      type: integer
-      minimum: 0
-      description: slot 2 已胜局数（平局不计入）。
+    scores:
+      type: array
+      description: 按 seat 稳定排序的公开比分；身份关联使用 memberId。
+      items:
+        $ref: "#/MemberScoreView"
     roundIndex:
       type: integer
       minimum: 0
@@ -39,11 +68,9 @@ MatchView:
       description: 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。
     rematchReady:
       type: array
-      description: 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。
+      description: 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。
       items:
-        type: boolean
-      minItems: 2
-      maxItems: 2
+        $ref: "#/MemberRematchReadyView"
     catalogVersion:
       type: string
       description: 本场绑定的题库版本。
