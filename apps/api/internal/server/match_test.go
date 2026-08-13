@@ -262,6 +262,23 @@ func TestMultiMatchStart(t *testing.T) {
 	if snap.Round == nil || snap.Round.Status != openapi.RoundStatusPlaying {
 		t.Fatalf("round view = %+v, want playing", snap.Round)
 	}
+	if len(snap.Members) != 2 || snap.Members[0].Seat != 1 || snap.Members[1].Seat != 2 ||
+		snap.Members[0].MemberId == "" || snap.Members[1].MemberId == "" {
+		t.Fatalf("member collection = %+v, want two public identities in seat order", snap.Members)
+	}
+	if snap.Viewer.MemberId != snap.Members[0].MemberId || snap.Viewer.Seat == nil || *snap.Viewer.Seat != 1 {
+		t.Fatalf("viewer = %+v, want seat 1 member identity", snap.Viewer)
+	}
+	if len(snap.Match.Scores) != 2 ||
+		snap.Match.Scores[0].MemberId != snap.Members[0].MemberId || snap.Match.Scores[0].Seat != 1 ||
+		snap.Match.Scores[1].MemberId != snap.Members[1].MemberId || snap.Match.Scores[1].Seat != 2 {
+		t.Fatalf("score collection = %+v, want member identities in seat order", snap.Match.Scores)
+	}
+	if snap.Round.Self.MemberId == nil || *snap.Round.Self.MemberId != snap.Members[0].MemberId ||
+		snap.Round.Self.Seat == nil || *snap.Round.Self.Seat != 1 || len(snap.Round.Opponents) != 1 ||
+		snap.Round.Opponents[0].MemberId != snap.Members[1].MemberId || snap.Round.Opponents[0].Seat != 2 {
+		t.Fatalf("race board identities = self:%+v opponents:%+v", snap.Round.Self, snap.Round.Opponents)
+	}
 	if len(snap.Events) < 2 {
 		t.Fatalf("expected match.started + round.started events, got %d", len(snap.Events))
 	}
@@ -392,7 +409,7 @@ func TestMultiGuessRace(t *testing.T) {
 }
 
 func TestRelayModeSharedTurns(t *testing.T) {
-	fixture := createMatchFixtureMode(t, "bo3", "relay", 30)
+	fixture := createMatchFixtureMode(t, "bo1", "relay", 30)
 	resp, payload := fastRequest(http.MethodGet, "/api/rooms/"+fixture.roomCode, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("info status %d: %s", resp.StatusCode, payload)
@@ -410,6 +427,7 @@ func TestRelayModeSharedTurns(t *testing.T) {
 		t.Fatalf("snapshot mode/turn = %s/%d, want relay/30", snap.Mode, snap.TurnSeconds)
 	}
 	if snap.Round == nil || snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 1 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[0].MemberId ||
 		snap.Round.TurnDeadline == nil || snap.Round.MaxTurnsPerPlayer == nil || *snap.Round.MaxTurnsPerPlayer != 8 {
 		t.Fatalf("relay round fields = %+v", snap.Round)
 	}
@@ -433,11 +451,12 @@ func TestRelayModeSharedTurns(t *testing.T) {
 		t.Fatalf("joiner shared rows = %+v", snap.Round)
 	}
 	row := snap.Round.Shared.Rows[0]
-	if row.Kind != "guess" || row.Seat != 1 || row.Guess == nil || len(row.Guess.Feedback) != 6 {
+	if row.Kind != "guess" || row.Seat != 1 || row.MemberId != snap.Members[0].MemberId || row.Guess == nil || len(row.Guess.Feedback) != 6 {
 		t.Fatalf("shared guess row = %+v", row)
 	}
-	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 {
-		t.Fatalf("turn seat after host guess = %+v, want 2", snap.Round.TurnSeat)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[1].MemberId {
+		t.Fatalf("turn after host guess = member:%+v seat:%+v, want seat 2 member", snap.Round.TurnMemberId, snap.Round.TurnSeat)
 	}
 
 	if _, err := pool.Exec(ctx, `
@@ -456,14 +475,66 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if snap.Round == nil || snap.Round.Shared == nil || len(snap.Round.Shared.Rows) != 3 {
 		t.Fatalf("shared rows after timeout = %+v", snap.Round)
 	}
-	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].Seat != 2 {
+	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].Seat != 2 ||
+		snap.Round.Shared.Rows[1].MemberId != snap.Members[1].MemberId {
 		t.Fatalf("timeout row = %+v", snap.Round.Shared.Rows[1])
 	}
-	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].Seat != 1 {
+	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].Seat != 1 ||
+		snap.Round.Shared.Rows[2].MemberId != snap.Members[0].MemberId {
 		t.Fatalf("post-timeout guess row = %+v", snap.Round.Shared.Rows[2])
 	}
-	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 {
-		t.Fatalf("turn seat after post-timeout host guess = %+v, want 2", snap.Round.TurnSeat)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[1].MemberId {
+		t.Fatalf("turn after post-timeout host guess = member:%+v seat:%+v, want seat 2 member", snap.Round.TurnMemberId, snap.Round.TurnSeat)
+	}
+
+	resp, payload = guess(t, fixture.roomID, fixture.joinerToken, 1, answer, "relay-joiner-win")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("joiner relay win status %d: %s", resp.StatusCode, payload)
+	}
+	var roundEnded, matchEnded map[string]any
+	for _, event := range eventsOf(t, fixture) {
+		switch event.Type {
+		case "round.ended":
+			roundEnded = event.Payload
+		case "match.ended":
+			matchEnded = event.Payload
+		}
+	}
+	if roundEnded == nil || matchEnded == nil {
+		t.Fatalf("relay terminal events missing: round=%v match=%v", roundEnded, matchEnded)
+	}
+	seat2Result := collectionEntryAtSeat(t, roundEnded, "results", 2)
+	if roundEnded["viewerResult"] != "loss" || roundEnded["winnerMemberId"] != seat2Result["memberId"] || seat2Result["result"] != "win" {
+		t.Fatalf("relay round result = %v, want host loss and seat 2 winner", roundEnded)
+	}
+	if collectionEntryAtSeat(t, roundEnded, "scores", 1)["score"] != float64(0) ||
+		collectionEntryAtSeat(t, roundEnded, "scores", 2)["score"] != float64(1) {
+		t.Fatalf("relay round scores = %v, want 0-1", roundEnded["scores"])
+	}
+	turns, ok := roundEnded["turns"].([]any)
+	if !ok || len(turns) != 4 {
+		t.Fatalf("relay turns = %#v, want four preserved rows", roundEnded["turns"])
+	}
+	lastTurn, _ := turns[3].(map[string]any)
+	if lastTurn["memberId"] != seat2Result["memberId"] || lastTurn["seat"] != float64(2) || lastTurn["kind"] != "guess" {
+		t.Fatalf("relay winning turn = %#v, want seat 2 member guess", lastTurn)
+	}
+	if matchEnded["viewerResult"] != "loss" || matchEnded["winnerMemberId"] != seat2Result["memberId"] || matchEnded["reason"] != "normal" {
+		t.Fatalf("relay match result = %v, want normal seat 2 win", matchEnded)
+	}
+	joinerEvents := eventsOfAs(t, fixture, fixture.joinerToken)
+	joinerWon := false
+	for _, event := range joinerEvents {
+		if event.Type == "match.ended" {
+			joinerWon = true
+			if event.Payload["viewerResult"] != "win" {
+				t.Fatalf("joiner relay viewerResult = %v, want win", event.Payload["viewerResult"])
+			}
+		}
+	}
+	if !joinerWon {
+		t.Fatal("joiner relay match.ended event missing")
 	}
 }
 
