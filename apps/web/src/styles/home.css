@@ -143,7 +143,7 @@
   align-content: start;
   gap: 14px;
   min-width: 0;
-  padding: 30px 48px 24px 24px;
+  padding: 30px 48px 62px 24px;
   overflow: hidden;
   border: 0;
   color: var(--ink);
@@ -167,12 +167,31 @@
   outline-offset: 4px;
 }
 
+.paper-shortcut-icon {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  z-index: 0;
+  color: var(--ink);
+  opacity: 0.24;
+}
+
+.paper-shortcut-title,
+.paper-shortcut-description {
+  position: relative;
+  z-index: 1;
+}
+
+.paper-shortcut-arrow {
+  z-index: 1;
+}
+
 .paper-shortcut-featured {
   color: var(--paper-tinted-ink);
 }
 .paper-shortcut-featured .paper-shortcut-icon {
-  color: var(--paper-tinted-ink);
-  background: var(--paper-tinted-icon-bg);
+  color: #fff;
+  opacity: 0.52;
 }
 
 .paper-shortcut-featured .paper-shortcut-title {

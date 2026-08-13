@@ -76,7 +76,6 @@
   --paper-tinted-fold: color-mix(in srgb, var(--paper-tinted-base) 72%, #111);
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.84);
-  --paper-tinted-icon-bg: rgba(255, 255, 255, 0.15);
   --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(25, 46, 39, 0.14))
     drop-shadow(-5px 10px 7px rgba(25, 46, 39, 0.045))
     drop-shadow(5px 10px 7px rgba(25, 46, 39, 0.045))
@@ -211,7 +210,6 @@ html[data-theme-mode="dark"] {
   );
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
-  --paper-tinted-icon-bg: rgba(255, 255, 255, 0.09);
   --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.32))
     drop-shadow(-5px 11px 8px rgba(0, 0, 0, 0.1))
     drop-shadow(5px 11px 8px rgba(0, 0, 0, 0.1))

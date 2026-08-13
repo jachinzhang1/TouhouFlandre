@@ -126,16 +126,14 @@ function PaperShortcut({
       foldDelayMs={foldDelayMs}
       foldSize={24}
     >
-      <span className="flex min-w-0 items-center gap-3">
-        <span className="paper-shortcut-icon theme-icon-tile inline-flex size-12 shrink-0 items-center justify-center text-vermilion">
-          <Icon size={22} aria-hidden="true" />
-        </span>
-        <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight text-ink">
-          {title}
-        </strong>
-      </span>
+      <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight text-ink">
+        {title}
+      </strong>
       <span className="paper-shortcut-description text-sm leading-6 text-ink-soft">
         {text}
+      </span>
+      <span className="paper-shortcut-icon inline-flex" aria-hidden="true">
+        <Icon size={80} strokeWidth={1.05} />
       </span>
       <ArrowRight
         className="paper-shortcut-arrow absolute right-6 bottom-6 text-vermilion transition-transform duration-180 group-hover:translate-x-1"

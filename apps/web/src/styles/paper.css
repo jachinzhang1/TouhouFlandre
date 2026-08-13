@@ -2,12 +2,6 @@
   filter: var(--paper-sticker-shadow);
 }
 
-.theme-icon-tile {
-  border: 0;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
 .paper-surface {
   --paper-fold-size: 12px;
   --paper-fold-shade: var(--surface-strong);
