@@ -26,7 +26,19 @@ describe("SiteFooter", () => {
     expect(screen.getByText(/访问数 --/)).toBeTruthy();
     expect(await screen.findByText(/访问数 12,345/)).toBeTruthy();
     expect(recordSiteVisitMock).toHaveBeenCalledOnce();
-    expect(container.querySelectorAll(".footer-yin-yang")).toHaveLength(2);
+    const separators = Array.from(
+      container.querySelectorAll<SVGElement>(".footer-yin-yang"),
+    );
+    expect(separators).toHaveLength(2);
+    const maskIds = separators.map(
+      (separator) => separator.querySelector("mask")?.id,
+    );
+    expect(new Set(maskIds).size).toBe(2);
+    for (const [index, separator] of separators.entries()) {
+      expect(
+        separator.querySelector("circle[mask]")?.getAttribute("mask"),
+      ).toBe(`url(#${maskIds[index]})`);
+    }
     expect(container.textContent).not.toContain(" · ");
   });
 

@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 export function YinYangMark({
   className = "",
   variant = "brand",
@@ -5,6 +7,8 @@ export function YinYangMark({
   className?: string;
   variant?: "brand" | "separator";
 }) {
+  const separatorMaskId = `yin-yang-${useId().replaceAll(":", "")}`;
+
   return (
     <svg
       className={className}
@@ -15,18 +19,40 @@ export function YinYangMark({
     >
       {variant === "separator" ? (
         <>
-          <circle cx="50" cy="50" r="46" fill="currentColor" />
-          <path
-            d="M50 4a46 46 0 0 1 0 92 23 23 0 0 1 0-46 23 23 0 0 0 0-46Z"
-            fill="var(--yin-yang-cutout, transparent)"
+          <defs>
+            <mask
+              id={separatorMaskId}
+              x="0"
+              y="0"
+              width="100"
+              height="100"
+              maskUnits="userSpaceOnUse"
+            >
+              <rect width="100" height="100" fill="black" />
+              <circle cx="50" cy="50" r="46" fill="white" />
+              <path
+                d="M50 4a46 46 0 0 1 0 92 23 23 0 0 1 0-46 23 23 0 0 0 0-46Z"
+                fill="black"
+              />
+              <circle cx="50" cy="27" r="7" fill="black" />
+              <circle cx="50" cy="73" r="7" fill="white" />
+            </mask>
+          </defs>
+          <circle
+            cx="50"
+            cy="50"
+            r="46"
+            fill="currentColor"
+            mask={`url(#${separatorMaskId})`}
           />
           <circle
             cx="50"
-            cy="27"
-            r="7"
-            fill="var(--yin-yang-cutout, transparent)"
+            cy="50"
+            r="46"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
           />
-          <circle cx="50" cy="73" r="7" fill="currentColor" />
         </>
       ) : (
         <>

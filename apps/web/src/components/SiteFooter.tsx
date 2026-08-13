@@ -76,7 +76,7 @@ export function SiteFooter() {
 function FooterSeparator() {
   return (
     <YinYangMark
-      className="footer-yin-yang size-2.5 shrink-0"
+      className="footer-yin-yang size-3 shrink-0"
       variant="separator"
     />
   );
