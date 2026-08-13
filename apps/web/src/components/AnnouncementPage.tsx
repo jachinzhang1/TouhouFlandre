@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Megaphone, Pin, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Megaphone, Pin } from "lucide-react";
 import { fetchAnnouncements } from "../announcements/client";
 import {
   ANNOUNCEMENTS_READ_STORAGE_KEY,
@@ -12,6 +12,7 @@ import {
 } from "../announcements/readState";
 import type { Announcement } from "../announcements/types";
 import { AnnouncementMarkdown } from "./AnnouncementMarkdown";
+import { Paper } from "./Paper";
 
 export function AnnouncementPage({
   initialAnnouncements,
@@ -20,7 +21,7 @@ export function AnnouncementPage({
 }) {
   const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -39,62 +40,57 @@ export function AnnouncementPage({
   }, []);
 
   const unreadCount = useMemo(
-    () => announcements.filter((announcement) => !readIds.has(announcement.id)).length,
+    () =>
+      announcements.filter((announcement) => !readIds.has(announcement.id))
+        .length,
     [announcements, readIds],
   );
 
-  const handleRefresh = async () => {
+  const refreshAnnouncements = useCallback(async (signal?: AbortSignal) => {
     setRefreshing(true);
     setError("");
     try {
-      const data = await fetchAnnouncements();
+      const data = await fetchAnnouncements(signal);
       setAnnouncements(data.announcements);
       notifyAnnouncementsRefreshed();
     } catch (refreshError) {
+      if (signal?.aborted) return;
       setError(
         refreshError instanceof Error ? refreshError.message : "公告刷新失败。",
       );
     } finally {
-      setRefreshing(false);
+      if (!signal?.aborted) setRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleAnnouncementClick = (id: string) => {
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshAnnouncements(controller.signal);
+    return () => controller.abort();
+  }, [refreshAnnouncements]);
+
+  const handleMarkRead = (id: string) => {
     if (readIds.has(id)) return;
     markAnnouncementRead(id);
     setReadIds(readAnnouncementIds());
   };
 
   return (
-    <section className="px-[18px] pt-10 pb-8 max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
-        <div className="max-w-[720px]">
-          <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
-            ANNOUNCEMENTS
-          </p>
-          <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
-            公告
-          </h1>
-          <p className="mt-3 mb-0 leading-[1.75] text-ink-soft">
-            {announcements.length
+    <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
+      <header>
+        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
+          公告
+        </h1>
+        <p
+          className="mt-3 mb-0 flex min-h-7 items-center leading-[1.75] text-ink-soft"
+          role={refreshing ? "status" : undefined}
+        >
+          {refreshing
+            ? "正在刷新公告……"
+            : announcements.length
               ? `共有 ${announcements.length} 条公告，${unreadCount} 条未读。`
               : "当前暂无公告。"}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="secondary-button px-4"
-          onClick={() => void handleRefresh()}
-          disabled={refreshing}
-          aria-label="刷新公告"
-        >
-          <RefreshCw
-            size={17}
-            aria-hidden="true"
-            className={refreshing ? "animate-spin" : undefined}
-          />
-          <span>{refreshing ? "刷新中" : "刷新"}</span>
-        </button>
+        </p>
       </header>
 
       {error ? (
@@ -105,13 +101,16 @@ export function AnnouncementPage({
 
       {announcements.length ? (
         <div className="mt-6 grid gap-4">
-          {announcements.map((announcement) => {
+          {announcements.map((announcement, index) => {
             const unread = !readIds.has(announcement.id);
             return (
-              <article
+              <Paper
+                as="article"
+                variant="plain"
+                foldSize={20}
+                foldDelayMs={Math.min(index, 6) * 45}
+                className="announcement-paper relative p-5 pb-16 max-[680px]:p-4 max-[680px]:pb-16"
                 key={announcement.id}
-                className="relative rounded-[6px] border border-line bg-paper p-5 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[1px] hover:border-[var(--accent-hover-border)] hover:shadow-lg max-[680px]:p-4"
-                onClick={() => handleAnnouncementClick(announcement.id)}
               >
                 {unread ? (
                   <span
@@ -128,7 +127,7 @@ export function AnnouncementPage({
                     </span>
                   ) : null}
                   <time
-                    className="text-[0.78rem] font-bold text-ink-soft"
+                    className="font-brand text-[0.82rem] font-bold text-ink-soft"
                     dateTime={announcement.date}
                   >
                     {announcement.date}
@@ -140,12 +139,32 @@ export function AnnouncementPage({
                 <div className="mt-4">
                   <AnnouncementMarkdown body={announcement.body} />
                 </div>
-              </article>
+                <button
+                  type="button"
+                  className="absolute right-6 bottom-5 inline-flex min-h-8 items-center gap-1.5 px-2 text-xs font-bold text-ink-soft transition-colors hover:text-vermilion disabled:cursor-default disabled:text-jade max-[680px]:right-5"
+                  aria-label={
+                    unread
+                      ? `将${announcement.title}标记为已读`
+                      : `${announcement.title}已读`
+                  }
+                  aria-pressed={!unread}
+                  disabled={!unread}
+                  onClick={() => handleMarkRead(announcement.id)}
+                >
+                  <Check size={15} aria-hidden="true" />
+                  已读
+                </button>
+              </Paper>
             );
           })}
         </div>
       ) : (
-        <div className="mt-8 flex min-h-[260px] items-start gap-[18px] rounded-[6px] border border-line bg-paper p-6">
+        <Paper
+          as="div"
+          variant="plain"
+          foldSize={20}
+          className="announcement-paper mt-8 flex min-h-[260px] items-start gap-[18px] p-6"
+        >
           <span className="inline-flex size-[48px] shrink-0 items-center justify-center rounded-[6px] bg-vermilion-soft text-vermilion">
             <Megaphone size={24} aria-hidden="true" />
           </span>
@@ -157,7 +176,7 @@ export function AnnouncementPage({
               服务器公告目录中还没有可展示的 Markdown 文件。
             </p>
           </div>
-        </div>
+        </Paper>
       )}
     </section>
   );

@@ -486,7 +486,17 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--paper-muted);
+  background-color: var(--paper-muted);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 35px,
+    var(--paper-plain-line) 36px
+  );
+}
+
+body:has(.home-hero) {
+  background-image: none;
 }
 
 button,
@@ -655,6 +665,9 @@ input:focus-visible {
 }
 
 .site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   isolation: isolate;
   background:
     repeating-linear-gradient(
@@ -667,6 +680,10 @@ input:focus-visible {
       transparent 18px
     ),
     var(--paper);
+}
+
+.announcement-paper {
+  box-shadow: var(--paper-shadow);
 }
 
 .site-footer {

@@ -5,7 +5,7 @@ export type PaperVariant = "plain" | "tinted";
 
 interface PaperProps {
   animateOnMount?: boolean;
-  as?: "div" | "span";
+  as?: "article" | "div" | "span";
   children?: ReactNode;
   className?: string;
   folded?: boolean;
@@ -54,6 +54,10 @@ export function Paper({
         {children}
       </Link>
     );
+  }
+
+  if (as === "article") {
+    return <article {...paperProps}>{children}</article>;
   }
 
   if (as === "div") {

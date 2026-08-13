@@ -27,12 +27,12 @@ test.describe("公告页", () => {
     await expect(navNotice).toBeVisible();
     await expect(card.getByLabel("未读公告")).toBeVisible();
 
-    await card.click();
+    await card.getByRole("button", { name: "将公告页启用标记为已读" }).click();
     await expect(card.getByLabel("未读公告")).toHaveCount(0);
     await expect(navNotice).toHaveCount(0);
-
-    await page.getByRole("button", { name: "刷新公告" }).click();
-    await expect(page.getByRole("heading", { name: "公告页启用" })).toBeVisible();
-    await expect(card.getByLabel("未读公告")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "刷新公告" })).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "公告页启用" }),
+    ).toBeVisible();
   });
 });

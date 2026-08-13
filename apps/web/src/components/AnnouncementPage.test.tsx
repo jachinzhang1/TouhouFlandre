@@ -31,13 +31,14 @@ const markdownAnnouncement: Announcement = {
 describe("AnnouncementPage", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockAnnouncementsResponse([markdownAnnouncement]);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("renders announcement metadata and body", () => {
+  it("renders announcement metadata and body without manual refresh controls", async () => {
     render(<AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />);
 
     expect(screen.getByText("格式公告")).toBeTruthy();
@@ -45,44 +46,63 @@ describe("AnnouncementPage", () => {
     expect(screen.getByTestId("announcement-markdown").textContent).toContain(
       "加粗",
     );
+    expect(screen.queryByRole("button", { name: "刷新公告" })).toBeNull();
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
   });
 
-  it("marks an unread announcement as read when the card is clicked", async () => {
+  it("only marks an unread announcement through its explicit read control", async () => {
+    const user = userEvent.setup();
     render(<AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />);
 
+    const article = screen.getByText("格式公告").closest("article")!;
     expect(screen.getByLabelText("未读公告")).toBeTruthy();
-    await userEvent.click(screen.getByText("格式公告").closest("article")!);
+    await user.click(article);
+    expect(screen.getByLabelText("未读公告")).toBeTruthy();
+
+    await user.click(
+      screen.getByRole("button", { name: "将格式公告标记为已读" }),
+    );
 
     expect(screen.queryByLabelText("未读公告")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "格式公告已读" })
+        .hasAttribute("disabled"),
+    ).toBe(true);
     expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toContain(
       "notice-markdown",
     );
   });
 
-  it("refreshes announcements from the local API", async () => {
+  it("refreshes announcements automatically when the page mounts", async () => {
     const refreshed = {
       ...markdownAnnouncement,
       id: "notice-refreshed",
       title: "刷新后的公告",
       pinned: false,
     };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            announcements: [refreshed],
-            generatedAt: "2026-08-08T00:00:00.000Z",
-          }),
-          { headers: { "Content-Type": "application/json" } },
-        ),
-      ),
-    );
+    mockAnnouncementsResponse([refreshed]);
 
     render(<AnnouncementPage initialAnnouncements={[]} />);
-    await userEvent.click(screen.getByRole("button", { name: "刷新公告" }));
 
+    expect(screen.getByRole("status").textContent).toBe("正在刷新公告……");
     expect(await screen.findByText("刷新后的公告")).toBeTruthy();
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("button", { name: "刷新公告" })).toBeNull();
   });
 });
+
+function mockAnnouncementsResponse(announcements: Announcement[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          announcements,
+          generatedAt: "2026-08-08T00:00:00.000Z",
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    ),
+  );
+}
