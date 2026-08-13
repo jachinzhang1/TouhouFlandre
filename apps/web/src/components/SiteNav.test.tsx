@@ -3,13 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ANNOUNCEMENTS_READ_STORAGE_KEY } from "../announcements/readState";
 import { SiteNav } from "./SiteNav";
 
+const navigationState = vi.hoisted(() => ({ pathname: "/" }));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/",
+  usePathname: () => navigationState.pathname,
 }));
 
 describe("SiteNav", () => {
   beforeEach(() => {
     localStorage.clear();
+    navigationState.pathname = "/";
   });
 
   afterEach(() => {
@@ -29,6 +32,16 @@ describe("SiteNav", () => {
     const activeCopy = container.querySelector(".nav-active-copy");
     expect(activeCopy?.getAttribute("aria-hidden")).toBe("true");
     expect(activeCopy?.querySelector("a")).toBeNull();
+  });
+
+  it("没有匹配页签时不渲染白色遮罩副本", async () => {
+    navigationState.pathname = "/definitely-missing";
+    mockAnnouncementSummary([]);
+    const { container } = render(<SiteNav />);
+
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
+    expect(container.querySelector(".nav-active-copy")).toBeNull();
+    expect(container.querySelector('[aria-current="page"]')).toBeNull();
   });
 
   it("公告存在未读时显示导航红点", async () => {

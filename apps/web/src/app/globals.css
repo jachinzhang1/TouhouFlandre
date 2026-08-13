@@ -936,12 +936,17 @@ body:has(.home-hero) .site-footer a:hover {
   gap: 3px;
   color: var(--paper-tinted-ink);
   pointer-events: none;
+  visibility: hidden;
   clip-path: inset(
     var(--nav-active-y, 0)
       calc(100% - var(--nav-active-x, 0) - var(--nav-active-width, 0))
       calc(100% - var(--nav-active-y, 0) - var(--nav-active-height, 0))
       var(--nav-active-x, 0)
   );
+}
+
+.nav-links[data-indicator-ready="true"] .nav-active-copy {
+  visibility: visible;
 }
 
 .nav-links[data-indicator-animated="true"] .nav-active-copy {
@@ -1092,6 +1097,13 @@ body:has(.home-hero) .site-footer a:hover {
   background: var(--surface-muted);
   padding: 0.12em 0.35em;
   font-size: 0.9em;
+}
+
+.not-found-code {
+  color: color-mix(in srgb, var(--ink) 6%, transparent);
+  font-size: clamp(15rem, 42vw, 40rem);
+  line-height: 0.66;
+  letter-spacing: -0.08em;
 }
 
 .announcement-markdown pre {
@@ -1319,11 +1331,11 @@ body:has(.home-hero) .site-footer a:hover {
   bottom: calc(8.06px + var(--swatch-index) * 23.33px);
   width: 24px;
   height: 24px;
-  border: 2px solid var(--surface);
+  border: 2px solid #fff;
   border-radius: 50%;
   background: var(--swatch-light);
   box-shadow:
-    0 0 0 1px var(--line-strong),
+    0 0 0 1px rgba(17, 24, 21, 0.28),
     inset 0 0 0 1px rgba(255, 255, 255, 0.24);
   pointer-events: none;
   transition: box-shadow 150ms ease;
@@ -1392,8 +1404,8 @@ html[data-theme-mode="dark"] .appearance-swatch {
 
 .appearance-swatch.active {
   box-shadow:
-    0 0 0 2px var(--paper),
-    0 0 0 5px var(--vermilion),
+    0 0 0 3px var(--vermilion-dark),
+    0 4px 12px var(--accent-shadow-strong),
     inset 0 0 0 1px rgba(255, 255, 255, 0.24);
 }
 

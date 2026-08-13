@@ -46,6 +46,7 @@ export function SiteNav() {
   const pathname = usePathname();
   const unreadAnnouncements = useAnnouncementUnreadCount();
   const navLinksRef = useRef<HTMLDivElement>(null);
+  const hasActiveNavItem = NAV_ITEMS.some((item) => item.isActive(pathname));
 
   useLayoutEffect(() => {
     const navLinks = navLinksRef.current;
@@ -155,17 +156,19 @@ export function SiteNav() {
           foldSize={10}
           ariaHidden
         />
-        <div className="nav-active-copy" aria-hidden="true">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <span className="nav-link nav-link-copy" key={item.label}>
-                <Icon size={16} aria-hidden="true" />
-                <span className="nav-link-label">{item.label}</span>
-              </span>
-            );
-          })}
-        </div>
+        {hasActiveNavItem ? (
+          <div className="nav-active-copy" aria-hidden="true">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <span className="nav-link nav-link-copy" key={item.label}>
+                  <Icon size={16} aria-hidden="true" />
+                  <span className="nav-link-label">{item.label}</span>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
