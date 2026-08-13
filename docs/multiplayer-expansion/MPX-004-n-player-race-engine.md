@@ -11,7 +11,7 @@
 
 ## 目标
 
-只扩展 `race`，支持一个房间内 2..N 名玩家按 member 独立计分。N 是开局事务冻结的实际 match roster 人数，满足 `2 <= N <= playerLimit`；`playerLimit` 另受服务端硬上限保护（推荐首版上限 8，最终值由 MPX-001 决策记录冻结）。
+只扩展 `race`，支持一个房间内 2..N 名玩家按 member 独立计分。N 是开局事务冻结的实际 match roster 人数，满足 `2 <= N <= playerLimit`；`playerLimit` 另受[决策记录](./decisions.md#术语与生命周期)冻结的首版服务端硬上限 8 保护。
 
 建议将 roster/计分/结果主体改为稳定 memberId 的集合，而不是继续增加 `slot3`、`slot4` 字段：
 

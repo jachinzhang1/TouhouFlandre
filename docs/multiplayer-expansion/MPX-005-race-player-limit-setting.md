@@ -15,7 +15,7 @@
 ## 目标行为
 
 - 创建 race 房间时可提交 `playerLimit`；lobby 中房主可通过受权的房间设置命令修改。
-- 默认值为 2，允许范围为 `2..serverMaxRacePlayers`（首版推荐 8）；relay 仍固定现有两名玩家并拒绝 race 专属设置。
+- 默认值为 2，允许范围为 `2..serverMaxRacePlayers`（[决策记录](./decisions.md#术语与生命周期)冻结首版为 8）；relay 仍固定现有两名玩家并拒绝 race 专属设置。
 - room info/`room.updated` 显示 `playerLimit`、固定的 `minPlayers`、当前玩家数、可用席位和 spectator 数。
 - 达到上限后新加入者进入 spectator；已经入座的玩家不因后来观战者加入而被替换。
 - 提高上限只产生可认领的空席位，不自动把既有 spectator 变成 player；spectator 使用 MPX-003 的 claim-seat 明确接受玩家权限与开局责任。

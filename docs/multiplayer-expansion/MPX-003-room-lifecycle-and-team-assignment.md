@@ -18,7 +18,7 @@ member/seat 和 `player_limit` 有了数据结构后，如果创建、加入、�
 - 容量统计包含 connected 和仍在断线宽限期内的 disconnected 玩家；宽限期内保留原 seat，新 join 不能抢占。只有 lobby 成员明确离开或宽限到期并完成删除后才释放 seat，playing/finished 始终以冻结 roster 为准。
 - lobby 出现空席位时，connected spectator 可显式 claim-seat：服务端在房间锁下复用原 memberId/token，将其转换为 `ready=false` 的 player 并分配最小可用 seat。容量增加或玩家离开都不自动提升 spectator 权限；playing/finished、满员或 disconnected spectator 的认领返回稳定错误。提交后 hub 立即使该 member 的旧 WS 身份失效并以 `member_changed` 要求重连，不能继续用连接建立时缓存的 spectator role 做投影。
 - 只允许符合模式能力矩阵的玩家入座；spectator 永远不占玩家容量，也不能因为断线影响比赛。
-- spectator 不占 `playerLimit`，但受服务端 `maxSpectatorsPerRoom` 硬上限约束；达到上限后 join 返回稳定的房间容量错误，不能无限创建成员行和 WS fan-out。
+- spectator 不占 `playerLimit`，但受服务端固定为 32 的 `maxSpectatorsPerRoom` 硬上限约束；达到上限后 join 返回稳定的房间容量错误，不能无限创建成员行和 WS fan-out。该值及术语以[决策记录](./decisions.md#术语与生命周期)为准。
 - race 的服务端固定 `minPlayers=2`。玩家数处于 `2..playerLimit`、所有玩家均 connected + ready 且房主保持 ready 时，以该时刻玩家集合冻结 match roster 并开局；不要求填满上限。例如 `playerLimit=8` 的房间允许 3、5 或 8 人开局。
 - ready 命令改为显式设置 `ready: boolean`，允许开局前取消准备。房主通过保持未准备来继续等待玩家，房主 ready 表示确认可以按该阵容开始；设置上限本身不触发开局。
 - join/claim-seat 的入座、ready 状态更新、开局条件检查和 match roster 创建必须在同一房间行锁下串行化：若最终 ready 先提交，房间按当时 roster 开局，随后加入者只能观战且 claim-seat 被拒绝；若 join/claim-seat 先提交并取得玩家席位，新玩家进入未准备状态并阻止该次开局。

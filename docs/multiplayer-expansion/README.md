@@ -132,7 +132,7 @@ flowchart LR
 | `match roster` | 对局开始时冻结的玩家集合 | race 按 roster 计分和结算；relay 继续固定两人 |
 | `playerLimit` | 房间允许入座的最大玩家数 | 默认 2；race 可设 2..服务端上限，relay 固定 2；它是容量上限，不是必须凑满的开局人数 |
 | `minPlayers` | 允许开局的最少玩家数 | 服务端固定为 2，不开放房主设置；玩家达到下限且全员连接、准备后，以当时阵容开局 |
-| `spectatorCap` | 单房间观战者的服务端安全上限 | 不占 playerLimit、不可由房主设置；用于限制成员行、WS 连接和广播扇出 |
+| `spectatorCap` | 单房间观战者的服务端安全上限 | 首版固定 32；不占 playerLimit、不可由房主设置；用于限制成员行、WS 连接和广播扇出 |
 | `chat channel` | 消息的服务器授权可见范围 | player 固定发到 `room`（玩家和观战者可见）；spectator 固定发到 `spectator`（仅观战者可见） |
 | `receiveChat` | 查看者是否在客户端显示他人消息 | 本地显示偏好，不改变服务器授权、游戏 sequence 或 chat cursor |
 
@@ -264,6 +264,8 @@ git worktree add ../TouhouFlandre-mpx-web \
 示例中的 `mpx-003-base` 是共享基础完成后的基线 tag；如果没有创建 tag，则使用 MPX-003 的完整提交哈希。服务端 worktree 后续还会创建聊天链分支；Web worktree 后续还会创建聊天 UI 分支。worktree 只用于隔离本地工作，PR 仍统一以该集成分支为目标。
 
 ## Issue 清单
+
+所有 Issue 的规范术语、模式边界和被否决方案以 [MPX 决策记录](./decisions.md)为准。
 
 | ID | 标题 | 建议标签 | 结果 |
 |---|---|---|---|
