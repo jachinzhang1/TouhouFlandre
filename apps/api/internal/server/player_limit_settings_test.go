@@ -11,6 +11,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 type playerLimitRoom struct {
@@ -505,5 +506,247 @@ func TestMultiRacePlayerLimitConcurrentJoinBoundary(t *testing.T) {
 				t.Fatalf("database boundary players=%d uniqueSeats=%d maxSeat=%d spectators=%d, want %d/%d/%d/%d", playerCount, uniqueSeats, maxSeat, spectatorCount, limit, limit, limit, spectatorResponses)
 			}
 		})
+	}
+}
+
+func latestPlayerLimitRoomUpdated(t *testing.T, roomID string) multi.RoomUpdatedPayload {
+	t.Helper()
+	var raw []byte
+	if err := pool.QueryRow(ctx, `
+		SELECT payload FROM room_event
+		WHERE room_id = $1 AND type = 'room.updated'
+		ORDER BY sequence DESC LIMIT 1`, roomID).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var payload multi.RoomUpdatedPayload
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		t.Fatal(err)
+	}
+	return payload
+}
+
+func playerLimitTerminalCapacity(t *testing.T, roomID string) (limit, players, spectators, overLimit, matches int, status string) {
+	t.Helper()
+	if err := pool.QueryRow(ctx, `
+		SELECT r.player_limit, r.status,
+		       count(*) FILTER (WHERE m.role = 'player')::int,
+		       count(*) FILTER (WHERE m.role = 'spectator' AND m.status <> 'left')::int,
+		       count(*) FILTER (WHERE m.role = 'player' AND m.seat > r.player_limit)::int,
+		       (SELECT count(*) FROM multi_match mm WHERE mm.room_id = r.id)::int
+		FROM multi_room r
+		LEFT JOIN multi_member m ON m.room_id = r.id
+		WHERE r.id = $1
+		GROUP BY r.id`, roomID).Scan(&limit, &status, &players, &spectators, &overLimit, &matches); err != nil {
+		t.Fatal(err)
+	}
+	return
+}
+
+func requireTerminalEventCapacity(t *testing.T, roomID string, limit, players, spectators int) {
+	t.Helper()
+	payload := latestPlayerLimitRoomUpdated(t, roomID)
+	if payload.PlayerLimit != limit || payload.PlayerCount != players || payload.AvailableSeats != limit-players || payload.SpectatorCount != spectators || len(payload.Members) != players {
+		t.Fatalf("terminal room.updated = %+v, want limit=%d players=%d spectators=%d", payload, limit, players, spectators)
+	}
+}
+
+func TestMultiRacePlayerLimitSettingsVsJoinLinearizes(t *testing.T) {
+	for iteration := 0; iteration < 8; iteration++ {
+		room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 3})
+		secondResp, secondPayload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if secondResp.StatusCode != http.StatusCreated {
+			t.Fatalf("join second: %d %s", secondResp.StatusCode, secondPayload)
+		}
+
+		start := make(chan struct{})
+		settingsResult := make(chan lifecycleResponse, 1)
+		joinResult := make(chan lifecycleResponse, 1)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
+			settingsResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+			joinResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		close(start)
+		wg.Wait()
+		settings := <-settingsResult
+		joined := <-joinResult
+		if joined.status != http.StatusCreated {
+			t.Fatalf("concurrent join: %d %s", joined.status, joined.payload)
+		}
+		var participant openapi.JoinRoomResponse
+		if err := json.Unmarshal(joined.payload, &participant); err != nil {
+			t.Fatal(err)
+		}
+		limit, players, spectators, overLimit, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		if overLimit != 0 || matches != 0 || status != string(multi.RoomStatusLobby) {
+			t.Fatalf("terminal invariant status=%s overLimit=%d matches=%d", status, overLimit, matches)
+		}
+		switch settings.status {
+		case http.StatusNoContent:
+			if participant.JoinRole != openapi.ParticipantRoleSpectator || limit != 2 || players != 2 || spectators != 1 {
+				t.Fatalf("settings-first role=%s limit=%d players=%d spectators=%d", participant.JoinRole, limit, players, spectators)
+			}
+		case http.StatusBadRequest:
+			if code := decodeError(t, settings.payload).Code; code != "INVALID_PLAYER_LIMIT" {
+				t.Fatalf("join-first settings error = %s", code)
+			}
+			if participant.JoinRole != openapi.ParticipantRolePlayer || limit != 3 || players != 3 || spectators != 0 {
+				t.Fatalf("join-first role=%s limit=%d players=%d spectators=%d", participant.JoinRole, limit, players, spectators)
+			}
+		default:
+			t.Fatalf("settings status %d: %s", settings.status, settings.payload)
+		}
+		requireTerminalEventCapacity(t, room.roomID, limit, players, spectators)
+	}
+}
+
+func TestMultiRacePlayerLimitSettingsVsReadyLinearizes(t *testing.T) {
+	for iteration := 0; iteration < 8; iteration++ {
+		room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 3})
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join second: %d %s", resp.StatusCode, payload)
+		}
+		var second openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &second); err != nil {
+			t.Fatal(err)
+		}
+
+		start := make(chan struct{})
+		settingsResult := make(chan lifecycleResponse, 1)
+		readyResult := make(chan lifecycleResponse, 1)
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
+			settingsResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", string(second.GuestToken), map[string]bool{"ready": true})
+			readyResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		close(start)
+		wg.Wait()
+		settings := <-settingsResult
+		readyResponse := <-readyResult
+		if readyResponse.status != http.StatusNoContent {
+			t.Fatalf("concurrent ready: %d %s", readyResponse.status, readyResponse.payload)
+		}
+		limit, players, spectators, overLimit, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		if players != 2 || spectators != 0 || overLimit != 0 || matches != 0 || status != string(multi.RoomStatusLobby) {
+			t.Fatalf("terminal state limit=%d players=%d spectators=%d over=%d matches=%d status=%s", limit, players, spectators, overLimit, matches, status)
+		}
+		switch settings.status {
+		case http.StatusNoContent:
+			if limit != 2 {
+				t.Fatalf("settings-first limit=%d, want 2", limit)
+			}
+		case http.StatusConflict:
+			if code := decodeError(t, settings.payload).Code; code != "ROOM_SETTINGS_LOCKED" || limit != 3 {
+				t.Fatalf("ready-first settings error=%s limit=%d", code, limit)
+			}
+		default:
+			t.Fatalf("settings status %d: %s", settings.status, settings.payload)
+		}
+		var memberReady bool
+		if err := pool.QueryRow(ctx, `SELECT ready FROM multi_member WHERE id = $1`, second.Viewer.MemberId).Scan(&memberReady); err != nil {
+			t.Fatal(err)
+		}
+		if !memberReady {
+			t.Fatal("concurrent ready was lost")
+		}
+		requireTerminalEventCapacity(t, room.roomID, limit, players, spectators)
+	}
+}
+
+func TestMultiRacePlayerLimitSettingsJoinFinalReadyLinearizes(t *testing.T) {
+	for iteration := 0; iteration < 8; iteration++ {
+		room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 3})
+		resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join second: %d %s", resp.StatusCode, payload)
+		}
+		var second openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &second); err != nil {
+			t.Fatal(err)
+		}
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", room.hostToken, map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
+		}
+
+		start := make(chan struct{})
+		settingsResult := make(chan lifecycleResponse, 1)
+		joinResult := make(chan lifecycleResponse, 1)
+		readyResult := make(chan lifecycleResponse, 1)
+		var wg sync.WaitGroup
+		wg.Add(3)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
+			settingsResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+room.roomCode+"/join", map[string]any{})
+			joinResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+room.roomID+"/ready", string(second.GuestToken), map[string]bool{"ready": true})
+			readyResult <- lifecycleResponse{status: resp.StatusCode, payload: payload}
+		}()
+		close(start)
+		wg.Wait()
+		settings := <-settingsResult
+		joined := <-joinResult
+		ready := <-readyResult
+		if settings.status != http.StatusConflict || decodeError(t, settings.payload).Code != "ROOM_SETTINGS_LOCKED" {
+			t.Fatalf("concurrent settings = %d %s", settings.status, settings.payload)
+		}
+		if joined.status != http.StatusCreated || ready.status != http.StatusNoContent {
+			t.Fatalf("concurrent join/ready = %d/%d: %s / %s", joined.status, ready.status, joined.payload, ready.payload)
+		}
+		var participant openapi.JoinRoomResponse
+		if err := json.Unmarshal(joined.payload, &participant); err != nil {
+			t.Fatal(err)
+		}
+		limit, players, spectators, overLimit, matches, status := playerLimitTerminalCapacity(t, room.roomID)
+		if limit != 3 || overLimit != 0 {
+			t.Fatalf("locked configuration changed: limit=%d overLimit=%d", limit, overLimit)
+		}
+		var rosterCount int
+		if err := pool.QueryRow(ctx, `SELECT count(*)::int FROM multi_match_player mp JOIN multi_match mm ON mm.id = mp.match_id WHERE mm.room_id = $1`, room.roomID).Scan(&rosterCount); err != nil {
+			t.Fatal(err)
+		}
+		switch participant.JoinRole {
+		case openapi.ParticipantRoleSpectator:
+			if status != string(multi.RoomStatusPlaying) || players != 2 || spectators != 1 || matches != 1 || rosterCount != 2 {
+				t.Fatalf("ready-first status=%s players=%d spectators=%d matches=%d roster=%d", status, players, spectators, matches, rosterCount)
+			}
+		case openapi.ParticipantRolePlayer:
+			if status != string(multi.RoomStatusLobby) || players != 3 || spectators != 0 || matches != 0 || rosterCount != 0 {
+				t.Fatalf("join-first status=%s players=%d spectators=%d matches=%d roster=%d", status, players, spectators, matches, rosterCount)
+			}
+		default:
+			t.Fatalf("unexpected concurrent join role %s", participant.JoinRole)
+		}
+		requireTerminalEventCapacity(t, room.roomID, limit, players, spectators)
 	}
 }
