@@ -194,6 +194,7 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 		Format:        string(format),
 		Mode:          string(mode),
 		TurnSeconds:   int32(turnSeconds),
+		PlayerLimit:   multi.DefaultPlayerLimit,
 		ExpiresAt:     timestamptz(s.now().Add(s.lobbyTTL)),
 		QuestionScope: scopeJSON,
 	})

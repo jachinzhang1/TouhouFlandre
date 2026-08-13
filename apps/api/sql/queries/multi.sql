@@ -3,7 +3,17 @@
 
 -- name: CreateRoom :one
 INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, status, expires_at, question_scope)
-VALUES ($1, $2, $3, $4, $5, 2, 'lobby', $6, $7)
+VALUES (
+    sqlc.arg(id),
+    sqlc.arg(code),
+    sqlc.arg(format),
+    sqlc.arg(mode),
+    sqlc.arg(turn_seconds),
+    sqlc.arg(player_limit),
+    'lobby',
+    sqlc.arg(expires_at),
+    sqlc.arg(question_scope)
+)
 RETURNING *;
 
 -- name: GetRoomByCode :one

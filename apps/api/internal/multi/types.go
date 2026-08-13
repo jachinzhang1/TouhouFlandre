@@ -35,6 +35,15 @@ var GameMaxGuesses = game.GameContentDefinition.MaxGuesses
 // RelayMaxSkipsPerPlayer 接力模式每局每名玩家可空过次数上限（主动空过与超时空过共享）。
 const RelayMaxSkipsPerPlayer = 2
 
+const (
+	// DefaultPlayerLimit is the room capacity used until MPX-005 exposes configuration.
+	DefaultPlayerLimit = 2
+	// ServerMaxRacePlayers is the hard upper bound for a race room.
+	ServerMaxRacePlayers = 8
+	// RelayPlayerLimit keeps the current relay engine on its two-player rule set.
+	RelayPlayerLimit = 2
+)
+
 // MemberViews 成员行 → 视图（room.updated 规范形态 / 快照共享）。
 func MemberViews(rows []repo.MultiMember) []MemberView {
 	views := make([]MemberView, 0, len(rows))

@@ -173,6 +173,23 @@ func TestMultiJoinRoom(t *testing.T) {
 	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Slot != nil {
 		t.Fatalf("unexpected spectator viewer: %+v", spectator.Viewer)
 	}
+
+	// 观战者不占玩家容量：seat 2 释放后，下一名加入者仍成为玩家。
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/leave", string(joined.GuestToken), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("player leave status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{"displayName": "补位玩家"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("replacement join status %d: %s", resp.StatusCode, payload)
+	}
+	var replacement openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &replacement); err != nil {
+		t.Fatal(err)
+	}
+	if replacement.Viewer.Role != openapi.ParticipantRolePlayer || replacement.Viewer.Slot == nil || *replacement.Viewer.Slot != 2 {
+		t.Fatalf("spectator consumed player capacity: %+v", replacement.Viewer)
+	}
 }
 
 func TestMultiJoinNormalization(t *testing.T) {

@@ -274,7 +274,17 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 const createRoom = `-- name: CreateRoom :one
 
 INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, status, expires_at, question_scope)
-VALUES ($1, $2, $3, $4, $5, 2, 'lobby', $6, $7)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    'lobby',
+    $7,
+    $8
+)
 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
 `
 
@@ -284,6 +294,7 @@ type CreateRoomParams struct {
 	Format        string             `json:"format"`
 	Mode          string             `json:"mode"`
 	TurnSeconds   int32              `json:"turn_seconds"`
+	PlayerLimit   int32              `json:"player_limit"`
 	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
 	QuestionScope []byte             `json:"question_scope"`
 }
@@ -297,6 +308,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRo
 		arg.Format,
 		arg.Mode,
 		arg.TurnSeconds,
+		arg.PlayerLimit,
 		arg.ExpiresAt,
 		arg.QuestionScope,
 	)
