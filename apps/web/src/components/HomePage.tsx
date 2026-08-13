@@ -132,7 +132,7 @@ function PaperShortcut({
       foldSize={24}
     >
       <span className="flex min-w-0 items-center gap-3">
-        <span className="paper-shortcut-icon inline-flex size-12 shrink-0 items-center justify-center border border-[var(--accent-hover-border)] bg-vermilion-soft text-vermilion">
+        <span className="paper-shortcut-icon theme-icon-tile inline-flex size-12 shrink-0 items-center justify-center text-vermilion">
           <Icon size={22} aria-hidden="true" />
         </span>
         <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight text-ink">

@@ -253,22 +253,19 @@ function CreditEntryButton({
       </span>
       <span className="flex shrink-0 items-center gap-2">
         {links.map(({ className, href, Icon, name }) => (
-          <Paper
-            animateOnMount={false}
-            ariaLabel={`${title} 的 ${name} 主页`}
-            className="inline-flex size-11 items-center justify-center no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-[var(--focus-ring)]"
-            foldSize={8}
+          <a
+            aria-label={`${title} 的 ${name} 主页`}
+            className="theme-icon-tile theme-icon-link inline-flex size-11 items-center justify-center no-underline transition-transform duration-150 hover:-translate-y-px focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-[var(--focus-ring)]"
             href={href}
             key={href}
             rel="noreferrer"
             target="_blank"
             title={`${title} - ${name}`}
-            variant="plain"
           >
             <span className={className} aria-hidden="true">
               <Icon size={22} />
             </span>
-          </Paper>
+          </a>
         ))}
       </span>
     </Paper>

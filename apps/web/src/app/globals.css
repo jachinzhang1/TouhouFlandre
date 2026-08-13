@@ -80,7 +80,6 @@
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.84);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.15);
-  --paper-tinted-icon-border: rgba(255, 255, 255, 0.24);
   --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(25, 46, 39, 0.14))
     drop-shadow(-5px 10px 7px rgba(25, 46, 39, 0.045))
     drop-shadow(5px 10px 7px rgba(25, 46, 39, 0.045))
@@ -216,7 +215,6 @@ html[data-theme-mode="dark"] {
   --paper-tinted-ink: #ffffff;
   --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
   --paper-tinted-icon-bg: rgba(255, 255, 255, 0.09);
-  --paper-tinted-icon-border: rgba(255, 255, 255, 0.16);
   --paper-sticker-shadow: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.32))
     drop-shadow(-5px 11px 8px rgba(0, 0, 0, 0.1))
     drop-shadow(5px 11px 8px rgba(0, 0, 0, 0.1))
@@ -702,6 +700,18 @@ html[data-theme-mode="dark"] .site-nav {
 
 .paper-sticker-shadow {
   filter: var(--paper-sticker-shadow);
+}
+
+.theme-icon-tile {
+  border: 0;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .theme-icon-link:hover {
+    background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
 }
 
 .credit-section-rule {
@@ -1737,7 +1747,6 @@ html[data-theme-mode="dark"] .appearance-swatch {
 }
 .paper-shortcut-featured .paper-shortcut-icon {
   color: var(--paper-tinted-ink);
-  border-color: var(--paper-tinted-icon-border);
   background: var(--paper-tinted-icon-bg);
 }
 

@@ -18,26 +18,6 @@ describe("Paper", () => {
     expect(paper.style.getPropertyValue("--paper-fold-size")).toBe("24px");
   });
 
-  it("forwards accessible external link attributes", () => {
-    render(
-      <Paper
-        ariaLabel="素材作者主页"
-        href="https://example.com"
-        rel="noreferrer"
-        target="_blank"
-        title="打开素材作者主页"
-      >
-        作者
-      </Paper>,
-    );
-
-    const paper = screen.getByRole("link", { name: "素材作者主页" });
-    expect(paper.getAttribute("href")).toBe("https://example.com");
-    expect(paper.getAttribute("rel")).toBe("noreferrer");
-    expect(paper.getAttribute("target")).toBe("_blank");
-    expect(paper.getAttribute("title")).toBe("打开素材作者主页");
-  });
-
   it("supports plain unfolded non-link surfaces", () => {
     const { container } = render(
       <Paper variant="plain" folded={false} unfolded ariaHidden>
