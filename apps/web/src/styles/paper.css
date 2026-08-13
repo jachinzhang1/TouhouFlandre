@@ -15,8 +15,7 @@
   width: 100%;
 }
 
-.paper-sticker-cast,
-.paper-sticker-lift-shadow {
+.paper-sticker-cast {
   position: absolute;
   pointer-events: none;
 }
@@ -40,50 +39,48 @@
   background: linear-gradient(
     to bottom,
     var(--paper-cast-hard) 0%,
-    var(--paper-cast-mid) 34%,
-    transparent 72%
+    var(--paper-cast-mid) 30%,
+    transparent 64%
   );
   clip-path: polygon(
     10px 0,
     calc(100% - 10px) 0,
-    calc(100% - 4px) 68%,
-    4px 68%
+    calc(100% - 5px) 60%,
+    5px 60%
   );
+  filter: blur(3px);
 }
 
 .paper-sticker-cast::after {
-  inset: 38% 0 0;
+  inset: 30% 0 0;
   background: linear-gradient(
     to bottom,
     var(--paper-cast-mid) 0%,
-    var(--paper-cast-soft) 46%,
+    var(--paper-cast-soft) 52%,
     transparent 100%
   );
-  clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
-  filter: blur(8px);
+  filter: blur(14px);
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    #000 18%,
-    #000 76%,
+    rgba(0, 0, 0, 0.72) 24%,
+    #000 56%,
+    rgba(0, 0, 0, 0.72) 78%,
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
-    #000 18%,
-    #000 76%,
+    rgba(0, 0, 0, 0.72) 24%,
+    #000 56%,
+    rgba(0, 0, 0, 0.72) 78%,
     transparent 100%
   );
 }
 
-.paper-sticker-lift-shadow {
-  inset: 1px;
-  z-index: 1;
-  border-radius: 2px;
-  box-shadow: 0 16px 34px var(--paper-lift-shadow);
-  opacity: 0;
-  transition: opacity 180ms ease;
+.paper-sticker > .paper-surface {
+  filter: drop-shadow(0 0 0 transparent);
+  transition: filter 180ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -96,8 +93,8 @@
     opacity: 0;
   }
 
-  .paper-sticker:hover .paper-sticker-lift-shadow {
-    opacity: 1;
+  .paper-sticker:hover > .paper-surface {
+    filter: drop-shadow(0 14px 18px var(--paper-lift-shadow));
   }
 }
 
@@ -153,7 +150,8 @@
   );
   transition:
     background-color 160ms ease,
-    clip-path 180ms ease;
+    clip-path 180ms ease,
+    filter 180ms ease;
 }
 
 .paper-surface[data-paper-folded="true"]::after {

@@ -35,6 +35,8 @@
   color: var(--paper-tinted-ink);
   background: var(--vermilion);
   clip-path: polygon(0 0, 100% 0, 0 100%);
+  filter: drop-shadow(0 0 0 transparent);
+  transition: filter 180ms ease;
   pointer-events: none;
 }
 
@@ -71,6 +73,15 @@
   z-index: 2;
   overflow: hidden;
   clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 0 transparent);
+  transition: filter 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-sticker:hover > .announcement-entry,
+  .paper-sticker:hover > .announcement-pin-corner {
+    filter: drop-shadow(0 14px 18px var(--paper-lift-shadow));
+  }
 }
 
 .announcement-entry[data-pinned="true"] {

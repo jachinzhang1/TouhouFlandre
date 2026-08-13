@@ -44,7 +44,8 @@ html[data-theme-mode="dark"] .brand-icon-github {
 .paper-surface.credit-entry-card[data-paper-folded="true"] {
   transition:
     background-color 160ms ease,
-    clip-path 180ms ease;
+    clip-path 180ms ease,
+    filter 180ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {

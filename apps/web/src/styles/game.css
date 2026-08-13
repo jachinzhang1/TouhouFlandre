@@ -24,7 +24,8 @@
 .paper-surface.game-mode-entry[data-paper-folded="true"] {
   transition:
     background-color 160ms ease,
-    clip-path 180ms ease;
+    clip-path 180ms ease,
+    filter 180ms ease;
 }
 
 .game-mode-entry-wash {

@@ -20,7 +20,6 @@ describe("Paper", () => {
     expect(sticker.dataset.paperSticker).toBe("true");
     expect(sticker.style.zIndex).toBe("4");
     expect(sticker.querySelector(".paper-sticker-cast")).toBeTruthy();
-    expect(sticker.querySelector(".paper-sticker-lift-shadow")).toBeTruthy();
   });
 
   it("supports interactive button papers", () => {
