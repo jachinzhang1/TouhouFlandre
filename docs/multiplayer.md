@@ -114,8 +114,8 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 升级要求：
 
 - Origin 必须匹配 `WEB_ORIGINS`。
-- 子协议为 `touhouflandre-multi.v1`。
-- 首帧必须是 `hello`，包含成员令牌和客户端已应用的最后 sequence。
+- 子协议为 `touhouflandre-multi.v2`；v1 页面必须刷新后重新连接。
+- 首帧必须是 `hello`，包含成员令牌和上一次完整确认的 `lastGameSequence`。
 
 事件信封包含：
 
@@ -137,7 +137,7 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 | `room.updated` | 房间成员、准备状态、赛制或模式投影变化。 |
 | `match.started` | 新对局开始，携带赛制、模式、目标胜场和题库版本。 |
 | `match.rematch` | 成员确认再来一局。 |
-| `round.started` | 小局创建；接力模式额外携带 `turnSlot`、`turnDeadline`、`maxTurnsPerPlayer`、`maxSkipsPerPlayer`。 |
+| `round.started` | 小局创建；接力模式额外携带 `turnMemberId`、`turnSeat`、`turnDeadline`、`maxTurnsPerPlayer`、`maxSkipsPerPlayer`。 |
 | `round.playing` | 倒计时结束，可以开始行动。 |
 | `round.opponent.guess` | 竞速模式的对手匿名猜测行。 |
 | `round.shared.guess` | 接力模式的共享猜测行。 |
@@ -147,11 +147,18 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 | `match.ended` | 整场对局结束。 |
 | `room.closed` | 房间进入关闭终态。 |
 
+每个持久化游戏 sequence 对任一观察者都必须有一帧：有权消费时发送上述业务事件，
+无权或无需消费时发送不含 `payload` 的 `room.cursor`。`hello-ok` 只声明同步目标水位，
+只有 FIFO 队尾的 `sync.complete` 才表示此前重放/缓冲帧已交付。
+
 事件类型和 payload 以 `contracts/ws/protocol.yaml` 为准。
 
 ## 重连与补齐
 
-客户端断线后指数退避重连，并携带本地 `lastAppliedSeq`。服务端从事件表重放后续事件；如客户端发现 sequence 缺口，应通过 `GET /api/rooms/{roomId}/snapshot?after=<seq>` 获取权威快照和事件补齐。
+客户端断线后指数退避重连，并携带上一次完成同步的 `lastGameSequence`。业务事件与
+`room.cursor` 共同推进当前连接的 applied game sequence；只有大于期望值的 sequence 才是真缺口。
+同一缺口只发起一个 `GET /api/rooms/{roomId}/snapshot?after=<seq>`，并以响应中的
+`gameSequence` 对齐权威水位后按序排空缓冲帧。
 
 ## 配置项
 

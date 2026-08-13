@@ -28,12 +28,16 @@ type Hub struct {
 
 	mu    sync.Mutex
 	rooms map[string]*roomHub // roomID → 连接与广播水位
+
+	syncHookMu sync.Mutex
+	syncHook   func(stage string)
 }
 
 // roomHub 单房间状态：每成员单活跃连接（替换语义）+ 房间广播水位。
 type roomHub struct {
-	lastSeq int64
-	conns   map[string]*Conn // memberID → conn
+	publishMu sync.Mutex
+	lastSeq   int64
+	conns     map[string]*Conn // memberID → conn
 }
 
 // New 构造 hub（grace/readLimit/sendQueue 由 internal/config 注入，08 §4.7/§8.5）。
@@ -50,6 +54,23 @@ func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int
 
 // ReadLimit 客户端消息读限（handler hello 首帧与 conn 读循环共用）。
 func (h *Hub) ReadLimit() int64 { return h.readLimit }
+
+// SetSyncTestHook installs a deterministic integration-test hook for v2 barrier stages.
+// Production callers must leave it nil.
+func (h *Hub) SetSyncTestHook(hook func(stage string)) {
+	h.syncHookMu.Lock()
+	h.syncHook = hook
+	h.syncHookMu.Unlock()
+}
+
+func (h *Hub) runSyncHook(stage string) {
+	h.syncHookMu.Lock()
+	hook := h.syncHook
+	h.syncHookMu.Unlock()
+	if hook != nil {
+		hook(stage)
+	}
+}
 
 // markDisconnected 连接断开：成员置 disconnected + grace_until + room.updated 事件
 // （对端可见离线，08 §4.6；宽限逾期由 sweeper 判负）。
@@ -130,10 +151,14 @@ func (h *Hub) Publish(roomID string) {
 
 	h.mu.Lock()
 	rh := h.rooms[roomID]
+	h.mu.Unlock()
 	if rh == nil {
-		h.mu.Unlock()
 		return
 	}
+	rh.publishMu.Lock()
+	defer rh.publishMu.Unlock()
+
+	h.mu.Lock()
 	last := rh.lastSeq
 	conns := make([]*Conn, 0, len(rh.conns))
 	for _, c := range rh.conns {
@@ -171,17 +196,18 @@ func (h *Hub) Publish(roomID string) {
 			projected, skip, err := multi.ProjectEvent(ctx, h.q, event, roomID, c.member, memberSlotByID, charCache)
 			if err != nil {
 				slog.Error("hub publish: project event", "room_id", roomID, "sequence", event.Sequence, "member_id", c.member.ID, "error", err)
+				c.setCloseReason("projection_error")
+				c.closeQuietly()
 				continue
 			}
-			if skip {
-				continue
-			}
-			frame, err := envelopeFrame(event, projected)
+			frame, err := gameFrame(event, projected, skip)
 			if err != nil {
 				slog.Error("hub publish: marshal event", "room_id", roomID, "sequence", event.Sequence, "error", err)
+				c.setCloseReason("projection_error")
+				c.closeQuietly()
 				continue
 			}
-			if !c.enqueue(frame) {
+			if !c.deliverGameFrame(event.Sequence, frame) {
 				c.closeSlow()
 			}
 		}
@@ -206,14 +232,10 @@ func (h *Hub) Register(c *Conn) *Conn {
 	old := rh.conns[c.member.ID]
 	rh.conns[c.member.ID] = c
 	multi.DefaultMetrics.AddWsConnections(1)
-	if c.lastSequence > 0 {
+	if c.lastGameSequence > 0 {
 		multi.DefaultMetrics.IncReconnects()
 	}
-	slog.Info("ws: member connected", "room_id", c.roomID, "member_id", c.member.ID, "reconnect", c.lastSequence > 0)
-	// 广播水位推进到当前事件序号（新连接经 hello 重放补齐自身缺口；发布在后的新事件才会推给它）
-	if current := h.roomEventSeq(c.roomID); current > rh.lastSeq {
-		rh.lastSeq = current
-	}
+	slog.Info("ws: member connected", "room_id", c.roomID, "member_id", c.member.ID, "reconnect", c.lastGameSequence > 0)
 	return old
 }
 
@@ -258,8 +280,17 @@ func (h *Hub) roomEventSeq(roomID string) int64 {
 	return room.EventSeq
 }
 
-// envelopeFrame 组装事件信封（08 §8.2）。
-func envelopeFrame(event repo.RoomEvent, projected multi.ProjectedEvent) ([]byte, error) {
+// gameFrame 为每个持久化 sequence 组装业务事件或不泄露业务类型/payload 的 cursor。
+func gameFrame(event repo.RoomEvent, projected multi.ProjectedEvent, cursor bool) ([]byte, error) {
+	if cursor {
+		return json.Marshal(multi.CursorEnvelope{
+			Type:       "room.cursor",
+			EventID:    strconv.FormatInt(event.ID, 10),
+			RoomID:     event.RoomID,
+			Sequence:   event.Sequence,
+			OccurredAt: event.OccurredAt.Time,
+		})
+	}
 	payloadBytes, err := json.Marshal(projected.Payload)
 	if err != nil {
 		return nil, err

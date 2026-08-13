@@ -1,4 +1,4 @@
-# touhouflandre-multi.v1 WebSocket 子协议规范
+# touhouflandre-multi.v2 WebSocket 子协议规范
 #
 # 依据：docs/multiplayer.md（WebSocket 协议）
 # 校验：scripts/check-ws-protocol.mjs（`task check:ws-protocol` / CI）
@@ -7,15 +7,14 @@
 #   - TS 类型（packages/shared/src/multi.ts）payload 字段名集合与 events/clientMessages 对齐
 
 info:
-  version: "1.0"
+  version: "2.0"
   description: |
-    touhouflandre-multi.v1：多人房间实时事件协议。
-    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v1）。
-    鉴权：建连后第一条消息必须是 hello{token, lastSequence}；鉴权前不收发房间事件。
+    touhouflandre-multi.v2：多人房间游戏事件同步协议。
+    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v2）。
+    鉴权：建连后第一条消息必须是 hello{token, lastGameSequence}；鉴权前不收发房间事件。
     令牌只在首帧出现，不进 URL/查询参数/日志。
 
-# 事件信封（08 §8.2）。sequence 由 room_event.sequence 持久化，房间内单调递增；
-# 客户端按 sequence 去重、排序，发现缺口时 GET /api/rooms/{roomId}/snapshot?after=<seq> 补齐。
+# 业务事件信封。sequence 由 room_event.sequence 持久化，房间内单调递增。
 envelope:
   type: object
   additionalProperties: false
@@ -37,16 +36,40 @@ envelope:
     payload:
       type: object
 
-# 握手流程（08 §8.1）：升级校验 → hello → hello-ok → 重放缺口 → 实时流
+# 观察者无权或无需消费业务 payload 时发送同 sequence 的连续性占位帧。
+cursorEnvelope:
+  type: object
+  additionalProperties: false
+  required: [type, eventId, roomId, sequence, occurredAt]
+  properties:
+    type:
+      type: string
+      const: room.cursor
+    eventId:
+      type: string
+    roomId:
+      type: string
+    sequence:
+      type: integer
+      minimum: 1
+    occurredAt:
+      type: string
+      format: date-time
+
+# 握手流程：升级校验 → hello → 注册缓冲 → 捕获水位 → hello-ok → 重放/排空 → sync.complete → 实时流
 handshake:
   - step: upgrade
-    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v1；不符拒绝升级。"
+    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v2；不符拒绝升级。"
   - step: hello
-    detail: 第一条消息必须是 hello{token, lastSequence}；鉴权失败/非首帧 → 关闭连接。
+    detail: 第一条消息必须是 hello{token, lastGameSequence}；鉴权失败/非首帧 → 关闭连接。
+  - step: buffer
+    detail: 鉴权后先注册为 buffering，再捕获房间游戏事件高水位。
   - step: hello-ok
-    detail: 鉴权通过 → 下发 hello-ok{roomId, nextSequence}。
+    detail: 下发 hello-ok{roomId, targetGameSequence}；仅声明目标水位，不表示同步完成。
   - step: replay
-    detail: 从 lastSequence+1 起重放缺口事件（逐观察者投影后），再进入实时流。
+    detail: 重放至目标水位；每个 sequence 为业务事件或 room.cursor，再排空较新的缓冲帧。
+  - step: complete
+    detail: FIFO 队尾发送 sync.complete{gameSequence} 后切入实时流。
   - step: replace
     detail: 同成员新连接注册时，旧连接收到 replaced 帧后关闭（每成员单活跃连接）。
 
@@ -59,7 +82,8 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, playerLimit, members, spectatorCount]
+      required:
+        [format, mode, turnSeconds, playerLimit, members, spectatorCount]
       properties:
         format:
           type: string
@@ -105,7 +129,16 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, targetWins, catalogVersion, matchIndex, questionScope]
+      required:
+        [
+          format,
+          mode,
+          turnSeconds,
+          targetWins,
+          catalogVersion,
+          matchIndex,
+          questionScope,
+        ]
       properties:
         format:
           type: string
@@ -350,7 +383,16 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, winnerMemberId, answer, boards, scores, results]
+      required:
+        [
+          matchIndex,
+          roundIndex,
+          winnerMemberId,
+          answer,
+          boards,
+          scores,
+          results,
+        ]
       properties:
         matchIndex:
           type: integer
@@ -414,7 +456,8 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, winnerMemberId, scores, results, reason, retentionEndsAt]
+      required:
+        [matchIndex, winnerMemberId, scores, results, reason, retentionEndsAt]
       properties:
         matchIndex:
           type: integer
@@ -459,18 +502,50 @@ events:
 # 服务端控制帧（非事件，无 sequence；平铺消息含 type）
 control:
   - type: hello-ok
-    summary: 鉴权通过。之后从 lastSequence+1 重放事件。
+    summary: 鉴权通过并声明本次同步目标水位；不表示重放完成。
     payload:
       type: object
       additionalProperties: false
-      required: [type, roomId, nextSequence]
+      required: [type, roomId, targetGameSequence]
       properties:
         type:
           type: string
           const: hello-ok
         roomId:
           type: string
-        nextSequence:
+        targetGameSequence:
+          type: integer
+          minimum: 0
+  - type: sync.complete
+    summary: FIFO 中此前的重放与缓冲游戏帧已全部交付；该水位可持久化。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, gameSequence]
+      properties:
+        type:
+          type: string
+          const: sync.complete
+        gameSequence:
+          type: integer
+          minimum: 0
+  - type: resync.required
+    summary: hello 水位无法连续恢复；客户端必须拉取权威 snapshot 后重新握手。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, scope, reason, gameSequence]
+      properties:
+        type:
+          type: string
+          const: resync.required
+        scope:
+          type: string
+          enum: [game]
+        reason:
+          type: string
+          enum: [negative_sequence, ahead_of_server, history_unavailable]
+        gameSequence:
           type: integer
           minimum: 0
   - type: replaced
@@ -494,7 +569,7 @@ clientMessages:
     payload:
       type: object
       additionalProperties: false
-      required: [type, token, lastSequence]
+      required: [type, token, lastGameSequence]
       properties:
         type:
           type: string
@@ -502,21 +577,21 @@ clientMessages:
         token:
           type: string
           description: 游客令牌（Bearer guest:{token} 中冒号后的部分）。
-        lastSequence:
+        lastGameSequence:
           type: integer
           minimum: 0
-          description: 本地最后已应用的事件序号（首连为 0）。
+          description: 本地最后经 sync.complete 确认的游戏事件序号（首连为 0）。
   - type: ack
     summary: 水位推进；服务端据此检测慢消费者。
     payload:
       type: object
       additionalProperties: false
-      required: [type, lastSequence]
+      required: [type, gameSequence]
       properties:
         type:
           type: string
           const: ack
-        lastSequence:
+        gameSequence:
           type: integer
           minimum: 0
 
@@ -855,36 +930,36 @@ examples:
             - memberId: member-host
               seat: 1
               guesses:
-              - guessId: marisa_kirisame
-                guessName: 雾雨魔理沙
-                isCorrect: false
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: partial
-                    symbol: "~"
-                    displayValue: [游戏]
-              - guessId: reimu_hakurei
-                guessName: 博丽灵梦
-                isCorrect: true
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: exact
-                    symbol: "O"
-                    displayValue: [东方灵异传]
+                - guessId: marisa_kirisame
+                  guessName: 雾雨魔理沙
+                  isCorrect: false
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: partial
+                      symbol: "~"
+                      displayValue: [游戏]
+                - guessId: reimu_hakurei
+                  guessName: 博丽灵梦
+                  isCorrect: true
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: exact
+                      symbol: "O"
+                      displayValue: [东方灵异传]
             - memberId: member-guest
               seat: 2
               guesses:
-              - guessId: remilia_scarlet
-                guessName: 蕾米莉亚·斯卡蕾特
-                isCorrect: false
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: miss
-                    symbol: "X"
-                    displayValue: [东方红魔乡]
+                - guessId: remilia_scarlet
+                  guessName: 蕾米莉亚·斯卡蕾特
+                  isCorrect: false
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: miss
+                      symbol: "X"
+                      displayValue: [东方红魔乡]
           scores:
             - memberId: member-host
               seat: 1
@@ -939,11 +1014,31 @@ examples:
         payload:
           reason: host_left
 
+    - label: room.cursor（无权消费业务 payload）
+      message:
+        type: room.cursor
+        eventId: evt_01J8Z8
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 23
+        occurredAt: "2026-08-06T12:20:02Z"
+
     - label: hello-ok（鉴权通过）
       message:
         type: hello-ok
         roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
-        nextSequence: 23
+        targetGameSequence: 23
+
+    - label: sync.complete（游戏同步完成）
+      message:
+        type: sync.complete
+        gameSequence: 23
+
+    - label: resync.required（历史不可连续恢复）
+      message:
+        type: resync.required
+        scope: game
+        reason: history_unavailable
+        gameSequence: 23
 
     - label: replaced（旧连接被替换）
       message:
@@ -954,12 +1049,12 @@ examples:
       message:
         type: hello
         token: 9qZtXw2yR4vB7nM1pLk8jH3
-        lastSequence: 0
+        lastGameSequence: 0
 
     - label: ack（水位推进）
       message:
         type: ack
-        lastSequence: 21
+        gameSequence: 21
 
   # 无效示例：expectFail 为预期失败类别
   #   schema        —— 消息不满足 schema/枚举/信封要求
@@ -971,20 +1066,30 @@ examples:
       expectFail: schema
       message:
         type: hello
-        lastSequence: 0
+        lastGameSequence: 0
 
     - label: hello token 非字符串
       expectFail: schema
       message:
         type: hello
         token: 12345
-        lastSequence: 0
+        lastGameSequence: 0
 
     - label: 首帧不是 hello（ack 先行）
       expectFail: first-frame
       message:
         type: ack
-        lastSequence: 0
+        gameSequence: 0
+
+    - label: room.cursor 不得携带 payload
+      expectFail: schema
+      message:
+        type: room.cursor
+        eventId: evt_cursor_bad
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 3
+        occurredAt: "2026-08-06T12:00:02Z"
+        payload: {}
 
     - label: 未知事件类型
       expectFail: unknown-type

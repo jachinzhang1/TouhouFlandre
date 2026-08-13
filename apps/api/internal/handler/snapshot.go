@@ -189,6 +189,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		Members:        memberViews,
 		SpectatorCount: int(state.SpectatorCount),
 		PlayerLimit:    int(state.Room.PlayerLimit),
+		GameSequence:   int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {

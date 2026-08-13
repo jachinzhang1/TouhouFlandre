@@ -19,6 +19,8 @@ const fail = (msg) => {
 };
 
 const doc = parseYaml(readFileSync(protocolPath, "utf8"));
+const clientTypes = (doc.clientMessages ?? []).map((entry) => entry.type);
+const controlTypes = (doc.control ?? []).map((entry) => entry.type);
 
 // ---------- 迷你 JSON Schema 校验器（支持本协议用到的子集） ----------
 const definitions = doc.definitions ?? {};
@@ -54,18 +56,23 @@ const validate = (schema, value, path) => {
     return;
   }
   if (schema.const !== undefined && value !== schema.const) {
-    errors.push(`${path}: 期望 const=${JSON.stringify(schema.const)}，实际 ${JSON.stringify(value)}`);
+    errors.push(
+      `${path}: 期望 const=${JSON.stringify(schema.const)}，实际 ${JSON.stringify(value)}`,
+    );
     return;
   }
   if (schema.enum && !schema.enum.includes(value)) {
-    errors.push(`${path}: 值 ${JSON.stringify(value)} 不在枚举 [${schema.enum.join(", ")}]`);
+    errors.push(
+      `${path}: 值 ${JSON.stringify(value)} 不在枚举 [${schema.enum.join(", ")}]`,
+    );
     return;
   }
   if (schema.type) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type];
     const okType = types.some((t) => {
       if (t === "null") return value === null;
-      if (t === "integer") return typeof value === "number" && Number.isInteger(value);
+      if (t === "integer")
+        return typeof value === "number" && Number.isInteger(value);
       if (t === "array") return Array.isArray(value);
       return typeof value === t;
     });
@@ -74,10 +81,18 @@ const validate = (schema, value, path) => {
       return;
     }
   }
-  if (typeof value === "number" && schema.minimum !== undefined && value < schema.minimum) {
+  if (
+    typeof value === "number" &&
+    schema.minimum !== undefined &&
+    value < schema.minimum
+  ) {
     errors.push(`${path}: ${value} < minimum ${schema.minimum}`);
   }
-  if (typeof value === "number" && schema.maximum !== undefined && value > schema.maximum) {
+  if (
+    typeof value === "number" &&
+    schema.maximum !== undefined &&
+    value > schema.maximum
+  ) {
     errors.push(`${path}: ${value} > maximum ${schema.maximum}`);
   }
   if (Array.isArray(value)) {
@@ -105,7 +120,9 @@ const validate = (schema, value, path) => {
     if (schema.additionalProperties === false) {
       for (const key of Object.keys(value)) {
         if (!(schema.properties && key in schema.properties)) {
-          errors.push(`${path}: 额外字段 "${key}"（additionalProperties=false）`);
+          errors.push(
+            `${path}: 额外字段 "${key}"（additionalProperties=false）`,
+          );
         }
       }
     }
@@ -117,14 +134,18 @@ const checkMessage = (message) => {
   errors.length = 0;
   const type = message.type;
 
-  if (type === "hello" || type === "ack") {
+  if (clientTypes.includes(type)) {
     const entry = doc.clientMessages.find((m) => m.type === type);
     validate(entry.payload, message, `message(${type})`);
     return errors.length === 0;
   }
-  if (["hello-ok", "replaced"].includes(type)) {
+  if (controlTypes.includes(type)) {
     const entry = doc.control.find((m) => m.type === type);
     validate(entry.payload, message, `message(${type})`);
+    return errors.length === 0;
+  }
+  if (type === "room.cursor") {
+    validate(doc.cursorEnvelope, message, "cursorEnvelope");
     return errors.length === 0;
   }
   const event = doc.events.find((e) => e.type === type);
@@ -138,18 +159,37 @@ const checkMessage = (message) => {
 // ---------- 结构检查 ----------
 console.log("[check-ws-protocol] 结构检查");
 if (!doc.info?.version) fail("缺少 info.version");
+if (doc.info?.version !== "2.0")
+  fail(`WS 协议版本必须为 2.0，实际 ${doc.info?.version}`);
 if (!doc.envelope) fail("缺少 envelope");
+if (!doc.cursorEnvelope) fail("缺少 cursorEnvelope");
 const envelopeKeys = Object.keys(doc.envelope.properties ?? {});
-if (JSON.stringify(envelopeKeys) !== JSON.stringify(["type", "eventId", "roomId", "sequence", "occurredAt", "payload"])) {
+if (
+  JSON.stringify(envelopeKeys) !==
+  JSON.stringify([
+    "type",
+    "eventId",
+    "roomId",
+    "sequence",
+    "occurredAt",
+    "payload",
+  ])
+) {
   fail(`envelope 字段与 08 §8.2 不一致: ${envelopeKeys.join(", ")}`);
 }
 
 const opponentEvents = doc.events.filter((e) => e.observer === "opponent");
-if (opponentEvents.length !== 1 || opponentEvents[0]?.type !== "round.opponent.guess") {
+if (
+  opponentEvents.length !== 1 ||
+  opponentEvents[0]?.type !== "round.opponent.guess"
+) {
   fail("round.opponent.guess 必须是唯一逐观察者事件（08 §8.3）");
 }
 const spectatorEvents = doc.events.filter((e) => e.observer === "spectator");
-if (spectatorEvents.length !== 1 || spectatorEvents[0]?.type !== "round.spectator.guess") {
+if (
+  spectatorEvents.length !== 1 ||
+  spectatorEvents[0]?.type !== "round.spectator.guess"
+) {
   fail("round.spectator.guess 必须是唯一观战者专用事件");
 }
 const expectedEventTypes = [
@@ -174,10 +214,18 @@ if (JSON.stringify(actualEventTypes) !== JSON.stringify(expectedEventTypes)) {
 for (const e of doc.events) {
   if (!e.payload) fail(`事件 ${e.type} 缺 payload schema`);
 }
-for (const t of ["hello", "ack"]) {
-  if (!doc.clientMessages.some((m) => m.type === t)) fail(`客户端消息 ${t} 缺失`);
+const cursorKeys = Object.keys(doc.cursorEnvelope?.properties ?? {});
+if (
+  JSON.stringify(cursorKeys) !==
+  JSON.stringify(["type", "eventId", "roomId", "sequence", "occurredAt"])
+) {
+  fail(`cursorEnvelope 字段不正确: ${cursorKeys.join(", ")}`);
 }
-for (const t of ["hello-ok", "replaced"]) {
+for (const t of ["hello", "ack"]) {
+  if (!doc.clientMessages.some((m) => m.type === t))
+    fail(`客户端消息 ${t} 缺失`);
+}
+for (const t of ["hello-ok", "sync.complete", "resync.required", "replaced"]) {
   if (!doc.control.some((m) => m.type === t)) fail(`控制帧 ${t} 缺失`);
 }
 
@@ -202,11 +250,10 @@ for (const example of doc.examples.valid) {
   }
   validSeen.add(type);
 }
-const covered = [...validSeen].filter((t) => !["hello", "ack", "hello-ok", "replaced"].includes(t));
 for (const t of expectedEventTypes) {
   if (!validSeen.has(t)) fail(`事件 ${t} 缺少有效示例`);
 }
-for (const t of ["hello", "ack", "hello-ok", "replaced"]) {
+for (const t of ["room.cursor", ...clientTypes, ...controlTypes]) {
   if (!validSeen.has(t)) fail(`消息 ${t} 缺少有效示例`);
 }
 
@@ -216,7 +263,12 @@ for (const example of doc.examples.invalid) {
   const { label, expectFail, message } = example;
   const type = message.type;
   let actual = null;
-  const known = [...expectedEventTypes, "hello", "ack", "hello-ok", "replaced"];
+  const known = [
+    ...expectedEventTypes,
+    "room.cursor",
+    ...clientTypes,
+    ...controlTypes,
+  ];
   if (!known.includes(type)) {
     actual = "unknown-type";
   } else if (type === "hello" || type === "ack") {
@@ -230,7 +282,9 @@ for (const example of doc.examples.invalid) {
     actual = "schema";
   }
   if (actual !== expectFail) {
-    fail(`反例「${label}」预期失败类别 ${expectFail}，实际 ${actual ?? "通过"}`);
+    fail(
+      `反例「${label}」预期失败类别 ${expectFail}，实际 ${actual ?? "通过"}`,
+    );
   }
 }
 
@@ -281,10 +335,12 @@ if (!existsSync(tsPath)) {
     "round.ended": "RoundEndedPayload",
     "match.ended": "MatchEndedPayload",
     "room.closed": "RoomClosedPayload",
-    "hello": "HelloMessage",
-    "ack": "AckMessage",
+    hello: "HelloMessage",
+    ack: "AckMessage",
     "hello-ok": "HelloOkMessage",
-    "replaced": "ReplacedMessage",
+    "sync.complete": "SyncCompleteMessage",
+    "resync.required": "ResyncRequiredMessage",
+    replaced: "ReplacedMessage",
   };
   const entries = [
     ...doc.events.map((e) => [e.type, e.payload]),
@@ -304,14 +360,27 @@ if (!existsSync(tsPath)) {
     }
     const expected = schemaProps(schema);
     if (JSON.stringify(props) !== JSON.stringify(expected)) {
-      fail(`${tsName} 字段与协议不一致: TS=[${props.join(", ")}] schema=[${expected.join(", ")}]`);
+      fail(
+        `${tsName} 字段与协议不一致: TS=[${props.join(", ")}] schema=[${expected.join(", ")}]`,
+      );
     }
+  }
+  const cursorProps = interfaceProps("RoomCursorEnvelope");
+  if (!cursorProps) {
+    fail("TS 缺少 interface RoomCursorEnvelope");
+  } else if (
+    JSON.stringify(cursorProps) !==
+    JSON.stringify(schemaProps(doc.cursorEnvelope))
+  ) {
+    fail(`RoomCursorEnvelope 字段与协议不一致: TS=[${cursorProps.join(", ")}]`);
   }
   // 信封字段集合
   const envelopeProps = interfaceProps("Envelope");
   if (!envelopeProps) {
     fail("TS 缺少 interface Envelope");
-  } else if (JSON.stringify(envelopeProps) !== JSON.stringify(schemaProps(doc.envelope))) {
+  } else if (
+    JSON.stringify(envelopeProps) !== JSON.stringify(schemaProps(doc.envelope))
+  ) {
     fail(`Envelope 字段与协议不一致: TS=[${envelopeProps.join(", ")}]`);
   }
 }

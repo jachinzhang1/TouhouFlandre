@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Envelope,
+  GameSequenceFrame,
   MatchEndedPayload,
   MatchRematchPayload,
   MatchStartedPayload,
@@ -26,6 +27,7 @@ import type {
 } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 import { boardAtSeat, resultForMemberId } from "../domain/memberCollections";
+import { GameSequenceCoordinator } from "../domain/gameSequence";
 
 type GuessResult = components["schemas"]["GuessResult"];
 type MatchView = components["schemas"]["MatchView"];
@@ -83,7 +85,7 @@ export interface RoomUiState {
   history: RoundSummary[];
   /** 房间保留期内完整局末记录，供观战/复盘选择。 */
   roundArchives: RoundEndedPayload[];
-  lastSequence: number;
+  appliedGameSequence: number;
 }
 
 export const initialRoomState: RoomUiState = {
@@ -101,7 +103,7 @@ export const initialRoomState: RoomUiState = {
   rematchReady: [false, false],
   history: [],
   roundArchives: [],
-  lastSequence: 0,
+  appliedGameSequence: 0,
 };
 
 /** 局结束 → 历史摘要与比分。 */
@@ -416,9 +418,9 @@ export function applySnapshot(
   // ——避免事件回放（如 match.started 的重置语义）覆盖快照状态。
   let next: RoomUiState = { ...state };
   for (const event of snapshot.events) {
-    if (event.sequence <= next.lastSequence) continue;
+    if (event.sequence <= next.appliedGameSequence) continue;
     next = roomReducer(next, event);
-    next.lastSequence = event.sequence;
+    next.appliedGameSequence = event.sequence;
   }
   return {
     ...next,
@@ -449,6 +451,10 @@ export function applySnapshot(
             ?.ready ?? false,
         ]
       : [false, false],
+    appliedGameSequence: Math.max(
+      next.appliedGameSequence,
+      snapshot.gameSequence,
+    ),
   };
 }
 
@@ -473,8 +479,8 @@ export interface UseRoomResult {
 }
 
 /**
- * useRoom：快照对齐 → 连接 → hello{token, lastSequence} → 事件流；
- * 断线指数退避重连（1s→…→30s + 抖动）携带 lastAppliedSeq（08 §8.4）。
+ * useRoom：权威快照 → v2 hello{lastGameSequence} → 连续业务/cursor 游戏帧；
+ * 真缺口由单个 snapshot 对齐，断线指数退避重连携带已应用游戏水位。
  */
 export function useRoom(
   roomId: string,
@@ -486,6 +492,7 @@ export function useRoom(
   const [guessError, setGuessError] = useState("");
   const [roomUnavailable, setRoomUnavailable] = useState(false);
   const lastAppliedRef = useRef(0);
+  const completedGameSequenceRef = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ForegroundTimer | null>(null);
   const guessCompletedRef = useRef<number[]>([]);
@@ -512,8 +519,6 @@ export function useRoom(
 
   const applyEvent = useCallback(
     (event: Envelope) => {
-      if (event.sequence <= lastAppliedRef.current) return; // 按 sequence 去重
-      lastAppliedRef.current = event.sequence;
       let timing: MultiplayerTimingSnapshot | undefined;
       if (event.type === "match.started" || event.type === "round.started") {
         timerRef.current?.setActive(false);
@@ -546,7 +551,7 @@ export function useRoom(
       void queueStatsEvent(event, timing);
       setState((s) => ({
         ...roomReducer(s, event),
-        lastSequence: event.sequence,
+        appliedGameSequence: event.sequence,
       }));
     },
     [playerSlot, queueStatsEvent],
@@ -556,10 +561,17 @@ export function useRoom(
     async (snapshot: RoomSnapshot) => {
       for (const event of snapshot.events) {
         if (event.sequence <= lastAppliedRef.current) continue;
-        lastAppliedRef.current = event.sequence;
         void queueStatsEvent(event as Envelope);
       }
       setState((current) => applySnapshot(current, snapshot));
+      lastAppliedRef.current = Math.max(
+        lastAppliedRef.current,
+        snapshot.gameSequence,
+      );
+      completedGameSequenceRef.current = Math.max(
+        completedGameSequenceRef.current,
+        snapshot.gameSequence,
+      );
       await statsQueueRef.current;
       if (
         !isSpectator &&
@@ -629,31 +641,58 @@ export function useRoom(
       fallbackIntervalId = undefined;
     };
 
-    const connect = (lastSequence: number) => {
+    const connect = (lastGameSequence: number) => {
       if (disposed) return;
       setState((s) => ({
         ...s,
-        connection: lastSequence === 0 ? "connecting" : "reconnecting",
+        connection: lastGameSequence === 0 ? "connecting" : "reconnecting",
       }));
       let ws: WebSocket;
       try {
-        ws = new WebSocket(roomWsUrl(roomId), "touhouflandre-multi.v1");
+        ws = new WebSocket(roomWsUrl(roomId), "touhouflandre-multi.v2");
       } catch {
         scheduleReconnect();
         return;
       }
       wsRef.current = ws;
+      const coordinator = new GameSequenceCoordinator(
+        lastAppliedRef.current,
+        {
+          applyEvent,
+          advance: (sequence) => {
+            lastAppliedRef.current = sequence;
+            setState((current) => ({
+              ...current,
+              appliedGameSequence: sequence,
+            }));
+          },
+          persist: (sequence) => {
+            completedGameSequenceRef.current = sequence;
+          },
+          resync: async (after) => {
+            const snapshot = await api.roomSnapshot(roomId, token, after);
+            if (disposed) return lastAppliedRef.current;
+            await syncSnapshot(snapshot);
+            return snapshot.gameSequence;
+          },
+          onResyncError: () => startSnapshotFallback(),
+        },
+        completedGameSequenceRef.current,
+      );
       ws.onopen = () => {
         ws.send(
           JSON.stringify({
             type: "hello",
             token,
-            lastSequence: lastAppliedRef.current,
+            lastGameSequence,
           }),
         );
       };
       ws.onmessage = (e) => {
-        let msg: Envelope & { nextSequence?: number };
+        let msg: GameSequenceFrame & {
+          targetGameSequence?: number;
+          gameSequence?: number;
+        };
         try {
           msg = JSON.parse(e.data as string);
         } catch {
@@ -662,29 +701,35 @@ export function useRoom(
         if (msg.type === "hello-ok") {
           retry = 0;
           stopSnapshotFallback();
+          return;
+        }
+        if (msg.type === "sync.complete") {
+          if (typeof msg.gameSequence === "number") {
+            coordinator.complete(msg.gameSequence);
+          }
           setState((s) => ({
             ...s,
             connection: "connected",
             connectionIssue: null,
           }));
-          // 快照对齐（room/members/match/round 权威视图 + 历史事件）；
-          // 重放事件由服务端在 hello-ok 后推送，reducer 按 sequence 去重。
-          api
+          return;
+        }
+        if (msg.type === "resync.required") {
+          void api
             .roomSnapshot(roomId, token, 0)
             .then(async (snapshot) => {
               if (disposed) return;
               await syncSnapshot(snapshot);
+              coordinator.align(snapshot.gameSequence);
             })
-            .catch(() => {
-              // 房间不存在/令牌失效：保持当前状态，由页面按连接状态兜底
-            });
+            .finally(() => ws.close());
           return;
         }
         if (msg.type === "replaced") {
           ws.close();
           return;
         }
-        applyEvent(msg);
+        if (typeof msg.sequence === "number") coordinator.receive(msg);
       };
       ws.onclose = () => {
         wsRef.current = null;
@@ -706,7 +751,7 @@ export function useRoom(
       const delay =
         Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
-      window.setTimeout(() => connect(lastAppliedRef.current), delay);
+      window.setTimeout(() => connect(completedGameSequenceRef.current), delay);
     };
 
     // 先建连（hello → hello-ok → 重放），快照在 hello-ok 后拉取（自视角棋盘/权威状态）。
@@ -734,7 +779,7 @@ export function useRoom(
           return;
         }
       }
-      if (!disposed) connect(lastAppliedRef.current);
+      if (!disposed) connect(completedGameSequenceRef.current);
     };
     if (document.readyState === "loading") {
       window.addEventListener("load", start, { once: true });

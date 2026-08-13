@@ -264,6 +264,13 @@ RETURNING *;
 -- name: ListEventsAfterSeq :many
 SELECT * FROM room_event WHERE room_id = $1 AND sequence > $2 ORDER BY sequence;
 
+-- name: GetRoomEventReplayBounds :one
+-- 当前房间可重放历史边界；空事件房间用 0/0 表示。
+SELECT COALESCE(MIN(sequence), 0)::bigint AS min_sequence,
+       COALESCE(MAX(sequence), 0)::bigint AS max_sequence
+FROM room_event
+WHERE room_id = $1;
+
 -- name: ListExpiredLobbyRooms :many
 SELECT * FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at;
 

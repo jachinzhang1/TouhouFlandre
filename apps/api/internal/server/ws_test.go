@@ -11,12 +11,13 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 const (
 	wsTestOrigin  = "http://localhost:5173"
-	wsTestProto   = "touhouflandre-multi.v1"
+	wsTestProto   = "touhouflandre-multi.v2"
 	wsInvalidOrig = "http://evil.example.com"
 )
 
@@ -26,7 +27,7 @@ func wsURL(roomID string) string {
 }
 
 // wsDial 建立 WS（可指定 Origin/子协议；nil opts 用合法默认）。
-func wsDial(t *testing.T, roomID, token string, lastSeq int64, opts *websocket.DialOptions) *websocket.Conn {
+func wsDial(t *testing.T, roomID, token string, lastGameSequence int64, opts *websocket.DialOptions) *websocket.Conn {
 	t.Helper()
 	if opts == nil {
 		opts = &websocket.DialOptions{
@@ -42,7 +43,7 @@ func wsDial(t *testing.T, roomID, token string, lastSeq int64, opts *websocket.D
 	}
 	t.Cleanup(func() { _ = conn.CloseNow() })
 	// hello 首帧
-	hello, _ := json.Marshal(multi.HelloMessage{Type: "hello", Token: token, LastSequence: lastSeq})
+	hello, _ := json.Marshal(multi.HelloMessage{Type: "hello", Token: token, LastGameSequence: lastGameSequence})
 	writeCtx, wCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer wCancel()
 	if err := conn.Write(writeCtx, websocket.MessageText, hello); err != nil {
@@ -70,13 +71,60 @@ func wsRead(t *testing.T, conn *websocket.Conn) map[string]any {
 // drainUntilType 读取帧直到出现目标类型（容忍多余帧；max 为读取上限）。
 func drainUntilType(t *testing.T, conn *websocket.Conn, target string, max int) {
 	t.Helper()
+	_ = readUntilType(t, conn, target, max)
+}
+
+func readUntilType(t *testing.T, conn *websocket.Conn, target string, max int) map[string]any {
+	t.Helper()
 	for i := 0; i < max; i++ {
 		msg := wsRead(t, conn)
 		if msg["type"] == target {
-			return
+			return msg
 		}
 	}
 	t.Fatalf("drain %s: 未见 %s（已读 %d 帧）", target, target, max)
+	return nil
+}
+
+func appendBarrierEvent(t *testing.T, roomID string) int64 {
+	t.Helper()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	members, err := q.ListMembers(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spectators, err := q.CountSpectators(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.RoomUpdatedPayload{
+		Format:         multi.RoomFormat(room.Format),
+		Mode:           multi.MultiplayerMode(room.Mode),
+		TurnSeconds:    int(room.TurnSeconds),
+		PlayerLimit:    int(room.PlayerLimit),
+		Members:        multi.MemberViews(members),
+		SpectatorCount: int(spectators),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	fastHub.Publish(roomID)
+	updated, err := repo.New(pool).GetRoom(ctx, roomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return updated.EventSeq
 }
 
 func TestMultiWSConnectAndReplay(t *testing.T) {
@@ -87,9 +135,9 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	if first["type"] != "hello-ok" {
 		t.Fatalf("first frame = %v, want hello-ok", first)
 	}
-	next, _ := first["nextSequence"].(float64)
-	if next < 1 {
-		t.Fatalf("nextSequence = %v, want >= 1", next)
+	target, _ := first["targetGameSequence"].(float64)
+	if target < 1 {
+		t.Fatalf("targetGameSequence = %v, want >= 1", target)
 	}
 	// 重放：连接/创建/加入的 room.updated 事件
 	types := []string{}
@@ -102,6 +150,10 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 			t.Fatalf("replay events = %v", types)
 		}
 	}
+	complete := wsRead(t, conn)
+	if complete["type"] != "sync.complete" || complete["gameSequence"] != target {
+		t.Fatalf("sync completion = %v, want target %v", complete, target)
+	}
 
 	// 实时广播：REST ready → WS 收到 room.updated
 	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
@@ -111,6 +163,68 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	live := wsRead(t, conn)
 	if live["type"] != "room.updated" {
 		t.Fatalf("live event = %v, want room.updated", live)
+	}
+}
+
+func TestMultiWSSyncBarrierClosesAllWriteWindows(t *testing.T) {
+	fixture := createMatchFixture(t)
+	stages := []string{}
+	stageSequences := map[string]int64{}
+	fastHub.SetSyncTestHook(func(stage string) {
+		stages = append(stages, stage)
+		stageSequences[stage] = appendBarrierEvent(t, fixture.roomID)
+	})
+	t.Cleanup(func() { fastHub.SetSyncTestHook(nil) })
+
+	conn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	hello := wsRead(t, conn)
+	if hello["type"] != "hello-ok" {
+		t.Fatalf("first frame = %v, want hello-ok", hello)
+	}
+	target := int64(hello["targetGameSequence"].(float64))
+	if target != stageSequences["registered"] {
+		t.Fatalf("target = %d, want registered-stage watermark %d", target, stageSequences["registered"])
+	}
+
+	sequences := []int64{}
+	var complete int64
+	var firstLive int64
+	for i := 0; i < 32; i++ {
+		msg := wsRead(t, conn)
+		switch msg["type"] {
+		case "sync.complete":
+			complete = int64(msg["gameSequence"].(float64))
+		case "room.updated", "room.cursor":
+			sequence := int64(msg["sequence"].(float64))
+			sequences = append(sequences, sequence)
+			if complete > 0 && sequence > complete {
+				firstLive = sequence
+			}
+		}
+		if firstLive > 0 {
+			break
+		}
+	}
+	if complete != stageSequences["replay_complete"] {
+		t.Fatalf("sync.complete = %d, want replay-stage event %d", complete, stageSequences["replay_complete"])
+	}
+	if firstLive != stageSequences["live"] || firstLive != complete+1 {
+		t.Fatalf("first live = %d, complete = %d, live-stage event = %d", firstLive, complete, stageSequences["live"])
+	}
+	for i, sequence := range sequences {
+		want := int64(i + 1)
+		if sequence != want {
+			t.Fatalf("delivered sequences = %v, want continuous unique sequence at %d", sequences, want)
+		}
+	}
+	wantStages := []string{"registered", "watermark_captured", "replay_complete", "live"}
+	if len(stages) != len(wantStages) {
+		t.Fatalf("barrier stages = %v, want %v", stages, wantStages)
+	}
+	for i := range wantStages {
+		if stages[i] != wantStages[i] {
+			t.Fatalf("barrier stages = %v, want %v", stages, wantStages)
+		}
 	}
 }
 
@@ -139,6 +253,101 @@ func TestMultiWSUpgradeRejections(t *testing.T) {
 	if _, _, err := conn.Read(ctx); err == nil {
 		t.Fatal("missing subprotocol should be closed by server")
 	}
+
+	// v1 页面不得与 v2 服务端表面连接成功。
+	v1, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
+		HTTPHeader:   http.Header{"Origin": []string{wsTestOrigin}},
+		Subprotocols: []string{"touhouflandre-multi.v1"},
+	})
+	if err != nil {
+		return
+	}
+	defer v1.CloseNow()
+	if _, _, err := v1.Read(ctx); err == nil {
+		t.Fatal("v1 protocol should be rejected by v2 server")
+	}
+}
+
+func TestMultiWSRejectsInvalidGameWatermarks(t *testing.T) {
+	tests := []struct {
+		name       string
+		sequence   int64
+		prepare    func(t *testing.T, fixture matchFixture)
+		wantReason string
+	}{
+		{name: "negative", sequence: -1, wantReason: "negative_sequence"},
+		{name: "ahead", sequence: 999, wantReason: "ahead_of_server"},
+		{
+			name:     "history unavailable",
+			sequence: 1,
+			prepare: func(t *testing.T, fixture matchFixture) {
+				for i := 0; i < 3; i++ {
+					_ = appendBarrierEvent(t, fixture.roomID)
+				}
+				if _, err := pool.Exec(ctx, "DELETE FROM room_event WHERE room_id = $1 AND sequence <= 3", fixture.roomID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "history_unavailable",
+		},
+		{
+			name:     "all history unavailable",
+			sequence: 0,
+			prepare: func(t *testing.T, fixture matchFixture) {
+				if _, err := pool.Exec(ctx, "DELETE FROM room_event WHERE room_id = $1", fixture.roomID); err != nil {
+					t.Fatal(err)
+				}
+			},
+			wantReason: "history_unavailable",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := createMatchFixture(t)
+			if test.prepare != nil {
+				test.prepare(t, fixture)
+			}
+			conn := wsDial(t, fixture.roomID, fixture.hostToken, test.sequence, nil)
+			msg := wsRead(t, conn)
+			if msg["type"] != "resync.required" || msg["scope"] != "game" || msg["reason"] != test.wantReason {
+				t.Fatalf("resync frame = %v, want reason %s", msg, test.wantReason)
+			}
+			if msg["gameSequence"] == nil {
+				t.Fatalf("resync frame missing server watermark: %v", msg)
+			}
+		})
+	}
+}
+
+func TestMultiWSRejectsMalformedHello(t *testing.T) {
+	fixture := createMatchFixture(t)
+	for _, raw := range []string{
+		`{"type":"hello","token":"` + fixture.hostToken + `"}`,
+		`{"type":"hello","token":"` + fixture.hostToken + `","lastGameSequence":0,"lastSequence":0}`,
+		`{"type":"hello","token":"` + fixture.hostToken + `","lastGameSequence":"0"}`,
+	} {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		conn, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
+			HTTPHeader:   http.Header{"Origin": []string{wsTestOrigin}},
+			Subprotocols: []string{wsTestProto},
+		})
+		if err != nil {
+			cancel()
+			t.Fatal(err)
+		}
+		if err := conn.Write(ctx, websocket.MessageText, []byte(raw)); err != nil {
+			cancel()
+			_ = conn.CloseNow()
+			t.Fatal(err)
+		}
+		if _, _, err := conn.Read(ctx); err == nil {
+			cancel()
+			_ = conn.CloseNow()
+			t.Fatalf("malformed hello was accepted: %s", raw)
+		}
+		cancel()
+		_ = conn.CloseNow()
+	}
 }
 
 func TestMultiWSFirstFrameMustBeHello(t *testing.T) {
@@ -154,7 +363,7 @@ func TestMultiWSFirstFrameMustBeHello(t *testing.T) {
 	}
 	defer conn.CloseNow()
 	// 首帧 ack → 服务端以策略违规关闭
-	if err := conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ack","lastSequence":0}`)); err != nil {
+	if err := conn.Write(ctx, websocket.MessageText, []byte(`{"type":"ack","gameSequence":0}`)); err != nil {
 		t.Fatal(err)
 	}
 	_, _, err = conn.Read(ctx)
@@ -219,10 +428,12 @@ func TestMultiWSReplaced(t *testing.T) {
 }
 
 func TestMultiWSGuessBroadcast(t *testing.T) {
-	fixture := createMatchFixture(t)
+	fixture := createMatchFixtureMode(t, "bo1", "race", 60)
 
 	hostConn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	drainUntilType(t, hostConn, "sync.complete", 12)
 	joinerConn := wsDial(t, fixture.roomID, fixture.joinerToken, 0, nil)
+	drainUntilType(t, joinerConn, "sync.complete", 12)
 	// 双方 ready → 对局开始；各自推进到 round.playing（容忍重放/连接事件的帧数差异）
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
 		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
@@ -234,21 +445,23 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	drainUntilType(t, hostConn, "round.playing", 12)
-	drainUntilType(t, joinerConn, "round.playing", 12)
+	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
 
-	// host 猜中 → joiner 收到 round.opponent.guess（匿名投影）+ round.ended
+	// host 猜中 → joiner 收到匿名猜测、局末和赛末事件。
 	answer := currentAnswer(t, fixture.roomID)
 	resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, answer, "ws-win")
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("guess: %d %s", resp.StatusCode, payload)
 	}
-	gotGuess, gotEnded := false, false
-	for i := 0; i < 2; i++ { // 恰好两帧：round.opponent.guess + round.ended（同事务、顺序广播）
+	gotGuess, gotEnded, gotMatchEnded := false, false, false
+	var joinerGuess, joinerEnded, joinerMatchEnded map[string]any
+	for i := 0; i < 3; i++ { // 同事务三帧，按 sequence 广播。
 		msg := wsRead(t, joinerConn)
 		switch msg["type"] {
 		case "round.opponent.guess":
 			gotGuess = true
+			joinerGuess = msg
 			p, _ := msg["payload"].(map[string]any)
 			statuses, _ := p["statuses"].([]any)
 			if len(statuses) != 6 {
@@ -259,22 +472,112 @@ func TestMultiWSGuessBroadcast(t *testing.T) {
 			}
 		case "round.ended":
 			gotEnded = true
+			joinerEnded = msg
 			p, _ := msg["payload"].(map[string]any)
 			if p["viewerResult"] != "loss" {
 				t.Fatalf("joiner round.ended viewerResult = %v, want loss", p["viewerResult"])
 			}
+		case "match.ended":
+			gotMatchEnded = true
+			joinerMatchEnded = msg
+			p, _ := msg["payload"].(map[string]any)
+			if p["viewerResult"] != "loss" {
+				t.Fatalf("joiner match.ended viewerResult = %v, want loss", p["viewerResult"])
+			}
 		}
 	}
-	if !gotGuess || !gotEnded {
-		t.Fatalf("joiner missed events: guess=%v ended=%v", gotGuess, gotEnded)
+	if !gotGuess || !gotEnded || !gotMatchEnded {
+		t.Fatalf("joiner missed events: guess=%v ended=%v matchEnded=%v", gotGuess, gotEnded, gotMatchEnded)
 	}
-	// host 视角：自己的猜测事件被过滤，只收到 round.ended
+	if joinerGuess["sequence"] != joinerPlaying["sequence"].(float64)+1 ||
+		joinerEnded["sequence"] != joinerGuess["sequence"].(float64)+1 ||
+		joinerMatchEnded["sequence"] != joinerEnded["sequence"].(float64)+1 {
+		t.Fatalf("joiner game sequence not continuous: playing=%v guess=%v ended=%v matchEnded=%v", joinerPlaying, joinerGuess, joinerEnded, joinerMatchEnded)
+	}
+	// host 视角：自己的猜测事件以同 sequence cursor 占位，随后收到局末和赛末事件。
 	msg := wsRead(t, hostConn)
-	if msg["type"] == "round.opponent.guess" {
-		t.Fatalf("host received own guess event: %v", msg)
+	if msg["type"] != "room.cursor" {
+		t.Fatalf("host own guess frame = %v, want room.cursor", msg)
 	}
-	if msg["type"] != "round.ended" {
-		t.Fatalf("host frame = %v, want round.ended", msg["type"])
+	if _, leaked := msg["payload"]; leaked || len(msg) != 5 {
+		t.Fatalf("room.cursor leaked business metadata: %v", msg)
+	}
+	if msg["eventId"] != joinerGuess["eventId"] || msg["sequence"] != hostPlaying["sequence"].(float64)+1 {
+		t.Fatalf("cursor identity/sequence = %v, business frame = %v", msg, joinerGuess)
+	}
+	ended := wsRead(t, hostConn)
+	if ended["type"] != "round.ended" {
+		t.Fatalf("host frame = %v, want round.ended", ended["type"])
+	}
+	if ended["sequence"] != msg["sequence"].(float64)+1 {
+		t.Fatalf("host game sequence not continuous: playing=%v cursor=%v ended=%v", hostPlaying, msg, ended)
+	}
+	matchEnded := wsRead(t, hostConn)
+	if matchEnded["type"] != "match.ended" || matchEnded["sequence"] != ended["sequence"].(float64)+1 {
+		t.Fatalf("host match completion = %v, want continuous match.ended", matchEnded)
+	}
+	p, _ := matchEnded["payload"].(map[string]any)
+	if p["viewerResult"] != "win" {
+		t.Fatalf("host match.ended viewerResult = %v, want win", p["viewerResult"])
+	}
+}
+
+func TestMultiWSRelayBroadcast(t *testing.T) {
+	fixture := createMatchFixtureMode(t, "bo1", "relay", 30)
+	hostConn := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
+	drainUntilType(t, hostConn, "sync.complete", 12)
+	joinerConn := wsDial(t, fixture.roomID, fixture.joinerToken, 0, nil)
+	drainUntilType(t, joinerConn, "sync.complete", 12)
+
+	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	time.Sleep(10 * time.Millisecond)
+	if err := fastSweeper().SweepOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
+
+	answer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, answer, 1)[0]
+	resp, payload := guess(t, fixture.roomID, fixture.hostToken, 1, wrong, "ws-relay-host")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("host relay guess: %d %s", resp.StatusCode, payload)
+	}
+	hostFirst := wsRead(t, hostConn)
+	joinerFirst := wsRead(t, joinerConn)
+	if hostFirst["type"] != "round.shared.guess" || joinerFirst["type"] != "round.shared.guess" ||
+		hostFirst["eventId"] != joinerFirst["eventId"] ||
+		hostFirst["sequence"] != hostPlaying["sequence"].(float64)+1 ||
+		joinerFirst["sequence"] != joinerPlaying["sequence"].(float64)+1 {
+		t.Fatalf("first relay broadcast mismatch: host=%v joiner=%v", hostFirst, joinerFirst)
+	}
+
+	resp, payload = guess(t, fixture.roomID, fixture.joinerToken, 1, answer, "ws-relay-joiner-win")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("joiner relay guess: %d %s", resp.StatusCode, payload)
+	}
+	for name, conn := range map[string]*websocket.Conn{"host": hostConn, "joiner": joinerConn} {
+		shared := wsRead(t, conn)
+		roundEnded := wsRead(t, conn)
+		matchEnded := wsRead(t, conn)
+		if shared["type"] != "round.shared.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
+			roundEnded["type"] != "round.ended" || roundEnded["sequence"] != shared["sequence"].(float64)+1 ||
+			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != roundEnded["sequence"].(float64)+1 {
+			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v round=%v match=%v", name, shared, roundEnded, matchEnded)
+		}
+		p, _ := matchEnded["payload"].(map[string]any)
+		wantResult := "loss"
+		if name == "joiner" {
+			wantResult = "win"
+		}
+		if p["viewerResult"] != wantResult {
+			t.Fatalf("%s match.ended viewerResult = %v, want %s", name, p["viewerResult"], wantResult)
+		}
 	}
 }
 
@@ -303,11 +606,18 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 	fixture := createMatchFixture(t)
 
 	first := wsDial(t, fixture.roomID, fixture.hostToken, 0, nil)
-	for i := 0; i < 3; i++ {
-		_ = wsRead(t, first) // hello-ok + room.updated（连接/创建/加入）
+	var lastSeq float64
+	for i := 0; i < 8; i++ {
+		msg := wsRead(t, first)
+		if msg["type"] == "sync.complete" {
+			lastSeq, _ = msg["gameSequence"].(float64)
+			break
+		}
 	}
-	// 记录水位后断开（hello-ok 后 3 条事件）
-	var lastSeq float64 = 3
+	if lastSeq < 1 {
+		t.Fatalf("initial sync gameSequence = %v", lastSeq)
+	}
+	// 记录已完成水位后断开。
 	_ = first.CloseNow()
 
 	// 断开期间发生事件（ready）
@@ -316,7 +626,7 @@ func TestMultiWSReplayAfterReconnect(t *testing.T) {
 		t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 	}
 
-	// 重连携带 lastSequence → 只重放缺口事件（room.updated）
+	// 重连携带 lastGameSequence → 只重放缺口游戏帧。
 	second := wsDial(t, fixture.roomID, fixture.hostToken, int64(lastSeq), nil)
 	msg := wsRead(t, second)
 	if msg["type"] != "hello-ok" {

@@ -6,8 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -22,7 +24,7 @@ import (
 )
 
 // wsSubprotocol 子协议版本协商（08 §8.1）。
-const wsSubprotocol = "touhouflandre-multi.v1"
+const wsSubprotocol = "touhouflandre-multi.v2"
 
 // helloTimeout 首帧 hello 等待上限（10s）。
 const helloTimeout = 10 * time.Second
@@ -73,7 +75,7 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		return nil, nil
 	}
 	var hello multi.HelloMessage
-	if err := json.Unmarshal(data, &hello); err != nil || hello.Type != "hello" {
+	if err := decodeHello(data, &hello); err != nil {
 		slog.Warn("ws: invalid hello frame", "room_id", request.RoomId)
 		_ = ws.Close(websocket.StatusPolicyViolation, "first frame must be hello")
 		return nil, nil
@@ -91,15 +93,80 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		return nil, nil
 	}
 
+	room, err := s.q.GetRoom(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	replayBounds, err := s.q.GetRoomEventReplayBounds(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if reason := gameResyncReason(hello.LastGameSequence, room.EventSeq, replayBounds.MinSequence); reason != "" {
+		if err := writeWSControl(ws, multi.ResyncRequiredMessage{
+			Type:         "resync.required",
+			Scope:        "game",
+			Reason:       reason,
+			GameSequence: room.EventSeq,
+		}); err != nil {
+			slog.Warn("ws: resync frame write failed", "room_id", request.RoomId, "error", err)
+		}
+		_ = ws.Close(websocket.StatusPolicyViolation, "game resync required")
+		return nil, nil
+	}
+
 	// 连接生效：成员 connected（清宽限）+ room.updated 事件广播（对端可见在线，08 §4.6）
 	if err := s.markMemberConnected(ctx, request.RoomId, member.ID); err != nil {
 		return nil, internalError(err)
 	}
 
 	// 注册/重放/实时流（阻塞直到断开；返回 nil 由 strict handler 正常结束）
-	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastSequence)
+	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastGameSequence)
 	conn.Serve()
 	return nil, nil
+}
+
+func decodeHello(data []byte, hello *multi.HelloMessage) error {
+	var raw struct {
+		Type             string `json:"type"`
+		Token            string `json:"token"`
+		LastGameSequence *int64 `json:"lastGameSequence"`
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&raw); err != nil {
+		return err
+	}
+	if raw.Type != "hello" || raw.Token == "" || raw.LastGameSequence == nil {
+		return errors.New("invalid hello")
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("multiple json values")
+	}
+	*hello = multi.HelloMessage{Type: raw.Type, Token: raw.Token, LastGameSequence: *raw.LastGameSequence}
+	return nil
+}
+
+func gameResyncReason(lastGameSequence, currentGameSequence, minReplaySequence int64) string {
+	switch {
+	case lastGameSequence < 0:
+		return "negative_sequence"
+	case lastGameSequence > currentGameSequence:
+		return "ahead_of_server"
+	case lastGameSequence < currentGameSequence && (minReplaySequence == 0 || minReplaySequence > lastGameSequence+1):
+		return "history_unavailable"
+	default:
+		return ""
+	}
+}
+
+func writeWSControl(ws *websocket.Conn, value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return ws.Write(writeCtx, websocket.MessageText, data)
 }
 
 // markMemberConnected 成员连接状态落地 + room.updated 事件（事务内取号入库）。

@@ -367,8 +367,8 @@ export interface paths {
         };
         /**
          * WebSocket 事件通道
-         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v1；
-         *     建连后第一条消息必须是 hello{token, lastSequence}（鉴权前不收发房间事件）。
+         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v2；
+         *     建连后第一条消息必须是 hello{token, lastGameSequence}（鉴权前不收发房间事件）。
          *     事件协议与有效/无效示例见 contracts/ws/protocol.yaml。
          */
         get: operations["rooms_connectWs"];
@@ -827,8 +827,9 @@ export interface components {
             viewer: components["schemas"]["ParticipantView"];
         };
         /**
-         * @description 逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
-         *     events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+         * @description 逐观察者投影的房间权威快照：self（完整棋盘）、opponents（匿名矩阵 + 对方列置换）。
+         *     gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
+         *     被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
          *     round 仅在局处于 countdown/playing 时存在。
          */
         RoomSnapshot: {
@@ -851,6 +852,8 @@ export interface components {
             spectatorCount: number;
             /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
             playerLimit: number;
+            /** @description 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。 */
+            gameSequence: number;
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
             match?: components["schemas"]["MatchView"];
             /** @description 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。 */
