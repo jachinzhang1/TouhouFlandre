@@ -62,16 +62,17 @@ describe("AnnouncementPage", () => {
     await user.click(article);
     expect(screen.getByLabelText("未读公告")).toBeTruthy();
 
-    await user.click(
-      screen.getByRole("button", { name: "将格式公告标记为已读" }),
-    );
+    const unreadButton = screen.getByRole("button", {
+      name: "将格式公告标记为已读",
+    });
+    expect(unreadButton.className).toContain("bg-vermilion");
+    await user.click(unreadButton);
 
     expect(screen.queryByLabelText("未读公告")).toBeNull();
-    expect(
-      screen
-        .getByRole("button", { name: "格式公告已读" })
-        .hasAttribute("disabled"),
-    ).toBe(true);
+    const readButton = screen.getByRole("button", { name: "格式公告已读" });
+    expect(readButton.hasAttribute("disabled")).toBe(true);
+    expect(readButton.className).toContain("bg-transparent");
+    expect(readButton.className).toContain("text-[var(--neutral-text)]");
     expect(localStorage.getItem(ANNOUNCEMENTS_READ_STORAGE_KEY)).toContain(
       "notice-markdown",
     );

@@ -141,7 +141,11 @@ export function AnnouncementPage({
                 </div>
                 <button
                   type="button"
-                  className="absolute right-6 bottom-5 inline-flex min-h-8 items-center gap-1.5 px-2 text-xs font-bold text-ink-soft transition-colors hover:text-vermilion disabled:cursor-default disabled:text-jade max-[680px]:right-5"
+                  className={`absolute right-6 bottom-5 inline-flex min-h-8 items-center gap-1.5 px-3 text-xs font-bold transition-[color,background-color,box-shadow] duration-150 max-[680px]:right-5 ${
+                    unread
+                      ? "bg-vermilion text-[var(--paper-tinted-ink)] shadow-[0_4px_12px_var(--accent-shadow)] hover:bg-vermilion-dark"
+                      : "cursor-default bg-transparent text-[var(--neutral-text)]"
+                  }`}
                   aria-label={
                     unread
                       ? `将${announcement.title}标记为已读`
