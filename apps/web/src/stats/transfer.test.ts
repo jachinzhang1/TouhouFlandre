@@ -110,9 +110,67 @@ describe("stats import/export", () => {
       opponentScores: [0],
       rosterSize: 2,
       playerLimit: 2,
+      scoringMode: "wins",
+      tiedForFirst: false,
     });
     expect(parsed.records[0]).not.toHaveProperty("scoreOpponent");
     expect(parsed.records[0]).not.toHaveProperty("memberSlot");
+  });
+
+  it("保留 v5 积分制字段且导出只生成 v5", async () => {
+    const raw = {
+      schemaVersion: STATS_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      records: [
+        {
+          id: "placement",
+          schemaVersion: STATS_SCHEMA_VERSION,
+          kind: "multiplayer",
+          mode: "multiplayer",
+          format: "bo3",
+          multiplayerMode: "race",
+          matchIndex: 0,
+          startedAt: "2026-08-07T10:00:00Z",
+          endedAt: "2026-08-07T10:05:00Z",
+          durationMs: 300_000,
+          outcome: "draw",
+          reason: "normal",
+          scoreSelf: 5,
+          opponentScores: [5, 2],
+          rosterSize: 3,
+          playerLimit: 4,
+          scoringMode: "placement",
+          finalRank: 1,
+          tiedForFirst: true,
+          eliminatedRound: 2,
+          rounds: [
+            {
+              roundIndex: 1,
+              startedAt: "2026-08-07T10:00:00Z",
+              endedAt: "2026-08-07T10:01:00Z",
+              durationMs: 60_000,
+              result: "win",
+              answer: { id: "a", name: "A" },
+              guesses: [],
+              pointsAwarded: 3,
+              participationStatus: "correct",
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = parseStatsImport(JSON.stringify(raw));
+    expect(parsed.records[0]).toMatchObject({
+      scoringMode: "placement",
+      finalRank: 1,
+      tiedForFirst: true,
+      eliminatedRound: 2,
+      rounds: [{ pointsAwarded: 3, participationStatus: "correct" }],
+    });
+    await statsDb.records.put(parsed.records[0]);
+    const exported = await createStatsExport();
+    expect(exported.schemaVersion).toBe(STATS_SCHEMA_VERSION);
+    expect(exported.records.every((item) => item.schemaVersion === STATS_SCHEMA_VERSION)).toBe(true);
   });
 
   it("递归拒绝统计中的身份字段", () => {

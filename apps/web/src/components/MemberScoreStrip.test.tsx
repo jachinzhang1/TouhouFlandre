@@ -45,4 +45,33 @@ describe("MemberScoreStrip", () => {
       "Winner2胜离开",
     ]);
   });
+
+  it("marks eliminated players with the elimination treatment", () => {
+    render(
+      <MemberScoreStrip
+        members={[
+          {
+            memberId: "out",
+            seat: 1,
+            displayName: "Out",
+            status: "connected",
+            ready: false,
+          },
+        ]}
+        scores={[
+          {
+            memberId: "out",
+            seat: 1,
+            score: 4,
+            status: "eliminated",
+            eliminatedRound: 2,
+          },
+        ]}
+      />,
+    );
+    const item = screen.getByRole("listitem");
+    expect(item.className).toContain("bg-vermilion");
+    expect(item.textContent).toContain("已淘汰");
+    expect(item.querySelector("strong")?.className).toContain("text-white");
+  });
 });

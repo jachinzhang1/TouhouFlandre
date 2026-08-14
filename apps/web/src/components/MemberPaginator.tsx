@@ -9,10 +9,12 @@ export function MemberPaginator<T extends MemberPageItem>({
   items,
   label,
   renderItem,
+  pageSize: fixedPageSize,
 }: {
   items: readonly T[];
   label: string;
   renderItem: (item: T) => ReactNode;
+  pageSize?: 1 | 2;
 }) {
   const ordered = useMemo(
     () => [...items].sort((left, right) => left.seat - right.seat),
@@ -24,7 +26,7 @@ export function MemberPaginator<T extends MemberPageItem>({
       : window.matchMedia("(min-width: 900px)").matches,
   );
   const [anchorMemberId, setAnchorMemberId] = useState<string | null>(null);
-  const pageSize = wide ? 2 : 1;
+  const pageSize = fixedPageSize ?? (wide ? 2 : 1);
   const anchorIndex = Math.max(
     0,
     ordered.findIndex((item) => item.memberId === anchorMemberId),
@@ -91,7 +93,9 @@ export function MemberPaginator<T extends MemberPageItem>({
           </button>
         </div>
       </div>
-      <div className="grid items-start gap-3 min-[900px]:grid-cols-2">
+      <div
+        className={`grid items-start gap-3 ${pageSize === 2 ? "min-[900px]:grid-cols-2" : "grid-cols-1"}`}
+      >
         {visible.map((item) => (
           <div key={item.memberId} data-member-board={item.memberId}>
             {renderItem(item)}

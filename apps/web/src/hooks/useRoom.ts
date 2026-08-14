@@ -7,6 +7,7 @@ import type {
   Envelope,
   GameSequenceFrame,
   MatchEndedPayload,
+  MemberScoreView,
   MatchRematchPayload,
   MatchStartedPayload,
   MultiParticipantRole,
@@ -33,7 +34,14 @@ import {
 import { GameSequenceCoordinator } from "../domain/gameSequence";
 
 type GuessResult = components["schemas"]["GuessResult"];
-type MatchView = components["schemas"]["MatchView"];
+type MatchView = Omit<
+  components["schemas"]["MatchView"],
+  "scores" | "scoringMode" | "rosterSize"
+> & {
+  scores: MemberScoreView[];
+  scoringMode?: "wins" | "placement";
+  rosterSize?: number;
+};
 type MemberView = components["schemas"]["MemberView"];
 type RoomSnapshot = components["schemas"]["RoomSnapshot"];
 type RoundView = components["schemas"]["RoundView"];
@@ -163,9 +171,13 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
             memberId: member.memberId,
             seat: member.seat,
             score: 0,
+            status: "active" as const,
+            bestRoundScore: 0,
           })),
           roundIndex: 0,
-          maxRounds: maxRoundsFor(payload.format),
+          maxRounds: payload.maxRounds ?? maxRoundsFor(payload.format),
+          scoringMode: payload.scoringMode ?? "wins",
+          rosterSize: payload.rosterSize ?? state.members.length,
           rematchReady: state.members.map((member) => ({
             memberId: member.memberId,
             seat: member.seat,
@@ -217,6 +229,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           self: {
             ...(isPlayer && viewerMemberId ? { memberId: viewerMemberId } : {}),
             ...(isPlayer && viewerSeat ? { seat: viewerSeat } : {}),
+            ...(isPlayer ? { participationStatus: "active" as const } : {}),
             guesses: [],
           },
           opponents: isPlayer
@@ -347,6 +360,9 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
     }
     case "round.ended": {
       const payload = event.payload as unknown as RoundEndedPayload;
+      const viewerPlacement = payload.placements?.find(
+        (entry) => entry.memberId === state.viewer?.memberId,
+      );
       return {
         ...state,
         round: state.round
@@ -354,6 +370,15 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               ...state.round,
               status: "ended",
               ...(payload.turns ? { shared: { rows: payload.turns } } : {}),
+              ...(viewerPlacement
+                ? {
+                    self: {
+                      ...state.round.self,
+                      participationStatus: viewerPlacement.status,
+                      finishRank: viewerPlacement.finishRank,
+                    },
+                  }
+                : {}),
               turnMemberId: undefined,
               turnSeat: undefined,
               turnDeadline: undefined,
@@ -1008,6 +1033,10 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           },
         );
         if (!isRelay) {
+          const raceResponse = resp as typeof resp & {
+            participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
+            finishRank?: number;
+          };
           // 竞速自视角无事件回放：本地追加（08 §10.2）
           setState((s) =>
             s.round
@@ -1018,6 +1047,13 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
                     self: {
                       ...s.round.self,
                       guesses: [...s.round.self.guesses, resp.guess],
+                      ...(raceResponse.participationStatus
+                        ? {
+                            participationStatus:
+                              raceResponse.participationStatus,
+                            finishRank: raceResponse.finishRank,
+                          }
+                        : {}),
                     },
                   },
                 }
@@ -1041,6 +1077,20 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         return;
       try {
         await api.forfeitRound(roomId, token, state.match.roundIndex);
+        setState((current) =>
+          current.round
+            ? {
+                ...current,
+                round: {
+                  ...current.round,
+                  self: {
+                    ...current.round.self,
+                    participationStatus: "forfeited",
+                  },
+                },
+              }
+            : current,
+        );
       } catch (e) {
         setGuessError(e instanceof Error ? e.message : "放弃本局失败。");
       }

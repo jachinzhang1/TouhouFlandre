@@ -173,6 +173,11 @@ export function RoomView({ code }: { code: string }) {
   const roleBeforeFirstSnapshot = state.room ? null : (stored?.role ?? null);
   const effectiveRole = role ?? roleBeforeFirstSnapshot;
   const isSpectator = effectiveRole === "spectator";
+  const viewerMatchStatus = state.match?.scores.find(
+    (score) => score.memberId === memberId,
+  )?.status;
+  const isEliminatedPlayer =
+    effectiveRole === "player" && viewerMatchStatus === "eliminated";
   const playerSeat = mySlot ?? 1;
   const relaySlot: 1 | 2 = mySlot === 2 ? 2 : 1;
   const roundResultKey = state.roundResult
@@ -332,6 +337,28 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
+  if (isEliminatedPlayer && state.room?.status === "playing") {
+    return (
+      <>
+        <SpectatorRoom
+          state={state}
+          format={format}
+          mode={mode}
+          fields={visibleFields}
+          selectedArchiveKey={selectedArchiveKey}
+          onSelectArchive={setSelectedArchiveKey}
+          onLeave={handleLeave}
+          eliminated
+        />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
+        <GuessErrorToast message={guessError} />
+      </>
+    );
+  }
+
   if (status === "lobby" || status === "connecting") {
     return (
       <>
@@ -393,8 +420,22 @@ export function RoomView({ code }: { code: string }) {
       relayMaxSkips,
     );
     const relayCanPass = relayCanGuess && relaySkipsRemaining > 0;
+    const participationStatus = state.round?.self.participationStatus;
+    const participationMessage =
+      roundActionBusy === "forfeit"
+        ? "正在放弃本局……"
+        : participationStatus === "forfeited"
+          ? "你已放弃本局"
+          : participationStatus === "correct"
+            ? "你已猜中本局"
+            : participationStatus === "exhausted"
+              ? "本局猜测次数已用尽"
+              : participationStatus === "timed_out"
+                ? "本局已超时"
+                : null;
+    const raceReadOnly = mode === "race" && Boolean(participationMessage);
     const roundActions =
-      state.round?.status === "playing" ? (
+      state.round?.status === "playing" && !raceReadOnly ? (
         <RoundActionButtons
           mode={mode}
           forfeitConfirm={forfeitConfirm}
@@ -416,6 +457,14 @@ export function RoomView({ code }: { code: string }) {
         : new Set(state.round?.self.guesses.map((g) => g.guessId) ?? []);
     return (
       <>
+        <RoundHistoryBar
+          archives={state.roundArchives.filter(
+            (archive) => archive.matchIndex === state.match?.matchIndex,
+          )}
+          viewerMemberId={memberId}
+          selectedKey={selectedArchiveKey}
+          onSelect={setSelectedArchiveKey}
+        />
         {mode === "relay" ? (
           <RelayMatchBoard
             format={format}
@@ -442,20 +491,15 @@ export function RoomView({ code }: { code: string }) {
             fields={visibleFields}
           />
         )}
-        <RoundHistoryBar
-          archives={state.roundArchives.filter(
-            (archive) => archive.matchIndex === state.match?.matchIndex,
-          )}
-          viewerMemberId={memberId}
-          selectedKey={selectedArchiveKey}
-          onSelect={setSelectedArchiveKey}
-        />
         {state.round?.status === "playing" && !selectedPlayerArchive && (
           <GuessInputBar
             onGuess={actions.submitGuess}
-            disabled={mode === "relay" ? !relayCanGuess : !hasOpponent}
+            disabled={
+              mode === "relay" ? !relayCanGuess : !hasOpponent || raceReadOnly
+            }
             catalogVersion={state.catalogVersion ?? undefined}
             guessedIds={guessedIds}
+            statusMessage={mode === "race" ? participationMessage : null}
           />
         )}
         {inCountdown &&
@@ -577,6 +621,7 @@ function SpectatorRoom({
   selectedArchiveKey,
   onSelectArchive,
   onLeave,
+  eliminated = false,
 }: {
   state: RoomUiState;
   format: string;
@@ -585,6 +630,7 @@ function SpectatorRoom({
   selectedArchiveKey: string | null;
   onSelectArchive: (key: string | null) => void;
   onLeave: () => void;
+  eliminated?: boolean;
 }) {
   const selectedArchive =
     state.roundArchives.find(
@@ -621,7 +667,7 @@ function SpectatorRoom({
       <div className="mx-auto max-w-[1280px]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
           <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.72rem] font-black text-jade">
-            观战席 ·{" "}
+            {eliminated ? "已淘汰 · 观战" : "观战席"} ·{" "}
             {MULTIPLAYER_MODE_LABELS[
               mode as keyof typeof MULTIPLAYER_MODE_LABELS
             ] ?? mode}{" "}
@@ -882,34 +928,41 @@ function RoundHistoryBar({
   selectedKey: string | null;
   onSelect: (key: string | null) => void;
 }) {
-  if (archives.length === 0) return null;
   return (
-    <div className="px-[18px] pb-2">
+    <div className="px-[18px] pt-3 pb-1">
       <ul className="flex flex-wrap gap-1.5">
-        {selectedKey ? (
-          <li>
-            <button
-              type="button"
-              onClick={() => onSelect(null)}
-              className="rounded bg-paper-muted px-2 py-1 text-[0.7rem] font-bold text-ink-soft"
-            >
-              返回当前局
-            </button>
-          </li>
-        ) : null}
+        <li>
+          <button
+            type="button"
+            aria-pressed={selectedKey === null}
+            onClick={() => onSelect(null)}
+            className={`rounded border px-2 py-1 text-[0.7rem] font-bold ${selectedKey === null ? "border-vermilion bg-vermilion-soft text-vermilion" : "border-transparent bg-paper-muted text-ink-soft"}`}
+          >
+            返回当前局
+          </button>
+        </li>
         {archives.map((archive) => {
           const key = `${archive.matchIndex}:${archive.roundIndex}`;
           const result =
             archive.viewerResult ??
             resultForMemberId(archive.results, viewerMemberId) ??
             "draw";
+          const placement = archive.placements?.find(
+            (entry) => entry.memberId === viewerMemberId,
+          );
+          const selectedBorder =
+            result === "win"
+              ? "border-jade"
+              : result === "loss"
+                ? "border-vermilion"
+                : "border-line-strong";
           return (
             <li key={key}>
               <button
                 type="button"
                 aria-pressed={selectedKey === key}
                 onClick={() => onSelect(key)}
-                className={`rounded px-2 py-1 text-[0.7rem] font-bold ${
+                className={`rounded border px-2 py-1 text-[0.7rem] font-bold ${selectedKey === key ? selectedBorder : "border-transparent"} ${
                   result === "win"
                     ? "bg-jade-soft text-jade"
                     : result === "loss"
@@ -918,7 +971,13 @@ function RoundHistoryBar({
                 }`}
               >
                 第 {archive.roundIndex} 局 ·{" "}
-                {result === "win" ? "胜" : result === "loss" ? "负" : "平"}
+                {placement
+                  ? `+${placement.pointsAwarded} 分${archive.eliminatedMemberIds?.includes(viewerMemberId ?? "") ? " · 已淘汰" : ""}`
+                  : result === "win"
+                    ? "胜"
+                    : result === "loss"
+                      ? "负"
+                      : "平"}
               </button>
             </li>
           );

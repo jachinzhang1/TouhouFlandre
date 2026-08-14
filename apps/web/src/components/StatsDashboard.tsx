@@ -951,6 +951,12 @@ function HistoryRow({ record }: { record: StatsRecord }) {
     record.kind === "multiplayer" && (record.rosterSize ?? 2) > 2
       ? ` · ${record.rosterSize} 人/${record.playerLimit ?? record.rosterSize}`
       : "";
+  const multiplayerSummary =
+    record.kind === "multiplayer"
+      ? record.scoringMode === "placement"
+        ? `${modeLabel} · 积分制 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedRound ? ` · 第 ${record.eliminatedRound} 局淘汰` : ""}${rosterLabel}`
+        : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`
+      : "";
   return (
     <>
       <tr className="border-t border-line align-middle">
@@ -962,7 +968,7 @@ function HistoryRow({ record }: { record: StatsRecord }) {
             ? record.mode === "daily"
               ? "每日"
               : "随机"
-            : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`}
+            : multiplayerSummary}
         </td>
         <td className="px-4 py-3 text-xs font-bold text-ink-soft">
           {difficultyLabel(record.difficulty ?? "unknown")}
@@ -1075,24 +1081,33 @@ function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
 }
 
 function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
+  const placement = record.scoringMode === "placement";
   return (
     <div className="grid gap-2">
       {record.rounds.map((round) => (
         <div
           key={round.roundIndex}
-          className="grid grid-cols-[72px_64px_80px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_54px_minmax(0,1fr)]"
+          className="grid grid-cols-[72px_104px_80px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_88px_minmax(0,1fr)]"
         >
           <strong className="text-ink">第 {round.roundIndex} 局</strong>
           <span
             className={
-              round.result === "win" ? "text-jade" : "text-[var(--error-text)]"
+              placement
+                ? round.pointsAwarded
+                  ? "font-bold text-jade"
+                  : "text-ink-soft"
+                : round.result === "win"
+                  ? "text-jade"
+                  : "text-[var(--error-text)]"
             }
           >
-            {round.result === "win"
-              ? "胜"
-              : round.result === "loss"
-                ? "负"
-                : "平"}
+            {placement
+              ? `+${round.pointsAwarded ?? 0} 分 · ${participationLabel(round.participationStatus)}`
+              : round.result === "win"
+                ? "胜"
+                : round.result === "loss"
+                  ? "负"
+                  : "平"}
           </span>
           <span className="tabular-nums text-ink-soft max-[680px]:hidden">
             {formatDuration(round.durationMs)}
@@ -1113,6 +1128,21 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
       ))}
     </div>
   );
+}
+
+function participationLabel(status: StatsRound["participationStatus"]): string {
+  switch (status) {
+    case "correct":
+      return "猜中";
+    case "forfeited":
+      return "放弃";
+    case "exhausted":
+      return "次数耗尽";
+    case "timed_out":
+      return "超时";
+    default:
+      return "未完成";
+  }
 }
 
 function ConfirmDialog({

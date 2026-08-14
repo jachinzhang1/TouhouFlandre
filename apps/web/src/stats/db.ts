@@ -71,6 +71,24 @@ class StatsDatabase extends Dexie {
             }
           });
       });
+    this.version(4)
+      .stores({
+        records: "id,kind,mode,startedAt,endedAt,outcome,format,difficulty",
+        drafts: "id,kind,updatedAt",
+        metadata: "key",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("records")
+          .toCollection()
+          .modify((record: Record<string, unknown>) => {
+            record.schemaVersion = STATS_SCHEMA_VERSION;
+            if (record.kind !== "multiplayer") return;
+            record.scoringMode =
+              record.scoringMode === "placement" ? "placement" : "wins";
+            record.tiedForFirst = record.tiedForFirst === true;
+          });
+      });
   }
 }
 

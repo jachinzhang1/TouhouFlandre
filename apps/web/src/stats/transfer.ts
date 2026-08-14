@@ -56,6 +56,10 @@ const roundSchema = z.object({
   answer: characterSchema,
   guesses: z.array(guessSchema),
   turns: z.array(relayTurnSchema).optional(),
+  pointsAwarded: z.number().int().nonnegative().optional(),
+  participationStatus: z
+    .enum(["correct", "forfeited", "exhausted", "timed_out"])
+    .optional(),
 });
 const outcomeSchema = z.enum([
   "win",
@@ -73,6 +77,7 @@ const schemaVersion = z.union([
   z.literal(1),
   z.literal(2),
   z.literal(3),
+  z.literal(4),
   z.literal(STATS_SCHEMA_VERSION),
 ]);
 const baseShape = {
@@ -111,6 +116,10 @@ const multiplayerSchema = z.object({
   opponentScores: z.array(z.number().int().nonnegative()).optional(),
   rosterSize: z.number().int().min(2).optional(),
   playerLimit: z.number().int().min(2).max(8).optional(),
+  scoringMode: z.enum(["wins", "placement"]).optional(),
+  finalRank: z.number().int().positive().optional(),
+  tiedForFirst: z.boolean().optional(),
+  eliminatedRound: z.number().int().positive().optional(),
   memberSlot: memberSlotSchema.optional(),
   rounds: z.array(roundSchema),
 });
@@ -157,6 +166,8 @@ function normalizeStatsRecord(
         (record.scoreOpponent === undefined ? [] : [record.scoreOpponent]),
       rosterSize: record.rosterSize ?? 2,
       playerLimit: record.playerLimit ?? 2,
+      scoringMode: record.scoringMode ?? "wins",
+      tiedForFirst: record.tiedForFirst ?? false,
       difficulty: record.difficulty ?? "unknown",
       rounds,
     } as StatsRecord;

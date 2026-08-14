@@ -8,6 +8,7 @@ import {
   type GuessField,
 } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
+import type { RoomUiState } from "../hooks/useRoom";
 import {
   countRelaySkips,
   MULTIPLAYER_MODE_LABELS,
@@ -23,7 +24,7 @@ import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { STATUS_LABEL } from "./GuessTable";
 
-type MatchView = components["schemas"]["MatchView"];
+type MatchView = NonNullable<RoomUiState["match"]>;
 type MemberView = components["schemas"]["MemberView"];
 type RoundView = components["schemas"]["RoundView"];
 type RelayTurnRow = components["schemas"]["RelayTurnRow"];

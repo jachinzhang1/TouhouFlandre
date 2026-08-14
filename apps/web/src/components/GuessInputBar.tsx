@@ -15,11 +15,13 @@ export function GuessInputBar({
   disabled,
   catalogVersion,
   guessedIds,
+  statusMessage,
 }: {
   onGuess: (guessId: string) => void;
   disabled?: boolean;
   catalogVersion?: string;
   guessedIds: ReadonlySet<string>;
+  statusMessage?: string | null;
 }) {
   const [query, setQuery] = useState("");
   const { results, loading, error } = useCharacterSearch(query, {
@@ -36,6 +38,10 @@ export function GuessInputBar({
   useEffect(() => {
     setHighlightIndex(0);
   }, [query, results]);
+
+  useEffect(() => {
+    if (disabled) setQuery("");
+  }, [disabled]);
 
   const submit = (guessId: string) => {
     onGuess(guessId);
@@ -63,6 +69,14 @@ export function GuessInputBar({
       data-guess-input-bar
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur max-[680px]:bottom-[68px]"
     >
+      {statusMessage ? (
+        <p
+          className="mx-auto mb-2 w-full max-w-[720px] text-[0.78rem] font-bold text-vermilion"
+          role="status"
+        >
+          {statusMessage}
+        </p>
+      ) : null}
       <div className="mx-auto flex w-full max-w-[720px] items-start gap-2">
         <div className="relative min-w-0 flex-1">
           <Search
@@ -77,7 +91,7 @@ export function GuessInputBar({
             disabled={disabled}
             placeholder={
               disabled
-                ? "等待当前轮次……"
+                ? (statusMessage ?? "等待当前轮次……")
                 : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
             }
             aria-label="搜索角色"

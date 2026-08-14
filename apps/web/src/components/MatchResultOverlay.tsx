@@ -53,6 +53,8 @@ export function MatchResultOverlay({
     (entry) =>
       !rematchReady.find((ready) => ready.memberId === entry.memberId)?.ready,
   );
+  const ranking = result.ranking ?? [];
+  const sharedFirst = ranking.filter((entry) => entry.rank === 1).length > 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
@@ -66,7 +68,13 @@ export function MatchResultOverlay({
           className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-vermilion" : "text-ink-soft"}`}
         >
           MATCH {result.matchIndex} ·{" "}
-          {won ? "对局获胜" : viewerResult === "draw" ? "对局平局" : "对局失利"}
+          {sharedFirst
+            ? "并列第一"
+            : won
+              ? "对局获胜"
+              : viewerResult === "draw"
+                ? "对局平局"
+                : "对局失利"}
         </p>
         <p className="mb-2 font-brand text-[1.6rem]">{scoreLine}</p>
         <p className="mb-4 text-[0.8rem] text-ink-soft">
@@ -75,26 +83,24 @@ export function MatchResultOverlay({
           · {REASON_LABEL[result.reason] ?? result.reason}
         </p>
         <ul className="mb-4 grid gap-1 text-left">
-          {sortMembersBySeat(result.results).map((entry) => (
+          {(ranking.length > 0
+            ? ranking
+            : sortMembersBySeat(result.results)
+          ).map((entry) => (
             <li
               key={entry.memberId}
               className={`flex items-center justify-between rounded border px-2 py-1 text-[0.75rem] ${entry.memberId === memberId ? "border-vermilion bg-vermilion-soft" : "border-line bg-paper-muted"}`}
             >
               <span className="truncate">
+                {"rank" in entry ? `第 ${entry.rank} 名 · ` : ""}
                 {members?.find((member) => member.memberId === entry.memberId)
                   ?.displayName ?? `玩家 ${entry.seat}`}
                 {entry.memberId === memberId ? "（我）" : ""}
               </span>
               <span className="font-bold">
-                {result.scores.find(
-                  (score) => score.memberId === entry.memberId,
-                )?.score ?? 0}{" "}
-                ·{" "}
-                {entry.result === "win"
-                  ? "胜"
-                  : entry.result === "loss"
-                    ? "负"
-                    : "平"}
+                {"rank" in entry
+                  ? `${entry.score} 分${entry.eliminatedRound ? ` · 第 ${entry.eliminatedRound} 局淘汰` : entry.status === "left" ? " · 离场" : ""}`
+                  : `${result.scores.find((score) => score.memberId === entry.memberId)?.score ?? 0} · ${entry.result === "win" ? "胜" : entry.result === "loss" ? "负" : "平"}`}
               </span>
             </li>
           ))}

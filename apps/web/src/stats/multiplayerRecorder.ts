@@ -96,6 +96,8 @@ export async function recordMultiplayerEvent(
       difficulty: payload.questionScope?.difficulty ?? "unknown",
       matchIndex: payload.matchIndex,
       playerLimit: context?.playerLimit,
+      scoringMode: payload.scoringMode ?? "wins",
+      rosterSize: payload.rosterSize,
       rounds: [],
     });
     return;
@@ -175,6 +177,9 @@ export async function recordMultiplayerEvent(
         durationMs: durations[index],
       }));
     }
+    const viewerPlacement = payload.placements?.find(
+      (entry) => entry.memberId === identity,
+    );
     const round = {
       roundIndex: payload.roundIndex,
       startedAt: active?.startedAt ?? event.occurredAt,
@@ -196,6 +201,11 @@ export async function recordMultiplayerEvent(
       },
       guesses,
       turns,
+      pointsAwarded: viewerPlacement?.pointsAwarded,
+      participationStatus:
+        viewerPlacement?.status === "active"
+          ? undefined
+          : viewerPlacement?.status,
     };
     draft.rounds = [
       ...draft.rounds.filter(
@@ -223,6 +233,14 @@ export async function recordMultiplayerEvent(
       (sum, round) => sum + round.durationMs,
       0,
     );
+    const viewerRanking = payload.ranking?.find(
+      (entry) => entry.memberId === identity,
+    );
+    const tiedForFirst = Boolean(
+      viewerRanking?.rank === 1 &&
+      payload.ranking &&
+      payload.ranking.filter((entry) => entry.rank === 1).length > 1,
+    );
     const record = {
       id,
       schemaVersion: STATS_SCHEMA_VERSION,
@@ -241,6 +259,10 @@ export async function recordMultiplayerEvent(
       opponentScores,
       rosterSize: payload.scores.length,
       playerLimit: draft.playerLimit ?? payload.scores.length,
+      scoringMode: draft.scoringMode ?? "wins",
+      finalRank: viewerRanking?.rank,
+      tiedForFirst,
+      eliminatedRound: viewerRanking?.eliminatedRound,
       rounds: draft.rounds,
     };
     assertStatsPrivacy(record);

@@ -49,4 +49,21 @@ describe("MemberPaginator", () => {
     );
     expect(screen.getAllByText(/member-/)).toHaveLength(1);
   });
+
+  it("honors a fixed single-board page on desktop", () => {
+    render(
+      <MemberPaginator
+        items={items}
+        label="对手棋盘"
+        pageSize={1}
+        renderItem={(item) => <span>{item.memberId}</span>}
+      />,
+    );
+    expect(screen.getAllByText(/member-/)).toHaveLength(1);
+    expect(
+      screen.getByText(/member-/).closest("[data-page-size]")?.getAttribute(
+        "data-page-size",
+      ),
+    ).toBe("1");
+  });
 });

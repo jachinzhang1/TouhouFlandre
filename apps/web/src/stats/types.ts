@@ -5,7 +5,7 @@ import type {
   QuestionDifficulty,
 } from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 4 as const;
+export const STATS_SCHEMA_VERSION = 5 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
 export type StatsDifficulty = QuestionDifficulty | "unknown";
@@ -54,6 +54,8 @@ export interface StatsRound {
   answer: StatsCharacterSnapshot;
   guesses: StatsGuessSnapshot[];
   turns?: StatsRelayTurnSnapshot[];
+  pointsAwarded?: number;
+  participationStatus?: "correct" | "forfeited" | "exhausted" | "timed_out";
 }
 
 interface StatsRecordBase {
@@ -85,6 +87,10 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   opponentScores: number[];
   rosterSize: number;
   playerLimit: number;
+  scoringMode?: "wins" | "placement";
+  finalRank?: number;
+  tiedForFirst?: boolean;
+  eliminatedRound?: number;
   rounds: StatsRound[];
 }
 
@@ -122,6 +128,8 @@ export interface MultiplayerStatsDraft {
   memberSlot?: 1 | 2;
   matchIndex: number;
   playerLimit?: number;
+  scoringMode?: "wins" | "placement";
+  rosterSize?: number;
   rounds: StatsRound[];
   activeRound?: MultiplayerRoundDraft;
   incomplete?: boolean;

@@ -16,8 +16,9 @@ import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "./GuessTable";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import type { RoomUiState } from "../hooks/useRoom";
 
-type MatchView = components["schemas"]["MatchView"];
+type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
 
 export function MatchBoard({
@@ -49,13 +50,19 @@ export function MatchBoard({
 
   // 局末（roundResult 存在且未进入下一局）展示双方完整棋盘
   const ended = Boolean(roundResult);
+  const placementScoring = match.scoringMode === "placement";
+  const activePlayers = match.scores.filter(
+    (score) => score.status === undefined || score.status === "active",
+  ).length;
 
   return (
     <section className="px-[18px] pt-5 pb-28">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
-          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
-            format}
+          {placementScoring
+            ? "积分制"
+            : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
+              format)}
         </span>
         <MemberScoreStrip
           members={members ?? []}
@@ -65,7 +72,11 @@ export function MatchBoard({
         />
         <span className="text-[0.75rem] text-ink-soft">
           第 {roundResult?.roundIndex ?? match.roundIndex} 局
-          {match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}
+          {placementScoring
+            ? ` · 剩余 ${activePlayers}/${match.rosterSize ?? match.scores.length} 人`
+            : match.targetWins > 1
+              ? ` · 先胜 ${match.targetWins} 局`
+              : ""}
         </span>
         {round && !ended && (
           <span className="text-[0.72rem] text-ink-soft tabular-nums">
@@ -119,6 +130,7 @@ function OpponentPages({
     <MemberPaginator
       items={opponents}
       label="对手棋盘"
+      pageSize={1}
       renderItem={(opponent) => (
         <OpponentBoard rows={opponent.rows} fields={fields} />
       )}
