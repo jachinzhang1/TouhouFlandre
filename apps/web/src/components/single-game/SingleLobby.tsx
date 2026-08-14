@@ -1,88 +1,67 @@
-"use client";
-
 import type { LucideIcon } from "lucide-react";
 import { Settings, Users } from "lucide-react";
-import { useState } from "react";
 import { modeConfig, SINGLE_PLAYER_MODE_IDS } from "../../gameModes";
 import { Paper } from "../Paper";
-import { QuestionScopeDialog } from "../question-scope/QuestionScopeDialog";
+import { PageHeader } from "../layout/PageHeader";
 
 export function SingleLobby() {
-  const [scopeOpen, setScopeOpen] = useState(false);
-
   return (
-    <>
-      <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
-        <header className="text-center">
-          <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-black leading-[1.15] max-[680px]:text-[2.05rem]">
-            游戏模式
-          </h1>
-          <p className="mx-auto mt-3 mb-0 flex min-h-7 max-w-[720px] items-center justify-center text-center font-brand leading-[1.75] text-ink-soft">
-            沿着角色留下的线索抵达答案。
-          </p>
-        </header>
+    <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
+      <PageHeader description="沿着角色留下的线索抵达答案。" title="游戏模式" />
 
-        <div className="game-mode-grid">
-          {SINGLE_PLAYER_MODE_IDS.map((modeId, index) => {
-            const config = modeConfig[modeId];
-            return (
-              <GameModeEntry
-                href={`/single/${modeId}`}
-                icon={config.icon}
-                key={modeId}
-                stackOrder={SINGLE_PLAYER_MODE_IDS.length + 2 - index}
-                subtitle={config.description}
-                title={config.label}
-              />
-            );
-          })}
-          <GameModeEntry
-            href="/multi"
-            icon={Users}
-            subtitle="与好友在同一个房间中共同推理。"
-            stackOrder={2}
-            title="多人大厅"
-          />
-          <GameModeEntry
-            icon={Settings}
-            onClick={() => setScopeOpen(true)}
-            stackOrder={1}
-            subtitle="自定义出题范围。"
-            title="题库设置"
-          />
-        </div>
-      </section>
-      <QuestionScopeDialog
-        open={scopeOpen}
-        onClose={() => setScopeOpen(false)}
-      />
-    </>
+      <div className="game-mode-grid">
+        {SINGLE_PLAYER_MODE_IDS.map((modeId, index) => {
+          const config = modeConfig[modeId];
+          return (
+            <GameModeEntry
+              href={`/single/${modeId}`}
+              icon={config.icon}
+              key={modeId}
+              stackOrder={SINGLE_PLAYER_MODE_IDS.length + 2 - index}
+              subtitle={config.description}
+              title={config.label}
+            />
+          );
+        })}
+        <GameModeEntry
+          href="/multi"
+          icon={Users}
+          subtitle="与好友在同一个房间中共同推理。"
+          stackOrder={2}
+          title="多人大厅"
+        />
+        <GameModeEntry
+          href="/settings?source=single"
+          icon={Settings}
+          stackOrder={1}
+          subtitle="自定义出题范围。"
+          title="题库设置"
+        />
+      </div>
+    </section>
   );
 }
 
 function GameModeEntry({
   href,
   icon: Icon,
-  onClick,
   stackOrder,
   subtitle,
   title,
 }: {
-  href?: string;
+  href: string;
   icon: LucideIcon;
   stackOrder: number;
-  onClick?: () => void;
   subtitle: string;
   title: string;
 }) {
   return (
     <Paper
       animateOnMount={false}
-      as={href ? "span" : "button"}
+      as="span"
       className="game-mode-entry"
       foldSize={20}
       href={href}
-      onClick={onClick}
       stackOrder={stackOrder}
       variant="plain"
     >

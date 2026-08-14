@@ -4,7 +4,11 @@
   gap: 16px;
   width: 100%;
   max-width: 680px;
-  margin: 32px auto 0;
+  margin: var(--page-header-content-gap) auto 0;
+}
+
+.multi-lobby-header {
+  margin-bottom: var(--page-header-content-gap);
 }
 
 .game-mode-entry {
@@ -111,10 +115,6 @@
 }
 
 @media (max-width: 680px) {
-  .game-mode-grid {
-    margin-top: 26px;
-  }
-
   .game-mode-entry {
     padding: 24px;
   }

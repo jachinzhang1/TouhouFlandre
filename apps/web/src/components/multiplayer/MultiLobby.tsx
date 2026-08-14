@@ -6,11 +6,7 @@ import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type {
-  MultiRoomFormat,
-  MultiplayerMode,
-  QuestionScopeConfig,
-} from "@touhouflandre/shared";
+import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
 import type { components } from "../../generated/api";
 
 type RoomInfo = components["schemas"]["RoomInfo"];
@@ -30,7 +26,6 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
-import { QuestionScopeDialog } from "../question-scope/QuestionScopeDialog";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
@@ -59,8 +54,6 @@ export function MultiLobby() {
   const [infoError, setInfoError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
-  const [scopeOpen, setScopeOpen] = useState(false);
-  const [hostScopeOpen, setHostScopeOpen] = useState(false);
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -133,14 +126,14 @@ export function MultiLobby() {
   return (
     <section className="px-[18px] pt-12 pb-8">
       <div className="max-w-[1000px]">
-        <div className="max-w-[720px]">
+        <div className="multi-lobby-header max-w-[720px]">
           <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
             MULTIPLAYER
           </p>
           <h1 className="mt-0 mb-1 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
             多人大厅
           </h1>
-          <p className="mt-0 mb-8 text-[0.9rem] leading-[1.75] text-ink-soft">
+          <p className="mt-0 text-[0.9rem] leading-[1.75] text-ink-soft">
             创建房间或输入房间号加入，与好友实时竞猜同一个隐藏角色。
           </p>
         </div>
@@ -173,7 +166,7 @@ export function MultiLobby() {
               <button
                 type="button"
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[5px] border border-line bg-paper-muted px-2.5 text-[0.72rem] font-bold text-ink-soft hover:bg-paper"
-                onClick={() => setScopeOpen(true)}
+                onClick={() => router.push("/settings?source=multi")}
               >
                 <Settings size={14} aria-hidden="true" />
                 题库设置
@@ -337,7 +330,11 @@ export function MultiLobby() {
             <button
               type="button"
               disabled={!info}
-              onClick={() => setHostScopeOpen(true)}
+              onClick={() =>
+                router.push(
+                  `/settings?source=multi&room=${encodeURIComponent(normalizedCode)}`,
+                )
+              }
               className="mb-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 text-[0.78rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Eye size={15} aria-hidden="true" />
@@ -367,19 +364,6 @@ export function MultiLobby() {
           </div>
         </div>
       </div>
-      <QuestionScopeDialog
-        open={scopeOpen}
-        onClose={() => setScopeOpen(false)}
-      />
-      <QuestionScopeDialog
-        open={hostScopeOpen}
-        title="房主题库设置"
-        readOnly
-        initialConfig={
-          (info?.questionScope ?? null) as QuestionScopeConfig | null
-        }
-        onClose={() => setHostScopeOpen(false)}
-      />
     </section>
   );
 }

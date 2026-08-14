@@ -32,9 +32,7 @@ export type QuestionScopeWorkSelection = "all" | "partial" | "none";
 export type QuestionScopeConfigurableField =
   (typeof QUESTION_SCOPE_CONFIGURABLE_FIELDS)[number];
 export type QuestionScopeReleaseYearMode =
-  | "hidden"
-  | "exactOnly"
-  | "directional";
+  "hidden" | "exactOnly" | "directional";
 export type QuestionScopeGuessLimit = {
   enabled: boolean;
   maxGuesses: number;
@@ -96,10 +94,7 @@ export type QuestionScopeCorrection = {
   reason?: "catalog-updated" | "invalid-ids-dropped" | "empty-pool-fallback";
 };
 
-export const QUESTION_DIFFICULTY_LABELS: Record<
-  QuestionDifficulty,
-  string
-> = {
+export const QUESTION_DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
   easy: "Easy",
   normal: "Normal",
   hard: "Hard",
@@ -111,10 +106,10 @@ export const QUESTION_DIFFICULTY_DESCRIPTIONS: Record<
   QuestionDifficultyPreset,
   string
 > = {
-  easy: "仅包含高人气整数作角色，不限制猜测次数",
-  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色，限制 8 次猜测",
-  hard: "包含所有角色，限制 8 次猜测，每手限时 45 秒",
-  lunatic: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒",
+  easy: "仅包含高人气整数作角色，不限制猜测次数。",
+  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色，限制 8 次猜测。",
+  hard: "包含所有角色，限制 8 次猜测，每手限时 45 秒。",
+  lunatic: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒。",
 };
 
 const allFieldsEnabled: QuestionScopeRules["fields"] = {
@@ -175,7 +170,8 @@ const answerableCharacters = (characters: Character[]) =>
 const sortByCatalogOrder = (characters: Character[]) =>
   [...characters].sort(
     (left, right) =>
-      left.appearanceOrder - right.appearanceOrder || left.id.localeCompare(right.id),
+      left.appearanceOrder - right.appearanceOrder ||
+      left.id.localeCompare(right.id),
   );
 
 export function presetQuestionScopeIds(
@@ -185,7 +181,10 @@ export function presetQuestionScopeIds(
   const pool = answerableCharacters(characters).filter((character) => {
     if (preset === "hard" || preset === "lunatic") return true;
     if (preset === "normal") {
-      return character.difficultyTier === "easy" || character.difficultyTier === "normal";
+      return (
+        character.difficultyTier === "easy" ||
+        character.difficultyTier === "normal"
+      );
     }
     return character.difficultyTier === "easy";
   });
@@ -303,7 +302,10 @@ export function isUnlimitedGuessLimit(
   return (maxGuesses ?? 0) >= QUESTION_SCOPE_UNLIMITED_GUESSES;
 }
 
-function rulesEqual(left: QuestionScopeRules, right: QuestionScopeRules): boolean {
+function rulesEqual(
+  left: QuestionScopeRules,
+  right: QuestionScopeRules,
+): boolean {
   left = normalizeQuestionScopeRules(left);
   right = normalizeQuestionScopeRules(right);
   return (
@@ -333,7 +335,10 @@ function inferDifficulty(
 ): QuestionDifficulty {
   for (const preset of QUESTION_DIFFICULTY_PRESETS) {
     if (
-      sameIds(selectedCharacterIds, presetQuestionScopeIds(preset, characters)) &&
+      sameIds(
+        selectedCharacterIds,
+        presetQuestionScopeIds(preset, characters),
+      ) &&
       rulesEqual(rules, questionScopePresetRules(preset))
     ) {
       return preset;
@@ -344,10 +349,7 @@ function inferDifficulty(
 
 export function visibleQuestionFields<T extends { key: GuessFieldKey }>(
   rulesOrHiddenFields:
-    | Partial<QuestionScopeRules>
-    | readonly GuessFieldKey[]
-    | null
-    | undefined,
+    Partial<QuestionScopeRules> | readonly GuessFieldKey[] | null | undefined,
   fields: readonly T[],
 ) {
   const rulesInput = rulesOrHiddenFields;
@@ -388,7 +390,10 @@ export function buildQuestionScopeWorkStates(
   selectedCharacterIds: readonly string[],
 ): QuestionScopeWorkState[] {
   const selected = new Set(selectedCharacterIds);
-  const totals = new Map<string, { selectedCount: number; totalCount: number }>();
+  const totals = new Map<
+    string,
+    { selectedCount: number; totalCount: number }
+  >();
   for (const character of characters) {
     if (!character.enabledAsAnswer) continue;
     const workId = character.firstAppearance.workId;
@@ -424,7 +429,11 @@ function canonicalConfig(
   selectedCharacterIds: string[],
   rules: QuestionScopeRules,
 ): QuestionScopeConfig {
-  const difficulty = inferDifficulty(selectedCharacterIds, rules, snapshot.characters);
+  const difficulty = inferDifficulty(
+    selectedCharacterIds,
+    rules,
+    snapshot.characters,
+  );
   return {
     schemaVersion: QUESTION_SCOPE_SCHEMA_VERSION,
     catalogVersion: snapshot.version,
@@ -459,7 +468,9 @@ export function normalizeQuestionScope(
     return { config: defaultQuestionScope(snapshot), changed: true };
   }
 
-  const requestedPreset = isPreset(input.difficulty) ? input.difficulty : undefined;
+  const requestedPreset = isPreset(input.difficulty)
+    ? input.difficulty
+    : undefined;
   let requestedRules = input.rules
     ? normalizeQuestionScopeRules(input.rules)
     : requestedPreset
@@ -493,7 +504,11 @@ export function normalizeQuestionScope(
   return {
     config,
     changed,
-    reason: reason ?? (input.catalogVersion !== snapshot.version ? "catalog-updated" : undefined),
+    reason:
+      reason ??
+      (input.catalogVersion !== snapshot.version
+        ? "catalog-updated"
+        : undefined),
   };
 }
 
@@ -506,7 +521,10 @@ export function toggleWorkInQuestionScope(
   const selected = new Set(config.selectedCharacterIds);
   const shouldSelectAll = workState?.state !== "all";
   for (const character of snapshot.characters) {
-    if (!character.enabledAsAnswer || character.firstAppearance.workId !== workId) {
+    if (
+      !character.enabledAsAnswer ||
+      character.firstAppearance.workId !== workId
+    ) {
       continue;
     }
     if (shouldSelectAll) selected.add(character.id);
@@ -524,7 +542,9 @@ export function toggleCharacterInQuestionScope(
   snapshot: FullCatalogSnapshot,
   characterId: string,
 ): QuestionScopeConfig {
-  const character = snapshot.characters.find((entry) => entry.id === characterId);
+  const character = snapshot.characters.find(
+    (entry) => entry.id === characterId,
+  );
   if (!character?.enabledAsAnswer) return config;
   const selected = new Set(config.selectedCharacterIds);
   if (selected.has(characterId)) selected.delete(characterId);
