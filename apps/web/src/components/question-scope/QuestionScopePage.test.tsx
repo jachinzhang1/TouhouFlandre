@@ -109,7 +109,7 @@ describe("QuestionScopePage", () => {
     );
 
     const sections = container.querySelectorAll(".question-scope-section");
-    expect(sections).toHaveLength(4);
+    expect(sections).toHaveLength(3);
     expect(
       [...sections].every(
         (section) => !section.classList.contains("paper-surface"),
@@ -152,6 +152,31 @@ describe("QuestionScopePage", () => {
     expect(
       screen.getByRole("spinbutton", { name: "设置单手限时数值" }),
     ).toBeTruthy();
+    const filterHeading = container.querySelector(
+      ".question-scope-filter-heading",
+    ) as HTMLElement;
+    const workTab = screen.getByRole("tab", { name: "按作品筛选" });
+    const characterTab = screen.getByRole("tab", { name: "按角色筛选" });
+    expect(workTab.getAttribute("aria-selected")).toBe("true");
+    expect(characterTab.getAttribute("aria-selected")).toBe("false");
+    expect(filterHeading.contains(screen.getByText("已选择 1/1 个角色"))).toBe(
+      true,
+    );
+    expect(
+      filterHeading.querySelectorAll(".question-scope-bulk-controls"),
+    ).toHaveLength(1);
+    expect(container.querySelector(".lucide-search")).toBeNull();
+    expect(screen.queryByRole("button", { name: "收起作品筛选" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: /东方红魔乡/ })).toBeTruthy();
+
+    await userEvent.click(characterTab);
+    expect(workTab.getAttribute("aria-selected")).toBe("false");
+    expect(characterTab.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("checkbox", { name: /博丽灵梦/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "全不选" }));
+    expect(screen.getByText("已选择 0/1 个角色")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "全选" }));
+    expect(screen.getByText("已选择 1/1 个角色")).toBeTruthy();
 
     await userEvent.click(screen.getByRole("button", { name: "应用设置" }));
     expect(mocks.push).toHaveBeenCalledWith("/single");

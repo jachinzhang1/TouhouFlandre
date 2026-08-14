@@ -45,6 +45,7 @@ export function QuestionScopePage({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
+  const pageRef = useRef<HTMLElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const toolbarStuck = useStickyState(toolbarRef);
   const readOnly = Boolean(roomCode);
@@ -83,6 +84,28 @@ export function QuestionScopePage({
       disposed = true;
     };
   }, [readOnly, revision, roomCode]);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    const toolbar = toolbarRef.current;
+    if (!page || !toolbar) return;
+    const update = () => {
+      page.style.setProperty(
+        "--question-scope-toolbar-height",
+        `${toolbar.getBoundingClientRect().height}px`,
+      );
+    };
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    resizeObserver?.observe(toolbar);
+    window.addEventListener("resize", update);
+    update();
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", update);
+      page.style.removeProperty("--question-scope-toolbar-height");
+    };
+  }, []);
 
   const currentDifficulty = draft?.difficulty ?? "normal";
   const invalidScope = Boolean(
@@ -149,7 +172,7 @@ export function QuestionScopePage({
   };
 
   return (
-    <section className="question-scope-page" aria-busy={loading}>
+    <section className="question-scope-page" aria-busy={loading} ref={pageRef}>
       <PageHeader
         description={
           readOnly

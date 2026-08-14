@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { Check, ChevronDown, ChevronRight, Minus, Search } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import {
   applyQuestionScopePreset,
   buildQuestionScopeWorkStates,
@@ -44,6 +44,8 @@ const FIELD_TOGGLE_LABELS = [
   ["hairColors", "头发颜色"],
 ] as const;
 
+type WorkScopeState = ReturnType<typeof buildQuestionScopeWorkStates>[number];
+
 interface QuestionScopeEditorProps {
   draft: QuestionScopeConfig;
   snapshot: FullCatalogSnapshot;
@@ -57,7 +59,7 @@ export function QuestionScopeEditor({
   readOnly,
   onChange,
 }: QuestionScopeEditorProps) {
-  const [workFilterOpen, setWorkFilterOpen] = useState(true);
+  const [filterTab, setFilterTab] = useState<"work" | "character">("work");
   const selected = useMemo(
     () => new Set(draft.selectedCharacterIds),
     [draft.selectedCharacterIds],
@@ -266,133 +268,232 @@ export function QuestionScopeEditor({
         </div>
       </ScopeSection>
 
-      <ScopeSection
-        action={
-          <BulkSelectControls readOnly={readOnly} onSelect={setAllCharacters} />
-        }
-        title={
-          <PaperButton
-            ariaLabel={workFilterOpen ? "收起作品筛选" : "展开作品筛选"}
-            className="question-scope-collapse"
-            folded={false}
-            onClick={() => setWorkFilterOpen((value) => !value)}
-          >
-            {workFilterOpen ? (
-              <ChevronDown size={18} aria-hidden="true" />
-            ) : (
-              <ChevronRight size={18} aria-hidden="true" />
-            )}
-            按作品筛选
-          </PaperButton>
-        }
+      <ScopeFilterSection
+        activeTab={filterTab}
+        answerableCount={answerableCount}
+        onSelect={setAllCharacters}
+        onTabChange={setFilterTab}
+        readOnly={readOnly}
+        selectedCount={draft.selectedCharacterIds.length}
       >
-        {workFilterOpen ? (
-          <div className="question-scope-option-grid">
-            {snapshot.works.map((work) => {
-              const state = stateByWorkId.get(work.id);
-              const checked =
-                state?.state === "all"
-                  ? true
-                  : state?.state === "partial"
-                    ? "mixed"
-                    : false;
-              const active = checked !== false;
-              return (
-                <Paper
-                  animateOnMount={false}
-                  ariaChecked={checked}
-                  as="button"
-                  className="question-scope-option-card"
-                  disabled={readOnly || (state?.totalCount ?? 0) === 0}
-                  folded={active}
-                  foldSize={10}
-                  key={work.id}
-                  onClick={() =>
-                    onChange(
-                      toggleWorkInQuestionScope(draft, snapshot, work.id),
-                    )
-                  }
-                  role="checkbox"
-                  sticker={false}
-                  unfoldOnHover={active}
-                  variant={active ? "tinted" : "plain"}
-                >
-                  <TriStateIcon state={state?.state ?? "none"} />
-                  <span className="question-scope-option-copy">
-                    <strong>{work.titleZh}</strong>
-                    <small>
-                      {work.shortName} · {state?.selectedCount ?? 0}/
-                      {state?.totalCount ?? 0}
-                    </small>
-                  </span>
-                </Paper>
-              );
-            })}
-          </div>
-        ) : null}
-      </ScopeSection>
+        {filterTab === "work" ? (
+          <WorkFilterContent
+            draft={draft}
+            onChange={onChange}
+            readOnly={readOnly}
+            snapshot={snapshot}
+            stateByWorkId={stateByWorkId}
+          />
+        ) : (
+          <CharacterFilterContent
+            draft={draft}
+            onChange={onChange}
+            readOnly={readOnly}
+            selected={selected}
+            snapshot={snapshot}
+            sortedCharacters={sortedCharacters}
+          />
+        )}
+      </ScopeFilterSection>
+    </div>
+  );
+}
 
-      <ScopeSection
-        action={
-          <BulkSelectControls readOnly={readOnly} onSelect={setAllCharacters} />
-        }
-        title={
-          <span className="question-scope-character-title">
-            <span>按角色筛选</span>
-            <Search size={18} aria-hidden="true" />
-            <small>
-              已选择 {draft.selectedCharacterIds.length}/{answerableCount}
-            </small>
-          </span>
-        }
-      >
-        <div className="question-scope-character-grid">
-          {sortedCharacters.map((character) => {
-            const enabled = character.enabledAsAnswer;
-            const checked = selected.has(character.id);
-            return (
-              <Paper
-                animateOnMount={false}
-                ariaChecked={checked}
-                as="button"
-                className="question-scope-character-card"
-                disabled={readOnly || !enabled}
-                folded={checked}
-                foldSize={10}
-                key={character.id}
-                onClick={() =>
-                  onChange(
-                    toggleCharacterInQuestionScope(
-                      draft,
-                      snapshot,
-                      character.id,
-                    ),
-                  )
-                }
-                role="checkbox"
-                sticker={false}
-                unfoldOnHover={checked}
-                variant={checked ? "tinted" : "plain"}
-              >
-                <CharacterAvatar
-                  avatarUrl={character.avatarUrl}
-                  name={character.names.zhHans}
-                  initials={character.names.zhHans.slice(0, 2)}
-                  className="size-10"
-                />
-                <span className="question-scope-option-copy">
-                  <strong>{character.names.zhHans}</strong>
-                  <small>
-                    {character.firstAppearance.workTitle}
-                    {!enabled ? " · 不可作答案" : ""}
-                  </small>
-                </span>
-                <BinaryCheck checked={checked} />
-              </Paper>
-            );
-          })}
+function ScopeFilterSection({
+  activeTab,
+  answerableCount,
+  children,
+  onSelect,
+  onTabChange,
+  readOnly,
+  selectedCount,
+}: {
+  activeTab: "work" | "character";
+  answerableCount: number;
+  children: ReactNode;
+  onSelect: (checked: boolean) => void;
+  onTabChange: (tab: "work" | "character") => void;
+  readOnly: boolean;
+  selectedCount: number;
+}) {
+  return (
+    <section className="question-scope-section question-scope-filter-section">
+      <header className="question-scope-filter-heading">
+        <div className="question-scope-section-title-row">
+          <span className="question-scope-section-rule" aria-hidden="true" />
+          <div
+            className="question-scope-filter-tabs"
+            role="tablist"
+            aria-label="题库筛选方式"
+          >
+            <button
+              aria-controls="question-scope-filter-panel"
+              aria-selected={activeTab === "work"}
+              className="question-scope-filter-tab"
+              id="question-scope-filter-work"
+              onClick={() => onTabChange("work")}
+              role="tab"
+              type="button"
+            >
+              按作品筛选
+            </button>
+            <span
+              className="question-scope-filter-tab-separator"
+              aria-hidden="true"
+            />
+            <button
+              aria-controls="question-scope-filter-panel"
+              aria-selected={activeTab === "character"}
+              className="question-scope-filter-tab"
+              id="question-scope-filter-character"
+              onClick={() => onTabChange("character")}
+              role="tab"
+              type="button"
+            >
+              按角色筛选
+            </button>
+          </div>
+          <span
+            className="question-scope-section-rule question-scope-section-rule-right"
+            aria-hidden="true"
+          />
         </div>
-      </ScopeSection>
+        <div className="question-scope-filter-actions">
+          <span className="question-scope-selected-count">
+            已选择 {selectedCount}/{answerableCount} 个角色
+          </span>
+          <BulkSelectControls readOnly={readOnly} onSelect={onSelect} />
+        </div>
+      </header>
+      <div
+        aria-labelledby={
+          activeTab === "work"
+            ? "question-scope-filter-work"
+            : "question-scope-filter-character"
+        }
+        id="question-scope-filter-panel"
+        role="tabpanel"
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function WorkFilterContent({
+  draft,
+  onChange,
+  readOnly,
+  snapshot,
+  stateByWorkId,
+}: {
+  draft: QuestionScopeConfig;
+  onChange: (config: QuestionScopeConfig) => void;
+  readOnly: boolean;
+  snapshot: FullCatalogSnapshot;
+  stateByWorkId: Map<string, WorkScopeState>;
+}) {
+  return (
+    <div className="question-scope-option-grid">
+      {snapshot.works.map((work) => {
+        const state = stateByWorkId.get(work.id);
+        const checked =
+          state?.state === "all"
+            ? true
+            : state?.state === "partial"
+              ? "mixed"
+              : false;
+        const active = checked !== false;
+        return (
+          <Paper
+            animateOnMount={false}
+            ariaChecked={checked}
+            as="button"
+            className="question-scope-option-card"
+            disabled={readOnly || (state?.totalCount ?? 0) === 0}
+            folded={active}
+            foldSize={10}
+            key={work.id}
+            onClick={() =>
+              onChange(toggleWorkInQuestionScope(draft, snapshot, work.id))
+            }
+            role="checkbox"
+            sticker={false}
+            unfoldOnHover={active}
+            variant={active ? "tinted" : "plain"}
+          >
+            <TriStateIcon state={state?.state ?? "none"} />
+            <span className="question-scope-option-copy">
+              <strong>{work.titleZh}</strong>
+              <small>
+                {work.shortName} · {state?.selectedCount ?? 0}/
+                {state?.totalCount ?? 0}
+              </small>
+            </span>
+          </Paper>
+        );
+      })}
+    </div>
+  );
+}
+
+function CharacterFilterContent({
+  draft,
+  onChange,
+  readOnly,
+  selected,
+  snapshot,
+  sortedCharacters,
+}: {
+  draft: QuestionScopeConfig;
+  onChange: (config: QuestionScopeConfig) => void;
+  readOnly: boolean;
+  selected: Set<string>;
+  snapshot: FullCatalogSnapshot;
+  sortedCharacters: FullCatalogSnapshot["characters"];
+}) {
+  return (
+    <div className="question-scope-character-grid">
+      {sortedCharacters.map((character) => {
+        const enabled = character.enabledAsAnswer;
+        const checked = selected.has(character.id);
+        return (
+          <Paper
+            animateOnMount={false}
+            ariaChecked={checked}
+            as="button"
+            className="question-scope-character-card"
+            disabled={readOnly || !enabled}
+            folded={checked}
+            foldSize={10}
+            key={character.id}
+            onClick={() =>
+              onChange(
+                toggleCharacterInQuestionScope(draft, snapshot, character.id),
+              )
+            }
+            role="checkbox"
+            sticker={false}
+            unfoldOnHover={checked}
+            variant={checked ? "tinted" : "plain"}
+          >
+            <CharacterAvatar
+              avatarUrl={character.avatarUrl}
+              name={character.names.zhHans}
+              initials={character.names.zhHans.slice(0, 2)}
+              className="size-10"
+            />
+            <span className="question-scope-option-copy">
+              <strong>{character.names.zhHans}</strong>
+              <small>
+                {character.firstAppearance.workTitle}
+                {!enabled ? " · 不可作答案" : ""}
+              </small>
+            </span>
+            <BinaryCheck checked={checked} />
+          </Paper>
+        );
+      })}
     </div>
   );
 }
