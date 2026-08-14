@@ -48,6 +48,12 @@ const (
 	codeNotYourTurn         openapi.ErrorResponseCode = "NOT_YOUR_TURN"
 	codeTurnExpired         openapi.ErrorResponseCode = "TURN_EXPIRED"
 	codeRateLimited         openapi.ErrorResponseCode = "RATE_LIMITED"
+	codeChatMessageInvalid  openapi.ErrorResponseCode = "CHAT_MESSAGE_INVALID"
+	codeChatCursorInvalid   openapi.ErrorResponseCode = "CHAT_CURSOR_INVALID"
+	codeChatSendForbidden   openapi.ErrorResponseCode = "CHAT_SEND_FORBIDDEN"
+	codeChatIdemConflict    openapi.ErrorResponseCode = "CHAT_IDEMPOTENCY_CONFLICT"
+	codeChatCursorAhead     openapi.ErrorResponseCode = "CHAT_CURSOR_AHEAD"
+	codeChatResyncRequired  openapi.ErrorResponseCode = "CHAT_RESYNC_REQUIRED"
 )
 
 func internalError(err error) *ApiError {

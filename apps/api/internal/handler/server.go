@@ -32,8 +32,11 @@ type Server struct {
 	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
 	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
 	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	hub              *hub.Hub           // 实时通道（事件先入库后广播；nil 时 Publish 空转）
-	projectionSecret []byte             // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
+	chatRetention    time.Duration
+	chatRate         multi.ChatRateConfig
+	chatCursor       *multi.ChatCursorCodec
+	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 }
 
 // Option 定制 Server（测试注入用）。
@@ -50,6 +53,15 @@ func WithJoinRateLimit(limit int, window time.Duration) Option {
 func WithMultiTiming(timing multi.TimingConfig) Option {
 	return func(s *Server) {
 		s.timing = timing
+	}
+}
+
+// WithChatConfig 覆盖聊天保留、限流与 cursor 签名配置（测试注入用）。
+func WithChatConfig(retention time.Duration, rate multi.ChatRateConfig, secret []byte) Option {
+	return func(s *Server) {
+		s.chatRetention = retention
+		s.chatRate = rate
+		s.chatCursor = multi.NewChatCursorCodec(secret)
 	}
 }
 
@@ -78,6 +90,9 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 		eventRetention:   config.MultiEventRetention(),
 		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
 		timing:           multi.DefaultTimingConfig(),
+		chatRetention:    config.MultiChatRetention(),
+		chatRate:         config.MultiChatRate(),
+		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
 		projectionSecret: config.MultiProjectionSecret(),
 	}
 	for _, opt := range opts {

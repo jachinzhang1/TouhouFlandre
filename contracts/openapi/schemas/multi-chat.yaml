@@ -1,0 +1,111 @@
+ChatKind:
+  type: string
+  enum: [text, emoji]
+
+ChatChannel:
+  type: string
+  enum: [room, spectator]
+
+ChatMessage:
+  type: object
+  additionalProperties: false
+  required:
+    - messageId
+    - roomId
+    - senderMemberId
+    - senderDisplayName
+    - senderRole
+    - kind
+    - content
+    - channel
+    - cursor
+    - createdAt
+  properties:
+    messageId:
+      type: string
+      pattern: "^[a-z0-9]{25}$"
+    roomId:
+      type: string
+    senderMemberId:
+      type: string
+    senderDisplayName:
+      type: string
+    senderRole:
+      $ref: ./multi-common.yaml#/ParticipantRole
+    senderSeat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    kind:
+      $ref: "#/ChatKind"
+    content:
+      type: string
+    channel:
+      $ref: "#/ChatChannel"
+    cursor:
+      type: string
+      description: 服务端签发的 after-direction 不透明 cursor。
+    createdAt:
+      type: string
+      format: date-time
+
+SendChatMessageRequest:
+  type: object
+  additionalProperties: false
+  required: [clientMessageId, kind, content]
+  properties:
+    clientMessageId:
+      type: string
+      description: 规范小写 UUID；仅用于当前成员在本房间内的发送幂等。
+    kind:
+      type: string
+      description: 语义值只允许 text 或 emoji；非法值由服务端返回 CHAT_MESSAGE_INVALID。
+    content:
+      type: string
+
+ChatHistoryResponse:
+  type: object
+  additionalProperties: false
+  required: [messages, hasMore]
+  properties:
+    messages:
+      type: array
+      items:
+        $ref: "#/ChatMessage"
+    hasMore:
+      type: boolean
+    scannedCursor:
+      type: string
+      description: 初始/after 查询最远扫描到的 after-direction cursor。
+    beforeCursor:
+      type: string
+      description: 初始/before 查询继续加载更早消息的 before-direction cursor。
+
+ChatResyncRequiredResponse:
+  type: object
+  additionalProperties: false
+  required: [code, error, oldestAvailableCursor, highWatermarkCursor]
+  properties:
+    code:
+      type: string
+      enum: [CHAT_RESYNC_REQUIRED]
+    error:
+      type: string
+    oldestAvailableCursor:
+      type: string
+    highWatermarkCursor:
+      type: string
+
+RateLimitedErrorResponse:
+  type: object
+  additionalProperties: false
+  required: [code, error, retryAfterMs]
+  properties:
+    code:
+      type: string
+      enum: [RATE_LIMITED]
+    error:
+      type: string
+    retryAfterMs:
+      type: integer
+      minimum: 1
