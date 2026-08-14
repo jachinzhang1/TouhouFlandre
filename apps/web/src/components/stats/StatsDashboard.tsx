@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { EChartsCoreOption } from "echarts/core";
 import {
   BarChart3,
   CalendarCheck2,
   Clock3,
-  Download,
   Target,
-  Trash2,
   Trophy,
-  Upload,
 } from "lucide-react";
 import {
   aggregateWorks,
@@ -40,6 +37,9 @@ import { StatsChart } from "./StatsChart";
 import { ConfirmStatsClearDialog, StatsImportDialog } from "./StatsDataDialogs";
 import { StatsFilterBar } from "./StatsFilterBar";
 import { StatsHistory } from "./StatsHistory";
+import { StatsPageActions } from "./StatsPageActions";
+import { Paper } from "../Paper";
+import { PageHeader } from "../layout/PageHeader";
 
 function formatDuration(ms: number): string {
   const seconds = Math.max(0, Math.round(ms / 1000));
@@ -81,7 +81,6 @@ export function StatsDashboard() {
     replacements: number;
   } | null>(null);
   const [importError, setImportError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const records = useLiveQuery(
     () => statsDb.records.orderBy("startedAt").reverse().toArray(),
     [revision],
@@ -181,7 +180,7 @@ export function StatsDashboard() {
           name: "答案出现",
           type: "bar",
           data: works.map((item) => item.total),
-          itemStyle: { color: "#9aa5a0" },
+          itemStyle: { opacity: 0.34 },
           barMaxWidth: 30,
         },
         {
@@ -244,8 +243,7 @@ export function StatsDashboard() {
   const handleExport = async () =>
     downloadStatsExport(await createStatsExport());
 
-  const handleImportFile = async (file?: File) => {
-    if (!file) return;
+  const handleImportFile = async (file: File) => {
     setImportError("");
     try {
       const parsed = parseStatsImport(await file.text());
@@ -259,8 +257,6 @@ export function StatsDashboard() {
           ? `无法读取统计文件：${error.message}`
           : "无法读取统计文件。",
       );
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -278,100 +274,70 @@ export function StatsDashboard() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1240px] px-[18px] pb-20 pt-8 max-[680px]:pb-24 max-[680px]:pt-5">
-      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-line pb-5">
-        <div>
-          <p className="mb-1 text-[0.72rem] font-bold uppercase text-vermilion">
-            LOCAL STATS
-          </p>
-          <h1 className="font-brand text-[2.5rem] font-black text-ink max-[680px]:text-[2rem]">
-            游玩统计
-          </h1>
-          <p className="mt-1 text-sm text-ink-soft">数据仅保存在此浏览器中。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            ref={fileInputRef}
-            className="sr-only"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImportFile(event.target.files?.[0])}
+    <main className="stats-page">
+      <PageHeader
+        description="你的数据仅保存在此浏览器中。"
+        rightSlot={
+          <StatsPageActions
+            onClear={() => setClearOpen(true)}
+            onExport={handleExport}
+            onImport={handleImportFile}
           />
-          <ActionButton
-            icon={Upload}
-            label="导出"
-            onClick={() => void handleExport()}
-          />
-          <ActionButton
-            icon={Download}
-            label="导入"
-            onClick={() => fileInputRef.current?.click()}
-          />
-          <ActionButton
-            icon={Trash2}
-            label="清除数据"
-            danger
-            onClick={() => setClearOpen(true)}
-          />
-        </div>
-      </header>
+        }
+        title="游玩统计"
+      />
 
       <StatsFilterBar filters={filters} onChange={setFilters} />
 
       {importError ? (
-        <p
-          className="mt-4 rounded-[5px] border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]"
-          role="alert"
-        >
+        <StatsNotice role="alert" tone="error">
           {importError}
-        </p>
+        </StatsNotice>
       ) : null}
       {incompleteDrafts ? (
-        <p
-          className="mt-4 rounded-[5px] border border-[var(--amber-border)] bg-amber-soft px-4 py-3 text-sm text-[var(--amber-strong)]"
-          role="status"
-        >
+        <StatsNotice role="status" tone="warning">
           有 {incompleteDrafts}{" "}
           场多人对局已超过服务器保留期，无法恢复完整终态，未计入胜率与图表。
-        </p>
+        </StatsNotice>
       ) : null}
 
-      <section
-        className="grid grid-cols-4 gap-3 py-5 max-[900px]:grid-cols-2 max-[520px]:grid-cols-1"
-        aria-label="总体指标"
-      >
+      <section className="stats-metric-grid" aria-label="总体指标">
         <Metric
           icon={BarChart3}
           label="总游玩"
-          value={String(metrics.plays)}
-          detail={`${metrics.losses} 负 · ${metrics.draws} 平`}
+          primary={`${metrics.plays}局`}
+          secondary={`${metrics.losses}负 / ${metrics.draws}平`}
+          stackOrder={4}
         />
         <Metric
           icon={Trophy}
           label="成功次数"
-          value={String(metrics.wins)}
-          detail={`胜率 ${percent(metrics.winRate)}`}
+          primary={`${metrics.wins}次`}
+          secondary={`胜率 ${percent(metrics.winRate)}`}
+          stackOrder={3}
           tone="jade"
         />
         <Metric
           icon={Clock3}
           label="题局用时"
-          value={formatDuration(metrics.medianMs)}
-          detail={`平均 ${formatDuration(metrics.averageMs)} · P90 ${formatDuration(metrics.p90Ms)}`}
+          primary={formatDuration(metrics.medianMs)}
+          secondary={[
+            `平均 ${formatDuration(metrics.averageMs)}`,
+            `P90 ${formatDuration(metrics.p90Ms)}`,
+          ]}
+          stackOrder={2}
         />
         <Metric
           icon={CalendarCheck2}
           label="每日连胜"
-          value={String(streak.current)}
-          detail={`历史最长 ${streak.longest} 天`}
+          primary={`${streak.current}连胜`}
+          secondary={["历史最长", `${streak.longest}天连胜`]}
+          stackOrder={1}
           tone="amber"
         />
       </section>
 
-      <ChartSection
-        title="作品猜测情况"
-        description="灰柱为答案出现题局，主题色柱为获胜题局，折线为作品胜率。"
-      >
+      <ChartSection title="作品猜测情况" stackOrder={3}>
         {works.length ? (
           <StatsChart
             option={workOption}
@@ -383,8 +349,12 @@ export function StatsDashboard() {
         )}
       </ChartSection>
 
-      <div className="mt-4 grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-4 max-[900px]:grid-cols-1">
-        <ChartSection title="获胜猜测次数" description="只统计成功题局。">
+      <div className="stats-chart-grid">
+        <ChartSection
+          title="获胜猜测次数"
+          description="只统计成功题局。"
+          stackOrder={2}
+        >
           {guessDistribution.length ? (
             <StatsChart
               option={distributionOption}
@@ -397,8 +367,9 @@ export function StatsDashboard() {
         <ChartSection
           title="耗时分布"
           description="有效前台时间，不含页面后台停留与请求等待。"
+          stackOrder={1}
         >
-          <div className="grid grid-cols-2 gap-2 max-[680px]:grid-cols-1">
+          <div className="stats-histogram-grid">
             <MiniHistogram
               title="单次猜测"
               bins={guessHistogram}
@@ -435,61 +406,73 @@ export function StatsDashboard() {
   );
 }
 
-function ActionButton({
-  icon: Icon,
-  label,
-  danger = false,
-  onClick,
+function StatsNotice({
+  children,
+  role,
+  tone,
 }: {
-  icon: typeof Download;
-  label: string;
-  danger?: boolean;
-  onClick: () => void;
+  children: React.ReactNode;
+  role: "alert" | "status";
+  tone: "error" | "warning";
 }) {
   return (
-    <button
-      type="button"
-      className={`inline-flex h-9 items-center gap-2 rounded-[5px] border px-3 text-xs font-bold ${danger ? "border-[var(--error-border)] text-[var(--error-text)] hover:bg-[var(--error-bg)]" : "border-line text-ink hover:border-line-strong hover:bg-[var(--surface-soft)]"}`}
-      onClick={onClick}
+    <Paper
+      animateOnMount={false}
+      as="div"
+      className={`stats-notice stats-notice-${tone}`}
+      foldSize={10}
+      role={role}
+      sticker={false}
+      unfoldOnHover={false}
     >
-      <Icon size={16} aria-hidden="true" />
-      {label}
-    </button>
+      {children}
+    </Paper>
   );
 }
 
 function Metric({
   icon: Icon,
   label,
-  value,
-  detail,
+  primary,
+  secondary,
+  stackOrder,
   tone = "accent",
 }: {
   icon: typeof Target;
   label: string;
-  value: string;
-  detail: string;
+  primary: string;
+  secondary: string | string[];
+  stackOrder: number;
   tone?: "accent" | "jade" | "amber";
 }) {
-  const toneClass =
-    tone === "jade"
-      ? "text-jade bg-jade-soft"
-      : tone === "amber"
-        ? "text-amber bg-amber-soft"
-        : "text-vermilion bg-vermilion-soft";
+  const secondaryLines = Array.isArray(secondary) ? secondary : [secondary];
+
   return (
-    <article className="flex min-h-[112px] items-start gap-3 rounded-[7px] border border-line bg-[var(--surface)] p-4 shadow-sm">
-      <span
-        className={`inline-flex size-9 shrink-0 items-center justify-center rounded-[5px] ${toneClass}`}
-      >
-        <Icon size={19} aria-hidden="true" />
+    <Paper
+      animateOnMount={false}
+      as="article"
+      className={`stats-metric-card stats-metric-${tone}`}
+      foldSize={14}
+      stackOrder={stackOrder}
+    >
+      <span className="stats-metric-icon">
+        <Icon size={24} aria-hidden="true" />
       </span>
-      <div className="min-w-0">
-        <p className="text-xs font-bold text-ink-soft">{label}</p>
-        <strong className="mt-1 block text-2xl text-ink">{value}</strong>
-        <small className="mt-1 block text-xs text-ink-soft">{detail}</small>
+      <div className="stats-metric-copy">
+        <p>{label}</p>
+        <div className="stats-metric-data-row">
+          <strong>{primary}</strong>
+          <span
+            className="stats-metric-secondary"
+            data-multiline={secondaryLines.length > 1 ? "true" : "false"}
+          >
+            {secondaryLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </span>
+        </div>
       </div>
-    </article>
+    </Paper>
   );
 }
 
@@ -497,28 +480,32 @@ function ChartSection({
   title,
   description,
   children,
+  stackOrder,
 }: {
   title: string;
-  description: string;
+  description?: string;
   children: React.ReactNode;
+  stackOrder: number;
 }) {
   return (
-    <section className="rounded-[7px] border border-line bg-[var(--surface)] p-4 shadow-sm">
-      <div className="mb-2">
-        <h2 className="text-base font-black text-ink">{title}</h2>
-        <p className="mt-0.5 text-xs text-ink-soft">{description}</p>
+    <Paper
+      animateOnMount={false}
+      as="article"
+      className="stats-chart-paper"
+      foldSize={18}
+      stackOrder={stackOrder}
+    >
+      <div className="stats-chart-heading">
+        <h2>{title}</h2>
+        {description ? <p>{description}</p> : null}
       </div>
       {children}
-    </section>
+    </Paper>
   );
 }
 
 function EmptyChart() {
-  return (
-    <div className="flex h-[280px] items-center justify-center text-sm text-ink-soft">
-      暂无符合筛选条件的数据
-    </div>
-  );
+  return <div className="stats-empty-chart">暂无符合筛选条件的数据</div>;
 }
 
 function MiniHistogram({
@@ -531,10 +518,8 @@ function MiniHistogram({
   option: EChartsCoreOption;
 }) {
   return (
-    <div className="min-w-0">
-      <h3 className="px-2 pt-2 text-center text-xs font-bold text-ink-soft">
-        {title}
-      </h3>
+    <div className="stats-mini-histogram">
+      <h3>{title}</h3>
       {bins.length ? (
         <StatsChart
           option={option}
@@ -542,9 +527,7 @@ function MiniHistogram({
           className="h-[280px]"
         />
       ) : (
-        <div className="flex h-[280px] items-center justify-center text-xs text-ink-soft">
-          暂无数据
-        </div>
+        <div className="stats-mini-empty">暂无数据</div>
       )}
     </div>
   );

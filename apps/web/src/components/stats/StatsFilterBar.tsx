@@ -1,29 +1,63 @@
 "use client";
 
+import { Fragment, useState } from "react";
 import { ConfigProvider, DatePicker } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import dayjs, { type Dayjs } from "dayjs";
 import "dayjs/locale/zh-cn";
-import { CalendarRange, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { QUESTION_DIFFICULTY_LABELS } from "@touhouflandre/shared";
 import type { StatsFilters } from "../../stats/types";
+import { Paper } from "../Paper";
+import { PaperButton } from "../controls/PaperButton";
+import { PaperPicker } from "../controls/PaperPicker";
+import {
+  PaperSegmentButton,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "../controls/PaperSegmentedControl";
 
-const MODE_OPTIONS = [
+type FilterOption<T extends string> = {
+  value: T;
+  label: string;
+  separatorAfter?: boolean;
+};
+
+const MODE_OPTIONS: readonly FilterOption<StatsFilters["mode"]>[] = [
   { value: "all", label: "全部" },
   { value: "daily", label: "每日" },
   { value: "random", label: "随机" },
   { value: "multiplayer", label: "多人" },
-] as const;
+];
 
-const DIFFICULTY_OPTIONS: {
-  value: StatsFilters["difficulty"];
-  label: string;
-}[] = [
-  { value: "all", label: "全部难度" },
+const FORMAT_OPTIONS: readonly FilterOption<StatsFilters["format"]>[] = [
+  { value: "all", label: "全部", separatorAfter: true },
+  { value: "bo1", label: "BO1" },
+  { value: "bo3", label: "BO3" },
+  { value: "bo5", label: "BO5" },
+  { value: "bo7", label: "BO7" },
+];
+
+const MULTIPLAYER_MODE_OPTIONS: readonly FilterOption<
+  StatsFilters["multiplayerMode"]
+>[] = [
+  { value: "all", label: "全部", separatorAfter: true },
+  { value: "race", label: "竞速" },
+  { value: "relay", label: "接力" },
+];
+
+const DIFFICULTY_OPTIONS: readonly FilterOption<
+  NonNullable<StatsFilters["difficulty"]>
+>[] = [
+  { value: "all", label: "全部", separatorAfter: true },
   { value: "easy", label: QUESTION_DIFFICULTY_LABELS.easy },
   { value: "normal", label: QUESTION_DIFFICULTY_LABELS.normal },
   { value: "hard", label: QUESTION_DIFFICULTY_LABELS.hard },
-  { value: "lunatic", label: QUESTION_DIFFICULTY_LABELS.lunatic },
+  {
+    value: "lunatic",
+    label: QUESTION_DIFFICULTY_LABELS.lunatic,
+    separatorAfter: true,
+  },
   { value: "custom", label: QUESTION_DIFFICULTY_LABELS.custom },
   { value: "unknown", label: "未知" },
 ];
@@ -39,122 +73,116 @@ export function StatsFilterBar({ filters, onChange }: StatsFilterBarProps) {
   const update = (patch: Partial<StatsFilters>) =>
     onChange({ ...filters, ...patch });
 
+  const updateMode = (mode: StatsFilters["mode"]) => {
+    const singlePlayerMode = mode === "daily" || mode === "random";
+    update({
+      mode,
+      format: singlePlayerMode ? "all" : filters.format,
+      multiplayerMode: singlePlayerMode ? "all" : filters.multiplayerMode,
+    });
+  };
+
   return (
-    <section
-      className="flex flex-wrap items-start gap-4 border-b border-line py-4"
-      aria-label="统计筛选"
-    >
-      <div className="grid gap-1.5">
-        <span className="h-4 text-xs font-bold leading-4 text-ink-soft">
-          模式
-        </span>
-        <div
-          className="inline-flex h-10 rounded-[6px] border border-line bg-[var(--surface-soft)] p-1"
-          role="group"
-          aria-label="游戏模式"
-        >
-          {MODE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={`min-w-14 rounded-[4px] px-3 py-1.5 text-xs font-bold ${
-                filters.mode === option.value
-                  ? "bg-[var(--surface)] text-vermilion shadow-sm"
-                  : "text-ink-soft"
-              }`}
-              aria-pressed={filters.mode === option.value}
-              onClick={() =>
-                update({
-                  mode: option.value,
-                  format:
-                    option.value === "daily" || option.value === "random"
-                      ? "all"
-                      : filters.format,
-                  multiplayerMode:
-                    option.value === "daily" || option.value === "random"
-                      ? "all"
-                      : filters.multiplayerMode,
-                })
-              }
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+    <section className="stats-filter-section" aria-label="统计筛选">
+      <div className="stats-filter-grid">
+        <SegmentedFilter
+          className="stats-mode-field"
+          label="模式"
+          onChange={updateMode}
+          options={MODE_OPTIONS}
+          value={filters.mode}
+        />
+        <DateRangeFilter
+          from={filters.from ?? ""}
+          to={filters.to ?? ""}
+          onFromChange={(from) => update({ from: from || undefined })}
+          onToChange={(to) => update({ to: to || undefined })}
+          onClear={() => update({ from: undefined, to: undefined })}
+        />
+        <PickerFilter
+          label="多人赛制"
+          onChange={(format) => update({ format })}
+          options={FORMAT_OPTIONS}
+          value={filters.format}
+        />
+        <PickerFilter
+          label="多人玩法"
+          onChange={(multiplayerMode) => update({ multiplayerMode })}
+          options={MULTIPLAYER_MODE_OPTIONS}
+          value={filters.multiplayerMode}
+        />
+        <PickerFilter
+          label="游戏难度"
+          onChange={(difficulty) => update({ difficulty })}
+          options={DIFFICULTY_OPTIONS}
+          value={filters.difficulty ?? "all"}
+        />
       </div>
-      <DateRangeFilter
-        from={filters.from ?? ""}
-        to={filters.to ?? ""}
-        onFromChange={(from) => update({ from: from || undefined })}
-        onToChange={(to) => update({ to: to || undefined })}
-        onClear={() => update({ from: undefined, to: undefined })}
-      />
-      <SelectFilter
-        label="多人赛制"
-        value={filters.format}
-        onChange={(format) =>
-          update({ format: format as StatsFilters["format"] })
-        }
-      >
-        <option value="all">全部赛制</option>
-        <option value="bo1">BO1</option>
-        <option value="bo3">BO3</option>
-        <option value="bo5">BO5</option>
-        <option value="bo7">BO7</option>
-      </SelectFilter>
-      <SelectFilter
-        label="多人玩法"
-        value={filters.multiplayerMode}
-        onChange={(multiplayerMode) =>
-          update({
-            multiplayerMode: multiplayerMode as StatsFilters["multiplayerMode"],
-          })
-        }
-      >
-        <option value="all">全部玩法</option>
-        <option value="race">竞速</option>
-        <option value="relay">接力</option>
-      </SelectFilter>
-      <SelectFilter
-        label="游戏难度"
-        value={filters.difficulty ?? "all"}
-        onChange={(difficulty) =>
-          update({ difficulty: difficulty as StatsFilters["difficulty"] })
-        }
-      >
-        {DIFFICULTY_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </SelectFilter>
     </section>
   );
 }
 
-function SelectFilter({
-  children,
+function SegmentedFilter<T extends string>({
+  className = "",
   label,
   onChange,
+  options,
   value,
 }: {
-  children: React.ReactNode;
+  className?: string;
   label: string;
-  onChange: (value: string) => void;
-  value: string;
+  onChange: (value: T) => void;
+  options: readonly FilterOption<T>[];
+  value: T;
 }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="h-4 text-xs font-bold leading-4 text-ink-soft">
-        {label}
-      </span>
-      <select
-        className="h-10 rounded-[5px] border border-line bg-[var(--surface)] px-3 text-sm text-ink"
+    <div className={`stats-filter-field ${className}`.trim()}>
+      <span className="stats-filter-label">{label}</span>
+      <div className="stats-filter-control-scroll">
+        <PaperSegmentGroup label={label}>
+          {options.map((option, index) => (
+            <Fragment key={option.value}>
+              {index > 0 ? <PaperSegmentSeparator /> : null}
+              <PaperSegmentButton
+                active={value === option.value}
+                onClick={() => onChange(option.value)}
+              >
+                {option.label}
+              </PaperSegmentButton>
+            </Fragment>
+          ))}
+        </PaperSegmentGroup>
+      </div>
+    </div>
+  );
+}
+
+function PickerFilter<T extends string>({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: T) => void;
+  options: readonly FilterOption<T>[];
+  value: T;
+}) {
+  return (
+    <label className="stats-filter-field">
+      <span className="stats-filter-label">{label}</span>
+      <PaperPicker
+        aria-label={label}
+        onChange={(event) => onChange(event.target.value as T)}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
       >
-        {children}
-      </select>
+        {options.map((option) => (
+          <Fragment key={option.value}>
+            <option value={option.value}>{option.label}</option>
+            {option.separatorAfter ? <hr /> : null}
+          </Fragment>
+        ))}
+      </PaperPicker>
     </label>
   );
 }
@@ -174,89 +202,107 @@ function DateRangeFilter({
 }) {
   const fromDate = from ? dayjs(from, "YYYY-MM-DD") : null;
   const toDate = to ? dayjs(to, "YYYY-MM-DD") : null;
+  const hasDate = Boolean(from || to);
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
 
   return (
-    <div className="grid w-[420px] max-w-full gap-1.5 max-[680px]:w-full">
-      <span className="h-4 text-xs font-bold leading-4 text-ink-soft">
-        日期范围
-      </span>
+    <div className="stats-filter-field stats-date-field">
+      <span className="stats-filter-label">日期范围</span>
       <ConfigProvider
         locale={zhCN}
         theme={{
           token: {
-            borderRadius: 5,
-            colorBgContainer: "var(--surface)",
-            colorBorder: "var(--line)",
-            colorPrimary: "var(--vermilion)",
+            borderRadius: 0,
+            colorBgContainer: "var(--paper-plain-bg)",
+            colorBorder: "transparent",
+            colorPrimary: "var(--theme-color)",
             colorPrimaryBg: "var(--accent-soft)",
             colorPrimaryBgHover: "var(--accent-soft)",
             colorPrimaryBorder: "var(--accent-hover-border)",
-            colorPrimaryHover: "var(--vermilion-dark)",
+            colorPrimaryHover: "var(--accent-strong)",
             colorText: "var(--ink)",
             colorTextHeading: "var(--ink)",
             colorTextLightSolid: "var(--accent-contrast)",
             colorTextQuaternary: "var(--subtle-text)",
             colorTextSecondary: "var(--ink-soft)",
-            colorBgElevated: "var(--surface)",
-            colorFillSecondary: "var(--surface-soft)",
+            colorBgElevated: "var(--paper-plain-bg)",
+            colorFillSecondary: "var(--paper-plain-bg-hover)",
             colorFillTertiary: "var(--surface-muted)",
-            colorSplit: "var(--line)",
+            colorSplit: "var(--paper-plain-line)",
             colorTextPlaceholder: "var(--placeholder-text)",
             controlItemBgActive: "var(--accent-soft)",
-            controlItemBgHover: "var(--surface-soft)",
+            controlItemBgHover: "var(--paper-plain-bg-hover)",
             fontFamily: "var(--font-ui)",
           },
         }}
       >
-        <div className="stats-date-range flex h-10 min-w-0 items-center overflow-hidden rounded-[6px] border border-line bg-[var(--surface)] px-2 shadow-sm transition focus-within:border-vermilion focus-within:ring-2 focus-within:ring-[var(--accent-soft)]">
-          <CalendarRange
-            className="mx-1 shrink-0 text-vermilion"
-            size={16}
-            aria-hidden="true"
-          />
-          <DatePicker
-            className="stats-date-picker"
-            value={fromDate}
-            format="YYYY-MM-DD"
-            placeholder="开始日期"
-            inputReadOnly
-            allowClear={false}
-            aria-label="开始日期"
-            disabledDate={(current) =>
-              Boolean(toDate && current.isAfter(toDate, "day"))
-            }
-            onChange={(value) => onFromChange(datePickerValue(value))}
-          />
-          <span
-            className="mx-1 h-px w-5 shrink-0 bg-line-strong max-[420px]:w-3"
-            aria-hidden="true"
-          />
-          <DatePicker
-            className="stats-date-picker"
-            value={toDate}
-            format="YYYY-MM-DD"
-            placeholder="结束日期"
-            inputReadOnly
-            allowClear={false}
-            aria-label="结束日期"
-            disabledDate={(current) =>
-              Boolean(fromDate && current.isBefore(fromDate, "day"))
-            }
-            onChange={(value) => onToChange(datePickerValue(value))}
-          />
-          {from || to ? (
-            <button
-              type="button"
-              className="ml-1 inline-flex size-8 shrink-0 items-center justify-center rounded-[4px] text-ink-soft hover:bg-[var(--surface-soft)] hover:text-ink"
-              aria-label="清除日期筛选"
-              title="清除日期筛选"
-              onClick={onClear}
-            >
-              <X size={15} />
-            </button>
-          ) : (
-            <span className="w-2 shrink-0" />
-          )}
+        <div className="stats-date-range">
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="stats-date-paper-button"
+            folded={Boolean(fromDate)}
+            foldSize={10}
+            sticker={false}
+            unfoldOnHover={Boolean(fromDate)}
+            unfolded={fromOpen}
+            variant={fromDate ? "tinted" : "plain"}
+          >
+            <DatePicker
+              className="stats-date-picker"
+              value={fromDate}
+              format="YYYY-MM-DD"
+              placeholder="开始日期"
+              inputReadOnly
+              allowClear={false}
+              aria-label="开始日期"
+              disabledDate={(current) =>
+                Boolean(toDate && current.isAfter(toDate, "day"))
+              }
+              onOpenChange={setFromOpen}
+              onChange={(value) => onFromChange(datePickerValue(value))}
+            />
+          </Paper>
+          <span className="stats-date-connector" aria-hidden="true" />
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="stats-date-paper-button"
+            folded={Boolean(toDate)}
+            foldSize={10}
+            sticker={false}
+            unfoldOnHover={Boolean(toDate)}
+            unfolded={toOpen}
+            variant={toDate ? "tinted" : "plain"}
+          >
+            <DatePicker
+              className="stats-date-picker"
+              value={toDate}
+              format="YYYY-MM-DD"
+              placeholder="结束日期"
+              inputReadOnly
+              allowClear={false}
+              aria-label="结束日期"
+              disabledDate={(current) =>
+                Boolean(fromDate && current.isBefore(fromDate, "day"))
+              }
+              onOpenChange={setToOpen}
+              onChange={(value) => onToChange(datePickerValue(value))}
+            />
+          </Paper>
+          <span className="stats-date-separator" aria-hidden="true" />
+          <PaperButton
+            ariaLabel="清除日期筛选"
+            ariaDisabled={!hasDate}
+            className="stats-date-clear"
+            folded={false}
+            iconOnly
+            onClick={onClear}
+            title="清除日期筛选"
+          >
+            <Trash2 size={17} aria-hidden="true" />
+          </PaperButton>
         </div>
       </ConfigProvider>
     </div>

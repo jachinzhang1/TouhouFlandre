@@ -15,6 +15,18 @@ import type {
   StatsRecord,
   StatsRound,
 } from "../../stats/types";
+import { Paper } from "../Paper";
+import { PaperButton } from "../controls/PaperButton";
+import {
+  PaperDataTable,
+  PaperDataTableBody,
+  PaperDataTableHeader,
+} from "../controls/PaperDataTable";
+import { PaperPicker } from "../controls/PaperPicker";
+import {
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "../controls/PaperSegmentedControl";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 
 const OUTCOME_LABELS: Record<StatsOutcome, string> = {
@@ -35,167 +47,314 @@ export function StatsHistory({ records }: { records: StatsRecord[] }) {
   const visible = records.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <section className="mt-5 border-t border-line pt-5">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-black text-ink">游玩记录</h2>
-          <p className="text-xs text-ink-soft">
-            共 {records.length} 条本地记录
-          </p>
-        </div>
-        <label className="flex items-center gap-2 text-xs font-bold text-ink-soft">
-          每页
-          <select
-            className="h-8 rounded-[5px] border border-line bg-[var(--surface)] px-2 text-ink"
-            value={pageSize}
-            onChange={(event) => setPageSize(Number(event.target.value))}
+    <PaperDataTable>
+      <section className="stats-history">
+        <div className="stats-history-sticky">
+          <HistoryHeading
+            onNext={() => setPage((value) => value + 1)}
+            onPageSizeChange={setPageSize}
+            onPrevious={() => setPage((value) => value - 1)}
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            recordCount={records.length}
+          />
+          <PaperDataTableHeader
+            ariaLabel="游玩记录表头"
+            className="stats-history-table-header-scroll"
           >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-          </select>
-          条
-        </label>
-      </div>
-      <div className="overflow-x-auto rounded-[7px] border border-line bg-[var(--surface)]">
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-          <thead className="bg-[var(--surface-soft)] text-xs text-ink-soft">
-            <tr>
-              <th className="px-4 py-3">开始时间</th>
-              <th className="px-4 py-3">模式</th>
-              <th className="px-4 py-3">难度</th>
-              <th className="px-4 py-3">结果</th>
-              <th className="px-4 py-3">猜测次数</th>
-              <th className="px-4 py-3">总耗时</th>
-              <th className="px-4 py-3">所猜角色</th>
-              <th className="px-4 py-3">答案</th>
-              <th className="w-12 px-3 py-3">
-                <span className="sr-only">详情</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.length ? (
-              visible.map((record) => (
-                <HistoryRow key={record.id} record={record} />
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-4 py-14 text-center text-ink-soft"
-                >
-                  暂无游玩记录
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-3 flex items-center justify-end gap-2 text-xs text-ink-soft">
-        <button
-          type="button"
-          className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line disabled:opacity-40"
-          title="上一页"
-          aria-label="上一页"
-          disabled={page <= 1}
-          onClick={() => setPage((value) => value - 1)}
+            <HistoryTableHeader />
+          </PaperDataTableHeader>
+        </div>
+
+        <PaperDataTableBody
+          ariaLabel="游玩记录"
+          className="stats-history-paper"
+          viewportClassName="stats-history-ledger"
         >
-          <ChevronLeft size={16} />
-        </button>
-        <span className="min-w-16 text-center">
-          {page} / {pageCount}
-        </span>
-        <button
-          type="button"
-          className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line disabled:opacity-40"
-          title="下一页"
-          aria-label="下一页"
-          disabled={page >= pageCount}
-          onClick={() => setPage((value) => value + 1)}
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    </section>
+          <div className="paper-data-table-body" role="rowgroup">
+            <HistoryEntries records={visible} />
+          </div>
+        </PaperDataTableBody>
+      </section>
+    </PaperDataTable>
   );
 }
 
-function HistoryRow({ record }: { record: StatsRecord }) {
+function HistoryHeading({
+  onNext,
+  onPageSizeChange,
+  onPrevious,
+  page,
+  pageCount,
+  pageSize,
+  recordCount,
+}: {
+  onNext: () => void;
+  onPageSizeChange: (value: number) => void;
+  onPrevious: () => void;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  recordCount: number;
+}) {
+  return (
+    <div className="stats-history-heading">
+      <div>
+        <h2>游玩记录</h2>
+        <p>共 {recordCount} 条本地记录。</p>
+      </div>
+      <div className="stats-history-heading-controls">
+        <HistoryPageSizeControl
+          pageSize={pageSize}
+          onChange={onPageSizeChange}
+        />
+        <HistoryPagination
+          onNext={onNext}
+          onPrevious={onPrevious}
+          page={page}
+          pageCount={pageCount}
+        />
+      </div>
+    </div>
+  );
+}
+
+function HistoryPageSizeControl({
+  onChange,
+  pageSize,
+}: {
+  onChange: (value: number) => void;
+  pageSize: number;
+}) {
+  return (
+    <label className="stats-history-page-size">
+      <span>每页</span>
+      <PaperPicker
+        aria-label="每页记录数"
+        value={pageSize}
+        variant="plain"
+        onChange={(event) => onChange(Number(event.target.value))}
+      >
+        <option value={10}>10</option>
+        <option value={25}>25</option>
+        <option value={50}>50</option>
+      </PaperPicker>
+      <span>条</span>
+    </label>
+  );
+}
+
+function HistoryTableHeader() {
+  return (
+    <div
+      className="stats-history-ledger-header paper-data-table-header paper-data-table-row"
+      role="row"
+    >
+      <span role="columnheader">开始时间</span>
+      <span role="columnheader">模式</span>
+      <span role="columnheader">难度</span>
+      <span role="columnheader">结果</span>
+      <span role="columnheader">猜测次数</span>
+      <span role="columnheader">总耗时</span>
+      <span role="columnheader">所猜角色</span>
+      <span role="columnheader">答案</span>
+    </div>
+  );
+}
+
+function HistoryPagination({
+  onNext,
+  onPrevious,
+  page,
+  pageCount,
+}: {
+  onNext: () => void;
+  onPrevious: () => void;
+  page: number;
+  pageCount: number;
+}) {
+  return (
+    <PaperSegmentGroup className="stats-history-pagination" label="记录翻页">
+      <PaperButton
+        ariaLabel="上一页"
+        disabled={page <= 1}
+        filled={page > 1}
+        folded={page > 1}
+        iconOnly
+        onClick={onPrevious}
+        title="上一页"
+        tone="theme"
+      >
+        <ChevronLeft size={20} aria-hidden="true" />
+      </PaperButton>
+      <PaperSegmentSeparator />
+      <Paper
+        animateOnMount={false}
+        as="span"
+        className="stats-history-page-counter"
+        folded={false}
+        sticker={false}
+        unfoldOnHover={false}
+        variant="plain"
+      >
+        <span aria-live="polite">
+          {page} / {pageCount}
+        </span>
+      </Paper>
+      <PaperSegmentSeparator />
+      <PaperButton
+        ariaLabel="下一页"
+        disabled={page >= pageCount}
+        filled={page < pageCount}
+        folded={page < pageCount}
+        iconOnly
+        onClick={onNext}
+        title="下一页"
+        tone="theme"
+      >
+        <ChevronRight size={20} aria-hidden="true" />
+      </PaperButton>
+    </PaperSegmentGroup>
+  );
+}
+
+function HistoryEntries({ records }: { records: StatsRecord[] }) {
+  if (records.length === 0) {
+    return (
+      <div className="stats-history-empty" role="row">
+        <span role="cell">暂无游玩记录</span>
+      </div>
+    );
+  }
+
+  return records.map((record) => (
+    <HistoryEntry key={record.id} record={record} />
+  ));
+}
+
+function HistoryEntry({ record }: { record: StatsRecord }) {
   const [open, setOpen] = useState(false);
   const rounds = record.kind === "single" ? [record.round] : record.rounds;
   const guesses = displayGuessesForRecord(record);
-  const modeLabel =
-    record.kind === "multiplayer"
-      ? MULTIPLAYER_MODE_LABELS[record.multiplayerMode ?? "race"]
-      : "";
 
   return (
-    <>
-      <tr className="border-t border-line align-middle">
-        <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">
+    <div className="stats-history-entry paper-data-table-entry">
+      <div className="stats-history-ledger-row paper-data-table-row" role="row">
+        <div
+          className="stats-history-cell stats-history-time"
+          data-label="开始时间"
+          role="cell"
+        >
           {formatDateTime(record.startedAt)}
-        </td>
-        <td className="px-4 py-3 font-bold text-ink">
-          {record.kind === "single"
-            ? record.mode === "daily"
-              ? "每日"
-              : "随机"
-            : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`}
-        </td>
-        <td className="px-4 py-3 text-xs font-bold text-ink-soft">
+        </div>
+        <div
+          className="stats-history-cell stats-history-mode"
+          data-label="模式"
+          role="cell"
+        >
+          <span className="stats-history-mode-copy">{modeLabel(record)}</span>
+          <DetailsButton
+            expanded={open}
+            record={record}
+            onToggle={() => setOpen((value) => !value)}
+          />
+        </div>
+        <div className="stats-history-cell" data-label="难度" role="cell">
           {difficultyLabel(record.difficulty ?? "unknown")}
-        </td>
-        <td className="px-4 py-3">
+        </div>
+        <div
+          className={`stats-history-cell stats-history-outcome-cell ${
+            record.outcome === "win"
+              ? "stats-history-outcome-success"
+              : "stats-history-outcome-failure"
+          }`}
+          data-label="结果"
+          role="cell"
+        >
           <Outcome outcome={record.outcome} />
-        </td>
-        <td className="px-4 py-3 tabular-nums text-ink">{guesses.length}</td>
-        <td className="px-4 py-3 tabular-nums text-ink">
+        </div>
+        <div
+          className="stats-history-cell stats-history-number"
+          data-label="猜测次数"
+          role="cell"
+        >
+          {guesses.length}
+        </div>
+        <div
+          className="stats-history-cell stats-history-number"
+          data-label="总耗时"
+          role="cell"
+        >
           {formatDuration(record.durationMs)}
-        </td>
-        <td className="px-4 py-2">
+        </div>
+        <div
+          className="stats-history-cell stats-history-sequence"
+          data-label="所猜角色"
+          role="cell"
+        >
           <GuessSequence guesses={guesses} />
-        </td>
-        <td className="px-4 py-2">
+        </div>
+        <div
+          className="stats-history-cell stats-history-sequence"
+          data-label="答案"
+          role="cell"
+        >
           <AnswerSequence rounds={rounds} />
-        </td>
-        <td className="px-3 py-2 text-right">
-          {record.kind === "multiplayer" ? (
-            <button
-              type="button"
-              className="inline-flex size-8 items-center justify-center rounded-[4px] text-ink-soft hover:bg-[var(--surface-soft)]"
-              aria-label="查看局详情"
-              aria-expanded={open}
-              onClick={() => setOpen((value) => !value)}
-            >
-              <ChevronDown className={open ? "rotate-180" : ""} size={16} />
-            </button>
-          ) : null}
-        </td>
-      </tr>
-      {open && record.kind === "multiplayer" ? (
-        <tr className="border-t border-line bg-[var(--surface-soft)]">
-          <td colSpan={9} className="px-4 py-3">
-            <RoundDetails record={record} />
-          </td>
-        </tr>
-      ) : null}
-    </>
+        </div>
+      </div>
+      <ExpandedRoundDetails open={open} record={record} />
+    </div>
+  );
+}
+
+function DetailsButton({
+  expanded,
+  onToggle,
+  record,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  record: StatsRecord;
+}) {
+  if (record.kind !== "multiplayer") return null;
+
+  return (
+    <PaperButton
+      ariaLabel={expanded ? "收起局详情" : "查看局详情"}
+      className="stats-history-detail-button"
+      folded={false}
+      onClick={onToggle}
+      title="查看局详情"
+    >
+      <span>详情</span>
+      <ChevronDown
+        className={expanded ? "rotate-180" : ""}
+        size={16}
+        aria-hidden="true"
+      />
+    </PaperButton>
+  );
+}
+
+function ExpandedRoundDetails({
+  open,
+  record,
+}: {
+  open: boolean;
+  record: StatsRecord;
+}) {
+  if (!open || record.kind !== "multiplayer") return null;
+
+  return (
+    <div className="stats-history-rounds">
+      <RoundDetails record={record} />
+    </div>
   );
 }
 
 function Outcome({ outcome }: { outcome: StatsOutcome }) {
-  const style =
-    outcome === "win"
-      ? "bg-jade-soft text-jade"
-      : "border border-[var(--error-border)] bg-[var(--error-bg)] text-[var(--error-text)]";
-  return (
-    <span
-      className={`inline-flex rounded-[4px] px-2 py-1 text-xs font-bold ${style}`}
-    >
-      {OUTCOME_LABELS[outcome]}
-    </span>
-  );
+  return <span className="stats-outcome">{OUTCOME_LABELS[outcome]}</span>;
 }
 
 function GuessSequence({
@@ -254,11 +413,8 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
   return (
     <div className="grid gap-2">
       {record.rounds.map((round) => (
-        <div
-          key={round.roundIndex}
-          className="grid grid-cols-[72px_64px_80px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_54px_minmax(0,1fr)]"
-        >
-          <strong className="text-ink">第 {round.roundIndex} 局</strong>
+        <div key={round.roundIndex} className="stats-history-round">
+          <strong>第 {round.roundIndex} 局</strong>
           <span
             className={
               round.result === "win" ? "text-jade" : "text-[var(--error-text)]"
@@ -270,7 +426,7 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
                 ? "负"
                 : "平"}
           </span>
-          <span className="tabular-nums text-ink-soft max-[680px]:hidden">
+          <span className="stats-history-round-duration">
             {formatDuration(round.durationMs)}
           </span>
           <div className="flex min-w-0 items-center gap-2">
@@ -289,6 +445,15 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
       ))}
     </div>
   );
+}
+
+function modeLabel(record: StatsRecord): string {
+  if (record.kind === "single") {
+    return record.mode === "daily" ? "每日" : "随机";
+  }
+  const multiplayerMode =
+    MULTIPLAYER_MODE_LABELS[record.multiplayerMode ?? "race"];
+  return `${multiplayerMode} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`;
 }
 
 function formatDuration(ms: number): string {
