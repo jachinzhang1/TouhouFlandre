@@ -35,9 +35,9 @@ import { QuestionScopeDialog } from "./QuestionScopeDialog";
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
 const MODE_RULES: Record<MultiplayerMode, string> = {
-  race: `**竞速模式**中，2 至 8 名玩家会同时竞猜同一个隐藏角色。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。任意玩家率先猜中目标角色时，本局**立即结束**并为该玩家记一胜；若所有玩家都用尽次数限制仍无人猜中，或本局总倒计时结束，则本局判为平局。
+  race: `**竞速模式**中，2 至 8 名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
 
-每一小局结束后会揭示答案、当前比分和全部完整棋盘。先达到目标胜局的玩家赢得整场对局。`,
+实际开局为 2 人时使用所选双人赛制，率先猜中者赢得本局。实际开局超过 2 人时使用积分淘汰制：猜中越快，本局得分越高；放弃、次数耗尽或超时得 0 分。达到淘汰轮次后，每局会淘汰累计积分最低的玩家，直至决出最终排行榜。`,
   relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，出题范围和猜测次数限制**由房主决定**。当前轮到的玩家可以提交一次猜测或主动选择空过。猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
@@ -246,11 +246,19 @@ export function MultiLobby() {
             )}
             {mode === "race" && (
               <label className="mb-4 block">
-                <span className="mb-1 block text-[0.75rem] text-ink-soft">
-                  玩家上限（2-8）
+                <span className="mb-1 flex items-center justify-between text-[0.75rem] text-ink-soft">
+                  <span>玩家上限</span>
+                  <output
+                    htmlFor="create-player-limit"
+                    className="font-bold tabular-nums text-ink"
+                  >
+                    {playerLimit} 人
+                  </output>
                 </span>
                 <input
-                  type="number"
+                  id="create-player-limit"
+                  aria-label="玩家上限（2-8）"
+                  type="range"
                   min={2}
                   max={8}
                   step={1}
@@ -260,12 +268,18 @@ export function MultiLobby() {
                       Math.min(8, Math.max(2, Number(event.target.value) || 2)),
                     )
                   }
-                  className="w-24 rounded-[6px] border border-line-strong bg-paper px-3 py-2 text-[0.85rem] outline-none focus:border-vermilion"
+                  className="w-full accent-vermilion"
                 />
+                <span className="mt-1 flex justify-between text-[0.68rem] tabular-nums text-ink-soft">
+                  <span>2</span>
+                  <span>8</span>
+                </span>
               </label>
             )}
             <fieldset className="mb-4">
-              <legend className="sr-only">赛制</legend>
+              <legend className="mb-1 text-[0.75rem] text-ink-soft">
+                双人赛制
+              </legend>
               <div className="grid grid-cols-2 gap-2">
                 {FORMATS.map((f) => (
                   <label

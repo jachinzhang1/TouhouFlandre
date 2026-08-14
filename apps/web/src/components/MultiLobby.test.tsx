@@ -34,7 +34,12 @@ describe("MultiLobby", () => {
 
   it("sends playerLimit for race creation", async () => {
     render(<MultiLobby />);
-    fireEvent.change(screen.getByLabelText("玩家上限（2-8）"), {
+    const limit = screen.getByLabelText("玩家上限（2-8）");
+    expect(limit.getAttribute("type")).toBe("range");
+    expect(limit.getAttribute("min")).toBe("2");
+    expect(limit.getAttribute("max")).toBe("8");
+    expect(screen.getByText("双人赛制")).toBeTruthy();
+    fireEvent.change(limit, {
       target: { value: "6" },
     });
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));

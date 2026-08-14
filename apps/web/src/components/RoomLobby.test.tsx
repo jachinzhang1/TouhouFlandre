@@ -73,7 +73,11 @@ describe("RoomLobby", () => {
       viewerMemberId: "host",
       onApplyLimit: apply,
     });
-    fireEvent.change(screen.getByLabelText("玩家上限"), {
+    const limit = screen.getByLabelText("玩家上限");
+    expect(limit.getAttribute("type")).toBe("range");
+    expect(limit.getAttribute("min")).toBe("2");
+    expect(limit.getAttribute("max")).toBe("8");
+    fireEvent.change(limit, {
       target: { value: "6" },
     });
     fireEvent.click(screen.getByRole("button", { name: "应用" }));

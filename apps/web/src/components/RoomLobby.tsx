@@ -163,32 +163,43 @@ export function RoomLobby({
           </p>
         ) : null}
         {isHost && mode === "race" && (
-          <div className="mb-4 flex items-center gap-2 text-left">
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 text-left">
             <label
-              className="text-[0.78rem] text-ink-soft"
+              className="min-w-0 text-[0.78rem] text-ink-soft"
               htmlFor="player-limit"
             >
-              玩家上限
-            </label>
-            <input
-              id="player-limit"
-              type="number"
-              min={minimumLimit}
-              max={8}
-              value={limitDraft}
-              onChange={(event) =>
-                setLimitDraft(
-                  Math.min(
-                    8,
-                    Math.max(
-                      minimumLimit,
-                      Number(event.target.value) || minimumLimit,
+              <span className="mb-1 flex justify-between">
+                <span>玩家上限</span>
+                <output
+                  htmlFor="player-limit"
+                  className="font-bold tabular-nums text-ink"
+                >
+                  {limitDraft} 人
+                </output>
+              </span>
+              <input
+                id="player-limit"
+                aria-label="玩家上限"
+                type="range"
+                min={minimumLimit}
+                max={8}
+                step={1}
+                value={limitDraft}
+                onChange={(event) =>
+                  setLimitDraft(
+                    Math.min(
+                      8,
+                      Math.max(minimumLimit, Number(event.target.value)),
                     ),
-                  ),
-                )
-              }
-              className="w-16 rounded border border-line px-2 py-1 text-sm"
-            />
+                  )
+                }
+                className="block w-full accent-vermilion"
+              />
+              <span className="mt-0.5 flex justify-between text-[0.68rem] tabular-nums">
+                <span>{minimumLimit}</span>
+                <span>8</span>
+              </span>
+            </label>
             <button
               type="button"
               disabled={
