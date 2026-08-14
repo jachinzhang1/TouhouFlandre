@@ -41,13 +41,14 @@ func main() {
 	}
 
 	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
-	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret())
+	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret())
 	e := server.NewWithOptions(pool, handler.WithHub(h))
 
 	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
 	sweeper := multi.NewSweeper(pool, multi.SweeperConfig{
 		Timing:         timing,
 		EventRetention: config.MultiEventRetention(),
+		ChatRetention:  config.MultiChatRetention(),
 		Interval:       time.Second,
 		Broadcaster:    h,
 	})

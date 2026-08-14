@@ -598,23 +598,27 @@ type MatchEndedEventPayload struct {
 
 // HelloOkMessage hello-ok：鉴权通过并声明本次同步目标，不表示重放已完成。
 type HelloOkMessage struct {
-	Type               string `json:"type"`
-	RoomID             string `json:"roomId"`
-	TargetGameSequence int64  `json:"targetGameSequence"`
+	Type               string  `json:"type"`
+	RoomID             string  `json:"roomId"`
+	TargetGameSequence int64   `json:"targetGameSequence"`
+	TargetChatCursor   *string `json:"targetChatCursor,omitempty"`
 }
 
 // SyncCompleteMessage 标记 FIFO 中此前游戏帧已交付，可确认完成水位。
 type SyncCompleteMessage struct {
-	Type         string `json:"type"`
-	GameSequence int64  `json:"gameSequence"`
+	Type         string  `json:"type"`
+	GameSequence int64   `json:"gameSequence"`
+	ChatCursor   *string `json:"chatCursor,omitempty"`
 }
 
 // ResyncRequiredMessage 要求客户端以权威 snapshot 重置游戏水位。
 type ResyncRequiredMessage struct {
-	Type         string `json:"type"`
-	Scope        string `json:"scope"`
-	Reason       string `json:"reason"`
-	GameSequence int64  `json:"gameSequence"`
+	Type                      string  `json:"type"`
+	Scope                     string  `json:"scope"`
+	Reason                    string  `json:"reason"`
+	GameSequence              *int64  `json:"gameSequence,omitempty"`
+	OldestAvailableChatCursor *string `json:"oldestAvailableChatCursor,omitempty"`
+	TargetChatCursor          *string `json:"targetChatCursor,omitempty"`
 }
 
 // ReplacedMessage replaced：同成员新连接注册，本连接被替换。
@@ -627,13 +631,30 @@ type ReplacedMessage struct {
 
 // HelloMessage hello：首帧必发；鉴权前不收发房间事件。
 type HelloMessage struct {
-	Type             string `json:"type"`
-	Token            string `json:"token"`
-	LastGameSequence int64  `json:"lastGameSequence"`
+	Type             string  `json:"type"`
+	Token            string  `json:"token"`
+	LastGameSequence int64   `json:"lastGameSequence"`
+	LastChatCursor   *string `json:"lastChatCursor,omitempty"`
 }
 
 // AckMessage ack：水位推进。
 type AckMessage struct {
 	Type         string `json:"type"`
 	GameSequence int64  `json:"gameSequence"`
+}
+
+// ChatMessageFrame 是独立聊天位置的公开平铺帧，不携带游戏 sequence。
+type ChatMessageFrame struct {
+	Type              string          `json:"type"`
+	MessageID         string          `json:"messageId"`
+	RoomID            string          `json:"roomId"`
+	SenderMemberID    string          `json:"senderMemberId"`
+	SenderDisplayName string          `json:"senderDisplayName"`
+	SenderRole        ParticipantRole `json:"senderRole"`
+	SenderSeat        *int            `json:"senderSeat,omitempty"`
+	Kind              ChatKind        `json:"kind"`
+	Content           string          `json:"content"`
+	Channel           ChatChannel     `json:"channel"`
+	Cursor            string          `json:"cursor"`
+	CreatedAt         time.Time       `json:"createdAt"`
 }

@@ -26,6 +26,7 @@ import (
 type SweeperConfig struct {
 	Timing         TimingConfig     // 对局时间常量（Phase 6 由 internal/config 注入）
 	EventRetention time.Duration    // closed 到删除的保留时长（MULTI_EVENT_RETENTION）
+	ChatRetention  time.Duration    // 聊天消息独立保留期（MULTI_CHAT_RETENTION）
 	Interval       time.Duration    // tick 间隔（默认 1s）
 	Broadcaster    EventBroadcaster // 事件入库后广播（先入库后广播，07 §7.2；nil 时空转）
 }
@@ -42,6 +43,9 @@ type Sweeper struct {
 func NewSweeper(pool *pgxpool.Pool, cfg SweeperConfig) *Sweeper {
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Second
+	}
+	if cfg.ChatRetention <= 0 {
+		cfg.ChatRetention = 24 * time.Hour
 	}
 	return &Sweeper{
 		pool: pool,
@@ -89,6 +93,7 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 		s.expireDisconnectedMembers,
 		s.closeExpiredLobbies,
 		s.closeExpiredFinishedRooms,
+		s.deleteExpiredChatMessages,
 		s.deleteExpiredClosedRooms,
 		s.updateStatusMetrics,
 	}
@@ -98,6 +103,13 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *Sweeper) deleteExpiredChatMessages(ctx context.Context) error {
+	_, err := repo.New(s.pool).DeleteExpiredChatMessages(ctx, pgtype.Timestamptz{
+		Time: s.now().Add(-s.cfg.ChatRetention), Valid: true,
+	})
+	return err
 }
 
 // updateStatusMetrics 采集时聚合 rooms{status}/members{status}/active_rounds（08 §11.2；失败静默）。

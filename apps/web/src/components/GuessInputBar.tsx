@@ -100,7 +100,7 @@ export function GuessInputBar({
             }
             aria-expanded={showSuggestions}
             role="combobox"
-            className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
+            className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion focus:ring-0 focus:shadow-none focus-visible:ring-0 focus-visible:shadow-none disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
           />
           {query && (
             <button

@@ -427,6 +427,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        /** 查询房间聊天历史 */
+        get: operations["rooms_listMessages"];
+        put?: never;
+        /** 发送房间聊天消息 */
+        post: operations["rooms_sendMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms/{roomId}/rounds/{roundIndex}/guess": {
         parameters: {
             query?: never;
@@ -502,7 +522,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -1034,6 +1054,49 @@ export interface components {
             participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
             finishRank?: number;
         };
+        ChatMessage: {
+            messageId: string;
+            roomId: string;
+            senderMemberId: string;
+            senderDisplayName: string;
+            senderRole: components["schemas"]["ParticipantRole"];
+            senderSeat?: number;
+            kind: components["schemas"]["ChatKind"];
+            content: string;
+            channel: components["schemas"]["ChatChannel"];
+            /** @description 服务端签发的 after-direction 不透明 cursor。 */
+            cursor: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SendChatMessageRequest: {
+            /** @description 规范小写 UUID；仅用于当前成员在本房间内的发送幂等。 */
+            clientMessageId: string;
+            /** @description 语义值只允许 text 或 emoji；非法值由服务端返回 CHAT_MESSAGE_INVALID。 */
+            kind: string;
+            content: string;
+        };
+        ChatHistoryResponse: {
+            messages: components["schemas"]["ChatMessage"][];
+            hasMore: boolean;
+            /** @description 初始/after 查询最远扫描到的 after-direction cursor。 */
+            scannedCursor?: string;
+            /** @description 初始/before 查询继续加载更早消息的 before-direction cursor。 */
+            beforeCursor?: string;
+        };
+        ChatResyncRequiredResponse: {
+            /** @enum {string} */
+            code: "CHAT_RESYNC_REQUIRED";
+            error: string;
+            oldestAvailableCursor: string;
+            highWatermarkCursor: string;
+        };
+        RateLimitedErrorResponse: {
+            /** @enum {string} */
+            code: "RATE_LIMITED";
+            error: string;
+            retryAfterMs: number;
+        };
         /**
          * @deprecated
          * @description 已弃用的完整可猜角色表；仅为旧客户端保留一个兼容版本。
@@ -1072,6 +1135,10 @@ export interface components {
             seat: number;
             guesses: components["schemas"]["GuessResult"][];
         };
+        /** @enum {string} */
+        ChatKind: "text" | "emoji";
+        /** @enum {string} */
+        ChatChannel: "room" | "spectator";
     };
     responses: never;
     parameters: never;
@@ -2143,6 +2210,158 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_listMessages: {
+        parameters: {
+            query?: {
+                after?: string;
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 按当前成员角色授权投影的历史消息 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatHistoryResponse"];
+                };
+            };
+            /** @description INVALID_REQUEST 或 CHAT_CURSOR_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GUEST_UNAUTHORIZED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_CLOSED 或 CHAT_CURSOR_AHEAD */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cursor 早于最老保留位置 */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResyncRequiredResponse"];
+                };
+            };
+        };
+    };
+    rooms_sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendChatMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description 首次提交或相同幂等请求对应的不可变消息 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessage"];
+                };
+            };
+            /** @description INVALID_REQUEST 或 CHAT_MESSAGE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GUEST_UNAUTHORIZED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CHAT_SEND_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_CLOSED 或 CHAT_IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description member 或 room token bucket 已耗尽 */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitedErrorResponse"];
                 };
             };
         };

@@ -18,6 +18,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 // New 构建 Echo 应用。
@@ -28,7 +29,7 @@ func New(pool *pgxpool.Pool) *echo.Echo {
 // NewWithOptions 构建 Echo 应用（opts 透传 handler.NewServer，测试注入用）。
 // 默认创建实时 hub（时间/限流常量来自 internal/config）；显式 WithHub 可覆盖（与 sweeper 共享单实例）。
 func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
-	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret())
+	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret())
 	opts = append([]handler.Option{handler.WithHub(h)}, opts...)
 	e := echo.New()
 	// 请求日志走 slog（echo v5 已移除 middleware.Logger()，统一用 RequestLoggerWithConfig）。
@@ -56,6 +57,20 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			path := c.Request().URL.Path
+			if strings.HasSuffix(path, "/messages") {
+				allowed := map[string]bool{}
+				if c.Request().Method == http.MethodGet {
+					allowed = map[string]bool{"after": true, "before": true, "limit": true}
+				}
+				for key := range c.QueryParams() {
+					if !allowed[key] {
+						return echo.NewHTTPError(http.StatusBadRequest, "聊天请求包含未知查询参数。")
+					}
+				}
+				// messages 路径没有 roomCode/roomId 的同形冲突，可以安全使用完整
+				// OpenAPI 校验来拒绝 additionalProperties 和非法参数。
+				return validator(next)(c)
+			}
 			// /api/rooms* 跳过 OpenAPI 请求校验：
 			// 1) 08 §7.1 的 /api/rooms/{roomCode}(GET) 与 /api/rooms/{roomId}(DELETE) 同形路径
 			//    超出 kin-openapi gorillamux 路由能力（ErrMethodNotAllowed 短路，见 redocly 例外注释）；
@@ -97,12 +112,18 @@ func errorHandler(c *echo.Context, err error) {
 
 	var apiErr *handler.ApiError
 	if errors.As(err, &apiErr) {
+		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
+			multi.DefaultMetrics.IncChatRejected(string(apiErr.Code))
+		}
 		_ = c.JSON(apiErr.Status, apiErr.Response())
 		return
 	}
 
 	var httpErr *echo.HTTPError
 	if errors.As(err, &httpErr) {
+		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
+			multi.DefaultMetrics.IncChatRejected("INVALID_REQUEST")
+		}
 		code := openapi.ErrorResponseCode("INVALID_REQUEST")
 		if httpErr.Code >= http.StatusInternalServerError {
 			code = "INTERNAL"
@@ -134,12 +155,15 @@ func errorHandler(c *echo.Context, err error) {
 	})
 }
 
-
 // requestLogValues 把 echo 请求日志映射到 slog（LevelError 用于 5xx/错误请求，其余 Info）。
 func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
+	uri := v.URI
+	if strings.HasSuffix(c.Request().URL.Path, "/messages") {
+		uri = c.Request().URL.Path
+	}
 	attrs := []slog.Attr{
 		slog.String("method", v.Method),
-		slog.String("uri", v.URI),
+		slog.String("uri", uri),
 		slog.String("route", v.RoutePath),
 		slog.String("remote_ip", v.RemoteIP),
 		slog.Int("status", v.Status),
@@ -147,7 +171,12 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 		slog.String("user_agent", v.UserAgent),
 	}
 	if v.Error != nil {
-		attrs = append(attrs, slog.String("error_code", requestErrorCode(v.Error)), slog.Any("error", v.Error))
+		attrs = append(attrs, slog.String("error_code", requestErrorCode(v.Error)))
+		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
+			attrs = append(attrs, slog.String("reason", "chat_request_rejected"))
+		} else {
+			attrs = append(attrs, slog.Any("error", v.Error))
+		}
 		slog.Default().LogAttrs(context.Background(), slog.LevelError, "request failed", attrs...)
 		return nil
 	}
@@ -158,7 +187,6 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, "request", attrs...)
 	return nil
 }
-
 
 // requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。
 func requestErrorCode(err error) string {

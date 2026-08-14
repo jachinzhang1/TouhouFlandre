@@ -44,6 +44,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (GameSession, error)
 	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
 	DeleteCharactersNotIn(ctx context.Context, ids []string) error
+	DeleteExpiredChatMessages(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error)
 	DeleteMember(ctx context.Context, id string) error
 	DeleteRoom(ctx context.Context, id string) error
 	DeleteWorksNotIn(ctx context.Context, ids []string) error
@@ -63,6 +64,8 @@ type Querier interface {
 	GetCatalogCounts(ctx context.Context) (GetCatalogCountsRow, error)
 	// 题库快照与当前版本
 	GetCatalogState(ctx context.Context) (CatalogState, error)
+	GetChatMessageByIdempotency(ctx context.Context, arg GetChatMessageByIdempotencyParams) (MultiChatMessage, error)
+	GetChatReplayBounds(ctx context.Context, arg GetChatReplayBoundsParams) (GetChatReplayBoundsRow, error)
 	// 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
 	GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID string) (MultiRound, error)
 	// 每日题
@@ -74,6 +77,7 @@ type Querier interface {
 	GetMatchPlayer(ctx context.Context, arg GetMatchPlayerParams) (MultiMatchPlayer, error)
 	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
+	GetMemberForUpdate(ctx context.Context, id string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)
 	// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
@@ -93,10 +97,12 @@ type Querier interface {
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
 	HasRoomMatch(ctx context.Context, roomID string) (bool, error)
 	IncrementMatchPlayerWin(ctx context.Context, arg IncrementMatchPlayerWinParams) (MultiMatchPlayer, error)
+	IncrementRoomChatSeq(ctx context.Context, id string) (int64, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 站点级计数器
 	IncrementSiteVisitCount(ctx context.Context) (int64, error)
+	InsertChatMessage(ctx context.Context, arg InsertChatMessageParams) (MultiChatMessage, error)
 	// 幂等：ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING；
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
@@ -107,6 +113,8 @@ type Querier interface {
 	// 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
 	ListActiveMatches(ctx context.Context) ([]MultiMatch, error)
 	ListActiveRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
+	ListChatMessagesAfter(ctx context.Context, arg ListChatMessagesAfterParams) ([]MultiChatMessage, error)
+	ListChatMessagesBefore(ctx context.Context, arg ListChatMessagesBeforeParams) ([]MultiChatMessage, error)
 	ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeqParams) ([]RoomEvent, error)
 	ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error)
 	ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error)
@@ -140,8 +148,10 @@ type Querier interface {
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
 	StartRound(ctx context.Context, id string) (MultiRound, error)
 	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error)
+	UpdateMemberChatRate(ctx context.Context, arg UpdateMemberChatRateParams) error
 	UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatParams) (MultiMember, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
+	UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error
 	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)

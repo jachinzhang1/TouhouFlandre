@@ -1,0 +1,123 @@
+parameters:
+  - name: roomId
+    in: path
+    required: true
+    schema:
+      type: string
+
+post:
+  operationId: rooms_sendMessage
+  tags: [rooms]
+  summary: 发送房间聊天消息
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../schemas/multi-chat.yaml#/SendChatMessageRequest
+  responses:
+    "200":
+      description: 首次提交或相同幂等请求对应的不可变消息
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/multi-chat.yaml#/ChatMessage
+    "400":
+      description: INVALID_REQUEST 或 CHAT_MESSAGE_INVALID
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "401":
+      description: GUEST_UNAUTHORIZED
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "403":
+      description: CHAT_SEND_FORBIDDEN
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "404":
+      description: ROOM_NOT_FOUND
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "409":
+      description: ROOM_CLOSED 或 CHAT_IDEMPOTENCY_CONFLICT
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "429":
+      description: member 或 room token bucket 已耗尽
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/multi-chat.yaml#/RateLimitedErrorResponse
+
+get:
+  operationId: rooms_listMessages
+  tags: [rooms]
+  summary: 查询房间聊天历史
+  parameters:
+    - name: after
+      in: query
+      schema:
+        type: string
+    - name: before
+      in: query
+      schema:
+        type: string
+    - name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+  responses:
+    "200":
+      description: 按当前成员角色授权投影的历史消息
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/multi-chat.yaml#/ChatHistoryResponse
+    "400":
+      description: INVALID_REQUEST 或 CHAT_CURSOR_INVALID
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "401":
+      description: GUEST_UNAUTHORIZED
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "404":
+      description: ROOM_NOT_FOUND
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "409":
+      description: ROOM_CLOSED 或 CHAT_CURSOR_AHEAD
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.yaml#/ErrorResponse
+    "410":
+      description: cursor 早于最老保留位置
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/multi-chat.yaml#/ChatResyncRequiredResponse

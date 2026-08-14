@@ -26,6 +26,8 @@ type Hub struct {
 	readLimit        int64         // 客户端消息读限（08 §8.5）
 	sendQueue        int           // 发送队列长度（08 §8.5）
 	projectionSecret []byte        // 对手匿名矩阵 HMAC 密钥
+	chatRetention    time.Duration
+	chatCursor       *multi.ChatCursorCodec
 
 	mu    sync.Mutex
 	rooms map[string]*roomHub // roomID → 连接与广播水位
@@ -36,13 +38,16 @@ type Hub struct {
 
 // roomHub 单房间状态：每成员单活跃连接（替换语义）+ 房间广播水位。
 type roomHub struct {
-	publishMu sync.Mutex
-	lastSeq   int64
-	conns     map[string]*Conn // memberID → conn
+	publishMu        sync.Mutex
+	chatPublishMu    sync.Mutex
+	lastSeq          int64
+	lastChatPosition int64
+	chatInitialized  bool
+	conns            map[string]*Conn // memberID → conn
 }
 
 // New 构造 hub（grace/readLimit/sendQueue 由 internal/config 注入，08 §4.7/§8.5）。
-func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int, projectionSecret []byte) *Hub {
+func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int, projectionSecret []byte, chatRetention time.Duration, chatCursorSecret []byte) *Hub {
 	return &Hub{
 		pool:             pool,
 		q:                repo.New(pool),
@@ -50,8 +55,116 @@ func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int
 		readLimit:        readLimit,
 		sendQueue:        sendQueue,
 		projectionSecret: append([]byte(nil), projectionSecret...),
+		chatRetention:    chatRetention,
+		chatCursor:       multi.NewChatCursorCodec(chatCursorSecret),
 		rooms:            map[string]*roomHub{},
 	}
+}
+
+// PublishChat 把已提交的独立 chat position 按当前观察者角色投影到连接。
+func (h *Hub) PublishChat(roomID string) {
+	h.mu.Lock()
+	rh := h.rooms[roomID]
+	h.mu.Unlock()
+	if rh == nil {
+		return
+	}
+	rh.chatPublishMu.Lock()
+	defer rh.chatPublishMu.Unlock()
+
+	h.mu.Lock()
+	if !rh.chatInitialized {
+		h.mu.Unlock()
+		return
+	}
+	last := rh.lastChatPosition
+	conns := make([]*Conn, 0, len(rh.conns))
+	for _, c := range rh.conns {
+		conns = append(conns, c)
+	}
+	h.mu.Unlock()
+	if len(conns) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	room, err := h.q.GetRoom(ctx, roomID)
+	if err != nil {
+		multi.DefaultMetrics.IncChatProjectionFailure("realtime")
+		return
+	}
+	participants, err := h.q.ListParticipants(ctx, roomID)
+	if err != nil {
+		multi.DefaultMetrics.IncChatProjectionFailure("realtime")
+		return
+	}
+	participantByID := make(map[string]repo.MultiMember, len(participants))
+	for _, participant := range participants {
+		participantByID[participant.ID] = participant
+	}
+	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-h.chatRetention), Valid: true}
+	for last < room.ChatSeq {
+		rows, err := h.q.ListChatMessagesAfter(ctx, repo.ListChatMessagesAfterParams{
+			RoomID: roomID, AfterPosition: last, HighPosition: room.ChatSeq, Cutoff: cutoff,
+		})
+		if err != nil {
+			multi.DefaultMetrics.IncChatProjectionFailure("realtime")
+			return
+		}
+		if len(rows) == 0 {
+			last = room.ChatSeq
+			break
+		}
+		for _, message := range rows {
+			for _, c := range conns {
+				if !c.chatSubscribed || !c.alive() {
+					continue
+				}
+				current, exists := participantByID[c.member.ID]
+				if !exists || current.Role != c.member.Role {
+					c.sendMemberChangedAndClose()
+					continue
+				}
+				visible := multi.CanViewChatChannel(current.Role, message.Channel)
+				var frame []byte
+				if visible {
+					frame, err = h.chatFrame(message, room)
+					if err != nil {
+						multi.DefaultMetrics.IncChatProjectionFailure("realtime")
+						c.setCloseReason("chat_projection_error")
+						c.closeQuietly()
+						continue
+					}
+				}
+				if !c.deliverChatFrame(message.Position, frame, visible) {
+					c.closeSlow()
+				}
+			}
+			last = message.Position
+		}
+	}
+	h.mu.Lock()
+	if rh.lastChatPosition < last {
+		rh.lastChatPosition = last
+	}
+	h.mu.Unlock()
+}
+
+func (h *Hub) chatFrame(message repo.MultiChatMessage, room repo.MultiRoom) ([]byte, error) {
+	frame := multi.ChatMessageFrame{
+		Type: "chat.message", MessageID: message.ID, RoomID: message.RoomID,
+		SenderMemberID: message.SenderMemberID, SenderDisplayName: message.SenderDisplayName,
+		SenderRole: multi.ParticipantRole(message.SenderRole), Kind: multi.ChatKind(message.Kind),
+		Content: message.Content, Channel: multi.ChatChannel(message.Channel),
+		Cursor:    h.chatCursor.Encode(room.ID, room.CreatedAt.Time, message.Position, multi.ChatCursorAfter),
+		CreatedAt: message.CreatedAt.Time,
+	}
+	if message.SenderSeat.Valid {
+		seat := int(message.SenderSeat.Int32)
+		frame.SenderSeat = &seat
+	}
+	return json.Marshal(frame)
 }
 
 // ProjectionSecret 返回快照处理器应复用的投影密钥副本。
@@ -261,6 +374,10 @@ func (h *Hub) Register(c *Conn) *Conn {
 	}
 	old := rh.conns[c.member.ID]
 	rh.conns[c.member.ID] = c
+	if c.chatSubscribed && !rh.chatInitialized {
+		rh.lastChatPosition = c.lastChatPosition
+		rh.chatInitialized = true
+	}
 	multi.DefaultMetrics.AddWsConnections(1)
 	if c.lastGameSequence > 0 {
 		multi.DefaultMetrics.IncReconnects()
@@ -308,6 +425,12 @@ func (h *Hub) roomEventSeq(roomID string) int64 {
 		return 0
 	}
 	return room.EventSeq
+}
+
+func (h *Hub) roomState(roomID string) (repo.MultiRoom, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	return h.q.GetRoom(ctx, roomID)
 }
 
 // gameFrame 为每个持久化 sequence 组装业务事件或不泄露业务类型/payload 的 cursor。

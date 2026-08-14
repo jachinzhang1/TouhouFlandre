@@ -4,6 +4,7 @@
 // 客户端不自行计算反馈；localStorage 只做恢复入口。
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  ChatMessageFrame,
   Envelope,
   GameSequenceFrame,
   MatchEndedPayload,
@@ -32,6 +33,21 @@ import {
   resultForMemberId,
 } from "../domain/memberCollections";
 import { GameSequenceCoordinator } from "../domain/gameSequence";
+import {
+  advanceChatCursor,
+  chatEntryFromFrame,
+  chatStateWithHistoryError,
+  chatStateWithInitialHistory,
+  confirmPendingChatEntry,
+  failPendingChatEntry,
+  initialRoomChatState,
+  isChatFrame,
+  mergeChatEntries,
+  mergeOlderChatHistory,
+  normalizeChatDraft,
+  pendingChatEntry,
+  type RoomChatState,
+} from "../domain/multiChat";
 
 type GuessResult = components["schemas"]["GuessResult"];
 type MatchView = Omit<
@@ -100,6 +116,7 @@ export interface RoomUiState {
   /** 房间保留期内完整局末记录，供观战/复盘选择。 */
   roundArchives: RoundEndedPayload[];
   appliedGameSequence: number;
+  chat: RoomChatState;
 }
 
 export const initialRoomState: RoomUiState = {
@@ -118,6 +135,7 @@ export const initialRoomState: RoomUiState = {
   history: [],
   roundArchives: [],
   appliedGameSequence: 0,
+  chat: initialRoomChatState,
 };
 
 /** 局结束 → 历史摘要与比分。 */
@@ -502,6 +520,10 @@ export interface RoomActions {
   setReady: (ready?: boolean) => Promise<void>;
   leave: () => Promise<void>;
   rematch: () => Promise<void>;
+  sendChat: (draft: string, clientMessageId?: string) => Promise<boolean>;
+  retryChat: (clientMessageId: string) => Promise<void>;
+  loadOlderChat: () => Promise<void>;
+  clearChatError: () => void;
   submitGuess: (guessId: string) => Promise<void>;
   forfeitRound: () => Promise<void>;
   passRelayTurn: () => Promise<void>;
@@ -531,6 +553,8 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
   const [roomUnavailable, setRoomUnavailable] = useState(false);
   const lastAppliedRef = useRef(0);
   const completedGameSequenceRef = useRef(0);
+  const completedChatCursorRef = useRef<string | null>(null);
+  const chatSyncCompleteRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const timerRef = useRef<ForegroundTimer | null>(null);
   const guessCompletedRef = useRef<number[]>([]);
@@ -610,6 +634,19 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
     },
     [queueStatsEvent],
   );
+
+  const applyChatFrame = useCallback((frame: ChatMessageFrame) => {
+    setState((current) => {
+      const merged = mergeChatEntries(current.chat, [chatEntryFromFrame(frame)]);
+      return {
+        ...current,
+        chat: chatSyncCompleteRef.current
+          ? advanceChatCursor(merged, frame.cursor)
+          : merged,
+      };
+    });
+    if (chatSyncCompleteRef.current) completedChatCursorRef.current = frame.cursor;
+  }, []);
 
   const syncSnapshot = useCallback(async (snapshot: RoomSnapshot) => {
     viewerRef.current = snapshot.viewer;
@@ -711,9 +748,38 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       fallbackIntervalId = undefined;
     };
 
-    const connect = (lastGameSequence: number) => {
+    const initializeChatHistory = async () => {
+      completedChatCursorRef.current = null;
+      setState((current) => ({
+        ...current,
+        chat: { ...initialRoomChatState, historyStatus: "loading" },
+      }));
+      try {
+        const history = await api.listRoomMessages(roomId, token, { limit: 50 });
+        if (disposed) return null;
+        completedChatCursorRef.current = history.scannedCursor ?? null;
+        setState((current) => ({
+          ...current,
+          chat: chatStateWithInitialHistory(history),
+        }));
+        return completedChatCursorRef.current;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "聊天记录同步失败。";
+        if (!disposed) {
+          setState((current) => ({
+            ...current,
+            chat: chatStateWithHistoryError(message),
+          }));
+        }
+        return null;
+      }
+    };
+
+    const connect = (lastGameSequence: number, lastChatCursor?: string | null) => {
       if (disposed) return;
       if (replacedByOtherPage) return;
+      chatSyncCompleteRef.current = false;
       setState((s) => ({
         ...s,
         connection: lastGameSequence === 0 ? "connecting" : "reconnecting",
@@ -756,13 +822,17 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
             type: "hello",
             token,
             lastGameSequence,
+            ...(lastChatCursor ? { lastChatCursor } : {}),
           }),
         );
       };
       ws.onmessage = (e) => {
-        let msg: GameSequenceFrame & {
+        let msg: (GameSequenceFrame | ChatMessageFrame) & {
           targetGameSequence?: number;
+          targetChatCursor?: string;
           gameSequence?: number;
+          chatCursor?: string;
+          scope?: string;
         };
         try {
           msg = JSON.parse(e.data as string);
@@ -778,6 +848,14 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           if (typeof msg.gameSequence === "number") {
             coordinator.complete(msg.gameSequence);
           }
+          chatSyncCompleteRef.current = true;
+          if (typeof msg.chatCursor === "string") {
+            completedChatCursorRef.current = msg.chatCursor;
+            setState((s) => ({
+              ...s,
+              chat: advanceChatCursor(s.chat, msg.chatCursor!),
+            }));
+          }
           setState((s) => ({
             ...s,
             connection: "connected",
@@ -786,14 +864,17 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           return;
         }
         if (msg.type === "resync.required") {
-          void api
-            .roomSnapshot(roomId, token, 0)
-            .then(async (snapshot) => {
-              if (disposed) return;
-              await syncSnapshot(snapshot);
-              coordinator.align(snapshot.gameSequence);
-            })
-            .finally(() => ws.close());
+          void (async () => {
+            if (msg.scope === "chat") {
+              await initializeChatHistory();
+              return;
+            }
+            const snapshot = await api.roomSnapshot(roomId, token, 0);
+            if (disposed) return;
+            await syncSnapshot(snapshot);
+            coordinator.align(snapshot.gameSequence);
+            if (msg.scope === "all") await initializeChatHistory();
+          })().finally(() => ws.close());
           return;
         }
         if (msg.type === "replaced") {
@@ -813,6 +894,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
               .then(async (snapshot) => {
                 if (disposed) return;
                 await syncSnapshot(snapshot);
+                await initializeChatHistory();
                 replacedByOtherPage = false;
               })
               .catch(() => {
@@ -830,6 +912,10 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           ws.close();
           return;
         }
+        if (isChatFrame(msg)) {
+          applyChatFrame(msg);
+          return;
+        }
         if (typeof msg.sequence === "number") coordinator.receive(msg);
       };
       ws.onclose = () => {
@@ -837,7 +923,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         if (disposed) return;
         if (memberChangeReconnect) {
           memberChangeReconnect = false;
-          connect(completedGameSequenceRef.current);
+          connect(completedGameSequenceRef.current, completedChatCursorRef.current);
           return;
         }
         scheduleReconnect();
@@ -858,12 +944,15 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       const delay =
         Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
-      window.setTimeout(() => connect(completedGameSequenceRef.current), delay);
+      window.setTimeout(
+        () => connect(completedGameSequenceRef.current, completedChatCursorRef.current),
+        delay,
+      );
     };
     reconnectRef.current = () => {
       replacedByOtherPage = false;
       retry = 0;
-      connect(completedGameSequenceRef.current);
+      connect(completedGameSequenceRef.current, completedChatCursorRef.current);
     };
     refreshRef.current = async () => {
       const snapshot = await api.roomSnapshot(roomId, token, 0);
@@ -879,6 +968,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         if (disposed) return;
         await syncSnapshot(snapshot);
+        const chatCursor = await initializeChatHistory();
         const self = snapshot.members.find(
           (member: MemberView) => member.memberId === snapshot.viewer.memberId,
         );
@@ -886,6 +976,8 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           setState((current) => ({ ...current, connection: "connected" }));
           return;
         }
+        if (!disposed) connect(completedGameSequenceRef.current, chatCursor);
+        return;
       } catch (error) {
         if (
           error instanceof ApiRequestError &&
@@ -895,7 +987,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           return;
         }
       }
-      if (!disposed) connect(completedGameSequenceRef.current);
+      if (!disposed) connect(completedGameSequenceRef.current, completedChatCursorRef.current);
     };
     if (document.readyState === "loading") {
       window.addEventListener("load", start, { once: true });
@@ -910,7 +1002,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [roomId, token, applyEvent, syncSnapshot]);
+  }, [roomId, token, applyEvent, applyChatFrame, syncSnapshot]);
 
   useEffect(() => {
     const timer = timerRef.current;
@@ -948,9 +1040,114 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
     };
   }, [isSpectator, roomId, state.match, state.round?.status, memberId]);
 
+  const sendChat = useCallback(
+    async (draft: string, existingClientMessageId?: string) => {
+      const normalized = normalizeChatDraft(draft);
+      if (!normalized) {
+        setState((current) => ({
+          ...current,
+          chat: { ...current.chat, sendError: "请输入聊天内容。" },
+        }));
+        return false;
+      }
+      const viewer = viewerRef.current;
+      if (!roomId || !token || !viewer || viewer.status !== "connected") {
+        setState((current) => ({
+          ...current,
+          chat: { ...current.chat, sendError: "当前身份无法发送聊天。" },
+        }));
+        return false;
+      }
+      const clientMessageId = existingClientMessageId ?? crypto.randomUUID();
+      const pending = pendingChatEntry({
+        clientMessageId,
+        roomId,
+        viewer,
+        kind: normalized.kind,
+        content: normalized.content,
+      });
+      setState((current) => ({
+        ...current,
+        chat: mergeChatEntries(current.chat, [pending]),
+      }));
+      try {
+        const message = await api.sendRoomMessage(roomId, token, {
+          clientMessageId,
+          kind: normalized.kind,
+          content: normalized.content,
+        });
+        if (chatSyncCompleteRef.current) {
+          completedChatCursorRef.current = message.cursor;
+        }
+        setState((current) => ({
+          ...current,
+          chat: confirmPendingChatEntry(
+            current.chat,
+            clientMessageId,
+            message,
+          ),
+        }));
+        return true;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "聊天消息发送失败。";
+        setState((current) => ({
+          ...current,
+          chat: failPendingChatEntry(current.chat, clientMessageId, message),
+        }));
+        return true;
+      }
+    },
+    [roomId, token],
+  );
+
   const actions: RoomActions = {
     reconnect: () => reconnectRef.current(),
     refresh: () => refreshRef.current(),
+    sendChat,
+    retryChat: async (clientMessageId: string) => {
+      const failed = state.chat.messages.find(
+        (entry) =>
+          entry.clientMessageId === clientMessageId &&
+          entry.deliveryStatus === "failed",
+      );
+      if (!failed) return;
+      await sendChat(failed.content, clientMessageId);
+    },
+    loadOlderChat: async () => {
+      if (!state.chat.beforeCursor || state.chat.loadingOlder) return;
+      setState((current) => ({
+        ...current,
+        chat: { ...current.chat, loadingOlder: true, historyError: null },
+      }));
+      try {
+        const history = await api.listRoomMessages(roomId, token, {
+          before: state.chat.beforeCursor,
+          limit: 50,
+        });
+        setState((current) => ({
+          ...current,
+          chat: mergeOlderChatHistory(current.chat, history),
+        }));
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "更早聊天记录加载失败。";
+        setState((current) => ({
+          ...current,
+          chat: {
+            ...current.chat,
+            loadingOlder: false,
+            historyError: message,
+          },
+        }));
+      }
+    },
+    clearChatError: () => {
+      setState((current) => ({
+        ...current,
+        chat: { ...current.chat, sendError: null, historyError: null },
+      }));
+    },
     setReady: async (ready = true) => {
       try {
         await api.setReady(roomId, token, ready);

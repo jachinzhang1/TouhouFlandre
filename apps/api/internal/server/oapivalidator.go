@@ -72,7 +72,12 @@ func validateRequest(c *echo.Context, router routers.Router) *echo.HTTPError {
 
 	var me openapi3.MultiError
 	if errors.As(validationErr, &me) {
-		slog.Warn("request validation failed", "uri", req.URL.Path, "error", me.Error())
+		if strings.HasSuffix(req.URL.Path, "/messages") {
+			slog.Warn("request validation failed", "uri", req.URL.Path, "reason", "invalid_chat_request")
+			return &echo.HTTPError{Code: http.StatusBadRequest, Message: "聊天请求格式不合法。"}
+		} else {
+			slog.Warn("request validation failed", "uri", req.URL.Path, "error", me.Error())
+		}
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: me.Error()}
 	}
 
@@ -80,7 +85,12 @@ func validateRequest(c *echo.Context, router routers.Router) *echo.HTTPError {
 	if errors.As(validationErr, &reqErr) {
 		// openapi3filter 的错误消息多行，取首行作为用户可读信息。
 		errorLines := strings.Split(reqErr.Error(), "\n")
-		slog.Warn("request validation failed", "uri", req.URL.Path, "error", reqErr.Error())
+		if strings.HasSuffix(req.URL.Path, "/messages") {
+			slog.Warn("request validation failed", "uri", req.URL.Path, "reason", "invalid_chat_request")
+			return &echo.HTTPError{Code: http.StatusBadRequest, Message: "聊天请求格式不合法。"}
+		} else {
+			slog.Warn("request validation failed", "uri", req.URL.Path, "error", reqErr.Error())
+		}
 		return &echo.HTTPError{
 			Code:    http.StatusBadRequest,
 			Message: errorLines[0],

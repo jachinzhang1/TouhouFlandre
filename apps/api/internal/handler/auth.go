@@ -67,6 +67,16 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
+			case "RoomsListMessages", "RoomsSendMessage":
+				member, apiErr := s.authenticateGuestWithPolicy(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"), true)
+				if apiErr != nil {
+					return nil, apiErr
+				}
+				if roomID, ok := roomIDFromRequest(request); ok && member.RoomID != roomID {
+					return nil, guestUnauthorized("令牌不属于该房间。")
+				}
+				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
+				ctx.SetRequest(req)
 			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn":
 				member, apiErr := s.authenticateGuest(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
@@ -161,6 +171,10 @@ func roomIDFromRequest(request any) (string, bool) {
 	case openapi.RoomsForfeitRoundRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsPassRelayTurnRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsListMessagesRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsSendMessageRequestObject:
 		return r.RoomId, true
 	}
 	return "", false

@@ -71,6 +71,8 @@ paths:
     $ref: ./paths/room-close.yaml
   /api/rooms/{roomId}/ws:
     $ref: ./paths/room-ws.yaml
+  /api/rooms/{roomId}/messages:
+    $ref: ./paths/room-messages.yaml
   /api/rooms/{roomId}/rounds/{roundIndex}/guess:
     $ref: ./paths/room-rounds.yaml
   /api/rooms/{roomId}/rounds/{roundIndex}/forfeit:
@@ -201,6 +203,16 @@ components:
       $ref: ./schemas/multi-round.yaml#/RelayTurnRow
     GuessResponse:
       $ref: ./schemas/multi-round.yaml#/GuessResponse
+    ChatMessage:
+      $ref: ./schemas/multi-chat.yaml#/ChatMessage
+    SendChatMessageRequest:
+      $ref: ./schemas/multi-chat.yaml#/SendChatMessageRequest
+    ChatHistoryResponse:
+      $ref: ./schemas/multi-chat.yaml#/ChatHistoryResponse
+    ChatResyncRequiredResponse:
+      $ref: ./schemas/multi-chat.yaml#/ChatResyncRequiredResponse
+    RateLimitedErrorResponse:
+      $ref: ./schemas/multi-chat.yaml#/RateLimitedErrorResponse
   securitySchemes:
     GuestBearer:
       type: http

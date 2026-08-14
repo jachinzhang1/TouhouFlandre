@@ -72,6 +72,21 @@ type GameSession struct {
 	QuestionScope  []byte             `json:"question_scope"`
 }
 
+type MultiChatMessage struct {
+	ID                string             `json:"id"`
+	RoomID            string             `json:"room_id"`
+	Position          int64              `json:"position"`
+	SenderMemberID    string             `json:"sender_member_id"`
+	SenderDisplayName string             `json:"sender_display_name"`
+	SenderRole        string             `json:"sender_role"`
+	SenderSeat        pgtype.Int4        `json:"sender_seat"`
+	ClientMessageID   pgtype.UUID        `json:"client_message_id"`
+	Kind              string             `json:"kind"`
+	Content           string             `json:"content"`
+	Channel           string             `json:"channel"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
 type MultiGuess struct {
 	ID             string             `json:"id"`
 	RoundID        string             `json:"round_id"`
@@ -115,31 +130,36 @@ type MultiMatchPlayer struct {
 }
 
 type MultiMember struct {
-	ID           string             `json:"id"`
-	RoomID       string             `json:"room_id"`
-	Seat         pgtype.Int4        `json:"seat"`
-	DisplayName  string             `json:"display_name"`
-	TokenHash    string             `json:"token_hash"`
-	Status       string             `json:"status"`
-	Ready        bool               `json:"ready"`
-	RematchReady bool               `json:"rematch_ready"`
-	GraceUntil   pgtype.Timestamptz `json:"grace_until"`
-	JoinedAt     pgtype.Timestamptz `json:"joined_at"`
-	Role         string             `json:"role"`
+	ID                 string             `json:"id"`
+	RoomID             string             `json:"room_id"`
+	Seat               pgtype.Int4        `json:"seat"`
+	DisplayName        string             `json:"display_name"`
+	TokenHash          string             `json:"token_hash"`
+	Status             string             `json:"status"`
+	Ready              bool               `json:"ready"`
+	RematchReady       bool               `json:"rematch_ready"`
+	GraceUntil         pgtype.Timestamptz `json:"grace_until"`
+	JoinedAt           pgtype.Timestamptz `json:"joined_at"`
+	Role               string             `json:"role"`
+	ChatRateTokens     pgtype.Float8      `json:"chat_rate_tokens"`
+	ChatRateRefilledAt pgtype.Timestamptz `json:"chat_rate_refilled_at"`
 }
 
 type MultiRoom struct {
-	ID            string             `json:"id"`
-	Code          string             `json:"code"`
-	Format        string             `json:"format"`
-	Status        string             `json:"status"`
-	EventSeq      int64              `json:"event_seq"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
-	Mode          string             `json:"mode"`
-	TurnSeconds   int32              `json:"turn_seconds"`
-	QuestionScope []byte             `json:"question_scope"`
-	PlayerLimit   int32              `json:"player_limit"`
+	ID                 string             `json:"id"`
+	Code               string             `json:"code"`
+	Format             string             `json:"format"`
+	Status             string             `json:"status"`
+	EventSeq           int64              `json:"event_seq"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
+	Mode               string             `json:"mode"`
+	TurnSeconds        int32              `json:"turn_seconds"`
+	QuestionScope      []byte             `json:"question_scope"`
+	PlayerLimit        int32              `json:"player_limit"`
+	ChatSeq            int64              `json:"chat_seq"`
+	ChatRateTokens     pgtype.Float8      `json:"chat_rate_tokens"`
+	ChatRateRefilledAt pgtype.Timestamptz `json:"chat_rate_refilled_at"`
 }
 
 type MultiRound struct {
