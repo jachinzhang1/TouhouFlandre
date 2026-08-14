@@ -2,6 +2,11 @@
 // 场景：创建→加入→就绪→对局→互猜→局结果；断线→重连；刷新恢复；非法房间号 404。
 import { test, expect } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
+import {
+  normalizeQuestionScope,
+  type FullCatalogSnapshot,
+  type QuestionScopeConfig,
+} from "@touhouflandre/shared";
 
 type RoomCredential = {
   roomId: string;
@@ -15,6 +20,7 @@ async function createRaceRoster(
   request: APIRequestContext,
   playerCount: number,
   playerLimit = playerCount,
+  questionScope?: QuestionScopeConfig,
 ): Promise<RoomCredential[]> {
   const createdResponse = await request.post("/api/rooms", {
     data: {
@@ -22,6 +28,7 @@ async function createRaceRoster(
       mode: "race",
       playerLimit,
       displayName: "Player 1",
+      ...(questionScope ? { questionScope } : {}),
     },
   });
   expect(createdResponse.status()).toBe(201);
@@ -90,6 +97,87 @@ async function setReady(
   expect(response.status()).toBe(204);
 }
 
+async function fixedAnswerScope(
+  request: APIRequestContext,
+  excludedNames: readonly string[] = [],
+) {
+  const response = await request.get("/api/catalog/full");
+  expect(response.status()).toBe(200);
+  const catalog = (await response.json()) as FullCatalogSnapshot;
+  const answer = catalog.characters.find(
+    (character) =>
+      character.enabledAsAnswer &&
+      character.enabledAsGuess &&
+      !excludedNames.includes(character.names.zhHans),
+  );
+  expect(answer).toBeTruthy();
+  const questionScope = normalizeQuestionScope(
+    {
+      catalogVersion: catalog.version,
+      mode: "custom",
+      difficulty: "custom",
+      selectedCharacterIds: [answer!.id],
+    },
+    catalog,
+  ).config;
+  return { answerId: answer!.id, questionScope };
+}
+
+async function submitCorrectGuess(
+  request: APIRequestContext,
+  credential: RoomCredential,
+  roundIndex: number,
+  answerId: string,
+) {
+  const response = await request.post(
+    `/api/rooms/${credential.roomId}/rounds/${roundIndex}/guess`,
+    {
+      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
+      data: { guessId: answerId, idempotencyKey: crypto.randomUUID() },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
+async function forfeitRound(
+  request: APIRequestContext,
+  credential: RoomCredential,
+  roundIndex: number,
+) {
+  const response = await request.post(
+    `/api/rooms/${credential.roomId}/rounds/${roundIndex}/forfeit`,
+    {
+      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
+    },
+  );
+  expect(response.status()).toBe(204);
+}
+
+async function waitForRound(
+  request: APIRequestContext,
+  credential: RoomCredential,
+  roundIndex: number,
+) {
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get(
+          `/api/rooms/${credential.roomId}/snapshot`,
+          {
+            headers: {
+              Authorization: `Bearer guest:${credential.guestToken}`,
+            },
+          },
+        );
+        if (response.status() !== 200) return "unavailable";
+        const snapshot = await response.json();
+        return `${snapshot.match?.roundIndex ?? 0}:${snapshot.round?.status ?? "none"}`;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(`${roundIndex}:playing`);
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   await expect
     .poll(() =>
@@ -125,17 +213,30 @@ async function guessViaUI(page: Page, query: string, index = 0) {
     hasText: query,
   });
   // 用建议列表的第一个（搜索词不同 → 首位通常不同）
-  await page.locator("ul li button").nth(index).click();
-  void suggestion;
+  await expect(suggestion.nth(index)).toBeVisible();
+  await suggestion.nth(index).click();
 }
 
 test.describe("多人房间", () => {
-  test("创建 → 加入 → 就绪 → 对局 → 互猜 → 局结果", async ({ browser }) => {
+  test("创建 → 加入 → 就绪 → 对局 → 互猜 → 局结果", async ({
+    browser,
+    request,
+  }) => {
+    const { questionScope } = await fixedAnswerScope(request, [
+      "博丽灵梦",
+      "雾雨魔理沙",
+    ]);
     const hostCtx = await browser.newContext();
     const guestCtx = await browser.newContext();
     const host = await hostCtx.newPage();
     const guest = await guestCtx.newPage();
     try {
+      await host.addInitScript((scope) => {
+        localStorage.setItem(
+          "touhouflandre:question-scope",
+          JSON.stringify(scope),
+        );
+      }, questionScope);
       // host 创建房间
       await host.goto("/multi");
       await host.getByRole("button", { name: "创建房间" }).click();
@@ -168,7 +269,7 @@ test.describe("多人房间", () => {
       await expect(guest.getByText("雾雨魔理沙")).toBeVisible({
         timeout: 10_000,
       });
-      await expect(guest.locator('span[role="img"]').first()).toBeVisible();
+      await expect(guest.getByText("等待对方猜测……")).toHaveCount(0);
     } finally {
       await hostCtx.close();
       await guestCtx.close();
@@ -216,12 +317,22 @@ test.describe("多人房间", () => {
     }
   });
 
-  test("接力模式共享棋盘与轮次锁定", async ({ browser }) => {
+  test("接力模式共享棋盘与轮次锁定", async ({ browser, request }) => {
+    const { questionScope } = await fixedAnswerScope(request, [
+      "博丽灵梦",
+      "雾雨魔理沙",
+    ]);
     const hostCtx = await browser.newContext();
     const guestCtx = await browser.newContext();
     const host = await hostCtx.newPage();
     const guest = await guestCtx.newPage();
     try {
+      await host.addInitScript((scope) => {
+        localStorage.setItem(
+          "touhouflandre:question-scope",
+          JSON.stringify(scope),
+        );
+      }, questionScope);
       await host.goto("/multi");
       await host.locator("label", { hasText: "接力" }).click();
       await host.locator("label", { hasText: "30s" }).click();
@@ -371,6 +482,25 @@ test.describe("多人房间", () => {
 });
 
 test.describe("N 人竞速扩展", () => {
+  test("创建页使用 2..8 滑动条并保留双人赛制", async ({ page }) => {
+    await page.goto("/multi");
+    const range = page.getByRole("slider", { name: "玩家上限（2-8）" });
+    await expect(range).toHaveAttribute("min", "2");
+    await expect(range).toHaveAttribute("max", "8");
+    await expect(range).toHaveAttribute("step", "1");
+    await expect(range).toHaveValue("2");
+    await range.focus();
+    await range.press("ArrowRight");
+    await range.press("ArrowRight");
+    await range.press("ArrowRight");
+    await expect(range).toHaveValue("5");
+    await expect(page.locator('output[for="create-player-limit"]')).toHaveText(
+      "5 人",
+    );
+    await expect(page.getByText("双人赛制", { exact: true })).toBeVisible();
+    await expect(page.getByText("BO3", { exact: true })).toBeVisible();
+  });
+
   for (const count of [2, 3, 4, 8]) {
     test(`${count} 人大厅按 seat 展示容量和成员`, async ({ page, request }) => {
       const roster = await createRaceRoster(request, count, count);
@@ -407,12 +537,9 @@ test.describe("N 人竞速扩展", () => {
 
     await expect(page.getByText(/第 1 局/)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByLabel("搜索角色")).toBeEnabled({ timeout: 15_000 });
-    const pageSize = testInfo.project.name === "mobile-chromium" ? 1 : 2;
-    await expect(page.locator("[data-member-board]")).toHaveCount(pageSize);
+    await expect(page.locator("[data-member-board]")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "我" })).toBeVisible();
-    await expect(page.locator("[data-member-board] table")).toHaveCount(
-      pageSize,
-    );
+    await expect(page.locator("[data-member-board] table")).toHaveCount(1);
     await expect(
       page.locator("[data-member-board]").getByText(/Player \d/),
     ).toHaveCount(0);
@@ -433,6 +560,79 @@ test.describe("N 人竞速扩展", () => {
       animations: "disabled",
       fullPage: true,
       mask: [page.getByText(/剩余 \d/)],
+    });
+  });
+
+  test("3 人玩家确认放弃后立即进入只读状态", async ({ page, request }) => {
+    const roster = await createRaceRoster(request, 3, 3);
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+
+    const input = page.getByLabel("搜索角色");
+    await expect(input).toBeEnabled({ timeout: 15_000 });
+    await page.getByRole("button", { name: "放弃本局" }).click();
+    await page.getByRole("button", { name: /再次点击确认放弃/ }).click();
+    await expect(input).toBeDisabled();
+    await expect(
+      page.getByRole("status").getByText("你已放弃本局"),
+    ).toBeVisible();
+  });
+
+  test("3 人积分赛淘汰玩家进入观战并展示完整排行榜", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const { answerId, questionScope } = await fixedAnswerScope(request);
+    const roster = await createRaceRoster(request, 3, 3, questionScope);
+    await enterRoom(page, roster[2]);
+    for (const credential of roster) await setReady(request, credential);
+    await waitForRound(request, roster[0], 1);
+
+    await submitCorrectGuess(request, roster[0], 1, answerId);
+    await submitCorrectGuess(request, roster[1], 1, answerId);
+    await forfeitRound(request, roster[2], 1);
+
+    await expect(page.getByText("已淘汰 · 观战", { exact: false })).toBeVisible(
+      {
+        timeout: 15_000,
+      },
+    );
+    await expect(page.getByLabel("搜索角色")).toHaveCount(0);
+    const eliminatedScore = page
+      .locator("li")
+      .filter({ hasText: "Player 3（我）" })
+      .filter({ hasText: "已淘汰" });
+    await expect(eliminatedScore).toHaveClass(/bg-vermilion/);
+    await expect(page.getByRole("button", { name: "当前棋盘" })).toBeVisible();
+    const spectatorPageSize =
+      testInfo.project.name === "mobile-chromium" ? 1 : 2;
+    await expect(page.locator("[data-member-board]")).toHaveCount(
+      spectatorPageSize,
+    );
+    await expectNoHorizontalOverflow(page);
+    await prepareVisualSnapshot(page);
+    await expect(page).toHaveScreenshot("race-eliminated.png", {
+      animations: "disabled",
+      fullPage: true,
+      mask: [page.getByText(/剩余 \d/)],
+    });
+
+    await waitForRound(request, roster[0], 2);
+    await submitCorrectGuess(request, roster[0], 2, answerId);
+    await forfeitRound(request, roster[1], 2);
+
+    await expect(page.getByText(/第 1 名 · Player 1/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/5 分/)).toBeVisible();
+    await expect(page.getByText(/第 2 名 · Player 2/)).toBeVisible();
+    await expect(page.getByText(/第 3 名 · Player 3（我）/)).toBeVisible();
+    await expect(page.getByText(/第 1 局淘汰/)).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await prepareVisualSnapshot(page);
+    await expect(page).toHaveScreenshot("race-ranking.png", {
+      animations: "disabled",
+      fullPage: true,
     });
   });
 

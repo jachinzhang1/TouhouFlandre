@@ -165,7 +165,7 @@ flowchart TD
     I2C --> I3[MPX-003 共享房间生命周期闸门]
     I3 --> A4[MPX-004 N 人竞速后端]
     A4 --> A5[MPX-005 竞速玩家上限 API]
-    A5 --> B6[MPX-006 竞速 Web 体验]
+    A5 --> B6[MPX-006 竞速积分淘汰与 Web]
     I2B --> A7[MPX-007 聊天策略与协议]
     A7 --> A8[MPX-008 聊天后端]
     A8 --> B9[MPX-009 聊天 Web 体验]
@@ -179,7 +179,7 @@ flowchart TD
 | M1 共享基础 | MPX-002A、MPX-002B、MPX-002C、MPX-003 | memberId/seat、WS v2、回归闸门和房间生命周期 | 001；003 依赖 002C |
 | M2A 服务端竞速链（协作者 A） | MPX-004、MPX-005 | N 人竞速规则、计分、玩家上限 API | 003；005 依赖 004 |
 | M2B 服务端聊天链（协作者 A） | MPX-007、MPX-008 | 独立聊天游标、消息持久化与授权投影 | 002B；008 依赖 007 |
-| M3 Web 交付链（协作者 B） | MPX-006、MPX-009 | 竞速大厅/棋盘、聊天面板与闭麦 | 006 依赖 004、005；009 依赖 008 |
+| M3 体验交付链（协作者 B） | MPX-006、MPX-009 | 竞速积分淘汰/大厅/棋盘、聊天面板与闭麦 | 006 扩展为全栈交付并依赖 004、005；009 依赖 008 |
 | M4 共同验收 | MPX-010 | 安全/性能/e2e、迁移和发布回滚 | 006、009 |
 
 Issue 之间应保持“一 Issue 一主题、一 PR 可回滚”。生成代码必须和它的契约/SQL 源在同一个 PR 中更新，不能手工单独修改 `apps/api/internal/generated` 或 `apps/web/src/generated`。
@@ -197,7 +197,7 @@ Issue 之间应保持“一 Issue 一主题、一 PR 可回滚”。生成代码
 | 2C. 收口回归 | MPX-002C：迁移、生成物、重连和双人回归闸门 | 两人共同 | MPX-002B 合并 | 创建 `mpx-003-base` 共享基线 |
 | 3. 接入共享生命周期 | MPX-003：join/claim-seat、ready/unready、容量、开局冻结、rematch 和 spectatorCap | A 实现，B 审查契约 | MPX-002C 合并 | 并发入座/最终 ready 可串行化 |
 | 4. 完成竞速服务端 | MPX-004 → MPX-005：N 人 roster/计分/退出语义，再开放房主设置 `playerLimit` | A | MPX-003 合并 | 2/3/4/8 人服务端测试通过；容量设置、降容压紧 seat 和并发边界稳定 |
-| 5A. 交付竞速 Web | MPX-006：N 人大厅、棋盘、观战和本地统计迁移 | B | MPX-004、005 合并 | 桌面/移动端 2/3/4/8 人 e2e、隐私投影和统计 v3 导入回归通过 |
+| 5A. 交付竞速积分淘汰与 Web | MPX-006：placement 服务端规则、迁移/契约、N 人大厅、棋盘、观战和统计 v5 | B | MPX-004、005 合并 | 2/3/4/8 人规则、隐私投影、桌面/移动 e2e 和 v1-v5 导入回归通过 |
 | 5B. 交付聊天服务端 | MPX-007 → MPX-008：先用文档 PR 冻结聊天契约，再由 MPX-008 在一个实现 PR 中同步落地生效契约、生成物、持久化、授权、历史和实时同步 | A | 操作上等待 MPX-005 合并；逻辑基线为 MPX-002B | channel 权限、幂等、cursor、重连无缺口和 XSS/限流测试通过 |
 | 6. 交付聊天 Web | MPX-009：聊天面板、历史、重连、未读和 `receiveChat` | B | MPX-008 合并；可与已完成的 MPX-006 汇合 | 玩家/观战者可见性、角色变化、闭麦、断线和移动端 e2e 通过 |
 | 7. 集成与发布闸门 | MPX-010：迁移、并发、安全、性能、灰度、回滚、文档和用户公告 | 两人共同 | MPX-006、009 均合并 | 全量检查、v1 房间排空和生产回滚演练完成；用户公告评审通过，并在默认开放时同步发布，之后才完成发布流程 |
@@ -241,10 +241,10 @@ flowchart TD
 1. 先在集成分支完成 MPX-001、MPX-002A、MPX-002B、MPX-002C 和 MPX-003。MPX-002C 合并后创建明确的共享基线；可添加本地 tag `mpx-003-base`，两位协作者从同一提交分叉。
 2. MPX-001 由两人共同评审；MPX-002A、MPX-002B 由协作者 A 主实现，协作者 B 负责契约、迁移和 v2 客户端状态审查。共享基础未通过前，不开始功能实现。
 3. 协作者 A 负责所有服务端与协议工作，并按 `MPX-004 → MPX-005 → MPX-007 → MPX-008` 的顺序合并。MPX-007 逻辑上只依赖 MPX-002B，但操作上排在 MPX-005 后，避免多个分支同时修改 OpenAPI/WS、SQL 和生成代码。
-4. 协作者 B 负责所有 Web 工作：MPX-006 和 MPX-009。MPX-006 等 MPX-004、MPX-005 的契约稳定后开始；MPX-009 等 MPX-008 的聊天 API/WS 契约稳定后开始。B 不修改服务端规则、数据库迁移或聊天授权。
+4. 协作者 B 负责 MPX-006 和 MPX-009。MPX-006 原为 Web 范围，但经试玩评审扩展为 placement 服务端规则、`0011` 迁移、契约、Web 和统计 v5 的同分支交付；MPX-009 仍只消费 MPX-008 的聊天 API/WS 契约，不修改聊天授权。
 5. 每个节点使用独立短期分支和独立 PR；后续节点从最新的集成分支创建。不要让一个长期分支同时承载多个 Issue，也不要把一个 Issue 拆成跨两位协作者的互相等待 PR。
 6. 两位协作者不要直接向集成分支推送。PR 目标统一为 `feature/multipalyer_mode_backend`，推荐合并顺序为 `001 → 002 → 003 → 004 → 005 → (006 ∥ 007 → 008) → 009 → 010`。其中协作者 B 开始 006 后，协作者 A 可继续 007/008。
-7. A 是 `contracts/ws/protocol.yaml`、OpenAPI 源、SQL 查询、migration、Go handler/domain 的唯一实现负责人；B 只消费生成后的契约。B 可以审查这些变更，但不在自己的功能 PR 中手改同一套源文件。
+7. 通常由 A 维护 `contracts/ws/protocol.yaml`、OpenAPI 源、SQL、migration 和 Go handler/domain；MPX-006 是已确认的例外并占用迁移号 `0011`。MPX-007 至 MPX-009 合并前必须 rebase，并把冲突的聊天迁移调整为下一可用编号。
 8. 每次合并后在集成分支运行至少 `pnpm typecheck`、`pnpm test`、`pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol` 和 `cd apps/api && go test ./...`。涉及契约或 SQL 时运行 `task check:generated`；该任务会执行完整 `task gen`，并同时确认 `apps/api/internal/generated` 与 `apps/web/src/generated` 无未预期漂移。
 9. MPX-010 由两位协作者共同完成，包含迁移、应用回滚、并发、安全、e2e 和移动端回归。迁移 Down 只在一次性测试库演练；生产回滚保留 expand schema，不通过 Down 删除已有新数据。只有 MPX-010 通过后，才将整个集成分支作为一个完整多人扩展合并到 `main`。
 
@@ -277,7 +277,7 @@ git worktree add ../TouhouFlandre-mpx-web \
 | [MPX-003](./MPX-003-room-lifecycle.md) | 将容量、入座与灵活开局接入房间生命周期 | `type:feature`, `area:api`, `area:multi` | join/claim-seat/final ready 并发可串行化 |
 | [MPX-004](./MPX-004-n-player-race-engine.md) | 将竞速模式扩展为 N 人独立计分 | `type:feature`, `area:multi`, `area:api` | 协作者 A 的竞速服务端起点 |
 | [MPX-005](./MPX-005-race-player-limit-setting.md) | 提供竞速玩家上限配置 API | `type:feature`, `area:api`, `area:contracts` | 房主配置可校验、冻结并广播 |
-| [MPX-006](./MPX-006-n-player-race-web-ui.md) | 实现 N 人竞速大厅、棋盘与观战 Web 体验 | `type:feature`, `area:web` | 协作者 B 消费 004/005 契约 |
+| [MPX-006](./MPX-006-n-player-race-web-ui.md) | 实现 N 人竞速积分淘汰、契约、统计与 Web 体验 | `type:feature`, `area:api`, `area:web`, `area:contracts` | 扩展后的全栈交付，占用迁移 0011 |
 | [MPX-007](./MPX-007-chat-policy-and-protocol.md) | 冻结聊天消息模型、可见性策略与接收偏好语义 | `type:design`, `area:docs`, `area:contracts` | 协作者 A 的聊天服务端起点 |
 | [MPX-008](./MPX-008-chat-backend-pipeline.md) | 实现房间聊天消息的持久化、授权和实时投影 | `type:feature`, `area:api`, `area:db`, `area:contracts` | 协作者 A 消费 007 契约 |
 | [MPX-009](./MPX-009-chat-web-and-mute.md) | 实现聊天 Web 体验、历史和闭麦设置 | `type:feature`, `area:web` | 协作者 B 消费 008 契约 |
