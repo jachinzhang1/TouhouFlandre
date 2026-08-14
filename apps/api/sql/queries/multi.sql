@@ -34,6 +34,14 @@ UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_se
 -- name: GetRoom :one
 SELECT * FROM multi_room WHERE id = $1;
 
+-- name: IncrementRoomChatSeq :one
+UPDATE multi_room SET chat_seq = chat_seq + 1 WHERE id = $1 RETURNING chat_seq;
+
+-- name: UpdateRoomChatRate :exec
+UPDATE multi_room
+SET chat_rate_tokens = sqlc.arg(tokens), chat_rate_refilled_at = sqlc.arg(refilled_at)
+WHERE id = sqlc.arg(room_id);
+
 -- name: HasRoomMatch :one
 SELECT EXISTS (SELECT 1 FROM multi_match WHERE room_id = $1);
 
@@ -101,6 +109,14 @@ SELECT * FROM multi_member WHERE token_hash = $1;
 
 -- name: GetMember :one
 SELECT * FROM multi_member WHERE id = $1;
+
+-- name: GetMemberForUpdate :one
+SELECT * FROM multi_member WHERE id = $1 FOR UPDATE;
+
+-- name: UpdateMemberChatRate :exec
+UPDATE multi_member
+SET chat_rate_tokens = sqlc.arg(tokens), chat_rate_refilled_at = sqlc.arg(refilled_at)
+WHERE id = sqlc.arg(member_id);
 
 -- name: ListMembers :many
 SELECT * FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat;
@@ -470,6 +486,51 @@ SELECT COALESCE(MIN(sequence), 0)::bigint AS min_sequence,
        COALESCE(MAX(sequence), 0)::bigint AS max_sequence
 FROM room_event
 WHERE room_id = $1;
+
+-- name: GetChatMessageByIdempotency :one
+SELECT * FROM multi_chat_message
+WHERE room_id = sqlc.arg(room_id)
+  AND sender_member_id = sqlc.arg(sender_member_id)
+  AND client_message_id = sqlc.arg(client_message_id);
+
+-- name: InsertChatMessage :one
+INSERT INTO multi_chat_message (
+    id, room_id, position, sender_member_id, sender_display_name, sender_role,
+    sender_seat, client_message_id, kind, content, channel, created_at
+)
+VALUES (
+    sqlc.arg(id), sqlc.arg(room_id), sqlc.arg(position), sqlc.arg(sender_member_id),
+    sqlc.arg(sender_display_name), sqlc.arg(sender_role), sqlc.arg(sender_seat),
+    sqlc.arg(client_message_id), sqlc.arg(kind), sqlc.arg(content),
+    sqlc.arg(channel), sqlc.arg(created_at)
+)
+RETURNING *;
+
+-- name: GetChatReplayBounds :one
+SELECT COALESCE(MIN(position), 0)::bigint AS min_position,
+       COALESCE(MAX(position), 0)::bigint AS max_position
+FROM multi_chat_message
+WHERE room_id = sqlc.arg(room_id) AND created_at >= sqlc.arg(cutoff);
+
+-- name: ListChatMessagesAfter :many
+SELECT * FROM multi_chat_message
+WHERE room_id = sqlc.arg(room_id)
+  AND position > sqlc.arg(after_position)
+  AND position <= sqlc.arg(high_position)
+  AND created_at >= sqlc.arg(cutoff)
+ORDER BY position
+LIMIT 200;
+
+-- name: ListChatMessagesBefore :many
+SELECT * FROM multi_chat_message
+WHERE room_id = sqlc.arg(room_id)
+  AND position < sqlc.arg(before_position)
+  AND created_at >= sqlc.arg(cutoff)
+ORDER BY position DESC
+LIMIT 200;
+
+-- name: DeleteExpiredChatMessages :execrows
+DELETE FROM multi_chat_message WHERE created_at < sqlc.arg(cutoff);
 
 -- name: ListExpiredLobbyRooms :many
 SELECT * FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at;

@@ -75,7 +75,7 @@ const claimMemberSeat = `-- name: ClaimMemberSeat :one
 UPDATE multi_member
 SET role = 'player', seat = $1::integer, ready = false, rematch_ready = false
 WHERE id = $2 AND role = 'spectator' AND status = 'connected'
-RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type ClaimMemberSeatParams struct {
@@ -98,12 +98,14 @@ func (q *Queries) ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const closeRoom = `-- name: CloseRoom :one
-UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type CloseRoomParams struct {
@@ -126,6 +128,9 @@ func (q *Queries) CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -382,7 +387,7 @@ VALUES (
     $4,
     $5
 )
-RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type CreateMemberParams struct {
@@ -414,6 +419,8 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -432,7 +439,7 @@ VALUES (
     $7,
     $8
 )
-RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type CreateRoomParams struct {
@@ -472,6 +479,9 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRo
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -555,7 +565,7 @@ func (q *Queries) CreateRoundPlayersForMatch(ctx context.Context, arg CreateRoun
 const createSpectatorMember = `-- name: CreateSpectatorMember :one
 INSERT INTO multi_member (id, room_id, seat, role, display_name, token_hash)
 VALUES ($1, $2, NULL, 'spectator', $3, $4)
-RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type CreateSpectatorMemberParams struct {
@@ -585,8 +595,22 @@ func (q *Queries) CreateSpectatorMember(ctx context.Context, arg CreateSpectator
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
+}
+
+const deleteExpiredChatMessages = `-- name: DeleteExpiredChatMessages :execrows
+DELETE FROM multi_chat_message WHERE created_at < $1
+`
+
+func (q *Queries) DeleteExpiredChatMessages(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredChatMessages, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteMember = `-- name: DeleteMember :exec
@@ -876,6 +900,63 @@ func (q *Queries) GetActiveRoundForUpdate(ctx context.Context, matchID string) (
 	return i, err
 }
 
+const getChatMessageByIdempotency = `-- name: GetChatMessageByIdempotency :one
+SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat, client_message_id, kind, content, channel, created_at FROM multi_chat_message
+WHERE room_id = $1
+  AND sender_member_id = $2
+  AND client_message_id = $3
+`
+
+type GetChatMessageByIdempotencyParams struct {
+	RoomID          string      `json:"room_id"`
+	SenderMemberID  string      `json:"sender_member_id"`
+	ClientMessageID pgtype.UUID `json:"client_message_id"`
+}
+
+func (q *Queries) GetChatMessageByIdempotency(ctx context.Context, arg GetChatMessageByIdempotencyParams) (MultiChatMessage, error) {
+	row := q.db.QueryRow(ctx, getChatMessageByIdempotency, arg.RoomID, arg.SenderMemberID, arg.ClientMessageID)
+	var i MultiChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Position,
+		&i.SenderMemberID,
+		&i.SenderDisplayName,
+		&i.SenderRole,
+		&i.SenderSeat,
+		&i.ClientMessageID,
+		&i.Kind,
+		&i.Content,
+		&i.Channel,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getChatReplayBounds = `-- name: GetChatReplayBounds :one
+SELECT COALESCE(MIN(position), 0)::bigint AS min_position,
+       COALESCE(MAX(position), 0)::bigint AS max_position
+FROM multi_chat_message
+WHERE room_id = $1 AND created_at >= $2
+`
+
+type GetChatReplayBoundsParams struct {
+	RoomID string             `json:"room_id"`
+	Cutoff pgtype.Timestamptz `json:"cutoff"`
+}
+
+type GetChatReplayBoundsRow struct {
+	MinPosition int64 `json:"min_position"`
+	MaxPosition int64 `json:"max_position"`
+}
+
+func (q *Queries) GetChatReplayBounds(ctx context.Context, arg GetChatReplayBoundsParams) (GetChatReplayBoundsRow, error) {
+	row := q.db.QueryRow(ctx, getChatReplayBounds, arg.RoomID, arg.Cutoff)
+	var i GetChatReplayBoundsRow
+	err := row.Scan(&i.MinPosition, &i.MaxPosition)
+	return i, err
+}
+
 const getCurrentRoundForUpdateByRoom = `-- name: GetCurrentRoundForUpdateByRoom :one
 SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r
 JOIN multi_match m ON m.id = r.match_id
@@ -1021,7 +1102,7 @@ func (q *Queries) GetMatchPlayer(ctx context.Context, arg GetMatchPlayerParams) 
 }
 
 const getMember = `-- name: GetMember :one
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE id = $1
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id = $1
 `
 
 func (q *Queries) GetMember(ctx context.Context, id string) (MultiMember, error) {
@@ -1039,12 +1120,14 @@ func (q *Queries) GetMember(ctx context.Context, id string) (MultiMember, error)
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const getMemberByTokenHash = `-- name: GetMemberByTokenHash :one
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE token_hash = $1
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE token_hash = $1
 `
 
 func (q *Queries) GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error) {
@@ -1062,12 +1145,39 @@ func (q *Queries) GetMemberByTokenHash(ctx context.Context, tokenHash string) (M
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
+	)
+	return i, err
+}
+
+const getMemberForUpdate = `-- name: GetMemberForUpdate :one
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetMemberForUpdate(ctx context.Context, id string) (MultiMember, error) {
+	row := q.db.QueryRow(ctx, getMemberForUpdate, id)
+	var i MultiMember
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Seat,
+		&i.DisplayName,
+		&i.TokenHash,
+		&i.Status,
+		&i.Ready,
+		&i.RematchReady,
+		&i.GraceUntil,
+		&i.JoinedAt,
+		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const getRoom = `-- name: GetRoom :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE id = $1
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE id = $1
 `
 
 func (q *Queries) GetRoom(ctx context.Context, id string) (MultiRoom, error) {
@@ -1085,12 +1195,15 @@ func (q *Queries) GetRoom(ctx context.Context, id string) (MultiRoom, error) {
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const getRoomByCode = `-- name: GetRoomByCode :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE code = $1
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE code = $1
 `
 
 func (q *Queries) GetRoomByCode(ctx context.Context, code string) (MultiRoom, error) {
@@ -1108,12 +1221,15 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (MultiRoom, er
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const getRoomByCodeForUpdate = `-- name: GetRoomByCodeForUpdate :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE code = $1 FOR UPDATE
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE code = $1 FOR UPDATE
 `
 
 // 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
@@ -1132,6 +1248,9 @@ func (q *Queries) GetRoomByCodeForUpdate(ctx context.Context, code string) (Mult
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -1157,7 +1276,7 @@ func (q *Queries) GetRoomEventReplayBounds(ctx context.Context, roomID string) (
 }
 
 const getRoomForUpdate = `-- name: GetRoomForUpdate :one
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE id = $1 FOR UPDATE
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE id = $1 FOR UPDATE
 `
 
 // 大厅命令（ready/leave/close）锁房间行。
@@ -1176,6 +1295,9 @@ func (q *Queries) GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, e
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -1355,6 +1477,17 @@ func (q *Queries) IncrementMatchPlayerWin(ctx context.Context, arg IncrementMatc
 	return i, err
 }
 
+const incrementRoomChatSeq = `-- name: IncrementRoomChatSeq :one
+UPDATE multi_room SET chat_seq = chat_seq + 1 WHERE id = $1 RETURNING chat_seq
+`
+
+func (q *Queries) IncrementRoomChatSeq(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRow(ctx, incrementRoomChatSeq, id)
+	var chat_seq int64
+	err := row.Scan(&chat_seq)
+	return chat_seq, err
+}
+
 const incrementRoomEventSeq = `-- name: IncrementRoomEventSeq :one
 UPDATE multi_room SET event_seq = event_seq + 1 WHERE id = $1 RETURNING event_seq
 `
@@ -1365,6 +1498,68 @@ func (q *Queries) IncrementRoomEventSeq(ctx context.Context, id string) (int64, 
 	var event_seq int64
 	err := row.Scan(&event_seq)
 	return event_seq, err
+}
+
+const insertChatMessage = `-- name: InsertChatMessage :one
+INSERT INTO multi_chat_message (
+    id, room_id, position, sender_member_id, sender_display_name, sender_role,
+    sender_seat, client_message_id, kind, content, channel, created_at
+)
+VALUES (
+    $1, $2, $3, $4,
+    $5, $6, $7,
+    $8, $9, $10,
+    $11, $12
+)
+RETURNING id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat, client_message_id, kind, content, channel, created_at
+`
+
+type InsertChatMessageParams struct {
+	ID                string             `json:"id"`
+	RoomID            string             `json:"room_id"`
+	Position          int64              `json:"position"`
+	SenderMemberID    string             `json:"sender_member_id"`
+	SenderDisplayName string             `json:"sender_display_name"`
+	SenderRole        string             `json:"sender_role"`
+	SenderSeat        pgtype.Int4        `json:"sender_seat"`
+	ClientMessageID   pgtype.UUID        `json:"client_message_id"`
+	Kind              string             `json:"kind"`
+	Content           string             `json:"content"`
+	Channel           string             `json:"channel"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) InsertChatMessage(ctx context.Context, arg InsertChatMessageParams) (MultiChatMessage, error) {
+	row := q.db.QueryRow(ctx, insertChatMessage,
+		arg.ID,
+		arg.RoomID,
+		arg.Position,
+		arg.SenderMemberID,
+		arg.SenderDisplayName,
+		arg.SenderRole,
+		arg.SenderSeat,
+		arg.ClientMessageID,
+		arg.Kind,
+		arg.Content,
+		arg.Channel,
+		arg.CreatedAt,
+	)
+	var i MultiChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.Position,
+		&i.SenderMemberID,
+		&i.SenderDisplayName,
+		&i.SenderRole,
+		&i.SenderSeat,
+		&i.ClientMessageID,
+		&i.Kind,
+		&i.Content,
+		&i.Channel,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const insertGuess = `-- name: InsertGuess :one
@@ -1599,6 +1794,109 @@ func (q *Queries) ListActiveRoundPlayers(ctx context.Context, roundID string) ([
 	return items, nil
 }
 
+const listChatMessagesAfter = `-- name: ListChatMessagesAfter :many
+SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat, client_message_id, kind, content, channel, created_at FROM multi_chat_message
+WHERE room_id = $1
+  AND position > $2
+  AND position <= $3
+  AND created_at >= $4
+ORDER BY position
+LIMIT 200
+`
+
+type ListChatMessagesAfterParams struct {
+	RoomID        string             `json:"room_id"`
+	AfterPosition int64              `json:"after_position"`
+	HighPosition  int64              `json:"high_position"`
+	Cutoff        pgtype.Timestamptz `json:"cutoff"`
+}
+
+func (q *Queries) ListChatMessagesAfter(ctx context.Context, arg ListChatMessagesAfterParams) ([]MultiChatMessage, error) {
+	rows, err := q.db.Query(ctx, listChatMessagesAfter,
+		arg.RoomID,
+		arg.AfterPosition,
+		arg.HighPosition,
+		arg.Cutoff,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiChatMessage{}
+	for rows.Next() {
+		var i MultiChatMessage
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.Position,
+			&i.SenderMemberID,
+			&i.SenderDisplayName,
+			&i.SenderRole,
+			&i.SenderSeat,
+			&i.ClientMessageID,
+			&i.Kind,
+			&i.Content,
+			&i.Channel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChatMessagesBefore = `-- name: ListChatMessagesBefore :many
+SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat, client_message_id, kind, content, channel, created_at FROM multi_chat_message
+WHERE room_id = $1
+  AND position < $2
+  AND created_at >= $3
+ORDER BY position DESC
+LIMIT 200
+`
+
+type ListChatMessagesBeforeParams struct {
+	RoomID         string             `json:"room_id"`
+	BeforePosition int64              `json:"before_position"`
+	Cutoff         pgtype.Timestamptz `json:"cutoff"`
+}
+
+func (q *Queries) ListChatMessagesBefore(ctx context.Context, arg ListChatMessagesBeforeParams) ([]MultiChatMessage, error) {
+	rows, err := q.db.Query(ctx, listChatMessagesBefore, arg.RoomID, arg.BeforePosition, arg.Cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiChatMessage{}
+	for rows.Next() {
+		var i MultiChatMessage
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.Position,
+			&i.SenderMemberID,
+			&i.SenderDisplayName,
+			&i.SenderRole,
+			&i.SenderSeat,
+			&i.ClientMessageID,
+			&i.Kind,
+			&i.Content,
+			&i.Channel,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEventsAfterSeq = `-- name: ListEventsAfterSeq :many
 SELECT id, room_id, sequence, type, payload, occurred_at FROM room_event WHERE room_id = $1 AND sequence > $2 ORDER BY sequence
 `
@@ -1636,7 +1934,7 @@ func (q *Queries) ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeq
 }
 
 const listExpiredClosedRooms = `-- name: ListExpiredClosedRooms :many
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE status = 'closed' AND expires_at <= now() ORDER BY expires_at
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE status = 'closed' AND expires_at <= now() ORDER BY expires_at
 `
 
 func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error) {
@@ -1660,6 +1958,9 @@ func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, erro
 			&i.TurnSeconds,
 			&i.QuestionScope,
 			&i.PlayerLimit,
+			&i.ChatSeq,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1672,7 +1973,7 @@ func (q *Queries) ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, erro
 }
 
 const listExpiredLobbyRooms = `-- name: ListExpiredLobbyRooms :many
-SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at
+SELECT id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at FROM multi_room WHERE status = 'lobby' AND expires_at < now() ORDER BY expires_at
 `
 
 func (q *Queries) ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error) {
@@ -1696,6 +1997,9 @@ func (q *Queries) ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error
 			&i.TurnSeconds,
 			&i.QuestionScope,
 			&i.PlayerLimit,
+			&i.ChatSeq,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1924,7 +2228,7 @@ func (q *Queries) ListMatchPlayers(ctx context.Context, matchID string) ([]Multi
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat
 `
 
 func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember, error) {
@@ -1948,6 +2252,8 @@ func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember
 			&i.GraceUntil,
 			&i.JoinedAt,
 			&i.Role,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1960,7 +2266,7 @@ func (q *Queries) ListMembers(ctx context.Context, roomID string) ([]MultiMember
 }
 
 const listMembersForRematch = `-- name: ListMembersForRematch :many
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY seat
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE room_id = $1 AND role = 'player' AND status <> 'left' ORDER BY seat
 `
 
 func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error) {
@@ -1984,6 +2290,8 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 			&i.GraceUntil,
 			&i.JoinedAt,
 			&i.Role,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1996,7 +2304,7 @@ func (q *Queries) ListMembersForRematch(ctx context.Context, roomID string) ([]M
 }
 
 const listParticipants = `-- name: ListParticipants :many
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE room_id = $1 ORDER BY joined_at, id
 `
 
 func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error) {
@@ -2020,6 +2328,8 @@ func (q *Queries) ListParticipants(ctx context.Context, roomID string) ([]MultiM
 			&i.GraceUntil,
 			&i.JoinedAt,
 			&i.Role,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2202,7 +2512,7 @@ func (q *Queries) ListRoundsForMatch(ctx context.Context, matchID string) ([]Mul
 }
 
 const listTimedOutMembers = `-- name: ListTimedOutMembers :many
-SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role FROM multi_member WHERE status = 'disconnected' AND grace_until <= now() ORDER BY grace_until
+SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE status = 'disconnected' AND grace_until <= now() ORDER BY grace_until
 `
 
 func (q *Queries) ListTimedOutMembers(ctx context.Context) ([]MultiMember, error) {
@@ -2226,6 +2536,8 @@ func (q *Queries) ListTimedOutMembers(ctx context.Context) ([]MultiMember, error
 			&i.GraceUntil,
 			&i.JoinedAt,
 			&i.Role,
+			&i.ChatRateTokens,
+			&i.ChatRateRefilledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2414,7 +2726,7 @@ func (q *Queries) MarkRoundPlayerTimedOut(ctx context.Context, arg MarkRoundPlay
 }
 
 const setMemberReady = `-- name: SetMemberReady :one
-UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+UPDATE multi_member SET ready = $2 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type SetMemberReadyParams struct {
@@ -2437,12 +2749,14 @@ func (q *Queries) SetMemberReady(ctx context.Context, arg SetMemberReadyParams) 
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const setMemberRematchReady = `-- name: SetMemberRematchReady :one
-UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type SetMemberRematchReadyParams struct {
@@ -2465,6 +2779,8 @@ func (q *Queries) SetMemberRematchReady(ctx context.Context, arg SetMemberRematc
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
@@ -2562,11 +2878,28 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 	return i, err
 }
 
+const updateMemberChatRate = `-- name: UpdateMemberChatRate :exec
+UPDATE multi_member
+SET chat_rate_tokens = $1, chat_rate_refilled_at = $2
+WHERE id = $3
+`
+
+type UpdateMemberChatRateParams struct {
+	Tokens     pgtype.Float8      `json:"tokens"`
+	RefilledAt pgtype.Timestamptz `json:"refilled_at"`
+	MemberID   string             `json:"member_id"`
+}
+
+func (q *Queries) UpdateMemberChatRate(ctx context.Context, arg UpdateMemberChatRateParams) error {
+	_, err := q.db.Exec(ctx, updateMemberChatRate, arg.Tokens, arg.RefilledAt, arg.MemberID)
+	return err
+}
+
 const updateMemberSeat = `-- name: UpdateMemberSeat :one
 UPDATE multi_member
 SET seat = $1::integer
 WHERE id = $2 AND room_id = $3 AND role = 'player'
-RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type UpdateMemberSeatParams struct {
@@ -2590,12 +2923,14 @@ func (q *Queries) UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatPara
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const updateMemberStatus = `-- name: UpdateMemberStatus :one
-UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role
+UPDATE multi_member SET status = $2, grace_until = $3 WHERE id = $1 RETURNING id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type UpdateMemberStatusParams struct {
@@ -2619,12 +2954,31 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 		&i.GraceUntil,
 		&i.JoinedAt,
 		&i.Role,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
+const updateRoomChatRate = `-- name: UpdateRoomChatRate :exec
+UPDATE multi_room
+SET chat_rate_tokens = $1, chat_rate_refilled_at = $2
+WHERE id = $3
+`
+
+type UpdateRoomChatRateParams struct {
+	Tokens     pgtype.Float8      `json:"tokens"`
+	RefilledAt pgtype.Timestamptz `json:"refilled_at"`
+	RoomID     string             `json:"room_id"`
+}
+
+func (q *Queries) UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error {
+	_, err := q.db.Exec(ctx, updateRoomChatRate, arg.Tokens, arg.RefilledAt, arg.RoomID)
+	return err
+}
+
 const updateRoomPlayerLimit = `-- name: UpdateRoomPlayerLimit :one
-UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type UpdateRoomPlayerLimitParams struct {
@@ -2647,12 +3001,15 @@ func (q *Queries) UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlaye
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const updateRoomQuestionScope = `-- name: UpdateRoomQuestionScope :one
-UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type UpdateRoomQuestionScopeParams struct {
@@ -2675,12 +3032,15 @@ func (q *Queries) UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQue
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
 
 const updateRoomStatus = `-- name: UpdateRoomStatus :one
-UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit
+UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING id, code, format, status, event_seq, created_at, expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq, chat_rate_tokens, chat_rate_refilled_at
 `
 
 type UpdateRoomStatusParams struct {
@@ -2704,6 +3064,9 @@ func (q *Queries) UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusPara
 		&i.TurnSeconds,
 		&i.QuestionScope,
 		&i.PlayerLimit,
+		&i.ChatSeq,
+		&i.ChatRateTokens,
+		&i.ChatRateRefilledAt,
 	)
 	return i, err
 }
