@@ -26,6 +26,7 @@ export function SelfBoard({
         avatarUrl: guess.guessAvatarUrl,
         isCorrect: guess.isCorrect,
         cells: guess.feedback.map((field) => ({
+          field: field.field,
           status: field.status,
           value: field.displayValue.join("、"),
         })),

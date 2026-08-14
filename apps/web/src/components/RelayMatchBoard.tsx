@@ -299,6 +299,7 @@ function RelayTurn({
     viewerRole === "spectator" &&
     row.kind === "guess" &&
     row.seat === winnerSlot;
+  const feedback = feedbackForFields(row.guess?.feedback, fields);
 
   if (row.kind !== "guess" || !row.guess) {
     const label = row.kind === "pass" ? "主动空过" : "超时空过";
@@ -354,8 +355,11 @@ function RelayTurn({
           </span>
         </span>
       </th>
-      {row.guess.feedback.map((field, index) => (
-        <td key={index} className="border-b border-line p-1.5 align-top">
+      {feedback.map((field, index) => (
+        <td
+          key={fields[index]?.key ?? index}
+          className="border-b border-line p-1.5 align-top"
+        >
           <span
             className={`feedback match-feedback feedback-${field.status}`}
             title={STATUS_LABEL[field.status]}
@@ -369,4 +373,27 @@ function RelayTurn({
       ))}
     </tr>
   );
+}
+
+function feedbackForFields(
+  feedback:
+    | NonNullable<RelayTurnRow["guess"]>["feedback"]
+    | undefined,
+  fields: readonly GuessField[],
+) {
+  const fallback = fields.map(
+    (_, index) =>
+      feedback?.[index] ?? {
+        field: fields[index]?.key,
+        label: fields[index]?.label ?? "",
+        status: "unknown" as const,
+        symbol: "?" as const,
+        displayValue: [],
+      },
+  );
+  if (!feedback?.some((item) => item.field)) return fallback;
+
+  const byField = new Map(feedback.map((item) => [item.field, item]));
+  if (!fields.every((field) => byField.has(field.key))) return fallback;
+  return fields.map((field) => byField.get(field.key)!);
 }

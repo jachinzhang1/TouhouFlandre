@@ -3,6 +3,8 @@ package multi
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 )
 
 func TestColumnPermutationDeterministic(t *testing.T) {
@@ -153,4 +155,33 @@ func TestPublicCollectionsOrderedBySeat(t *testing.T) {
 	if results[0].Result != MatchResultLoss || results[1].Result != MatchResultWin || results[2].Result != MatchResultLoss {
 		t.Fatalf("results = %#v, want loss/win/loss", results)
 	}
+}
+
+func TestPermuteFieldOrder(t *testing.T) {
+	fields := []game.GuessField{
+		{Key: game.FieldFirstAppearance},
+		{Key: game.FieldReleaseYear},
+		{Key: game.FieldSpecies},
+	}
+	got := PermuteFieldOrder(fields, []int{2, 0, 1})
+	want := []game.GuessFieldKey{
+		game.FieldSpecies,
+		game.FieldFirstAppearance,
+		game.FieldReleaseYear,
+	}
+	if !equalFieldKeys(got, want) {
+		t.Fatalf("field order = %v, want %v", got, want)
+	}
+}
+
+func equalFieldKeys(a, b []game.GuessFieldKey) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

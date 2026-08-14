@@ -61,7 +61,19 @@ chatFrame:
   type: object
   additionalProperties: false
   required:
-    [type, messageId, roomId, senderMemberId, senderDisplayName, senderRole, kind, content, channel, cursor, createdAt]
+    [
+      type,
+      messageId,
+      roomId,
+      senderMemberId,
+      senderDisplayName,
+      senderRole,
+      kind,
+      content,
+      channel,
+      cursor,
+      createdAt,
+    ]
   properties:
     type:
       type: string
@@ -122,7 +134,17 @@ events:
       type: object
       additionalProperties: false
       required:
-        [format, mode, turnSeconds, playerLimit, minPlayers, playerCount, availableSeats, members, spectatorCount]
+        [
+          format,
+          mode,
+          turnSeconds,
+          playerLimit,
+          minPlayers,
+          playerCount,
+          availableSeats,
+          members,
+          spectatorCount,
+        ]
       properties:
         format:
           type: string
@@ -247,7 +269,15 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, startsAt, deadline, maxGuesses, activePlayerCount]
+      required:
+        [
+          matchIndex,
+          roundIndex,
+          startsAt,
+          deadline,
+          maxGuesses,
+          activePlayerCount,
+        ]
       properties:
         matchIndex:
           type: integer
@@ -311,13 +341,15 @@ events:
     observer: opponent
     summary: |
       对手每次被接受的猜测（唯一逐观察者事件）。
-      statuses 为当前可见字段位置的状态；服务端秘密 HMAC 绑定
+      statuses 为当前匿名字段位置的状态；fieldOrder 是同一观察者看到的匿名列顺序。
+      服务端秘密 HMAC 绑定
       (roundId, observerMemberId, subjectMemberId, schemaVersion) 后派生列置换；
       不含角色名/字段标签/值（08 §4.5 数据最小化）。
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, memberId, seat, rowIndex, statuses]
+      required:
+        [matchIndex, roundIndex, memberId, seat, rowIndex, fieldOrder, statuses]
       properties:
         matchIndex:
           type: integer
@@ -336,10 +368,17 @@ events:
           type: integer
           minimum: 1
           description: 该成员局内猜测序号（1 起）。
+        fieldOrder:
+          type: array
+          minItems: 1
+          maxItems: 8
+          description: 该观察者看到的匿名矩阵列顺序；statuses 按此顺序排列。
+          items:
+            $ref: "#/definitions/GuessFieldKey"
         statuses:
           type: array
-          minItems: 6
-          maxItems: 6
+          minItems: 1
+          maxItems: 8
           items:
             $ref: "#/definitions/FeedbackStatus"
 
@@ -632,7 +671,13 @@ control:
           enum: [game, chat, all]
         reason:
           type: string
-          enum: [negative_sequence, invalid_cursor, ahead_of_server, history_unavailable]
+          enum:
+            [
+              negative_sequence,
+              invalid_cursor,
+              ahead_of_server,
+              history_unavailable,
+            ]
         gameSequence:
           type: integer
           minimum: 0
@@ -691,6 +736,19 @@ clientMessages:
           minimum: 0
 
 definitions:
+  GuessFieldKey:
+    type: string
+    enum:
+      [
+        firstAppearance,
+        releaseYear,
+        species,
+        abilityTags,
+        affiliations,
+        locations,
+        roles,
+        hairColors,
+      ]
   FeedbackStatus:
     type: string
     enum: [exact, partial, miss, higher, lower, unknown]
@@ -967,6 +1025,15 @@ examples:
           memberId: member-guest
           seat: 2
           rowIndex: 1
+          fieldOrder:
+            [
+              species,
+              firstAppearance,
+              affiliations,
+              releaseYear,
+              locations,
+              hairColors,
+            ]
           statuses: [miss, exact, partial, lower, miss, unknown]
 
     - label: round.spectator.guess（观战者完整行）

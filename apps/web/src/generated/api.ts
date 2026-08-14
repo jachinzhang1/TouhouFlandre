@@ -979,7 +979,7 @@ export interface components {
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-         *     opponents 为按 seat 排序的匿名矩阵集合（只含状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
+         *     opponents 为按 seat 排序的匿名矩阵集合（只含匿名列顺序与状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
          *     接力模式额外提供 shared.rows、turnMemberId、turnSeat、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
          */
         RoundView: {
@@ -1032,7 +1032,7 @@ export interface components {
         OpponentRow: {
             /** @description 该成员局内猜测序号（1 起）。 */
             index: number;
-            /** @description 当前可见字段位置的状态；服务端秘密 HMAC 绑定 round、observer、subject、schemaVersion 后列置换，客户端拿不到真实列序。 */
+            /** @description 当前匿名字段位置的状态；与所属 OpponentBoardView.fieldOrder 一一对应。 */
             statuses: components["schemas"]["FeedbackStatus"][];
         };
         /** @description 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。 */
@@ -1128,6 +1128,8 @@ export interface components {
         OpponentBoardView: {
             memberId: string;
             seat: number;
+            /** @description 该观察者看到的匿名矩阵列顺序；rows.statuses 按此顺序排列。 */
+            fieldOrder: components["schemas"]["GuessFieldKey"][];
             rows: components["schemas"]["OpponentRow"][];
         };
         MemberBoardView: {

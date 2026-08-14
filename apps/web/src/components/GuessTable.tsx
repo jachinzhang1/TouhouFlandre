@@ -4,7 +4,11 @@
 // 列标签只出现一次（表头，复用单人模式字段序）；单元格统一 feedback feedback-{status}
 // 语义类（两边同色同高）；对手匿名行只渲染状态色块，永不含名称/标签/值（08 §4.5）。
 import type { ReactNode } from "react";
-import type { FeedbackStatus, GuessField } from "@touhouflandre/shared";
+import type {
+  FeedbackStatus,
+  GuessField,
+  GuessFieldKey,
+} from "@touhouflandre/shared";
 import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
@@ -19,6 +23,7 @@ export const STATUS_LABEL: Record<FeedbackStatus, string> = {
 };
 
 export type GuessCell = {
+  field?: GuessFieldKey;
   status: FeedbackStatus;
   /** 匿名行不传（只渲染状态色块，不泄露值）。 */
   value?: string;
@@ -105,76 +110,101 @@ export function GuessTable({
                 </td>
               </tr>
             ) : (
-              rows.map((row) => row.notice ? (
-                <tr key={row.key}>
-                  <td colSpan={fields.length + 1} className="border-b border-line p-2">
-                    <span
-                      className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
-                        row.tone === "danger"
-                          ? "bg-vermilion-soft text-vermilion"
-                          : "bg-paper-muted text-ink-soft"
-                      }`}
-                    >
-                      {row.notice}
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={row.key}>
-                  <th
-                    scope="row"
-                    className="border-b border-line p-1.5 align-top text-left font-normal"
-                  >
-                    {row.name ? (
-                      <span className="flex items-center gap-1.5">
-                        <CharacterAvatar
-                          avatarUrl={row.avatarUrl}
-                          name={row.name}
-                          initials={row.name.slice(0, 1)}
-                          className="!size-5 shrink-0"
-                        />
-                        <span className="min-w-0 overflow-wrap-anywhere">
-                          {row.name}
-                          {row.isCorrect && (
-                            <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                              命中
-                            </span>
-                          )}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-ink-soft">第 {row.key} 猜</span>
-                    )}
-                  </th>
-                  {(row.cells ?? []).map((cell, index) => (
-                    <td
-                      key={index}
-                      className="border-b border-line p-1.5 align-top"
-                    >
-                      <span
-                        className={`feedback match-feedback ${
-                          isOpponent ? "match-feedback-compact" : ""
-                        } feedback-${cell.status}`}
-                        title={cell.status ? STATUS_LABEL[cell.status] : undefined}
-                        role={row.name ? undefined : "img"}
-                        aria-label={row.name ? undefined : STATUS_LABEL[cell.status]}
+              rows.map((row) => {
+                if (row.notice) {
+                  return (
+                    <tr key={row.key}>
+                      <td
+                        colSpan={fields.length + 1}
+                        className="border-b border-line p-2"
                       >
-                        <b>
-                          <FeedbackStatusIcon
-                            status={cell.status}
-                            decorative={!row.name}
+                        <span
+                          className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
+                            row.tone === "danger"
+                              ? "bg-vermilion-soft text-vermilion"
+                              : "bg-paper-muted text-ink-soft"
+                          }`}
+                        >
+                          {row.notice}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const cells = cellsForFields(row.cells, fields);
+                return (
+                  <tr key={row.key}>
+                    <th
+                      scope="row"
+                      className="border-b border-line p-1.5 align-top text-left font-normal"
+                    >
+                      {row.name ? (
+                        <span className="flex items-center gap-1.5">
+                          <CharacterAvatar
+                            avatarUrl={row.avatarUrl}
+                            name={row.name}
+                            initials={row.name.slice(0, 1)}
+                            className="!size-5 shrink-0"
                           />
-                        </b>
-                        {!isOpponent && cell.value && <span>{cell.value}</span>}
-                      </span>
-                    </td>
-                  ))}
-                </tr>
-              ))
+                          <span className="min-w-0 overflow-wrap-anywhere">
+                            {row.name}
+                            {row.isCorrect && (
+                              <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
+                                命中
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-ink-soft">第 {row.key} 猜</span>
+                      )}
+                    </th>
+                    {cells.map((cell, index) => (
+                      <td
+                        key={fields[index]?.key ?? index}
+                        className="border-b border-line p-1.5 align-top"
+                      >
+                        <span
+                          className={`feedback match-feedback ${
+                            isOpponent ? "match-feedback-compact" : ""
+                          } feedback-${cell.status}`}
+                          title={STATUS_LABEL[cell.status]}
+                          role={row.name ? undefined : "img"}
+                          aria-label={row.name ? undefined : STATUS_LABEL[cell.status]}
+                        >
+                          <b>
+                            <FeedbackStatusIcon
+                              status={cell.status}
+                              decorative={!row.name}
+                            />
+                          </b>
+                          {!isOpponent && cell.value && <span>{cell.value}</span>}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
     </div>
   );
+}
+
+function cellsForFields(
+  cells: GuessRow["cells"],
+  fields: readonly GuessField[],
+): GuessCell[] {
+  const fallback = fields.map((_, index) => cells?.[index] ?? { status: "unknown" as const });
+  if (!cells?.some((cell) => cell.field)) return fallback;
+
+  const byField = new Map<GuessFieldKey, GuessCell>();
+  for (const cell of cells) {
+    if (cell.field) byField.set(cell.field, cell);
+  }
+  if (!fields.every((field) => byField.has(field.key))) return fallback;
+  return fields.map((field) => byField.get(field.key)!);
 }

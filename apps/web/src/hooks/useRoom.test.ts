@@ -307,10 +307,26 @@ describe("roomReducer", () => {
         memberId: "member-guest",
         seat: 2,
         rowIndex: 1,
+        fieldOrder: [
+          "species",
+          "firstAppearance",
+          "affiliations",
+          "releaseYear",
+          "locations",
+          "hairColors",
+        ],
         statuses: ["miss", "exact", "partial", "lower", "miss", "unknown"],
       }),
     );
     expect(state.round?.opponents[0]?.rows).toHaveLength(1);
+    expect(state.round?.opponents[0]?.fieldOrder).toEqual([
+      "species",
+      "firstAppearance",
+      "affiliations",
+      "releaseYear",
+      "locations",
+      "hairColors",
+    ]);
 
     state = roomReducer(
       state,
@@ -493,7 +509,21 @@ describe("roomReducer", () => {
           deadline: "2026-08-06T12:15:03Z",
           maxGuesses: 8,
           self: { guesses: [] },
-          opponents: [{ memberId: "member-guest", seat: 2, rows: [] }],
+          opponents: [
+            {
+              memberId: "member-guest",
+              seat: 2,
+              fieldOrder: [
+                "firstAppearance",
+                "releaseYear",
+                "species",
+                "affiliations",
+                "locations",
+                "hairColors",
+              ],
+              rows: [],
+            },
+          ],
         },
         roundResult: existingRoundResult,
       } as RoomUiState,
@@ -631,7 +661,21 @@ describe("applySnapshot", () => {
         deadline: "2026-08-06T12:15:03Z",
         maxGuesses: 8,
         self: { memberId: "member-host", seat: 1, guesses: [] },
-        opponents: [{ memberId: "member-guest", seat: 2, rows: [] }],
+        opponents: [
+          {
+            memberId: "member-guest",
+            seat: 2,
+            fieldOrder: [
+              "firstAppearance",
+              "releaseYear",
+              "species",
+              "affiliations",
+              "locations",
+              "hairColors",
+            ],
+            rows: [],
+          },
+        ],
       },
       gameSequence: 1,
       events: [

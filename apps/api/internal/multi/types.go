@@ -371,12 +371,13 @@ type RoundPlayingPayload struct {
 
 // RoundOpponentGuessPayload round.opponent.guess：对手匿名行（已按观察者列置换）。
 type RoundOpponentGuessPayload struct {
-	MatchIndex int      `json:"matchIndex"`
-	RoundIndex int      `json:"roundIndex"`
-	MemberID   string   `json:"memberId"`
-	Seat       int      `json:"seat"`
-	RowIndex   int      `json:"rowIndex"`
-	Statuses   []string `json:"statuses"`
+	MatchIndex int                  `json:"matchIndex"`
+	RoundIndex int                  `json:"roundIndex"`
+	MemberID   string               `json:"memberId"`
+	Seat       int                  `json:"seat"`
+	RowIndex   int                  `json:"rowIndex"`
+	FieldOrder []game.GuessFieldKey `json:"fieldOrder"`
+	Statuses   []string             `json:"statuses"`
 }
 
 // RoundSpectatorGuessPayload round.spectator.guess：观战者可见的完整猜测行。

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
@@ -562,11 +563,21 @@ func TestMultiRacePlayerProjectionPrivacyAndSpectatorBoards(t *testing.T) {
 			if len(board.Rows) != 1 || board.Rows[0].Index != 1 {
 				t.Fatalf("observer seat %d subject seat %d public rows = %+v", observer.seat, subject.seat, board.Rows)
 			}
-			perm := multi.ColumnPermutation(projectionSecret, roundID, observer.memberID, subject.memberID, multi.ProjectionSchemaVersion, len(persisted[subject.memberID]))
-			want := multi.PermuteStatuses(persisted[subject.memberID], perm)
+			fields := game.CharacterGuessFields
+			perm := multi.ColumnPermutation(projectionSecret, roundID, observer.memberID, subject.memberID, multi.ProjectionSchemaVersion, len(fields))
+			want := multi.PermuteStatuses(multi.StatusesForFields(persisted[subject.memberID], fields), perm)
 			got := feedbackStatusesAsStrings(board.Rows[0].Statuses)
 			if !slices.Equal(got, want) {
 				t.Fatalf("observer seat %d subject seat %d statuses = %v, want HMAC projection %v", observer.seat, subject.seat, got, want)
+			}
+			wantFieldOrder := multi.PermuteFieldOrder(fields, perm)
+			if len(board.FieldOrder) != len(wantFieldOrder) {
+				t.Fatalf("observer seat %d subject seat %d fieldOrder length = %d, want %d", observer.seat, subject.seat, len(board.FieldOrder), len(wantFieldOrder))
+			}
+			for index, wantField := range wantFieldOrder {
+				if string(board.FieldOrder[index]) != string(wantField) {
+					t.Fatalf("observer seat %d subject seat %d fieldOrder = %v, want HMAC projection %v", observer.seat, subject.seat, board.FieldOrder, wantFieldOrder)
+				}
 			}
 		}
 	}
@@ -599,7 +610,7 @@ func TestMultiRacePlayerProjectionPrivacyAndSpectatorBoards(t *testing.T) {
 				continue
 			}
 			opponentGuessEvents++
-			assertPayloadKeys(t, event.Payload, "matchIndex", "memberId", "roundIndex", "rowIndex", "seat", "statuses")
+			assertPayloadKeys(t, event.Payload, "fieldOrder", "matchIndex", "memberId", "roundIndex", "rowIndex", "seat", "statuses")
 			if event.Payload["memberId"] == snapshot.Viewer.MemberId {
 				t.Fatalf("player received own canonical opponent event: %+v", event)
 			}

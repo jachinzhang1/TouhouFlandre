@@ -56,6 +56,16 @@ func PermuteStatuses(statuses []string, perm []int) []string {
 	return out
 }
 
+func PermuteFieldOrder(fields []game.GuessField, perm []int) []game.GuessFieldKey {
+	out := make([]game.GuessFieldKey, len(fields))
+	for i, p := range perm {
+		if i < len(fields) && p < len(fields) {
+			out[i] = fields[p].Key
+		}
+	}
+	return out
+}
+
 func StatusesForFields(statuses []string, fields []game.GuessField) []string {
 	if len(statuses) == len(fields) {
 		return append([]string{}, statuses...)
@@ -161,6 +171,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 				MemberID:   payload.MemberID,
 				Seat:       payload.MemberSlot,
 				RowIndex:   payload.RowIndex,
+				FieldOrder: PermuteFieldOrder(fields, perm),
 				Statuses:   PermuteStatuses(visibleStatuses, perm),
 			},
 		}, false, nil

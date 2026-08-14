@@ -132,7 +132,11 @@ function OpponentPages({
       label="对手棋盘"
       pageSize={1}
       renderItem={(opponent) => (
-        <OpponentBoard rows={opponent.rows} fields={fields} />
+        <OpponentBoard
+          rows={opponent.rows}
+          fields={fields}
+          fieldOrder={opponent.fieldOrder}
+        />
       )}
     />
   );
@@ -159,6 +163,7 @@ function EndedBoards({
       avatarUrl: guess.guessAvatarUrl,
       isCorrect: guess.isCorrect,
       cells: guess.feedback.map((field) => ({
+        field: field.field,
         status: field.status,
         value: field.displayValue.join("、"),
       })),
@@ -183,6 +188,7 @@ function EndedBoards({
       <MemberPaginator
         items={others}
         label="其他玩家（局末揭示）"
+        pageSize={1}
         renderItem={(board) => (
           <GuessTable
             title={

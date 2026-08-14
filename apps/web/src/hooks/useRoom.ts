@@ -256,6 +256,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
                 .map((member) => ({
                   memberId: member.memberId,
                   seat: member.seat,
+                  fieldOrder: [],
                   rows: [],
                 }))
             : [],
@@ -296,6 +297,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
             opponent.memberId === payload.memberId
               ? {
                   ...opponent,
+                  fieldOrder: payload.fieldOrder ?? opponent.fieldOrder,
                   rows: [
                     ...opponent.rows,
                     { index: payload.rowIndex, statuses: payload.statuses },
@@ -637,7 +639,9 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
 
   const applyChatFrame = useCallback((frame: ChatMessageFrame) => {
     setState((current) => {
-      const merged = mergeChatEntries(current.chat, [chatEntryFromFrame(frame)]);
+      const merged = mergeChatEntries(current.chat, [
+        chatEntryFromFrame(frame),
+      ]);
       return {
         ...current,
         chat: chatSyncCompleteRef.current
@@ -645,7 +649,8 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           : merged,
       };
     });
-    if (chatSyncCompleteRef.current) completedChatCursorRef.current = frame.cursor;
+    if (chatSyncCompleteRef.current)
+      completedChatCursorRef.current = frame.cursor;
   }, []);
 
   const syncSnapshot = useCallback(async (snapshot: RoomSnapshot) => {
@@ -755,7 +760,9 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         chat: { ...initialRoomChatState, historyStatus: "loading" },
       }));
       try {
-        const history = await api.listRoomMessages(roomId, token, { limit: 50 });
+        const history = await api.listRoomMessages(roomId, token, {
+          limit: 50,
+        });
         if (disposed) return null;
         completedChatCursorRef.current = history.scannedCursor ?? null;
         setState((current) => ({
@@ -776,7 +783,10 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       }
     };
 
-    const connect = (lastGameSequence: number, lastChatCursor?: string | null) => {
+    const connect = (
+      lastGameSequence: number,
+      lastChatCursor?: string | null,
+    ) => {
       if (disposed) return;
       if (replacedByOtherPage) return;
       chatSyncCompleteRef.current = false;
@@ -923,7 +933,10 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         if (disposed) return;
         if (memberChangeReconnect) {
           memberChangeReconnect = false;
-          connect(completedGameSequenceRef.current, completedChatCursorRef.current);
+          connect(
+            completedGameSequenceRef.current,
+            completedChatCursorRef.current,
+          );
           return;
         }
         scheduleReconnect();
@@ -945,7 +958,11 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
       window.setTimeout(
-        () => connect(completedGameSequenceRef.current, completedChatCursorRef.current),
+        () =>
+          connect(
+            completedGameSequenceRef.current,
+            completedChatCursorRef.current,
+          ),
         delay,
       );
     };
@@ -987,7 +1004,11 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           return;
         }
       }
-      if (!disposed) connect(completedGameSequenceRef.current, completedChatCursorRef.current);
+      if (!disposed)
+        connect(
+          completedGameSequenceRef.current,
+          completedChatCursorRef.current,
+        );
     };
     if (document.readyState === "loading") {
       window.addEventListener("load", start, { once: true });
@@ -1081,11 +1102,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         }
         setState((current) => ({
           ...current,
-          chat: confirmPendingChatEntry(
-            current.chat,
-            clientMessageId,
-            message,
-          ),
+          chat: confirmPendingChatEntry(current.chat, clientMessageId, message),
         }));
         return true;
       } catch (error) {

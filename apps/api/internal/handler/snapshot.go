@@ -322,11 +322,14 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			Guesses:  []openapi.GuessResult{},
 		})
 		if !readOnlyObserver && multi.IsPlayer(observer) && member.ID != observer.ID {
+			perm := multi.ColumnPermutation(s.projectionSecret, state.Round.ID, observer.ID, member.ID, multi.ProjectionSchemaVersion, len(fields))
+			permutationByMemberID[member.ID] = perm
 			opponentIndexByMemberID[member.ID] = len(opponents)
 			opponents = append(opponents, openapi.OpponentBoardView{
-				MemberId: member.ID,
-				Seat:     seat,
-				Rows:     []openapi.OpponentRow{},
+				MemberId:   member.ID,
+				Seat:       seat,
+				FieldOrder: toOpenAPIGuessFieldKeys(multi.PermuteFieldOrder(fields, perm)),
+				Rows:       []openapi.OpponentRow{},
 			})
 		}
 	}
@@ -348,11 +351,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			self = append(self, toOpenAPIGuessResult(hydrated))
 		} else {
 			visibleStatuses := multi.StatusesForFields(statuses, fields)
-			perm, ok := permutationByMemberID[guess.MemberID]
-			if !ok {
-				perm = multi.ColumnPermutation(s.projectionSecret, state.Round.ID, observer.ID, guess.MemberID, multi.ProjectionSchemaVersion, len(fields))
-				permutationByMemberID[guess.MemberID] = perm
-			}
+			perm := permutationByMemberID[guess.MemberID]
 			index, ok := opponentIndexByMemberID[guess.MemberID]
 			if !ok {
 				continue
@@ -479,6 +478,14 @@ func toOpenAPIFeedbackStatuses(statuses []string) []openapi.FeedbackStatus {
 	out := make([]openapi.FeedbackStatus, len(statuses))
 	for i, s := range statuses {
 		out[i] = openapi.FeedbackStatus(s)
+	}
+	return out
+}
+
+func toOpenAPIGuessFieldKeys(keys []game.GuessFieldKey) []openapi.GuessFieldKey {
+	out := make([]openapi.GuessFieldKey, len(keys))
+	for i, key := range keys {
+		out[i] = openapi.GuessFieldKey(key)
 	}
 	return out
 }
