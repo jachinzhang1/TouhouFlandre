@@ -150,6 +150,20 @@ describe("ChatDock", () => {
     ).toBe(true);
   });
 
+  it("keeps history available when chat sending is disabled by rollout", () => {
+    renderDock(baseChat, { sendEnabled: false });
+
+    expect(
+      (screen.getByLabelText("展开聊天记录") as HTMLButtonElement).disabled,
+    ).toBe(false);
+    expect(
+      (screen.getByLabelText("聊天输入") as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText("选择表情") as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
   it("renders history as plain rows and colors the current sender label", async () => {
     const user = userEvent.setup();
     renderDock({

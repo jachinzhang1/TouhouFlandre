@@ -86,6 +86,13 @@ async function enterRoom(page: Page, credential: RoomCredential) {
   await page.goto(`/multi/room/${credential.roomCode}`);
 }
 
+async function sendChatViaUI(page: Page, message: string) {
+  const input = page.getByLabel("聊天输入");
+  await expect(input).toBeEnabled({ timeout: 10_000 });
+  await input.fill(message);
+  await input.press("Enter");
+}
+
 async function setReady(
   request: APIRequestContext,
   credential: RoomCredential,
@@ -477,6 +484,71 @@ test.describe("多人房间", () => {
       await page.waitForURL(/\/multi$/);
     } finally {
       await page.close();
+    }
+  });
+});
+
+test.describe("多人聊天发布闸门", () => {
+  test("玩家/观战聊天可见性与闭麦行为", async ({ browser, request }) => {
+    const roster = await createRaceRoster(request, 2, 2);
+    const watcherA = await joinCredential(
+      request,
+      roster[0].roomCode,
+      "Watcher A",
+    );
+    const watcherB = await joinCredential(
+      request,
+      roster[0].roomCode,
+      "Watcher B",
+    );
+    const host = await browser.newPage();
+    const guest = await browser.newPage();
+    const spectatorA = await browser.newPage();
+    const spectatorB = await browser.newPage();
+    try {
+      await Promise.all([
+        enterRoom(host, roster[0]),
+        enterRoom(guest, roster[1]),
+        enterRoom(spectatorA, watcherA),
+        enterRoom(spectatorB, watcherB),
+      ]);
+
+      await sendChatViaUI(host, "player hello");
+      await expect(guest.getByText("Player 1(P1): player hello")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(
+        spectatorA.getByText("Player 1(P1): player hello"),
+      ).toBeVisible({ timeout: 10_000 });
+
+      await sendChatViaUI(spectatorA, "spectator hello");
+      await expect(
+        spectatorB.getByText("Watcher A: spectator hello"),
+      ).toBeVisible({ timeout: 10_000 });
+      await expect(host.getByText("Watcher A: spectator hello")).toHaveCount(
+        0,
+        {
+          timeout: 1500,
+        },
+      );
+
+      await guest.getByLabel("闭麦").click();
+      await expect(guest.getByLabel("聊天输入")).toBeDisabled();
+      await sendChatViaUI(host, "muted hello");
+      await expect(guest.getByText("muted hello")).toHaveCount(0, {
+        timeout: 1500,
+      });
+      await guest.getByLabel("开启聊天").click();
+      await expect(guest.getByText("muted hello")).toHaveCount(0, {
+        timeout: 1500,
+      });
+    } finally {
+      await Promise.all([
+        host.close(),
+        guest.close(),
+        spectatorA.close(),
+        spectatorB.close(),
+      ]);
     }
   });
 });

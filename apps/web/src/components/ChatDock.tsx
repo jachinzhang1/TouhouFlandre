@@ -18,6 +18,7 @@ interface ChatDockProps {
   viewer: ParticipantView | null;
   chat: RoomChatState;
   disabled?: boolean;
+  sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
   onRetry: (clientMessageId: string) => Promise<void>;
   onLoadOlder: () => Promise<void>;
@@ -34,6 +35,7 @@ export function ChatDock({
   viewer,
   chat,
   disabled = false,
+  sendEnabled = true,
   onSend,
   onRetry,
   onLoadOlder,
@@ -155,7 +157,8 @@ export function ChatDock({
 
   const muted = !receiveChat;
   const historyDisabled = disabled || muted || !viewer;
-  const inputDisabled = historyDisabled || viewer?.status !== "connected";
+  const inputDisabled =
+    historyDisabled || viewer?.status !== "connected" || !sendEnabled;
   const canSend = !inputDisabled && draft.trim().length > 0;
 
   const handleSubmit = async (event: FormEvent) => {

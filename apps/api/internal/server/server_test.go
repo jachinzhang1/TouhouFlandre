@@ -138,7 +138,10 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("integration: seeded catalog %s\n", version)
 
-	ts := httptest.NewServer(server.NewWithOptions(pool, handler.WithJoinRateLimit(10000, time.Minute)))
+	enabledRollout := handler.RolloutConfig{NPlayerRaceEnabled: true, ChatSendEnabled: true}
+	ts := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithRolloutConfig(enabledRollout)))
 	baseURL = ts.URL
 	client = ts.Client()
 
@@ -156,6 +159,7 @@ func TestMain(m *testing.M) {
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithMultiTiming(fastTiming),
 		handler.WithChatConfig(24*time.Hour, multi.DefaultChatRateConfig(), []byte("integration-test-chat-cursor-secret")),
+		handler.WithRolloutConfig(enabledRollout),
 		handler.WithHub(fastHub)))
 	fastBaseURL = fastTS.URL
 	fastClient = fastTS.Client()

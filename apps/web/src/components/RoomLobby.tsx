@@ -4,6 +4,7 @@
 import { Check, Copy, LogOut, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { components } from "../generated/api";
+import { isNPlayerRaceUiEnabled } from "../config/multiplayerRollout";
 import { ApiRequestError } from "../lib/api";
 import { sortMembersBySeat } from "../domain/memberCollections";
 
@@ -68,6 +69,7 @@ export function RoomLobby({
   const [actionError, setActionError] = useState("");
   const minimumLimit = Math.max(2, playerCount);
   const settingsLocked = members.some((member) => member.ready);
+  const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
 
   useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
 
@@ -162,7 +164,7 @@ export function RoomLobby({
             保持未准备可继续等人；准备后若当前全员已准备将立即开局。
           </p>
         ) : null}
-        {isHost && mode === "race" && (
+        {isHost && mode === "race" && nPlayerRaceEnabled && (
           <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 text-left">
             <label
               className="min-w-0 text-[0.78rem] text-ink-soft"
@@ -195,10 +197,6 @@ export function RoomLobby({
                 }
                 className="block w-full accent-vermilion"
               />
-              <span className="mt-0.5 flex justify-between text-[0.68rem] tabular-nums">
-                <span>{minimumLimit}</span>
-                <span>8</span>
-              </span>
             </label>
             <button
               type="button"

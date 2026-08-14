@@ -24,6 +24,16 @@ export default defineConfig({
         env: {
           ...process.env,
           MULTI_JOIN_RATE_LIMIT: process.env.MULTI_JOIN_RATE_LIMIT ?? "1000",
+          MULTI_N_PLAYER_RACE_ENABLED:
+            process.env.MULTI_N_PLAYER_RACE_ENABLED ?? "true",
+          MULTI_CHAT_SEND_ENABLED:
+            process.env.MULTI_CHAT_SEND_ENABLED ?? "true",
+          NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED:
+            process.env.NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED ?? "true",
+          NEXT_PUBLIC_MULTI_CHAT_UI_ENABLED:
+            process.env.NEXT_PUBLIC_MULTI_CHAT_UI_ENABLED ?? "true",
+          NEXT_PUBLIC_MULTI_CHAT_SEND_ENABLED:
+            process.env.NEXT_PUBLIC_MULTI_CHAT_SEND_ENABLED ?? "true",
         },
       }
     : undefined,

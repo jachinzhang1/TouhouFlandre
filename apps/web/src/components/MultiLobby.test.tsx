@@ -20,6 +20,7 @@ import { api } from "../lib/api";
 
 describe("MultiLobby", () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     localStorage.clear();
     push.mockReset();
     vi.mocked(api.createRoom)
@@ -30,6 +31,17 @@ describe("MultiLobby", () => {
         guestToken: "token",
         viewer: { memberId: "host", role: "player", seat: 1 },
       } as never);
+  });
+
+  it("omits race capacity while rollout is closed", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED", "false");
+    render(<MultiLobby />);
+    expect(screen.queryByLabelText("玩家上限（2-8）")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
+    await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
+    const body = vi.mocked(api.createRoom).mock.calls[0][0];
+    expect(body.mode).toBe("race");
+    expect(body).not.toHaveProperty("playerLimit");
   });
 
   it("sends playerLimit for race creation", async () => {

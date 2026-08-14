@@ -26,6 +26,10 @@ import {
 } from "../domain/memberCollections";
 import { useRoom, type RoomUiState } from "../hooks/useRoom";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
+import {
+  isChatSendUiEnabled,
+  isChatUiEnabled,
+} from "../config/multiplayerRollout";
 import { api } from "../lib/api";
 import { migrateLegacyMultiplayerDraft } from "../stats/multiplayerRecorder";
 import { CountdownOverlay } from "./CountdownOverlay";
@@ -193,13 +197,20 @@ export function RoomView({ code }: { code: string }) {
     state.roundResult &&
     !roundResultDismissed,
   );
+  const chatUiEnabled = isChatUiEnabled();
+  const chatSendUiEnabled = isChatSendUiEnabled();
   const chatDock =
-    state.room && state.viewer && stored?.roomId && stored?.guestToken ? (
+    chatUiEnabled &&
+    state.room &&
+    state.viewer &&
+    stored?.roomId &&
+    stored?.guestToken ? (
       <ChatDock
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
         disabled={roomUnavailable}
+        sendEnabled={chatSendUiEnabled}
         onSend={actions.sendChat}
         onRetry={actions.retryChat}
         onLoadOlder={actions.loadOlderChat}
@@ -831,6 +842,7 @@ function SpectatorRaceBoards({
       avatarUrl: guess.guessAvatarUrl,
       isCorrect: guess.isCorrect,
       cells: guess.feedback.map((field) => ({
+        field: field.field,
         status: field.status,
         value: field.displayValue.join("、"),
       })),
@@ -853,6 +865,7 @@ function SpectatorRaceBoards({
   return (
     <MemberPaginator
       items={ordered}
+      pageSize={archive ? 1 : undefined}
       label="玩家棋盘"
       renderItem={(board) => (
         <GuessTable

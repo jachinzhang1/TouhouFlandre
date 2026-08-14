@@ -26,3 +26,25 @@ func TestMultiProjectionSecretFallbackIsProcessStableAndPrivate(t *testing.T) {
 		t.Fatal("caller mutated process projection secret")
 	}
 }
+
+func TestMultiRolloutFlagsDefaultOpen(t *testing.T) {
+	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "")
+	t.Setenv("MULTI_CHAT_SEND_ENABLED", "")
+	if !MultiNPlayerRaceEnabled() {
+		t.Fatal("N-player race rollout should default to enabled")
+	}
+	if !MultiChatSendEnabled() {
+		t.Fatal("chat send rollout should default to enabled")
+	}
+}
+
+func TestMultiRolloutFlagsParseBooleanValues(t *testing.T) {
+	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "on")
+	t.Setenv("MULTI_CHAT_SEND_ENABLED", "0")
+	if !MultiNPlayerRaceEnabled() {
+		t.Fatal("N-player race rollout should parse on as enabled")
+	}
+	if MultiChatSendEnabled() {
+		t.Fatal("chat send rollout should parse 0 as disabled")
+	}
+}

@@ -21,6 +21,10 @@ func (s *Server) RoomsSendMessage(ctx context.Context, request openapi.RoomsSend
 	if !ok {
 		return nil, guestUnauthorized("缺少成员身份。")
 	}
+	if !s.rollout.ChatSendEnabled {
+		multi.DefaultMetrics.IncChatRejected(string(codeChatSendForbidden))
+		return nil, &ApiError{Status: http.StatusForbidden, Code: codeChatSendForbidden, Message: "聊天发送仍在灰度中，当前暂未开放。"}
+	}
 	if request.Body == nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少聊天消息。"}
 	}

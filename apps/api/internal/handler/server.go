@@ -37,10 +37,31 @@ type Server struct {
 	chatCursor       *multi.ChatCursorCodec
 	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
+	rollout          RolloutConfig
 }
 
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
+
+// RolloutConfig 定义 MPX-010 灰度开关。默认关闭新增暴露面，测试/灰度环境显式开启。
+type RolloutConfig struct {
+	NPlayerRaceEnabled bool
+	ChatSendEnabled    bool
+}
+
+func rolloutConfigFromEnv() RolloutConfig {
+	return RolloutConfig{
+		NPlayerRaceEnabled: config.MultiNPlayerRaceEnabled(),
+		ChatSendEnabled:    config.MultiChatSendEnabled(),
+	}
+}
+
+// WithRolloutConfig 覆盖 MPX-010 灰度开关（集成测试和灰度环境注入用）。
+func WithRolloutConfig(rollout RolloutConfig) Option {
+	return func(s *Server) {
+		s.rollout = rollout
+	}
+}
 
 // WithJoinRateLimit 覆盖加入/预检限流参数（默认每分钟 10 次，进程内计数）。
 func WithJoinRateLimit(limit int, window time.Duration) Option {
@@ -100,6 +121,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 		chatRate:         config.MultiChatRate(),
 		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
 		projectionSecret: config.MultiProjectionSecret(),
+		rollout:          rolloutConfigFromEnv(),
 	}
 	for _, opt := range opts {
 		opt(s)

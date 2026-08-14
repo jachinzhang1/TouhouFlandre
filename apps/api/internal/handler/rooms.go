@@ -147,6 +147,9 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	if !multi.ValidPlayerLimit(mode, playerLimit) {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
 	}
+	if mode == multi.MultiplayerModeRace && playerLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能创建双人房间。"}
+	}
 	turnSeconds := int(s.timing.TurnSeconds / time.Second)
 	if !multi.ValidTurnSeconds(turnSeconds) {
 		turnSeconds = 60
@@ -270,6 +273,9 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 	desiredLimit := *request.Body.PlayerLimit
 	if desiredLimit < multi.DefaultPlayerLimit || desiredLimit > multi.ServerMaxRacePlayers {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
+	}
+	if desiredLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能使用双人上限。"}
 	}
 
 	tx, err := s.pool.Begin(ctx)

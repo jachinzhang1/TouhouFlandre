@@ -89,6 +89,29 @@ func positiveIntFromEnv(key string, fallback int) int {
 	return fallback
 }
 
+func boolFromEnv(key string, fallback bool) bool {
+	if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+		switch strings.ToLower(raw) {
+		case "1", "true", "t", "yes", "y", "on":
+			return true
+		case "0", "false", "f", "no", "n", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+// MultiNPlayerRaceEnabled 控制是否允许新建/调高 2 人以上竞速房间。
+// MPX-010 发布闸门要求默认保持双人容量；已有多人房间的 join/对局推进不受影响。
+func MultiNPlayerRaceEnabled() bool {
+	return boolFromEnv("MULTI_N_PLAYER_RACE_ENABLED", true)
+}
+
+// MultiChatSendEnabled 控制是否允许写入新聊天消息。历史读取和已授权实时投影不受影响。
+func MultiChatSendEnabled() bool {
+	return boolFromEnv("MULTI_CHAT_SEND_ENABLED", true)
+}
+
 // MultiChatRate 两级聊天 token bucket 配置。
 func MultiChatRate() multi.ChatRateConfig {
 	return multi.ChatRateConfig{

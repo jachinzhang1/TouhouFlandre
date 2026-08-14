@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "../lib/api";
 import { RoomLobby } from "./RoomLobby";
 
@@ -46,6 +46,10 @@ const renderLobby = (
 };
 
 describe("RoomLobby", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("uses memberId for self and allows ready/unready", () => {
     const props = renderLobby();
     expect(screen.getByText("Guest（我）")).toBeTruthy();
@@ -65,6 +69,16 @@ describe("RoomLobby", () => {
     expect(onReady).toHaveBeenCalledWith(false);
   });
 
+  it("hides the player limit setting while rollout is closed", () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED", "false");
+    renderLobby({
+      isHost: true,
+      mySlot: 1,
+      viewerMemberId: "host",
+    });
+    expect(screen.queryByRole("slider", { name: "玩家上限" })).toBeNull();
+  });
+
   it("lets the host explicitly apply a changed player limit", async () => {
     const apply = vi.fn().mockResolvedValue(undefined);
     renderLobby({
@@ -73,7 +87,7 @@ describe("RoomLobby", () => {
       viewerMemberId: "host",
       onApplyLimit: apply,
     });
-    const limit = screen.getByLabelText("玩家上限");
+    const limit = screen.getByRole("slider", { name: "玩家上限" });
     expect(limit.getAttribute("type")).toBe("range");
     expect(limit.getAttribute("min")).toBe("2");
     expect(limit.getAttribute("max")).toBe("8");
@@ -91,7 +105,7 @@ describe("RoomLobby", () => {
       viewerMemberId: "host",
       playerCount: 3,
     });
-    const input = screen.getByLabelText("玩家上限");
+    const input = screen.getByRole("slider", { name: "玩家上限" });
     fireEvent.change(input, { target: { value: "2" } });
     expect((input as HTMLInputElement).value).toBe("3");
   });

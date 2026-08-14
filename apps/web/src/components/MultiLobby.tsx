@@ -30,6 +30,7 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../lib/questionScopeStorage";
+import { isNPlayerRaceUiEnabled } from "../config/multiplayerRollout";
 import { QuestionScopeDialog } from "./QuestionScopeDialog";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
@@ -42,6 +43,9 @@ const MODE_RULES: Record<MultiplayerMode, string> = {
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
 };
+const DUO_RACE_RULE = `**竞速模式**中，两名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
+
+率先猜中者赢得本局，并按所选双人赛制决定整场胜负。`;
 
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "操作失败。";
@@ -62,6 +66,7 @@ export function MultiLobby() {
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [hostScopeOpen, setHostScopeOpen] = useState(false);
+  const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -94,7 +99,7 @@ export function MultiLobby() {
       const created = await api.createRoom({
         format,
         mode,
-        ...(mode === "race" ? { playerLimit } : {}),
+        ...(mode === "race" && nPlayerRaceEnabled ? { playerLimit } : {}),
         turnSeconds,
         displayName: nickname || undefined,
         questionScope,
@@ -210,7 +215,10 @@ export function MultiLobby() {
                     <span className="mt-0.5 text-[0.68rem] font-normal text-ink-soft">
                       {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
                     </span>
-                    <ModeRulePopover mode={option} />
+                    <ModeRulePopover
+                      mode={option}
+                      nPlayerRaceEnabled={nPlayerRaceEnabled}
+                    />
                   </label>
                 ))}
               </div>
@@ -244,7 +252,7 @@ export function MultiLobby() {
                 </div>
               </fieldset>
             )}
-            {mode === "race" && (
+            {mode === "race" && nPlayerRaceEnabled && (
               <label className="mb-4 block">
                 <span className="mb-1 flex items-center justify-between text-[0.75rem] text-ink-soft">
                   <span>玩家上限</span>
@@ -270,10 +278,6 @@ export function MultiLobby() {
                   }
                   className="w-full accent-vermilion"
                 />
-                <span className="mt-1 flex justify-between text-[0.68rem] tabular-nums text-ink-soft">
-                  <span>2</span>
-                  <span>8</span>
-                </span>
               </label>
             )}
             <fieldset className="mb-4">
@@ -430,7 +434,15 @@ export function MultiLobby() {
   );
 }
 
-function ModeRulePopover({ mode }: { mode: MultiplayerMode }) {
+function ModeRulePopover({
+  mode,
+  nPlayerRaceEnabled,
+}: {
+  mode: MultiplayerMode;
+  nPlayerRaceEnabled: boolean;
+}) {
+  const rule =
+    mode === "race" && !nPlayerRaceEnabled ? DUO_RACE_RULE : MODE_RULES[mode];
   return (
     <div
       id={`mode-rule-${mode}`}
@@ -438,7 +450,7 @@ function ModeRulePopover({ mode }: { mode: MultiplayerMode }) {
       className="mode-rule-popover pointer-events-none absolute right-0 bottom-[calc(100%+10px)] left-0 z-20 rounded-[6px] border border-line bg-paper px-3 py-2.5 text-left text-[0.72rem] font-normal leading-[1.65] text-ink shadow-lg"
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
-        {MODE_RULES[mode]}
+        {rule}
       </ReactMarkdown>
     </div>
   );
