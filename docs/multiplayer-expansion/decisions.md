@@ -181,11 +181,68 @@ v2 游戏同步帧冻结为：
 | member 发送频率 | token bucket 容量 5，每 2 秒补 1 个；幂等重试不重复扣 token |
 | room 聚合频率 | token bucket 容量 20，每 500 毫秒补 1 个；player 与 spectator 共用，防止 WS fan-out 被单一 channel 绕过 |
 | 保留期 | 消息创建后最多 24 小时；room tree 更早删除时随 room 清理，closed 后即使物理行尚未清理也不再对外提供访问 |
-| history 页大小 | 默认扫描 50 个原始位置，客户端可请求 1..100；服务端单次最多扫描 200 个原始位置以跨过不可见 channel |
+| history 页大小 | `limit` 表示期望返回的可见消息数，默认 50、允许 1..100；服务端为填满一页最多扫描 200 个原始位置，以跨过当前 viewer 不可见的 channel |
 
 规范化后的空消息稳定拒绝。服务端和客户端都必须把内容作为纯文本渲染；客户端转义是纵深防御，不能替代服务端大小/字符校验。超限返回稳定错误并可携带 `retryAfterMs`，不得把被拒绝内容写入日志。
 
-发送以 `(roomId, senderMemberId, clientMessageId)` 唯一。首次成功插入后，相同 key 与相同规范化 payload 返回原消息，不再次广播或计入限流；同 key 不同 payload 返回幂等冲突，不能覆盖历史。
+发送以 `(roomId, senderMemberId, clientMessageId)` 唯一。首次成功插入后，相同 key 与相同规范化 payload 返回原消息，不再次广播或计入限流；同 key 不同 payload 返回幂等冲突，不能覆盖历史。服务端处理顺序固定为：严格解码请求 → 鉴权并读取当前 member/room → 规范化和校验 kind/content → 在该幂等键的串行化边界内查询既有消息 → 相同 payload 直接返回、不同 payload 冲突 → 新消息检查 member/room 两级限流 → 事务内分配 position 并持久化 → 提交后广播。并发相同 key 只能有一个请求消耗两级 token；实现可选择行锁、advisory lock 或等价串行化方式，但不能用事后重复扣减再补偿改变该语义。
+
+### 公开消息与 REST 契约
+
+MPX-007 只在本文冻结 wire 语义；MPX-008 必须把下述模型一次性写入 OpenAPI/WS 源、生成代码和实现。公开 `ChatMessage` 固定为：
+
+| 字段 | 形态 | 约束 |
+|---|---|---|
+| `messageId` | string | 服务端生成的 25 位小写字母数字 ID；房间删除后不承诺可解析或复用 |
+| `roomId` | string | 消息所属房间；必须与 REST path、WS 连接房间一致 |
+| `senderMemberId` | string | 发送时 memberId 快照；公开关联键，不授予权限 |
+| `senderDisplayName` | string | 发送时规范化昵称快照，纯文本，沿用成员昵称上限 |
+| `senderRole` | `player \| spectator` | 发送时角色快照 |
+| `senderSeat` | integer，可省略 | player 发送时 seat 快照；spectator 不返回该字段 |
+| `kind` | `text \| emoji` | 仅首版两种消息类型 |
+| `content` | string | 按 kind 规范化后的纯文本或白名单 emoji |
+| `channel` | `room \| spectator` | 服务端从发送时角色派生 |
+| `cursor` | string | 该消息原始 position 对应的 after-direction 不透明 cursor |
+| `createdAt` | RFC 3339 date-time | 数据库提交时的服务端时间 |
+
+消息提交后不可变；本轮没有 public pending/deleted/edited 状态，也没有撤回或覆盖更新。`clientMessageId` 是请求级幂等键，固定为规范 UUID 字符串并在同一 member 的房间范围内使用。它持久化用于幂等，但不进入 `ChatMessage`、history、WS frame、日志或其他 viewer 可见数据。发送请求固定为 `additionalProperties: false` 的 `{clientMessageId, kind, content}`；出现 sender、role、seat、channel、roomId、messageId 或其他未知字段均返回 `INVALID_REQUEST`，不能忽略后继续发送。
+
+REST 端点固定为：
+
+| 请求 | 成功语义 |
+|---|---|
+| `POST /api/rooms/{roomId}/messages` | 首次插入和同 key+同规范化 payload 重试均返回 `200` 与同一个 `ChatMessage`；只有首次提交广播并扣除 member/room token |
+| `GET /api/rooms/{roomId}/messages` | 无 cursor 的初始最近历史、`after` 向新方向补齐和 `before` 加载更早历史共用同一授权投影 |
+
+history 查询只接受可选的 `after`、`before` 和 `limit`，`after`/`before` 互斥；未知参数、二者同时出现或非法 limit 返回 `INVALID_REQUEST`。三种查询形态固定如下：
+
+| 查询形态 | 扫描与排序 | cursor 响应 | `hasMore` 语义 |
+|---|---|---|---|
+| 无 `after`/`before` | 捕获 high watermark，从该位置向旧方向扫描，消息按 position 升序返回 | `scannedCursor` 为捕获的 high watermark；`beforeCursor` 为本页最老已扫描位置 | 是否仍有更老的原始位置 |
+| `after` | 捕获 high watermark，从 cursor 之后向新方向扫描，消息按 position 升序返回 | 返回最远已扫描位置的 `scannedCursor`；不返回 `beforeCursor` | 捕获的 high watermark 前是否仍有未扫描原始位置 |
+| `before` | 从 cursor 之前向旧方向扫描，消息按 position 升序返回 | 返回最远已扫描到旧方向位置的 `beforeCursor`；不返回 `scannedCursor` | 是否仍有更老的原始位置 |
+
+history 响应固定为 `messages`、相对请求方向的 `hasMore`，以及上表要求的 cursor 字段。无更老原始位置时省略 `beforeCursor`；空房间的初始请求也必须返回服务端签发的 position 0 `scannedCursor`。过滤后为空但已扫描原始位置的页面必须返回推进后的 cursor。`limit` 限制可见消息数，达到服务端 200 个原始位置扫描上限时允许返回少于 limit 条消息，并以推进后的 cursor + `hasMore=true` 让客户端继续，不能通过一次无界扫描填满可见页。
+
+历史读取在 lobby/playing/finished 保留期内按请求时 role 投影；retained left member 按最后有效 role 只读，不能发送。closed、已过期或已清理房间不提供聊天读写。POST 和 GET 每次都重新鉴权 member 状态与 role，公开 sender snapshot 不能代替当前权限。
+
+REST 错误映射固定如下；错误正文沿用 `ErrorResponse{code,error}`，仅 `RATE_LIMITED` 可增加 `retryAfterMs`，`CHAT_RESYNC_REQUIRED` 使用带恢复 cursor 的专用响应：
+
+| HTTP | code | 场景 |
+|---|---|---|
+| 400 | `INVALID_REQUEST` | JSON/查询格式错误、未知字段、after/before 同时出现 |
+| 400 | `CHAT_MESSAGE_INVALID` | kind/content/clientMessageId 非法，或规范化后为空/超限 |
+| 400 | `CHAT_CURSOR_INVALID` | cursor 格式、签名、room、方向、用途或保留代际不匹配 |
+| 401 | `GUEST_UNAUTHORIZED` | token 缺失、无效或不属于 path room |
+| 403 | `CHAT_SEND_FORBIDDEN` | retained left、disconnected 或其他无发送 capability 的有效 member 尝试发送 |
+| 404 | `ROOM_NOT_FOUND` | 房间不存在、已过期或已清理 |
+| 409 | `ROOM_CLOSED` | 房间已进入 closed |
+| 409 | `CHAT_IDEMPOTENCY_CONFLICT` | 同 member/clientMessageId 对应不同规范化 payload |
+| 409 | `CHAT_CURSOR_AHEAD` | after cursor 超过当前 high watermark |
+| 410 | `CHAT_RESYNC_REQUIRED` | cursor 早于最老保留位置；响应返回 `oldestAvailableCursor` 与 `highWatermarkCursor` |
+| 429 | `RATE_LIMITED` | member 或 room token bucket 耗尽；返回 `Retry-After` 并可返回 `retryAfterMs` |
+
+错误不得回显请求正文、token、cursor 内部编码、原始 position 或不可见 channel 是否存在。`before` cursor 指向当前可读取范围之外时同样按 invalid/resync 规则处理，不得静默回退。
 
 ### 不透明 cursor 与分页
 
@@ -199,7 +256,41 @@ chat cursor 是服务端签发并完整性校验的 versioned opaque token，至
 
 cursor 格式/签名错误、属于其他 room/方向/代际、超过当前 high watermark 分别稳定返回 `CHAT_CURSOR_INVALID` 或 `CHAT_CURSOR_AHEAD`。cursor 早于最老保留位置时返回 `CHAT_RESYNC_REQUIRED` 及服务端签发的 `oldestAvailableCursor`/当前 high watermark；不得静默跳到开头或当前而掩盖历史缺失。
 
-v2 hello 的可选 `lastChatCursor` 与 `lastGameSequence` 进入同一个连接屏障：先注册同时缓冲游戏和聊天，再分别捕获高水位和授权重放，排空两类缓冲后在 FIFO 队尾发送一个 `sync.complete(gameSequence, chatCursor)`。`chatCursor` 是已扫描而非最后一条可见消息的位置；即使 player 无权看到期间全部 spectator 消息也必须推进。同步中途断线时两种水位都保持上一次完成值。
+chat-capable 客户端首次进入或 role 变化后，先调用无 cursor 的 history 获得当前角色授权的最近历史与 `scannedCursor`，再把该值作为 `lastChatCursor` 建立 WS；history 捕获水位之后到 WS 注册之间的消息由 WS replay 补齐。hello 省略 `lastChatCursor` 表示该连接不订阅聊天：服务端不得向它发送 chat frame，`hello-ok`/`sync.complete` 也省略聊天字段。这允许只理解 MPX-002B 游戏同步的 v2 客户端继续作为 game-only 连接，不把“缺少 cursor”解释为从保留期起点无界重放。
+
+提供 `lastChatCursor` 时，它与 `lastGameSequence` 进入同一个连接屏障：先注册同时缓冲游戏和聊天，再分别捕获高水位和授权重放，排空两类缓冲后在 FIFO 队尾发送一个 `sync.complete(gameSequence, chatCursor)`。`chatCursor` 是已扫描而非最后一条可见消息的位置；即使 player 无权看到期间全部 spectator 消息也必须推进。同步中途断线时两种水位都保持上一次完成值。
+
+### WS v2 聊天帧与控制帧
+
+聊天扩展后的 frame 固定为：
+
+| frame | 字段与语义 |
+|---|---|
+| client `hello` | 既有 `type/token/lastGameSequence`，可选 `lastChatCursor`；存在时启用本连接聊天订阅 |
+| `hello-ok` | 既有字段；启用聊天时增加 `targetChatCursor`，只声明捕获的目标水位 |
+| `chat.message` | 平铺 `type=chat.message` 加完整 `ChatMessage` 字段；没有 eventId、payload 或 game sequence |
+| `sync.complete` | 既有 `gameSequence`；启用聊天时必须增加已扫描完成的 `chatCursor` |
+| `resync.required` | `scope=game\|chat\|all`；chat scope 使用 `invalid_cursor\|ahead_of_server\|history_unavailable`，并按可恢复性携带 `oldestAvailableChatCursor`/`targetChatCursor` |
+| client `ack` | 继续只确认 `gameSequence`；不增加 chat ack，chat 恢复以服务端 cursor、history 和慢消费者断连为准 |
+
+所有 game/chat/control frame 共用每个连接的有界 FIFO，保证 `sync.complete` 之前的授权重放和缓冲帧已入队；协议不承诺 game sequence 与 chat position 之间存在可比较的全局顺序。`chat.message.cursor` 只表示该可见消息的 after 位置，不能替代 `sync.complete.chatCursor` 表示不可见位置也已扫描。live 阶段客户端可以持久化连续处理后的可见 chat frame cursor；未收到的 spectator channel 位置在下次 history/replay 扫描时通过新的 scanned cursor 跨过。
+
+chat hello cursor 无效时，服务端在发送任何业务/chat frame 前发送 `resync.required` 并关闭连接；`scope=all` 表示 game 与 chat 水位都无效。客户端不得把服务端给出的 target 当作已经交付；它完成对应 snapshot/history 恢复后重新握手。role 变化沿用 `replaced{reason=member_changed}`，服务端必须先使旧连接失效，再允许新角色 history/WS 鉴权。
+
+### 聊天威胁模型与验证口径
+
+| 威胁 | 必须的服务端控制 | MPX-008 验证口径 |
+|---|---|---|
+| 伪造 sender/channel/role/seat | 严格请求 schema，所有授权字段由 token 当前 member 派生 | 注入每个未知字段均 `INVALID_REQUEST`，无消息行和广播 |
+| 跨房间 token/member/cursor | token、path room、cursor room 三者绑定并逐次校验 | 不返回消息、cursor 内部信息或目标房间存在性 |
+| player 获取 spectator channel | history/replay/realtime 共用同一投影函数 | 三条路径分别做正反例，并覆盖过滤后空页推进 |
+| claim-seat 后沿用 spectator capability | 角色事务提交后使旧 WS replaced，所有新请求重读 role | 并发发送时旧连接在角色变化后零 spectator frame |
+| left/closed 生命周期绕过 | left 仅保留期历史只读；closed/过期全部拒绝 | send/history/WS 分别覆盖 retained left 与 closed |
+| cursor 篡改、换方向、超前或过期 | 签名、room、direction、generation、high watermark 校验 | 稳定映射三类 chat cursor 错误且不全表扫描 |
+| 重放窗口丢失或重复 | 先注册双缓冲，再捕获双高水位并在 FIFO 队尾 complete | 在捕获前、重放中、切 live 前并发提交，零丢失且按 messageId 去重 |
+| 幂等重试造成重复广播/扣限流 | 唯一键与规范化 payload 比对先于限流扣减 | 同 payload 并发只一行/一次逻辑广播；异 payload 冲突 |
+| XSS、控制字符和超长内容 | 服务端规范化/校验，wire 只提供纯文本 | HTML/Markdown/Unicode 边界样例不解释、不落拒绝正文日志 |
+| token、幂等键和 cursor 内部泄漏 | 结构化日志 allowlist 与公开 schema denylist | 响应、WS、日志递归检查敏感字段不存在 |
 
 ### `receiveChat` 本地语义
 
@@ -227,6 +318,7 @@ v2 hello 的可选 `lastChatCursor` 与 `lastGameSequence` 进入同一个连接
 - 公开 roster 的 `memberId`、displayName、seat、role、连接/准备/left 状态以及公开比分；
 - 某个 subject 已发生猜测的数量、匿名状态行、行序和是否达到公开猜测上限；
 - room event/cursor 的 sequence、`occurredAt`、帧大小级别和客户端实际收到帧的时间；cursor 只隐藏业务类型/payload，不隐藏“房间发生了一个事件”；
+- chat `scannedCursor` 是否变化、空页、`hasMore`、响应/帧大小级别和接收时间；不透明 cursor 不公开原始 position、消息数量、sender、channel 或正文，但获授权 viewer 可能观察到房间中发生过不可见聊天活动；
 - round/match 的公开倒计时、终态、胜者与结束原因；`round.ended` 后按规则揭示的答案和完整棋盘。
 
 spectator 依据矩阵获权查看所有完整棋盘，但这项权限不扩展到 token、内部身份或 player 无权查看的 spectator channel。viewer 从 spectator claim-seat 为 player 后必须立即重新投影，旧连接和缓存不能继续提供 spectator 游戏/聊天视图。

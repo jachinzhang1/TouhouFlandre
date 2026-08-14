@@ -56,3 +56,28 @@ v2 hello 分别提交 `lastGameSequence` 与可选 `lastChatCursor`。鉴权成�
 ## 可能涉及的代码与文档
 
 以 `contracts/ws/protocol.yaml`、`contracts/openapi/paths/`、`contracts/openapi/schemas/` 和 `packages/shared/src/multi.ts` 为现状参考，在 `docs/multiplayer-expansion/decisions.md`（或等价设计文档）冻结契约；不得在本 Issue 中修改生效契约、生成代码、数据库、handler 或 Web UI。MPX-008 必须把决策、契约源、生成物和实现放在同一个 PR 中落地。
+
+## MPX-008 测试追踪
+
+| ID | 契约/安全场景 | MPX-008 必须证明的结果 |
+|---|---|---|
+| CHAT-AUTH-01 | player/spectator 发送与三条读取路径 | room 对两种角色可见，spectator 只对 spectator 可见 |
+| CHAT-AUTH-02 | 请求伪造 sender/role/seat/channel | 严格拒绝且不写库、不广播 |
+| CHAT-LIFE-01 | retained left、closed、过期 | left 仅 finished 保留期历史只读；closed/过期无读写 |
+| CHAT-ROLE-01 | spectator claim-seat 与旧 WS 并发 | 旧连接失效，新 player 不恢复 spectator channel |
+| CHAT-IDEM-01 | 相同/不同 payload 的并发幂等重试 | 相同 payload 一行一次广播；不同 payload 稳定冲突 |
+| CHAT-VALID-01 | 文本、emoji、规范化、控制字符、XSS | 只保存规范化纯文本，非法正文不进入日志 |
+| CHAT-RATE-01 | member 与 room 双 token bucket | 两级限流均稳定返回 retry 信息，幂等重试不重复扣减 |
+| CHAT-CURSOR-01 | after/before/room/direction/generation/ahead | cursor 不可伪造或换用，错误码与 HTTP 映射稳定 |
+| CHAT-CURSOR-02 | player 扫描纯 spectator 空页 | messages 为空但 scanned cursor 前进，hasMore 语义正确 |
+| CHAT-SYNC-01 | 捕获前、重放中、切 live 前并发发送 | 授权消息零丢失，重叠帧按 messageId 只应用一次 |
+| CHAT-SYNC-02 | `sync.complete` 前断线 | game/chat 均从上一次完成水位恢复，不提前提交 target |
+| CHAT-PRIV-01 | 响应、WS 与结构化日志递归检查 | 无 token/hash、clientMessageId、原始 position 或未授权消息 |
+
+## 实施与验收记录（2026-08-14）
+
+MPX-007 在 MPX-006 完成后的集成基线 `e885fc4` 上冻结设计。规范性结果统一写入 `decisions.md`：公开消息模型、REST send/history、严格错误码、初始 history 与 chat 订阅握手、after/before cursor、双水位 FIFO 屏障、role 变化和威胁模型均已有唯一口径。
+
+生命周期统一为：connected member 可在 lobby/playing/finished 发送；retained left member 仅在 finished 保留期内按最后有效 role 读取历史；closed、过期和已清理房间无聊天读写。MPX-008 使用迁移 `0012` 并按上表建立服务端测试。
+
+本 Issue 不修改 `contracts/`、生成目录、数据库、Go 或 Web。生效契约、生成物与实现由 MPX-008 在同一实现阶段一次性落地。
