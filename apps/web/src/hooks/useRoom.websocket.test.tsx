@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (importOriginal) => {
     api: {
       ...actual.api,
       roomSnapshot: vi.fn(),
+      listRoomMessages: vi.fn(),
     },
   };
 });
@@ -84,6 +85,12 @@ describe("useRoom replacement handling", () => {
     MockWebSocket.instances = [];
     vi.stubGlobal("WebSocket", MockWebSocket);
     vi.mocked(api.roomSnapshot).mockReset();
+    vi.mocked(api.listRoomMessages).mockReset();
+    vi.mocked(api.listRoomMessages).mockResolvedValue({
+      messages: [],
+      hasMore: false,
+      scannedCursor: "chat-cursor-0",
+    } as never);
   });
 
   afterEach(() => {
@@ -94,6 +101,15 @@ describe("useRoom replacement handling", () => {
     vi.mocked(api.roomSnapshot).mockResolvedValue(snapshot("player") as never);
     const { result, unmount } = renderHook(() => useRoom("room-1", "token"));
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    act(() => MockWebSocket.instances[0].onopen?.({} as Event));
+    expect(JSON.parse(MockWebSocket.instances[0].send.mock.calls[0][0])).toEqual(
+      {
+        type: "hello",
+        token: "token",
+        lastGameSequence: 0,
+        lastChatCursor: "chat-cursor-0",
+      },
+    );
 
     act(() =>
       MockWebSocket.instances[0].receive({
@@ -136,6 +152,52 @@ describe("useRoom replacement handling", () => {
       expect(result.current.state.viewer?.role).toBe("player"),
     );
     expect(MockWebSocket.instances).toHaveLength(2);
+    expect(vi.mocked(api.listRoomMessages)).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it("applies chat.message frames without advancing the game sequence", async () => {
+    vi.mocked(api.roomSnapshot).mockResolvedValue(snapshot("player") as never);
+    const { result, unmount } = renderHook(() => useRoom("room-1", "token"));
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+
+    act(() => MockWebSocket.instances[0].onopen?.({} as Event));
+    act(() =>
+      MockWebSocket.instances[0].receive({
+        type: "hello-ok",
+        roomId: "room-1",
+        targetGameSequence: 0,
+        targetChatCursor: "chat-cursor-0",
+      }),
+    );
+    act(() =>
+      MockWebSocket.instances[0].receive({
+        type: "sync.complete",
+        gameSequence: 0,
+        chatCursor: "chat-cursor-0",
+      }),
+    );
+    act(() =>
+      MockWebSocket.instances[0].receive({
+        type: "chat.message",
+        messageId: "m000000000000000000000001",
+        roomId: "room-1",
+        senderMemberId: "host",
+        senderDisplayName: "Host",
+        senderRole: "player",
+        senderSeat: 1,
+        kind: "text",
+        content: "hello",
+        channel: "room",
+        cursor: "chat-cursor-1",
+        createdAt: "2026-08-14T12:00:00Z",
+      }),
+    );
+
+    expect(result.current.state.appliedGameSequence).toBe(0);
+    expect(result.current.state.chat.scannedCursor).toBe("chat-cursor-1");
+    expect(result.current.state.chat.messages).toHaveLength(1);
+    expect(result.current.state.chat.messages[0].content).toBe("hello");
     unmount();
   });
 });
