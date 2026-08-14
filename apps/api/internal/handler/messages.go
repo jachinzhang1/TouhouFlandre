@@ -124,6 +124,7 @@ func (s *Server) RoomsSendMessage(ctx context.Context, request openapi.RoomsSend
 		return nil, internalError(err)
 	}
 	multi.DefaultMetrics.IncChatMessage(created.Channel, created.Kind)
+	s.publishChat(created)
 	return openapi.RoomsSendMessage200JSONResponse(s.toOpenAPIChatMessage(created, room)), nil
 }
 

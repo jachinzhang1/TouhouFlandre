@@ -151,10 +151,11 @@ func TestMain(m *testing.M) {
 		MaxRoundsFactor:   3,
 		FinishedRetention: time.Hour,
 	}
-	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"))
+	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"), 24*time.Hour, []byte("integration-test-chat-cursor-secret"))
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithMultiTiming(fastTiming),
+		handler.WithChatConfig(24*time.Hour, multi.DefaultChatRateConfig(), []byte("integration-test-chat-cursor-secret")),
 		handler.WithHub(fastHub)))
 	fastBaseURL = fastTS.URL
 	fastClient = fastTS.Client()

@@ -279,18 +279,26 @@ export interface HelloOkMessage {
   type: "hello-ok";
   roomId: string;
   targetGameSequence: number;
+  targetChatCursor?: string;
 }
 
 export interface SyncCompleteMessage {
   type: "sync.complete";
   gameSequence: number;
+  chatCursor?: string;
 }
 
 export interface ResyncRequiredMessage {
   type: "resync.required";
-  scope: "game";
-  reason: "negative_sequence" | "ahead_of_server" | "history_unavailable";
-  gameSequence: number;
+  scope: "game" | "chat" | "all";
+  reason:
+    | "negative_sequence"
+    | "invalid_cursor"
+    | "ahead_of_server"
+    | "history_unavailable";
+  gameSequence?: number;
+  oldestAvailableChatCursor?: string;
+  targetChatCursor?: string;
 }
 
 export interface ReplacedMessage {
@@ -304,11 +312,27 @@ export interface HelloMessage {
   type: "hello";
   token: string;
   lastGameSequence: number;
+  lastChatCursor?: string;
 }
 
 export interface AckMessage {
   type: "ack";
   gameSequence: number;
+}
+
+export interface ChatMessageFrame {
+  type: "chat.message";
+  messageId: string;
+  roomId: string;
+  senderMemberId: string;
+  senderDisplayName: string;
+  senderRole: MultiParticipantRole;
+  senderSeat?: number;
+  kind: "text" | "emoji";
+  content: string;
+  channel: "room" | "spectator";
+  cursor: string;
+  createdAt: string;
 }
 
 // 事件类型集合（08 §8.3 全表；round.opponent.guess 是唯一逐观察者事件）。

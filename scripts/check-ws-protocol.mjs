@@ -148,6 +148,10 @@ const checkMessage = (message) => {
     validate(doc.cursorEnvelope, message, "cursorEnvelope");
     return errors.length === 0;
   }
+  if (type === "chat.message") {
+    validate(doc.chatFrame, message, "chatFrame");
+    return errors.length === 0;
+  }
   const event = doc.events.find((e) => e.type === type);
   if (!event) return false;
   validate(doc.envelope, message, `envelope(${type})`);
@@ -163,6 +167,7 @@ if (doc.info?.version !== "2.0")
   fail(`WS 协议版本必须为 2.0，实际 ${doc.info?.version}`);
 if (!doc.envelope) fail("缺少 envelope");
 if (!doc.cursorEnvelope) fail("缺少 cursorEnvelope");
+if (!doc.chatFrame) fail("缺少 chatFrame");
 const envelopeKeys = Object.keys(doc.envelope.properties ?? {});
 if (
   JSON.stringify(envelopeKeys) !==
@@ -256,6 +261,7 @@ for (const t of expectedEventTypes) {
 for (const t of ["room.cursor", ...clientTypes, ...controlTypes]) {
   if (!validSeen.has(t)) fail(`消息 ${t} 缺少有效示例`);
 }
+if (!validSeen.has("chat.message")) fail("消息 chat.message 缺少有效示例");
 
 // ---------- 反例 ----------
 console.log("[check-ws-protocol] 反例校验");
@@ -266,6 +272,7 @@ for (const example of doc.examples.invalid) {
   const known = [
     ...expectedEventTypes,
     "room.cursor",
+    "chat.message",
     ...clientTypes,
     ...controlTypes,
   ];
@@ -341,11 +348,13 @@ if (!existsSync(tsPath)) {
     "sync.complete": "SyncCompleteMessage",
     "resync.required": "ResyncRequiredMessage",
     replaced: "ReplacedMessage",
+    "chat.message": "ChatMessageFrame",
   };
   const entries = [
     ...doc.events.map((e) => [e.type, e.payload]),
     ...doc.clientMessages.map((m) => [m.type, m.payload]),
     ...doc.control.map((m) => [m.type, m.payload]),
+    ["chat.message", doc.chatFrame],
   ];
   for (const [type, schema] of entries) {
     const tsName = tsTypeFor[type];

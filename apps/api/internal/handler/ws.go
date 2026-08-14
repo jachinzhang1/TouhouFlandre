@@ -101,12 +101,61 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	if err != nil {
 		return nil, internalError(err)
 	}
-	if reason := gameResyncReason(hello.LastGameSequence, room.EventSeq, replayBounds.MinSequence); reason != "" {
+	gameReason := gameResyncReason(hello.LastGameSequence, room.EventSeq, replayBounds.MinSequence)
+	var lastChatPosition *int64
+	chatReason := ""
+	var oldestChatCursor, targetChatCursor *string
+	if hello.LastChatCursor != nil {
+		target := s.chatCursor.Encode(room.ID, room.CreatedAt.Time, room.ChatSeq, multi.ChatCursorAfter)
+		targetChatCursor = &target
+		if validateChatRoom(room, s.now()) != nil {
+			chatReason = "history_unavailable"
+		} else if position, decodeErr := s.chatCursor.Decode(*hello.LastChatCursor, room.ID, room.CreatedAt.Time, multi.ChatCursorAfter); decodeErr != nil {
+			chatReason = "invalid_cursor"
+		} else {
+			bounds, boundsErr := s.q.GetChatReplayBounds(ctx, repo.GetChatReplayBoundsParams{
+				RoomID: room.ID,
+				Cutoff: pgtype.Timestamptz{Time: s.now().Add(-s.chatRetention), Valid: true},
+			})
+			if boundsErr != nil {
+				return nil, internalError(boundsErr)
+			}
+			switch {
+			case position > room.ChatSeq:
+				chatReason = "ahead_of_server"
+			case chatHistoryUnavailable(position, room.ChatSeq, bounds.MinPosition):
+				chatReason = "history_unavailable"
+				oldest := room.ChatSeq
+				if bounds.MinPosition > 0 {
+					oldest = bounds.MinPosition - 1
+				}
+				cursor := s.chatCursor.Encode(room.ID, room.CreatedAt.Time, oldest, multi.ChatCursorAfter)
+				oldestChatCursor = &cursor
+			default:
+				lastChatPosition = &position
+			}
+		}
+	}
+	if gameReason != "" || chatReason != "" {
+		scope := "game"
+		reason := gameReason
+		var gameSequence *int64
+		if gameReason != "" {
+			value := room.EventSeq
+			gameSequence = &value
+		}
+		if chatReason != "" {
+			scope = "chat"
+			reason = chatReason
+		}
+		if gameReason != "" && chatReason != "" {
+			scope = "all"
+			reason = gameReason
+		}
 		if err := writeWSControl(ws, multi.ResyncRequiredMessage{
-			Type:         "resync.required",
-			Scope:        "game",
-			Reason:       reason,
-			GameSequence: room.EventSeq,
+			Type: "resync.required", Scope: scope, Reason: reason,
+			GameSequence: gameSequence, OldestAvailableChatCursor: oldestChatCursor,
+			TargetChatCursor: targetChatCursor,
 		}); err != nil {
 			slog.Warn("ws: resync frame write failed", "room_id", request.RoomId, "error", err)
 		}
@@ -120,16 +169,17 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	}
 
 	// 注册/重放/实时流（阻塞直到断开；返回 nil 由 strict handler 正常结束）
-	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastGameSequence)
+	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastGameSequence, lastChatPosition)
 	conn.Serve()
 	return nil, nil
 }
 
 func decodeHello(data []byte, hello *multi.HelloMessage) error {
 	var raw struct {
-		Type             string `json:"type"`
-		Token            string `json:"token"`
-		LastGameSequence *int64 `json:"lastGameSequence"`
+		Type             string  `json:"type"`
+		Token            string  `json:"token"`
+		LastGameSequence *int64  `json:"lastGameSequence"`
+		LastChatCursor   *string `json:"lastChatCursor"`
 	}
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
 	decoder.DisallowUnknownFields()
@@ -142,7 +192,7 @@ func decodeHello(data []byte, hello *multi.HelloMessage) error {
 	if decoder.Decode(&struct{}{}) != io.EOF {
 		return errors.New("multiple json values")
 	}
-	*hello = multi.HelloMessage{Type: raw.Type, Token: raw.Token, LastGameSequence: *raw.LastGameSequence}
+	*hello = multi.HelloMessage{Type: raw.Type, Token: raw.Token, LastGameSequence: *raw.LastGameSequence, LastChatCursor: raw.LastChatCursor}
 	return nil
 }
 

@@ -80,6 +80,12 @@ func (s *Server) publish(roomID string) {
 	}
 }
 
+func (s *Server) publishChat(message repo.MultiChatMessage) {
+	if s.hub != nil {
+		s.hub.PublishChat(message.RoomID)
+	}
+}
+
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	s := &Server{
 		pool:             pool,
