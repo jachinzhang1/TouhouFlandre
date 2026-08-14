@@ -22,7 +22,10 @@ const NAV_ITEMS: {
     href: "/single",
     icon: CalendarDays,
     isActive: (p) =>
-      p === "/single" || p.startsWith("/single/") || p.startsWith("/multi"),
+      p === "/single" ||
+      p.startsWith("/single/") ||
+      p.startsWith("/multi") ||
+      p === "/settings",
   },
   {
     label: "搜索",

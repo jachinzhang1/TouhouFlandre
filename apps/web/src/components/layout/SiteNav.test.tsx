@@ -45,6 +45,17 @@ describe("SiteNav", () => {
     expect(container.querySelector('[aria-current="page"]')).toBeNull();
   });
 
+  it("题库设置页保持游戏页签选中", async () => {
+    navigationState.pathname = "/settings";
+    mockAnnouncementSummary([]);
+    render(<SiteNav />);
+
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
+    expect(
+      screen.getByRole("link", { name: "游戏" }).getAttribute("aria-current"),
+    ).toBe("page");
+  });
+
   it("公告存在未读时显示导航提示点及遮罩副本", async () => {
     mockAnnouncementSummary([
       { id: "notice-a", title: "公告", date: "2026-08-08" },
