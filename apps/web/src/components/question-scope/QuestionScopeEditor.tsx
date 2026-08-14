@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Check, Minus } from "lucide-react";
 import {
   applyQuestionScopePreset,
@@ -23,6 +30,7 @@ import {
   type QuestionScopeConfig,
   type QuestionScopeRules,
 } from "@touhouflandre/shared";
+import { useStickyState } from "../../hooks/useStickyState";
 import { Paper } from "../Paper";
 import { PaperButton } from "../controls/PaperButton";
 import {
@@ -49,12 +57,14 @@ type WorkScopeState = ReturnType<typeof buildQuestionScopeWorkStates>[number];
 interface QuestionScopeEditorProps {
   draft: QuestionScopeConfig;
   snapshot: FullCatalogSnapshot;
+  onFilterStickyChange?: (stuck: boolean) => void;
   readOnly: boolean;
   onChange: (config: QuestionScopeConfig) => void;
 }
 
 export function QuestionScopeEditor({
   draft,
+  onFilterStickyChange,
   snapshot,
   readOnly,
   onChange,
@@ -272,6 +282,7 @@ export function QuestionScopeEditor({
         activeTab={filterTab}
         answerableCount={answerableCount}
         onSelect={setAllCharacters}
+        onStickyChange={onFilterStickyChange}
         onTabChange={setFilterTab}
         readOnly={readOnly}
         selectedCount={draft.selectedCharacterIds.length}
@@ -304,6 +315,7 @@ function ScopeFilterSection({
   answerableCount,
   children,
   onSelect,
+  onStickyChange,
   onTabChange,
   readOnly,
   selectedCount,
@@ -312,13 +324,30 @@ function ScopeFilterSection({
   answerableCount: number;
   children: ReactNode;
   onSelect: (checked: boolean) => void;
+  onStickyChange?: (stuck: boolean) => void;
   onTabChange: (tab: "work" | "character") => void;
   readOnly: boolean;
   selectedCount: number;
 }) {
+  const headingRef = useRef<HTMLElement>(null);
+  const stuck = useStickyState(headingRef);
+  useEffect(() => {
+    onStickyChange?.(stuck);
+  }, [onStickyChange, stuck]);
+  useEffect(
+    () => () => {
+      onStickyChange?.(false);
+    },
+    [onStickyChange],
+  );
+
   return (
     <section className="question-scope-section question-scope-filter-section">
-      <header className="question-scope-filter-heading">
+      <header
+        className="question-scope-filter-heading"
+        data-stuck={stuck ? "true" : "false"}
+        ref={headingRef}
+      >
         <div className="question-scope-section-title-row">
           <span className="question-scope-section-rule" aria-hidden="true" />
           <div

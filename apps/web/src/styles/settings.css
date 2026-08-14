@@ -21,7 +21,7 @@
   gap: var(--control-cluster-gap);
   margin-top: calc(var(--page-header-content-gap) - var(--sticky-nav-gap));
   padding-top: var(--sticky-nav-gap);
-  padding-bottom: 10px;
+  padding-bottom: var(--sticky-stack-gap);
   background: var(--page-background);
   isolation: isolate;
   transition: box-shadow 180ms ease;
@@ -36,7 +36,7 @@
   pointer-events: none;
 }
 
-.question-scope-toolbar[data-stuck="true"] {
+.question-scope-toolbar[data-shadow="true"] {
   box-shadow: 0 14px 20px -15px var(--paper-lift-shadow-near);
 }
 
@@ -57,7 +57,7 @@
 }
 
 .question-scope-current-state strong.is-invalid {
-  color: var(--error-text);
+  color: var(--danger-color);
 }
 
 .question-scope-transfer-actions,
@@ -324,15 +324,23 @@
   padding-block: 12px 14px;
   background: var(--page-background);
   isolation: isolate;
+  transition: box-shadow 180ms ease;
 }
 
 .question-scope-filter-heading::before {
   position: absolute;
-  inset: 0 calc(50% - 50vw);
+  top: 0;
+  right: calc(50% - 50vw);
+  bottom: 0;
+  left: calc(50% - 50vw);
   z-index: -1;
   background: var(--page-background);
   content: "";
   pointer-events: none;
+}
+
+.question-scope-filter-heading[data-stuck="true"] {
+  box-shadow: 0 14px 20px -15px var(--paper-lift-shadow-near);
 }
 
 .question-scope-filter-tabs {

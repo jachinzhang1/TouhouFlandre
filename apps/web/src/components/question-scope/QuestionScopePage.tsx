@@ -43,6 +43,7 @@ export function QuestionScopePage({
   const [draft, setDraft] = useState<QuestionScopeConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filterHeadingStuck, setFilterHeadingStuck] = useState(false);
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
   const pageRef = useRef<HTMLElement>(null);
@@ -196,6 +197,7 @@ export function QuestionScopePage({
       <div
         className="question-scope-toolbar"
         data-stuck={toolbarStuck ? "true" : "false"}
+        data-shadow={toolbarStuck && !filterHeadingStuck ? "true" : "false"}
         ref={toolbarRef}
       >
         <div className="question-scope-current-state">
@@ -277,6 +279,7 @@ export function QuestionScopePage({
       ) : snapshot && draft ? (
         <QuestionScopeEditor
           draft={draft}
+          onFilterStickyChange={setFilterHeadingStuck}
           snapshot={snapshot}
           readOnly={readOnly}
           onChange={setDraft}

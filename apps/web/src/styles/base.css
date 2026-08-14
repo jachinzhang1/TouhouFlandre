@@ -15,6 +15,7 @@ html {
   --control-cluster-gap: 10px;
   --site-nav-height: 76px;
   --sticky-nav-gap: 20px;
+  --sticky-stack-gap: 10px;
   --layer-navigation: 1000;
 }
 
