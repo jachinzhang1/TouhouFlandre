@@ -54,27 +54,35 @@ export function MatchResultOverlay({
       !rematchReady.find((ready) => ready.memberId === entry.memberId)?.ready,
   );
   const ranking = result.ranking ?? [];
-  const sharedFirst = ranking.filter((entry) => entry.rank === 1).length > 1;
+  const sharedFirstCount = ranking.filter((entry) => entry.rank === 1).length;
+  const viewerRanking = memberId
+    ? ranking.find((entry) => entry.memberId === memberId)
+    : undefined;
+  const sharedFirst = sharedFirstCount > 1;
+  const viewerSharedFirst = sharedFirst && viewerRanking?.rank === 1;
+  const resultLabel = viewerSharedFirst
+    ? "并列第一"
+    : sharedFirst && Boolean(viewerRanking)
+      ? "对局失利"
+      : won
+        ? "对局获胜"
+        : viewerResult === "draw"
+          ? "对局平局"
+          : "对局失利";
+  const highlighted = resultLabel === "并列第一" || resultLabel === "对局获胜";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
       <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
         <Trophy
           size={30}
-          className={`mx-auto mb-2 ${won ? "text-vermilion" : "text-ink-soft"}`}
+          className={`mx-auto mb-2 ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
           aria-hidden="true"
         />
         <p
-          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-vermilion" : "text-ink-soft"}`}
+          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
         >
-          MATCH {result.matchIndex} ·{" "}
-          {sharedFirst
-            ? "并列第一"
-            : won
-              ? "对局获胜"
-              : viewerResult === "draw"
-                ? "对局平局"
-                : "对局失利"}
+          MATCH {result.matchIndex} · {resultLabel}
         </p>
         <p className="mb-2 font-brand text-[1.6rem]">{scoreLine}</p>
         <p className="mb-4 text-[0.8rem] text-ink-soft">

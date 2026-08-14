@@ -71,4 +71,67 @@ describe("MatchResultOverlay", () => {
     fireEvent.click(confirmed);
     expect(rematch).not.toHaveBeenCalled();
   });
+
+  it("shows shared first only for viewers ranked first", () => {
+    const sharedFirstResult: MatchEndedPayload = {
+      ...result,
+      viewerResult: "draw",
+      winnerMemberId: null,
+      ranking: [
+        { memberId: "self", seat: 1, rank: 1, score: 6, status: "active" },
+        { memberId: "two", seat: 2, rank: 1, score: 6, status: "active" },
+        {
+          memberId: "three",
+          seat: 3,
+          rank: 3,
+          score: 2,
+          status: "eliminated",
+          eliminatedRound: 1,
+        },
+      ],
+      results: [
+        { memberId: "self", seat: 1, result: "draw" },
+        { memberId: "two", seat: 2, result: "draw" },
+        { memberId: "three", seat: 3, result: "loss" },
+      ],
+    };
+
+    const { container, rerender } = render(
+      <MatchResultOverlay
+        result={sharedFirstResult}
+        memberId="self"
+        members={members}
+        format="bo3"
+        rematchReady={[]}
+        onRematch={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
+
+    const sharedFirstTitle = screen.getByText(/MATCH 0 · 并列第一/);
+    expect(sharedFirstTitle.className).toContain("text-vermilion");
+    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-vermilion",
+    );
+
+    rerender(
+      <MatchResultOverlay
+        result={{ ...sharedFirstResult, viewerResult: "loss" }}
+        memberId="three"
+        members={members}
+        format="bo3"
+        rematchReady={[]}
+        onRematch={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/MATCH 0 · 对局失利/).className).toContain(
+      "text-ink-soft",
+    );
+    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
+      "text-ink-soft",
+    );
+    expect(screen.queryByText(/MATCH 0 · 并列第一/)).toBeNull();
+  });
 });
