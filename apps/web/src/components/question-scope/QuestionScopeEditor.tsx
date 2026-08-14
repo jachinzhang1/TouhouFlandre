@@ -183,15 +183,7 @@ export function QuestionScopeEditor({
               onClick={() => updateField(field, !rules.fields[field])}
             />
           ))}
-          <Paper
-            animateOnMount={false}
-            as="div"
-            className="question-scope-release-control"
-            folded={false}
-            sticker={false}
-            unfoldOnHover={false}
-            variant="plain"
-          >
+          <div className="question-scope-release-control">
             <ScopeToggleButton
               checked={rules.fields.releaseYear !== "hidden"}
               disabled={readOnly}
@@ -206,9 +198,9 @@ export function QuestionScopeEditor({
               }
             />
             <div className="question-scope-release-direction">
-              <span>方向提示</span>
+              <span>方向性提示</span>
               <PaperSwitch
-                ariaLabel="年份方向提示"
+                ariaLabel="年份方向性提示"
                 checked={rules.fields.releaseYear === "directional"}
                 disabled={readOnly || rules.fields.releaseYear === "hidden"}
                 onChange={(checked) =>
@@ -219,7 +211,7 @@ export function QuestionScopeEditor({
                 }
               />
             </div>
-          </Paper>
+          </div>
         </div>
 
         <div className="question-scope-rule-stack">

@@ -457,6 +457,16 @@
   outline-offset: -1px;
 }
 
+.paper-surface.paper-range-control,
+.paper-surface.paper-number-control {
+  --paper-ornament-image: none;
+}
+
+.paper-surface.paper-range-control::before,
+.paper-surface.paper-number-control::before {
+  background-image: none;
+}
+
 .paper-range-control:focus-within,
 .paper-number-control:focus-within {
   outline-color: var(--theme-color);
@@ -480,21 +490,33 @@
 }
 
 .paper-range-input::-webkit-slider-thumb {
-  width: 16px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   appearance: none;
   border: 0;
   background: var(--theme-color);
-  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 5px),
+    calc(100% - 5px) 100%,
+    0 100%
+  );
 }
 
 .paper-range-input::-moz-range-thumb {
-  width: 16px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: 0;
   border-radius: 0;
   background: var(--theme-color);
-  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 5px),
+    calc(100% - 5px) 100%,
+    0 100%
+  );
 }
 
 .paper-range-input:disabled {

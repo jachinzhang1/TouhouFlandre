@@ -137,6 +137,14 @@ describe("QuestionScopePage", () => {
     expect(
       firstAppearance.querySelector(".question-scope-empty-square"),
     ).toBeNull();
+    const releaseYear = screen.getByRole("checkbox", {
+      name: "初登场年份",
+    });
+    const releaseControl = releaseYear.closest(
+      ".question-scope-release-control",
+    ) as HTMLElement;
+    expect(releaseControl.classList.contains("paper-surface")).toBe(false);
+    expect(screen.getByText("方向性提示")).toBeTruthy();
     expect(screen.getByRole("switch", { name: "设置单手限时" })).toBeTruthy();
     expect(
       screen.getByRole("slider", { name: "设置单手限时滑块" }),
