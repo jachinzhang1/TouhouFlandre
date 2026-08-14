@@ -59,7 +59,10 @@ export function GuessInputBar({
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur">
+    <div
+      data-guess-input-bar
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur max-[680px]:bottom-[68px]"
+    >
       <div className="mx-auto flex w-full max-w-[720px] items-start gap-2">
         <div className="relative min-w-0 flex-1">
           <Search
@@ -67,57 +70,67 @@ export function GuessInputBar({
             className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-soft"
             aria-hidden="true"
           />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder={disabled ? "等待当前轮次……" : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"}
-          aria-label="搜索角色"
-          aria-activedescendant={showSuggestions ? `suggestion-${highlightIndex}` : undefined}
-          aria-expanded={showSuggestions}
-          role="combobox"
-          className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
-        />
-        {query && (
-          <button
-            type="button"
-            aria-label="清空搜索"
-            onClick={() => setQuery("")}
-            className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-soft"
-          >
-            <X size={14} />
-          </button>
-        )}
-        {error && <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            placeholder={
+              disabled
+                ? "等待当前轮次……"
+                : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
+            }
+            aria-label="搜索角色"
+            aria-activedescendant={
+              showSuggestions ? `suggestion-${highlightIndex}` : undefined
+            }
+            aria-expanded={showSuggestions}
+            role="combobox"
+            className="w-full rounded-[6px] border border-line-strong bg-paper py-2 pr-8 pl-8 text-[0.85rem] outline-none focus:border-vermilion disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
+          />
+          {query && (
+            <button
+              type="button"
+              aria-label="清空搜索"
+              onClick={() => setQuery("")}
+              className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-soft"
+            >
+              <X size={14} />
+            </button>
+          )}
+          {error && (
+            <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>
+          )}
           {showSuggestions && (
-          <ul className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
-            {filtered.map((result, index) => (
-              <li key={result.id}>
-                <button
-                  type="button"
-                  id={`suggestion-${index}`}
-                  disabled={disabled}
-                  onClick={() => submit(result.id)}
-                  onMouseEnter={() => setHighlightIndex(index)}
-                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.82rem] disabled:opacity-50 ${
-                    highlightIndex === index ? "bg-vermilion-soft" : "hover:bg-vermilion-soft"
-                  }`}
-                >
-                  <CharacterAvatar
-                    avatarUrl={result.avatarUrl}
-                    name={result.name}
-                    initials={result.name.slice(0, 1)}
-                    className="!size-[20px]"
-                  />
-                  <span className="font-medium">{result.name}</span>
-                  <span className="ml-auto text-[0.72rem] text-ink-soft">
-                    {result.firstAppearance.workTitle}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+            <ul className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
+              {filtered.map((result, index) => (
+                <li key={result.id}>
+                  <button
+                    type="button"
+                    id={`suggestion-${index}`}
+                    disabled={disabled}
+                    onClick={() => submit(result.id)}
+                    onMouseEnter={() => setHighlightIndex(index)}
+                    className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.82rem] disabled:opacity-50 ${
+                      highlightIndex === index
+                        ? "bg-vermilion-soft"
+                        : "hover:bg-vermilion-soft"
+                    }`}
+                  >
+                    <CharacterAvatar
+                      avatarUrl={result.avatarUrl}
+                      name={result.name}
+                      initials={result.name.slice(0, 1)}
+                      className="!size-[20px]"
+                    />
+                    <span className="font-medium">{result.name}</span>
+                    <span className="ml-auto text-[0.72rem] text-ink-soft">
+                      {result.firstAppearance.workTitle}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
         <FeedbackLegendButton className="shrink-0" placement="above" />

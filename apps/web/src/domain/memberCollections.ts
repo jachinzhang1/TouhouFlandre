@@ -7,11 +7,21 @@ import type {
 
 type MemberRef = { memberId: string; seat: number };
 
-export function memberIdAtSeat(
-  members: readonly MemberRef[],
-  seat: number,
-): string | undefined {
-  return members.find((member) => member.seat === seat)?.memberId;
+const bySeat = (a: MemberRef, b: MemberRef) => a.seat - b.seat;
+
+export function sortMembersBySeat<T extends MemberRef>(
+  members: readonly T[] | undefined,
+): T[] {
+  return [...(members ?? [])].sort(bySeat);
+}
+
+export function memberForMemberId<T extends MemberRef>(
+  members: readonly T[] | undefined,
+  memberId: string | null | undefined,
+): T | undefined {
+  return memberId
+    ? members?.find((member) => member.memberId === memberId)
+    : undefined;
 }
 
 export function seatForMemberId(
@@ -22,18 +32,18 @@ export function seatForMemberId(
   return members.find((member) => member.memberId === memberId)?.seat;
 }
 
-export function scoreAtSeat(
+export function scoreForMemberId(
   scores: readonly MemberScoreView[] | undefined,
-  seat: number,
+  memberId: string | null | undefined,
 ): number {
-  return scores?.find((score) => score.seat === seat)?.score ?? 0;
+  return memberForMemberId(scores, memberId)?.score ?? 0;
 }
 
-export function boardAtSeat(
+export function boardForMemberId(
   boards: readonly MemberBoardView[] | undefined,
-  seat: number,
+  memberId: string | null | undefined,
 ): MemberBoardView["guesses"] {
-  return boards?.find((board) => board.seat === seat)?.guesses ?? [];
+  return memberForMemberId(boards, memberId)?.guesses ?? [];
 }
 
 export function resultForMemberId(
@@ -42,11 +52,4 @@ export function resultForMemberId(
 ): MultiMatchResult | undefined {
   if (!memberId) return undefined;
   return results?.find((result) => result.memberId === memberId)?.result;
-}
-
-export function resultAtSeat(
-  results: readonly MemberResultView[] | undefined,
-  seat: number,
-): MultiMatchResult | undefined {
-  return results?.find((result) => result.seat === seat)?.result;
 }

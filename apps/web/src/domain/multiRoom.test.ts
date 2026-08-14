@@ -5,6 +5,9 @@ import {
   isValidRoomCode,
   normalizeRoomCode,
   relaySkipRemaining,
+  loadMultiRoom,
+  saveMultiRoom,
+  MULTI_ROOM_STORAGE_KEY,
 } from "../domain/multiRoom";
 
 describe("normalizeRoomCode", () => {
@@ -12,6 +15,38 @@ describe("normalizeRoomCode", () => {
     expect(normalizeRoomCode("abc-234")).toBe("ABC234");
     expect(normalizeRoomCode(" ab c 234 ")).toBe("ABC234");
     expect(normalizeRoomCode("AB-C2-34")).toBe("ABC234");
+  });
+});
+
+describe("multiplayer credential storage", () => {
+  it("reads legacy slots but no longer persists them", () => {
+    localStorage.setItem(
+      MULTI_ROOM_STORAGE_KEY,
+      JSON.stringify({
+        roomId: "room",
+        roomCode: "ABC234",
+        guestToken: "token",
+        role: "player",
+        memberSlot: 2,
+      }),
+    );
+    expect(loadMultiRoom()?.memberSlot).toBe(2);
+    saveMultiRoom({
+      roomId: "room",
+      roomCode: "ABC234",
+      guestToken: "token",
+      role: "player",
+      memberId: "member",
+    });
+    expect(
+      JSON.parse(localStorage.getItem(MULTI_ROOM_STORAGE_KEY) ?? "{}"),
+    ).toEqual({
+      roomId: "room",
+      roomCode: "ABC234",
+      guestToken: "token",
+      role: "player",
+      memberId: "member",
+    });
   });
 });
 

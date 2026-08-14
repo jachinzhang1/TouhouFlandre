@@ -47,7 +47,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -59,7 +59,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -71,7 +71,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -82,7 +82,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={{ ...RESULT, nextStartsAt: undefined }}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={null}
       />,
     );
@@ -94,7 +94,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
         autoDismissAtCountdownEnd
         onDismiss={onDismiss}

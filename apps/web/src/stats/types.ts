@@ -1,6 +1,11 @@
-import type { MultiMatchEndReason, MultiRoomFormat, MultiplayerMode, QuestionDifficulty } from "@touhouflandre/shared";
+import type {
+  MultiMatchEndReason,
+  MultiRoomFormat,
+  MultiplayerMode,
+  QuestionDifficulty,
+} from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 3 as const;
+export const STATS_SCHEMA_VERSION = 4 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
 export type StatsDifficulty = QuestionDifficulty | "unknown";
@@ -29,12 +34,16 @@ export interface StatsCharacterSnapshot {
 export interface StatsGuessSnapshot extends StatsCharacterSnapshot {
   durationMs?: number;
   correct: boolean;
-  memberSlot?: 1 | 2;
 }
 
 export type StatsRelayTurnSnapshot =
-  | { index: number; memberSlot: 1 | 2; kind: "timeout" | "pass" }
-  | { index: number; memberSlot: 1 | 2; kind: "guess"; guess: StatsGuessSnapshot };
+  | { index: number; actor: "self" | "other"; kind: "timeout" | "pass" }
+  | {
+      index: number;
+      actor: "self" | "other";
+      kind: "guess";
+      guess: StatsGuessSnapshot;
+    };
 
 export interface StatsRound {
   roundIndex: number;
@@ -70,12 +79,12 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   mode: "multiplayer";
   format: MultiRoomFormat;
   multiplayerMode: MultiplayerMode;
-  /** 本地玩家在该多人房间中的 slot，用于按玩家视角展示接力猜测。 */
-  memberSlot?: 1 | 2;
   matchIndex: number;
   reason: MultiMatchEndReason | "incomplete";
   scoreSelf: number;
-  scoreOpponent: number;
+  opponentScores: number[];
+  rosterSize: number;
+  playerLimit: number;
   rounds: StatsRound[];
 }
 
@@ -109,8 +118,10 @@ export interface MultiplayerStatsDraft {
   format: MultiRoomFormat;
   multiplayerMode: MultiplayerMode;
   difficulty?: StatsDifficulty;
+  /** @deprecated active v3 drafts are lazily migrated after snapshot. */
   memberSlot?: 1 | 2;
   matchIndex: number;
+  playerLimit?: number;
   rounds: StatsRound[];
   activeRound?: MultiplayerRoundDraft;
   incomplete?: boolean;
@@ -142,4 +153,3 @@ export function workCode(mainlineIndex?: number, fallback = "TH--"): string {
   if (!Number.isFinite(mainlineIndex)) return fallback;
   return `TH${String(mainlineIndex).padStart(2, "0")}`;
 }
-

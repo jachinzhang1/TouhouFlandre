@@ -43,3 +43,11 @@
 ## 可能涉及的代码
 
 `apps/web/src/hooks/useRoom.ts`、`apps/web/src/domain/multiRoom.ts`、`apps/web/src/components/{MultiLobby,RoomPage,RoomLobby,MatchBoard,RelayMatchBoard,OpponentBoard,MatchResultOverlay,RoundResultOverlay}.tsx`、`apps/web/src/stats/{types,db,multiplayerRecorder,aggregate,transfer}.ts` 及相关测试/样式。
+
+## 实施与验收记录（2026-08-14）
+
+`feat/mpx-6-race-web` 已在 MPX-005 完成提交 `33fbe24` 上实现本 Issue。Web 运行时身份、比分、棋盘、结果和 rematch 均以 `memberId` 关联，seat 只用于排序和 relay 两人展示；旧 `memberSlot` 只在 localStorage 读取与活动草稿惰性迁移中保留。race 创建/大厅支持 2..8 人、ready/unready、容量显式应用和 spectator claim-seat；玩家与观战棋盘使用 memberId 锚定分页，桌面每页两张、移动端每页一张。统计已升级为 schema v4 / Dexie v3，并在写入和导出边界递归检查身份字段。
+
+桌面 Chromium 与 Pixel 7 的真实 WSL API/Postgres 多人 Playwright 套件共 26/26 通过，覆盖既有 race/relay、刷新恢复、WS 断线重连，以及 2/3/4/8 人大厅、8 人分页、匿名对手、claim-seat 和只读观战。六张 MPX-6 Linux 视觉基线在健康 WS 连接下生成并无更新复跑通过；页面无横向溢出，Pixel 7 上固定猜测输入条与底部导航的边界框不相交。
+
+其余自动化结果：workspace `pnpm typecheck` 通过；workspace 单测 shared 10、data 26、Web 109 全部通过；Web production build、`pnpm check:ws-protocol` 和 `cd apps/api && go test ./...` 通过。全站 56 条 Playwright 额外回归中，MPX-6 多人 26 条仍全部通过；另有 10 条未通过，均位于本分支未修改的 `announcements.spec.ts`、`core.spec.ts` 和 `visual-polish.spec.ts`，原因分别为测试公告 fixture 缺失、旧 `.mode-tab` 定位失效、Linux 基线从未提交以及既有外观持久化断言失败，不作为 MPX-6 基线或交付物提交。

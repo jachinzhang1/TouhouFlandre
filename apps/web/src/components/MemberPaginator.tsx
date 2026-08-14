@@ -1,0 +1,103 @@
+"use client";
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+type MemberPageItem = { memberId: string; seat: number };
+
+export function MemberPaginator<T extends MemberPageItem>({
+  items,
+  label,
+  renderItem,
+}: {
+  items: readonly T[];
+  label: string;
+  renderItem: (item: T) => ReactNode;
+}) {
+  const ordered = useMemo(
+    () => [...items].sort((left, right) => left.seat - right.seat),
+    [items],
+  );
+  const [wide, setWide] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia("(min-width: 900px)").matches,
+  );
+  const [anchorMemberId, setAnchorMemberId] = useState<string | null>(null);
+  const pageSize = wide ? 2 : 1;
+  const anchorIndex = Math.max(
+    0,
+    ordered.findIndex((item) => item.memberId === anchorMemberId),
+  );
+  const pageStart = Math.min(
+    anchorIndex,
+    Math.max(0, ordered.length - pageSize),
+  );
+  const visible = ordered.slice(pageStart, pageStart + pageSize);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 900px)");
+    const update = () => setWide(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (ordered.length === 0) {
+      setAnchorMemberId(null);
+      return;
+    }
+    if (!ordered.some((item) => item.memberId === anchorMemberId)) {
+      setAnchorMemberId(ordered[0].memberId);
+    }
+  }, [anchorMemberId, ordered]);
+
+  if (ordered.length === 0) return null;
+
+  const move = (start: number) => {
+    const target = ordered[Math.max(0, Math.min(start, ordered.length - 1))];
+    if (target) setAnchorMemberId(target.memberId);
+  };
+
+  return (
+    <div className="min-w-0" data-page-size={pageSize}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-[0.78rem] font-bold text-ink-soft">{label}</span>
+        <div className="flex items-center gap-1 text-[0.7rem] text-ink-soft">
+          <button
+            type="button"
+            aria-label={`${label}上一页`}
+            title="上一页"
+            disabled={pageStart === 0}
+            onClick={() => move(pageStart - pageSize)}
+            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
+          >
+            <ChevronLeft size={15} aria-hidden="true" />
+          </button>
+          <span className="min-w-16 text-center tabular-nums">
+            {pageStart + 1}-{Math.min(ordered.length, pageStart + pageSize)}/
+            {ordered.length}
+          </span>
+          <button
+            type="button"
+            aria-label={`${label}下一页`}
+            title="下一页"
+            disabled={pageStart + pageSize >= ordered.length}
+            onClick={() => move(pageStart + pageSize)}
+            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
+          >
+            <ChevronRight size={15} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="grid items-start gap-3 min-[900px]:grid-cols-2">
+        {visible.map((item) => (
+          <div key={item.memberId} data-member-board={item.memberId}>
+            {renderItem(item)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

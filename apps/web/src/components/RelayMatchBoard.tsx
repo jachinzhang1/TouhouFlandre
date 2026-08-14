@@ -15,7 +15,10 @@ import {
   ROOM_FORMAT_SHORT,
 } from "../domain/multiRoom";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
-import { scoreAtSeat, seatForMemberId } from "../domain/memberCollections";
+import {
+  seatForMemberId,
+  sortMembersBySeat,
+} from "../domain/memberCollections";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { STATUS_LABEL } from "./GuessTable";
@@ -91,7 +94,9 @@ export function RelayMatchBoard({
         </span>
         {match ? (
           <span className="text-[0.95rem] font-black tabular-nums">
-            {scoreAtSeat(match.scores, 1)} : {scoreAtSeat(match.scores, 2)}
+            {sortMembersBySeat(roundResult?.scores ?? match.scores)
+              .map((score) => score.score)
+              .join(" : ")}
           </span>
         ) : (
           <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.82rem] font-black text-vermilion">
@@ -100,7 +105,7 @@ export function RelayMatchBoard({
         )}
         <span className="text-[0.75rem] text-ink-soft">
           {match
-            ? `第 ${match.roundIndex} 局${match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}`
+            ? `第 ${roundResult?.roundIndex ?? match.roundIndex} 局${match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}`
             : "等待双方准备"}
         </span>
         {round && !ended && (

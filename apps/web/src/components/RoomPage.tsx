@@ -21,18 +21,20 @@ import {
 } from "../domain/multiRoom";
 import type { StoredMultiRoom } from "../domain/multiRoom";
 import {
-  boardAtSeat,
-  scoreAtSeat,
+  resultForMemberId,
   seatForMemberId,
 } from "../domain/memberCollections";
 import { useRoom, type RoomUiState } from "../hooks/useRoom";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { api } from "../lib/api";
+import { migrateLegacyMultiplayerDraft } from "../stats/multiplayerRecorder";
 import { CountdownOverlay } from "./CountdownOverlay";
 import { GuessInputBar } from "./GuessInputBar";
 import { GuessTable, type GuessRow } from "./GuessTable";
 import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
+import { MemberPaginator } from "./MemberPaginator";
+import { MemberScoreStrip } from "./MemberScoreStrip";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
@@ -84,7 +86,7 @@ export function RoomView({ code }: { code: string }) {
           roomCode: normalized,
           guestToken: joined.guestToken,
           role: joined.viewer.role,
-          memberSlot: undefined,
+          memberId: joined.viewer.memberId,
         };
         saveMultiRoom(next);
         setStored(next);
@@ -110,12 +112,41 @@ export function RoomView({ code }: { code: string }) {
     };
   }, [stored, normalized, router]);
 
-  const { state, mySlot, role, actions, guessError, roomUnavailable } = useRoom(
-    stored?.roomId ?? "",
-    stored?.guestToken ?? "",
-    stored?.role === "spectator" ? null : (stored?.memberSlot ?? 1),
-    stored?.role ?? "player",
-  );
+  const {
+    state,
+    mySlot,
+    memberId,
+    role,
+    actions,
+    guessError,
+    roomUnavailable,
+  } = useRoom(stored?.roomId ?? "", stored?.guestToken ?? "");
+
+  useEffect(() => {
+    if (!stored || !state.viewer) return;
+    if (
+      stored.memberId === state.viewer.memberId &&
+      stored.role === state.viewer.role
+    )
+      return;
+    const next = {
+      ...stored,
+      memberId: state.viewer.memberId,
+      role: state.viewer.role,
+    };
+    saveMultiRoom(next);
+    setStored(next);
+  }, [stored, state.viewer]);
+
+  useEffect(() => {
+    if (!stored?.memberSlot || !state.viewer?.memberId || !state.match) return;
+    void migrateLegacyMultiplayerDraft(
+      stored.roomId,
+      state.match.matchIndex,
+      stored.memberSlot,
+      state.viewer.memberId,
+    );
+  }, [stored, state.viewer?.memberId, state.match]);
 
   useEffect(() => {
     if (state.room?.status === "closed") {
@@ -138,9 +169,12 @@ export function RoomView({ code }: { code: string }) {
     state.questionScope?.rules,
     CHARACTER_GUESS_FIELDS,
   );
-  const hasOpponent = state.members.length === 2;
-  const isSpectator = role === "spectator" || mySlot === null;
-  const playerSlot: 1 | 2 = mySlot ?? 1;
+  const hasOpponent = state.members.length >= 2;
+  const roleBeforeFirstSnapshot = state.room ? null : (stored?.role ?? null);
+  const effectiveRole = role ?? roleBeforeFirstSnapshot;
+  const isSpectator = effectiveRole === "spectator";
+  const playerSeat = mySlot ?? 1;
+  const relaySlot: 1 | 2 = mySlot === 2 ? 2 : 1;
   const roundResultKey = state.roundResult
     ? `${state.roundResult.matchIndex}:${state.roundResult.roundIndex}`
     : null;
@@ -158,6 +192,10 @@ export function RoomView({ code }: { code: string }) {
     setForfeitConfirm(false);
     setRoundActionBusy(null);
   }, [state.match?.matchIndex, state.match?.roundIndex, state.round?.status]);
+
+  useEffect(() => {
+    setSelectedArchiveKey(null);
+  }, [state.match?.matchIndex]);
 
   useEffect(() => {
     if (!forfeitConfirm) return;
@@ -197,7 +235,32 @@ export function RoomView({ code }: { code: string }) {
     }
   };
 
+  const runRoomMutation = async (mutation: () => Promise<unknown>) => {
+    try {
+      await mutation();
+    } catch (error) {
+      try {
+        await actions.refresh();
+      } catch {
+        // 保留原命令错误码供大厅显示；快照失败由现有连接恢复处理。
+      }
+      throw error;
+    }
+    await actions.refresh();
+  };
+
   if (stored === undefined || redirecting) return null;
+
+  if (state.room && !state.viewer) {
+    return (
+      <>
+        <section className="px-[18px] pt-16 text-center text-ink-soft">
+          身份同步中……
+        </section>
+        <ConnectionNotice message={state.connectionIssue} />
+      </>
+    );
+  }
 
   if (isSpectator && !state.room) {
     return (
@@ -205,7 +268,45 @@ export function RoomView({ code }: { code: string }) {
         <section className="px-[18px] pt-16 text-center text-ink-soft">
           观战席同步中……
         </section>
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
+      </>
+    );
+  }
+
+  if (isSpectator && state.room && state.room.status === "lobby") {
+    return (
+      <>
+        <RoomLobby
+          roomCode={normalized}
+          format={format}
+          mode={mode}
+          turnSeconds={turnSeconds}
+          members={state.members}
+          mySlot={1}
+          playerLimit={state.room.playerLimit}
+          playerCount={state.room.playerCount}
+          availableSeats={state.room.availableSeats}
+          spectatorCount={state.room.spectatorCount}
+          isHost={false}
+          viewerRole="spectator"
+          viewerMemberId={memberId}
+          onReady={actions.setReady}
+          onClaimSeat={async () => {
+            if (!stored?.roomId || !stored.guestToken) return;
+            await runRoomMutation(() =>
+              api.claimSeat(stored.roomId, stored.guestToken),
+            );
+          }}
+          onLeave={handleLeave}
+        />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
+        <GuessErrorToast message={guessError} />
       </>
     );
   }
@@ -222,7 +323,10 @@ export function RoomView({ code }: { code: string }) {
           onSelectArchive={setSelectedArchiveKey}
           onLeave={handleLeave}
         />
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
         <GuessErrorToast message={guessError} />
       </>
     );
@@ -237,28 +341,55 @@ export function RoomView({ code }: { code: string }) {
           mode={mode}
           turnSeconds={turnSeconds}
           members={state.members}
-          mySlot={playerSlot}
+          mySlot={playerSeat}
+          playerLimit={state.room?.playerLimit ?? 2}
+          playerCount={state.room?.playerCount ?? state.members.length}
+          availableSeats={state.room?.availableSeats ?? 0}
+          spectatorCount={state.room?.spectatorCount ?? 0}
+          isHost={state.viewer?.seat === 1}
+          viewerRole={effectiveRole ?? "player"}
+          viewerMemberId={memberId}
           onReady={actions.setReady}
+          onApplyLimit={async (limit) => {
+            if (!stored?.roomId || !stored.guestToken) return;
+            await runRoomMutation(() =>
+              api.updateRoomSettings(stored.roomId, stored.guestToken, limit),
+            );
+          }}
+          onClaimSeat={async () => {
+            if (!stored?.roomId || !stored.guestToken) return;
+            await runRoomMutation(() =>
+              api.claimSeat(stored.roomId, stored.guestToken),
+            );
+          }}
           onLeave={handleLeave}
         />
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
         <GuessErrorToast message={guessError} />
       </>
     );
   }
 
   if ((status === "playing" || showingFinalRoundResult) && state.match) {
+    const selectedPlayerArchive =
+      state.roundArchives.find(
+        (archive) =>
+          `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
+      ) ?? null;
     const inCountdown = state.round?.status === "countdown";
     const relayCanGuess =
       mode === "relay" &&
       state.round?.status === "playing" &&
-      state.round.turnSeat === playerSlot &&
+      state.round.turnSeat === relaySlot &&
       hasOpponent;
     const relayRows = state.round?.shared?.rows ?? [];
     const relayMaxSkips = state.round?.maxSkipsPerPlayer ?? 2;
     const relaySkipsRemaining = relaySkipRemaining(
       relayRows,
-      playerSlot,
+      relaySlot,
       relayMaxSkips,
     );
     const relayCanPass = relayCanGuess && relaySkipsRemaining > 0;
@@ -291,9 +422,9 @@ export function RoomView({ code }: { code: string }) {
             match={state.match}
             round={state.round}
             members={state.members}
-            mySlot={playerSlot}
-            roundResult={state.roundResult}
-            roundActions={roundActions}
+            mySlot={relaySlot}
+            roundResult={selectedPlayerArchive ?? state.roundResult}
+            roundActions={selectedPlayerArchive ? null : roundActions}
             fields={visibleFields}
           />
         ) : (
@@ -301,17 +432,25 @@ export function RoomView({ code }: { code: string }) {
             format={format}
             match={state.match}
             round={state.round}
-            mySlot={playerSlot}
-            roundResult={state.roundResult}
+            memberId={memberId}
+            members={state.members}
+            roundResult={selectedPlayerArchive ?? state.roundResult}
             catalogVersion={state.catalogVersion ?? undefined}
             onGuess={actions.submitGuess}
             disabled={!hasOpponent}
-            roundActions={roundActions}
+            roundActions={selectedPlayerArchive ? null : roundActions}
             fields={visibleFields}
           />
         )}
-        <RoundHistoryBar history={state.history} />
-        {state.round?.status === "playing" && (
+        <RoundHistoryBar
+          archives={state.roundArchives.filter(
+            (archive) => archive.matchIndex === state.match?.matchIndex,
+          )}
+          viewerMemberId={memberId}
+          selectedKey={selectedArchiveKey}
+          onSelect={setSelectedArchiveKey}
+        />
+        {state.round?.status === "playing" && !selectedPlayerArchive && (
           <GuessInputBar
             onGuess={actions.submitGuess}
             disabled={mode === "relay" ? !relayCanGuess : !hasOpponent}
@@ -319,13 +458,17 @@ export function RoomView({ code }: { code: string }) {
             guessedIds={guessedIds}
           />
         )}
-        {inCountdown && state.round && !state.roundResult && (
-          <CountdownOverlay startsAt={state.round.startsAt} />
-        )}
+        {inCountdown &&
+          state.round &&
+          !state.roundResult &&
+          !selectedPlayerArchive && (
+            <CountdownOverlay startsAt={state.round.startsAt} />
+          )}
         {showRoundResult && state.roundResult && (
           <RoundResultOverlay
             result={state.roundResult}
-            mySlot={playerSlot}
+            memberId={memberId}
+            members={state.members}
             nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
             autoDismissAtCountdownEnd={Boolean(state.matchResult)}
             onDismiss={() => {
@@ -333,7 +476,10 @@ export function RoomView({ code }: { code: string }) {
             }}
           />
         )}
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
         <GuessErrorToast message={guessError} />
       </>
     );
@@ -349,14 +495,18 @@ export function RoomView({ code }: { code: string }) {
       <>
         <RoundResultOverlay
           result={state.roundResult}
-          mySlot={playerSlot}
+          memberId={memberId}
+          members={state.members}
           nextRoundStartsAt={state.roundResult.nextStartsAt ?? null}
           autoDismissAtCountdownEnd
           onDismiss={() => {
             if (roundResultKey) setDismissedRoundResultKey(roundResultKey);
           }}
         />
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
         <GuessErrorToast message={guessError} />
       </>
     );
@@ -367,13 +517,17 @@ export function RoomView({ code }: { code: string }) {
       <>
         <MatchResultOverlay
           result={state.matchResult}
-          mySlot={playerSlot}
+          memberId={memberId}
+          members={state.members}
           format={format}
           rematchReady={state.rematchReady}
           onRematch={actions.rematch}
           onLeave={handleLeave}
         />
-        <ConnectionNotice message={state.connectionIssue} />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
         <GuessErrorToast message={guessError} />
       </>
     );
@@ -386,16 +540,31 @@ export function RoomView({ code }: { code: string }) {
   );
 }
 
-function ConnectionNotice({ message }: { message: string | null }) {
+function ConnectionNotice({
+  message,
+  onReconnect,
+}: {
+  message: string | null;
+  onReconnect?: () => void;
+}) {
   if (!message) return null;
   return (
     <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center px-4">
-      <p
-        className="rounded-[6px] border border-amber-soft bg-paper px-4 py-2 text-[0.78rem] font-semibold text-ink-soft shadow-sm"
+      <div
+        className="pointer-events-auto flex items-center gap-2 rounded-[6px] border border-amber-soft bg-paper px-4 py-2 text-[0.78rem] font-semibold text-ink-soft shadow-sm"
         role="status"
       >
-        {message}
-      </p>
+        <span>{message}</span>
+        {message.startsWith("其他页面已连接") && onReconnect ? (
+          <button
+            type="button"
+            onClick={onReconnect}
+            className="rounded border border-line px-2 py-1 font-bold"
+          >
+            重新连接
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -465,10 +634,12 @@ function SpectatorRoom({
               等待开始
             </span>
           ) : (
-            <span className="text-[0.95rem] font-black tabular-nums">
-              {scoreAtSeat(state.match?.scores, 1)} :{" "}
-              {scoreAtSeat(state.match?.scores, 2)}
-            </span>
+            <MemberScoreStrip
+              members={state.members}
+              scores={state.match?.scores ?? []}
+              viewerMemberId={state.viewer?.memberId}
+              winnerMemberId={state.matchResult?.winnerMemberId}
+            />
           )}
           <span className="text-[0.75rem] text-ink-soft">
             观战 {state.room?.spectatorCount ?? 0}
@@ -583,11 +754,13 @@ function SpectatorRaceBoards({
   fields: readonly GuessField[];
   archive: RoundEndedPayload | null;
 }) {
-  const forfeitedSeat = seatForMemberId(members, archive?.forfeitedMemberId);
-  const toRows = (slot: 1 | 2): GuessRow[] => {
-    const board = boardAtSeat(boards, slot);
+  const forfeitedMemberId = archive?.forfeitedMemberId;
+  const ordered = [...boards].sort((a, b) => a.seat - b.seat);
+  const toRows = (memberId: string): GuessRow[] => {
+    const board =
+      boards.find((entry) => entry.memberId === memberId)?.guesses ?? [];
     const rows: GuessRow[] = board.map((guess, index) => ({
-      key: `${slot}:${guess.guessId}:${index}`,
+      key: `${memberId}:${guess.guessId}:${index}`,
       name: guess.guessName,
       avatarUrl: guess.guessAvatarUrl,
       isCorrect: guess.isCorrect,
@@ -596,9 +769,9 @@ function SpectatorRaceBoards({
         value: field.displayValue.join("、"),
       })),
     }));
-    if (archive && forfeitedSeat === slot) {
+    if (archive && forfeitedMemberId === memberId) {
       rows.push({
-        key: `${slot}:forfeit:${archive.matchIndex}:${archive.roundIndex}`,
+        key: `${memberId}:forfeit:${archive.matchIndex}:${archive.roundIndex}`,
         notice: "玩家放弃此局",
         tone: "danger",
       });
@@ -610,32 +783,27 @@ function SpectatorRaceBoards({
       胜利
     </span>
   );
-  const winnerSeat = seatForMemberId(members, archive?.winnerMemberId);
+  const winnerMemberId = archive?.winnerMemberId;
   return (
-    <div className="grid grid-cols-2 items-start gap-3 max-[1100px]:grid-cols-1">
-      <GuessTable
-        title={
-          members.find((member) => member.seat === 1)?.displayName ?? "玩家 1"
-        }
-        subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-        headerExtra={winnerSeat === 1 ? winnerBadge : null}
-        rows={toRows(1)}
-        emptyLabel="该玩家暂无猜测。"
-        fields={fields}
-        highlight={winnerSeat === 1}
-      />
-      <GuessTable
-        title={
-          members.find((member) => member.seat === 2)?.displayName ?? "玩家 2"
-        }
-        subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-        headerExtra={winnerSeat === 2 ? winnerBadge : null}
-        rows={toRows(2)}
-        emptyLabel="该玩家暂无猜测。"
-        fields={fields}
-        highlight={winnerSeat === 2}
-      />
-    </div>
+    <MemberPaginator
+      items={ordered}
+      label="玩家棋盘"
+      renderItem={(board) => (
+        <GuessTable
+          key={board.memberId}
+          title={
+            members.find((member) => member.memberId === board.memberId)
+              ?.displayName ?? `玩家 ${board.seat}`
+          }
+          subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
+          headerExtra={winnerMemberId === board.memberId ? winnerBadge : null}
+          rows={toRows(board.memberId)}
+          emptyLabel="该玩家暂无猜测。"
+          fields={fields}
+          highlight={winnerMemberId === board.memberId}
+        />
+      )}
+    />
   );
 }
 
@@ -704,29 +872,57 @@ function RoundActionButtons({
 }
 
 function RoundHistoryBar({
-  history,
+  archives,
+  viewerMemberId,
+  selectedKey,
+  onSelect,
 }: {
-  history: { roundIndex: number; result: string }[];
+  archives: RoundEndedPayload[];
+  viewerMemberId: string | null;
+  selectedKey: string | null;
+  onSelect: (key: string | null) => void;
 }) {
-  if (history.length === 0) return null;
+  if (archives.length === 0) return null;
   return (
     <div className="px-[18px] pb-2">
       <ul className="flex flex-wrap gap-1.5">
-        {history.map((h) => (
-          <li
-            key={h.roundIndex}
-            className={`rounded px-2 py-0.5 text-[0.7rem] font-bold ${
-              h.result === "win"
-                ? "bg-jade-soft text-jade"
-                : h.result === "loss"
-                  ? "bg-vermilion-soft text-vermilion"
-                  : "bg-paper-muted text-ink-soft"
-            }`}
-          >
-            第 {h.roundIndex} 局 ·{" "}
-            {h.result === "win" ? "胜" : h.result === "loss" ? "负" : "平"}
+        {selectedKey ? (
+          <li>
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              className="rounded bg-paper-muted px-2 py-1 text-[0.7rem] font-bold text-ink-soft"
+            >
+              返回当前局
+            </button>
           </li>
-        ))}
+        ) : null}
+        {archives.map((archive) => {
+          const key = `${archive.matchIndex}:${archive.roundIndex}`;
+          const result =
+            archive.viewerResult ??
+            resultForMemberId(archive.results, viewerMemberId) ??
+            "draw";
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                aria-pressed={selectedKey === key}
+                onClick={() => onSelect(key)}
+                className={`rounded px-2 py-1 text-[0.7rem] font-bold ${
+                  result === "win"
+                    ? "bg-jade-soft text-jade"
+                    : result === "loss"
+                      ? "bg-vermilion-soft text-vermilion"
+                      : "bg-paper-muted text-ink-soft"
+                }`}
+              >
+                第 {archive.roundIndex} 局 ·{" "}
+                {result === "win" ? "胜" : result === "loss" ? "负" : "平"}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

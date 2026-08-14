@@ -87,6 +87,96 @@ const guessResult = {
 };
 
 describe("roomReducer", () => {
+  it("keeps N-player identity associations stable across seat compaction", () => {
+    const members = Array.from({ length: 4 }, (_, index) => ({
+      memberId: `member-${index + 1}`,
+      seat: index + 1,
+      displayName: `player ${index + 1}`,
+      status: "connected" as const,
+      ready: false,
+    }));
+    let state: RoomUiState = {
+      ...initialRoomState,
+      viewer: {
+        memberId: "member-4",
+        role: "player",
+        seat: 4,
+        displayName: "player 4",
+        status: "connected",
+      },
+      members,
+      rematchReady: members.map((member) => ({
+        memberId: member.memberId,
+        seat: member.seat,
+        ready: false,
+      })),
+    };
+    state = roomReducer(
+      state,
+      event("match.rematch", 1, { memberId: "member-4", seat: 4 }),
+    );
+    state = roomReducer(
+      state,
+      event("room.updated", 2, {
+        format: "bo3",
+        mode: "race",
+        turnSeconds: 60,
+        playerLimit: 4,
+        minPlayers: 2,
+        playerCount: 3,
+        availableSeats: 1,
+        spectatorCount: 0,
+        members: [
+          members[0],
+          { ...members[2], seat: 2 },
+          { ...members[3], seat: 3 },
+        ],
+      }),
+    );
+    expect(
+      state.members.find((member) => member.memberId === "member-4")?.seat,
+    ).toBe(3);
+    expect(
+      state.rematchReady.find((member) => member.memberId === "member-4")
+        ?.ready,
+    ).toBe(true);
+  });
+
+  it.each([3, 4, 8])("builds a %i-player race round", (count) => {
+    const members = Array.from({ length: count }, (_, index) => ({
+      memberId: `member-${index + 1}`,
+      seat: index + 1,
+      displayName: `player ${index + 1}`,
+      status: "connected" as const,
+      ready: true,
+    }));
+    const state = roomReducer(
+      {
+        ...initialRoomState,
+        viewer: {
+          memberId: "member-1",
+          role: "player",
+          seat: 1,
+          displayName: "player 1",
+          status: "connected",
+        },
+        members,
+      },
+      event("round.started", 1, {
+        matchIndex: 0,
+        roundIndex: 1,
+        startsAt: "2026-08-06T12:00:03Z",
+        deadline: "2026-08-06T12:15:03Z",
+        maxGuesses: 8,
+      }),
+    );
+    expect(state.round?.self.memberId).toBe("member-1");
+    expect(state.round?.opponents).toHaveLength(count - 1);
+    expect(state.round?.opponents.map((opponent) => opponent.memberId)).toEqual(
+      members.slice(1).map((member) => member.memberId),
+    );
+  });
+
   it("updates members on room.updated", () => {
     const state = roomReducer(
       initialRoomState,
@@ -433,11 +523,18 @@ describe("roomReducer", () => {
       {
         ...initialRoomState,
         room: roomFixture("finished"),
-        rematchReady: [false, false],
+        rematchReady: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          ready: false,
+        })),
       } as RoomUiState,
       event("match.rematch", 10, { memberId: "member-guest", seat: 2 }),
     );
-    expect(state.rematchReady).toEqual([false, true]);
+    expect(state.rematchReady).toEqual([
+      { memberId: "member-host", seat: 1, ready: false },
+      { memberId: "member-guest", seat: 2, ready: true },
+    ]);
 
     state = roomReducer(
       state,

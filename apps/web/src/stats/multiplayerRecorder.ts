@@ -14,14 +14,19 @@ import {
   type StatsRelayTurnSnapshot,
 } from "./types";
 import {
-  boardAtSeat,
-  resultAtSeat,
-  scoreAtSeat,
+  boardForMemberId,
+  resultForMemberId,
+  scoreForMemberId,
 } from "../domain/memberCollections";
+import { assertStatsPrivacy } from "./privacy";
 
 export interface MultiplayerTimingSnapshot {
   activeElapsedMs: number;
   guessCompletedElapsedMs: number[];
+}
+
+export interface MultiplayerRoomContext {
+  playerLimit?: number;
 }
 
 function durationsForGuesses(
@@ -40,21 +45,26 @@ function durationsForGuesses(
 async function draftId(
   roomId: string,
   matchIndex: number,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
 ): Promise<string> {
-  return stableRecordId(`multi:${roomId}:${matchIndex}:${mySlot}`);
+  return stableRecordId(`multi:${roomId}:${matchIndex}:${viewerMemberId}`);
 }
 
-async function roomSourceKey(roomId: string, mySlot: 1 | 2): Promise<string> {
-  return stableRecordId(`multi-room:${roomId}:${mySlot}`);
+async function roomSourceKey(
+  roomId: string,
+  viewerMemberId: string,
+): Promise<string> {
+  return stableRecordId(`multi-room:${roomId}:${viewerMemberId}`);
 }
 
 function outcomeForMatch(
   payload: MatchEndedPayload,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
 ): StatsOutcome {
   const result =
-    payload.viewerResult ?? resultAtSeat(payload.results, mySlot) ?? "draw";
+    payload.viewerResult ??
+    resultForMemberId(payload.results, viewerMemberId) ??
+    "draw";
   if (result === "win") return "win";
   if (result === "draw") return "draw";
   if (payload.reason === "forfeit") return "forfeit";
@@ -64,26 +74,28 @@ function outcomeForMatch(
 
 export async function recordMultiplayerEvent(
   event: Envelope,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
   timing?: MultiplayerTimingSnapshot,
+  context?: MultiplayerRoomContext,
 ): Promise<void> {
+  const identity = viewerMemberId;
   if (event.type === "match.started") {
     const payload = event.payload as unknown as MatchStartedPayload;
-    const id = await draftId(event.roomId, payload.matchIndex, mySlot);
+    const id = await draftId(event.roomId, payload.matchIndex, identity);
     if (await statsDb.records.get(id)) return;
     const existing = await statsDb.drafts.get(id);
     if (existing) return;
     await putStatsDraft({
       id,
       kind: "multiplayer",
-      sourceKey: await roomSourceKey(event.roomId, mySlot),
+      sourceKey: await roomSourceKey(event.roomId, identity),
       startedAt: event.occurredAt,
       updatedAt: event.occurredAt,
       format: payload.format,
       multiplayerMode: payload.mode ?? "race",
       difficulty: payload.questionScope?.difficulty ?? "unknown",
-      memberSlot: mySlot,
       matchIndex: payload.matchIndex,
+      playerLimit: context?.playerLimit,
       rounds: [],
     });
     return;
@@ -91,7 +103,7 @@ export async function recordMultiplayerEvent(
 
   if (event.type === "round.started") {
     const payload = event.payload as unknown as RoundStartedPayload;
-    const id = await draftId(event.roomId, payload.matchIndex, mySlot);
+    const id = await draftId(event.roomId, payload.matchIndex, viewerMemberId);
     const draft = await statsDb.drafts.get(id);
     if (!draft || draft.kind !== "multiplayer") return;
     draft.activeRound = {
@@ -107,7 +119,7 @@ export async function recordMultiplayerEvent(
 
   if (event.type === "round.ended") {
     const payload = event.payload as unknown as RoundEndedPayload;
-    const id = await draftId(event.roomId, payload.matchIndex, mySlot);
+    const id = await draftId(event.roomId, payload.matchIndex, viewerMemberId);
     const draft = await statsDb.drafts.get(id);
     if (!draft || draft.kind !== "multiplayer") return;
     const active =
@@ -125,30 +137,29 @@ export async function recordMultiplayerEvent(
         ? (timing?.guessCompletedElapsedMs ?? [])
         : (active?.guessCompletedElapsedMs ?? []);
     const multiplayerMode = draft.multiplayerMode ?? "race";
-    const board = boardAtSeat(payload.boards, mySlot);
+    const board = boardForMemberId(payload.boards, identity);
     const durations = durationsForGuesses(completed, board.length);
     let turns: StatsRelayTurnSnapshot[] | undefined;
     let guesses: StatsGuessSnapshot[];
     if (multiplayerMode === "relay" && payload.turns) {
       turns = payload.turns.map((turn) => {
-        const memberSlot = turn.seat === 2 ? 2 : 1;
+        const actor = turn.memberId === identity ? "self" : "other";
         if (turn.kind !== "guess" || !turn.guess) {
           return {
             index: turn.index,
-            memberSlot,
+            actor,
             kind: turn.kind === "pass" ? "pass" : "timeout",
           };
         }
         return {
           index: turn.index,
-          memberSlot,
+          actor,
           kind: "guess",
           guess: {
             id: turn.guess.guessId,
             name: turn.guess.guessName,
             avatarUrl: turn.guess.guessAvatarUrl,
             correct: turn.guess.isCorrect,
-            memberSlot,
           },
         };
       });
@@ -170,7 +181,9 @@ export async function recordMultiplayerEvent(
       endedAt: event.occurredAt,
       durationMs: elapsed,
       result:
-        payload.viewerResult ?? resultAtSeat(payload.results, mySlot) ?? "draw",
+        payload.viewerResult ??
+        resultForMemberId(payload.results, identity) ??
+        "draw",
       answer: {
         id: payload.answer.id,
         name: payload.answer.name,
@@ -198,11 +211,14 @@ export async function recordMultiplayerEvent(
 
   if (event.type === "match.ended") {
     const payload = event.payload as unknown as MatchEndedPayload;
-    const id = await draftId(event.roomId, payload.matchIndex, mySlot);
+    const id = await draftId(event.roomId, payload.matchIndex, viewerMemberId);
     const draft = await statsDb.drafts.get(id);
     if (!draft || draft.kind !== "multiplayer") return;
-    const scoreSelf = scoreAtSeat(payload.scores, mySlot);
-    const scoreOpponent = scoreAtSeat(payload.scores, mySlot === 1 ? 2 : 1);
+    const scoreSelf = scoreForMemberId(payload.scores, identity);
+    const opponentScores = payload.scores
+      .filter((score) => score.memberId !== identity)
+      .sort((a, b) => a.seat - b.seat)
+      .map((score) => score.score);
     const durationMs = draft.rounds.reduce(
       (sum, round) => sum + round.durationMs,
       0,
@@ -214,18 +230,20 @@ export async function recordMultiplayerEvent(
       mode: "multiplayer" as const,
       format: draft.format,
       multiplayerMode: draft.multiplayerMode ?? "race",
-      memberSlot: draft.memberSlot ?? mySlot,
       matchIndex: payload.matchIndex,
       startedAt: draft.startedAt,
       endedAt: event.occurredAt,
       durationMs,
-      outcome: outcomeForMatch(payload, mySlot),
+      outcome: outcomeForMatch(payload, viewerMemberId),
       difficulty: draft.difficulty ?? "unknown",
       reason: payload.reason,
       scoreSelf,
-      scoreOpponent,
+      opponentScores,
+      rosterSize: payload.scores.length,
+      playerLimit: draft.playerLimit ?? payload.scores.length,
       rounds: draft.rounds,
     };
+    assertStatsPrivacy(record);
     await statsDb.transaction(
       "rw",
       statsDb.records,
@@ -245,13 +263,68 @@ export async function recordMultiplayerEvent(
   }
 }
 
+export async function migrateLegacyMultiplayerDraft(
+  roomId: string,
+  matchIndex: number,
+  legacySeat: 1 | 2,
+  viewerMemberId: string,
+): Promise<void> {
+  const oldId = await stableRecordId(
+    `multi:${roomId}:${matchIndex}:${legacySeat}`,
+  );
+  const draft = await statsDb.drafts.get(oldId);
+  if (!draft || draft.kind !== "multiplayer") return;
+  const id = await draftId(roomId, matchIndex, viewerMemberId);
+  const current = await statsDb.drafts.get(id);
+  const currentDraft = current?.kind === "multiplayer" ? current : undefined;
+  const rounds = new Map(
+    (currentDraft?.rounds ?? []).map((round) => [round.roundIndex, round]),
+  );
+  for (const round of draft.rounds) rounds.set(round.roundIndex, round);
+  const currentActive = currentDraft?.activeRound;
+  const legacyActive = draft.activeRound;
+  const activeRound =
+    currentActive &&
+    legacyActive &&
+    currentActive.roundIndex === legacyActive.roundIndex
+      ? {
+          ...currentActive,
+          activeElapsedMs: Math.max(
+            currentActive.activeElapsedMs,
+            legacyActive.activeElapsedMs,
+          ),
+          guessCompletedElapsedMs:
+            legacyActive.guessCompletedElapsedMs.length >=
+            currentActive.guessCompletedElapsedMs.length
+              ? legacyActive.guessCompletedElapsedMs
+              : currentActive.guessCompletedElapsedMs,
+        }
+      : (legacyActive ?? currentActive);
+  const migrated: MultiplayerStatsDraft = {
+    ...currentDraft,
+    ...draft,
+    id,
+    sourceKey: await roomSourceKey(roomId, viewerMemberId),
+    playerLimit: currentDraft?.playerLimit ?? draft.playerLimit,
+    rounds: [...rounds.values()].sort(
+      (left, right) => left.roundIndex - right.roundIndex,
+    ),
+    activeRound,
+  };
+  delete migrated.memberSlot;
+  await statsDb.transaction("rw", statsDb.drafts, async () => {
+    await statsDb.drafts.put(migrated);
+    await statsDb.drafts.delete(oldId);
+  });
+}
+
 export async function loadMultiplayerTiming(
   roomId: string,
   matchIndex: number,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
 ): Promise<MultiplayerTimingSnapshot | undefined> {
   const draft = await statsDb.drafts.get(
-    await draftId(roomId, matchIndex, mySlot),
+    await draftId(roomId, matchIndex, viewerMemberId),
   );
   if (!draft || draft.kind !== "multiplayer" || !draft.activeRound)
     return undefined;
@@ -264,10 +337,10 @@ export async function loadMultiplayerTiming(
 export async function updateMultiplayerTiming(
   roomId: string,
   matchIndex: number,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
   timing: MultiplayerTimingSnapshot,
 ): Promise<void> {
-  const id = await draftId(roomId, matchIndex, mySlot);
+  const id = await draftId(roomId, matchIndex, viewerMemberId);
   const draft = await statsDb.drafts.get(id);
   if (!draft || draft.kind !== "multiplayer" || !draft.activeRound) return;
   draft.activeRound.activeElapsedMs = timing.activeElapsedMs;
@@ -278,9 +351,9 @@ export async function updateMultiplayerTiming(
 
 export async function markMultiplayerDraftIncomplete(
   roomId: string,
-  mySlot: 1 | 2,
+  viewerMemberId: string,
 ): Promise<void> {
-  const sourceKey = await roomSourceKey(roomId, mySlot);
+  const sourceKey = await roomSourceKey(roomId, viewerMemberId);
   const draft = (
     await statsDb.drafts.where("kind").equals("multiplayer").toArray()
   ).find(

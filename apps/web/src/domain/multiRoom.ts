@@ -13,11 +13,16 @@ export interface StoredMultiRoom {
   guestToken: string;
   role: MultiParticipantRole;
   /** 自身席位（1 = 房主；结果展示/离开判断用）。 */
+  memberId?: string;
   memberSlot?: 1 | 2;
 }
 
 export function saveMultiRoom(room: StoredMultiRoom): void {
-  window.localStorage.setItem(MULTI_ROOM_STORAGE_KEY, JSON.stringify(room));
+  const { memberSlot: _legacySlot, ...authoritative } = room;
+  window.localStorage.setItem(
+    MULTI_ROOM_STORAGE_KEY,
+    JSON.stringify(authoritative),
+  );
 }
 
 export function loadMultiRoom(): StoredMultiRoom | null {
@@ -37,10 +42,18 @@ export function loadMultiRoom(): StoredMultiRoom | null {
         (parsed as StoredMultiRoom).role === "spectator"
           ? "spectator"
           : "player";
-      return {
+      const loaded: StoredMultiRoom = {
         ...(parsed as StoredMultiRoom),
         role,
-        memberSlot: role === "spectator" ? undefined : slot === 2 ? 2 : 1, // 兼容旧存储：缺省视为房主
+        memberId:
+          typeof (parsed as StoredMultiRoom).memberId === "string"
+            ? (parsed as StoredMultiRoom).memberId
+            : undefined,
+      };
+      return {
+        ...loaded,
+        memberSlot:
+          role === "player" && (slot === 1 || slot === 2) ? slot : undefined,
       };
     }
   } catch {

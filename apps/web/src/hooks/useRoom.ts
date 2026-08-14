@@ -26,7 +26,10 @@ import type {
   RoomUpdatedPayload,
 } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
-import { boardAtSeat, resultForMemberId } from "../domain/memberCollections";
+import {
+  boardForMemberId,
+  resultForMemberId,
+} from "../domain/memberCollections";
 import { GameSequenceCoordinator } from "../domain/gameSequence";
 
 type GuessResult = components["schemas"]["GuessResult"];
@@ -82,8 +85,8 @@ export interface RoomUiState {
   roundResult: RoundEndedPayload | null;
   /** 整场结果弹窗数据（match.ended 事件）。 */
   matchResult: MatchEndedPayload | null;
-  /** 对方确认再来一局（索引 0/1 对应 slot 1/2）。 */
-  rematchReady: [boolean, boolean];
+  /** 按 memberId 关联的再来一局确认态；seat 仅用于展示排序。 */
+  rematchReady: Array<{ memberId: string; seat: number; ready: boolean }>;
   /** 历史局摘要（第 N 局 胜/负/平）。 */
   history: RoundSummary[];
   /** 房间保留期内完整局末记录，供观战/复盘选择。 */
@@ -103,7 +106,7 @@ export const initialRoomState: RoomUiState = {
   questionScope: null,
   roundResult: null,
   matchResult: null,
-  rematchReady: [false, false],
+  rematchReady: [],
   history: [],
   roundArchives: [],
   appliedGameSequence: 0,
@@ -173,14 +176,24 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
         round: null,
         roundResult: null,
         matchResult: null,
-        rematchReady: [false, false],
+        rematchReady: [],
         history: [],
       };
     }
     case "match.rematch": {
       const payload = event.payload as unknown as MatchRematchPayload;
-      const rematchReady: [boolean, boolean] = [...state.rematchReady];
-      rematchReady[payload.seat - 1] = true;
+      const rematchReady = state.rematchReady.some(
+        (member) => member.memberId === payload.memberId,
+      )
+        ? state.rematchReady.map((member) =>
+            member.memberId === payload.memberId
+              ? { ...member, seat: payload.seat, ready: true }
+              : member,
+          )
+        : [
+            ...state.rematchReady,
+            { memberId: payload.memberId, seat: payload.seat, ready: true },
+          ];
       return { ...state, rematchReady };
     }
     case "round.started": {
@@ -452,14 +465,7 @@ export function applySnapshot(
       snapshot.questionScope ??
       next.questionScope) as QuestionScopeConfig | null,
     round: snapshot.round ?? null,
-    rematchReady: snapshot.match
-      ? [
-          snapshot.match.rematchReady.find((member) => member.seat === 1)
-            ?.ready ?? false,
-          snapshot.match.rematchReady.find((member) => member.seat === 2)
-            ?.ready ?? false,
-        ]
-      : [false, false],
+    rematchReady: snapshot.match?.rematchReady ?? [],
     appliedGameSequence: Math.max(
       next.appliedGameSequence,
       snapshot.gameSequence,
@@ -468,19 +474,22 @@ export function applySnapshot(
 }
 
 export interface RoomActions {
-  setReady: () => Promise<void>;
+  setReady: (ready?: boolean) => Promise<void>;
   leave: () => Promise<void>;
   rematch: () => Promise<void>;
   submitGuess: (guessId: string) => Promise<void>;
   forfeitRound: () => Promise<void>;
   passRelayTurn: () => Promise<void>;
+  reconnect: () => void;
+  refresh: () => Promise<void>;
 }
 
 export interface UseRoomResult {
   state: RoomUiState;
-  /** 自身席位（1 = 房主；来自创建/加入响应，随 localStorage 持久化）。 */
-  mySlot: 1 | 2 | null;
-  role: MultiParticipantRole;
+  /** 自身席位（1 = 房主；仅来自权威 snapshot viewer）。 */
+  mySlot: number | null;
+  memberId: string | null;
+  role: MultiParticipantRole | null;
   actions: RoomActions;
   /** 提交猜测错误（toast 展示）。 */
   guessError: string;
@@ -491,12 +500,7 @@ export interface UseRoomResult {
  * useRoom：权威快照 → v2 hello{lastGameSequence} → 连续业务/cursor 游戏帧；
  * 真缺口由单个 snapshot 对齐，断线指数退避重连携带已应用游戏水位。
  */
-export function useRoom(
-  roomId: string,
-  token: string,
-  mySlot: 1 | 2 | null,
-  role: MultiParticipantRole = "player",
-): UseRoomResult {
+export function useRoom(roomId: string, token: string): UseRoomResult {
   const [state, setState] = useState<RoomUiState>(initialRoomState);
   const [guessError, setGuessError] = useState("");
   const [roomUnavailable, setRoomUnavailable] = useState(false);
@@ -507,23 +511,36 @@ export function useRoom(
   const guessCompletedRef = useRef<number[]>([]);
   const pendingGuessRef = useRef<number | null>(null);
   const statsQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const role = state.viewer?.role ?? null;
+  const memberId = state.viewer?.memberId ?? null;
+  const mySlot = state.viewer?.seat ?? null;
+  const playerSlot = mySlot ?? 1;
   const isSpectator = role === "spectator" || mySlot === null;
-  const playerSlot: 1 | 2 = mySlot ?? 1;
+  const viewerRef = useRef(state.viewer);
+  const playerLimitRef = useRef(state.room?.playerLimit);
+  const reconnectRef = useRef<() => void>(() => undefined);
+  const refreshRef = useRef<() => Promise<void>>(async () => undefined);
+
+  viewerRef.current = state.viewer;
+  playerLimitRef.current = state.room?.playerLimit;
 
   if (timerRef.current === null) timerRef.current = new ForegroundTimer();
 
   const queueStatsEvent = useCallback(
     (event: Envelope, timing?: MultiplayerTimingSnapshot) => {
-      if (isSpectator) return Promise.resolve();
+      const viewer = viewerRef.current;
+      if (viewer?.role !== "player") return Promise.resolve();
       const queued = statsQueueRef.current.then(() =>
-        recordMultiplayerEvent(event, playerSlot, timing),
+        recordMultiplayerEvent(event, viewer.memberId, timing, {
+          playerLimit: playerLimitRef.current,
+        }),
       );
       statsQueueRef.current = queued.catch((error) => {
         console.error("本地多人统计写入失败", error);
       });
       return queued;
     },
-    [isSpectator, playerSlot],
+    [],
   );
 
   const applyEvent = useCallback(
@@ -538,7 +555,10 @@ export function useRoom(
         timerRef.current?.setActive(true);
       } else if (event.type === "round.ended") {
         const payload = event.payload as unknown as RoundEndedPayload;
-        const board = boardAtSeat(payload.boards, playerSlot);
+        const board = boardForMemberId(
+          payload.boards,
+          viewerRef.current?.memberId,
+        );
         if (
           pendingGuessRef.current !== null &&
           guessCompletedRef.current.length < board.length
@@ -563,54 +583,70 @@ export function useRoom(
         appliedGameSequence: event.sequence,
       }));
     },
-    [playerSlot, queueStatsEvent],
+    [queueStatsEvent],
   );
 
-  const syncSnapshot = useCallback(
-    async (snapshot: RoomSnapshot) => {
-      for (const event of snapshot.events) {
-        if (event.sequence <= lastAppliedRef.current) continue;
-        void queueStatsEvent(event as Envelope);
-      }
-      setState((current) => applySnapshot(current, snapshot));
-      lastAppliedRef.current = Math.max(
-        lastAppliedRef.current,
-        snapshot.gameSequence,
-      );
-      completedGameSequenceRef.current = Math.max(
-        completedGameSequenceRef.current,
-        snapshot.gameSequence,
-      );
-      await statsQueueRef.current;
-      if (
-        !isSpectator &&
-        snapshot.match &&
-        snapshot.round?.status === "playing"
-      ) {
-        const timing = await loadMultiplayerTiming(
-          snapshot.roomId,
-          snapshot.match.matchIndex,
-          playerSlot,
+  const syncSnapshot = useCallback(async (snapshot: RoomSnapshot) => {
+    viewerRef.current = snapshot.viewer;
+    playerLimitRef.current = snapshot.playerLimit;
+    for (const event of snapshot.events) {
+      if (event.sequence <= lastAppliedRef.current) continue;
+      if (snapshot.viewer.role === "player") {
+        const queued = statsQueueRef.current.then(() =>
+          recordMultiplayerEvent(
+            event as Envelope,
+            snapshot.viewer.memberId,
+            undefined,
+            { playerLimit: snapshot.playerLimit },
+          ),
         );
-        timerRef.current?.reset(timing?.activeElapsedMs ?? 0);
-        guessCompletedRef.current = timing?.guessCompletedElapsedMs ?? [];
-        timerRef.current?.setActive(true);
-      } else {
-        timerRef.current?.setActive(false);
+        statsQueueRef.current = queued.catch((error) => {
+          console.error("本地多人统计写入失败", error);
+        });
       }
-    },
-    [isSpectator, playerSlot, queueStatsEvent],
-  );
+    }
+    setState((current) => applySnapshot(current, snapshot));
+    lastAppliedRef.current = Math.max(
+      lastAppliedRef.current,
+      snapshot.gameSequence,
+    );
+    completedGameSequenceRef.current = Math.max(
+      completedGameSequenceRef.current,
+      snapshot.gameSequence,
+    );
+    await statsQueueRef.current;
+    if (
+      snapshot.viewer.role === "player" &&
+      snapshot.match &&
+      snapshot.round?.status === "playing"
+    ) {
+      const timing = await loadMultiplayerTiming(
+        snapshot.roomId,
+        snapshot.match.matchIndex,
+        snapshot.viewer.memberId,
+      );
+      timerRef.current?.reset(timing?.activeElapsedMs ?? 0);
+      guessCompletedRef.current = timing?.guessCompletedElapsedMs ?? [];
+      timerRef.current?.setActive(true);
+    } else {
+      timerRef.current?.setActive(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!roomId) return; // 无成员资格：空 roomId 不发起请求，等页面重定向
     let disposed = false;
     let retry = 0;
+    let replacedByOtherPage = false;
+    let memberChangeReconnect = false;
     let fallbackIntervalId: number | undefined;
     let fallbackInFlight = false;
 
     const markUnavailable = async () => {
-      await markMultiplayerDraftIncomplete(roomId, playerSlot);
+      const viewerMemberId = viewerRef.current?.memberId;
+      if (viewerMemberId) {
+        await markMultiplayerDraftIncomplete(roomId, viewerMemberId);
+      }
       if (!disposed) setRoomUnavailable(true);
     };
 
@@ -652,6 +688,7 @@ export function useRoom(
 
     const connect = (lastGameSequence: number) => {
       if (disposed) return;
+      if (replacedByOtherPage) return;
       setState((s) => ({
         ...s,
         connection: lastGameSequence === 0 ? "connecting" : "reconnecting",
@@ -735,6 +772,36 @@ export function useRoom(
           return;
         }
         if (msg.type === "replaced") {
+          const replacedReason = (msg as unknown as { reason?: string }).reason;
+          if (replacedReason === "member_changed") {
+            memberChangeReconnect = true;
+            viewerRef.current = null;
+            setState((current) => ({
+              ...current,
+              viewer: null,
+              round: null,
+              connection: "reconnecting",
+              connectionIssue: "身份已更新，正在同步房间视图……",
+            }));
+            void api
+              .roomSnapshot(roomId, token, 0)
+              .then(async (snapshot) => {
+                if (disposed) return;
+                await syncSnapshot(snapshot);
+                replacedByOtherPage = false;
+              })
+              .catch(() => {
+                memberChangeReconnect = false;
+                startSnapshotFallback();
+              })
+              .finally(() => ws.close());
+            return;
+          }
+          replacedByOtherPage = true;
+          setState((current) => ({
+            ...current,
+            connectionIssue: "其他页面已连接，当前页面已暂停。",
+          }));
           ws.close();
           return;
         }
@@ -743,6 +810,11 @@ export function useRoom(
       ws.onclose = () => {
         wsRef.current = null;
         if (disposed) return;
+        if (memberChangeReconnect) {
+          memberChangeReconnect = false;
+          connect(completedGameSequenceRef.current);
+          return;
+        }
         scheduleReconnect();
       };
       ws.onerror = () => {
@@ -751,6 +823,7 @@ export function useRoom(
     };
 
     const scheduleReconnect = () => {
+      if (replacedByOtherPage) return;
       setState((s) => ({
         ...s,
         connection: "reconnecting",
@@ -761,6 +834,15 @@ export function useRoom(
         Math.min(1000 * 2 ** retry, 30000) * (0.8 + Math.random() * 0.4);
       retry += 1;
       window.setTimeout(() => connect(completedGameSequenceRef.current), delay);
+    };
+    reconnectRef.current = () => {
+      replacedByOtherPage = false;
+      retry = 0;
+      connect(completedGameSequenceRef.current);
+    };
+    refreshRef.current = async () => {
+      const snapshot = await api.roomSnapshot(roomId, token, 0);
+      await syncSnapshot(snapshot);
     };
 
     // 先建连（hello → hello-ok → 重放），快照在 hello-ok 后拉取（自视角棋盘/权威状态）。
@@ -773,7 +855,7 @@ export function useRoom(
         if (disposed) return;
         await syncSnapshot(snapshot);
         const self = snapshot.members.find(
-          (member: MemberView) => member.seat === playerSlot,
+          (member: MemberView) => member.memberId === snapshot.viewer.memberId,
         );
         if (self?.status === "left" || snapshot.status === "closed") {
           setState((current) => ({ ...current, connection: "connected" }));
@@ -803,7 +885,7 @@ export function useRoom(
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [roomId, token, playerSlot, applyEvent, syncSnapshot]);
+  }, [roomId, token, applyEvent, syncSnapshot]);
 
   useEffect(() => {
     const timer = timerRef.current;
@@ -826,7 +908,7 @@ export function useRoom(
       void updateMultiplayerTiming(
         roomId,
         state.match!.matchIndex,
-        playerSlot,
+        memberId ?? "legacy",
         timing,
       );
     };
@@ -839,12 +921,14 @@ export function useRoom(
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [isSpectator, roomId, state.match, state.round?.status, playerSlot]);
+  }, [isSpectator, roomId, state.match, state.round?.status, memberId]);
 
   const actions: RoomActions = {
-    setReady: async () => {
+    reconnect: () => reconnectRef.current(),
+    refresh: () => refreshRef.current(),
+    setReady: async (ready = true) => {
       try {
-        await api.setReady(roomId, token, true);
+        await api.setReady(roomId, token, ready);
       } catch (e) {
         setGuessError(e instanceof Error ? e.message : "就绪失败。");
       }
@@ -855,14 +939,16 @@ export function useRoom(
           await updateMultiplayerTiming(
             roomId,
             state.match.matchIndex,
-            playerSlot,
+            memberId ?? "legacy",
             {
               activeElapsedMs: timerRef.current?.snapshot() ?? 0,
               guessCompletedElapsedMs: [...guessCompletedRef.current],
             },
           );
         }
-        const self = state.members.find((member) => member.seat === playerSlot);
+        const self = memberId
+          ? state.members.find((member) => member.memberId === memberId)
+          : undefined;
         if (self?.status !== "left") await api.leaveRoom(roomId, token);
         const snapshot = await api.roomSnapshot(roomId, token, 0);
         await syncSnapshot(snapshot);
@@ -915,7 +1001,7 @@ export function useRoom(
         await updateMultiplayerTiming(
           roomId,
           state.match.matchIndex,
-          playerSlot,
+          memberId ?? "legacy",
           {
             activeElapsedMs: completedElapsedMs,
             guessCompletedElapsedMs: [...guessCompletedRef.current],
@@ -929,7 +1015,10 @@ export function useRoom(
                   ...s,
                   round: {
                     ...s.round,
-                    self: { guesses: [...s.round.self.guesses, resp.guess] },
+                    self: {
+                      ...s.round.self,
+                      guesses: [...s.round.self.guesses, resp.guess],
+                    },
                   },
                 }
               : s,
@@ -976,5 +1065,13 @@ export function useRoom(
     },
   };
 
-  return { state, mySlot, role, actions, guessError, roomUnavailable };
+  return {
+    state,
+    mySlot,
+    memberId,
+    role,
+    actions,
+    guessError,
+    roomUnavailable,
+  };
 }

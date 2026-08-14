@@ -1,8 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Envelope } from "@touhouflandre/shared";
 import { clearStatistics, putStatsRecord, stableRecordId, statsDb } from "./db";
-import { recordMultiplayerEvent } from "./multiplayerRecorder";
-import { STATS_SCHEMA_VERSION, type SingleStatsRecord } from "./types";
+import {
+  migrateLegacyMultiplayerDraft,
+  recordMultiplayerEvent,
+} from "./multiplayerRecorder";
+import {
+  STATS_SCHEMA_VERSION,
+  type MultiplayerStatsDraft,
+  type SingleStatsRecord,
+} from "./types";
 
 const event = (type: string, sequence: number, payload: unknown): Envelope => ({
   type,
@@ -62,7 +69,7 @@ describe("stats IndexedDB", () => {
         catalogVersion: "v1",
         matchIndex: 0,
       }),
-      1,
+      "member-host",
     );
     await recordMultiplayerEvent(
       event("round.started", 2, {
@@ -72,7 +79,7 @@ describe("stats IndexedDB", () => {
         deadline: "2026-08-07T12:10:02Z",
         maxGuesses: 8,
       }),
-      1,
+      "member-host",
     );
     const ended = event("round.ended", 3, {
       matchIndex: 0,
@@ -112,11 +119,11 @@ describe("stats IndexedDB", () => {
         { memberId: "member-guest", seat: 2, result: "loss" },
       ],
     });
-    await recordMultiplayerEvent(ended, 1, {
+    await recordMultiplayerEvent(ended, "member-host", {
       activeElapsedMs: 5000,
       guessCompletedElapsedMs: [5000],
     });
-    await recordMultiplayerEvent(ended, 1, {
+    await recordMultiplayerEvent(ended, "member-host", {
       activeElapsedMs: 5000,
       guessCompletedElapsedMs: [5000],
     });
@@ -135,7 +142,7 @@ describe("stats IndexedDB", () => {
         ],
         reason: "normal",
       }),
-      1,
+      "member-host",
     );
     const records = await statsDb.records.toArray();
     expect(records).toHaveLength(1);
@@ -146,5 +153,170 @@ describe("stats IndexedDB", () => {
       records[0].kind === "multiplayer" && records[0].multiplayerMode,
     ).toBe("race");
     expect(await statsDb.drafts.count()).toBe(0);
+  });
+
+  it("按 memberId 归档 N 人比分，seat 变化不改变本人关联", async () => {
+    const selfId = "member-self";
+    await recordMultiplayerEvent(
+      event("match.started", 1, {
+        format: "bo1",
+        mode: "race",
+        turnSeconds: 60,
+        targetWins: 1,
+        catalogVersion: "v1",
+        matchIndex: 0,
+      }),
+      selfId,
+      undefined,
+      { playerLimit: 8 },
+    );
+    await recordMultiplayerEvent(
+      event("round.ended", 2, {
+        matchIndex: 0,
+        roundIndex: 1,
+        answer: {
+          id: "a",
+          name: "A",
+          workId: "w",
+          workTitle: "W",
+          workCode: "W",
+        },
+        boards: [
+          { memberId: "other-a", seat: 1, guesses: [] },
+          { memberId: selfId, seat: 2, guesses: [] },
+          { memberId: "other-b", seat: 3, guesses: [] },
+        ],
+        scores: [],
+        results: [
+          { memberId: "other-a", seat: 1, result: "loss" },
+          { memberId: selfId, seat: 2, result: "win" },
+          { memberId: "other-b", seat: 3, result: "loss" },
+        ],
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("match.ended", 3, {
+        matchIndex: 0,
+        winnerMemberId: selfId,
+        scores: [
+          { memberId: "other-a", seat: 2, score: 1 },
+          { memberId: selfId, seat: 1, score: 2 },
+          { memberId: "other-b", seat: 3, score: 0 },
+        ],
+        results: [
+          { memberId: "other-a", seat: 2, result: "loss" },
+          { memberId: selfId, seat: 1, result: "win" },
+          { memberId: "other-b", seat: 3, result: "loss" },
+        ],
+        reason: "normal",
+      }),
+      selfId,
+    );
+
+    const record = await statsDb.records.toCollection().first();
+    expect(record).toMatchObject({
+      scoreSelf: 2,
+      opponentScores: [1, 0],
+      rosterSize: 3,
+      playerLimit: 8,
+      outcome: "win",
+    });
+    expect(JSON.stringify(record)).not.toContain(selfId);
+  });
+
+  it("normalizes relay turn actors to self and other", async () => {
+    const selfId = "member-self";
+    await recordMultiplayerEvent(
+      event("match.started", 1, {
+        format: "bo1",
+        mode: "relay",
+        turnSeconds: 60,
+        targetWins: 1,
+        catalogVersion: "v1",
+        matchIndex: 0,
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("round.ended", 2, {
+        matchIndex: 0,
+        roundIndex: 1,
+        answer: {
+          id: "a",
+          name: "A",
+          workId: "w",
+          workTitle: "W",
+          workCode: "W",
+        },
+        boards: [],
+        turns: [
+          { index: 1, memberId: selfId, seat: 2, kind: "pass" },
+          { index: 2, memberId: "other", seat: 1, kind: "timeout" },
+        ],
+        scores: [],
+        results: [
+          { memberId: selfId, seat: 2, result: "draw" },
+          { memberId: "other", seat: 1, result: "draw" },
+        ],
+      }),
+      selfId,
+    );
+    const draft = await statsDb.drafts.toCollection().first();
+    expect(draft?.kind === "multiplayer" ? draft.rounds[0]?.turns : []).toEqual(
+      [
+        { index: 1, actor: "self", kind: "pass" },
+        { index: 2, actor: "other", kind: "timeout" },
+      ],
+    );
+  });
+
+  it("merges a legacy seat draft into a snapshot-created member draft", async () => {
+    const oldId = await stableRecordId("multi:room-1:0:1");
+    await statsDb.drafts.put({
+      id: oldId,
+      kind: "multiplayer",
+      sourceKey: "legacy-source",
+      startedAt: "2026-08-07T12:00:00Z",
+      updatedAt: "2026-08-07T12:00:02Z",
+      format: "bo3",
+      multiplayerMode: "race",
+      memberSlot: 1,
+      matchIndex: 0,
+      rounds: [],
+      activeRound: {
+        roundIndex: 1,
+        startedAt: "2026-08-07T12:00:01Z",
+        activeElapsedMs: 4_000,
+        guessCompletedElapsedMs: [2_000],
+      },
+    } as MultiplayerStatsDraft);
+    await recordMultiplayerEvent(
+      event("match.started", 1, {
+        format: "bo3",
+        mode: "race",
+        targetWins: 2,
+        catalogVersion: "v1",
+        matchIndex: 0,
+      }),
+      "member-self",
+      undefined,
+      { playerLimit: 6 },
+    );
+
+    await migrateLegacyMultiplayerDraft("room-1", 0, 1, "member-self");
+
+    expect(await statsDb.drafts.get(oldId)).toBeUndefined();
+    const migrated = await statsDb.drafts.toCollection().first();
+    expect(migrated).toMatchObject({
+      playerLimit: 6,
+      activeRound: {
+        activeElapsedMs: 4_000,
+        guessCompletedElapsedMs: [2_000],
+      },
+    });
+    expect(migrated).not.toHaveProperty("memberSlot");
+    expect(JSON.stringify(migrated)).not.toContain("member-self");
+    expect(JSON.stringify(migrated)).not.toContain("room-1");
   });
 });

@@ -7,10 +7,15 @@ import type { components } from "../generated/api";
 import type { GuessField, RoundEndedPayload } from "@touhouflandre/shared";
 import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
-import { boardAtSeat, scoreAtSeat } from "../domain/memberCollections";
+import {
+  boardForMemberId,
+  sortMembersBySeat,
+} from "../domain/memberCollections";
 import { OpponentBoard } from "./OpponentBoard";
 import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "./GuessTable";
+import { MemberPaginator } from "./MemberPaginator";
+import { MemberScoreStrip } from "./MemberScoreStrip";
 
 type MatchView = components["schemas"]["MatchView"];
 type RoundView = components["schemas"]["RoundView"];
@@ -19,7 +24,8 @@ export function MatchBoard({
   format,
   match,
   round,
-  mySlot,
+  memberId,
+  members,
   roundResult,
   catalogVersion,
   onGuess,
@@ -30,7 +36,8 @@ export function MatchBoard({
   format: string;
   match: MatchView;
   round: RoundView | null;
-  mySlot: 1 | 2;
+  memberId?: string | null;
+  members?: components["schemas"]["MemberView"][];
   roundResult: RoundEndedPayload | null;
   catalogVersion?: string;
   onGuess: (guessId: string) => void;
@@ -50,11 +57,14 @@ export function MatchBoard({
           {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
             format}
         </span>
-        <span className="text-[0.95rem] font-black tabular-nums">
-          {scoreAtSeat(match.scores, 1)} : {scoreAtSeat(match.scores, 2)}
-        </span>
+        <MemberScoreStrip
+          members={members ?? []}
+          scores={roundResult?.scores ?? match.scores}
+          viewerMemberId={memberId}
+          winnerMemberId={roundResult?.winnerMemberId}
+        />
         <span className="text-[0.75rem] text-ink-soft">
-          第 {match.roundIndex} 局
+          第 {roundResult?.roundIndex ?? match.roundIndex} 局
           {match.targetWins > 1 ? ` · 先胜 ${match.targetWins} 局` : ""}
         </span>
         {round && !ended && (
@@ -62,18 +72,19 @@ export function MatchBoard({
             剩余 {formatRemaining(remaining)}
           </span>
         )}
-        {roundActions}
+        {!ended ? roundActions : null}
       </div>
 
       <div
         className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
-          ended ? "grid-cols-2" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+          ended ? "grid-cols-1" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
         }`}
       >
         {ended && roundResult ? (
           <EndedBoards
             roundResult={roundResult}
-            mySlot={mySlot}
+            memberId={memberId}
+            members={members ?? []}
             fields={fields}
           />
         ) : (
@@ -84,13 +95,7 @@ export function MatchBoard({
               maxGuesses={round?.maxGuesses}
               fields={fields}
             />
-            <OpponentBoard
-              rows={
-                round?.opponents.find((opponent) => opponent.seat !== mySlot)
-                  ?.rows ?? []
-              }
-              fields={fields}
-            />
+            <OpponentPages round={round} memberId={memberId} fields={fields} />
           </>
         )}
       </div>
@@ -98,19 +103,44 @@ export function MatchBoard({
   );
 }
 
+function OpponentPages({
+  round,
+  memberId,
+  fields,
+}: {
+  round: RoundView | null;
+  memberId?: string | null;
+  fields?: readonly GuessField[];
+}) {
+  const opponents = (round?.opponents ?? [])
+    .filter((opponent) => opponent.memberId !== memberId)
+    .sort((a, b) => a.seat - b.seat);
+  return (
+    <MemberPaginator
+      items={opponents}
+      label="对手棋盘"
+      renderItem={(opponent) => (
+        <OpponentBoard rows={opponent.rows} fields={fields} />
+      )}
+    />
+  );
+}
+
 // EndedBoards 局末双方完整棋盘（答案已公开，历史猜测不再敏感，08 §4.5）；
 // 与进行中一致：左右双栏、表头一次、同色同高。
 function EndedBoards({
   roundResult,
-  mySlot,
+  memberId,
+  members,
   fields,
 }: {
   roundResult: RoundEndedPayload;
-  mySlot: 1 | 2;
+  memberId?: string | null;
+  members: components["schemas"]["MemberView"][];
   fields?: readonly GuessField[];
 }) {
-  const toRows = (slot: 1 | 2): GuessRow[] => {
-    const board = boardAtSeat(roundResult.boards, slot);
+  const toRows = (boardMemberId: string): GuessRow[] => {
+    const board = boardForMemberId(roundResult.boards, boardMemberId);
     return board.map((guess) => ({
       key: guess.guessId,
       name: guess.guessName,
@@ -122,20 +152,38 @@ function EndedBoards({
       })),
     }));
   };
+  const selfBoard = roundResult.boards.find(
+    (board) => board.memberId === memberId,
+  );
+  const others = sortMembersBySeat(
+    roundResult.boards.filter((board) => board.memberId !== memberId),
+  );
   return (
-    <>
-      <GuessTable
-        title="我"
-        rows={toRows(mySlot)}
-        emptyLabel="本局未猜测。"
-        fields={fields}
+    <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      {selfBoard ? (
+        <GuessTable
+          title="我"
+          rows={toRows(selfBoard.memberId)}
+          emptyLabel="本局未猜测。"
+          fields={fields}
+        />
+      ) : null}
+      <MemberPaginator
+        items={others}
+        label="其他玩家（局末揭示）"
+        renderItem={(board) => (
+          <GuessTable
+            title={
+              members.find((member) => member.memberId === board.memberId)
+                ?.displayName ?? `玩家 ${board.seat}`
+            }
+            rows={toRows(board.memberId)}
+            emptyLabel="该玩家本局未猜测。"
+            fields={fields}
+            highlight={roundResult.winnerMemberId === board.memberId}
+          />
+        )}
       />
-      <GuessTable
-        title="对手（局末揭示）"
-        rows={toRows(mySlot === 1 ? 2 : 1)}
-        emptyLabel="对手本局未猜测。"
-        fields={fields}
-      />
-    </>
+    </div>
   );
 }

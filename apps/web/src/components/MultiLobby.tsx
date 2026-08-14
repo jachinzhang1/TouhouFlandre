@@ -35,9 +35,9 @@ import { QuestionScopeDialog } from "./QuestionScopeDialog";
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
 const MODE_RULES: Record<MultiplayerMode, string> = {
-  race: `**竞速模式**中，双方会同时竞猜同一个隐藏角色。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。任意一方率先猜中目标角色时，本局**立即结束**并为该玩家记一胜；若双方都用尽次数限制仍无人猜中，或本局总倒计时结束，则本局判为平局。
+  race: `**竞速模式**中，2 至 8 名玩家会同时竞猜同一个隐藏角色。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。任意玩家率先猜中目标角色时，本局**立即结束**并为该玩家记一胜；若所有玩家都用尽次数限制仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
-每一小局结束后会揭示答案、当前比分和双方完整棋盘。先达到目标胜局的一方赢得整场对局。`,
+每一小局结束后会揭示答案、当前比分和全部完整棋盘。先达到目标胜局的玩家赢得整场对局。`,
   relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，出题范围和猜测次数限制**由房主决定**。当前轮到的玩家可以提交一次猜测或主动选择空过。猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
@@ -51,6 +51,7 @@ export function MultiLobby() {
   const [format, setFormat] = useState<MultiRoomFormat>("bo3");
   const [mode, setMode] = useState<MultiplayerMode>("race");
   const [turnSeconds, setTurnSeconds] = useState<RelayTurnSeconds>(60);
+  const [playerLimit, setPlayerLimit] = useState(2);
   const [nickname, setNickname] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [joinNickname, setJoinNickname] = useState("");
@@ -93,6 +94,7 @@ export function MultiLobby() {
       const created = await api.createRoom({
         format,
         mode,
+        ...(mode === "race" ? { playerLimit } : {}),
         turnSeconds,
         displayName: nickname || undefined,
         questionScope,
@@ -102,7 +104,7 @@ export function MultiLobby() {
         roomCode: created.roomCode,
         guestToken: created.guestToken,
         role: created.viewer.role,
-        memberSlot: created.viewer.seat === 2 ? 2 : 1,
+        memberId: created.viewer.memberId,
       });
       router.push(`/multi/room/${created.roomCode}`);
     } catch (e) {
@@ -123,12 +125,7 @@ export function MultiLobby() {
         roomCode: normalizedCode,
         guestToken: joined.guestToken,
         role: joined.viewer.role,
-        memberSlot:
-          joined.viewer.role === "spectator"
-            ? undefined
-            : joined.viewer.seat === 2
-              ? 2
-              : 1,
+        memberId: joined.viewer.memberId,
       });
       router.push(`/multi/room/${normalizedCode}`);
     } catch (e) {
@@ -247,6 +244,26 @@ export function MultiLobby() {
                 </div>
               </fieldset>
             )}
+            {mode === "race" && (
+              <label className="mb-4 block">
+                <span className="mb-1 block text-[0.75rem] text-ink-soft">
+                  玩家上限（2-8）
+                </span>
+                <input
+                  type="number"
+                  min={2}
+                  max={8}
+                  step={1}
+                  value={playerLimit}
+                  onChange={(event) =>
+                    setPlayerLimit(
+                      Math.min(8, Math.max(2, Number(event.target.value) || 2)),
+                    )
+                  }
+                  className="w-24 rounded-[6px] border border-line-strong bg-paper px-3 py-2 text-[0.85rem] outline-none focus:border-vermilion"
+                />
+              </label>
+            )}
             <fieldset className="mb-4">
               <legend className="sr-only">赛制</legend>
               <div className="grid grid-cols-2 gap-2">
@@ -333,7 +350,8 @@ export function MultiLobby() {
                   info.mode}
                 {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
                 {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家{" "}
-                {info.playerCount}/{info.playerLimit} · 最少 {info.minPlayers} 人开局
+                {info.playerCount}/{info.playerLimit} · 最少 {info.minPlayers}{" "}
+                人开局
                 {info.spectatorCount > 0
                   ? ` · 观战 ${info.spectatorCount}`
                   : ""}

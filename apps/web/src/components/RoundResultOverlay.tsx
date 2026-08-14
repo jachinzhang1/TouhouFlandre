@@ -6,17 +6,23 @@
 import { Check, X } from "lucide-react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { resultAtSeat, scoreAtSeat } from "../domain/memberCollections";
+import {
+  resultForMemberId,
+  sortMembersBySeat,
+} from "../domain/memberCollections";
+import type { components } from "../generated/api";
 
 export function RoundResultOverlay({
   result,
-  mySlot,
+  memberId,
+  members,
   nextRoundStartsAt,
   onDismiss,
   autoDismissAtCountdownEnd = false,
 }: {
   result: RoundEndedPayload;
-  mySlot: 1 | 2;
+  memberId?: string | null;
+  members?: components["schemas"]["MemberView"][];
   nextRoundStartsAt: string | null;
   onDismiss?: () => void;
   autoDismissAtCountdownEnd?: boolean;
@@ -25,7 +31,9 @@ export function RoundResultOverlay({
   const dismissedRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
   const viewerResult =
-    result.viewerResult ?? resultAtSeat(result.results, mySlot) ?? "draw";
+    result.viewerResult ??
+    resultForMemberId(result.results, memberId) ??
+    "draw";
   const won = viewerResult === "win";
 
   useEffect(() => {
@@ -84,9 +92,17 @@ export function RoundResultOverlay({
           <span className="font-brand text-[1.4rem]">{result.answer.name}</span>
         </div>
         <p className="mb-4 text-[0.8rem] text-ink-soft">
-          答案是 {result.answer.name} · 当前比分 {scoreAtSeat(result.scores, 1)}{" "}
-          : {scoreAtSeat(result.scores, 2)}
+          答案是 {result.answer.name} · 当前比分{" "}
+          {sortMembersBySeat(result.scores)
+            .map((entry) => entry.score)
+            .join(" : ")}
         </p>
+        <ResultList
+          members={members ?? []}
+          scores={result.scores}
+          results={result.results}
+          viewerMemberId={memberId}
+        />
         <button
           type="button"
           onClick={dismiss}
@@ -101,5 +117,44 @@ export function RoundResultOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+function ResultList({
+  members,
+  scores,
+  results,
+  viewerMemberId,
+}: {
+  members: components["schemas"]["MemberView"][];
+  scores: RoundEndedPayload["scores"];
+  results: RoundEndedPayload["results"];
+  viewerMemberId?: string | null;
+}) {
+  return (
+    <ul className="mb-4 grid gap-1 text-left">
+      {sortMembersBySeat(results).map((entry) => (
+        <li
+          key={entry.memberId}
+          className={`flex items-center justify-between rounded border px-2 py-1 text-[0.75rem] ${entry.memberId === viewerMemberId ? "border-vermilion bg-vermilion-soft" : "border-line bg-paper-muted"}`}
+        >
+          <span className="truncate">
+            {members.find((member) => member.memberId === entry.memberId)
+              ?.displayName ?? `玩家 ${entry.seat}`}
+            {entry.memberId === viewerMemberId ? "（我）" : ""}
+          </span>
+          <span className="font-bold">
+            {scores.find((score) => score.memberId === entry.memberId)?.score ??
+              0}{" "}
+            ·{" "}
+            {entry.result === "win"
+              ? "胜"
+              : entry.result === "loss"
+                ? "负"
+                : "平"}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

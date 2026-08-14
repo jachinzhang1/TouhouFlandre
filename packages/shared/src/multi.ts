@@ -263,7 +263,7 @@ export interface ResyncRequiredMessage {
 
 export interface ReplacedMessage {
   type: "replaced";
-  reason: "replaced";
+  reason: "replaced" | "member_changed";
 }
 
 // ---------- 客户端消息（仅两类，均为平铺消息） ----------
