@@ -320,7 +320,7 @@
   position: sticky;
   top: calc(var(--site-nav-height) + var(--question-scope-toolbar-height));
   z-index: 23;
-  margin-bottom: 14px;
+  margin-bottom: 0;
   padding-block: 12px 14px;
   background: var(--page-background);
   isolation: isolate;
