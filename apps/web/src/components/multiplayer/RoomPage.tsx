@@ -4,7 +4,7 @@
 // （lobby → 对局 → 结果；断线重连/缺口补齐由 useRoom 处理）。
 import { FastForward, Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CHARACTER_GUESS_FIELDS,
   visibleQuestionFields,
@@ -16,7 +16,8 @@ import {
   relaySkipRemaining,
 } from "../../domain/multiRoom";
 import type { StoredMultiRoom } from "../../domain/multiRoom";
-import { useRoom } from "../../hooks/useRoom";
+import { useRoom, type RoomActions } from "../../hooks/useRoom";
+import { api } from "../../lib/api";
 import { CountdownOverlay } from "./CountdownOverlay";
 import { GuessInputBar } from "../game/GuessInputBar";
 import { MatchBoard } from "./MatchBoard";
@@ -24,6 +25,25 @@ import { MatchResultOverlay } from "./MatchResultOverlay";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
+import {
+  buildMultiplayerGameSeed,
+  clearMultiplayerGameSeed,
+  installGameSeedConsole,
+  loadMultiplayerGameSeed,
+  MULTIPLAYER_GAME_SEED_PRESETS,
+  parseMultiplayerGameSeedPreset,
+  storeMultiplayerGameSeed,
+  type MultiplayerGameSeed,
+} from "../../dev/gameSeeds";
+
+const DEVELOPMENT_ROOM_ACTIONS: RoomActions = {
+  setReady: async () => undefined,
+  leave: async () => undefined,
+  rematch: async () => undefined,
+  submitGuess: async () => undefined,
+  forfeitRound: async () => undefined,
+  passRelayTurn: async () => undefined,
+};
 
 export function RoomView({ code }: { code: string }) {
   const router = useRouter();
@@ -32,6 +52,8 @@ export function RoomView({ code }: { code: string }) {
   const [stored, setStored] = useState<StoredMultiRoom | null | undefined>(
     undefined,
   );
+  const [developmentSeed, setDevelopmentSeed] =
+    useState<MultiplayerGameSeed | null>(null);
   const [redirecting, setRedirecting] = useState(false);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [roundActionBusy, setRoundActionBusy] = useState<
@@ -41,40 +63,107 @@ export function RoomView({ code }: { code: string }) {
     string | null
   >(null);
 
+  const applyDevelopmentSeed = useCallback(
+    (preset: Parameters<typeof buildMultiplayerGameSeed>[0]) => {
+      setDevelopmentSeed(buildMultiplayerGameSeed(preset));
+      void api
+        .catalogFull()
+        .then((catalog) => {
+          setDevelopmentSeed((current) =>
+            current
+              ? {
+                  ...current,
+                  state: { ...current.state, catalogVersion: catalog.version },
+                }
+              : current,
+          );
+        })
+        .catch(() => undefined);
+    },
+    [],
+  );
+
+  const resetDevelopmentSeed = useCallback(() => {
+    clearMultiplayerGameSeed();
+    setDevelopmentSeed(null);
+    const liveStored = loadMultiRoom();
+    if (liveStored?.roomCode === normalized) {
+      setStored(liveStored);
+      return;
+    }
+    setRedirecting(true);
+    router.replace("/multi");
+  }, [normalized, router]);
+
   useEffect(() => {
+    const preset = loadMultiplayerGameSeed();
+    if (preset) {
+      applyDevelopmentSeed(preset);
+      setStored({
+        roomId: "",
+        roomCode: normalized,
+        guestToken: "",
+        memberSlot: 1,
+      });
+      return;
+    }
     setStored(loadMultiRoom());
-  }, []);
+  }, [applyDevelopmentSeed, normalized]);
 
   // 无成员资格/房间号不匹配 → 清理并重定向大厅（08 §10.1）
   useEffect(() => {
     if (stored === undefined) return; // storage 尚未加载
+    if (developmentSeed) return;
     if (!stored || stored.roomCode !== normalized) {
       clearMultiRoom();
       setRedirecting(true);
       router.replace("/multi");
     }
-  }, [stored, normalized, router]);
+  }, [stored, normalized, router, developmentSeed]);
 
-  const { state, mySlot, actions, guessError, roomUnavailable } = useRoom(
-    stored?.roomId ?? "",
-    stored?.guestToken ?? "",
-    stored?.memberSlot ?? 1,
+  const liveRoom = useRoom(
+    developmentSeed ? "" : (stored?.roomId ?? ""),
+    developmentSeed ? "" : (stored?.guestToken ?? ""),
+    developmentSeed?.mySlot ?? stored?.memberSlot ?? 1,
   );
+  const state = developmentSeed?.state ?? liveRoom.state;
+  const mySlot = developmentSeed?.mySlot ?? liveRoom.mySlot;
+  const actions = developmentSeed ? DEVELOPMENT_ROOM_ACTIONS : liveRoom.actions;
+  const guessError = developmentSeed?.guessError ?? liveRoom.guessError;
+  const roomUnavailable = developmentSeed ? false : liveRoom.roomUnavailable;
+
+  useEffect(() => {
+    return installGameSeedConsole({
+      page: "multiplayer",
+      presets: MULTIPLAYER_GAME_SEED_PRESETS,
+      seed: (value) => {
+        const preset = parseMultiplayerGameSeedPreset(value);
+        storeMultiplayerGameSeed(preset);
+        applyDevelopmentSeed(preset);
+        setDismissedRoundResultKey(null);
+        setForfeitConfirm(false);
+        setRoundActionBusy(null);
+        return preset;
+      },
+      reset: resetDevelopmentSeed,
+    });
+  }, [applyDevelopmentSeed, resetDevelopmentSeed]);
 
   // 房间关闭（终态）→ 清理并返回大厅
   useEffect(() => {
+    if (developmentSeed) return;
     if (state.room?.status === "closed") {
       clearMultiRoom();
       router.replace("/multi");
     }
-  }, [state.room?.status, router]);
+  }, [state.room?.status, router, developmentSeed]);
 
   // 房间已超过保留期：草稿由 useRoom 标记为同步不完整，再清理恢复凭据。
   useEffect(() => {
-    if (!roomUnavailable) return;
+    if (!roomUnavailable || developmentSeed) return;
     clearMultiRoom();
     router.replace("/multi");
-  }, [roomUnavailable, router]);
+  }, [roomUnavailable, router, developmentSeed]);
 
   const status = state.room?.status ?? "connecting";
   const format = state.room?.format ?? "bo3";
@@ -110,6 +199,10 @@ export function RoomView({ code }: { code: string }) {
   }, [forfeitConfirm]);
 
   const handleLeave = async () => {
+    if (developmentSeed) {
+      resetDevelopmentSeed();
+      return;
+    }
     await actions.leave();
     clearMultiRoom();
     router.replace("/multi");

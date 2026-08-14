@@ -47,6 +47,12 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
+import {
+  buildSingleGameSeed,
+  installGameSeedConsole,
+  parseSingleGameSeedPreset,
+  SINGLE_GAME_SEED_PRESETS,
+} from "../../dev/gameSeeds";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
@@ -199,6 +205,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const listboxId = useId();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const loadRequestIdRef = useRef(0);
+  const developmentSeedActiveRef = useRef(false);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
@@ -210,8 +217,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   } = useCharacterSearch(query, {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
-    sessionId: session?.id,
-    version: session?.catalogVersion ?? undefined,
+    sessionId: developmentSeedActiveRef.current ? undefined : session?.id,
+    version: developmentSeedActiveRef.current
+      ? undefined
+      : (session?.catalogVersion ?? undefined),
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");
@@ -526,12 +535,50 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     }
   };
 
+  useEffect(() => {
+    return installGameSeedConsole({
+      page: "singleplayer",
+      presets: SINGLE_GAME_SEED_PRESETS,
+      seed: (value) => {
+        const preset = parseSingleGameSeedPreset(value);
+        const seed = buildSingleGameSeed(preset, mode);
+        loadRequestIdRef.current += 1;
+        developmentSeedActiveRef.current = true;
+        setSession(seed.session);
+        setPuzzleLabel(seed.puzzleLabel);
+        setLoading(seed.loading);
+        setSubmitting(false);
+        setEndingSession(false);
+        setTimingOut(false);
+        setMessage(seed.message);
+        setQuery("");
+        setSelectedId("");
+        setActiveSuggestionId("");
+        setSuggestionsDismissed(false);
+        setInitialElapsedMs(seed.initialElapsedMs);
+        setGuessCompletedElapsedMs(seed.guessCompletedElapsedMs);
+        setDailyDifficulty(seed.dailyDifficulty);
+        setDailyStatuses(seed.dailyStatuses);
+        return preset;
+      },
+      reset: () => {
+        developmentSeedActiveRef.current = false;
+        void loadSession(mode, dailyDifficulty);
+      },
+    });
+  }, [dailyDifficulty, mode]);
+
   const startFresh = async (nextMode = mode, difficulty = dailyDifficulty) => {
     localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
     await loadSession(nextMode, difficulty);
   };
 
   const requestFreshSession = async () => {
+    if (developmentSeedActiveRef.current) {
+      developmentSeedActiveRef.current = false;
+      await startFresh("random");
+      return;
+    }
     if (
       mode !== "random" ||
       loading ||
@@ -566,6 +613,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const switchDailyDifficulty = async (
     difficulty: QuestionDifficultyPreset,
   ) => {
+    if (developmentSeedActiveRef.current) {
+      developmentSeedActiveRef.current = false;
+      await loadSession("daily", difficulty);
+      return;
+    }
     if (mode !== "daily" || loading || submitting || endingSession || timingOut)
       return;
     if (session && !isFinished) {
@@ -594,6 +646,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   useEffect(() => {
+    developmentSeedActiveRef.current = false;
     void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
     return () => {
       loadRequestIdRef.current += 1;
@@ -601,7 +654,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   }, [mode]);
 
   useEffect(() => {
-    if (!session || isFinished) return;
+    if (!session || isFinished || developmentSeedActiveRef.current) return;
     const flush = () => {
       if (
         mode === "daily" &&
@@ -647,6 +700,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   ]);
 
   const submitGuess = async (guessId = selectedId) => {
+    if (developmentSeedActiveRef.current) {
+      setMessage(
+        "调试种子为只读；请切换种子或运行 __touhouflandreDev.game.reset() 恢复真实题局。",
+      );
+      return;
+    }
     if (!session || !guessId || submitting || timingOut || isFinished) return;
     setSubmitting(true);
     setMessage("");
@@ -701,6 +760,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
 
   const recordTimeout = useCallback(async () => {
     if (
+      developmentSeedActiveRef.current ||
       !session ||
       !turnLimitEnabled ||
       turnLimitSeconds <= 0 ||
@@ -801,8 +861,13 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     turnLimitEnabled,
     turnLimitSeconds,
   ]);
-
   const forfeitSession = async () => {
+    if (developmentSeedActiveRef.current) {
+      setMessage(
+        "调试种子为只读；请切换种子或运行 __touhouflandreDev.game.reset() 恢复真实题局。",
+      );
+      return;
+    }
     if (
       !session ||
       loading ||

@@ -3,7 +3,7 @@
 // 多人大厅（08 §10.1）：创建房间（赛制单选 + 昵称）、加入房间（房间号 + 昵称 + 公开预检）。
 import { useRouter } from "next/navigation";
 import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
@@ -26,6 +26,14 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
+import {
+  clearMultiplayerGameSeed,
+  installGameSeedConsole,
+  MULTIPLAYER_DEVELOPMENT_ROOM_CODE,
+  MULTIPLAYER_GAME_SEED_PRESETS,
+  parseMultiplayerGameSeedPreset,
+  storeMultiplayerGameSeed,
+} from "../../dev/gameSeeds";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
@@ -54,6 +62,20 @@ export function MultiLobby() {
   const [infoError, setInfoError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+
+  useEffect(() => {
+    return installGameSeedConsole({
+      page: "multiplayer",
+      presets: MULTIPLAYER_GAME_SEED_PRESETS,
+      seed: (value) => {
+        const preset = parseMultiplayerGameSeedPreset(value);
+        storeMultiplayerGameSeed(preset);
+        router.push(`/multi/room/${MULTIPLAYER_DEVELOPMENT_ROOM_CODE}`);
+        return preset;
+      },
+      reset: clearMultiplayerGameSeed,
+    });
+  }, [router]);
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -90,6 +112,7 @@ export function MultiLobby() {
         displayName: nickname || undefined,
         questionScope,
       });
+      clearMultiplayerGameSeed();
       saveMultiRoom({
         roomId: created.roomId,
         roomCode: created.roomCode,
@@ -110,6 +133,7 @@ export function MultiLobby() {
       const joined = await api.joinRoom(normalizedCode, {
         displayName: joinNickname || undefined,
       });
+      clearMultiplayerGameSeed();
       saveMultiRoom({
         roomId: joined.roomId,
         roomCode: normalizedCode,
