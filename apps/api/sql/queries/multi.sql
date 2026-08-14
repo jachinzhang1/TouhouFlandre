@@ -58,6 +58,8 @@ SELECT jsonb_build_object(
     'round',   (SELECT to_jsonb(ar) FROM active_round ar),
     'guesses', (SELECT COALESCE(jsonb_agg(g ORDER BY g.member_id, g.sequence), '[]'::jsonb)
                 FROM multi_guess g WHERE g.round_id = (SELECT ar.id FROM active_round ar)),
+    'roundPlayers', (SELECT COALESCE(jsonb_agg(rp ORDER BY rp.member_id), '[]'::jsonb)
+                     FROM multi_round_player rp WHERE rp.round_id = (SELECT ar.id FROM active_round ar)),
     'turns',   (SELECT COALESCE(jsonb_agg(t ORDER BY t.turn_index), '[]'::jsonb)
                 FROM multi_turn t WHERE t.round_id = (SELECT ar.id FROM active_round ar))
 )::jsonb AS snapshot;
@@ -138,8 +140,13 @@ UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;
 
 -- name: CreateMatch :one
 -- 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
-INSERT INTO multi_match (id, room_id, match_index, catalog_version, target_wins, status, started_at, question_scope)
-SELECT $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing', $5, $6
+INSERT INTO multi_match (
+    id, room_id, match_index, catalog_version, target_wins, status,
+    started_at, question_scope, scoring_mode, roster_size, max_rounds
+)
+SELECT
+    $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing',
+    $5, $6, $7, $8, $9
 FROM multi_match WHERE room_id = $2
 RETURNING *;
 
@@ -147,12 +154,15 @@ RETURNING *;
 SELECT * FROM multi_match WHERE id = $1 FOR UPDATE;
 
 -- name: CreateMatchPlayer :one
-INSERT INTO multi_match_player (match_id, member_id, seat, wins, status)
-VALUES ($1, $2, $3, 0, 'active')
+INSERT INTO multi_match_player (match_id, member_id, seat, wins, status, score, best_round_score)
+VALUES ($1, $2, $3, 0, 'active', 0, 0)
 RETURNING *;
 
 -- name: ListMatchPlayers :many
 SELECT * FROM multi_match_player WHERE match_id = $1 ORDER BY seat;
+
+-- name: GetMatchPlayer :one
+SELECT * FROM multi_match_player WHERE match_id = $1 AND member_id = $2;
 
 -- name: ListActiveMatchPlayers :many
 SELECT * FROM multi_match_player WHERE match_id = $1 AND status = 'active' ORDER BY seat;
@@ -164,9 +174,28 @@ WHERE match_id = $1 AND member_id = $2 AND status = 'active';
 
 -- name: IncrementMatchPlayerWin :one
 UPDATE multi_match_player
-SET wins = wins + 1
+SET wins = wins + 1,
+    score = score + 1,
+    best_round_score = GREATEST(best_round_score, 1)
 WHERE match_id = $1 AND member_id = $2 AND status = 'active'
 RETURNING *;
+
+-- name: AwardMatchPlayerPoints :one
+UPDATE multi_match_player
+SET score = score + sqlc.arg(points),
+    best_round_score = GREATEST(best_round_score, sqlc.arg(points)::integer),
+    wins = wins + sqlc.arg(points)
+WHERE match_id = sqlc.arg(match_id)
+  AND member_id = sqlc.arg(member_id)
+  AND status = 'active'
+RETURNING *;
+
+-- name: MarkMatchPlayerEliminated :execrows
+UPDATE multi_match_player
+SET status = 'eliminated', eliminated_round = sqlc.arg(round_index)
+WHERE match_id = sqlc.arg(match_id)
+  AND member_id = sqlc.arg(member_id)
+  AND status = 'active';
 
 -- name: GetActiveMatchForUpdate :one
 -- 房间当前进行中的场（forfeit/重启终止路径）。
@@ -231,8 +260,46 @@ SELECT * FROM multi_round_player WHERE round_id = $1 AND status = 'active' ORDER
 
 -- name: ForfeitRoundPlayer :execrows
 UPDATE multi_round_player
-SET status = 'forfeited'
+SET status = 'forfeited', finish_rank = NULL, completed_at = now()
 WHERE round_id = $1 AND member_id = $2 AND status = 'active';
+
+-- name: ForfeitDepartedRoundPlayer :execrows
+-- A roster departure before settlement always scores zero for the current
+-- round, including a player that had already submitted a correct answer.
+UPDATE multi_round_player
+SET status = 'forfeited', finish_rank = NULL, points_awarded = 0, completed_at = now()
+WHERE round_id = $1 AND member_id = $2 AND status IN ('active', 'correct');
+
+-- name: MarkRoundPlayerCorrect :one
+UPDATE multi_round_player
+SET status = 'correct', finish_rank = sqlc.arg(finish_rank), completed_at = sqlc.arg(completed_at)
+WHERE round_id = sqlc.arg(round_id)
+  AND member_id = sqlc.arg(member_id)
+  AND status = 'active'
+RETURNING *;
+
+-- name: MarkRoundPlayerExhausted :execrows
+UPDATE multi_round_player
+SET status = 'exhausted', finish_rank = NULL, completed_at = sqlc.arg(completed_at)
+WHERE round_id = sqlc.arg(round_id)
+  AND member_id = sqlc.arg(member_id)
+  AND status = 'active';
+
+-- name: MarkRoundPlayerTimedOut :execrows
+UPDATE multi_round_player
+SET status = 'timed_out', finish_rank = NULL, completed_at = sqlc.arg(completed_at)
+WHERE round_id = sqlc.arg(round_id) AND status = 'active';
+
+-- name: AwardRoundPlayerPoints :one
+UPDATE multi_round_player
+SET points_awarded = sqlc.arg(points)
+WHERE round_id = sqlc.arg(round_id) AND member_id = sqlc.arg(member_id)
+RETURNING *;
+
+-- name: CountCorrectRoundPlayers :one
+SELECT count(*)::int
+FROM multi_round_player
+WHERE round_id = $1 AND status = 'correct';
 
 -- name: ListRoundPlayerGuessCounts :many
 SELECT player.member_id, count(guess.id)::int AS guess_count

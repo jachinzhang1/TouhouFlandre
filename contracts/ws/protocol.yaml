@@ -149,6 +149,9 @@ events:
           catalogVersion,
           matchIndex,
           questionScope,
+          scoringMode,
+          rosterSize,
+          maxRounds,
         ]
       properties:
         format:
@@ -172,6 +175,17 @@ events:
         questionScope:
           type: object
           additionalProperties: true
+        scoringMode:
+          type: string
+          enum: [wins, placement]
+          description: placement 仅用于实际 roster 人数大于 2 的 race。
+        rosterSize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        maxRounds:
+          type: integer
+          minimum: 1
 
   - type: match.rematch
     observer: all
@@ -194,7 +208,7 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, startsAt, deadline, maxGuesses]
+      required: [matchIndex, roundIndex, startsAt, deadline, maxGuesses, activePlayerCount]
       properties:
         matchIndex:
           type: integer
@@ -213,6 +227,11 @@ events:
         maxGuesses:
           type: integer
           minimum: 1
+        activePlayerCount:
+          type: integer
+          minimum: 2
+          maximum: 8
+          description: 本局创建时冻结的 active roster 人数；placement race 用于积分公式。
         turnMemberId:
           type: string
           description: 接力模式首个可提交玩家的稳定成员标识；竞速模式缺省。
@@ -457,6 +476,15 @@ events:
           type: array
           items:
             $ref: "#/definitions/MemberResult"
+        placements:
+          type: array
+          description: placement race 每名玩家的本局状态、完成名次和得分。
+          items:
+            $ref: "#/definitions/RoundPlacement"
+        eliminatedMemberIds:
+          type: array
+          items:
+            type: string
         nextStartsAt:
           type: string
           format: date-time
@@ -491,6 +519,11 @@ events:
           type: array
           items:
             $ref: "#/definitions/MemberResult"
+        ranking:
+          type: array
+          description: 终局总积分排行榜；rank 可共享。
+          items:
+            $ref: "#/definitions/MemberRanking"
         reason:
           type: string
           enum: [normal, forfeit, disconnect, server_restart, round_cap]
@@ -697,6 +730,58 @@ definitions:
       score:
         type: integer
         minimum: 0
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      bestRoundScore:
+        type: integer
+        minimum: 0
+      eliminatedRound:
+        type: integer
+        minimum: 1
+  RoundPlacement:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, status, pointsAwarded]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      status:
+        type: string
+        enum: [active, correct, forfeited, exhausted, timed_out]
+      finishRank:
+        type: integer
+        minimum: 1
+      pointsAwarded:
+        type: integer
+        minimum: 0
+  MemberRanking:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, rank, score, status]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      rank:
+        type: integer
+        minimum: 1
+      score:
+        type: integer
+        minimum: 0
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      eliminatedRound:
+        type: integer
+        minimum: 1
   MemberResult:
     type: object
     additionalProperties: false
@@ -757,6 +842,9 @@ examples:
           targetWins: 2
           catalogVersion: 66b0a79b
           matchIndex: 0
+          scoringMode: wins
+          rosterSize: 2
+          maxRounds: 9
           questionScope:
             schemaVersion: 2
             catalogVersion: 66b0a79b
@@ -801,8 +889,9 @@ examples:
           matchIndex: 0
           roundIndex: 1
           startsAt: "2026-08-06T12:00:11Z"
-          deadline: "2026-08-06T12:15:11Z"
+          deadline: "2026-08-06T12:05:11Z"
           maxGuesses: 8
+          activePlayerCount: 2
 
     - label: round.playing（倒计时结束）
       message:

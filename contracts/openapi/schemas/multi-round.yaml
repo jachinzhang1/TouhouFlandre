@@ -17,6 +17,38 @@ OpponentRow:
       items:
         $ref: "./session.yaml#/FeedbackStatus"
 
+RaceRoundParticipantStatus:
+  type: string
+  enum:
+    - active
+    - correct
+    - forfeited
+    - exhausted
+    - timed_out
+
+RoundPlacementView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - status
+    - pointsAwarded
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    status:
+      $ref: "#/RaceRoundParticipantStatus"
+    finishRank:
+      type: integer
+      minimum: 1
+    pointsAwarded:
+      type: integer
+      minimum: 0
+
 RelayTurnRow:
   type: object
   description: 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
@@ -106,7 +138,7 @@ RoundView:
     deadline:
       type: string
       format: date-time
-      description: 整局超时平局时刻（默认 startsAt + 15min）。
+      description: 整局截止时刻；race 默认 startsAt + 5min，relay 默认 startsAt + 15min。
     maxGuesses:
       type: integer
       minimum: 1
@@ -125,6 +157,11 @@ RoundView:
           minimum: 1
           maximum: 8
           description: 玩家视角为本人 seat；观战者缺省。
+        participationStatus:
+          $ref: "#/RaceRoundParticipantStatus"
+        finishRank:
+          type: integer
+          minimum: 1
         guesses:
           type: array
           items:
@@ -182,3 +219,8 @@ GuessResponse:
       minimum: 1
     guess:
       $ref: "./session.yaml#/GuessResult"
+    participationStatus:
+      $ref: "#/RaceRoundParticipantStatus"
+    finishRank:
+      type: integer
+      minimum: 1

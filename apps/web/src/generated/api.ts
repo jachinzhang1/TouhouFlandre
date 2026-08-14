@@ -940,13 +940,16 @@ export interface components {
         MatchView: {
             /** @description 场次序号；0 = 首场，1 = 第一次再来一局…… */
             matchIndex: number;
-            /** @description 目标胜场 = (N+1)/2。 */
+            scoringMode: components["schemas"]["ScoringMode"];
+            /** @description 场次创建时冻结的实际 roster 人数。 */
+            rosterSize: number;
+            /** @description wins 模式目标胜场；placement 模式保留兼容值但不参与终止判定。 */
             targetWins: number;
             /** @description 按 seat 稳定排序的公开比分；身份关联使用 memberId。 */
             scores: components["schemas"]["MemberScoreView"][];
             /** @description 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。 */
             roundIndex: number;
-            /** @description 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。 */
+            /** @description wins 模式按 BO 计算；placement 模式为 3 × rosterSize。 */
             maxRounds: number;
             /** @description 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。 */
             rematchReady: components["schemas"]["MemberRematchReadyView"][];
@@ -968,7 +971,7 @@ export interface components {
             startsAt: string;
             /**
              * Format: date-time
-             * @description 整局超时平局时刻（默认 startsAt + 15min）。
+             * @description 整局截止时刻；race 默认 startsAt + 5min，relay 默认 startsAt + 15min。
              */
             deadline: string;
             /** @description 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。 */
@@ -979,6 +982,8 @@ export interface components {
                 memberId?: string;
                 /** @description 玩家视角为本人 seat；观战者缺省。 */
                 seat?: number;
+                participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
+                finishRank?: number;
                 guesses: components["schemas"]["GuessResult"][];
             };
             /** @description 对手匿名矩阵集合；按 seat 稳定排序并以 memberId 关联。 */
@@ -1026,6 +1031,8 @@ export interface components {
         GuessResponse: {
             roundIndex: number;
             guess: components["schemas"]["GuessResult"];
+            participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
+            finishRank?: number;
         };
         /**
          * @deprecated
@@ -1036,16 +1043,25 @@ export interface components {
             version: string;
             characters: components["schemas"]["CharacterSearchResult"][];
         };
+        /** @enum {string} */
+        ScoringMode: "wins" | "placement";
+        /** @enum {string} */
+        MatchPlayerStatus: "active" | "eliminated" | "left";
         MemberScoreView: {
             memberId: string;
             seat: number;
             score: number;
+            status: components["schemas"]["MatchPlayerStatus"];
+            bestRoundScore: number;
+            eliminatedRound?: number;
         };
         MemberRematchReadyView: {
             memberId: string;
             seat: number;
             ready: boolean;
         };
+        /** @enum {string} */
+        RaceRoundParticipantStatus: "active" | "correct" | "forfeited" | "exhausted" | "timed_out";
         OpponentBoardView: {
             memberId: string;
             seat: number;

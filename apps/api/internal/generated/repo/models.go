@@ -98,14 +98,20 @@ type MultiMatch struct {
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
 	QuestionScope  []byte             `json:"question_scope"`
 	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	ScoringMode    string             `json:"scoring_mode"`
+	RosterSize     int32              `json:"roster_size"`
+	MaxRounds      int32              `json:"max_rounds"`
 }
 
 type MultiMatchPlayer struct {
-	MatchID  string `json:"match_id"`
-	MemberID string `json:"member_id"`
-	Seat     int32  `json:"seat"`
-	Wins     int32  `json:"wins"`
-	Status   string `json:"status"`
+	MatchID         string      `json:"match_id"`
+	MemberID        string      `json:"member_id"`
+	Seat            int32       `json:"seat"`
+	Wins            int32       `json:"wins"`
+	Status          string      `json:"status"`
+	Score           int32       `json:"score"`
+	BestRoundScore  int32       `json:"best_round_score"`
+	EliminatedRound pgtype.Int4 `json:"eliminated_round"`
 }
 
 type MultiMember struct {
@@ -152,9 +158,12 @@ type MultiRound struct {
 }
 
 type MultiRoundPlayer struct {
-	RoundID  string `json:"round_id"`
-	MemberID string `json:"member_id"`
-	Status   string `json:"status"`
+	RoundID       string             `json:"round_id"`
+	MemberID      string             `json:"member_id"`
+	Status        string             `json:"status"`
+	FinishRank    pgtype.Int4        `json:"finish_rank"`
+	PointsAwarded int32              `json:"points_awarded"`
+	CompletedAt   pgtype.Timestamptz `json:"completed_at"`
 }
 
 type MultiTurn struct {

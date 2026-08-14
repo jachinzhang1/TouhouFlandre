@@ -11,10 +11,13 @@ import (
 )
 
 type Querier interface {
+	AwardMatchPlayerPoints(ctx context.Context, arg AwardMatchPlayerPointsParams) (MultiMatchPlayer, error)
+	AwardRoundPlayerPoints(ctx context.Context, arg AwardRoundPlayerPointsParams) (MultiRoundPlayer, error)
 	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)
+	CountCorrectRoundPlayers(ctx context.Context, roundID string) (int32, error)
 	CountGuessesForRoundMember(ctx context.Context, arg CountGuessesForRoundMemberParams) (int64, error)
 	// 指标采集（members{status}）。
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
@@ -48,6 +51,9 @@ type Querier interface {
 	EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (MultiMatch, error)
 	EndRaceRound(ctx context.Context, arg EndRaceRoundParams) (MultiRound, error)
 	EndRound(ctx context.Context, arg EndRoundParams) (MultiRound, error)
+	// A roster departure before settlement always scores zero for the current
+	// round, including a player that had already submitted a correct answer.
+	ForfeitDepartedRoundPlayer(ctx context.Context, arg ForfeitDepartedRoundPlayerParams) (int64, error)
 	ForfeitRoundPlayer(ctx context.Context, arg ForfeitRoundPlayerParams) (int64, error)
 	// 房间当前进行中的场（forfeit/重启终止路径）。
 	GetActiveMatchForUpdate(ctx context.Context, roomID string) (MultiMatch, error)
@@ -65,6 +71,7 @@ type Querier interface {
 	// 按 (room, match_index) 取场（快照事件水合用）。
 	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
 	GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error)
+	GetMatchPlayer(ctx context.Context, arg GetMatchPlayerParams) (MultiMatchPlayer, error)
 	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
@@ -123,7 +130,11 @@ type Querier interface {
 	ListTurnsForRound(ctx context.Context, roundID string) ([]MultiTurn, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
 	ListWorks(ctx context.Context) ([]Work, error)
+	MarkMatchPlayerEliminated(ctx context.Context, arg MarkMatchPlayerEliminatedParams) (int64, error)
 	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
+	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)
+	MarkRoundPlayerExhausted(ctx context.Context, arg MarkRoundPlayerExhaustedParams) (int64, error)
+	MarkRoundPlayerTimedOut(ctx context.Context, arg MarkRoundPlayerTimedOutParams) (int64, error)
 	SetMemberReady(ctx context.Context, arg SetMemberReadyParams) (MultiMember, error)
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。

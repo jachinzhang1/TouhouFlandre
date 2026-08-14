@@ -156,6 +156,13 @@ const (
 	MultiplayerModeRelay MultiplayerMode = "relay"
 )
 
+type ScoringMode string
+
+const (
+	ScoringModeWins      ScoringMode = "wins"
+	ScoringModePlacement ScoringMode = "placement"
+)
+
 // RoomStatus 房间生命周期状态。
 type RoomStatus string
 
@@ -330,6 +337,9 @@ type MatchStartedPayload struct {
 	CatalogVersion string                   `json:"catalogVersion"`
 	MatchIndex     int                      `json:"matchIndex"`
 	QuestionScope  game.QuestionScopeConfig `json:"questionScope"`
+	ScoringMode    ScoringMode              `json:"scoringMode"`
+	RosterSize     int                      `json:"rosterSize"`
+	MaxRounds      int                      `json:"maxRounds"`
 }
 
 // MatchRematchPayload match.rematch：成员确认再来一局。
@@ -350,6 +360,7 @@ type RoundStartedPayload struct {
 	TurnDeadline      *time.Time `json:"turnDeadline,omitempty"`
 	MaxTurnsPerPlayer *int       `json:"maxTurnsPerPlayer,omitempty"`
 	MaxSkipsPerPlayer *int       `json:"maxSkipsPerPlayer,omitempty"`
+	ActivePlayerCount int        `json:"activePlayerCount,omitempty"`
 }
 
 // RoundPlayingPayload round.playing：倒计时结束可开猜。
@@ -428,17 +439,19 @@ type RoundTurnPassPayload struct {
 
 // RoundEndedPayload round.ended：局结束（viewerResult 为观察者视角；揭示答案与成员棋盘集合）。
 type RoundEndedPayload struct {
-	MatchIndex        int                `json:"matchIndex"`
-	RoundIndex        int                `json:"roundIndex"`
-	ViewerResult      *MatchResult       `json:"viewerResult,omitempty"`
-	WinnerMemberID    *string            `json:"winnerMemberId"`
-	ForfeitedMemberID *string            `json:"forfeitedMemberId,omitempty"`
-	Answer            AnswerView         `json:"answer"`
-	Boards            []MemberBoardView  `json:"boards"`
-	Turns             []RelayTurnRow     `json:"turns,omitempty"`
-	Scores            []MemberScoreView  `json:"scores"`
-	Results           []MemberResultView `json:"results"`
-	NextStartsAt      *time.Time         `json:"nextStartsAt,omitempty"`
+	MatchIndex          int                  `json:"matchIndex"`
+	RoundIndex          int                  `json:"roundIndex"`
+	ViewerResult        *MatchResult         `json:"viewerResult,omitempty"`
+	WinnerMemberID      *string              `json:"winnerMemberId"`
+	ForfeitedMemberID   *string              `json:"forfeitedMemberId,omitempty"`
+	Answer              AnswerView           `json:"answer"`
+	Boards              []MemberBoardView    `json:"boards"`
+	Turns               []RelayTurnRow       `json:"turns,omitempty"`
+	Scores              []MemberScoreView    `json:"scores"`
+	Results             []MemberResultView   `json:"results"`
+	NextStartsAt        *time.Time           `json:"nextStartsAt,omitempty"`
+	Placements          []RoundPlacementView `json:"placements,omitempty"`
+	EliminatedMemberIDs []string             `json:"eliminatedMemberIds,omitempty"`
 }
 
 // AnswerView 揭示的答案角色与作品快照。
@@ -466,9 +479,29 @@ type MemberBoardView struct {
 
 // MemberScoreView is one public score in seat order.
 type MemberScoreView struct {
-	MemberID string `json:"memberId"`
-	Seat     int    `json:"seat"`
-	Score    int    `json:"score"`
+	MemberID        string `json:"memberId"`
+	Seat            int    `json:"seat"`
+	Score           int    `json:"score"`
+	Status          string `json:"status,omitempty"`
+	BestRoundScore  int    `json:"bestRoundScore,omitempty"`
+	EliminatedRound *int   `json:"eliminatedRound,omitempty"`
+}
+
+type RoundPlacementView struct {
+	MemberID      string `json:"memberId"`
+	Seat          int    `json:"seat"`
+	Status        string `json:"status"`
+	FinishRank    *int   `json:"finishRank,omitempty"`
+	PointsAwarded int    `json:"pointsAwarded"`
+}
+
+type MemberRankingView struct {
+	MemberID        string `json:"memberId"`
+	Seat            int    `json:"seat"`
+	Rank            int    `json:"rank"`
+	Score           int    `json:"score"`
+	Status          string `json:"status"`
+	EliminatedRound *int   `json:"eliminatedRound,omitempty"`
 }
 
 // MemberResultView is one public result in seat order.
@@ -498,13 +531,14 @@ type FieldFeedbackView struct {
 
 // MatchEndedPayload match.ended：对局结束。
 type MatchEndedPayload struct {
-	MatchIndex      int                `json:"matchIndex"`
-	ViewerResult    *MatchResult       `json:"viewerResult,omitempty"`
-	WinnerMemberID  *string            `json:"winnerMemberId"`
-	Scores          []MemberScoreView  `json:"scores"`
-	Results         []MemberResultView `json:"results"`
-	Reason          MatchEndReason     `json:"reason"`
-	RetentionEndsAt time.Time          `json:"retentionEndsAt"`
+	MatchIndex      int                 `json:"matchIndex"`
+	ViewerResult    *MatchResult        `json:"viewerResult,omitempty"`
+	WinnerMemberID  *string             `json:"winnerMemberId"`
+	Scores          []MemberScoreView   `json:"scores"`
+	Results         []MemberResultView  `json:"results"`
+	Reason          MatchEndReason      `json:"reason"`
+	RetentionEndsAt time.Time           `json:"retentionEndsAt"`
+	Ranking         []MemberRankingView `json:"ranking,omitempty"`
 }
 
 // RoomClosedPayload room.closed：房间关闭（终态）。
@@ -542,19 +576,22 @@ type RoundEndedEventPayload struct {
 	Scores            ScoresView        `json:"scores"`
 	// NextStartsAt 下一局 startsAt = 本局 ended_at + INTERMISSION（08 §4.3/§4.7 弹窗倒计时，
 	// 服务端驱动；对局结束/无下一局时仍携带，客户端仅等待 round.started 期间使用）。
-	NextStartsAt *time.Time `json:"nextStartsAt,omitempty"`
+	NextStartsAt        *time.Time           `json:"nextStartsAt,omitempty"`
+	Placements          []RoundPlacementView `json:"placements,omitempty"`
+	EliminatedMemberIDs []string             `json:"eliminatedMemberIds,omitempty"`
 }
 
 // MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；
 // wire 的 result（观察者视角）由投影按 winnerSlot 推导。
 type MatchEndedEventPayload struct {
-	MatchIndex      int               `json:"matchIndex"`
-	WinnerMemberID  *string           `json:"winnerMemberId,omitempty"`
-	MemberScores    []MemberScoreView `json:"memberScores,omitempty"`
-	WinnerSlot      *int              `json:"winnerSlot,omitempty"`
-	Scores          ScoresView        `json:"scores"`
-	Reason          MatchEndReason    `json:"reason"`
-	RetentionEndsAt time.Time         `json:"retentionEndsAt"`
+	MatchIndex      int                 `json:"matchIndex"`
+	WinnerMemberID  *string             `json:"winnerMemberId,omitempty"`
+	MemberScores    []MemberScoreView   `json:"memberScores,omitempty"`
+	WinnerSlot      *int                `json:"winnerSlot,omitempty"`
+	Scores          ScoresView          `json:"scores"`
+	Reason          MatchEndReason      `json:"reason"`
+	RetentionEndsAt time.Time           `json:"retentionEndsAt"`
+	Ranking         []MemberRankingView `json:"ranking,omitempty"`
 }
 
 // ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----

@@ -102,6 +102,9 @@ export interface MatchStartedPayload {
   targetWins: number;
   catalogVersion: string;
   matchIndex: number;
+  scoringMode?: RaceScoringMode;
+  rosterSize?: number;
+  maxRounds?: number;
   questionScope?: QuestionScopeConfig;
 }
 
@@ -116,6 +119,7 @@ export interface RoundStartedPayload {
   startsAt: string;
   deadline: string;
   maxGuesses: number;
+  activePlayerCount?: number;
   turnMemberId?: string;
   turnSeat?: number;
   turnDeadline?: string;
@@ -205,6 +209,8 @@ export interface RoundEndedPayload {
   turns?: RelayTurnRow[];
   scores: MemberScoreView[];
   results: MemberResultView[];
+  placements?: RoundPlacementView[];
+  eliminatedMemberIds?: string[];
   /** 下一局 startsAt（本局 ended_at + INTERMISSION，服务端驱动；对局结束则为空）。 */
   nextStartsAt?: string;
 }
@@ -215,6 +221,7 @@ export interface MatchEndedPayload {
   winnerMemberId: string | null;
   scores: MemberScoreView[];
   results: MemberResultView[];
+  ranking?: MemberRankingView[];
   reason: MultiMatchEndReason;
   retentionEndsAt: string;
 }
@@ -229,6 +236,31 @@ export interface MemberScoreView {
   memberId: string;
   seat: number;
   score: number;
+  status?: MatchPlayerStatus;
+  bestRoundScore?: number;
+  eliminatedRound?: number;
+}
+
+export type RaceScoringMode = "wins" | "placement";
+export type MatchPlayerStatus = "active" | "eliminated" | "left";
+export type RaceRoundParticipantStatus =
+  "active" | "correct" | "forfeited" | "exhausted" | "timed_out";
+
+export interface RoundPlacementView {
+  memberId: string;
+  seat: number;
+  status: RaceRoundParticipantStatus;
+  finishRank?: number;
+  pointsAwarded: number;
+}
+
+export interface MemberRankingView {
+  memberId: string;
+  seat: number;
+  rank: number;
+  score: number;
+  status: MatchPlayerStatus;
+  eliminatedRound?: number;
 }
 
 export interface MemberResultView {
