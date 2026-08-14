@@ -129,6 +129,9 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	if first["type"] != "hello-ok" {
 		t.Fatalf("first frame = %v, want hello-ok", first)
 	}
+	if _, exists := first["targetChatCursor"]; exists {
+		t.Fatalf("game-only hello unexpectedly enabled chat: %v", first)
+	}
 	target, _ := first["targetGameSequence"].(float64)
 	if target < 1 {
 		t.Fatalf("targetGameSequence = %v, want >= 1", target)
@@ -148,6 +151,9 @@ func TestMultiWSConnectAndReplay(t *testing.T) {
 	if complete["type"] != "sync.complete" || complete["gameSequence"] != target {
 		t.Fatalf("sync completion = %v, want target %v", complete, target)
 	}
+	if _, exists := complete["chatCursor"]; exists {
+		t.Fatalf("game-only sync unexpectedly included chat cursor: %v", complete)
+	}
 
 	// 实时广播：REST ready → WS 收到 room.updated
 	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
@@ -164,9 +170,13 @@ func TestMultiWSSyncBarrierClosesAllWriteWindows(t *testing.T) {
 	fixture := createMatchFixture(t)
 	stages := []string{}
 	stageSequences := map[string]int64{}
+	liveRecorded := make(chan struct{})
 	fastHub.SetSyncTestHook(func(stage string) {
 		stages = append(stages, stage)
 		stageSequences[stage] = appendBarrierEvent(t, fixture.roomID)
+		if stage == "live" {
+			close(liveRecorded)
+		}
 	})
 	t.Cleanup(func() { fastHub.SetSyncTestHook(nil) })
 
@@ -198,6 +208,11 @@ func TestMultiWSSyncBarrierClosesAllWriteWindows(t *testing.T) {
 		if firstLive > 0 {
 			break
 		}
+	}
+	select {
+	case <-liveRecorded:
+	case <-time.After(5 * time.Second):
+		t.Fatal("live barrier hook did not finish")
 	}
 	if complete != stageSequences["replay_complete"] {
 		t.Fatalf("sync.complete = %d, want replay-stage event %d", complete, stageSequences["replay_complete"])
