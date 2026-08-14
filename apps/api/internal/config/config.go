@@ -3,6 +3,7 @@ package config
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"log/slog"
 	"os"
 	"strconv"
@@ -72,6 +73,40 @@ func MultiLobbyTTL() time.Duration {
 // MultiEventRetention closed 到删除的保留时长（MULTI_EVENT_RETENTION，默认 24h，08 §4.7/§9.1）。
 func MultiEventRetention() time.Duration {
 	return durationFromEnv("MULTI_EVENT_RETENTION", 24*time.Hour)
+}
+
+// MultiChatRetention 聊天消息逻辑/物理保留期（默认 24h）。
+func MultiChatRetention() time.Duration {
+	return durationFromEnv("MULTI_CHAT_RETENTION", 24*time.Hour)
+}
+
+func positiveIntFromEnv(key string, fallback int) int {
+	if raw := os.Getenv(key); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			return n
+		}
+	}
+	return fallback
+}
+
+// MultiChatRate 两级聊天 token bucket 配置。
+func MultiChatRate() multi.ChatRateConfig {
+	return multi.ChatRateConfig{
+		MemberCapacity: positiveIntFromEnv("MULTI_CHAT_MEMBER_CAPACITY", 5),
+		MemberRefill:   durationFromEnv("MULTI_CHAT_MEMBER_REFILL", 2*time.Second),
+		RoomCapacity:   positiveIntFromEnv("MULTI_CHAT_ROOM_CAPACITY", 20),
+		RoomRefill:     durationFromEnv("MULTI_CHAT_ROOM_REFILL", 500*time.Millisecond),
+	}
+}
+
+// MultiChatCursorSecret 返回聊天 cursor 的 HMAC 密钥。未单独配置时从多人投影密钥
+// 做域隔离派生，避免在不同协议用途间直接复用同一密钥材料。
+func MultiChatCursorSecret() []byte {
+	if raw := os.Getenv("MULTI_CHAT_CURSOR_SECRET"); raw != "" {
+		return []byte(raw)
+	}
+	derived := sha256.Sum256(append([]byte("multi-chat-cursor-v1:"), MultiProjectionSecret()...))
+	return derived[:]
 }
 
 // MultiJoinRateLimit 加入/预检按 IP 限流次数（MULTI_JOIN_RATE_LIMIT，默认 10 次/分，08 §8.5）。

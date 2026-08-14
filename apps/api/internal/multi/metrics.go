@@ -11,14 +11,17 @@ import (
 // Metrics 多人模式指标。
 type Metrics struct {
 	mu              sync.Mutex
-	eventsTotal     map[string]int64    // events_total{type}
-	forfeitsTotal   map[string]int64    // forfeits_total{reason}
-	roomsByStatus   map[string]int64    // rooms{status}
-	membersByStatus map[string]int64    // members{status}
-	wsConnections   int64               // ws_connections（当前值）
-	activeRounds    int64               // active_rounds（当前值）
-	reconnectsTotal int64               // reconnects_total
-	guessLatency    []time.Duration     // guess_latency 采样（p50/p95 在 Snapshot 计算）
+	eventsTotal     map[string]int64 // events_total{type}
+	forfeitsTotal   map[string]int64 // forfeits_total{reason}
+	roomsByStatus   map[string]int64 // rooms{status}
+	membersByStatus map[string]int64 // members{status}
+	wsConnections   int64            // ws_connections（当前值）
+	activeRounds    int64            // active_rounds（当前值）
+	reconnectsTotal int64            // reconnects_total
+	guessLatency    []time.Duration  // guess_latency 采样（p50/p95 在 Snapshot 计算）
+	chatMessages    map[string]int64 // chat_messages_total{channel,kind}
+	chatRejected    map[string]int64 // chat_rejected_total{code}
+	chatProjection  map[string]int64 // chat_projection_failures_total{path}
 }
 
 // DefaultMetrics 全局指标实例（sweeper/hub/handler 共用）。
@@ -27,6 +30,27 @@ var DefaultMetrics = &Metrics{
 	forfeitsTotal:   map[string]int64{},
 	roomsByStatus:   map[string]int64{},
 	membersByStatus: map[string]int64{},
+	chatMessages:    map[string]int64{},
+	chatRejected:    map[string]int64{},
+	chatProjection:  map[string]int64{},
+}
+
+func (m *Metrics) IncChatMessage(channel, kind string) {
+	m.mu.Lock()
+	m.chatMessages[channel+":"+kind]++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncChatRejected(code string) {
+	m.mu.Lock()
+	m.chatRejected[code]++
+	m.mu.Unlock()
+}
+
+func (m *Metrics) IncChatProjectionFailure(path string) {
+	m.mu.Lock()
+	m.chatProjection[path]++
+	m.mu.Unlock()
 }
 
 // IncEvents events_total{type}。
@@ -97,6 +121,9 @@ func (m *Metrics) Snapshot() map[string]any {
 		"wsConnections":   m.wsConnections,
 		"activeRounds":    m.activeRounds,
 		"reconnectsTotal": m.reconnectsTotal,
+		"chatMessages":    cloneMap(m.chatMessages),
+		"chatRejected":    cloneMap(m.chatRejected),
+		"chatProjection":  cloneMap(m.chatProjection),
 	}
 	if len(m.guessLatency) > 0 {
 		out["guessLatency"] = quantiles(m.guessLatency)
