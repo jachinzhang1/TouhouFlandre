@@ -1,8 +1,10 @@
 declare global {
+  interface TouhouFlandreDevelopmentTools {
+    resetAnnouncementReadStatus?: () => void;
+  }
+
   interface Window {
-    __touhouflandreDev?: {
-      resetAnnouncementReadStatus?: () => void;
-    };
+    __touhouflandreDev?: TouhouFlandreDevelopmentTools;
   }
 }
 

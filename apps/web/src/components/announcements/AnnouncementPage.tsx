@@ -13,6 +13,7 @@ import {
 import type { Announcement } from "../../announcements/types";
 import { AnnouncementMarkdown } from "./AnnouncementMarkdown";
 import { Paper } from "../Paper";
+import { PageHeader } from "../layout/PageHeader";
 
 export function AnnouncementPage({
   initialAnnouncements,
@@ -96,23 +97,19 @@ export function AnnouncementPage({
     tearTimersRef.current.add(timer);
   };
 
+  const summary = formatAnnouncementSummary(
+    refreshing,
+    announcements.length,
+    unreadCount,
+  );
+
   return (
     <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
-      <header className="text-center">
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-black leading-[1.15] max-[680px]:text-[2.05rem]">
-          公告
-        </h1>
-        <p
-          className="mx-auto mt-3 mb-0 flex min-h-7 max-w-[720px] items-center justify-center text-center font-brand leading-[1.75] text-ink-soft"
-          role={refreshing ? "status" : undefined}
-        >
-          {refreshing
-            ? "正在刷新公告……"
-            : announcements.length
-              ? `共有 ${announcements.length} 条公告，${unreadCount} 条未读。`
-              : "当前暂无公告。"}
-        </p>
-      </header>
+      <PageHeader
+        description={summary}
+        descriptionRole={refreshing ? "status" : undefined}
+        title="公告"
+      />
 
       {error ? (
         <p className="mt-4 rounded-[5px] border border-error-border bg-error-bg-soft px-4 py-3 text-sm font-bold text-error-text">
@@ -242,4 +239,16 @@ export function AnnouncementPage({
       )}
     </section>
   );
+}
+
+function formatAnnouncementSummary(
+  refreshing: boolean,
+  announcementCount: number,
+  unreadCount: number,
+) {
+  if (refreshing) return "正在刷新公告……";
+  if (announcementCount > 0) {
+    return `共有 ${announcementCount} 条公告，${unreadCount} 条未读。`;
+  }
+  return "当前暂无公告。";
 }

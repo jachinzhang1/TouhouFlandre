@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { BarChart3, CalendarDays, Home, Megaphone, Search } from "lucide-react";
 import { installAnnouncementDevelopmentTools } from "../../announcements/readState";
 import { useAnnouncementUnreadCount } from "../../hooks/useAnnouncementUnreadCount";
+import { installStatisticsDevelopmentTools } from "../../stats/devSeed";
 import { Paper } from "../Paper";
 import { YinYangMark } from "./YinYangMark";
 
@@ -49,7 +50,14 @@ export function SiteNav() {
   const navLinksRef = useRef<HTMLDivElement>(null);
   const hasActiveNavItem = NAV_ITEMS.some((item) => item.isActive(pathname));
 
-  useEffect(() => installAnnouncementDevelopmentTools(), []);
+  useEffect(() => {
+    const uninstallAnnouncements = installAnnouncementDevelopmentTools();
+    const uninstallStatistics = installStatisticsDevelopmentTools();
+    return () => {
+      uninstallAnnouncements();
+      uninstallStatistics();
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const navLinks = navLinksRef.current;

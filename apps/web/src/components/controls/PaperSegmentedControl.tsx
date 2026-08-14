@@ -3,13 +3,19 @@ import { Paper } from "../Paper";
 
 export function PaperSegmentGroup({
   children,
+  className = "",
   label,
 }: {
   children: ReactNode;
+  className?: string;
   label: string;
 }) {
   return (
-    <div className="paper-segment-group" role="group" aria-label={label}>
+    <div
+      className={`paper-segment-group ${className}`.trim()}
+      role="group"
+      aria-label={label}
+    >
       {children}
     </div>
   );

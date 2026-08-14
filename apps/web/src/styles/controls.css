@@ -64,3 +64,864 @@
   width: 44px;
   padding: 0;
 }
+
+.paper-surface.paper-button {
+  --paper-ornament-image: none;
+  position: relative;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.paper-button > * {
+  position: relative;
+  z-index: 1;
+}
+
+.paper-button-compact {
+  min-height: 34px;
+  padding-inline: 11px;
+  font-size: 0.75rem;
+}
+
+.paper-surface.paper-button.paper-button-icon {
+  width: 40px;
+  padding: 0;
+}
+
+.paper-surface.paper-button.paper-button-compact.paper-button-icon {
+  width: 34px;
+}
+
+.paper-button-theme:not(.paper-button-filled) {
+  color: var(--theme-color);
+}
+
+.paper-button-theme.paper-button-filled,
+.paper-button-theme.paper-button-filled:hover {
+  color: var(--paper-tinted-ink);
+  background: var(--theme-color);
+}
+
+.paper-button-danger {
+  color: var(--error-text);
+}
+
+.paper-button-jade {
+  color: var(--jade-strong);
+}
+
+.paper-button-danger.paper-button-filled,
+.paper-button-danger.paper-button-filled:hover {
+  --paper-fold-shade: #6f2223;
+  --paper-ornament-image: repeating-linear-gradient(
+    14deg,
+    transparent 0 8px,
+    rgba(255, 255, 255, 0.065) 8px 9px,
+    transparent 9px 17px
+  );
+  color: #fff;
+  background: #ad3334;
+}
+
+.paper-button-jade.paper-button-filled,
+.paper-button-jade.paper-button-filled:hover {
+  --paper-fold-shade: color-mix(in srgb, var(--jade) 68%, #111);
+  color: #fff;
+  background: var(--jade);
+}
+
+.paper-button:disabled {
+  color: var(--disabled-text);
+  background: var(--disabled-bg);
+  opacity: 0.62;
+}
+
+.paper-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.paper-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-button-danger:not(.paper-button-filled):hover {
+    background-color: var(--error-bg-soft);
+  }
+
+  .paper-button-jade:not(.paper-button-filled):hover {
+    background-color: var(--jade-soft);
+  }
+}
+
+.paper-segment-group {
+  display: inline-flex;
+  align-items: stretch;
+  background: transparent;
+}
+
+.paper-segment-button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    opacity 160ms ease,
+    clip-path 180ms ease;
+}
+
+.paper-segment-button[data-paper-variant="plain"] {
+  color: var(--ink);
+  background: var(--paper-plain-bg);
+}
+
+.paper-segment-button[data-paper-variant="tinted"] {
+  z-index: 2;
+  color: var(--paper-tinted-ink);
+  background: var(--theme-color);
+}
+
+.paper-segment-separator {
+  position: relative;
+  z-index: 3;
+  width: 1px;
+  align-self: stretch;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--ink) 28%, transparent) 0 5px,
+    transparent 5px 9px
+  );
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .paper-segment-group
+    > .paper-surface[data-paper-variant="plain"]:hover:not(:disabled) {
+    background-color: var(--paper-interactive-hover-bg);
+  }
+}
+
+.paper-select-control {
+  --paper-ornament-image: none;
+  position: relative;
+  display: inline-flex;
+  min-width: 148px;
+  min-height: 42px;
+  align-items: stretch;
+  color: var(--ink);
+  background: var(--paper-plain-bg);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition:
+    outline-color 150ms ease,
+    clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.paper-select-control-compact {
+  min-width: 68px;
+  min-height: 34px;
+}
+
+.paper-select-input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  padding: 0 36px 0 12px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.paper-select-control-compact .paper-select-input {
+  padding-inline: 10px 30px;
+  font-size: 0.75rem;
+}
+
+.paper-select-input:focus,
+.paper-select-input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.paper-select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  z-index: 2;
+  color: var(--ink-soft);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: color 150ms ease;
+}
+
+.paper-select-control:focus-within {
+  outline-color: var(--theme-color);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
+}
+
+.paper-select-control:focus-within::after {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.paper-select-control:focus-within .paper-select-chevron {
+  color: var(--theme-color);
+}
+
+.paper-picker-control {
+  position: relative;
+  display: inline-flex;
+  min-width: 132px;
+  min-height: 42px;
+  align-items: stretch;
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition:
+    outline-color 150ms ease,
+    clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.paper-picker-select {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-width: 0;
+  appearance: none;
+  padding: 0 36px 0 12px;
+  border: 0;
+  outline: 0;
+  color: var(--paper-tinted-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.paper-picker-select:focus,
+.paper-picker-select:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.paper-picker-select option {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.paper-picker-chevron {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  z-index: 2;
+  color: var(--paper-tinted-ink-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.paper-picker-control[data-paper-variant="plain"] {
+  color: var(--ink);
+  background: var(--paper-plain-bg);
+}
+
+.paper-picker-control[data-paper-variant="plain"] .paper-picker-select {
+  color: var(--ink);
+}
+
+.paper-picker-control[data-paper-variant="plain"] .paper-picker-chevron {
+  color: var(--ink-soft);
+}
+
+.paper-picker-control:focus-within {
+  outline-color: var(--theme-color);
+}
+
+.paper-switch-control {
+  --paper-ornament-image: none;
+  display: inline-flex;
+  width: 48px;
+  height: 28px;
+  align-items: center;
+  padding: 4px;
+  border: 0;
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper-plain-bg));
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 6px),
+    calc(100% - 6px) 100%,
+    0 100%
+  );
+  transition:
+    outline-color 150ms ease,
+    background-color 150ms ease,
+    clip-path 180ms ease;
+}
+
+.paper-surface.paper-switch-control[data-paper-variant="plain"] {
+  background: color-mix(in srgb, var(--ink) 8%, var(--paper-plain-bg));
+}
+
+.paper-switch-control[data-paper-variant="tinted"] {
+  background: var(--theme-color);
+}
+
+.paper-switch-control:focus-visible {
+  outline-color: var(--theme-color);
+}
+
+.paper-switch-control:disabled {
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper-plain-bg));
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.paper-switch-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.paper-switch-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 18px;
+  height: 18px;
+  background: color-mix(in srgb, var(--ink) 18%, var(--paper-plain-bg));
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+  transition:
+    background-color 150ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.paper-switch-control[aria-checked="true"] .paper-switch-thumb {
+  background: #fff;
+  transform: translateX(20px);
+}
+
+.paper-switch-control:disabled .paper-switch-thumb {
+  background: color-mix(in srgb, var(--ink) 12%, var(--paper-plain-bg));
+}
+
+.paper-range-control {
+  --paper-ornament-image: none;
+  display: flex;
+  width: 100%;
+  min-width: 140px;
+  height: 42px;
+  align-items: center;
+  padding-inline: 12px;
+  background: var(--paper-plain-bg);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+}
+
+.paper-range-control:focus-within,
+.paper-number-control:focus-within {
+  outline-color: var(--theme-color);
+}
+
+.paper-range-input {
+  width: 100%;
+  height: 18px;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: linear-gradient(
+    to right,
+    var(--theme-color) 0 var(--paper-range-progress),
+    var(--line-strong) var(--paper-range-progress) 100%
+  );
+  background-position: center;
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.paper-range-input::-webkit-slider-thumb {
+  width: 16px;
+  height: 20px;
+  appearance: none;
+  border: 0;
+  background: var(--theme-color);
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+}
+
+.paper-range-input::-moz-range-thumb {
+  width: 16px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--theme-color);
+  clip-path: polygon(0 0, 100% 0, 100% 75%, 75% 100%, 0 100%);
+}
+
+.paper-range-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.paper-number-control {
+  --paper-ornament-image: none;
+  display: inline-flex;
+  width: 92px;
+  min-width: 92px;
+  height: 42px;
+  align-items: stretch;
+  background: var(--paper-plain-bg);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+}
+
+.paper-number-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 12px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.paper-number-input:disabled {
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  cursor: not-allowed;
+}
+
+.paper-number-suffix {
+  display: inline-flex;
+  min-width: 28px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.fixed-tag-combobox {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fixed-tag-combobox:focus-within {
+  z-index: 60;
+}
+
+.fixed-tag-combobox-control {
+  --paper-ornament-image: none;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  align-items: stretch;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--paper-plain-bg);
+  outline: 0;
+  transition: clip-path 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fixed-tag-combobox-control::before {
+  background-image: none;
+}
+
+.fixed-tag-combobox-control:focus-within {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 100%);
+}
+
+.fixed-tag-combobox-control:focus-within::after {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.fixed-tag-combobox-focus-border {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border: 1px solid var(--theme-color);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.fixed-tag-combobox-control:focus-within > .fixed-tag-combobox-focus-border {
+  opacity: 1;
+}
+
+.fixed-tag-combobox-icon {
+  position: relative;
+  z-index: 7;
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  background: var(--paper-plain-bg);
+  transition: color 150ms ease;
+}
+
+.fixed-tag-combobox-control:focus-within .fixed-tag-combobox-icon {
+  color: var(--theme-color);
+}
+
+.fixed-tag-combobox-viewport {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  height: 48px;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.fixed-tag-combobox-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.fixed-tag-combobox-track {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  height: 48px;
+  align-items: stretch;
+}
+
+.fixed-tag-combobox-separator {
+  position: relative;
+  z-index: 8;
+  width: 1px;
+  height: 48px;
+  flex: 0 0 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--ink) 28%, transparent) 0 5px,
+    transparent 5px 9px
+  );
+  pointer-events: none;
+}
+
+.fixed-tag-combobox-entry {
+  display: flex;
+  width: var(--fixed-tag-input-width);
+  min-width: var(--fixed-tag-input-width);
+  height: 48px;
+  flex: 0 0 var(--fixed-tag-input-width);
+  align-items: center;
+}
+
+.fixed-tag-combobox-track[data-has-tags="false"] .fixed-tag-combobox-entry {
+  width: auto;
+  flex: 1 0 var(--fixed-tag-input-width);
+}
+
+.fixed-tag-combobox-input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  appearance: none;
+  padding: 0 13px;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  font-size: 1rem;
+}
+
+.fixed-tag-combobox-input:focus,
+.fixed-tag-combobox-input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+.fixed-tag-combobox-input::placeholder {
+  color: var(--placeholder-text);
+}
+
+.fixed-tag-combobox-tag-slot {
+  display: flex;
+  height: 48px;
+  flex: 0 0 auto;
+  background: var(--page-background);
+}
+
+.fixed-tag-combobox-tag {
+  position: relative;
+  display: grid;
+  width: max-content;
+  min-width: 0;
+  max-width: min(340px, 80vw);
+  height: 48px;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, max-content) 32px;
+  align-items: center;
+  padding-left: 12px;
+  overflow: hidden;
+}
+
+.fixed-tag-combobox-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.fixed-tag-combobox-copy strong,
+.fixed-tag-combobox-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-tag-combobox-copy strong {
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.fixed-tag-combobox-copy small {
+  color: var(--ink-soft);
+  font-size: 0.65rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.fixed-tag-combobox-tag .fixed-tag-combobox-copy small {
+  color: var(--paper-tinted-ink-muted);
+}
+
+.fixed-tag-combobox-tag .fixed-tag-combobox-copy {
+  padding-right: 6px;
+}
+
+.fixed-tag-combobox-remove {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  width: 32px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  color: var(--paper-tinted-ink-muted);
+  background: transparent;
+  opacity: 0;
+  transition:
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.fixed-tag-combobox-tag:hover .fixed-tag-combobox-remove,
+.fixed-tag-combobox-tag:focus-within .fixed-tag-combobox-remove {
+  opacity: 1;
+}
+
+.fixed-tag-combobox-remove:hover {
+  color: var(--paper-tinted-ink);
+  background: transparent;
+}
+
+.fixed-tag-combobox-clear {
+  --paper-ornament-image: none;
+  position: relative;
+  z-index: 7;
+  display: inline-flex;
+  width: 64px;
+  height: 48px;
+  flex: 0 0 64px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 0;
+  color: var(--ink);
+  background: var(--paper-plain-bg);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.fixed-tag-scroll-shadow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 6;
+  width: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.fixed-tag-scroll-shadow[data-visible="true"] {
+  opacity: 1;
+}
+
+.fixed-tag-scroll-shadow-left {
+  left: 48px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--ink) 22%, transparent),
+    transparent
+  );
+}
+
+.fixed-tag-scroll-shadow-right {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--ink) 22%, transparent),
+    transparent
+  );
+}
+
+.fixed-tag-scroll-shadow-right[data-clear-visible="true"] {
+  right: 65px;
+}
+
+.fixed-tag-combobox-popup-layer {
+  position: absolute;
+  top: 100%;
+  left: var(--fixed-tag-popup-left, 0);
+  z-index: 80;
+  width: var(--fixed-tag-popup-width, min(360px, 100%));
+  height: 260px;
+  box-shadow: 0 10px 28px var(--paper-cast-mid);
+  filter: none;
+}
+
+.paper-surface.fixed-tag-combobox-popup[data-paper-variant="plain"],
+.paper-surface.fixed-tag-combobox-popup[data-paper-variant="plain"]:hover {
+  --paper-ornament-image: none;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--paper);
+}
+
+.fixed-tag-combobox-options {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fixed-tag-combobox-option {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  align-items: center;
+  padding: 8px 13px;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+  isolation: isolate;
+  transition: background-color 140ms ease;
+}
+
+.fixed-tag-combobox-option + .fixed-tag-combobox-option {
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.fixed-tag-combobox-option:nth-child(odd) {
+  background-color: color-mix(in srgb, #000 2.5%, var(--paper));
+}
+
+.fixed-tag-combobox-option:nth-child(even) {
+  background-color: color-mix(in srgb, var(--ink) 3.5%, transparent);
+}
+
+.fixed-tag-combobox-option:nth-child(even)::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--ink);
+  content: "";
+  pointer-events: none;
+  -webkit-mask-image: var(--paper-tinted-ornament);
+  -webkit-mask-repeat: repeat;
+  -webkit-mask-size: var(--paper-tinted-ornament-size);
+  mask-image: var(--paper-tinted-ornament);
+  mask-repeat: repeat;
+  mask-size: var(--paper-tinted-ornament-size);
+}
+
+.fixed-tag-combobox-option:is(:hover, [data-active="true"]) {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.fixed-tag-combobox-empty {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 20px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .fixed-tag-combobox-remove {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 680px) {
+  .fixed-tag-combobox-remove {
+    opacity: 1;
+  }
+}

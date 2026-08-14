@@ -78,16 +78,19 @@
     display: block;
   }
 
+  .catalog-results-layout {
+    --catalog-controls-sticky-height: 184px;
+  }
   .catalog-querybar {
     display: grid;
-    gap: 8px;
+    gap: var(--control-cluster-gap);
     margin-top: 26px;
   }
 
   .catalog-controls {
     display: grid;
-    grid-template-columns: 0.8fr 1.4fr 0.8fr;
-    gap: 8px;
+    grid-template-columns: 1fr 1.25fr 1fr;
+    gap: var(--control-cluster-gap);
   }
 
   .paper-segment-group {
@@ -95,9 +98,23 @@
     grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
   }
 
+  .paper-segment-group.stats-history-pagination {
+    display: inline-flex;
+    grid-template-columns: none;
+  }
+
   .paper-segment-button {
-    min-width: 44px;
+    min-width: 48px;
     padding: 0 7px;
+  }
+
+  .catalog-work-tag-filter {
+    gap: var(--control-cluster-gap);
+  }
+
+  .catalog-work-tag-filter .paper-segment-button {
+    min-width: 48px;
+    padding-inline: 6px;
   }
 
   .game-surface {
@@ -223,6 +240,22 @@
 
   .answer-details {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 368px) {
+  .catalog-results-layout {
+    --catalog-controls-sticky-height: 240px;
+  }
+
+  .catalog-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  }
+
+  .catalog-controls .paper-segment-group:last-child {
+    grid-column: 1 / -1;
+    width: min(100%, 140px);
+    justify-self: center;
   }
 }
 

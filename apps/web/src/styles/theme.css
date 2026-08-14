@@ -79,6 +79,7 @@
   --paper-plain-bg: rgba(255, 255, 255, 0.94);
   --paper-plain-bg-hover: #ffffff;
   --paper-plain-line: rgba(82, 97, 91, 0.12);
+  --paper-interactive-hover-bg: rgba(255, 255, 255, 0.08);
   --paper-plain-fold: color-mix(in srgb, #ebefec 90%, var(--theme-color));
   --paper-tinted-bg: var(--theme-color);
   --paper-tinted-fold: color-mix(in srgb, var(--theme-color) 72%, #111);

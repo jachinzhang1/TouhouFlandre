@@ -11,6 +11,108 @@
 
 html {
   scroll-behavior: smooth;
+  --page-header-content-gap: 44px;
+  --control-cluster-gap: 10px;
+  --site-nav-height: 76px;
+  --sticky-nav-gap: 20px;
+  --layer-navigation: 1000;
+}
+
+.page-header {
+  --page-title-center: 1.495rem;
+  position: relative;
+}
+
+.page-header-slot {
+  position: absolute;
+  top: var(--page-title-center);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.page-header-slot-left {
+  left: 0;
+  justify-content: flex-start;
+}
+
+.page-header-slot-right {
+  right: 0;
+  justify-content: flex-end;
+}
+
+.page-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.page-header-back:hover {
+  color: var(--ink);
+}
+
+.page-header-back:focus-visible {
+  color: var(--ink);
+  outline: 2px solid var(--theme-color);
+  outline-offset: 5px;
+}
+
+.page-header-action {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 6px;
+  border: 0;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1;
+  transition: color 150ms ease;
+}
+
+.page-header-action-theme {
+  color: var(--theme-color);
+}
+
+.page-header-action-danger {
+  color: var(--error-text);
+}
+
+.page-header-action:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.page-header-action-theme:hover:not(:disabled) {
+  color: var(--accent-strong);
+}
+
+.page-header-action-danger:hover:not(:disabled) {
+  color: var(--error-text);
+}
+
+.page-header-action:focus-visible {
+  color: var(--ink);
+  outline: 2px solid var(--theme-color);
+  outline-offset: 3px;
+}
+
+.page-header-action:disabled {
+  color: color-mix(in srgb, var(--ink) 28%, transparent);
+  cursor: not-allowed;
+}
+
+.page-header + * {
+  margin-top: var(--page-header-content-gap);
 }
 
 body {
@@ -51,4 +153,39 @@ input:focus-visible {
   font-size: clamp(15rem, 42vw, 40rem);
   line-height: 0.66;
   letter-spacing: -0.08em;
+}
+
+@media (max-width: 680px) {
+  html {
+    --page-header-content-gap: 36px;
+    --control-cluster-gap: 8px;
+    --site-nav-height: 62px;
+  }
+
+  .page-header {
+    --page-title-center: 1.17875rem;
+  }
+
+  .page-header-has-left.page-header-has-right h1 {
+    padding-inline: 110px;
+  }
+
+  .page-header-has-right:not(.page-header-has-left) {
+    text-align: left;
+  }
+
+  .page-header-has-right:not(.page-header-has-left) h1 {
+    padding-right: 172px;
+  }
+
+  .page-header-has-right:not(.page-header-has-left) p {
+    justify-content: flex-start;
+    margin-right: 0;
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .page-header-has-left:not(.page-header-has-right) h1 {
+    padding-inline: 90px;
+  }
 }

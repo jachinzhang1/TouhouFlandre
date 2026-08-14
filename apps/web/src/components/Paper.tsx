@@ -10,6 +10,8 @@ export type PaperVariant = "plain" | "tinted";
 
 interface PaperProps {
   ariaLabel?: string;
+  ariaChecked?: boolean | "mixed";
+  ariaDisabled?: boolean;
   ariaPressed?: boolean;
   animateOnMount?: boolean;
   as?: "article" | "button" | "div" | "span";
@@ -32,7 +34,9 @@ interface PaperProps {
 }
 
 export function Paper({
+  ariaChecked,
   ariaLabel,
+  ariaDisabled,
   ariaPressed,
   animateOnMount = true,
   as = "span",
@@ -68,6 +72,8 @@ export function Paper({
     "data-paper-unfolded": unfolded ? "true" : undefined,
     "aria-hidden": ariaHidden || undefined,
     "aria-label": ariaLabel,
+    "aria-checked": ariaChecked,
+    "aria-disabled": ariaDisabled || undefined,
     "aria-pressed": ariaPressed,
     role,
     title,
