@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { paths } from "../generated/api";
+import type { components, paths } from "../generated/api";
 import type {
   MultiRoomFormat,
   MultiplayerMode,
@@ -212,6 +212,29 @@ export const api = {
       client.POST("/api/rooms/{roomId}/rounds/{roundIndex}/pass", {
         params: { path: { roomId, roundIndex } },
         headers: guestAuthHeader(token),
+      }),
+    ),
+  listRoomMessages: (
+    roomId: string,
+    token: string,
+    query: { after?: string; before?: string; limit?: number } = {},
+  ) =>
+    requestApi(
+      client.GET("/api/rooms/{roomId}/messages", {
+        params: { path: { roomId }, query },
+        headers: guestAuthHeader(token),
+      }),
+    ),
+  sendRoomMessage: (
+    roomId: string,
+    token: string,
+    body: components["schemas"]["SendChatMessageRequest"],
+  ) =>
+    requestApi(
+      client.POST("/api/rooms/{roomId}/messages", {
+        params: { path: { roomId } },
+        headers: guestAuthHeader(token),
+        body,
       }),
     ),
   submitMultiGuess: (

@@ -35,6 +35,7 @@ import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import { ChatDock } from "./ChatDock";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
@@ -192,6 +193,19 @@ export function RoomView({ code }: { code: string }) {
     state.roundResult &&
     !roundResultDismissed,
   );
+  const chatDock =
+    state.room && state.viewer && stored?.roomId && stored?.guestToken ? (
+      <ChatDock
+        roomId={stored.roomId}
+        viewer={state.viewer}
+        chat={state.chat}
+        disabled={roomUnavailable}
+        onSend={actions.sendChat}
+        onRetry={actions.retryChat}
+        onLoadOlder={actions.loadOlderChat}
+        onClearError={actions.clearChatError}
+      />
+    ) : null;
 
   useEffect(() => {
     setForfeitConfirm(false);
@@ -312,6 +326,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
@@ -333,6 +348,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
@@ -355,6 +371,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
@@ -396,6 +413,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
@@ -525,6 +543,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
@@ -552,6 +571,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
+        {chatDock}
       </>
     );
   }
