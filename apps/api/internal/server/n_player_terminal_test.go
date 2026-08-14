@@ -16,7 +16,7 @@ import (
 
 func TestMultiRaceRoundForfeitTerminalTable(t *testing.T) {
 	t.Run("partial forfeits continue and next round restores eligibility", func(t *testing.T) {
-		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 		forfeitRaceRound(t, fixture, fixture.participants[1], http.StatusNoContent)
 
 		var roundStatus, forfeitedStatus string
@@ -77,7 +77,7 @@ func TestMultiRaceRoundForfeitTerminalTable(t *testing.T) {
 	})
 
 	t.Run("concurrent forfeits serialize to one active winner", func(t *testing.T) {
-		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 		type result struct {
 			status  int
 			payload []byte
@@ -138,7 +138,7 @@ func TestMultiRaceRoundForfeitTerminalTable(t *testing.T) {
 }
 
 func TestMultiRaceMatchLeaveTerminalTable(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 	for _, participant := range fixture.participants[1:] {
 		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", participant.token, nil)
 		if resp.StatusCode != http.StatusNoContent {
@@ -179,7 +179,7 @@ func TestMultiRaceMatchLeaveTerminalTable(t *testing.T) {
 }
 
 func TestMultiRacePartialLeaveContinuesWithRemainingRoster(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 	left := fixture.participants[1]
 	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", left.token, nil)
 	if resp.StatusCode != http.StatusNoContent {
@@ -218,7 +218,7 @@ func TestMultiRaceDisconnectBatchTerminalTable(t *testing.T) {
 		{name: "all simultaneous expiries draw", disconnectAll: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			fixture := createNPlayerRaceFixture(t, 4, "bo3")
+			fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 			where := "seat <> 1"
 			if test.disconnectAll {
 				where = "seat IS NOT NULL"
@@ -266,7 +266,7 @@ func TestMultiRaceDisconnectBatchTerminalTable(t *testing.T) {
 }
 
 func TestMultiRaceGuessExhaustionTerminalTable(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 	maxGuesses := fixture.snapshot.Round.MaxGuesses
 	if maxGuesses <= 0 || maxGuesses > 50 {
 		t.Fatalf("test max guesses = %d", maxGuesses)
@@ -311,7 +311,7 @@ func TestMultiRaceGuessExhaustionTerminalTable(t *testing.T) {
 
 func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 	t.Run("round timeout draws after a partial forfeit", func(t *testing.T) {
-		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 		forfeitRaceRound(t, fixture, fixture.participants[1], http.StatusNoContent)
 		if _, err := pool.Exec(ctx, `UPDATE multi_round SET deadline = now() - interval '1 second'
 			WHERE match_id = (SELECT id FROM multi_match WHERE room_id = $1 AND status = 'playing')`, fixture.roomID); err != nil {
@@ -336,7 +336,7 @@ func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 	})
 
 	t.Run("restart preserves roster scores and ends without winner", func(t *testing.T) {
-		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		fixture := createLegacyNPlayerRaceFixture(t, 4, "bo3")
 		answer := currentAnswer(t, fixture.roomID)
 		if resp, payload := guess(t, fixture.roomID, fixture.participants[1].token, 1, answer, "restart-score"); resp.StatusCode != http.StatusOK {
 			t.Fatalf("pre-restart score = %d %s", resp.StatusCode, payload)
@@ -363,6 +363,46 @@ func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 		seatTwoScore := collectionEntryAtSeat(t, ended.Payload, "scores", 2)
 		if ended.Payload["reason"] != string(multi.MatchEndReasonServerRestart) || ended.Payload["winnerMemberId"] != nil || ended.Payload["viewerResult"] != "draw" || seatTwoScore["score"] != float64(1) {
 			t.Fatalf("restart projected event = %+v", ended.Payload)
+		}
+	})
+
+	t.Run("placement restart publishes terminal placements and ranking", func(t *testing.T) {
+		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		answer := currentAnswer(t, fixture.roomID)
+		for index, participant := range fixture.participants {
+			if resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "placement-restart-"+strconv.Itoa(index)); resp.StatusCode != http.StatusOK {
+				t.Fatalf("placement rank %d = %d %s", index+1, resp.StatusCode, payload)
+			}
+		}
+		advanceRounds(t)
+		if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming); err != nil {
+			t.Fatal(err)
+		}
+
+		snapshot := nPlayerSnapshot(t, fixture.roomID, fixture.participants[0].token)
+		matchEnded := latestEventOfType(t, snapshot, string(multi.EventMatchEnded))
+		if matchEnded.Payload["winnerMemberId"] != fixture.participants[0].memberID || matchEnded.Payload["viewerResult"] != "win" {
+			t.Fatalf("placement restart result = %+v", matchEnded.Payload)
+		}
+		ranking, ok := matchEnded.Payload["ranking"].([]any)
+		if !ok || len(ranking) != 4 {
+			t.Fatalf("placement restart ranking = %+v", matchEnded.Payload["ranking"])
+		}
+		first, ok := ranking[0].(map[string]any)
+		if !ok || first["memberId"] != fixture.participants[0].memberID || first["rank"] != float64(1) || first["score"] != float64(4) {
+			t.Fatalf("placement restart first = %+v", ranking[0])
+		}
+
+		roundEnded := latestEventOfType(t, snapshot, string(multi.EventRoundEnded))
+		placements, ok := roundEnded.Payload["placements"].([]any)
+		if !ok || len(placements) != 4 {
+			t.Fatalf("placement restart round = %+v", roundEnded.Payload)
+		}
+		for _, raw := range placements {
+			placement := raw.(map[string]any)
+			if placement["status"] != "timed_out" || placement["pointsAwarded"] != float64(0) {
+				t.Fatalf("forced terminal placement = %+v", placement)
+			}
 		}
 	})
 }

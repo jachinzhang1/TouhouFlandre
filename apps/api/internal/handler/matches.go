@@ -64,7 +64,19 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 
 	now := s.now()
 	targetWins := multi.TargetWins(format)
+	members, err := q.ListMembers(ctx, room.ID)
+	if err != nil {
+		return internalError(err)
+	}
+	rosterSize := len(members)
+	scoringMode := multi.ScoringModeWins
+	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace && rosterSize > 2 {
+		scoringMode = multi.ScoringModePlacement
+	}
 	maxRounds := multi.MaxRounds(format, s.timing.MaxRoundsFactor)
+	if scoringMode == multi.ScoringModePlacement {
+		maxRounds = rosterSize * s.timing.MaxRoundsFactor
+	}
 	match, err := q.CreateMatch(ctx, repo.CreateMatchParams{
 		ID:             multi.NewID(),
 		RoomID:         room.ID,
@@ -72,6 +84,9 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		TargetWins:     int32(targetWins),
 		StartedAt:      timestamptz(now),
 		QuestionScope:  scopeJSON,
+		ScoringMode:    string(scoringMode),
+		RosterSize:     int32(rosterSize),
+		MaxRounds:      int32(maxRounds),
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
@@ -85,7 +100,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		RoundIndex:   1,
 		AnswerID:     answerID,
 		StartsAt:     timestamptz(startsAt),
-		Deadline:     timestamptz(startsAt.Add(s.timing.RoundSeconds)),
+		Deadline:     timestamptz(startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing))),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
@@ -100,14 +115,13 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
 		QuestionScope:  scope,
+		ScoringMode:    scoringMode,
+		RosterSize:     rosterSize,
+		MaxRounds:      maxRounds,
 	}); err != nil {
 		return internalError(err)
 	}
 	maxGuesses := game.EffectiveQuestionScopeMaxGuesses(scope.Rules)
-	members, err := q.ListMembers(ctx, room.ID)
-	if err != nil {
-		return internalError(err)
-	}
 	for _, member := range members {
 		if _, err := q.CreateMatchPlayer(ctx, repo.CreateMatchPlayerParams{
 			MatchID:  match.ID,
@@ -124,11 +138,12 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		return mapRoomWriteError(err)
 	}
 	roundStarted := multi.RoundStartedPayload{
-		MatchIndex: int(match.MatchIndex),
-		RoundIndex: int(round.RoundIndex),
-		StartsAt:   startsAt,
-		Deadline:   startsAt.Add(s.timing.RoundSeconds),
-		MaxGuesses: maxGuesses,
+		MatchIndex:        int(match.MatchIndex),
+		RoundIndex:        int(round.RoundIndex),
+		StartsAt:          startsAt,
+		Deadline:          startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing)),
+		MaxGuesses:        maxGuesses,
+		ActivePlayerCount: rosterSize,
 	}
 	multi.AddRelayRoundStartedFields(&roundStarted, room, members, int(round.RoundIndex), startsAt)
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {

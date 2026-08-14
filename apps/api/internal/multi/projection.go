@@ -132,16 +132,23 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return ProjectedEvent{}, false, err
 		}
-		if IsSpectator(observer) {
+		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
+		if err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		fullBoardVisibility := IsSpectator(observer)
+		if !fullBoardVisibility && IsPlayer(observer) {
+			matchPlayer, err := q.GetMatchPlayer(ctx, repo.GetMatchPlayerParams{MatchID: match.ID, MemberID: observer.ID})
+			if err == nil {
+				fullBoardVisibility = matchPlayer.Status != "active"
+			}
+		}
+		if fullBoardVisibility {
 			projected, err := projectSpectatorGuess(ctx, q, roomID, payload, memberSlotByID, charsCache)
 			return projected, false, err
 		}
 		if payload.MemberSlot == MemberSeat(observer) {
 			return ProjectedEvent{}, true, nil // 自己的猜测不回放（自视角以 REST 响应为准）
-		}
-		match, err := q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: roomID, MatchIndex: int32(payload.MatchIndex)})
-		if err != nil {
-			return ProjectedEvent{}, false, err
 		}
 		fields := FieldsForMatch(match)
 		visibleStatuses := StatusesForFields(payload.Statuses, fields)
@@ -209,17 +216,19 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		return ProjectedEvent{
 			Type: EventRoundEnded,
 			Payload: RoundEndedPayload{
-				MatchIndex:        payload.MatchIndex,
-				RoundIndex:        payload.RoundIndex,
-				ViewerResult:      viewerResult,
-				WinnerMemberID:    winnerMemberID,
-				ForfeitedMemberID: forfeitedMemberID,
-				Answer:            AnswerViewForCharacter(answer),
-				Boards:            hydrateBoards(guesses, chars, memberSlotByID, fields),
-				Turns:             relayRows,
-				Scores:            scores,
-				Results:           results,
-				NextStartsAt:      payload.NextStartsAt,
+				MatchIndex:          payload.MatchIndex,
+				RoundIndex:          payload.RoundIndex,
+				ViewerResult:        viewerResult,
+				WinnerMemberID:      winnerMemberID,
+				ForfeitedMemberID:   forfeitedMemberID,
+				Answer:              AnswerViewForCharacter(answer),
+				Boards:              hydrateBoards(guesses, chars, memberSlotByID, fields),
+				Turns:               relayRows,
+				Scores:              scores,
+				Results:             results,
+				NextStartsAt:        payload.NextStartsAt,
+				Placements:          payload.Placements,
+				EliminatedMemberIDs: payload.EliminatedMemberIDs,
 			},
 		}, false, nil
 
@@ -236,7 +245,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		if len(scores) == 0 {
 			scores = MemberScoresForLegacy(payload.Scores, memberSlotByID)
 		}
-		results := MemberResults(winnerMemberID, memberSlotByID)
+		results := MemberResultsForRanking(winnerMemberID, payload.Ranking, memberSlotByID)
 		var viewerResult *MatchResult
 		if IsPlayer(observer) {
 			viewerResult = ViewerResultForMember(observer.ID, results)
@@ -251,6 +260,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 				Results:         results,
 				Reason:          payload.Reason,
 				RetentionEndsAt: payload.RetentionEndsAt,
+				Ranking:         payload.Ranking,
 			},
 		}, false, nil
 

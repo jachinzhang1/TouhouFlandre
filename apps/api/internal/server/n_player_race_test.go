@@ -92,6 +92,18 @@ func createNPlayerRaceFixture(t *testing.T, playerCount int, format string) nPla
 	return fixture
 }
 
+// Legacy N-player terminal-table tests exercise the pre-MPX-6 wins engine
+// against migrated rows. New rooms created by the public API remain placement
+// matches whenever the frozen roster is larger than two.
+func createLegacyNPlayerRaceFixture(t *testing.T, playerCount int, format string) nPlayerRaceFixture {
+	t.Helper()
+	fixture := createNPlayerRaceFixture(t, playerCount, format)
+	if _, err := pool.Exec(ctx, `UPDATE multi_match SET scoring_mode = 'wins' WHERE room_id = $1`, fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
+	return fixture
+}
+
 func TestMultiTwoPlayerRaceRosterCompatibility(t *testing.T) {
 	fixture := createMatchFixtureFormat(t, "bo1")
 	started := startMatch(t, fixture)
@@ -195,6 +207,9 @@ func TestMultiRaceStartsThreeFourAndEightPlayerRosters(t *testing.T) {
 			if fixture.snapshot.Status != openapi.RoomStatusPlaying || len(fixture.snapshot.Members) != playerCount || fixture.snapshot.Match == nil || len(fixture.snapshot.Match.Scores) != playerCount {
 				t.Fatalf("%d-player started snapshot = %+v", playerCount, fixture.snapshot)
 			}
+			if string(fixture.snapshot.Match.ScoringMode) != "placement" || fixture.snapshot.Match.RosterSize != playerCount || fixture.snapshot.Match.MaxRounds != playerCount*fastTiming.MaxRoundsFactor {
+				t.Fatalf("%d-player scoring snapshot = %+v", playerCount, fixture.snapshot.Match)
+			}
 			var matchPlayers, roundPlayers, distinctSeats int
 			if err := pool.QueryRow(ctx, `
 				SELECT
@@ -211,8 +226,156 @@ func TestMultiRaceStartsThreeFourAndEightPlayerRosters(t *testing.T) {
 	}
 }
 
-func TestMultiRaceConcurrentCorrectGuessHasOneMemberWinner(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo1")
+func TestMultiRacePlacementRoundAwardsPointsAndEliminatesLowest(t *testing.T) {
+	fixture := createNPlayerRaceFixture(t, 3, "bo3")
+	answer := currentAnswer(t, fixture.roomID)
+	for index, participant := range fixture.participants {
+		resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "placement-"+strconv.Itoa(index))
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("rank %d guess = %d %s", index+1, resp.StatusCode, payload)
+		}
+	}
+	var roundStatus string
+	var activeRoster, eliminatedRoster int
+	if err := pool.QueryRow(ctx, `
+		SELECT round.status,
+		       count(*) FILTER (WHERE roster.status = 'active')::int,
+		       count(*) FILTER (WHERE roster.status = 'eliminated')::int
+		FROM multi_round round
+		JOIN multi_match match ON match.id = round.match_id
+		JOIN multi_match_player roster ON roster.match_id = match.id
+		WHERE match.room_id = $1 AND round.round_index = 1
+		GROUP BY round.status`, fixture.roomID).Scan(&roundStatus, &activeRoster, &eliminatedRoster); err != nil {
+		t.Fatal(err)
+	}
+	if roundStatus != "ended" || activeRoster != 2 || eliminatedRoster != 1 {
+		t.Fatalf("placement terminal round=%s active=%d eliminated=%d", roundStatus, activeRoster, eliminatedRoster)
+	}
+	for index, participant := range fixture.participants {
+		var score, points, rank int
+		var matchStatus string
+		if err := pool.QueryRow(ctx, `
+			SELECT roster.score, round_player.points_awarded, round_player.finish_rank, roster.status
+			FROM multi_match match
+			JOIN multi_match_player roster ON roster.match_id = match.id
+			JOIN multi_round round ON round.match_id = match.id AND round.round_index = 1
+			JOIN multi_round_player round_player ON round_player.round_id = round.id AND round_player.member_id = roster.member_id
+			WHERE match.room_id = $1 AND roster.member_id = $2`, fixture.roomID, participant.memberID).Scan(&score, &points, &rank, &matchStatus); err != nil {
+			t.Fatal(err)
+		}
+		want := 3 - index
+		if score != want || points != want || rank != index+1 {
+			t.Fatalf("seat %d score=%d points=%d rank=%d", participant.seat, score, points, rank)
+		}
+	}
+}
+
+func TestMultiRacePlacementConcurrentCorrectGuessesHaveUniqueRanks(t *testing.T) {
+	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	answer := currentAnswer(t, fixture.roomID)
+	type guessResult struct {
+		status  int
+		payload []byte
+	}
+	start := make(chan struct{})
+	results := make(chan guessResult, len(fixture.participants))
+	var wg sync.WaitGroup
+	for index, participant := range fixture.participants {
+		index, participant := index, participant
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "placement-concurrent-"+strconv.Itoa(index))
+			results <- guessResult{status: resp.StatusCode, payload: payload}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	for result := range results {
+		if result.status != http.StatusOK {
+			t.Fatalf("placement concurrent guess = %d %s", result.status, result.payload)
+		}
+	}
+
+	var correctPlayers, distinctRanks, totalPoints, roundEndedEvents int
+	if err := pool.QueryRow(ctx, `
+		SELECT
+			count(*) FILTER (WHERE player.status = 'correct')::int,
+			count(DISTINCT player.finish_rank)::int,
+			coalesce(sum(player.points_awarded), 0)::int,
+			(SELECT count(*)::int FROM room_event WHERE room_id = match.room_id AND type = 'round.ended')
+		FROM multi_round AS round
+		JOIN multi_match AS match ON match.id = round.match_id
+		JOIN multi_round_player AS player ON player.round_id = round.id
+		WHERE match.room_id = $1
+		GROUP BY match.room_id`, fixture.roomID).Scan(&correctPlayers, &distinctRanks, &totalPoints, &roundEndedEvents); err != nil {
+		t.Fatal(err)
+	}
+	if correctPlayers != 4 || distinctRanks != 4 || totalPoints != 10 || roundEndedEvents != 1 {
+		t.Fatalf("placement concurrency correct=%d ranks=%d points=%d events=%d", correctPlayers, distinctRanks, totalPoints, roundEndedEvents)
+	}
+}
+
+func TestMultiRaceEliminatedPlayerGetsReadOnlyFullProjection(t *testing.T) {
+	fixture := createNPlayerRaceFixture(t, 3, "bo3")
+	answer := currentAnswer(t, fixture.roomID)
+	for index, participant := range fixture.participants {
+		resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "elimination-round-"+strconv.Itoa(index))
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("elimination rank %d = %d %s", index+1, resp.StatusCode, payload)
+		}
+	}
+	advanceRounds(t)
+
+	nextAnswer := currentAnswer(t, fixture.roomID)
+	wrong := guessableIDs(t, nextAnswer, 1)[0]
+	if resp, payload := guess(t, fixture.roomID, fixture.participants[0].token, 2, wrong, "survivor-private-row"); resp.StatusCode != http.StatusOK {
+		t.Fatalf("survivor guess = %d %s", resp.StatusCode, payload)
+	}
+
+	eliminated := fixture.participants[2]
+	snapshot := nPlayerSnapshot(t, fixture.roomID, eliminated.token)
+	if snapshot.Viewer.Role != openapi.ParticipantRolePlayer || snapshot.Round == nil || snapshot.Round.Boards == nil || len(*snapshot.Round.Boards) != 3 || len(snapshot.Round.Opponents) != 0 {
+		t.Fatalf("eliminated projection = %+v", snapshot.Round)
+	}
+	board := spectatorBoardForMember(t, *snapshot.Round.Boards, fixture.participants[0].memberID)
+	if len(board.Guesses) != 1 || board.Guesses[0].GuessId != wrong || len(board.Guesses[0].Feedback) == 0 {
+		t.Fatalf("eliminated full board = %+v", board)
+	}
+	var eliminatedStatus openapi.MatchPlayerStatus
+	for _, score := range snapshot.Match.Scores {
+		if score.MemberId == eliminated.memberID {
+			eliminatedStatus = score.Status
+			break
+		}
+	}
+	if eliminatedStatus != openapi.MatchPlayerStatusEliminated {
+		t.Fatalf("eliminated status = %s", eliminatedStatus)
+	}
+
+	resp, payload := guess(t, fixture.roomID, eliminated.token, 2, wrong, "eliminated-cannot-guess")
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "ROUND_NOT_ACTIVE" {
+		t.Fatalf("eliminated guess = %d %s", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rounds/2/forfeit", eliminated.token, nil)
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "ROUND_NOT_ACTIVE" {
+		t.Fatalf("eliminated forfeit = %d %s", resp.StatusCode, payload)
+	}
+
+	survivorSnapshot := nPlayerSnapshot(t, fixture.roomID, fixture.participants[1].token)
+	if survivorSnapshot.Round == nil || survivorSnapshot.Round.Boards != nil || len(survivorSnapshot.Round.Opponents) != 2 {
+		t.Fatalf("survivor projection widened = %+v", survivorSnapshot.Round)
+	}
+	publicBoard := opponentBoardForMember(t, survivorSnapshot, fixture.participants[0].memberID)
+	if len(publicBoard.Rows) != 1 || len(publicBoard.Rows[0].Statuses) == 0 {
+		t.Fatalf("survivor anonymous board = %+v", publicBoard)
+	}
+}
+
+func TestLegacyMultiRaceConcurrentCorrectGuessHasOneMemberWinner(t *testing.T) {
+	fixture := createLegacyNPlayerRaceFixture(t, 4, "bo1")
 	answer := currentAnswer(t, fixture.roomID)
 	type guessResult struct {
 		participant nPlayerRaceParticipant

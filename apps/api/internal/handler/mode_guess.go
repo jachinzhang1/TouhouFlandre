@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -56,7 +57,17 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, internalError(err)
 	}
 	if roundPlayer.Status != "active" {
-		return submitGuessResult{}, roundNotActiveError("你已放弃本局。")
+		if roundPlayer.Status == "exhausted" {
+			return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
+		}
+		message := "你已放弃本局。"
+		switch roundPlayer.Status {
+		case "correct":
+			message = "你已猜中本局。"
+		case "timed_out":
+			message = "本局已超时。"
+		}
+		return submitGuessResult{}, roundNotActiveError(message)
 	}
 
 	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
@@ -142,8 +153,40 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, internalError(err)
 	}
 
-	roundEnded := isCorrect
-	if !roundEnded {
+	placementRace := multi.ScoringMode(match.ScoringMode) == multi.ScoringModePlacement
+	var participationStatus *openapi.RaceRoundParticipantStatus
+	var finishRank *int
+	roundEnded := false
+	if placementRace && isCorrect {
+		correctCount, err := q.CountCorrectRoundPlayers(ctx, round.ID)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		updated, err := q.MarkRoundPlayerCorrect(ctx, repo.MarkRoundPlayerCorrectParams{RoundID: round.ID, MemberID: member.ID, FinishRank: pgtype.Int4{Int32: correctCount + 1, Valid: true}, CompletedAt: timestamptz(s.now())})
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		status := openapi.RaceRoundParticipantStatus(updated.Status)
+		participationStatus = &status
+		rank := int(updated.FinishRank.Int32)
+		finishRank = &rank
+	} else if placementRace && int(count)+1 >= maxGuesses {
+		if _, err := q.MarkRoundPlayerExhausted(ctx, repo.MarkRoundPlayerExhaustedParams{RoundID: round.ID, MemberID: member.ID, CompletedAt: timestamptz(s.now())}); err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		status := openapi.RaceRoundParticipantStatusExhausted
+		participationStatus = &status
+	}
+	if placementRace {
+		activePlayers, err := q.ListActiveRoundPlayers(ctx, round.ID)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		roundEnded = len(activePlayers) == 0
+	} else {
+		roundEnded = isCorrect
+	}
+	if !roundEnded && !placementRace {
 		counts, err := q.ListRoundPlayerGuessCounts(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
@@ -165,9 +208,15 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, err
 	}
+	if placementRace {
+		accepted := response.(openapi.RoomsSubmitGuess200JSONResponse)
+		accepted.ParticipationStatus = participationStatus
+		accepted.FinishRank = finishRank
+		response = accepted
+	}
 	if roundEnded {
 		winnerMemberID := ""
-		if isCorrect {
+		if isCorrect && !placementRace {
 			winnerMemberID = member.ID
 		}
 		if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, winnerMemberID, s.now(), s.timing); err != nil {

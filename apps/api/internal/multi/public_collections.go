@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type memberRef struct {
@@ -62,9 +63,12 @@ func MemberScoresForRoster(players []repo.MultiMatchPlayer) []MemberScoreView {
 	views := make([]MemberScoreView, 0, len(players))
 	for _, player := range players {
 		views = append(views, MemberScoreView{
-			MemberID: player.MemberID,
-			Seat:     int(player.Seat),
-			Score:    int(player.Wins),
+			MemberID:        player.MemberID,
+			Seat:            int(player.Seat),
+			Score:           int(player.Score),
+			Status:          player.Status,
+			BestRoundScore:  int(player.BestRoundScore),
+			EliminatedRound: intPointer(player.EliminatedRound),
 		})
 	}
 	sort.Slice(views, func(i, j int) bool {
@@ -74,6 +78,14 @@ func MemberScoresForRoster(players []repo.MultiMatchPlayer) []MemberScoreView {
 		return views[i].Seat < views[j].Seat
 	})
 	return views
+}
+
+func intPointer(value pgtype.Int4) *int {
+	if !value.Valid {
+		return nil
+	}
+	result := int(value.Int32)
+	return &result
 }
 
 func MemberResults(winnerMemberID *string, memberSeatByID map[string]int32) []MemberResultView {
@@ -88,6 +100,22 @@ func MemberResults(winnerMemberID *string, memberSeatByID map[string]int32) []Me
 		}
 		views = append(views, MemberResultView{MemberID: ref.MemberID, Seat: ref.Seat, Result: result})
 	}
+	return views
+}
+
+func MemberResultsForRanking(winnerMemberID *string, ranking []MemberRankingView, memberSeatByID map[string]int32) []MemberResultView {
+	if winnerMemberID != nil || len(ranking) == 0 {
+		return MemberResults(winnerMemberID, memberSeatByID)
+	}
+	views := make([]MemberResultView, 0, len(ranking))
+	for _, entry := range ranking {
+		result := MatchResultLoss
+		if entry.Rank == 1 {
+			result = MatchResultDraw
+		}
+		views = append(views, MemberResultView{MemberID: entry.MemberID, Seat: entry.Seat, Result: result})
+	}
+	sort.Slice(views, func(i, j int) bool { return views[i].Seat < views[j].Seat })
 	return views
 }
 

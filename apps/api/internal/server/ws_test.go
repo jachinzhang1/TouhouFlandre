@@ -821,7 +821,7 @@ func TestMultiWSDisconnectedPlayerKeepsSeatAndReconnects(t *testing.T) {
 	if err := json.Unmarshal(payload, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Viewer.MemberId != memberID || snapshot.Viewer.Seat == nil || *snapshot.Viewer.Seat != seat || snapshot.Viewer.Status != openapi.Connected {
+	if snapshot.Viewer.MemberId != memberID || snapshot.Viewer.Seat == nil || *snapshot.Viewer.Seat != seat || snapshot.Viewer.Status != openapi.MemberStatusConnected {
 		t.Fatalf("reconnected viewer = %+v, want member %s seat %d connected", snapshot.Viewer, memberID, seat)
 	}
 	var players, spectators int

@@ -56,6 +56,13 @@ func settleRaceRoundRosterTx(
 	if err != nil {
 		return RaceMatchAdvance{}, false, err
 	}
+	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+		if len(active) > 0 {
+			return RaceMatchAdvance{}, false, nil
+		}
+		advance, err := CompleteRaceRoundTx(ctx, q, room, round, match, "", now, timing, forfeitedMemberID)
+		return advance, true, err
+	}
 	winnerMemberID := ""
 	shouldEnd := len(active) <= 1
 	if len(active) == 1 {
@@ -95,6 +102,34 @@ func EndRaceRoundWithoutScoreTx(
 	now time.Time,
 	timing TimingConfig,
 ) error {
+	var placements []RoundPlacementView
+	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+		if _, err := q.MarkRoundPlayerTimedOut(ctx, repo.MarkRoundPlayerTimedOutParams{
+			RoundID: round.ID, CompletedAt: pgtypeTimestamptz(now),
+		}); err != nil {
+			return err
+		}
+		participants, err := q.ListRoundPlayers(ctx, round.ID)
+		if err != nil {
+			return err
+		}
+		players, err := q.ListMatchPlayers(ctx, match.ID)
+		if err != nil {
+			return err
+		}
+		placements = make([]RoundPlacementView, 0, len(participants))
+		for _, participant := range participants {
+			var finishRank *int
+			if participant.FinishRank.Valid {
+				value := int(participant.FinishRank.Int32)
+				finishRank = &value
+			}
+			placements = append(placements, RoundPlacementView{
+				MemberID: participant.MemberID, Seat: seatForMember(players, participant.MemberID),
+				Status: participant.Status, FinishRank: finishRank, PointsAwarded: int(participant.PointsAwarded),
+			})
+		}
+	}
 	var winner pgtype.Text
 	var winnerView *string
 	if winnerMemberID != "" {
@@ -127,6 +162,7 @@ func EndRaceRoundWithoutScoreTx(
 		ForfeitedMemberID: forfeitedView,
 		AnswerID:          round.AnswerID,
 		MemberScores:      MemberScoresForRoster(players),
+		Placements:        placements,
 		NextStartsAt:      &nextStarts,
 	})
 }
@@ -142,18 +178,24 @@ func EndRaceMatchTx(
 	now time.Time,
 	timing TimingConfig,
 ) (RaceMatchAdvance, error) {
-	var winner pgtype.Text
-	var winnerView *string
-	if winnerMemberID != "" {
-		winner = pgtype.Text{String: winnerMemberID, Valid: true}
-		value := winnerMemberID
-		winnerView = &value
-	}
 	players, err := q.ListMatchPlayers(ctx, match.ID)
 	if err != nil {
 		return RaceMatchAdvance{}, err
 	}
 	scores := MemberScoresForRoster(players)
+	var ranking []MemberRankingView
+	var winnerView *string
+	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+		winnerView = uniqueTop(raceStandingsForRoster(players))
+		ranking = raceRankingForRoster(players)
+	} else if winnerMemberID != "" {
+		value := winnerMemberID
+		winnerView = &value
+	}
+	var winner pgtype.Text
+	if winnerView != nil {
+		winner = pgtype.Text{String: *winnerView, Valid: true}
+	}
 	if _, err := q.EndRaceMatch(ctx, repo.EndRaceMatchParams{
 		ID:             match.ID,
 		EndedAt:        pgtypeTimestamptz(now),
@@ -173,6 +215,7 @@ func EndRaceMatchTx(
 		MatchIndex:      int(match.MatchIndex),
 		WinnerMemberID:  winnerView,
 		MemberScores:    scores,
+		Ranking:         ranking,
 		Reason:          reason,
 		RetentionEndsAt: retentionEndsAt,
 	}); err != nil {
@@ -243,7 +286,7 @@ func ForfeitRaceMembersMatch(
 		}
 		changed = append(changed, member.ID)
 		if hasRound && round.Status != string(RoundStatusEnded) {
-			if _, err := q.ForfeitRoundPlayer(ctx, repo.ForfeitRoundPlayerParams{RoundID: round.ID, MemberID: member.ID}); err != nil {
+			if _, err := q.ForfeitDepartedRoundPlayer(ctx, repo.ForfeitDepartedRoundPlayerParams{RoundID: round.ID, MemberID: member.ID}); err != nil {
 				return err
 			}
 		}

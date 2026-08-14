@@ -381,7 +381,13 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		return err
 	}
 	format := RoomFormat(room.Format)
-	maxRounds := MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
+	maxRounds := int(match.MaxRounds)
+	if maxRounds <= 0 {
+		maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
+		if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+			maxRounds = int(match.RosterSize) * s.cfg.Timing.MaxRoundsFactor
+		}
+	}
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)
 	turnSlot, turnDeadline := InitialTurnParams(room, int(round.RoundIndex+1), startsAt)
 	newRound, err := q.CreateRound(ctx, repo.CreateRoundParams{
@@ -391,7 +397,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		RoundIndex:   round.RoundIndex + 1,
 		AnswerID:     answer,
 		StartsAt:     pgtypeTimestamptz(startsAt),
-		Deadline:     pgtypeTimestamptz(startsAt.Add(s.cfg.Timing.RoundSeconds)),
+		Deadline:     pgtypeTimestamptz(startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing))),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
@@ -419,9 +425,14 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
-		Deadline:   startsAt.Add(s.cfg.Timing.RoundSeconds),
+		Deadline:   startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing)),
 		MaxGuesses: MaxGuessesForMatch(match),
 	}
+	activeMatchPlayers, err := q.ListActiveMatchPlayers(ctx, match.ID)
+	if err != nil {
+		return err
+	}
+	roundStarted.ActivePlayerCount = len(activeMatchPlayers)
 	members, err := q.ListMembers(ctx, room.ID)
 	if err != nil {
 		return err

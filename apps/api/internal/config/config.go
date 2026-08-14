@@ -95,9 +95,14 @@ func MultiIntermission() time.Duration {
 	return durationFromEnv("MULTI_INTERMISSION", 5*time.Second)
 }
 
-// MultiRoundSeconds 单局整局时限（MULTI_ROUND_SECONDS，默认 900s，08 §4.7；超时平局）。
+// MultiRoundSeconds 接力模式单局整局时限（MULTI_ROUND_SECONDS，默认 900s）。
 func MultiRoundSeconds() time.Duration {
 	return durationFromEnv("MULTI_ROUND_SECONDS", 900*time.Second)
+}
+
+// MultiRaceRoundSeconds 竞速模式单局整局时限（MULTI_RACE_ROUND_SECONDS，默认 300s）。
+func MultiRaceRoundSeconds() time.Duration {
+	return durationFromEnv("MULTI_RACE_ROUND_SECONDS", 300*time.Second)
 }
 
 // MultiTurnSeconds 接力模式单用户猜测时限默认值（MULTI_TURN_SECONDS，默认 60s）。
@@ -168,6 +173,7 @@ func MultiTiming() multi.TimingConfig {
 		RoundCountdown:    MultiRoundCountdown(),
 		Intermission:      MultiIntermission(),
 		RoundSeconds:      MultiRoundSeconds(),
+		RaceRoundSeconds:  MultiRaceRoundSeconds(),
 		TurnSeconds:       MultiTurnSeconds(),
 		DisconnectGrace:   MultiDisconnectGrace(),
 		MaxRoundsFactor:   MultiMaxRoundsFactor(),

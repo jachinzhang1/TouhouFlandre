@@ -20,13 +20,14 @@ import (
 // 注意：to_jsonb 把 multi_guess.statuses（jsonb 数组）渲染为 JSON 数组，不能直接
 // unmarshal 进 repo.MultiGuess.Statuses（[]byte）——用快照专用形态承接。
 type snapshotState struct {
-	Room           repo.MultiRoom     `json:"room"`
-	Members        []repo.MultiMember `json:"members"`
-	SpectatorCount int32              `json:"spectatorCount"`
-	Match          *repo.MultiMatch   `json:"match"`
-	Round          *repo.MultiRound   `json:"round"`
-	Guesses        []snapshotGuess    `json:"guesses"`
-	Turns          []snapshotTurn     `json:"turns"`
+	Room           repo.MultiRoom          `json:"room"`
+	Members        []repo.MultiMember      `json:"members"`
+	SpectatorCount int32                   `json:"spectatorCount"`
+	Match          *repo.MultiMatch        `json:"match"`
+	Round          *repo.MultiRound        `json:"round"`
+	Guesses        []snapshotGuess         `json:"guesses"`
+	RoundPlayers   []repo.MultiRoundPlayer `json:"roundPlayers"`
+	Turns          []snapshotTurn          `json:"turns"`
 }
 
 type snapshotRoom struct {
@@ -56,6 +57,9 @@ type snapshotMatch struct {
 	StartedAt      pgtype.Timestamptz `json:"started_at"`
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
 	QuestionScope  json.RawMessage    `json:"question_scope"`
+	ScoringMode    string             `json:"scoring_mode"`
+	RosterSize     int32              `json:"roster_size"`
+	MaxRounds      int32              `json:"max_rounds"`
 }
 
 func (room snapshotRoom) toRepo() repo.MultiRoom {
@@ -88,18 +92,22 @@ func (match snapshotMatch) toRepo() repo.MultiMatch {
 		StartedAt:      match.StartedAt,
 		EndedAt:        match.EndedAt,
 		QuestionScope:  append([]byte{}, match.QuestionScope...),
+		ScoringMode:    match.ScoringMode,
+		RosterSize:     match.RosterSize,
+		MaxRounds:      match.MaxRounds,
 	}
 }
 
 func (state *snapshotState) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Room           snapshotRoom       `json:"room"`
-		Members        []repo.MultiMember `json:"members"`
-		SpectatorCount int32              `json:"spectatorCount"`
-		Match          *snapshotMatch     `json:"match"`
-		Round          *repo.MultiRound   `json:"round"`
-		Guesses        []snapshotGuess    `json:"guesses"`
-		Turns          []snapshotTurn     `json:"turns"`
+		Room           snapshotRoom            `json:"room"`
+		Members        []repo.MultiMember      `json:"members"`
+		SpectatorCount int32                   `json:"spectatorCount"`
+		Match          *snapshotMatch          `json:"match"`
+		Round          *repo.MultiRound        `json:"round"`
+		Guesses        []snapshotGuess         `json:"guesses"`
+		RoundPlayers   []repo.MultiRoundPlayer `json:"roundPlayers"`
+		Turns          []snapshotTurn          `json:"turns"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -115,6 +123,7 @@ func (state *snapshotState) UnmarshalJSON(data []byte) error {
 	}
 	state.Round = raw.Round
 	state.Guesses = raw.Guesses
+	state.RoundPlayers = raw.RoundPlayers
 	state.Turns = raw.Turns
 	return nil
 }
@@ -203,7 +212,6 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	snapshot.QuestionScope = &openapiRoomScope
 
 	if state.Match != nil {
-		format := multi.RoomFormat(state.Room.Format)
 		roundIndex := 0
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
@@ -214,13 +222,25 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		}
 		scoreByMemberID := make(map[string]int, len(roster))
 		for _, player := range roster {
-			scoreByMemberID[player.MemberID] = int(player.Wins)
+			scoreByMemberID[player.MemberID] = int(player.Score)
 		}
 		scores := make([]openapi.MemberScoreView, 0, len(state.Members))
 		rematchReady := make([]openapi.MemberRematchReadyView, 0, len(state.Members))
 		for _, m := range state.Members {
 			seat := multi.MemberSeat(m)
-			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: scoreByMemberID[m.ID]})
+			var player repo.MultiMatchPlayer
+			for _, candidate := range roster {
+				if candidate.MemberID == m.ID {
+					player = candidate
+					break
+				}
+			}
+			var eliminatedRound *int
+			if player.EliminatedRound.Valid {
+				value := int(player.EliminatedRound.Int32)
+				eliminatedRound = &value
+			}
+			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: scoreByMemberID[m.ID], Status: openapi.MatchPlayerStatus(player.Status), BestRoundScore: int(player.BestRoundScore), EliminatedRound: eliminatedRound})
 			rematchReady = append(rematchReady, openapi.MemberRematchReadyView{MemberId: m.ID, Seat: seat, Ready: m.RematchReady})
 		}
 		matchScope, err := storedQuestionScopeFromJSON(state.Match.QuestionScope)
@@ -236,7 +256,9 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			TargetWins:     int(state.Match.TargetWins),
 			Scores:         scores,
 			RoundIndex:     roundIndex,
-			MaxRounds:      multi.MaxRounds(format, s.timing.MaxRoundsFactor),
+			MaxRounds:      int(state.Match.MaxRounds),
+			ScoringMode:    openapi.ScoringMode(state.Match.ScoringMode),
+			RosterSize:     int(state.Match.RosterSize),
 			RematchReady:   rematchReady,
 			CatalogVersion: state.Match.CatalogVersion,
 			QuestionScope:  &openapiMatchScope,
@@ -268,6 +290,22 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	}
 	byID := multi.CharactersByID(characters)
 	fields := multi.FieldsForMatch(*state.Match)
+	matchPlayers, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	observerEliminated := false
+	for _, player := range matchPlayers {
+		if player.MemberID == observer.ID && player.Status != "active" {
+			observerEliminated = true
+			break
+		}
+	}
+	readOnlyObserver := multi.IsSpectator(observer) || observerEliminated
+	participationByMemberID := make(map[string]repo.MultiRoundPlayer, len(state.RoundPlayers))
+	for _, player := range state.RoundPlayers {
+		participationByMemberID[player.MemberID] = player
+	}
 	permutationByMemberID := make(map[string][]int, len(state.Members))
 
 	self := []openapi.GuessResult{}
@@ -283,7 +321,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			Seat:     seat,
 			Guesses:  []openapi.GuessResult{},
 		})
-		if multi.IsPlayer(observer) && member.ID != observer.ID {
+		if !readOnlyObserver && multi.IsPlayer(observer) && member.ID != observer.ID {
 			opponentIndexByMemberID[member.ID] = len(opponents)
 			opponents = append(opponents, openapi.OpponentBoardView{
 				MemberId: member.ID,
@@ -298,7 +336,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		if !ok {
 			return nil, internalError(errors.New("guess character missing from snapshot"))
 		}
-		if multi.IsSpectator(observer) {
+		if readOnlyObserver {
 			hydrated := toOpenAPIGuessResult(multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields))
 			if index, ok := boardIndexByMemberID[guess.MemberID]; ok {
 				spectatorBoards[index].Guesses = append(spectatorBoards[index].Guesses, hydrated)
@@ -333,14 +371,22 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		Opponents:  opponents,
 	}
 	roundView.Self.Guesses = self
-	if multi.IsPlayer(observer) {
+	if !readOnlyObserver && multi.IsPlayer(observer) {
 		memberID := observer.ID
 		seat := multi.MemberSeat(observer)
 		roundView.Self.MemberId = &memberID
 		roundView.Self.Seat = &seat
 	}
-	if multi.IsSpectator(observer) {
+	if readOnlyObserver {
 		roundView.Boards = &spectatorBoards
+	}
+	if participant, ok := participationByMemberID[observer.ID]; ok {
+		status := openapi.RaceRoundParticipantStatus(participant.Status)
+		roundView.Self.ParticipationStatus = &status
+		if participant.FinishRank.Valid {
+			rank := int(participant.FinishRank.Int32)
+			roundView.Self.FinishRank = &rank
+		}
 	}
 	if multi.MultiplayerMode(state.Room.Mode) == multi.MultiplayerModeRelay {
 		rows := make([]openapi.RelayTurnRow, 0, len(state.Turns))
