@@ -258,19 +258,28 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .progress-track {
-  display: block;
+  display: flex;
   width: min(260px, 100%);
   height: 3px;
+  gap: 4px;
   margin-top: 8px;
-  overflow: hidden;
+  overflow: visible;
+  background: transparent;
+}
+
+.progress-segment {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  flex: 1 1 0;
+  border-radius: 999px;
   background: var(--progress-bg);
 }
 
-.progress-track span {
-  display: block;
-  height: 100%;
-  background: var(--vermilion);
-  transition: width 350ms ease;
+.progress-segment.is-filled {
+  background: var(--theme-color);
+  transform-origin: left center;
+  animation: progress-segment-fill 320ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 .session-state {
@@ -409,6 +418,10 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 .feedback-slashed-check-icon > svg {
   position: absolute;
   inset: 0;
+}
+
+.feedback-slashed-check-icon > .lucide-slash path {
+  vector-effect: non-scaling-stroke;
 }
 
 .feedback-legend-icon b {
@@ -1032,6 +1045,7 @@ body:has(.single-game-shell) main {
 }
 
 .single-game-submit {
+  width: 148px;
   min-width: 148px;
 }
 
@@ -1077,11 +1091,6 @@ body:has(.single-game-shell) main {
   width: 100%;
   max-width: 280px;
   margin-top: 7px;
-  background: var(--line);
-}
-
-.single-game-shell .progress-track span {
-  background: var(--theme-color);
 }
 
 .single-game-difficulties {
@@ -1152,6 +1161,17 @@ body:has(.single-game-shell) main {
   color: var(--jade-strong);
 }
 
+@keyframes progress-segment-fill {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
 .single-game-shell .session-state.lost {
   color: var(--error-text);
 }
@@ -1162,6 +1182,7 @@ body:has(.single-game-shell) main {
 }
 
 .paper-surface.paper-button.single-game-forfeit {
+  width: 148px;
   min-height: 48px;
 }
 

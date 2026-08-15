@@ -47,10 +47,10 @@ describe("OpponentBoard", () => {
     const slash = partialIcon?.querySelector<SVGElement>(".lucide-slash");
     expect(slash).toBeTruthy();
     expect(slash?.style.transform).toBe(
-      "translate(1px, -1px) scaleX(-1) scale(0.68)",
+      "translate(1px, -1px) scaleX(-1) scale(0.56)",
     );
     expect(slash?.style.transformOrigin).toBe("center");
-    expect(slash?.getAttribute("stroke-width")).toBe("3.6");
+    expect(slash?.getAttribute("stroke-width")).toBe("2.5");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）

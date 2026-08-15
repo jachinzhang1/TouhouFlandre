@@ -301,10 +301,6 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   );
   const maxGuesses = session?.maxGuesses ?? CHARACTER_GAME.maxGuesses;
   const hasUnlimitedGuesses = isUnlimitedGuessLimit(maxGuesses);
-  const guessProgressPercent = Math.min(
-    100,
-    ((session?.guesses.length ?? 0) / maxGuesses) * 100,
-  );
 
   const persistSession = (
     nextMode: SinglePlayerGameMode,
@@ -1184,7 +1180,6 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         maxGuesses={maxGuesses}
         unlimitedGuesses={hasUnlimitedGuesses}
         sessionStatus={session?.status}
-        progressPercent={guessProgressPercent}
         onDifficultyChange={(difficulty) =>
           void switchDailyDifficulty(difficulty)
         }

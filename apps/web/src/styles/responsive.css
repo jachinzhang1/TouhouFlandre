@@ -301,6 +301,10 @@
     border: 0;
   }
 
+  .paper-surface.paper-button.single-game-forfeit {
+    width: auto;
+  }
+
   .single-game-feedback-legend {
     width: 100%;
   }

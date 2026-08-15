@@ -164,6 +164,13 @@ describe("SingleGamePage", () => {
     expect(screen.getByText(dailyEyebrow)).toBeTruthy();
     expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
+    const progress = screen.getByRole("progressbar", {
+      name: "猜测进度 0/8",
+    });
+    expect(progress.children).toHaveLength(8);
+    expect(
+      progress.querySelectorAll(".progress-segment.is-filled"),
+    ).toHaveLength(0);
     expect(screen.getByText("进行中")).toBeTruthy();
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-1",
@@ -270,6 +277,12 @@ describe("SingleGamePage", () => {
     await userEvent.click(screen.getByText("提交猜测"));
 
     expect(await screen.findByText("猜中了")).toBeTruthy();
+    const completedProgress = screen.getByRole("progressbar", {
+      name: "猜测进度 1/8",
+    });
+    expect(
+      completedProgress.querySelectorAll(".progress-segment.is-filled"),
+    ).toHaveLength(1);
     expect(screen.getByText(/共使用 1 次猜测/)).toBeTruthy();
     expect(screen.getByText("パチュリー・ノーレッジ")).toBeTruthy();
     expect(screen.getByText("东方红魔乡")).toBeTruthy();

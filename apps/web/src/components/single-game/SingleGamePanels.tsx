@@ -60,7 +60,6 @@ export function SingleGameStatusBar({
   maxGuesses,
   unlimitedGuesses,
   sessionStatus,
-  progressPercent,
   onDifficultyChange,
   onRestart,
   onForfeit,
@@ -77,7 +76,6 @@ export function SingleGameStatusBar({
   maxGuesses: number;
   unlimitedGuesses: boolean;
   sessionStatus: PublicGameSession["status"] | undefined;
-  progressPercent: number;
   onDifficultyChange: (difficulty: QuestionDifficultyPreset) => void;
   onRestart: () => void;
   onForfeit: () => void;
@@ -88,9 +86,25 @@ export function SingleGameStatusBar({
       <div className="puzzle-status">
         <span className="label">{heading.eyebrow}</span>
         <strong className="single-game-puzzle-title">{heading.title}</strong>
-        <span className="progress-track" aria-hidden="true">
-          <span style={{ width: `${progressPercent}%` }} />
-        </span>
+        {!unlimitedGuesses ? (
+          <span
+            aria-label={`猜测进度 ${guessCount}/${maxGuesses}`}
+            aria-valuemax={maxGuesses}
+            aria-valuemin={0}
+            aria-valuenow={Math.min(guessCount, maxGuesses)}
+            className="progress-track"
+            role="progressbar"
+          >
+            {Array.from({ length: maxGuesses }, (_, index) => (
+              <span
+                aria-hidden="true"
+                className={`progress-segment${index < guessCount ? " is-filled" : ""}`}
+                key={index}
+                style={{ animationDelay: `${index * 45}ms` }}
+              />
+            ))}
+          </span>
+        ) : null}
       </div>
 
       <dl className="single-game-metrics">
