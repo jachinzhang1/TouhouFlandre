@@ -21,6 +21,8 @@ import {
 } from "../domain/multiRoom";
 import type { StoredMultiRoom } from "../domain/multiRoom";
 import {
+  isActiveMatchMember,
+  isRoundArchiveParticipant,
   resultForMemberId,
   seatForMemberId,
 } from "../domain/memberCollections";
@@ -770,6 +772,7 @@ function SpectatorRoom({
         ) : (
           <SpectatorRaceBoards
             boards={displayArchive?.boards ?? state.round?.boards ?? []}
+            scores={state.match?.scores}
             members={state.members}
             fields={fields}
             archive={displayArchive}
@@ -822,17 +825,22 @@ function SpectatorArchiveBar({
 
 function SpectatorRaceBoards({
   boards,
+  scores,
   members,
   fields,
   archive,
 }: {
   boards: SpectatorBoards;
+  scores?: NonNullable<RoomUiState["match"]>["scores"];
   members: components["schemas"]["MemberView"][];
   fields: readonly GuessField[];
   archive: RoundEndedPayload | null;
 }) {
   const forfeitedMemberId = archive?.forfeitedMemberId;
-  const ordered = [...boards].sort((a, b) => a.seat - b.seat);
+  const visibleBoards = archive
+    ? boards.filter((board) => isRoundArchiveParticipant(archive, board.memberId))
+    : boards.filter((board) => isActiveMatchMember(scores, board.memberId));
+  const ordered = [...visibleBoards].sort((a, b) => a.seat - b.seat);
   const toRows = (memberId: string): GuessRow[] => {
     const board =
       boards.find((entry) => entry.memberId === memberId)?.guesses ?? [];
@@ -865,14 +873,15 @@ function SpectatorRaceBoards({
   return (
     <MemberPaginator
       items={ordered}
-      pageSize={archive ? 1 : undefined}
       label="玩家棋盘"
       renderItem={(board) => (
         <GuessTable
           key={board.memberId}
           title={
-            members.find((member) => member.memberId === board.memberId)
-              ?.displayName ?? `玩家 ${board.seat}`
+            spectatorBoardTitle(
+              members.find((member) => member.memberId === board.memberId),
+              board.seat,
+            )
           }
           subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
           headerExtra={winnerMemberId === board.memberId ? winnerBadge : null}
@@ -884,6 +893,13 @@ function SpectatorRaceBoards({
       )}
     />
   );
+}
+
+function spectatorBoardTitle(
+  member: components["schemas"]["MemberView"] | undefined,
+  seat: number,
+): string {
+  return `${member?.displayName ?? `玩家 ${seat}`}(P${seat})`;
 }
 
 function RoundActionButtons({

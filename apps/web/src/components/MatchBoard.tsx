@@ -9,6 +9,8 @@ import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
 import {
   boardForMemberId,
+  isActiveMatchMember,
+  isRoundArchiveParticipant,
   sortMembersBySeat,
 } from "../domain/memberCollections";
 import { OpponentBoard } from "./OpponentBoard";
@@ -20,6 +22,7 @@ import type { RoomUiState } from "../hooks/useRoom";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
+type MemberView = components["schemas"]["MemberView"];
 
 export function MatchBoard({
   format,
@@ -106,7 +109,13 @@ export function MatchBoard({
               maxGuesses={round?.maxGuesses}
               fields={fields}
             />
-            <OpponentPages round={round} memberId={memberId} fields={fields} />
+            <OpponentPages
+              round={round}
+              memberId={memberId}
+              match={match}
+              members={members ?? []}
+              fields={fields}
+            />
           </>
         )}
       </div>
@@ -117,27 +126,41 @@ export function MatchBoard({
 function OpponentPages({
   round,
   memberId,
+  match,
+  members,
   fields,
 }: {
   round: RoundView | null;
   memberId?: string | null;
+  match: MatchView;
+  members: components["schemas"]["MemberView"][];
   fields?: readonly GuessField[];
 }) {
   const opponents = (round?.opponents ?? [])
-    .filter((opponent) => opponent.memberId !== memberId)
+    .filter(
+      (opponent) =>
+        opponent.memberId !== memberId &&
+        isActiveMatchMember(match.scores, opponent.memberId),
+    )
     .sort((a, b) => a.seat - b.seat);
   return (
     <MemberPaginator
       items={opponents}
       label="对手棋盘"
       pageSize={1}
-      renderItem={(opponent) => (
-        <OpponentBoard
-          rows={opponent.rows}
-          fields={fields}
-          fieldOrder={opponent.fieldOrder}
-        />
-      )}
+      renderItem={(opponent) => {
+        const member = members.find(
+          (entry) => entry.memberId === opponent.memberId,
+        );
+        return (
+          <OpponentBoard
+            title={memberBoardTitle(member, opponent.seat)}
+            rows={opponent.rows}
+            fields={fields}
+            fieldOrder={opponent.fieldOrder}
+          />
+        );
+      }}
     />
   );
 }
@@ -170,10 +193,16 @@ function EndedBoards({
     }));
   };
   const selfBoard = roundResult.boards.find(
-    (board) => board.memberId === memberId,
+    (board) =>
+      board.memberId === memberId &&
+      isRoundArchiveParticipant(roundResult, board.memberId),
   );
   const others = sortMembersBySeat(
-    roundResult.boards.filter((board) => board.memberId !== memberId),
+    roundResult.boards.filter(
+      (board) =>
+        board.memberId !== memberId &&
+        isRoundArchiveParticipant(roundResult, board.memberId),
+    ),
   );
   return (
     <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -192,8 +221,10 @@ function EndedBoards({
         renderItem={(board) => (
           <GuessTable
             title={
-              members.find((member) => member.memberId === board.memberId)
-                ?.displayName ?? `玩家 ${board.seat}`
+              memberBoardTitle(
+                members.find((member) => member.memberId === board.memberId),
+                board.seat,
+              )
             }
             rows={toRows(board.memberId)}
             emptyLabel="该玩家本局未猜测。"
@@ -204,4 +235,8 @@ function EndedBoards({
       />
     </div>
   );
+}
+
+function memberBoardTitle(member: MemberView | undefined, seat: number): string {
+  return `${member?.displayName ?? `玩家 ${seat}`}(P${seat})`;
 }

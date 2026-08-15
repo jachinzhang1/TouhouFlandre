@@ -57,6 +57,11 @@ describe("OpponentBoard", () => {
     expect(screen.getByText(/等待对方猜测/)).toBeTruthy();
   });
 
+  it("可展示传入的对手玩家名和房间编号", () => {
+    render(<OpponentBoard title="琪露诺(P2)" rows={[]} />);
+    expect(screen.getByRole("heading", { name: "琪露诺(P2)" })).toBeTruthy();
+  });
+
   it("按固定属性顺序展示置换后的对手状态", () => {
     const { container } = render(
       <OpponentBoard
