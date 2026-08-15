@@ -614,26 +614,37 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   min-width: 60px;
   justify-content: flex-start;
   color: var(--ink-soft);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.guess-avatar {
-  width: 34px;
-  height: 34px;
-}
-
 .guess-table tbody th.guess-timeout-cell {
+  position: relative;
   height: var(--single-game-guess-row-height);
+  overflow: hidden;
   vertical-align: middle;
 }
 
 .guess-timeout-cell span {
   display: inline-flex;
-  min-height: 34px;
+  min-height: 0;
   align-items: center;
+  padding: 8px 18px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
   color: var(--error-text);
+  font-family: var(--font-brand);
+  font-size: 1.5rem;
   font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  opacity: 0.82;
+  transform: rotate(-7deg) scale(1.12);
+}
+
+.guess-timeout-row .guess-duration {
+  color: var(--theme-color);
 }
 
 .guess-table tbody tr {
@@ -701,6 +712,46 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   color: var(--feedback-lower-text);
   border-color: var(--feedback-lower-border);
   background: var(--feedback-lower-bg);
+}
+
+.guess-table .feedback-cell {
+  color: var(--neutral-text);
+}
+
+.guess-table .feedback-cell-exact {
+  color: var(--jade-strong);
+  background: var(--jade-soft);
+}
+
+.guess-table .feedback-cell-partial {
+  color: var(--amber-strong);
+  background: var(--amber-soft);
+}
+
+.guess-table .feedback-cell-higher {
+  color: var(--feedback-higher-text);
+  background: var(--feedback-higher-bg);
+}
+
+.guess-table .feedback-cell-lower {
+  color: var(--feedback-lower-text);
+  background: var(--feedback-lower-bg);
+}
+
+.guess-table .feedback-cell-miss,
+.guess-table .feedback-cell-unknown {
+  color: var(--neutral-text);
+  background: var(--neutral-bg);
+}
+
+.guess-table .feedback {
+  min-height: 0;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
 }
 
 .feedback-lower b {
@@ -924,6 +975,7 @@ body:has(.single-game-shell) main {
     #000 var(--single-game-history-fade-size),
     #000 100%
   );
+  transition: box-shadow 180ms ease;
 }
 
 .single-game-history-fade-spacer {
@@ -939,6 +991,10 @@ body:has(.single-game-shell) main {
   overflow: hidden;
   isolation: isolate;
   box-shadow: var(--shadow-sm);
+}
+
+.single-game-history-scroll[data-scroll-bottom="false"] {
+  box-shadow: inset 0 -22px 20px -20px var(--paper-lift-shadow-near);
 }
 
 .single-game-history-table-paper .guess-table {

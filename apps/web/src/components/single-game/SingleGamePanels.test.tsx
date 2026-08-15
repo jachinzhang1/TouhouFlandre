@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PublicGameSession } from "@touhouflandre/shared";
 import { SingleGuessHistory } from "./SingleGamePanels";
@@ -99,8 +99,18 @@ describe("SingleGuessHistory", () => {
     ).toBe(true);
     expect(rows.map((row) => row.textContent)).toEqual([
       "博丽灵梦00:04",
-      "超时空过00:08",
+      "超时跳过00:08",
     ]);
     expect(viewport.scrollTop).toBe(720);
+    Object.defineProperty(viewport, "clientHeight", {
+      configurable: true,
+      value: 400,
+    });
+    viewport.scrollTop = 100;
+    fireEvent.scroll(viewport);
+    expect(viewport.dataset.scrollBottom).toBe("false");
+    viewport.scrollTop = 320;
+    fireEvent.scroll(viewport);
+    expect(viewport.dataset.scrollBottom).toBe("true");
   });
 });

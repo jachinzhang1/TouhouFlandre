@@ -10,7 +10,13 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Fragment, useLayoutEffect, useRef } from "react";
+import {
+  Fragment,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
@@ -199,19 +205,39 @@ export function SingleGuessHistory({
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const guessCount = session?.guesses.length ?? 0;
+  const [atBottom, setAtBottom] = useState(true);
+  const updateScrollBoundary = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const next =
+      viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= 1;
+    setAtBottom((current) => (current === next ? current : next));
+  }, []);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport || guessCount === 0) return;
-    viewport.scrollTop = viewport.scrollHeight;
-  }, [guessCount]);
+    if (!viewport) return;
+    if (guessCount > 0) viewport.scrollTop = viewport.scrollHeight;
+    updateScrollBoundary();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateScrollBoundary);
+    observer?.observe(viewport);
+    if (viewport.lastElementChild instanceof HTMLElement) {
+      observer?.observe(viewport.lastElementChild);
+    }
+    return () => observer?.disconnect();
+  }, [guessCount, updateScrollBoundary]);
 
   return (
     <div
       aria-label="猜测记录"
       className="single-game-history-scroll"
       data-guess-count={guessCount}
+      data-scroll-bottom={atBottom ? "true" : "false"}
       ref={viewportRef}
+      onScroll={updateScrollBoundary}
       role="region"
     >
       {guessCount > 0 ? (
@@ -241,7 +267,7 @@ export function SingleGuessHistory({
                   const timeout = guess.kind === "timeout";
                   return (
                     <tr
-                      className="paper-data-table-row"
+                      className={`paper-data-table-row${timeout ? " guess-timeout-row" : ""}`}
                       key={guess.guessId}
                       style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
                     >
@@ -251,7 +277,7 @@ export function SingleGuessHistory({
                           colSpan={visibleFields.length + 1}
                           className="guess-timeout-cell"
                         >
-                          <span>超时空过</span>
+                          <span>超时跳过</span>
                         </th>
                       ) : (
                         <>
@@ -267,7 +293,10 @@ export function SingleGuessHistory({
                             </span>
                           </th>
                           {guess.feedback.map((feedback) => (
-                            <td key={feedback.field}>
+                            <td
+                              className={`feedback-cell feedback-cell-${feedback.status}`}
+                              key={feedback.field}
+                            >
                               <span
                                 className={feedbackClass(feedback)}
                                 title={`${feedback.label}: ${feedback.status}`}
@@ -283,7 +312,7 @@ export function SingleGuessHistory({
                           ))}
                         </>
                       )}
-                      <td>
+                      <td className="guess-duration-cell">
                         <span className="guess-duration">
                           {formatGuessDuration(guessCompletedElapsedMs, index)}
                         </span>
