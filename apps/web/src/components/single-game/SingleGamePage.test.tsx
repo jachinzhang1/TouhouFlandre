@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PublicGameSession } from "@touhouflandre/shared";
 import { SingleGamePage } from "./SingleGamePage";
@@ -184,6 +184,16 @@ describe("SingleGamePage", () => {
 
     const submitButton = screen.getByRole("button", { name: "提交猜测" });
     expect(submitButton.querySelector(".lucide-send")).toBeTruthy();
+    const guessGroup = screen.getByRole("group", { name: "猜测操作" });
+    expect(guessGroup.contains(screen.getByLabelText("搜索东方角色"))).toBe(
+      true,
+    );
+    expect(guessGroup.contains(submitButton)).toBe(true);
+    const legend = screen.getByRole("list", { name: "反馈图例" });
+    expect(within(legend).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(legend).getByText("答案更高")).toBeTruthy();
+    const status = screen.getByRole("region", { name: "游戏状态" });
+    expect(status.classList.contains("paper-surface")).toBe(false);
     expect(screen.queryByRole("button", { name: "查看图例" })).toBeNull();
     expect(screen.queryByRole("tooltip")).toBeNull();
   });

@@ -53,7 +53,12 @@ import {
   SINGLE_GAME_SEED_PRESETS,
 } from "../../dev/gameSeeds";
 import { Paper } from "../Paper";
+import { FeedbackLegend } from "../game/FeedbackLegend";
 import { PaperButton } from "../controls/PaperButton";
+import {
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "../controls/PaperSegmentedControl";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
@@ -1005,11 +1010,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           />
         ) : null}
       </div>
-      <div
-        aria-label="猜测操作"
-        className="single-game-input-group"
-        role="group"
-      >
+      <FeedbackLegend className="single-game-feedback-legend" />
+      <div className="single-game-input-group">
         <form
           className="guess-form"
           onSubmit={(event) => {
@@ -1017,140 +1019,157 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             void submitGuess();
           }}
         >
-          <div className="search-combobox">
-            <Paper
-              animateOnMount={false}
-              as="div"
-              className="single-game-search-paper"
-              foldSize={12}
-              sticker={false}
-              variant="plain"
-            >
-              <label className="search-box" ref={searchBoxRef}>
-                <Search size={18} aria-hidden="true" />
-                <input
-                  value={query}
-                  onFocus={() => setSuggestionsDismissed(false)}
-                  onBlur={() => setActiveSuggestionId("")}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setSelectedId("");
-                    setActiveSuggestionId("");
-                    setSuggestionsDismissed(false);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                      event.preventDefault();
-                      setSuggestionsDismissed(false);
-                      moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
-                      return;
-                    }
-                    if (event.key === "Escape" && showSuggestions) {
-                      event.preventDefault();
-                      setSuggestionsDismissed(true);
+          <PaperSegmentGroup
+            className="single-game-guess-group"
+            label="猜测操作"
+          >
+            <div className="search-combobox">
+              <Paper
+                animateOnMount={false}
+                as="div"
+                className="single-game-search-paper"
+                folded={false}
+                foldSize={12}
+                sticker={false}
+                variant="plain"
+              >
+                <label className="search-box" ref={searchBoxRef}>
+                  <Search size={18} aria-hidden="true" />
+                  <input
+                    value={query}
+                    onFocus={() => setSuggestionsDismissed(false)}
+                    onBlur={() => setActiveSuggestionId("")}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setSelectedId("");
                       setActiveSuggestionId("");
-                      return;
-                    }
-                    if (event.key === "Enter" && showSuggestions) {
-                      const activeResult = selectableResults.find(
-                        (result) => result.id === activeSuggestionId,
-                      );
-                      if (activeResult) {
+                      setSuggestionsDismissed(false);
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === "ArrowDown" ||
+                        event.key === "ArrowUp"
+                      ) {
                         event.preventDefault();
-                        selectSuggestion(activeResult);
+                        setSuggestionsDismissed(false);
+                        moveActiveSuggestion(
+                          event.key === "ArrowDown" ? 1 : -1,
+                        );
+                        return;
                       }
-                    }
-                  }}
-                  disabled={
-                    loading ||
-                    submitting ||
-                    endingSession ||
-                    timingOut ||
-                    !session ||
-                    isFinished
-                  }
-                  placeholder="输入角色名、别名或初登场作品"
-                  aria-label="搜索东方角色"
-                  aria-autocomplete="list"
-                  aria-controls={listboxId}
-                  aria-activedescendant={
-                    showSuggestions && activeSuggestionId
-                      ? `${listboxId}-${activeSuggestionId}`
-                      : undefined
-                  }
-                  aria-expanded={showSuggestions}
-                />
-              </label>
-            </Paper>
-            <SuggestionPopover
-              anchor={searchBoxRef}
-              id={listboxId}
-              open={showSuggestions}
-            >
-              {searchLoading ? (
-                <div className="suggestion-state" role="status">
-                  <Loader2 className="spin" size={17} aria-hidden="true" />
-                  <span>正在搜索</span>
-                </div>
-              ) : searchError ? (
-                <div className="suggestion-state suggestion-error" role="alert">
-                  <span>{searchError}</span>
-                  <button
-                    type="button"
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={retrySearch}
-                  >
-                    重试
-                  </button>
-                </div>
-              ) : results.length ? (
-                results.map((result) => {
-                  const disabled = guessedIds.has(result.id);
-                  const active = activeSuggestionId === result.id;
-                  return (
-                    <button
-                      className={active ? "suggestion selected" : "suggestion"}
-                      id={`${listboxId}-${result.id}`}
-                      key={result.id}
-                      type="button"
-                      tabIndex={-1}
-                      disabled={disabled}
-                      role="option"
-                      aria-selected={active}
-                      onPointerDown={(event) => {
+                      if (event.key === "Escape" && showSuggestions) {
                         event.preventDefault();
-                        selectSuggestion(result);
-                      }}
+                        setSuggestionsDismissed(true);
+                        setActiveSuggestionId("");
+                        return;
+                      }
+                      if (event.key === "Enter" && showSuggestions) {
+                        const activeResult = selectableResults.find(
+                          (result) => result.id === activeSuggestionId,
+                        );
+                        if (activeResult) {
+                          event.preventDefault();
+                          selectSuggestion(activeResult);
+                        }
+                      }
+                    }}
+                    disabled={
+                      loading ||
+                      submitting ||
+                      endingSession ||
+                      timingOut ||
+                      !session ||
+                      isFinished
+                    }
+                    placeholder="输入角色名、别名或初登场作品"
+                    aria-label="搜索东方角色"
+                    aria-autocomplete="list"
+                    aria-controls={listboxId}
+                    aria-activedescendant={
+                      showSuggestions && activeSuggestionId
+                        ? `${listboxId}-${activeSuggestionId}`
+                        : undefined
+                    }
+                    aria-expanded={showSuggestions}
+                  />
+                </label>
+              </Paper>
+              <SuggestionPopover
+                anchor={searchBoxRef}
+                id={listboxId}
+                open={showSuggestions}
+              >
+                {searchLoading ? (
+                  <div className="suggestion-state" role="status">
+                    <Loader2 className="spin" size={17} aria-hidden="true" />
+                    <span>正在搜索</span>
+                  </div>
+                ) : searchError ? (
+                  <div
+                    className="suggestion-state suggestion-error"
+                    role="alert"
+                  >
+                    <span>{searchError}</span>
+                    <button
+                      type="button"
+                      onPointerDown={(event) => event.preventDefault()}
+                      onClick={retrySearch}
                     >
-                      <CharacterAvatar
-                        avatarUrl={result.avatarUrl}
-                        name={result.name}
-                        initials={result.initials}
-                        className="suggestion-avatar"
-                      />
-                      <span className="suggestion-main">
-                        <strong>{result.name}</strong>
-                        <small>{result.subtitle}</small>
-                      </span>
-                      <span className="suggestion-meta">
-                        {disabled
-                          ? "已猜"
-                          : result.hairColors
-                              .map((color) => HAIR_COLOR_LABELS[color] ?? color)
-                              .join("、")}
-                      </span>
+                      重试
                     </button>
-                  );
-                })
-              ) : (
-                <div className="suggestion-state" role="status">
-                  <Search size={17} aria-hidden="true" />
-                  <span>没有找到匹配角色</span>
-                </div>
-              )}
-            </SuggestionPopover>
-          </div>
-          <div className="guess-form-actions">
+                  </div>
+                ) : results.length ? (
+                  results.map((result) => {
+                    const disabled = guessedIds.has(result.id);
+                    const active = activeSuggestionId === result.id;
+                    return (
+                      <button
+                        className={
+                          active ? "suggestion selected" : "suggestion"
+                        }
+                        id={`${listboxId}-${result.id}`}
+                        key={result.id}
+                        type="button"
+                        tabIndex={-1}
+                        disabled={disabled}
+                        role="option"
+                        aria-selected={active}
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          selectSuggestion(result);
+                        }}
+                      >
+                        <CharacterAvatar
+                          avatarUrl={result.avatarUrl}
+                          name={result.name}
+                          initials={result.initials}
+                          className="suggestion-avatar"
+                        />
+                        <span className="suggestion-main">
+                          <strong>{result.name}</strong>
+                          <small>{result.subtitle}</small>
+                        </span>
+                        <span className="suggestion-meta">
+                          {disabled
+                            ? "已猜"
+                            : result.hairColors
+                                .map(
+                                  (color) => HAIR_COLOR_LABELS[color] ?? color,
+                                )
+                                .join("、")}
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="suggestion-state" role="status">
+                    <Search size={17} aria-hidden="true" />
+                    <span>没有找到匹配角色</span>
+                  </div>
+                )}
+              </SuggestionPopover>
+            </div>
+            <PaperSegmentSeparator />
             <PaperButton
               className="single-game-submit"
               disabled={
@@ -1173,7 +1192,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               )}
               <span>提交猜测</span>
             </PaperButton>
-          </div>
+          </PaperSegmentGroup>
         </form>
 
         {message ? <p className="message error">{message}</p> : null}

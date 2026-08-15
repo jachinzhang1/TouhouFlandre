@@ -862,7 +862,7 @@ body:has(.single-game-shell) main {
 .single-game-shell {
   --single-game-shell-gap: 10px;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) 44px auto auto;
   gap: var(--single-game-shell-gap);
   height: 100%;
   min-height: 0;
@@ -928,6 +928,48 @@ body:has(.single-game-shell) main {
   background: transparent;
 }
 
+.feedback-legend-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.feedback-legend-row::-webkit-scrollbar {
+  display: none;
+}
+
+.single-game-feedback-legend {
+  width: min(620px, 100%);
+  min-height: 44px;
+  justify-self: center;
+}
+
+.feedback-legend-row-item {
+  display: inline-flex;
+  min-width: max-content;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding-inline: 10px;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.feedback-legend-row-item + .feedback-legend-row-item {
+  border-left: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.feedback-legend-row-item .feedback-legend-icon b {
+  width: 20px;
+  height: 20px;
+}
+
 .single-game-input-group {
   z-index: 10;
   display: grid;
@@ -938,14 +980,25 @@ body:has(.single-game-shell) main {
 .single-game-input-group .guess-form {
   position: relative;
   z-index: 1;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  display: block;
   padding: 0;
+}
+
+.single-game-guess-group {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 1px auto;
+  align-items: stretch;
+}
+
+.single-game-guess-group .search-combobox {
+  min-width: 0;
 }
 
 .single-game-search-paper {
   min-width: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .single-game-search-paper .search-box {
@@ -962,11 +1015,7 @@ body:has(.single-game-shell) main {
   outline-offset: -2px;
 }
 
-.single-game-input-group .guess-form-actions {
-  align-items: stretch;
-}
-
-.single-game-input-group .paper-button {
+.single-game-guess-group .single-game-submit {
   min-height: 48px;
 }
 
@@ -989,22 +1038,9 @@ body:has(.single-game-shell) main {
   gap: 12px;
   align-items: center;
   min-height: 84px;
-  padding: 11px 14px;
-  overflow: hidden;
-  border: 0;
-  color: var(--paper-tinted-ink);
-  background: var(--theme-color);
-  isolation: isolate;
-  box-shadow: var(--shadow-sm);
-}
-
-.single-game-shell .status-strip::before {
-  opacity: 0.82;
-}
-
-.single-game-shell .status-strip > * {
-  position: relative;
-  z-index: 1;
+  padding: 0 2px;
+  color: var(--ink);
+  background: transparent;
 }
 
 .single-game-puzzle-title {
@@ -1020,18 +1056,18 @@ body:has(.single-game-shell) main {
 
 .single-game-shell .status-strip .label,
 .single-game-metrics dt {
-  color: color-mix(in srgb, var(--paper-tinted-ink) 72%, transparent);
+  color: var(--ink-soft);
 }
 
 .single-game-shell .progress-track {
   width: 100%;
   max-width: 280px;
   margin-top: 7px;
-  background: color-mix(in srgb, var(--paper-tinted-ink) 20%, transparent);
+  background: var(--line);
 }
 
 .single-game-shell .progress-track span {
-  background: var(--paper-tinted-ink);
+  background: var(--theme-color);
 }
 
 .single-game-difficulties {
@@ -1094,7 +1130,7 @@ body:has(.single-game-shell) main {
 .single-game-metrics dd {
   margin: 0;
   overflow: hidden;
-  color: var(--paper-tinted-ink);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1103,11 +1139,11 @@ body:has(.single-game-shell) main {
 
 .single-game-shell .session-state,
 .single-game-shell .session-state.won {
-  color: var(--paper-tinted-ink);
+  color: var(--jade-strong);
 }
 
 .single-game-shell .session-state.lost {
-  color: color-mix(in srgb, var(--paper-tinted-ink) 78%, #ffbbbb);
+  color: var(--error-text);
 }
 
 .single-game-shell .status-actions {

@@ -3,21 +3,9 @@
 import { Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { FeedbackStatus } from "@touhouflandre/shared";
-import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { Paper } from "../Paper";
-
-export const FEEDBACK_LEGEND_ITEMS: {
-  status: FeedbackStatus;
-  label: string;
-}[] = [
-  { status: "exact", label: "该属性完全命中" },
-  { status: "partial", label: "该属性仅部分命中" },
-  { status: "higher", label: "该属性正确答案的数值高于本条猜测" },
-  { status: "lower", label: "该属性正确答案的数值低于本条猜测" },
-  { status: "miss", label: "该属性完全未命中" },
-  { status: "unknown", label: "属性值缺失或无法判断，若遇到请反馈" },
-];
+import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
+import { FEEDBACK_LEGEND_ITEMS } from "./FeedbackLegend";
 
 export function FeedbackLegendButton({
   className = "",

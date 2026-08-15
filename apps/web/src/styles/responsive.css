@@ -275,26 +275,22 @@
   }
 
   .single-game-input-group .guess-form {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px;
+    display: block;
     padding: 0;
   }
 
-  .single-game-input-group .guess-form-actions {
-    display: flex;
-    grid-template-columns: none;
-    gap: 6px;
+  .single-game-guess-group {
+    grid-template-columns: minmax(0, 1fr) 1px 44px;
   }
 
-  .single-game-input-group .paper-button,
-  .single-game-input-group .guess-form-actions .paper-button {
+  .single-game-guess-group .single-game-submit {
     width: 44px;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
   }
 
-  .single-game-input-group .paper-button > span {
+  .single-game-guess-group .single-game-submit > span {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -303,6 +299,15 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .single-game-feedback-legend {
+    width: 100%;
+  }
+
+  .feedback-legend-row-item {
+    flex: 0 0 auto;
+    padding-inline: 8px;
   }
 
   .single-game-search-paper .search-box {

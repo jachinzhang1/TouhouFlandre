@@ -62,14 +62,7 @@ export function SingleGameStatusBar({
   onForfeit: () => void;
 }) {
   return (
-    <Paper
-      animateOnMount={false}
-      as="div"
-      className={`status-strip ${mode}`}
-      foldSize={16}
-      sticker={false}
-      variant="tinted"
-    >
+    <section className={`status-strip ${mode}`} aria-label="游戏状态">
       <div className="puzzle-status">
         <span className="label">{mode === "daily" ? "每日题" : "随机题"}</span>
         <strong className="single-game-puzzle-title">{puzzleLabel}</strong>
@@ -151,7 +144,7 @@ export function SingleGameStatusBar({
           <Flag size={17} aria-hidden="true" />
         </PaperButton>
       </div>
-    </Paper>
+    </section>
   );
 }
 
