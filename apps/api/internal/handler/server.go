@@ -384,6 +384,10 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 		if err := jsonUnmarshal(session.Guesses, &guesses); err != nil {
 			return nil, internalError(err)
 		}
+		if request.Body.ExpectedGuessCount != nil &&
+			len(guesses) != *request.Body.ExpectedGuessCount {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "本回合已经发生变化，请重新提交。"}
+		}
 		for _, entry := range guesses {
 			if entry.GuessID == guessID {
 				return nil, &ApiError{Status: http.StatusConflict, Code: codeDuplicateGuess, Message: "这个角色已经猜过了。"}
@@ -449,13 +453,25 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 			}
 			return nil, internalError(err)
 		}
-		if session.Status != string(game.SessionPlaying) {
-			return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
-		}
-
 		var guesses []game.GuessResult
 		if err := jsonUnmarshal(session.Guesses, &guesses); err != nil {
 			return nil, internalError(err)
+		}
+		if request.Body != nil &&
+			request.Body.ExpectedGuessCount != nil &&
+			len(guesses) != *request.Body.ExpectedGuessCount {
+			characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
+			if err != nil {
+				return nil, err
+			}
+			public, err := toPublicSession(session, characters)
+			if err != nil {
+				return nil, internalError(err)
+			}
+			return openapi.SessionsTimeout200JSONResponse{Session: public}, nil
+		}
+		if session.Status != string(game.SessionPlaying) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
 		}
 		if len(guesses) >= int(session.MaxGuesses) {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}

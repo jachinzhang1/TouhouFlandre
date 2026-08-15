@@ -349,6 +349,15 @@ func TestSearchReimu(t *testing.T) {
 	}
 }
 
+func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
+	for _, result := range search.Results {
+		if result.Id == characterID {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSearchByWorkPinyinInitialsAndFieldBoundary(t *testing.T) {
 	for _, query := range []string{"hmx", "dfhmx"} {
 		resp, payload := request(http.MethodGet, "/api/characters/search?q="+query+"&sort=appearance", nil)
@@ -539,15 +548,6 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	}
 }
 
-func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
-	for _, result := range search.Results {
-		if result.Id == characterID {
-			return true
-		}
-	}
-	return false
-}
-
 func TestSessionSearchPaginationAndMissingSession(t *testing.T) {
 	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
 	var created openapi.PuzzleResponse
@@ -680,6 +680,79 @@ func TestGuessLifecycle(t *testing.T) {
 	}
 	if apiErr := decodeError(t, closedPayload); apiErr.Code != "SESSION_CLOSED" {
 		t.Fatalf("unexpected error: %+v", apiErr)
+	}
+}
+
+func TestSinglePlayerSessionsStayOpenBeforeGuessLimit(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+		path string
+		body any
+	}{
+		{name: "daily normal", path: "/api/puzzles/daily", body: map[string]string{"difficulty": "normal"}},
+		{name: "random", path: "/api/puzzles/random"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			createResp, createPayload := request(http.MethodPost, testCase.path, testCase.body)
+			if createResp.StatusCode != http.StatusOK {
+				t.Fatalf("create status %d: %s", createResp.StatusCode, createPayload)
+			}
+			var created openapi.PuzzleResponse
+			if err := json.Unmarshal(createPayload, &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.Session.MaxGuesses != 8 {
+				t.Fatalf("max guesses = %d, want 8", created.Session.MaxGuesses)
+			}
+
+			var answerID string
+			if err := pool.QueryRow(ctx,
+				`SELECT answer_id FROM game_session WHERE id = $1`, created.Session.Id,
+			).Scan(&answerID); err != nil {
+				t.Fatal(err)
+			}
+			rows, err := pool.Query(ctx,
+				`SELECT id FROM character WHERE enabled_as_guess AND id <> $1 ORDER BY id LIMIT 7`,
+				answerID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rows.Close()
+			var guessIDs []string
+			for rows.Next() {
+				var id string
+				if err := rows.Scan(&id); err != nil {
+					t.Fatal(err)
+				}
+				guessIDs = append(guessIDs, id)
+			}
+			if len(guessIDs) != 7 {
+				t.Fatalf("wrong guesses = %d, want 7", len(guessIDs))
+			}
+
+			for index, guessID := range guessIDs {
+				resp, payload := request(
+					http.MethodPost,
+					"/api/sessions/"+created.Session.Id+"/guess",
+					map[string]string{"guessId": guessID},
+				)
+				if resp.StatusCode != http.StatusOK {
+					t.Fatalf("guess %d status %d: %s", index+1, resp.StatusCode, payload)
+				}
+				var wrapper struct {
+					Session openapi.PublicGameSession `json:"session"`
+				}
+				if err := json.Unmarshal(payload, &wrapper); err != nil {
+					t.Fatal(err)
+				}
+				if wrapper.Session.Status != "playing" {
+					t.Fatalf("guess %d ended session with %s", index+1, wrapper.Session.Status)
+				}
+				if len(wrapper.Session.Guesses) != index+1 {
+					t.Fatalf("guess %d returned %d records", index+1, len(wrapper.Session.Guesses))
+				}
+			}
+		})
 	}
 }
 
@@ -887,5 +960,135 @@ func TestConcurrentGuesses(t *testing.T) {
 		if !recorded[guessID] {
 			t.Fatalf("guess %q lost in concurrent update", guessID)
 		}
+	}
+}
+
+func TestConcurrentTimeoutsForSameTurnAreIdempotent(t *testing.T) {
+	createResp, createPayload := request(
+		http.MethodPost,
+		"/api/puzzles/daily",
+		map[string]string{"difficulty": "hard"},
+	)
+	if createResp.StatusCode != http.StatusOK {
+		t.Fatalf("create status %d: %s", createResp.StatusCode, createPayload)
+	}
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	statuses := make([]int, 2)
+	for index := range statuses {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			resp, _ := request(
+				http.MethodPost,
+				"/api/sessions/"+created.Session.Id+"/timeout",
+				map[string]int{"expectedGuessCount": 0},
+			)
+			statuses[index] = resp.StatusCode
+		}(index)
+	}
+	wg.Wait()
+	for index, status := range statuses {
+		if status != http.StatusOK {
+			t.Fatalf("timeout %d status %d", index+1, status)
+		}
+	}
+
+	resp, payload := request(http.MethodGet, "/api/sessions/"+created.Session.Id, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("get session status %d: %s", resp.StatusCode, payload)
+	}
+	var wrapper struct {
+		Session openapi.PublicGameSession `json:"session"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		t.Fatal(err)
+	}
+	if wrapper.Session.Status != "playing" {
+		t.Fatalf("status = %s, want playing", wrapper.Session.Status)
+	}
+	if len(wrapper.Session.Guesses) != 1 {
+		t.Fatalf("timeout records = %d, want 1", len(wrapper.Session.Guesses))
+	}
+	if wrapper.Session.Guesses[0].Kind != "timeout" {
+		t.Fatalf("unexpected timeout record: %+v", wrapper.Session.Guesses[0])
+	}
+}
+
+func TestConcurrentGuessAndTimeoutConsumeOneTurn(t *testing.T) {
+	createResp, createPayload := request(
+		http.MethodPost,
+		"/api/puzzles/daily",
+		map[string]string{"difficulty": "hard"},
+	)
+	if createResp.StatusCode != http.StatusOK {
+		t.Fatalf("create status %d: %s", createResp.StatusCode, createPayload)
+	}
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(createPayload, &created); err != nil {
+		t.Fatal(err)
+	}
+
+	var guessID string
+	if err := pool.QueryRow(ctx,
+		`SELECT id FROM character
+		 WHERE enabled_as_guess
+		   AND id <> (SELECT answer_id FROM game_session WHERE id = $1)
+		 ORDER BY id
+		 LIMIT 1`,
+		created.Session.Id,
+	).Scan(&guessID); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	statuses := make([]int, 2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		resp, _ := request(
+			http.MethodPost,
+			"/api/sessions/"+created.Session.Id+"/guess",
+			map[string]any{"guessId": guessID, "expectedGuessCount": 0},
+		)
+		statuses[0] = resp.StatusCode
+	}()
+	go func() {
+		defer wg.Done()
+		resp, _ := request(
+			http.MethodPost,
+			"/api/sessions/"+created.Session.Id+"/timeout",
+			map[string]int{"expectedGuessCount": 0},
+		)
+		statuses[1] = resp.StatusCode
+	}()
+	wg.Wait()
+
+	if statuses[0] != http.StatusOK && statuses[0] != http.StatusConflict {
+		t.Fatalf("guess status %d", statuses[0])
+	}
+	if statuses[1] != http.StatusOK {
+		t.Fatalf("timeout status %d", statuses[1])
+	}
+
+	resp, payload := request(http.MethodGet, "/api/sessions/"+created.Session.Id, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("get session status %d: %s", resp.StatusCode, payload)
+	}
+	var wrapper struct {
+		Session openapi.PublicGameSession `json:"session"`
+	}
+	if err := json.Unmarshal(payload, &wrapper); err != nil {
+		t.Fatal(err)
+	}
+	if wrapper.Session.Status != "playing" {
+		t.Fatalf("status = %s, want playing", wrapper.Session.Status)
+	}
+	if len(wrapper.Session.Guesses) != 1 {
+		t.Fatalf("records = %d, want 1", len(wrapper.Session.Guesses))
 	}
 }

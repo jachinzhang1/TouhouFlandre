@@ -16,6 +16,11 @@ export async function loadSingleStatsDraft(sessionId: string): Promise<SingleSta
   return draft?.kind === "single" ? draft : undefined;
 }
 
+export async function deleteSingleStatsDraft(sessionId: string): Promise<void> {
+  const id = await stableRecordId(`single:${sessionId}`);
+  await statsDb.drafts.delete(id);
+}
+
 export async function saveSingleStatsDraft(
   session: PublicGameSession,
   mode: SinglePlayerGameMode,

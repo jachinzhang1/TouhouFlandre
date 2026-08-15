@@ -45,6 +45,7 @@ import { useCharacterSearch } from "../hooks/useCharacterSearch";
 import { api } from "../lib/api";
 import { useForegroundTimer, useWallClockTimer } from "../stats/timer";
 import {
+  deleteSingleStatsDraft,
   loadSingleStatsDraft,
   recordSingleSession,
   saveSingleStatsDraft,
@@ -450,24 +451,23 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           const storedSession = parseStoredSession(storedValue);
           const restored = await api.getSession(storedSession.id);
           if (!isCurrentRequest()) return;
-          if (nextMode === "daily" && restored.puzzleKey !== dailyDateKey) {
+          const restoredDifficulty = restored.questionScope?.difficulty;
+          const mismatchedSession =
+            restored.mode !== nextMode ||
+            (nextMode === "daily" &&
+              (restored.puzzleKey !== dailyDateKey ||
+                restoredDifficulty !== difficulty));
+          if (mismatchedSession) {
             const oldTimings = normalizeGuessTimings(
               storedSession.guessCompletedElapsedMs ??
                 storedSession.guessCompletedElapsedSeconds?.map((value) => value * 1000),
               restored.guesses.length,
             );
             const oldElapsed = Math.max(0, storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0);
-            if (restored.status === "playing" && restored.guesses.length > 0) {
-              try {
-                const forfeited = await api.forfeitSession(restored.id);
-                writeStatsInBackground(
-                  recordSingleSession(forfeited, nextMode, oldElapsed, oldTimings, "abandoned"),
-                );
-              } catch {
-                // 跨日旧会话可能已过期；不阻塞创建当天新题。
-              }
-            } else if (restored.status !== "playing") {
+            if (restored.status !== "playing") {
               writeStatsInBackground(recordSingleSession(restored, nextMode, oldElapsed, oldTimings));
+            } else {
+              writeStatsInBackground(deleteSingleStatsDraft(restored.id));
             }
             localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
           } else {
@@ -644,7 +644,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     const completedElapsedMs = checkpoint();
 
     try {
-      const payload = await api.submitGuess(session.id, guessId);
+      const payload = await api.submitGuess(
+        session.id,
+        guessId,
+        turnLimitEnabled ? session.guesses.length : undefined,
+      );
       const nextGuessCompletedElapsedMs = [
         ...guessCompletedElapsedMs,
         completedElapsedMs,
@@ -690,7 +694,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       (guessCompletedElapsedMs.at(-1) ?? 0) + turnLimitSeconds * 1000;
 
     try {
-      const payload = await api.timeoutSession(session.id);
+      const payload = await api.timeoutSession(session.id, session.guesses.length);
       const nextGuessCompletedElapsedMs = [
         ...guessCompletedElapsedMs,
         completedElapsedMs,
@@ -756,6 +760,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const forfeitSession = async () => {
     if (!session || loading || submitting || endingSession || timingOut || isFinished)
       return;
+    if (!window.confirm("放弃后本局会立即判负且无法恢复，确定继续吗？")) return;
     setEndingSession(true);
     setMessage("");
     const completedElapsedMs = checkpoint();

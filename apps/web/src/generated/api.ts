@@ -1416,6 +1416,8 @@ export interface operations {
                 "application/json": {
                     /** @description 被猜角色 id。 */
                     guessId: string;
+                    /** @description 客户端提交时看到的猜测记录数；用于避免计时回合被并发请求重复消费。 */
+                    expectedGuessCount?: number;
                 };
             };
         };
@@ -1487,7 +1489,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description 客户端超时时看到的猜测记录数；会话已推进时不重复记录超时。 */
+                    expectedGuessCount?: number;
+                };
+            };
+        };
         responses: {
             /** @description 超时空过已记录 */
             200: {
