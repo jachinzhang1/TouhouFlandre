@@ -205,16 +205,6 @@
   color: var(--paper-tinted-ink-muted);
 }
 
-.question-scope-preset:disabled,
-.question-scope-toggle-button:disabled,
-.question-scope-option-card:disabled,
-.question-scope-character-card:disabled {
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
-  background: var(--paper-plain-bg);
-  cursor: not-allowed;
-  opacity: 1;
-}
-
 .question-scope-field-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

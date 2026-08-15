@@ -92,6 +92,33 @@ describe("Paper controls", () => {
     expect(button.className).toContain("paper-button-filled");
   });
 
+  it("marks filled danger actions as tinted Paper surfaces", () => {
+    render(
+      <PaperButton filled onClick={() => undefined} tone="danger">
+        放弃游戏
+      </PaperButton>,
+    );
+
+    const button = screen.getByRole("button", { name: "放弃游戏" });
+    expect(button.dataset.paperVariant).toBe("tinted");
+    expect(button.classList.contains("paper-button-filled")).toBe(true);
+  });
+
+  it("uses the shared plain unfolded state for disabled Paper buttons", () => {
+    render(
+      <PaperButton disabled filled onClick={() => undefined} tone="danger">
+        删除
+      </PaperButton>,
+    );
+
+    const button = screen.getByRole("button", { name: "删除" });
+    expect(button.dataset.paperDisabled).toBe("true");
+    expect(button.dataset.paperVariant).toBe("plain");
+    expect(button.dataset.paperFolded).toBe("false");
+    expect(button.dataset.paperUnfoldHover).toBe("false");
+    expect(button.classList.contains("paper-button-filled")).toBe(false);
+  });
+
   it("wraps native selects in a focusable folded Paper surface", () => {
     render(
       <PaperSelect aria-label="难度" defaultValue="normal">

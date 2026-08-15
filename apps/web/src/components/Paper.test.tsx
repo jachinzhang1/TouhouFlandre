@@ -35,6 +35,22 @@ describe("Paper", () => {
     expect(clicks).toBe(1);
   });
 
+  it("removes tint, fold, and hover behavior from disabled buttons", () => {
+    render(
+      <Paper as="button" disabled folded unfoldOnHover variant="tinted">
+        禁用操作
+      </Paper>,
+    );
+
+    const paper = screen.getByRole("button", { name: "禁用操作" });
+    expect((paper as HTMLButtonElement).disabled).toBe(true);
+    expect(paper.dataset.paperDisabled).toBe("true");
+    expect(paper.dataset.paperVariant).toBe("plain");
+    expect(paper.dataset.paperFolded).toBe("false");
+    expect(paper.dataset.paperUnfoldHover).toBe("false");
+    expect(paper.style.background).toBe("var(--paper-plain-bg)");
+  });
+
   it("can disable sticker effects for structural papers", () => {
     const { container } = render(<Paper sticker={false}>导航纸片</Paper>);
 

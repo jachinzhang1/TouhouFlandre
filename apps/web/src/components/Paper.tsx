@@ -61,19 +61,31 @@ export function Paper({
   title,
   variant = "plain",
 }: PaperProps) {
+  const disabledAppearance = disabled === true || ariaDisabled === true;
+  const effectiveFolded = folded && !disabledAppearance;
+  const effectiveUnfoldOnHover = unfoldOnHover && !disabledAppearance;
+  const effectiveVariant = disabledAppearance ? "plain" : variant;
   const paperClassName = ["paper-surface", className].filter(Boolean).join(" ");
   const paperStyle = {
     "--paper-fold-delay": `${Math.max(0, foldDelayMs)}ms`,
     "--paper-fold-size": `${Math.max(0, foldSize)}px`,
+    ...(disabledAppearance
+      ? {
+          color: "color-mix(in srgb, var(--ink) 42%, transparent)",
+          background: "var(--paper-plain-bg)",
+          cursor: "not-allowed",
+        }
+      : {}),
   } as CSSProperties;
   const paperProps = {
     className: paperClassName,
-    "data-paper-variant": variant,
-    "data-paper-folded": folded ? "true" : "false",
-    "data-paper-unfold-hover": unfoldOnHover ? "true" : "false",
+    "data-paper-variant": effectiveVariant,
+    "data-paper-folded": effectiveFolded ? "true" : "false",
+    "data-paper-unfold-hover": effectiveUnfoldOnHover ? "true" : "false",
+    "data-paper-disabled": disabledAppearance ? "true" : undefined,
     "data-paper-animate-mount": animateOnMount ? "true" : "false",
     style: paperStyle,
-    "data-paper-unfolded": unfolded ? "true" : undefined,
+    "data-paper-unfolded": unfolded && !disabledAppearance ? "true" : undefined,
     "aria-hidden": ariaHidden || undefined,
     "aria-label": ariaLabel,
     "aria-controls": ariaControls,

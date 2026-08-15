@@ -151,12 +151,6 @@
   background: var(--paper-plain-bg);
 }
 
-.paper-surface.stats-date-clear.paper-button[aria-disabled="true"] {
-  color: color-mix(in srgb, var(--ink) 35%, transparent);
-  background: var(--paper-plain-bg);
-  opacity: 1;
-  cursor: not-allowed;
-}
 .stats-date-clear {
   width: 48px;
   min-width: 48px;
@@ -800,12 +794,6 @@
   gap: 0;
   color: var(--ink-soft);
   font-size: 0.78rem;
-}
-
-.stats-history-pagination .paper-surface.paper-button:disabled {
-  color: color-mix(in srgb, var(--ink) 42%, transparent);
-  background: var(--paper-plain-bg);
-  opacity: 1;
 }
 
 .stats-history-pagination

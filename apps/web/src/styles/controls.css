@@ -145,7 +145,8 @@
   background: var(--jade);
 }
 
-.paper-button:disabled {
+.paper-button:disabled,
+.paper-button[aria-disabled="true"] {
   --paper-fold-shade: var(--paper-plain-fold);
   --paper-ornament-image: repeating-linear-gradient(
     to bottom,
@@ -165,16 +166,20 @@
   outline-offset: -2px;
 }
 
-.paper-button:active:not(:disabled) {
+.paper-button:active:not(:disabled):not([aria-disabled="true"]) {
   transform: scale(0.97);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .paper-button-danger:not(.paper-button-filled):hover {
+  .paper-button-danger:not(.paper-button-filled):not(:disabled):not(
+      [aria-disabled="true"]
+    ):hover {
     background-color: var(--error-bg-soft);
   }
 
-  .paper-button-jade:not(.paper-button-filled):hover {
+  .paper-button-jade:not(.paper-button-filled):not(:disabled):not(
+      [aria-disabled="true"]
+    ):hover {
     background-color: var(--jade-soft);
   }
 }

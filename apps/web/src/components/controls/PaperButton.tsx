@@ -30,11 +30,14 @@ export function PaperButton({
   title?: string;
   tone?: PaperButtonTone;
 }) {
+  const unavailable = disabled || ariaDisabled;
+  const effectiveFilled = filled && !unavailable;
+  const effectiveFolded = folded && !unavailable;
   const classes = [
     "paper-button",
     `paper-button-${tone}`,
     compact ? "paper-button-compact" : "",
-    filled ? "paper-button-filled" : "",
+    effectiveFilled ? "paper-button-filled" : "",
     iconOnly ? "paper-button-icon" : "",
     className,
   ]
@@ -49,12 +52,13 @@ export function PaperButton({
       as="button"
       className={classes}
       disabled={disabled}
-      folded={folded}
+      folded={effectiveFolded}
       foldSize={compact ? 8 : 10}
       onClick={ariaDisabled ? undefined : onClick}
       sticker={false}
+      unfoldOnHover={!unavailable}
       title={title}
-      variant={tone === "theme" && filled ? "tinted" : "plain"}
+      variant={effectiveFilled ? "tinted" : "plain"}
     >
       {children}
     </Paper>

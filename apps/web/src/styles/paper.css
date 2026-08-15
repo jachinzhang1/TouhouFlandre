@@ -75,16 +75,18 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .paper-sticker:hover {
+  .paper-sticker:not(:has(> .paper-surface[data-paper-disabled="true"])):hover {
     z-index: 100 !important;
     transform: translateY(-3px);
   }
 
-  .paper-sticker:hover .paper-sticker-cast {
+  .paper-sticker:not(:has(> .paper-surface[data-paper-disabled="true"])):hover
+    .paper-sticker-cast {
     opacity: 0;
   }
 
-  .paper-sticker:hover > .paper-surface {
+  .paper-sticker:not(:has(> .paper-surface[data-paper-disabled="true"])):hover
+    > .paper-surface {
     filter: drop-shadow(0 8px 10px var(--paper-lift-shadow-near))
       drop-shadow(0 22px 30px var(--paper-lift-shadow-far));
   }
@@ -110,7 +112,9 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .paper-surface[data-paper-variant="plain"]:hover {
+  .paper-surface[data-paper-variant="plain"]:not(
+      [data-paper-disabled="true"]
+    ):hover {
     background-color: var(--paper-plain-bg-hover);
   }
 }
