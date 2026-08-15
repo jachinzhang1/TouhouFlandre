@@ -10,6 +10,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import {
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
@@ -20,6 +21,8 @@ import {
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
+import { Paper } from "../Paper";
+import { PaperButton } from "../controls/PaperButton";
 
 export type DailySessionStatus = "won" | "lost" | "playing" | null;
 
@@ -59,79 +62,96 @@ export function SingleGameStatusBar({
   onForfeit: () => void;
 }) {
   return (
-    <div className="status-strip">
+    <Paper
+      animateOnMount={false}
+      as="div"
+      className={`status-strip ${mode}`}
+      foldSize={16}
+      sticker={false}
+      variant="tinted"
+    >
       <div className="puzzle-status">
-        <span className="label">题目</span>
-        <strong>{puzzleLabel}</strong>
-        {mode === "daily" ? (
-          <DailyDifficultyButtons
-            active={dailyDifficulty}
-            disabled={disabled}
-            statuses={dailyStatuses}
-            onSelect={onDifficultyChange}
-          />
-        ) : null}
+        <span className="label">{mode === "daily" ? "每日题" : "随机题"}</span>
+        <strong className="single-game-puzzle-title">{puzzleLabel}</strong>
         <span className="progress-track" aria-hidden="true">
           <span style={{ width: `${progressPercent}%` }} />
         </span>
       </div>
-      <div>
-        <span className="label">本次猜测倒计时</span>
-        <strong
-          className={`tabular-nums ${
-            turnLimitEnabled ? "text-vermilion" : "text-jade"
-          }`}
-        >
-          {turnLimitEnabled && turnRemainingSeconds !== null
-            ? formatDuration(turnRemainingSeconds)
-            : "无限制"}
-        </strong>
-      </div>
-      <div>
-        <span className="label">计时</span>
-        <strong>{formatDuration(elapsedSeconds)}</strong>
-      </div>
-      <div>
-        <span className="label">进度</span>
-        <strong className={unlimitedGuesses ? "text-jade" : undefined}>
-          {unlimitedGuesses ? "无限制" : `${guessCount}/${maxGuesses}`}
-        </strong>
-      </div>
-      <div>
-        <span className="label">状态</span>
-        <strong className={`session-state ${sessionStatus ?? "playing"}`}>
-          {sessionStatus === "won"
-            ? "已猜中"
-            : sessionStatus === "lost"
-              ? "未猜中"
-              : "进行中"}
-        </strong>
-      </div>
+
+      {mode === "daily" ? (
+        <DailyDifficultyButtons
+          active={dailyDifficulty}
+          disabled={disabled}
+          statuses={dailyStatuses}
+          onSelect={onDifficultyChange}
+        />
+      ) : null}
+
+      <dl className="single-game-metrics">
+        <div>
+          <dt>本次时限</dt>
+          <dd
+            className={`tabular-nums ${
+              turnLimitEnabled ? "text-vermilion" : "text-jade"
+            }`}
+          >
+            {turnLimitEnabled && turnRemainingSeconds !== null
+              ? formatDuration(turnRemainingSeconds)
+              : "无限制"}
+          </dd>
+        </div>
+        <div>
+          <dt>计时</dt>
+          <dd className="tabular-nums">{formatDuration(elapsedSeconds)}</dd>
+        </div>
+        <div>
+          <dt>进度</dt>
+          <dd className={unlimitedGuesses ? "text-jade" : undefined}>
+            {unlimitedGuesses ? "无限制" : `${guessCount}/${maxGuesses}`}
+          </dd>
+        </div>
+        <div>
+          <dt>状态</dt>
+          <dd
+            aria-live="polite"
+            className={`session-state ${sessionStatus ?? "playing"}`}
+          >
+            {sessionStatus === "won"
+              ? "已猜中"
+              : sessionStatus === "lost"
+                ? "未猜中"
+                : "进行中"}
+          </dd>
+        </div>
+      </dl>
+
       <div className="status-actions">
         {mode === "random" ? (
-          <button
-            className="icon-button"
-            type="button"
+          <PaperButton
+            ariaLabel="重新开始随机题"
+            compact
+            disabled={disabled}
+            iconOnly
             onClick={onRestart}
             title="重新开始"
-            aria-label="重新开始随机题"
-            disabled={disabled}
+            tone="theme"
           >
-            <RotateCcw size={18} aria-hidden="true" />
-          </button>
+            <RotateCcw size={17} aria-hidden="true" />
+          </PaperButton>
         ) : null}
-        <button
-          className="icon-button"
-          type="button"
+        <PaperButton
+          ariaLabel="放弃本局"
+          compact
+          disabled={disabled || !sessionStatus || sessionStatus !== "playing"}
+          iconOnly
           onClick={onForfeit}
           title="放弃本局"
-          aria-label="放弃本局"
-          disabled={disabled || !sessionStatus || sessionStatus !== "playing"}
+          tone="danger"
         >
-          <Flag size={18} aria-hidden="true" />
-        </button>
+          <Flag size={17} aria-hidden="true" />
+        </PaperButton>
       </div>
-    </div>
+    </Paper>
   );
 }
 
@@ -148,94 +168,117 @@ export function SingleGuessHistory({
   loading: boolean;
   message: string;
 }) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const guessCount = session?.guesses.length ?? 0;
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || guessCount === 0) return;
+    viewport.scrollTop = viewport.scrollHeight;
+  }, [guessCount]);
+
   return (
-    <div className="table-wrap">
-      <table className="guess-table">
-        <thead>
-          <tr>
-            <th>角色</th>
-            {visibleFields.map((field) => (
-              <th key={field.key}>{field.label}</th>
-            ))}
-            <th>本次猜测用时</th>
-          </tr>
-        </thead>
-        <tbody>
-          {session?.guesses.length ? (
-            session.guesses.map((guess, index) => {
-              const timeout = guess.kind === "timeout";
-              return (
-                <tr
-                  key={guess.guessId}
-                  style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
-                >
-                  {timeout ? (
-                    <th
-                      scope="row"
-                      colSpan={visibleFields.length + 1}
-                      className="guess-timeout-cell"
-                    >
-                      <span>超时空过</span>
-                    </th>
-                  ) : (
-                    <>
-                      <th scope="row">
-                        <span className="guess-character">
-                          <CharacterAvatar
-                            avatarUrl={guess.guessAvatarUrl}
-                            name={guess.guessName}
-                            initials={guess.guessName.slice(0, 2)}
-                            className="guess-avatar"
-                          />
-                          <span>{guess.guessName}</span>
-                        </span>
+    <Paper
+      animateOnMount={false}
+      as="div"
+      className="single-game-history-paper"
+      folded={false}
+      sticker={false}
+      unfoldOnHover={false}
+      variant="plain"
+    >
+      <div
+        aria-label="猜测记录"
+        className="single-game-history-scroll"
+        data-guess-count={guessCount}
+        ref={viewportRef}
+        role="region"
+      >
+        {guessCount > 0 ? (
+          <table className="guess-table">
+            <thead>
+              <tr>
+                <th>角色</th>
+                {visibleFields.map((field) => (
+                  <th key={field.key}>{field.label}</th>
+                ))}
+                <th>本次猜测用时</th>
+              </tr>
+            </thead>
+            <tbody>
+              {session!.guesses.map((guess, index) => {
+                const timeout = guess.kind === "timeout";
+                return (
+                  <tr
+                    key={guess.guessId}
+                    style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
+                  >
+                    {timeout ? (
+                      <th
+                        scope="row"
+                        colSpan={visibleFields.length + 1}
+                        className="guess-timeout-cell"
+                      >
+                        <span>超时空过</span>
                       </th>
-                      {guess.feedback.map((feedback) => (
-                        <td key={feedback.field}>
-                          <span
-                            className={feedbackClass(feedback)}
-                            title={`${feedback.label}: ${feedback.status}`}
-                          >
-                            <b>
-                              <FeedbackStatusIcon status={feedback.status} />
-                            </b>
-                            <span>{formatFeedbackValue(feedback)}</span>
+                    ) : (
+                      <>
+                        <th scope="row">
+                          <span className="guess-character">
+                            <CharacterAvatar
+                              avatarUrl={guess.guessAvatarUrl}
+                              name={guess.guessName}
+                              initials={guess.guessName.slice(0, 2)}
+                              className="guess-avatar"
+                            />
+                            <span>{guess.guessName}</span>
                           </span>
-                        </td>
-                      ))}
-                    </>
-                  )}
-                  <td>
-                    <span className="guess-duration">
-                      {formatGuessDuration(guessCompletedElapsedMs, index)}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })
-          ) : (
-            <tr>
-              <td className="empty-state" colSpan={visibleFields.length + 2}>
-                {loading ? (
-                  <span>
-                    <Loader2 className="spin" size={20} aria-hidden="true" />{" "}
-                    正在连接本地题库
-                  </span>
-                ) : !session && message ? (
-                  <span>
-                    <X size={20} aria-hidden="true" /> 本局加载失败
-                  </span>
-                ) : (
-                  <span>
-                    <Search size={20} aria-hidden="true" /> 等待第一次猜测
-                  </span>
-                )}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+                        </th>
+                        {guess.feedback.map((feedback) => (
+                          <td key={feedback.field}>
+                            <span
+                              className={feedbackClass(feedback)}
+                              title={`${feedback.label}: ${feedback.status}`}
+                            >
+                              <b>
+                                <FeedbackStatusIcon status={feedback.status} />
+                              </b>
+                              <span>{formatFeedbackValue(feedback)}</span>
+                            </span>
+                          </td>
+                        ))}
+                      </>
+                    )}
+                    <td>
+                      <span className="guess-duration">
+                        {formatGuessDuration(guessCompletedElapsedMs, index)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-state" role="status">
+            {loading ? (
+              <span>
+                <Loader2 className="spin" size={20} aria-hidden="true" />{" "}
+                正在连接本地题库
+              </span>
+            ) : !session && message ? (
+              <span>
+                <X size={20} aria-hidden="true" /> 本局加载失败
+              </span>
+            ) : (
+              <span>
+                <Search size={20} aria-hidden="true" /> 等待第一次猜测
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </Paper>
   );
 }
 
@@ -253,70 +296,79 @@ export function SingleGameResult({
   onShare: () => void;
 }) {
   return (
-    <aside className="result-panel" aria-label="游戏结果">
-      <div className="result-summary">
-        <p className="kicker">
-          {session.status === "won" ? "Clear" : "Failed"}
-        </p>
-        <h2>{session.status === "won" ? "猜中了" : "本次游戏结束"}</h2>
-        <p>
-          答案是 <strong>{session.answer?.names.zhHans}</strong>，共使用{" "}
-          {session.guesses.length} 次猜测。
-        </p>
-      </div>
-      {session.answer ? (
-        <CharacterAvatar
-          avatarUrl={session.answer.avatarUrl}
-          name={session.answer.names.zhHans}
-          initials={session.answer.names.zhHans.slice(0, 2)}
-          className="answer-token"
-        />
-      ) : null}
-      {session.answer ? (
-        <dl className="answer-details" aria-label="答案角色资料">
-          <div>
-            <dt>日文名</dt>
-            <dd lang="ja">{session.answer.names.ja}</dd>
-          </div>
-          <div>
-            <dt>首次登场作品</dt>
-            <dd>{session.answer.firstAppearance.workTitle}</dd>
-          </div>
-          <div>
-            <dt>种族</dt>
-            <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
-          </div>
-          <div>
-            <dt>能力</dt>
-            <dd>{session.answer.abilityDisplay}</dd>
-          </div>
-          <div>
-            <dt>出现地点</dt>
-            <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
-          </div>
-          <div>
-            <dt>身份</dt>
-            <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
-          </div>
-        </dl>
-      ) : null}
-      <div className="result-actions">
-        {mode === "random" ? (
-          <button
-            className="primary-button"
-            type="button"
-            onClick={onRestart}
-            disabled={disabled}
-          >
-            <RotateCcw size={18} aria-hidden="true" />
-            <span>再来一局</span>
-          </button>
+    <aside className="single-game-result-layer" aria-label="游戏结果">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="result-panel"
+        foldSize={18}
+        sticker={false}
+        variant="plain"
+      >
+        <div className="result-summary">
+          <p className="kicker">
+            {session.status === "won" ? "Clear" : "Failed"}
+          </p>
+          <h2>{session.status === "won" ? "猜中了" : "本次游戏结束"}</h2>
+          <p>
+            答案是 <strong>{session.answer?.names.zhHans}</strong>，共使用{" "}
+            {session.guesses.length} 次猜测。
+          </p>
+        </div>
+        {session.answer ? (
+          <CharacterAvatar
+            avatarUrl={session.answer.avatarUrl}
+            name={session.answer.names.zhHans}
+            initials={session.answer.names.zhHans.slice(0, 2)}
+            className="answer-token"
+          />
         ) : null}
-        <button className="secondary-button" type="button" onClick={onShare}>
-          <Copy size={18} aria-hidden="true" />
-          <span>复制分享</span>
-        </button>
-      </div>
+        {session.answer ? (
+          <dl className="answer-details" aria-label="答案角色资料">
+            <div>
+              <dt>日文名</dt>
+              <dd lang="ja">{session.answer.names.ja}</dd>
+            </div>
+            <div>
+              <dt>首次登场作品</dt>
+              <dd>{session.answer.firstAppearance.workTitle}</dd>
+            </div>
+            <div>
+              <dt>种族</dt>
+              <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
+            </div>
+            <div>
+              <dt>能力</dt>
+              <dd>{session.answer.abilityDisplay}</dd>
+            </div>
+            <div>
+              <dt>出现地点</dt>
+              <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
+            </div>
+            <div>
+              <dt>身份</dt>
+              <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
+            </div>
+          </dl>
+        ) : null}
+        <div className="result-actions">
+          {mode === "random" ? (
+            <PaperButton
+              disabled={disabled}
+              filled
+              onClick={onRestart}
+              tone="theme"
+            >
+              <RotateCcw size={18} aria-hidden="true" />
+              <span>再来一局</span>
+            </PaperButton>
+          ) : null}
+          <PaperButton onClick={onShare} tone="plain">
+            <Copy size={18} aria-hidden="true" />
+            <span>复制分享</span>
+          </PaperButton>
+        </div>
+      </Paper>
     </aside>
   );
 }
@@ -334,28 +386,28 @@ function DailyDifficultyButtons({
 }) {
   return (
     <div
-      className="mt-2 flex flex-wrap gap-1.5"
+      className="single-game-difficulties"
       role="group"
       aria-label="每日题难度"
     >
       {QUESTION_DIFFICULTY_PRESETS.map((difficulty) => {
         const status = statuses[difficulty];
-        const completedClass =
-          status === "won"
-            ? "border-[var(--jade-border)] bg-jade-soft text-jade"
-            : status === "lost"
-              ? "border-vermilion bg-vermilion-soft text-vermilion"
-              : active === difficulty
-                ? "border-vermilion bg-vermilion text-[var(--accent-contrast)]"
-                : "border-line bg-paper-muted text-ink-soft";
+        const selected = active === difficulty;
         return (
-          <button
+          <Paper
+            animateOnMount={false}
+            ariaPressed={selected}
+            as="button"
+            className={`single-game-difficulty${selected ? " is-active" : ""}${
+              status === "won" ? " is-won" : status === "lost" ? " is-lost" : ""
+            }`}
+            disabled={disabled && !selected}
+            folded={selected}
+            foldSize={8}
             key={difficulty}
-            type="button"
-            disabled={disabled && active !== difficulty}
-            aria-pressed={active === difficulty}
-            className={`inline-flex min-h-7 items-center gap-1 rounded-[4px] border px-2 text-[0.7rem] font-black ${completedClass} disabled:opacity-60`}
             onClick={() => onSelect(difficulty)}
+            sticker={false}
+            variant={selected ? "tinted" : "plain"}
           >
             <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
             {status === "won" ? (
@@ -365,7 +417,7 @@ function DailyDifficultyButtons({
             ) : (
               <Play size={12} aria-hidden="true" />
             )}
-          </button>
+          </Paper>
         );
       })}
     </div>

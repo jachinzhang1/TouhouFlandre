@@ -53,6 +53,8 @@ import {
   parseSingleGameSeedPreset,
   SINGLE_GAME_SEED_PRESETS,
 } from "../../dev/gameSeeds";
+import { Paper } from "../Paper";
+import { PaperButton } from "../controls/PaperButton";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
@@ -982,29 +984,37 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   }, []);
 
   return (
-    <>
-      <section className="game-surface" aria-label="TouhouFlandre 游戏区域">
-        <SingleGameStatusBar
-          mode={mode}
-          puzzleLabel={puzzleLabel}
-          dailyDifficulty={dailyDifficulty}
-          dailyStatuses={dailyStatuses}
-          disabled={loading || submitting || endingSession || timingOut}
-          turnLimitEnabled={turnLimitEnabled}
-          turnRemainingSeconds={turnRemainingSeconds}
-          elapsedSeconds={currentElapsedSeconds}
-          guessCount={session?.guesses.length ?? 0}
-          maxGuesses={maxGuesses}
-          unlimitedGuesses={hasUnlimitedGuesses}
-          sessionStatus={session?.status}
-          progressPercent={guessProgressPercent}
-          onDifficultyChange={(difficulty) =>
-            void switchDailyDifficulty(difficulty)
-          }
-          onRestart={() => void requestFreshSession()}
-          onForfeit={() => void forfeitSession()}
+    <section
+      className={`single-game-shell ${mode}`}
+      aria-label="TouhouFlandre 游戏区域"
+    >
+      <div className="single-game-history-region">
+        <SingleGuessHistory
+          session={session}
+          visibleFields={visibleFields}
+          guessCompletedElapsedMs={guessCompletedElapsedMs}
+          loading={loading}
+          message={message}
         />
-
+        {session && isFinished ? (
+          <SingleGameResult
+            mode={mode}
+            session={session}
+            disabled={loading || submitting}
+            onRestart={() => void requestFreshSession()}
+            onShare={() => void copyShare()}
+          />
+        ) : null}
+      </div>
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="single-game-input-paper"
+        folded={false}
+        sticker={false}
+        unfoldOnHover={false}
+        variant="plain"
+      >
         <form
           className="guess-form"
           onSubmit={(event) => {
@@ -1013,61 +1023,70 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           }}
         >
           <div className="search-combobox">
-            <label className="search-box" ref={searchBoxRef}>
-              <Search size={18} aria-hidden="true" />
-              <input
-                value={query}
-                onFocus={() => setSuggestionsDismissed(false)}
-                onBlur={() => setActiveSuggestionId("")}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setSelectedId("");
-                  setActiveSuggestionId("");
-                  setSuggestionsDismissed(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setSuggestionsDismissed(false);
-                    moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
-                    return;
-                  }
-                  if (event.key === "Escape" && showSuggestions) {
-                    event.preventDefault();
-                    setSuggestionsDismissed(true);
+            <Paper
+              animateOnMount={false}
+              as="div"
+              className="single-game-search-paper"
+              foldSize={12}
+              sticker={false}
+              variant="plain"
+            >
+              <label className="search-box" ref={searchBoxRef}>
+                <Search size={18} aria-hidden="true" />
+                <input
+                  value={query}
+                  onFocus={() => setSuggestionsDismissed(false)}
+                  onBlur={() => setActiveSuggestionId("")}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setSelectedId("");
                     setActiveSuggestionId("");
-                    return;
-                  }
-                  if (event.key === "Enter" && showSuggestions) {
-                    const activeResult = selectableResults.find(
-                      (result) => result.id === activeSuggestionId,
-                    );
-                    if (activeResult) {
+                    setSuggestionsDismissed(false);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                       event.preventDefault();
-                      selectSuggestion(activeResult);
+                      setSuggestionsDismissed(false);
+                      moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
+                      return;
                     }
+                    if (event.key === "Escape" && showSuggestions) {
+                      event.preventDefault();
+                      setSuggestionsDismissed(true);
+                      setActiveSuggestionId("");
+                      return;
+                    }
+                    if (event.key === "Enter" && showSuggestions) {
+                      const activeResult = selectableResults.find(
+                        (result) => result.id === activeSuggestionId,
+                      );
+                      if (activeResult) {
+                        event.preventDefault();
+                        selectSuggestion(activeResult);
+                      }
+                    }
+                  }}
+                  disabled={
+                    loading ||
+                    submitting ||
+                    endingSession ||
+                    timingOut ||
+                    !session ||
+                    isFinished
                   }
-                }}
-                disabled={
-                  loading ||
-                  submitting ||
-                  endingSession ||
-                  timingOut ||
-                  !session ||
-                  isFinished
-                }
-                placeholder="输入角色名、别名或初登场作品"
-                aria-label="搜索东方角色"
-                aria-autocomplete="list"
-                aria-controls={listboxId}
-                aria-activedescendant={
-                  showSuggestions && activeSuggestionId
-                    ? `${listboxId}-${activeSuggestionId}`
-                    : undefined
-                }
-                aria-expanded={showSuggestions}
-              />
-            </label>
+                  placeholder="输入角色名、别名或初登场作品"
+                  aria-label="搜索东方角色"
+                  aria-autocomplete="list"
+                  aria-controls={listboxId}
+                  aria-activedescendant={
+                    showSuggestions && activeSuggestionId
+                      ? `${listboxId}-${activeSuggestionId}`
+                      : undefined
+                  }
+                  aria-expanded={showSuggestions}
+                />
+              </label>
+            </Paper>
             <SuggestionPopover
               anchor={searchBoxRef}
               id={listboxId}
@@ -1137,9 +1156,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             </SuggestionPopover>
           </div>
           <div className="guess-form-actions">
-            <button
-              className="primary-button"
-              type="submit"
+            <PaperButton
+              className="single-game-submit"
               disabled={
                 !selectedId ||
                 loading ||
@@ -1148,6 +1166,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 timingOut ||
                 isFinished
               }
+              filled
+              folded
+              onClick={() => void submitGuess()}
+              tone="theme"
             >
               {submitting ? (
                 <Loader2 className="spin" size={18} aria-hidden="true" />
@@ -1155,31 +1177,34 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 <Send size={18} aria-hidden="true" />
               )}
               <span>提交猜测</span>
-            </button>
+            </PaperButton>
             <FeedbackLegendButton />
           </div>
         </form>
 
         {message ? <p className="message error">{message}</p> : null}
+      </Paper>
 
-        <SingleGuessHistory
-          session={session}
-          visibleFields={visibleFields}
-          guessCompletedElapsedMs={guessCompletedElapsedMs}
-          loading={loading}
-          message={message}
-        />
-      </section>
-
-      {session && isFinished ? (
-        <SingleGameResult
-          mode={mode}
-          session={session}
-          disabled={loading || submitting}
-          onRestart={() => void requestFreshSession()}
-          onShare={() => void copyShare()}
-        />
-      ) : null}
-    </>
+      <SingleGameStatusBar
+        mode={mode}
+        puzzleLabel={puzzleLabel}
+        dailyDifficulty={dailyDifficulty}
+        dailyStatuses={dailyStatuses}
+        disabled={loading || submitting || endingSession || timingOut}
+        turnLimitEnabled={turnLimitEnabled}
+        turnRemainingSeconds={turnRemainingSeconds}
+        elapsedSeconds={currentElapsedSeconds}
+        guessCount={session?.guesses.length ?? 0}
+        maxGuesses={maxGuesses}
+        unlimitedGuesses={hasUnlimitedGuesses}
+        sessionStatus={session?.status}
+        progressPercent={guessProgressPercent}
+        onDifficultyChange={(difficulty) =>
+          void switchDailyDifficulty(difficulty)
+        }
+        onRestart={() => void requestFreshSession()}
+        onForfeit={() => void forfeitSession()}
+      />
+    </section>
   );
 }

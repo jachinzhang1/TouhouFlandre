@@ -18,6 +18,7 @@ export const SINGLE_GAME_SEED_PRESETS = [
   "loading",
   "error",
   "empty",
+  "first-guess",
   "playing",
   "won",
   "lost",
@@ -172,7 +173,12 @@ export function buildSingleGameSeed(
     };
   }
 
-  const guesses = preset === "empty" ? [] : developmentGuesses();
+  const guesses =
+    preset === "empty"
+      ? []
+      : preset === "first-guess"
+        ? developmentGuesses().slice(0, 1)
+        : developmentGuesses();
   const status =
     preset === "won" ? "won" : preset === "lost" ? "lost" : "playing";
   if (preset === "won") guesses.push(correctGuess());

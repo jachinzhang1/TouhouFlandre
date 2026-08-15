@@ -846,6 +846,306 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   align-items: center;
 }
 
+/* Single-player game desk: the history is the only scrolling surface. */
+body:has(.single-game-shell) {
+  overflow: hidden;
+}
+
+body:has(.single-game-shell) > div:has(.single-game-shell) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body:has(.single-game-shell) main {
+  height: calc(100dvh - var(--site-nav-height));
+  min-height: 0;
+  padding-block: 12px;
+  overflow: hidden;
+}
+
+body:has(.single-game-shell) .site-footer {
+  display: none;
+}
+
+.single-game-shell {
+  --single-game-shell-gap: 10px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: var(--single-game-shell-gap);
+  height: 100%;
+  min-height: 0;
+  isolation: isolate;
+}
+
+.single-game-history-region {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+
+.single-game-history-paper {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--shadow-sm);
+}
+
+.single-game-history-scroll {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.single-game-history-scroll .guess-table {
+  flex: 0 0 auto;
+  margin-top: auto;
+  background: color-mix(in srgb, var(--paper-plain-bg) 92%, transparent);
+}
+
+.single-game-history-scroll .guess-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  border-bottom-style: dashed;
+  background: var(--paper-plain-bg);
+  box-shadow: 0 12px 18px -18px var(--paper-lift-shadow-near);
+}
+
+.single-game-history-scroll .guess-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.single-game-history-scroll .empty-state {
+  display: grid;
+  min-width: 100%;
+  min-height: 100%;
+  flex: 1 0 auto;
+  place-items: center;
+  padding: 24px;
+}
+
+.single-game-input-paper {
+  z-index: 10;
+  display: grid;
+  min-width: 0;
+  padding: 10px 12px;
+  overflow: visible;
+  isolation: isolate;
+  box-shadow: var(--shadow-sm);
+}
+
+.single-game-input-paper::before {
+  opacity: 0.58;
+}
+
+.single-game-input-paper .guess-form {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 0;
+}
+
+.single-game-search-paper {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.single-game-search-paper .search-box {
+  position: relative;
+  z-index: 1;
+  min-height: 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.single-game-search-paper .search-box:focus-within {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.single-game-input-paper .guess-form-actions {
+  align-items: stretch;
+}
+
+.single-game-input-paper .paper-button {
+  min-height: 48px;
+}
+
+.single-game-submit {
+  min-width: 148px;
+}
+
+.single-game-input-paper .message {
+  position: relative;
+  z-index: 1;
+  margin: 8px 0 0;
+}
+
+.single-game-shell .status-strip {
+  z-index: 9;
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1.15fr) minmax(300px, 1fr)
+    minmax(330px, 1.1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 84px;
+  padding: 11px 14px;
+  overflow: hidden;
+  border: 0;
+  color: var(--paper-tinted-ink);
+  background: var(--theme-color);
+  isolation: isolate;
+  box-shadow: var(--shadow-sm);
+}
+
+.single-game-shell .status-strip::before {
+  opacity: 0.82;
+}
+
+.single-game-shell .status-strip > * {
+  position: relative;
+  z-index: 1;
+}
+
+.single-game-puzzle-title {
+  display: block;
+  overflow: hidden;
+  font-family: var(--font-brand);
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.single-game-shell .status-strip .label,
+.single-game-metrics dt {
+  color: color-mix(in srgb, var(--paper-tinted-ink) 72%, transparent);
+}
+
+.single-game-shell .progress-track {
+  width: 100%;
+  max-width: 280px;
+  margin-top: 7px;
+  background: color-mix(in srgb, var(--paper-tinted-ink) 20%, transparent);
+}
+
+.single-game-shell .progress-track span {
+  background: var(--paper-tinted-ink);
+}
+
+.single-game-difficulties {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.paper-surface.single-game-difficulty {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+  border: 0;
+  padding: 0 8px;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.paper-surface.single-game-difficulty.is-active {
+  color: var(--paper-tinted-ink);
+  background: color-mix(in srgb, var(--theme-color) 78%, #000);
+  outline: 1px solid
+    color-mix(in srgb, var(--paper-tinted-ink) 42%, transparent);
+  outline-offset: -1px;
+}
+
+.paper-surface.single-game-difficulty.is-won:not(.is-active) {
+  color: var(--jade-strong);
+  background: var(--jade-soft);
+}
+
+.paper-surface.single-game-difficulty.is-lost:not(.is-active) {
+  color: var(--error-text);
+  background: var(--error-bg-soft);
+}
+
+.single-game-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(62px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.single-game-metrics > div {
+  min-width: 0;
+}
+
+.single-game-metrics dt {
+  margin-bottom: 3px;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.single-game-metrics dd {
+  margin: 0;
+  overflow: hidden;
+  color: var(--paper-tinted-ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.single-game-shell .session-state,
+.single-game-shell .session-state.won {
+  color: var(--paper-tinted-ink);
+}
+
+.single-game-shell .session-state.lost {
+  color: color-mix(in srgb, var(--paper-tinted-ink) 78%, #ffbbbb);
+}
+
+.single-game-shell .status-actions {
+  align-self: stretch;
+  align-items: center;
+}
+
+.single-game-result-layer {
+  position: absolute;
+  inset: 12px;
+  z-index: 20;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+}
+
+.single-game-result-layer .result-panel {
+  width: min(760px, 100%);
+  max-height: 100%;
+  margin: 0;
+  overflow: auto;
+  box-shadow: var(--shadow-lg);
+}
+
 .spin {
   animation: spin 0.8s linear infinite;
 }

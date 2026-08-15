@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { FeedbackStatus } from "@touhouflandre/shared";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
+import { Paper } from "../Paper";
 
 export const FEEDBACK_LEGEND_ITEMS: {
   status: FeedbackStatus;
@@ -85,16 +86,20 @@ export function FeedbackLegendButton({
 
   return (
     <div className={`legend-control ${className}`.trim()} ref={controlRef}>
-      <button
-        aria-controls={open ? legendId : undefined}
-        aria-expanded={open}
-        className="secondary-button legend-button"
-        type="button"
+      <Paper
+        animateOnMount={false}
+        ariaControls={open ? legendId : undefined}
+        ariaExpanded={open}
+        as="button"
+        className="paper-button paper-button-plain legend-button"
+        foldSize={10}
         onClick={() => setOpen((value) => !value)}
+        sticker={false}
+        variant="plain"
       >
         <Search size={18} aria-hidden="true" />
         <span>查看图例</span>
-      </button>
+      </Paper>
       {open && position
         ? createPortal(
             <div
