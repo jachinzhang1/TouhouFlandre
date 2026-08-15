@@ -78,6 +78,24 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
     ],
   },
   {
+    name: "KrLite",
+    role: "前端开发",
+    links: [
+      {
+        name: "GitHub",
+        href: "https://github.com/KrLite",
+        Icon: Github,
+        className: platformStyles.github,
+      },
+      {
+        name: "Bilibili",
+        href: "https://space.bilibili.com/399487383",
+        Icon: BilibiliIcon,
+        className: platformStyles.bilibili,
+      },
+    ],
+  },
+  {
     name: "哲狗",
     role: "基础设施提供",
     links: [
@@ -152,13 +170,6 @@ export default function LinksPage() {
           感谢为本项目提供创作资源与帮助的作者。
         </p>
       </div>
-      <CreditSection title="素材提供">
-        <LinkCardGroup>
-          {assetCredits.map((item) => (
-            <ResourceCard key={item.href} {...item} />
-          ))}
-        </LinkCardGroup>
-      </CreditSection>
       <CreditSection title="开发者">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,320px))] gap-3">
           {developers.map((developer) => (
@@ -192,6 +203,13 @@ export default function LinksPage() {
             </article>
           ))}
         </div>
+      </CreditSection>
+      <CreditSection title="素材提供">
+        <LinkCardGroup>
+          {assetCredits.map((item) => (
+            <ResourceCard key={item.href} {...item} />
+          ))}
+        </LinkCardGroup>
       </CreditSection>
       <CreditSection title="友情链接">
         <LinkCardGroup>
