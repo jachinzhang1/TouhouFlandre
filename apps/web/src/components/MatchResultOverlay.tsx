@@ -100,10 +100,8 @@ export function MatchResultOverlay({
               className={`flex items-center justify-between rounded border px-2 py-1 text-[0.75rem] ${entry.memberId === memberId ? "border-vermilion bg-vermilion-soft" : "border-line bg-paper-muted"}`}
             >
               <span className="truncate">
-                {"rank" in entry ? `第 ${entry.rank} 名 · ` : ""}
-                {members?.find((member) => member.memberId === entry.memberId)
-                  ?.displayName ?? `玩家 ${entry.seat}`}
-                {entry.memberId === memberId ? "（我）" : ""}
+                {"rank" in entry ? `第${entry.rank}名 · ` : ""}
+                {settlementMemberLabel(entry, members, memberId)}
               </span>
               <span className="font-bold">
                 {"rank" in entry
@@ -152,4 +150,16 @@ export function MatchResultOverlay({
       </div>
     </div>
   );
+}
+
+function settlementMemberLabel(
+  entry: { memberId: string; seat: number },
+  members: components["schemas"]["MemberView"][] | undefined,
+  viewerMemberId: string | null | undefined,
+): string {
+  const name =
+    members?.find((member) => member.memberId === entry.memberId)
+      ?.displayName ?? `玩家 ${entry.seat}`;
+  const suffix = entry.memberId === viewerMemberId ? "我" : `P${entry.seat}`;
+  return `${name}(${suffix})`;
 }
