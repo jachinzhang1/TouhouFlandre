@@ -103,7 +103,7 @@ export function FeedbackLegendButton({
                     key={item.status}
                   >
                     <span
-                      className={`feedback-legend-icon feedback-${item.status}`}
+                      className={`feedback-legend-icon feedback-legend-icon-${item.status}`}
                       aria-hidden="true"
                     >
                       <b>

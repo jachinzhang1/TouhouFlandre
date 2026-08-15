@@ -41,7 +41,7 @@ export function FeedbackLegend({ className = "" }: { className?: string }) {
           title={item.label}
         >
           <span
-            className={`feedback-legend-icon feedback-${item.status}`}
+            className={`feedback-legend-icon feedback-legend-icon-${item.status}`}
             aria-hidden="true"
           >
             <b>

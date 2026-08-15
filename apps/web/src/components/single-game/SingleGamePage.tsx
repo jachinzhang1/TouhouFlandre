@@ -55,6 +55,7 @@ import {
   SINGLE_GAME_RESULT_SEEDS,
 } from "../../dev/gameSeeds";
 import { PaperSearchInput } from "../controls/PaperSearchInput";
+import { Paper } from "../Paper";
 import { FeedbackLegend } from "../game/FeedbackLegend";
 import { PaperButton } from "../controls/PaperButton";
 import {
@@ -166,7 +167,7 @@ function SuggestionPopover({
       const rect = element.getBoundingClientRect();
       const margin = 12;
       const gap = 7;
-      const width = Math.min(rect.width, window.innerWidth - margin * 2);
+      const width = Math.min(640, rect.width, window.innerWidth - margin * 2);
       const left = Math.min(
         Math.max(margin, rect.left),
         window.innerWidth - width - margin,
@@ -197,13 +198,26 @@ function SuggestionPopover({
   if (!open || !position) return null;
   return createPortal(
     <div
-      className="suggestion-list"
+      className="suggestion-list-positioner"
       id={id}
       role="listbox"
       aria-label="搜索建议"
       style={position}
+      onPointerDown={(event) => event.stopPropagation()}
     >
-      {children}
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="suggestion-list paper-data-table"
+        folded={false}
+        sticker={false}
+        unfoldOnHover={false}
+        variant="plain"
+      >
+        <div className="suggestion-list-body paper-data-table-body">
+          {children}
+        </div>
+      </Paper>
     </div>,
     document.body,
   );
@@ -257,15 +271,16 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   );
   const isFinished = session?.status === "won" || session?.status === "lost";
   const hasGuessRecords = (session?.guesses.length ?? 0) > 0;
+  const timerStarted = Boolean(session && hasGuessRecords && !isFinished);
   const useWallClockElapsed = mode === "daily" && hasGuessRecords;
   const foregroundTimer = useForegroundTimer(
     session?.id ?? "none",
-    Boolean(session && !isFinished && !useWallClockElapsed),
+    timerStarted && !useWallClockElapsed,
     initialElapsedMs,
   );
   const wallClockTimer = useWallClockTimer(
     session?.id ?? "none",
-    Boolean(session && !isFinished && useWallClockElapsed),
+    timerStarted && useWallClockElapsed,
     initialElapsedMs,
   );
   const activeTimer = useWallClockElapsed ? wallClockTimer : foregroundTimer;
@@ -458,12 +473,13 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 draft?.updatedAt ? Date.parse(draft.updatedAt) : undefined,
               );
             const restoredElapsed =
-              nextMode === "daily" &&
-              restored.status === "playing" &&
-              restored.guesses.length > 0 &&
-              savedAtMs
-                ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
-                : baseElapsed;
+              restored.guesses.length === 0
+                ? 0
+                : nextMode === "daily" &&
+                    restored.status === "playing" &&
+                    savedAtMs
+                  ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
+                  : baseElapsed;
             setSession(restored);
             setGuessCompletedElapsedMs(restoredTimings);
             setInitialElapsedMs(restoredElapsed);
@@ -1011,6 +1027,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     <section
       className={`single-game-shell ${mode}`}
       aria-label="TouhouFlandre 游戏区域"
+      data-suggestions-open={showSuggestions ? "true" : "false"}
     >
       {messageContextHolder}
       <div className="single-game-history-region">
@@ -1123,9 +1140,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     const active = activeSuggestionId === result.id;
                     return (
                       <button
-                        className={
-                          active ? "suggestion selected" : "suggestion"
-                        }
+                        className={`suggestion paper-data-table-row${
+                          active ? " selected" : ""
+                        }`}
                         id={`${listboxId}-${result.id}`}
                         key={result.id}
                         type="button"
@@ -1133,17 +1150,17 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                         disabled={disabled}
                         role="option"
                         aria-selected={active}
-                        onPointerDown={(event) => {
-                          event.preventDefault();
-                          selectSuggestion(result);
-                        }}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={() => selectSuggestion(result)}
                       >
-                        <CharacterAvatar
-                          avatarUrl={result.avatarUrl}
-                          name={result.name}
-                          initials={result.initials}
-                          className="suggestion-avatar"
-                        />
+                        <span className="suggestion-avatar-cell">
+                          <CharacterAvatar
+                            avatarUrl={result.avatarUrl}
+                            name={result.name}
+                            initials={result.initials}
+                            className="suggestion-avatar"
+                          />
+                        </span>
                         <span className="suggestion-main">
                           <strong>{result.name}</strong>
                           <small>{result.subtitle}</small>

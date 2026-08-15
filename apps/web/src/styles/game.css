@@ -427,21 +427,50 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   color: var(--accent-contrast);
 }
 
+.feedback-legend-icon-exact b {
+  background: var(--jade);
+}
+
+.feedback-legend-icon-partial b {
+  background: var(--amber);
+}
+
+.feedback-legend-icon-higher b {
+  background: var(--feedback-higher-mark);
+}
+
+.feedback-legend-icon-lower b {
+  background: var(--feedback-lower-mark);
+}
+
+.feedback-legend-icon-miss b,
+.feedback-legend-icon-unknown b {
+  background: var(--neutral-mark);
+}
+
 .search-combobox {
   position: relative;
   min-width: 0;
 }
 
-.suggestion-list {
+.suggestion-list-positioner {
   position: fixed;
   z-index: 100;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
   animation: dropdown-enter 140ms ease both;
+}
+
+.suggestion-list {
+  max-height: inherit;
+  overflow: hidden;
+  outline: 1px solid var(--line-strong);
+  outline-offset: -1px;
+  box-shadow: var(--shadow-lg);
+}
+
+.suggestion-list-body {
+  max-height: inherit;
+  overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .suggestion-state {
@@ -473,17 +502,23 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 
 .suggestion {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
   width: 100%;
-  min-height: 54px;
-  padding: 9px 13px;
+  min-height: 60px;
+  grid-template-columns: 60px minmax(0, 1fr) minmax(110px, auto);
+  align-items: stretch;
   border: 0;
-  border-bottom: 1px solid var(--suggestion-border);
   color: var(--ink);
   text-align: left;
-  background: var(--surface);
+}
+
+.suggestion-avatar-cell,
+.suggestion-meta {
+  display: flex;
+  align-items: center;
+}
+
+.suggestion-avatar-cell {
+  justify-content: center;
 }
 
 .suggestion-avatar {
@@ -491,22 +526,22 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   height: 36px;
 }
 
-.suggestion:last-child {
-  border-bottom: 0;
-}
-
 .suggestion:hover,
 .suggestion.selected {
-  background: var(--vermilion-soft);
+  background: var(--vermilion-soft) !important;
 }
 
 .suggestion:disabled {
   color: var(--placeholder-text);
-  background: var(--surface-muted);
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .suggestion-main {
+  display: grid;
   min-width: 0;
+  align-content: center;
+  gap: 2px;
 }
 
 .suggestion-main strong,
@@ -524,6 +559,8 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .suggestion-meta {
+  justify-content: flex-end;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -971,7 +1008,15 @@ body:has(.single-game-shell) main {
     #000 var(--single-game-history-fade-size),
     #000 100%
   );
-  transition: box-shadow 180ms ease;
+  transition:
+    box-shadow 180ms ease,
+    opacity 160ms ease,
+    filter 160ms ease;
+}
+
+.single-game-shell[data-suggestions-open="true"] .single-game-history-scroll {
+  opacity: 0.3;
+  filter: saturate(0.55);
 }
 
 .single-game-history-fade-spacer {
@@ -1117,10 +1162,14 @@ body:has(.single-game-shell) main {
   align-items: center;
   min-height: 0;
   padding-block: 0;
-  padding-inline: 2px;
+  padding-inline: 0;
   border: 0;
   color: var(--ink);
   background: transparent;
+}
+
+.single-game-shell .status-strip.random {
+  grid-template-columns: minmax(220px, 1.15fr) minmax(330px, 1.1fr) auto;
 }
 
 .single-game-puzzle-title {

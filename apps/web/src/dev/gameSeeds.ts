@@ -224,7 +224,7 @@ export function buildSingleGameSeed(
     session,
     loading: false,
     message: "",
-    initialElapsedMs: preset === "empty" ? 12_000 : 74_000,
+    initialElapsedMs: guesses.length === 0 ? 0 : 74_000,
     guessCompletedElapsedMs,
   };
 }

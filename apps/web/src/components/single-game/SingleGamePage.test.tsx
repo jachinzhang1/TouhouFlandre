@@ -72,9 +72,16 @@ const forfeitedSession = {
   },
 } as unknown as PublicGameSession;
 
-const { searchHookMock, timerCheckpointMock } = vi.hoisted(() => ({
+const {
+  foregroundEnabledMock,
+  searchHookMock,
+  timerCheckpointMock,
+  wallClockEnabledMock,
+} = vi.hoisted(() => ({
+  foregroundEnabledMock: vi.fn(),
   searchHookMock: vi.fn(),
   timerCheckpointMock: vi.fn(() => 65_000),
+  wallClockEnabledMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -97,14 +104,20 @@ vi.mock("../../hooks/useCharacterSearch", () => ({
 }));
 
 vi.mock("../../stats/timer", () => ({
-  useForegroundTimer: () => ({
-    elapsedMs: 65_000,
-    checkpoint: timerCheckpointMock,
-  }),
-  useWallClockTimer: () => ({
-    elapsedMs: 65_000,
-    checkpoint: timerCheckpointMock,
-  }),
+  useForegroundTimer: (_key: string, enabled: boolean) => {
+    foregroundEnabledMock(enabled);
+    return {
+      elapsedMs: enabled ? 65_000 : 0,
+      checkpoint: () => (enabled ? timerCheckpointMock() : 0),
+    };
+  },
+  useWallClockTimer: (_key: string, enabled: boolean) => {
+    wallClockEnabledMock(enabled);
+    return {
+      elapsedMs: enabled ? 65_000 : 0,
+      checkpoint: () => (enabled ? timerCheckpointMock() : 0),
+    };
+  },
 }));
 
 import { api } from "../../lib/api";
@@ -118,6 +131,8 @@ describe("SingleGamePage", () => {
     vi.mocked(api.submitGuess).mockReset();
     vi.mocked(api.forfeitSession).mockReset();
     timerCheckpointMock.mockClear();
+    foregroundEnabledMock.mockClear();
+    wallClockEnabledMock.mockClear();
     vi.mocked(api.catalogFull).mockResolvedValue({
       version: "v2",
       works: [],
@@ -176,7 +191,52 @@ describe("SingleGamePage", () => {
       "sess-1",
     );
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
+    expect(foregroundEnabledMock).toHaveBeenLastCalledWith(false);
+    expect(wallClockEnabledMock).toHaveBeenLastCalledWith(false);
+    expect(screen.getByText("00:00")).toBeTruthy();
   });
+
+  it.each(["daily", "random"] as const)(
+    "starts the %s timer only after the first guess",
+    async (mode) => {
+      const created = {
+        ...playingSession,
+        id: `session-${mode}`,
+        mode,
+      } as PublicGameSession;
+      const guessed = {
+        ...sessionWithGuess,
+        id: `session-${mode}`,
+        mode,
+      } as PublicGameSession;
+      if (mode === "daily") {
+        vi.mocked(api.catalog).mockResolvedValue({
+          dailyDateKey: "2026-08-05",
+          contents: [],
+        } as never);
+      }
+      vi.mocked(api.createPuzzle).mockResolvedValue({
+        session: created,
+        puzzleLabel: mode === "daily" ? "每日题 2026-08-05" : "随机题",
+      } as never);
+      vi.mocked(api.submitGuess).mockResolvedValue(guessed as never);
+
+      render(<SingleGamePage mode={mode} />);
+      const input = await screen.findByLabelText("搜索东方角色");
+      expect(foregroundEnabledMock).toHaveBeenLastCalledWith(false);
+      expect(wallClockEnabledMock).toHaveBeenLastCalledWith(false);
+
+      foregroundEnabledMock.mockClear();
+      wallClockEnabledMock.mockClear();
+      await userEvent.type(input, "帕秋莉");
+      await userEvent.click(screen.getByText("帕秋莉·诺蕾姬"));
+      await userEvent.click(screen.getByRole("button", { name: "提交猜测" }));
+      await screen.findByText("1/8");
+
+      expect(foregroundEnabledMock).toHaveBeenLastCalledWith(mode === "random");
+      expect(wallClockEnabledMock).toHaveBeenLastCalledWith(mode === "daily");
+    },
+  );
 
   it("keeps the guess action focused on submission", async () => {
     vi.mocked(api.catalog).mockResolvedValue({
@@ -376,7 +436,12 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="random" />);
     await screen.findByText("1/8");
-    await userEvent.click(screen.getByLabelText("重新开始随机题"));
+    const restart = screen.getByLabelText("重新开始随机题");
+    expect(restart.classList.contains("paper-button-icon")).toBe(true);
+    expect(restart.classList.contains("paper-button-compact")).toBe(false);
+    expect(restart.classList.contains("paper-button-theme")).toBe(false);
+    expect(restart.dataset.paperVariant).toBe("plain");
+    await userEvent.click(restart);
 
     expect(confirm).toHaveBeenCalledOnce();
     expect(api.createPuzzle).toHaveBeenCalledOnce();
@@ -415,6 +480,42 @@ describe("SingleGamePage", () => {
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "测试");
 
     expect(await screen.findByText("teal、光头")).toBeTruthy();
+  });
+
+  it("uses an interactive compact Paper table for pointer selection", async () => {
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+
+    const { container } = render(<SingleGamePage mode="daily" />);
+    const input = await screen.findByLabelText("搜索东方角色");
+    await userEvent.type(input, "帕秋莉");
+
+    const listbox = screen.getByRole("listbox", { name: "搜索建议" });
+    const option = within(listbox).getByRole("option", {
+      name: /帕秋莉·诺蕾姬/,
+    });
+    expect(listbox.querySelector(".paper-data-table")).toBeTruthy();
+    expect(listbox.querySelector(".paper-data-table-body")).toBeTruthy();
+    expect(option.classList.contains("paper-data-table-row")).toBe(true);
+    expect(
+      container
+        .querySelector(".single-game-shell")
+        ?.getAttribute("data-suggestions-open"),
+    ).toBe("true");
+
+    await userEvent.click(option);
+    expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
+    expect(
+      container
+        .querySelector(".single-game-shell")
+        ?.getAttribute("data-suggestions-open"),
+    ).toBe("false");
   });
 
   it("selects a search suggestion with the keyboard", async () => {

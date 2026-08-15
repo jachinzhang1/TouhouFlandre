@@ -48,7 +48,7 @@ function puzzleHeading(mode: SinglePlayerGameMode, puzzleLabel: string) {
     };
   }
   return {
-    eyebrow: mode === "daily" ? "每日题" : "随机题",
+    eyebrow: mode === "daily" ? "每日题" : "",
     title: puzzleLabel,
   };
 }
@@ -90,7 +90,9 @@ export function SingleGameStatusBar({
   return (
     <section className={`status-strip ${mode}`} aria-label="游戏状态">
       <div className="puzzle-status">
-        <span className="label">{heading.eyebrow}</span>
+        {heading.eyebrow ? (
+          <span className="label">{heading.eyebrow}</span>
+        ) : null}
         <strong className="single-game-puzzle-title">{heading.title}</strong>
         {!unlimitedGuesses ? (
           <span
@@ -163,14 +165,13 @@ export function SingleGameStatusBar({
         {mode === "random" ? (
           <PaperButton
             ariaLabel="重新开始随机题"
-            compact
             disabled={disabled}
             iconOnly
             onClick={onRestart}
             title="重新开始"
-            tone="theme"
+            tone="plain"
           >
-            <RotateCcw size={17} aria-hidden="true" />
+            <RotateCcw size={18} aria-hidden="true" />
           </PaperButton>
         ) : null}
         <PaperButton
