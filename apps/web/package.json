@@ -39,6 +39,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agentation": "^3.0.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "openapi-typescript": "^7.13.0",

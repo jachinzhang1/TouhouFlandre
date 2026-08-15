@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { AgentationToolbar } from "../components/dev/AgentationToolbar";
 import { AppearanceSwitcher } from "../components/layout/AppearanceSwitcher";
 import { SiteFooter } from "../components/layout/SiteFooter";
 import { SiteNav } from "../components/layout/SiteNav";
@@ -45,6 +46,7 @@ export default function RootLayout({
           <SiteFooter />
         </div>
         <AppearanceSwitcher />
+        {process.env.NODE_ENV === "development" ? <AgentationToolbar /> : null}
       </body>
     </html>
   );
