@@ -87,19 +87,24 @@ export const api = {
     requestApi(
       client.POST("/api/puzzles/{mode}", { params: { path: { mode } }, body }),
     ),
-  submitGuess: async (sessionId: string, guessId: string) => {
+  submitGuess: async (
+    sessionId: string,
+    guessId: string,
+    expectedGuessCount?: number,
+  ) => {
     const { session } = await requestApi(
       client.POST("/api/sessions/{sessionId}/guess", {
         params: { path: { sessionId } },
-        body: { guessId },
+        body: { guessId, expectedGuessCount },
       }),
     );
     return session;
   },
-  timeoutSession: async (sessionId: string) => {
+  timeoutSession: async (sessionId: string, expectedGuessCount: number) => {
     const { session } = await requestApi(
       client.POST("/api/sessions/{sessionId}/timeout", {
         params: { path: { sessionId } },
+        body: { expectedGuessCount },
       }),
     );
     return session;

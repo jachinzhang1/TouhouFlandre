@@ -22,6 +22,10 @@ post:
             guessId:
               type: string
               description: 被猜角色 id。
+            expectedGuessCount:
+              type: integer
+              minimum: 0
+              description: 客户端提交时看到的猜测记录数；用于避免计时回合被并发请求重复消费。
   responses:
     "200":
       description: 猜测已记录
