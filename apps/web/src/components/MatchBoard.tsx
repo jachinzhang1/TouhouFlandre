@@ -18,11 +18,11 @@ import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "./GuessTable";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import type { RoomUiState } from "../hooks/useRoom";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
-type MemberView = components["schemas"]["MemberView"];
 
 export function MatchBoard({
   format,
@@ -171,7 +171,7 @@ function OpponentPages({
         );
         return (
           <OpponentBoard
-            title={memberBoardTitle(member, opponent.seat)}
+            title={formatBoardTitle(member, opponent.seat)}
             rows={opponent.rows}
             fields={fields}
             fieldOrder={opponent.fieldOrder}
@@ -232,7 +232,7 @@ function EndedBoards({
       {selfBoard ? (
         <GuessTable
           title="我"
-          headerExtra={roundBadgeGroup({
+          headerExtra={boardResultBadges({
             winner: selfWinner,
             eliminated: selfEliminated,
           })}
@@ -255,12 +255,12 @@ function EndedBoards({
           return (
             <GuessTable
               title={
-                memberBoardTitle(
+                formatBoardTitle(
                   members.find((member) => member.memberId === board.memberId),
                   board.seat,
                 )
               }
-              headerExtra={roundBadgeGroup({ winner, eliminated })}
+              headerExtra={boardResultBadges({ winner, eliminated })}
               rows={toRows(board.memberId)}
               emptyLabel="该玩家本局未猜测。"
               fields={fields}
@@ -271,33 +271,5 @@ function EndedBoards({
         }}
       />
     </div>
-  );
-}
-
-function memberBoardTitle(member: MemberView | undefined, seat: number): string {
-  return `${member?.displayName ?? `玩家 ${seat}`}(P${seat})`;
-}
-
-function roundBadgeGroup({
-  winner,
-  eliminated,
-}: {
-  winner: boolean;
-  eliminated: boolean;
-}): ReactNode {
-  if (!winner && !eliminated) return null;
-  return (
-    <span className="flex shrink-0 items-center gap-1">
-      {winner ? (
-        <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.68rem] font-black text-jade">
-          胜利
-        </span>
-      ) : null}
-      {eliminated ? (
-        <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.68rem] font-black text-vermilion">
-          淘汰
-        </span>
-      ) : null}
-    </span>
   );
 }

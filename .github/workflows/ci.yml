@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18.4-alpine
+        image: postgres:15-alpine
         env:
           POSTGRES_DB: touhouflandre
           POSTGRES_USER: touhouflandre
@@ -62,8 +62,8 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U touhouflandre -d touhouflandre"
           --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
+          --health-timeout 10s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v4
 
@@ -91,9 +91,27 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
       - name: Go vet & build
         working-directory: apps/api
         run: go vet ./... && go build ./...
+
+      - name: Wait for Postgres
+        env:
+          PGPASSWORD: touhouflandre-ci
+        run: |
+          for attempt in $(seq 1 30); do
+            if pg_isready -h 127.0.0.1 -p 5433 -U touhouflandre -d touhouflandre; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            echo "Waiting for Postgres ($attempt/30)"
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          exit 1
 
       - name: Go test (integration, real Postgres)
         working-directory: apps/api

@@ -41,6 +41,7 @@ import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import { ChatDock } from "./ChatDock";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
@@ -864,16 +865,6 @@ function SpectatorRaceBoards({
     }
     return rows;
   };
-  const winnerBadge = (
-    <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.68rem] font-black text-jade">
-      胜利
-    </span>
-  );
-  const eliminatedBadge = (
-    <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.68rem] font-black text-vermilion">
-      淘汰
-    </span>
-  );
   const winnerMemberId = archive?.winnerMemberId;
   return (
     <MemberPaginator
@@ -888,20 +879,13 @@ function SpectatorRaceBoards({
           <GuessTable
             key={board.memberId}
             title={
-              spectatorBoardTitle(
+              formatBoardTitle(
                 members.find((member) => member.memberId === board.memberId),
                 board.seat,
               )
             }
             subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-            headerExtra={
-              winner || eliminated ? (
-                <span className="flex shrink-0 items-center gap-1">
-                  {winner ? winnerBadge : null}
-                  {eliminated ? eliminatedBadge : null}
-                </span>
-              ) : null
-            }
+            headerExtra={boardResultBadges({ winner, eliminated })}
             rows={toRows(board.memberId)}
             emptyLabel="该玩家暂无猜测。"
             fields={fields}
@@ -912,13 +896,6 @@ function SpectatorRaceBoards({
       }}
     />
   );
-}
-
-function spectatorBoardTitle(
-  member: components["schemas"]["MemberView"] | undefined,
-  seat: number,
-): string {
-  return `${member?.displayName ?? `玩家 ${seat}`}(P${seat})`;
 }
 
 function RoundActionButtons({
