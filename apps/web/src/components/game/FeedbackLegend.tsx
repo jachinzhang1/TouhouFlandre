@@ -22,7 +22,7 @@ export const FEEDBACK_LEGEND_ITEMS: {
   {
     status: "unknown",
     label: "属性值缺失或无法判断，若遇到请反馈",
-    shortLabel: "未知",
+    shortLabel: "未知，遇到请反馈",
   },
 ];
 

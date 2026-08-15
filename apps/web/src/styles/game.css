@@ -1094,30 +1094,6 @@ body:has(.single-game-shell) main {
   flex: 1 1 0;
 }
 
-.paper-surface.single-game-difficulty {
-  display: inline-flex;
-  min-width: 0;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  overflow: hidden;
-  border: 0;
-  padding: 0 8px;
-  color: var(--ink-soft);
-  font-size: 0.68rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.paper-surface.single-game-difficulty.is-active {
-  color: var(--paper-tinted-ink);
-  background: color-mix(in srgb, var(--theme-color) 78%, #000);
-  outline: 1px solid
-    color-mix(in srgb, var(--paper-tinted-ink) 42%, transparent);
-  outline-offset: -1px;
-}
-
 .paper-surface.single-game-difficulty.is-won:not(.is-active) {
   color: var(--jade-strong);
   background: var(--jade-soft);

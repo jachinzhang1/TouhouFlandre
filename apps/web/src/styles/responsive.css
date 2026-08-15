@@ -335,22 +335,16 @@
 
   .single-game-difficulties {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
     display: grid;
     grid-template-columns:
       minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr) 1px
       minmax(0, 1fr);
   }
 
-  .paper-surface.single-game-difficulty {
-    min-height: 30px;
-    padding-inline: 5px;
-    font-size: 0.64rem;
-  }
-
   .single-game-metrics {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
   }

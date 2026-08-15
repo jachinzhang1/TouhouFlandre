@@ -50,7 +50,12 @@ function SlashedCheckIcon({
       {...props}
     >
       <Check aria-hidden="true" size={size} strokeWidth={2.4} />
-      <Slash aria-hidden="true" size={size} strokeWidth={2.4} />
+      <Slash
+        aria-hidden="true"
+        size={size}
+        strokeWidth={2.4}
+        style={{ transform: "scaleX(-1)" }}
+      />
     </span>
   );
 }

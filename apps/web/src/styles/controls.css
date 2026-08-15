@@ -146,9 +146,18 @@
 }
 
 .paper-button:disabled {
-  color: var(--disabled-text);
-  background: var(--disabled-bg);
-  opacity: 0.62;
+  --paper-fold-shade: var(--paper-plain-fold);
+  --paper-ornament-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 28px,
+    var(--paper-plain-line) 29px
+  );
+  --paper-ornament-size: auto;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  background: var(--paper-plain-bg);
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .paper-button:focus-visible {

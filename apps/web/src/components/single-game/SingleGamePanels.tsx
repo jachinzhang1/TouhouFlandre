@@ -24,6 +24,7 @@ import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { Paper } from "../Paper";
 import { PaperButton } from "../controls/PaperButton";
 import {
+  PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
 } from "../controls/PaperSegmentedControl";
@@ -92,15 +93,6 @@ export function SingleGameStatusBar({
         </span>
       </div>
 
-      {mode === "daily" ? (
-        <DailyDifficultyButtons
-          active={dailyDifficulty}
-          disabled={disabled}
-          statuses={dailyStatuses}
-          onSelect={onDifficultyChange}
-        />
-      ) : null}
-
       <dl className="single-game-metrics">
         <div>
           <dt>本次时限</dt>
@@ -138,6 +130,14 @@ export function SingleGameStatusBar({
           </dd>
         </div>
       </dl>
+      {mode === "daily" ? (
+        <DailyDifficultyButtons
+          active={dailyDifficulty}
+          disabled={disabled}
+          statuses={dailyStatuses}
+          onSelect={onDifficultyChange}
+        />
+      ) : null}
 
       <div className="status-actions">
         {mode === "random" ? (
@@ -155,7 +155,7 @@ export function SingleGameStatusBar({
         ) : null}
         <PaperButton
           ariaLabel="放弃游戏"
-          compact
+          filled
           disabled={disabled || !sessionStatus || sessionStatus !== "playing"}
           onClick={onForfeit}
           title="放弃游戏"
@@ -406,11 +406,9 @@ function DailyDifficultyButtons({
         return (
           <Fragment key={difficulty}>
             {index > 0 ? <PaperSegmentSeparator /> : null}
-            <Paper
-              animateOnMount={false}
-              ariaPressed={selected}
-              as="button"
-              className={`single-game-difficulty${selected ? " is-active" : ""}${
+            <PaperSegmentButton
+              active={selected}
+              className={`single-game-difficulty${
                 status === "won"
                   ? " is-won"
                   : status === "lost"
@@ -418,11 +416,7 @@ function DailyDifficultyButtons({
                     : ""
               }`}
               disabled={disabled && !selected}
-              folded={selected}
-              foldSize={8}
               onClick={() => onSelect(difficulty)}
-              sticker={false}
-              variant={selected ? "tinted" : "plain"}
             >
               <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
               {status === "won" ? (
@@ -432,7 +426,7 @@ function DailyDifficultyButtons({
               ) : (
                 <Play size={12} aria-hidden="true" />
               )}
-            </Paper>
+            </PaperSegmentButton>
           </Fragment>
         );
       })}

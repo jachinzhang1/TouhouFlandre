@@ -197,6 +197,7 @@ describe("SingleGamePage", () => {
     const legend = screen.getByRole("list", { name: "反馈图例" });
     expect(within(legend).getAllByRole("listitem")).toHaveLength(6);
     expect(within(legend).getByText("答案更高")).toBeTruthy();
+    expect(within(legend).getByText("未知，遇到请反馈")).toBeTruthy();
     const status = screen.getByRole("region", { name: "游戏状态" });
     const difficultyGroup = screen.getByRole("group", {
       name: "每日题难度",
@@ -204,6 +205,19 @@ describe("SingleGamePage", () => {
     expect(
       difficultyGroup.querySelectorAll(".paper-segment-separator"),
     ).toHaveLength(3);
+    const difficultyButtons = within(difficultyGroup).getAllByRole("button");
+    expect(difficultyButtons).toHaveLength(4);
+    expect(
+      difficultyButtons.every((button) =>
+        button.classList.contains("paper-segment-button"),
+      ),
+    ).toBe(true);
+    const metrics = status.querySelector(".single-game-metrics");
+    expect(status.children[1]).toBe(metrics);
+    expect(status.children[2]).toBe(difficultyGroup);
+    const forfeit = screen.getByRole("button", { name: "放弃游戏" });
+    expect(forfeit.classList.contains("paper-button-filled")).toBe(true);
+    expect(forfeit.classList.contains("paper-button-compact")).toBe(false);
     expect(status.classList.contains("paper-surface")).toBe(false);
     expect(screen.queryByRole("button", { name: "查看图例" })).toBeNull();
     expect(screen.queryByRole("tooltip")).toBeNull();

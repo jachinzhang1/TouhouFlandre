@@ -44,7 +44,9 @@ describe("OpponentBoard", () => {
       ".feedback-slashed-check-icon",
     );
     expect(partialIcon?.querySelector(".lucide-check")).toBeTruthy();
-    expect(partialIcon?.querySelector(".lucide-slash")).toBeTruthy();
+    const slash = partialIcon?.querySelector<SVGElement>(".lucide-slash");
+    expect(slash).toBeTruthy();
+    expect(slash?.style.transform).toBe("scaleX(-1)");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）

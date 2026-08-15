@@ -25,11 +25,15 @@ export function PaperSegmentButton({
   active,
   ariaLabel,
   children,
+  className = "",
+  disabled = false,
   onClick,
   title,
 }: {
   active: boolean;
   ariaLabel?: string;
+  className?: string;
+  disabled?: boolean;
   children: ReactNode;
   onClick: () => void;
   title?: string;
@@ -40,13 +44,14 @@ export function PaperSegmentButton({
       ariaLabel={ariaLabel}
       ariaPressed={active}
       as="button"
-      className={`paper-segment-button${active ? " active" : ""}`}
+      className={`paper-segment-button${active ? " active" : ""}${className ? ` ${className}` : ""}`}
+      disabled={disabled}
       folded={active}
       foldSize={12}
       onClick={onClick}
       sticker={false}
       title={title}
-      unfoldOnHover={active}
+      unfoldOnHover={active && !disabled}
       variant={active ? "tinted" : "plain"}
     >
       {children}
