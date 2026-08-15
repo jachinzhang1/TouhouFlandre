@@ -51,6 +51,7 @@ export function GuessTable({
   variant = "self",
   fields = CHARACTER_GUESS_FIELDS,
   highlight = false,
+  highlightTone = "success",
 }: {
   title?: string;
   subtitle?: string;
@@ -60,11 +61,17 @@ export function GuessTable({
   variant?: GuessTableVariant;
   fields?: readonly GuessField[];
   highlight?: boolean;
+  highlightTone?: "success" | "danger";
 }) {
   const isOpponent = variant === "opponent";
+  const borderClass = highlight
+    ? highlightTone === "danger"
+      ? "border-vermilion"
+      : "border-jade"
+    : "border-line";
 
   return (
-    <div className={`rounded-[6px] border bg-paper p-3 shadow-sm ${highlight ? "border-jade" : "border-line"}`}>
+    <div className={`rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}>
       {(title || subtitle || headerExtra) && (
         <div className="mb-2 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">

@@ -869,28 +869,47 @@ function SpectatorRaceBoards({
       胜利
     </span>
   );
+  const eliminatedBadge = (
+    <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.68rem] font-black text-vermilion">
+      淘汰
+    </span>
+  );
   const winnerMemberId = archive?.winnerMemberId;
   return (
     <MemberPaginator
       items={ordered}
       label="玩家棋盘"
-      renderItem={(board) => (
-        <GuessTable
-          key={board.memberId}
-          title={
-            spectatorBoardTitle(
-              members.find((member) => member.memberId === board.memberId),
-              board.seat,
-            )
-          }
-          subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-          headerExtra={winnerMemberId === board.memberId ? winnerBadge : null}
-          rows={toRows(board.memberId)}
-          emptyLabel="该玩家暂无猜测。"
-          fields={fields}
-          highlight={winnerMemberId === board.memberId}
-        />
-      )}
+      renderItem={(board) => {
+        const winner = winnerMemberId === board.memberId;
+        const eliminated = Boolean(
+          archive?.eliminatedMemberIds?.includes(board.memberId),
+        );
+        return (
+          <GuessTable
+            key={board.memberId}
+            title={
+              spectatorBoardTitle(
+                members.find((member) => member.memberId === board.memberId),
+                board.seat,
+              )
+            }
+            subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
+            headerExtra={
+              winner || eliminated ? (
+                <span className="flex shrink-0 items-center gap-1">
+                  {winner ? winnerBadge : null}
+                  {eliminated ? eliminatedBadge : null}
+                </span>
+              ) : null
+            }
+            rows={toRows(board.memberId)}
+            emptyLabel="该玩家暂无猜测。"
+            fields={fields}
+            highlight={winner || eliminated}
+            highlightTone={eliminated ? "danger" : "success"}
+          />
+        );
+      }}
     />
   );
 }

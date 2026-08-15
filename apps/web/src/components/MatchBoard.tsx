@@ -54,9 +54,15 @@ export function MatchBoard({
   // 局末（roundResult 存在且未进入下一局）展示双方完整棋盘
   const ended = Boolean(roundResult);
   const placementScoring = match.scoringMode === "placement";
+  const rosterSize = match.rosterSize ?? match.scores.length;
   const activePlayers = match.scores.filter(
     (score) => score.status === undefined || score.status === "active",
   ).length;
+  const eliminationThreshold = Math.floor(rosterSize / 2);
+  const showEliminationRule =
+    placementScoring && Boolean(round) && !ended && rosterSize > 2;
+  const eliminatesThisRound =
+    showEliminationRule && match.roundIndex >= eliminationThreshold;
 
   return (
     <section className="px-[18px] pt-5 pb-28">
@@ -67,6 +73,17 @@ export function MatchBoard({
             : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
               format)}
         </span>
+        {showEliminationRule ? (
+          <span
+            className={`rounded px-2 py-0.5 text-[0.72rem] font-black ${
+              eliminatesThisRound
+                ? "bg-vermilion-soft text-vermilion"
+                : "bg-jade-soft text-jade"
+            }`}
+          >
+            {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
+          </span>
+        ) : null}
         <MemberScoreStrip
           members={members ?? []}
           scores={roundResult?.scores ?? match.scores}
@@ -197,6 +214,12 @@ function EndedBoards({
       board.memberId === memberId &&
       isRoundArchiveParticipant(roundResult, board.memberId),
   );
+  const selfEliminated = Boolean(
+    selfBoard && roundResult.eliminatedMemberIds?.includes(selfBoard.memberId),
+  );
+  const selfWinner = Boolean(
+    selfBoard && roundResult.winnerMemberId === selfBoard.memberId,
+  );
   const others = sortMembersBySeat(
     roundResult.boards.filter(
       (board) =>
@@ -209,29 +232,43 @@ function EndedBoards({
       {selfBoard ? (
         <GuessTable
           title="我"
+          headerExtra={roundBadgeGroup({
+            winner: selfWinner,
+            eliminated: selfEliminated,
+          })}
           rows={toRows(selfBoard.memberId)}
           emptyLabel="本局未猜测。"
           fields={fields}
+          highlight={selfWinner || selfEliminated}
+          highlightTone={selfEliminated ? "danger" : "success"}
         />
       ) : null}
       <MemberPaginator
         items={others}
         label="其他玩家（局末揭示）"
         pageSize={1}
-        renderItem={(board) => (
-          <GuessTable
-            title={
-              memberBoardTitle(
-                members.find((member) => member.memberId === board.memberId),
-                board.seat,
-              )
-            }
-            rows={toRows(board.memberId)}
-            emptyLabel="该玩家本局未猜测。"
-            fields={fields}
-            highlight={roundResult.winnerMemberId === board.memberId}
-          />
-        )}
+        renderItem={(board) => {
+          const eliminated = Boolean(
+            roundResult.eliminatedMemberIds?.includes(board.memberId),
+          );
+          const winner = roundResult.winnerMemberId === board.memberId;
+          return (
+            <GuessTable
+              title={
+                memberBoardTitle(
+                  members.find((member) => member.memberId === board.memberId),
+                  board.seat,
+                )
+              }
+              headerExtra={roundBadgeGroup({ winner, eliminated })}
+              rows={toRows(board.memberId)}
+              emptyLabel="该玩家本局未猜测。"
+              fields={fields}
+              highlight={winner || eliminated}
+              highlightTone={eliminated ? "danger" : "success"}
+            />
+          );
+        }}
       />
     </div>
   );
@@ -239,4 +276,28 @@ function EndedBoards({
 
 function memberBoardTitle(member: MemberView | undefined, seat: number): string {
   return `${member?.displayName ?? `玩家 ${seat}`}(P${seat})`;
+}
+
+function roundBadgeGroup({
+  winner,
+  eliminated,
+}: {
+  winner: boolean;
+  eliminated: boolean;
+}): ReactNode {
+  if (!winner && !eliminated) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {winner ? (
+        <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.68rem] font-black text-jade">
+          胜利
+        </span>
+      ) : null}
+      {eliminated ? (
+        <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.68rem] font-black text-vermilion">
+          淘汰
+        </span>
+      ) : null}
+    </span>
+  );
 }
