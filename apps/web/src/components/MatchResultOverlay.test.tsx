@@ -110,6 +110,9 @@ describe("MatchResultOverlay", () => {
 
     const sharedFirstTitle = screen.getByText(/MATCH 0 · 并列第一/);
     expect(sharedFirstTitle.className).toContain("text-vermilion");
+    expect(screen.getByText("第1名 · Self(我)")).toBeTruthy();
+    expect(screen.getByText("第1名 · Two(P2)")).toBeTruthy();
+    expect(screen.getByText("第3名 · Three(P3)")).toBeTruthy();
     expect(container.querySelector("svg")?.getAttribute("class")).toContain(
       "text-vermilion",
     );

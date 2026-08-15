@@ -9,6 +9,8 @@ import { useRoomClock, formatRemaining } from "../hooks/useRoomClock";
 import { ROOM_FORMAT_SHORT } from "../domain/multiRoom";
 import {
   boardForMemberId,
+  isActiveMatchMember,
+  isRoundArchiveParticipant,
   sortMembersBySeat,
 } from "../domain/memberCollections";
 import { OpponentBoard } from "./OpponentBoard";
@@ -16,6 +18,7 @@ import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "./GuessTable";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import type { RoomUiState } from "../hooks/useRoom";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
@@ -51,9 +54,15 @@ export function MatchBoard({
   // 局末（roundResult 存在且未进入下一局）展示双方完整棋盘
   const ended = Boolean(roundResult);
   const placementScoring = match.scoringMode === "placement";
+  const rosterSize = match.rosterSize ?? match.scores.length;
   const activePlayers = match.scores.filter(
     (score) => score.status === undefined || score.status === "active",
   ).length;
+  const eliminationThreshold = Math.floor(rosterSize / 2);
+  const showEliminationRule =
+    placementScoring && Boolean(round) && !ended && rosterSize > 2;
+  const eliminatesThisRound =
+    showEliminationRule && match.roundIndex >= eliminationThreshold;
 
   return (
     <section className="px-[18px] pt-5 pb-28">
@@ -64,6 +73,17 @@ export function MatchBoard({
             : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
               format)}
         </span>
+        {showEliminationRule ? (
+          <span
+            className={`rounded px-2 py-0.5 text-[0.72rem] font-black ${
+              eliminatesThisRound
+                ? "bg-vermilion-soft text-vermilion"
+                : "bg-jade-soft text-jade"
+            }`}
+          >
+            {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
+          </span>
+        ) : null}
         <MemberScoreStrip
           members={members ?? []}
           scores={roundResult?.scores ?? match.scores}
@@ -106,7 +126,13 @@ export function MatchBoard({
               maxGuesses={round?.maxGuesses}
               fields={fields}
             />
-            <OpponentPages round={round} memberId={memberId} fields={fields} />
+            <OpponentPages
+              round={round}
+              memberId={memberId}
+              match={match}
+              members={members ?? []}
+              fields={fields}
+            />
           </>
         )}
       </div>
@@ -117,27 +143,41 @@ export function MatchBoard({
 function OpponentPages({
   round,
   memberId,
+  match,
+  members,
   fields,
 }: {
   round: RoundView | null;
   memberId?: string | null;
+  match: MatchView;
+  members: components["schemas"]["MemberView"][];
   fields?: readonly GuessField[];
 }) {
   const opponents = (round?.opponents ?? [])
-    .filter((opponent) => opponent.memberId !== memberId)
+    .filter(
+      (opponent) =>
+        opponent.memberId !== memberId &&
+        isActiveMatchMember(match.scores, opponent.memberId),
+    )
     .sort((a, b) => a.seat - b.seat);
   return (
     <MemberPaginator
       items={opponents}
       label="对手棋盘"
       pageSize={1}
-      renderItem={(opponent) => (
-        <OpponentBoard
-          rows={opponent.rows}
-          fields={fields}
-          fieldOrder={opponent.fieldOrder}
-        />
-      )}
+      renderItem={(opponent) => {
+        const member = members.find(
+          (entry) => entry.memberId === opponent.memberId,
+        );
+        return (
+          <OpponentBoard
+            title={formatBoardTitle(member, opponent.seat)}
+            rows={opponent.rows}
+            fields={fields}
+            fieldOrder={opponent.fieldOrder}
+          />
+        );
+      }}
     />
   );
 }
@@ -170,37 +210,65 @@ function EndedBoards({
     }));
   };
   const selfBoard = roundResult.boards.find(
-    (board) => board.memberId === memberId,
+    (board) =>
+      board.memberId === memberId &&
+      isRoundArchiveParticipant(roundResult, board.memberId),
+  );
+  const selfEliminated = Boolean(
+    selfBoard && roundResult.eliminatedMemberIds?.includes(selfBoard.memberId),
+  );
+  const selfWinner = Boolean(
+    selfBoard && roundResult.winnerMemberId === selfBoard.memberId,
   );
   const others = sortMembersBySeat(
-    roundResult.boards.filter((board) => board.memberId !== memberId),
+    roundResult.boards.filter(
+      (board) =>
+        board.memberId !== memberId &&
+        isRoundArchiveParticipant(roundResult, board.memberId),
+    ),
   );
   return (
     <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       {selfBoard ? (
         <GuessTable
           title="我"
+          headerExtra={boardResultBadges({
+            winner: selfWinner,
+            eliminated: selfEliminated,
+          })}
           rows={toRows(selfBoard.memberId)}
           emptyLabel="本局未猜测。"
           fields={fields}
+          highlight={selfWinner || selfEliminated}
+          highlightTone={selfEliminated ? "danger" : "success"}
         />
       ) : null}
       <MemberPaginator
         items={others}
         label="其他玩家（局末揭示）"
         pageSize={1}
-        renderItem={(board) => (
-          <GuessTable
-            title={
-              members.find((member) => member.memberId === board.memberId)
-                ?.displayName ?? `玩家 ${board.seat}`
-            }
-            rows={toRows(board.memberId)}
-            emptyLabel="该玩家本局未猜测。"
-            fields={fields}
-            highlight={roundResult.winnerMemberId === board.memberId}
-          />
-        )}
+        renderItem={(board) => {
+          const eliminated = Boolean(
+            roundResult.eliminatedMemberIds?.includes(board.memberId),
+          );
+          const winner = roundResult.winnerMemberId === board.memberId;
+          return (
+            <GuessTable
+              title={
+                formatBoardTitle(
+                  members.find((member) => member.memberId === board.memberId),
+                  board.seat,
+                )
+              }
+              headerExtra={boardResultBadges({ winner, eliminated })}
+              rows={toRows(board.memberId)}
+              emptyLabel="该玩家本局未猜测。"
+              fields={fields}
+              highlight={winner || eliminated}
+              highlightTone={eliminated ? "danger" : "success"}
+            />
+          );
+        }}
       />
     </div>
   );
