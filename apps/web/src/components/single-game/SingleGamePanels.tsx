@@ -201,80 +201,86 @@ export function SingleGuessHistory({
       role="region"
     >
       {guessCount > 0 ? (
-        <Paper
-          animateOnMount={false}
-          as="div"
-          className="single-game-history-table-paper"
-          folded={false}
-          sticker={false}
-          unfoldOnHover={false}
-          variant="plain"
-        >
-          <table className="guess-table">
-            <thead>
-              <tr>
-                <th>角色</th>
-                {visibleFields.map((field) => (
-                  <th key={field.key}>{field.label}</th>
-                ))}
-                <th>本次猜测用时</th>
-              </tr>
-            </thead>
-            <tbody>
-              {session!.guesses.map((guess, index) => {
-                const timeout = guess.kind === "timeout";
-                return (
-                  <tr
-                    key={guess.guessId}
-                    style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
-                  >
-                    {timeout ? (
-                      <th
-                        scope="row"
-                        colSpan={visibleFields.length + 1}
-                        className="guess-timeout-cell"
-                      >
-                        <span>超时空过</span>
-                      </th>
-                    ) : (
-                      <>
-                        <th scope="row">
-                          <span className="guess-character">
-                            <CharacterAvatar
-                              avatarUrl={guess.guessAvatarUrl}
-                              name={guess.guessName}
-                              initials={guess.guessName.slice(0, 2)}
-                              className="guess-avatar"
-                            />
-                            <span>{guess.guessName}</span>
-                          </span>
+        <>
+          <div className="single-game-history-fade-spacer" aria-hidden="true" />
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="paper-data-table single-game-history-table-paper"
+            folded={false}
+            sticker={false}
+            unfoldOnHover={false}
+            variant="plain"
+          >
+            <table className="guess-table">
+              <thead className="paper-data-table-header">
+                <tr className="paper-data-table-row">
+                  <th>角色</th>
+                  {visibleFields.map((field) => (
+                    <th key={field.key}>{field.label}</th>
+                  ))}
+                  <th>本次猜测用时</th>
+                </tr>
+              </thead>
+              <tbody className="paper-data-table-body">
+                {session!.guesses.map((guess, index) => {
+                  const timeout = guess.kind === "timeout";
+                  return (
+                    <tr
+                      className="paper-data-table-row"
+                      key={guess.guessId}
+                      style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
+                    >
+                      {timeout ? (
+                        <th
+                          scope="row"
+                          colSpan={visibleFields.length + 1}
+                          className="guess-timeout-cell"
+                        >
+                          <span>超时空过</span>
                         </th>
-                        {guess.feedback.map((feedback) => (
-                          <td key={feedback.field}>
-                            <span
-                              className={feedbackClass(feedback)}
-                              title={`${feedback.label}: ${feedback.status}`}
-                            >
-                              <b>
-                                <FeedbackStatusIcon status={feedback.status} />
-                              </b>
-                              <span>{formatFeedbackValue(feedback)}</span>
+                      ) : (
+                        <>
+                          <th scope="row">
+                            <span className="guess-character">
+                              <CharacterAvatar
+                                avatarUrl={guess.guessAvatarUrl}
+                                name={guess.guessName}
+                                initials={guess.guessName.slice(0, 2)}
+                                className="guess-avatar"
+                              />
+                              <span>{guess.guessName}</span>
                             </span>
-                          </td>
-                        ))}
-                      </>
-                    )}
-                    <td>
-                      <span className="guess-duration">
-                        {formatGuessDuration(guessCompletedElapsedMs, index)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Paper>
+                          </th>
+                          {guess.feedback.map((feedback) => (
+                            <td key={feedback.field}>
+                              <span
+                                className={feedbackClass(feedback)}
+                                title={`${feedback.label}: ${feedback.status}`}
+                              >
+                                <b>
+                                  <FeedbackStatusIcon
+                                    status={feedback.status}
+                                  />
+                                </b>
+                                <span>{formatFeedbackValue(feedback)}</span>
+                              </span>
+                            </td>
+                          ))}
+                        </>
+                      )}
+                      <td>
+                        <span className="guess-duration">
+                          {formatGuessDuration(guessCompletedElapsedMs, index)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Paper>
+        </>
       ) : (
         <div className="empty-state" role="status">
           {loading ? (

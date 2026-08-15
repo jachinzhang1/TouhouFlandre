@@ -558,6 +558,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .guess-table {
+  --single-game-guess-row-height: 80px;
   width: 100%;
   min-width: 940px;
   border-collapse: collapse;
@@ -566,23 +567,21 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 .guess-table th,
 .guess-table td {
   width: 110px;
-  padding: 10px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .guess-table thead th {
-  height: 42px;
-  color: var(--neutral-text);
-  font-size: 0.73rem;
   text-align: left;
-  background: var(--surface-soft);
 }
 
 .guess-table tbody th {
   width: 172px;
-  padding-top: 16px;
   text-align: left;
+}
+
+.guess-table tbody :is(th, td) {
+  height: var(--single-game-guess-row-height);
+  vertical-align: middle;
 }
 
 .guess-character {
@@ -612,7 +611,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .guess-table tbody th.guess-timeout-cell {
-  padding-top: 10px;
+  height: var(--single-game-guess-row-height);
   vertical-align: middle;
 }
 
@@ -888,17 +887,35 @@ body:has(.single-game-shell) main {
 }
 
 .single-game-history-scroll {
+  --single-game-history-fade-size: 44px;
   position: relative;
   z-index: 1;
   display: flex;
   width: 100%;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex-direction: column;
   overflow: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-  height: 100%;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--single-game-history-fade-size),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--single-game-history-fade-size),
+    #000 100%
+  );
+}
+
+.single-game-history-fade-spacer {
+  width: 1px;
+  flex: 0 0 var(--single-game-history-fade-size);
 }
 
 .single-game-history-table-paper {

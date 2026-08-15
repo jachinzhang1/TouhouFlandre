@@ -50,6 +50,7 @@ describe("OpponentBoard", () => {
       "translate(1px, -1px) scaleX(-1) scale(0.68)",
     );
     expect(slash?.style.transformOrigin).toBe("center");
+    expect(slash?.getAttribute("stroke-width")).toBe("3.6");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）

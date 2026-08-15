@@ -53,7 +53,7 @@ function SlashedCheckIcon({
       <Slash
         aria-hidden="true"
         size={size}
-        strokeWidth={2.4}
+        strokeWidth={3.6}
         style={{
           transform: "translate(1px, -1px) scaleX(-1) scale(0.68)",
           transformOrigin: "center",

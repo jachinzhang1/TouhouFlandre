@@ -66,6 +66,15 @@ describe("SingleGuessHistory", () => {
     ) as HTMLElement;
     expect(tablePaper).toBeTruthy();
     expect(tablePaper.dataset.paperVariant).toBe("plain");
+    expect(tablePaper.classList.contains("paper-data-table")).toBe(true);
+    expect(
+      viewport.querySelector(".single-game-history-fade-spacer"),
+    ).toBeTruthy();
+    expect(
+      viewport
+        .querySelector("thead")
+        ?.classList.contains("paper-data-table-header"),
+    ).toBe(true);
 
     Object.defineProperty(viewport, "scrollHeight", {
       configurable: true,
@@ -84,6 +93,10 @@ describe("SingleGuessHistory", () => {
     const body = viewport.querySelector("tbody");
     expect(body).not.toBeNull();
     const rows = within(body as HTMLElement).getAllByRole("row");
+    expect(body?.classList.contains("paper-data-table-body")).toBe(true);
+    expect(
+      rows.every((row) => row.classList.contains("paper-data-table-row")),
+    ).toBe(true);
     expect(rows.map((row) => row.textContent)).toEqual([
       "博丽灵梦00:04",
       "超时空过00:08",
