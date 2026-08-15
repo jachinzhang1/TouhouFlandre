@@ -627,7 +627,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   min-height: 0;
   align-items: center;
   padding: 8px 18px;
-  border: 2px solid currentColor;
+  border: 2px dashed currentColor;
   border-radius: 3px;
   color: var(--error-text);
   font-family: var(--font-brand);
@@ -640,7 +640,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 .guess-timeout-row .guess-duration {
-  color: var(--theme-color);
+  color: var(--danger-color);
 }
 
 .guess-table tbody tr {
