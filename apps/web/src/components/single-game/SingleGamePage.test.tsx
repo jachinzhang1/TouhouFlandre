@@ -58,8 +58,9 @@ const nextDailySession = {
   puzzleKey: "2026-08-06",
 } as unknown as PublicGameSession;
 
-const dailyTitle = "每日题 2026-08-05 - Normal Level";
-const nextDailyTitle = "每日题 2026-08-06 - Normal Level";
+const dailyEyebrow = "每日题 2026-08-05";
+const dailyTitle = "Normal Level";
+const nextDailyEyebrow = "每日题 2026-08-06";
 
 const forfeitedSession = {
   ...playingSession,
@@ -160,6 +161,7 @@ describe("SingleGamePage", () => {
     render(<SingleGamePage mode="daily" />);
 
     expect(await screen.findByText(dailyTitle)).toBeTruthy();
+    expect(screen.getByText(dailyEyebrow)).toBeTruthy();
     expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(screen.getByText("进行中")).toBeTruthy();
@@ -184,6 +186,9 @@ describe("SingleGamePage", () => {
 
     const submitButton = screen.getByRole("button", { name: "提交猜测" });
     expect(submitButton.querySelector(".lucide-send")).toBeTruthy();
+    expect((submitButton as HTMLButtonElement).disabled).toBe(true);
+    expect(submitButton.dataset.paperVariant).toBe("plain");
+    expect(submitButton.dataset.paperFolded).toBe("false");
     const guessGroup = screen.getByRole("group", { name: "猜测操作" });
     expect(guessGroup.contains(screen.getByLabelText("搜索东方角色"))).toBe(
       true,
@@ -193,6 +198,12 @@ describe("SingleGamePage", () => {
     expect(within(legend).getAllByRole("listitem")).toHaveLength(6);
     expect(within(legend).getByText("答案更高")).toBeTruthy();
     const status = screen.getByRole("region", { name: "游戏状态" });
+    const difficultyGroup = screen.getByRole("group", {
+      name: "每日题难度",
+    });
+    expect(
+      difficultyGroup.querySelectorAll(".paper-segment-separator"),
+    ).toHaveLength(3);
     expect(status.classList.contains("paper-surface")).toBe(false);
     expect(screen.queryByRole("button", { name: "查看图例" })).toBeNull();
     expect(screen.queryByRole("tooltip")).toBeNull();
@@ -247,7 +258,7 @@ describe("SingleGamePage", () => {
     render(<SingleGamePage mode="daily" />);
     await screen.findByText(dailyTitle);
 
-    await userEvent.click(screen.getByLabelText("放弃本局"));
+    await userEvent.click(screen.getByRole("button", { name: "放弃游戏" }));
 
     expect(await screen.findByText("本次游戏结束")).toBeTruthy();
     expect(
@@ -294,7 +305,7 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="daily" />);
 
-    expect(await screen.findByText(nextDailyTitle)).toBeTruthy();
+    expect(await screen.findByText(nextDailyEyebrow)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-next-day",

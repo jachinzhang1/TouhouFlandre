@@ -281,14 +281,16 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     () => results.filter((result) => !guessedIds.has(result.id)),
     [guessedIds, results],
   );
+  const gameInputDisabled =
+    loading ||
+    submitting ||
+    endingSession ||
+    timingOut ||
+    !session ||
+    isFinished;
+  const submitDisabled = gameInputDisabled || !selectedId;
   const showSuggestions =
-    !suggestionsDismissed &&
-    query.trim().length > 0 &&
-    !isFinished &&
-    !loading &&
-    !submitting &&
-    !endingSession &&
-    !timingOut;
+    !suggestionsDismissed && query.trim().length > 0 && !gameInputDisabled;
   const visibleFields = useMemo(
     () =>
       visibleQuestionFields(
@@ -1073,14 +1075,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                         }
                       }
                     }}
-                    disabled={
-                      loading ||
-                      submitting ||
-                      endingSession ||
-                      timingOut ||
-                      !session ||
-                      isFinished
-                    }
+                    disabled={gameInputDisabled}
                     placeholder="输入角色名、别名或初登场作品"
                     aria-label="搜索东方角色"
                     aria-autocomplete="list"
@@ -1172,16 +1167,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             <PaperSegmentSeparator />
             <PaperButton
               className="single-game-submit"
-              disabled={
-                !selectedId ||
-                loading ||
-                submitting ||
-                endingSession ||
-                timingOut ||
-                isFinished
-              }
-              filled
-              folded
+              disabled={submitDisabled}
+              filled={!submitDisabled}
+              folded={!submitDisabled}
               onClick={() => void submitGuess()}
               tone="theme"
             >

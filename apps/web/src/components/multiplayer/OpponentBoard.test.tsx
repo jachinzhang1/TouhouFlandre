@@ -34,12 +34,17 @@ describe("OpponentBoard", () => {
       ),
     ).toEqual([
       "lucide lucide-check",
-      "lucide lucide-triangle",
+      "lucide lucide-check",
       "lucide lucide-x",
       "lucide lucide-chevrons-up",
       "lucide lucide-chevrons-down",
       "feedback-question-mark-icon",
     ]);
+    const partialIcon = compactCells[1]?.querySelector(
+      ".feedback-slashed-check-icon",
+    );
+    expect(partialIcon?.querySelector(".lucide-check")).toBeTruthy();
+    expect(partialIcon?.querySelector(".lucide-slash")).toBeTruthy();
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）
@@ -94,9 +99,9 @@ describe("OpponentBoard", () => {
       "地点",
       "头发颜色",
     ]);
-    const labels = Array.from(container.querySelectorAll('span[role="img"]')).map(
-      (el) => el.getAttribute("aria-label"),
-    );
+    const labels = Array.from(
+      container.querySelectorAll('span[role="img"]'),
+    ).map((el) => el.getAttribute("aria-label"));
     expect(labels).toEqual(["命中", "更低", "未中", "部分", "未中", "未知"]);
   });
 });

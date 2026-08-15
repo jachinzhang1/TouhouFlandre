@@ -320,7 +320,8 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 7px 9px;
     min-height: 0;
-    padding: 8px 9px;
+    padding-block: 0;
+    padding-inline: 9px;
   }
 
   .single-game-shell .puzzle-status {
@@ -335,6 +336,10 @@
   .single-game-difficulties {
     grid-column: 1 / -1;
     grid-row: 2;
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr) 1px
+      minmax(0, 1fr);
   }
 
   .paper-surface.single-game-difficulty {

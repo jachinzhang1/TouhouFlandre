@@ -400,6 +400,17 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   justify-content: center;
 }
 
+.feedback-slashed-check-icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.feedback-slashed-check-icon > svg {
+  position: absolute;
+  inset: 0;
+}
+
 .feedback-legend-icon b {
   width: 22px;
   height: 22px;
@@ -1037,8 +1048,10 @@ body:has(.single-game-shell) main {
     minmax(330px, 1.1fr) auto;
   gap: 12px;
   align-items: center;
-  min-height: 84px;
-  padding: 0 2px;
+  min-height: 0;
+  padding-block: 0;
+  padding-inline: 2px;
+  border: 0;
   color: var(--ink);
   background: transparent;
 }
@@ -1071,9 +1084,14 @@ body:has(.single-game-shell) main {
 }
 
 .single-game-difficulties {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
+  display: inline-flex;
+  min-width: 0;
+  gap: 0;
+  align-items: stretch;
+}
+
+.single-game-difficulties .single-game-difficulty {
+  flex: 1 1 0;
 }
 
 .paper-surface.single-game-difficulty {
@@ -1147,7 +1165,7 @@ body:has(.single-game-shell) main {
 }
 
 .single-game-shell .status-actions {
-  align-self: stretch;
+  align-self: center;
   align-items: center;
 }
 

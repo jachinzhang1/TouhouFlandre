@@ -10,7 +10,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import {
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
@@ -23,8 +23,28 @@ import { CharacterAvatar } from "../game/CharacterAvatar";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { Paper } from "../Paper";
 import { PaperButton } from "../controls/PaperButton";
+import {
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "../controls/PaperSegmentedControl";
 
 export type DailySessionStatus = "won" | "lost" | "playing" | null;
+
+function puzzleHeading(mode: SinglePlayerGameMode, puzzleLabel: string) {
+  const separator = " - ";
+  const separatorIndex =
+    mode === "daily" ? puzzleLabel.lastIndexOf(separator) : -1;
+  if (separatorIndex > 0) {
+    return {
+      eyebrow: puzzleLabel.slice(0, separatorIndex),
+      title: puzzleLabel.slice(separatorIndex + separator.length),
+    };
+  }
+  return {
+    eyebrow: mode === "daily" ? "每日题" : "随机题",
+    title: puzzleLabel,
+  };
+}
 
 export function SingleGameStatusBar({
   mode,
@@ -61,11 +81,12 @@ export function SingleGameStatusBar({
   onRestart: () => void;
   onForfeit: () => void;
 }) {
+  const heading = puzzleHeading(mode, puzzleLabel);
   return (
     <section className={`status-strip ${mode}`} aria-label="游戏状态">
       <div className="puzzle-status">
-        <span className="label">{mode === "daily" ? "每日题" : "随机题"}</span>
-        <strong className="single-game-puzzle-title">{puzzleLabel}</strong>
+        <span className="label">{heading.eyebrow}</span>
+        <strong className="single-game-puzzle-title">{heading.title}</strong>
         <span className="progress-track" aria-hidden="true">
           <span style={{ width: `${progressPercent}%` }} />
         </span>
@@ -133,15 +154,15 @@ export function SingleGameStatusBar({
           </PaperButton>
         ) : null}
         <PaperButton
-          ariaLabel="放弃本局"
+          ariaLabel="放弃游戏"
           compact
           disabled={disabled || !sessionStatus || sessionStatus !== "playing"}
-          iconOnly
           onClick={onForfeit}
-          title="放弃本局"
+          title="放弃游戏"
           tone="danger"
         >
           <Flag size={17} aria-hidden="true" />
+          <span>放弃游戏</span>
         </PaperButton>
       </div>
     </section>
@@ -378,42 +399,44 @@ function DailyDifficultyButtons({
   statuses: Record<QuestionDifficultyPreset, DailySessionStatus>;
 }) {
   return (
-    <div
-      className="single-game-difficulties"
-      role="group"
-      aria-label="每日题难度"
-    >
-      {QUESTION_DIFFICULTY_PRESETS.map((difficulty) => {
+    <PaperSegmentGroup className="single-game-difficulties" label="每日题难度">
+      {QUESTION_DIFFICULTY_PRESETS.map((difficulty, index) => {
         const status = statuses[difficulty];
         const selected = active === difficulty;
         return (
-          <Paper
-            animateOnMount={false}
-            ariaPressed={selected}
-            as="button"
-            className={`single-game-difficulty${selected ? " is-active" : ""}${
-              status === "won" ? " is-won" : status === "lost" ? " is-lost" : ""
-            }`}
-            disabled={disabled && !selected}
-            folded={selected}
-            foldSize={8}
-            key={difficulty}
-            onClick={() => onSelect(difficulty)}
-            sticker={false}
-            variant={selected ? "tinted" : "plain"}
-          >
-            <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
-            {status === "won" ? (
-              <Check size={13} aria-hidden="true" />
-            ) : status === "lost" ? (
-              <X size={13} aria-hidden="true" />
-            ) : (
-              <Play size={12} aria-hidden="true" />
-            )}
-          </Paper>
+          <Fragment key={difficulty}>
+            {index > 0 ? <PaperSegmentSeparator /> : null}
+            <Paper
+              animateOnMount={false}
+              ariaPressed={selected}
+              as="button"
+              className={`single-game-difficulty${selected ? " is-active" : ""}${
+                status === "won"
+                  ? " is-won"
+                  : status === "lost"
+                    ? " is-lost"
+                    : ""
+              }`}
+              disabled={disabled && !selected}
+              folded={selected}
+              foldSize={8}
+              onClick={() => onSelect(difficulty)}
+              sticker={false}
+              variant={selected ? "tinted" : "plain"}
+            >
+              <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
+              {status === "won" ? (
+                <Check size={13} aria-hidden="true" />
+              ) : status === "lost" ? (
+                <X size={13} aria-hidden="true" />
+              ) : (
+                <Play size={12} aria-hidden="true" />
+              )}
+            </Paper>
+          </Fragment>
         );
       })}
-    </div>
+    </PaperSegmentGroup>
   );
 }
 
