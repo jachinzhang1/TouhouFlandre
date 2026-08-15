@@ -280,13 +280,13 @@
   }
 
   .single-game-guess-group {
-    grid-template-columns: minmax(0, 1fr) 1px 44px;
+    grid-template-columns: minmax(0, 1fr) 1px 48px;
   }
 
   .single-game-guess-group .single-game-submit {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0;
   }
 
@@ -308,11 +308,6 @@
   .feedback-legend-row-item {
     flex: 0 0 auto;
     padding-inline: 8px;
-  }
-
-  .single-game-search-paper .search-box {
-    min-height: 44px;
-    padding-inline: 11px;
   }
 
   .single-game-shell .status-strip,

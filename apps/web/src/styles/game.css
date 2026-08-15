@@ -1006,24 +1006,8 @@ body:has(.single-game-shell) main {
   min-width: 0;
 }
 
-.single-game-search-paper {
-  min-width: 0;
-  overflow: hidden;
+.single-game-search-control {
   height: 100%;
-}
-
-.single-game-search-paper .search-box {
-  position: relative;
-  z-index: 1;
-  min-height: 48px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.single-game-search-paper .search-box:focus-within {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
 }
 
 .single-game-guess-group .single-game-submit {

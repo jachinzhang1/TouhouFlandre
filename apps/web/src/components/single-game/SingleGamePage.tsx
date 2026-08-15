@@ -52,7 +52,7 @@ import {
   parseSingleGameSeedPreset,
   SINGLE_GAME_SEED_PRESETS,
 } from "../../dev/gameSeeds";
-import { Paper } from "../Paper";
+import { PaperSearchInput } from "../controls/PaperSearchInput";
 import { FeedbackLegend } from "../game/FeedbackLegend";
 import { PaperButton } from "../controls/PaperButton";
 import {
@@ -1026,69 +1026,54 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             label="猜测操作"
           >
             <div className="search-combobox">
-              <Paper
-                animateOnMount={false}
-                as="div"
-                className="single-game-search-paper"
+              <PaperSearchInput
+                aria-activedescendant={
+                  showSuggestions && activeSuggestionId
+                    ? `${listboxId}-${activeSuggestionId}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+                aria-expanded={showSuggestions}
+                ariaLabel="搜索东方角色"
+                className="single-game-search-control"
+                containerRef={searchBoxRef}
+                disabled={gameInputDisabled}
                 folded={false}
-                foldSize={12}
-                sticker={false}
-                variant="plain"
-              >
-                <label className="search-box" ref={searchBoxRef}>
-                  <Search size={18} aria-hidden="true" />
-                  <input
-                    value={query}
-                    onFocus={() => setSuggestionsDismissed(false)}
-                    onBlur={() => setActiveSuggestionId("")}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setSelectedId("");
-                      setActiveSuggestionId("");
-                      setSuggestionsDismissed(false);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === "ArrowDown" ||
-                        event.key === "ArrowUp"
-                      ) {
-                        event.preventDefault();
-                        setSuggestionsDismissed(false);
-                        moveActiveSuggestion(
-                          event.key === "ArrowDown" ? 1 : -1,
-                        );
-                        return;
-                      }
-                      if (event.key === "Escape" && showSuggestions) {
-                        event.preventDefault();
-                        setSuggestionsDismissed(true);
-                        setActiveSuggestionId("");
-                        return;
-                      }
-                      if (event.key === "Enter" && showSuggestions) {
-                        const activeResult = selectableResults.find(
-                          (result) => result.id === activeSuggestionId,
-                        );
-                        if (activeResult) {
-                          event.preventDefault();
-                          selectSuggestion(activeResult);
-                        }
-                      }
-                    }}
-                    disabled={gameInputDisabled}
-                    placeholder="输入角色名、别名或初登场作品"
-                    aria-label="搜索东方角色"
-                    aria-autocomplete="list"
-                    aria-controls={listboxId}
-                    aria-activedescendant={
-                      showSuggestions && activeSuggestionId
-                        ? `${listboxId}-${activeSuggestionId}`
-                        : undefined
+                onBlur={() => setActiveSuggestionId("")}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setSelectedId("");
+                  setActiveSuggestionId("");
+                  setSuggestionsDismissed(false);
+                }}
+                onFocus={() => setSuggestionsDismissed(false)}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setSuggestionsDismissed(false);
+                    moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
+                    return;
+                  }
+                  if (event.key === "Escape" && showSuggestions) {
+                    event.preventDefault();
+                    setSuggestionsDismissed(true);
+                    setActiveSuggestionId("");
+                    return;
+                  }
+                  if (event.key === "Enter" && showSuggestions) {
+                    const activeResult = selectableResults.find(
+                      (result) => result.id === activeSuggestionId,
+                    );
+                    if (activeResult) {
+                      event.preventDefault();
+                      selectSuggestion(activeResult);
                     }
-                    aria-expanded={showSuggestions}
-                  />
-                </label>
-              </Paper>
+                  }
+                }}
+                placeholder="输入角色名、别名或初登场作品"
+                value={query}
+              />
               <SuggestionPopover
                 anchor={searchBoxRef}
                 id={listboxId}

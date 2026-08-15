@@ -190,6 +190,17 @@ describe("SingleGamePage", () => {
     expect(submitButton.dataset.paperVariant).toBe("plain");
     expect(submitButton.dataset.paperFolded).toBe("false");
     const guessGroup = screen.getByRole("group", { name: "猜测操作" });
+    const searchControl = screen
+      .getByLabelText("搜索东方角色")
+      .closest(".paper-search-control") as HTMLElement;
+    expect(searchControl).toBeTruthy();
+    expect(searchControl.classList.contains("single-game-search-control")).toBe(
+      true,
+    );
+    expect(searchControl.dataset.paperFolded).toBe("false");
+    expect(
+      searchControl.querySelector(".paper-search-control-input"),
+    ).toBeTruthy();
     expect(guessGroup.contains(screen.getByLabelText("搜索东方角色"))).toBe(
       true,
     );
