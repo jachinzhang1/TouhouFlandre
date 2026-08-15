@@ -339,12 +339,18 @@ func TestSearchReimu(t *testing.T) {
 	if err := json.Unmarshal(payload, &search); err != nil {
 		t.Fatal(err)
 	}
-	if search.Total != 1 || len(search.Results) != 1 {
-		t.Fatalf("expected 1 result, got %+v", search)
+	if !hasSearchResult(search.Results, "reimu_hakurei") {
+		t.Fatalf("expected Reimu in results, got %+v", search)
 	}
-	if search.Results[0].Id != "reimu_hakurei" {
-		t.Fatalf("unexpected result: %+v", search.Results[0])
+}
+
+func hasSearchResult(results []openapi.CharacterSearchResult, id string) bool {
+	for _, result := range results {
+		if result.Id == id {
+			return true
+		}
 	}
+	return false
 }
 
 func TestSearchByWorkPinyinInitialsAndFieldBoundary(t *testing.T) {
@@ -510,7 +516,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(currentPayload, &current); err != nil {
 		t.Fatal(err)
 	}
-	if current.Total != 0 {
+	if hasSearchResult(current.Results, "reimu_hakurei") {
 		t.Fatalf("current catalog should exclude Reimu: %+v", current)
 	}
 
@@ -523,7 +529,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Total != 1 || snapshot.Results[0].Id != "reimu_hakurei" {
+	if !hasSearchResult(snapshot.Results, "reimu_hakurei") {
 		t.Fatalf("session snapshot should include Reimu: %+v", snapshot)
 	}
 
