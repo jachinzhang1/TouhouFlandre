@@ -1,4 +1,4 @@
-import { Check, ChevronsDown, ChevronsUp, Slash, X } from "lucide-react";
+import { Check, ChevronsDown, ChevronsUp, X } from "lucide-react";
 import type { HTMLAttributes, SVGProps } from "react";
 import type { FeedbackStatus } from "@touhouflandre/shared";
 
@@ -50,15 +50,25 @@ function SlashedCheckIcon({
       {...props}
     >
       <Check aria-hidden="true" size={size} strokeWidth={2.4} />
-      <Slash
+      <svg
         aria-hidden="true"
-        size={size}
-        strokeWidth={2.5}
-        style={{
-          transform: "translate(1px, -1px) scaleX(-1) scale(0.56)",
-          transformOrigin: "center",
-        }}
-      />
+        className="feedback-check-slash-overlay"
+        fill="none"
+        height={size}
+        viewBox="0 0 24 24"
+        width={size}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <line
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="2.4"
+          x1="12"
+          x2="18"
+          y1="7"
+          y2="13"
+        />
+      </svg>
     </span>
   );
 }

@@ -44,13 +44,17 @@ describe("OpponentBoard", () => {
       ".feedback-slashed-check-icon",
     );
     expect(partialIcon?.querySelector(".lucide-check")).toBeTruthy();
-    const slash = partialIcon?.querySelector<SVGElement>(".lucide-slash");
-    expect(slash).toBeTruthy();
-    expect(slash?.style.transform).toBe(
-      "translate(1px, -1px) scaleX(-1) scale(0.56)",
+    const slash = partialIcon?.querySelector<SVGElement>(
+      ".feedback-check-slash-overlay",
     );
-    expect(slash?.style.transformOrigin).toBe("center");
-    expect(slash?.getAttribute("stroke-width")).toBe("2.5");
+    const slashLine = slash?.querySelector("line");
+    expect(slash).toBeTruthy();
+    expect(slashLine?.getAttribute("x1")).toBe("12");
+    expect(slashLine?.getAttribute("y1")).toBe("7");
+    expect(slashLine?.getAttribute("x2")).toBe("18");
+    expect(slashLine?.getAttribute("y2")).toBe("13");
+    expect(slashLine?.getAttribute("stroke-width")).toBe("2.4");
+    expect(slashLine?.getAttribute("stroke-linecap")).toBe("round");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）

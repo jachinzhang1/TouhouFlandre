@@ -420,10 +420,6 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   inset: 0;
 }
 
-.feedback-slashed-check-icon > .lucide-slash path {
-  vector-effect: non-scaling-stroke;
-}
-
 .feedback-legend-icon b {
   width: 22px;
   height: 22px;
