@@ -469,4 +469,64 @@ describe("SingleGamePage", () => {
       ),
     );
   });
+
+  it("restores focus after Enter submits a selected guess", async () => {
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+    vi.mocked(api.submitGuess).mockImplementation(async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      return sessionWithGuess as never;
+    });
+
+    render(<SingleGamePage mode="daily" />);
+    const input = await screen.findByRole("textbox");
+    await userEvent.type(input, "帕秋莉");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
+
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(api.submitGuess).toHaveBeenCalledWith(
+        "sess-1",
+        "patchouli_knowledge",
+        undefined,
+      ),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("restores focus after Enter submits a selected guess in random mode", async () => {
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "随机题",
+    } as never);
+    vi.mocked(api.submitGuess).mockImplementation(async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      return sessionWithGuess as never;
+    });
+
+    render(<SingleGamePage mode="random" />);
+    const input = await screen.findByRole("textbox");
+    await userEvent.type(input, "帕秋莉");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
+
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(api.submitGuess).toHaveBeenCalledWith(
+        "sess-1",
+        "patchouli_knowledge",
+        undefined,
+      ),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
 });

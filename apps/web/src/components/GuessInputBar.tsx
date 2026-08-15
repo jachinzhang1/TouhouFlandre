@@ -3,7 +3,7 @@
 // 底部固定搜索条（对局中）：输入框 fixed 于页面底部、水平居中；
 // 建议下拉向上展开（不遮挡棋盘）；猜测随建议点击提交（与单人一致）。
 import { Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { useCharacterSearch } from "../hooks/useCharacterSearch";
@@ -24,6 +24,8 @@ export function GuessInputBar({
   statusMessage?: string | null;
 }) {
   const [query, setQuery] = useState("");
+  const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { results, loading, error } = useCharacterSearch(query, {
     enabled: Boolean(catalogVersion) && !disabled,
     limit: GAME_SEARCH_RESULT_LIMIT,
@@ -43,10 +45,20 @@ export function GuessInputBar({
     if (disabled) setQuery("");
   }, [disabled]);
 
-  const submit = (guessId: string) => {
+  useEffect(() => {
+    if (!restoreFocusRequested || disabled) return;
+    const timeout = window.setTimeout(() => {
+      inputRef.current?.focus();
+      setRestoreFocusRequested(false);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [disabled, restoreFocusRequested]);
+
+  const submit = (guessId: string, restoreFocus = false) => {
     onGuess(guessId);
     setQuery("");
     setHighlightIndex(0);
+    if (restoreFocus) setRestoreFocusRequested(true);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -60,7 +72,7 @@ export function GuessInputBar({
     } else if (event.key === "Enter") {
       event.preventDefault();
       const item = filtered[highlightIndex];
-      if (item) submit(item.id);
+      if (item) submit(item.id, true);
     }
   };
 
@@ -85,6 +97,7 @@ export function GuessInputBar({
             aria-hidden="true"
           />
           <input
+            ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}

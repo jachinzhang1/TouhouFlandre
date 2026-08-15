@@ -270,6 +270,7 @@ function DailyDifficultyButtons({
 export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const listboxId = useId();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const loadRequestIdRef = useRef(0);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
@@ -293,6 +294,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [timingOut, setTimingOut] = useState(false);
   const [message, setMessage] = useState("");
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
   const [initialElapsedMs, setInitialElapsedMs] = useState(0);
   const [guessCompletedElapsedMs, setGuessCompletedElapsedMs] =
     useState<number[]>([]);
@@ -308,6 +310,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     [session],
   );
   const isFinished = session?.status === "won" || session?.status === "lost";
+  const inputDisabled =
+    loading || submitting || endingSession || timingOut || !session || isFinished;
   const hasGuessRecords = (session?.guesses.length ?? 0) > 0;
   const useWallClockElapsed = mode === "daily" && hasGuessRecords;
   const foregroundTimer = useForegroundTimer(
@@ -341,11 +345,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const showSuggestions =
     !suggestionsDismissed &&
     query.trim().length > 0 &&
-    !isFinished &&
-    !loading &&
-    !submitting &&
-    !endingSession &&
-    !timingOut;
+    !inputDisabled;
   const visibleFields = useMemo(
     () =>
       visibleQuestionFields(
@@ -360,6 +360,20 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     100,
     ((session?.guesses.length ?? 0) / maxGuesses) * 100,
   );
+
+  useEffect(() => {
+    if (!restoreFocusRequested) return;
+    if (isFinished || !session) {
+      setRestoreFocusRequested(false);
+      return;
+    }
+    if (inputDisabled) return;
+    const timeout = window.setTimeout(() => {
+      inputRef.current?.focus();
+      setRestoreFocusRequested(false);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [inputDisabled, isFinished, restoreFocusRequested, session]);
 
   const persistSession = (
     nextMode: SinglePlayerGameMode,
@@ -637,7 +651,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     };
   }, [session, isFinished, mode, guessCompletedElapsedMs, checkpoint, dailyDifficulty]);
 
-  const submitGuess = async (guessId = selectedId) => {
+  const submitGuess = async (
+    guessId = selectedId,
+    options?: { restoreFocus?: boolean },
+  ) => {
     if (!session || !guessId || submitting || timingOut || isFinished) return;
     setSubmitting(true);
     setMessage("");
@@ -671,6 +688,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       setMessage(error instanceof Error ? error.message : "提交失败。");
     } finally {
       setSubmitting(false);
+      if (options?.restoreFocus) setRestoreFocusRequested(true);
     }
   };
 
@@ -941,14 +959,16 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         <form
           className="guess-form"
           onSubmit={(event) => {
+            const restoreFocus = document.activeElement === inputRef.current;
             event.preventDefault();
-            void submitGuess();
+            void submitGuess(undefined, { restoreFocus });
           }}
         >
           <div className="search-combobox">
             <label className="search-box" ref={searchBoxRef}>
               <Search size={18} aria-hidden="true" />
               <input
+                ref={inputRef}
                 value={query}
                 onFocus={() => setSuggestionsDismissed(false)}
                 onBlur={() => setActiveSuggestionId("")}
@@ -981,14 +1001,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     }
                   }
                 }}
-                disabled={
-                  loading ||
-                  submitting ||
-                  endingSession ||
-                  timingOut ||
-                  !session ||
-                  isFinished
-                }
+                disabled={inputDisabled}
                 placeholder="输入角色名、别名或初登场作品"
                 aria-label="搜索东方角色"
                 aria-autocomplete="list"
@@ -1075,11 +1088,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               type="submit"
               disabled={
                 !selectedId ||
-                loading ||
-                submitting ||
-                endingSession ||
-                timingOut ||
-                isFinished
+                inputDisabled
               }
             >
               {submitting ? (
