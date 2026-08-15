@@ -1078,14 +1078,29 @@ body:has(.single-game-shell) main {
   flex: 1 1 0;
 }
 
-.paper-surface.single-game-difficulty.is-won:not(.is-active) {
-  color: var(--jade-strong);
-  background: var(--jade-soft);
+.paper-surface.single-game-difficulty.active {
+  --paper-ornament-image: none;
+  color: var(--paper-tinted-ink);
 }
 
-.paper-surface.single-game-difficulty.is-lost:not(.is-active) {
-  color: var(--error-text);
-  background: var(--error-bg-soft);
+.paper-surface.single-game-difficulty.difficulty-easy.active {
+  --paper-fold-shade: color-mix(in srgb, var(--jade) 68%, #111);
+  background: var(--jade);
+}
+
+.paper-surface.single-game-difficulty.difficulty-normal.active {
+  --paper-fold-shade: color-mix(in srgb, var(--feedback-lower-mark) 68%, #111);
+  background: var(--feedback-lower-mark);
+}
+
+.paper-surface.single-game-difficulty.difficulty-hard.active {
+  --paper-fold-shade: color-mix(in srgb, var(--amber) 68%, #111);
+  background: var(--amber);
+}
+
+.paper-surface.single-game-difficulty.difficulty-lunatic.active {
+  --paper-fold-shade: color-mix(in srgb, var(--feedback-higher-mark) 68%, #111);
+  background: var(--feedback-higher-mark);
 }
 
 .single-game-metrics {

@@ -230,6 +230,15 @@ describe("SingleGamePage", () => {
           button.firstElementChild.getAttribute("width") === "16",
       ),
     ).toBe(true);
+    expect(
+      difficultyButtons.map((button) => button.dataset.paperVariant),
+    ).toEqual(["plain", "tinted", "plain", "plain"]);
+    expect(difficultyButtons[0].classList.contains("difficulty-easy")).toBe(
+      true,
+    );
+    expect(difficultyButtons[1].classList.contains("difficulty-normal")).toBe(
+      true,
+    );
     const metrics = status.querySelector(".single-game-metrics");
     expect(status.children[1]).toBe(metrics);
     expect(status.children[2]).toBe(difficultyGroup);

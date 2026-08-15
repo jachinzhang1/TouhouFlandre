@@ -409,13 +409,7 @@ function DailyDifficultyButtons({
             {index > 0 ? <PaperSegmentSeparator /> : null}
             <PaperSegmentButton
               active={selected}
-              className={`single-game-difficulty${
-                status === "won"
-                  ? " is-won"
-                  : status === "lost"
-                    ? " is-lost"
-                    : ""
-              }`}
+              className={`single-game-difficulty difficulty-${difficulty}`}
               disabled={disabled && !selected}
               onClick={() => onSelect(difficulty)}
             >
