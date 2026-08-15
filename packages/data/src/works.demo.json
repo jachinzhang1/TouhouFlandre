@@ -5,7 +5,10 @@
     "titleJa": "東方靈異伝",
     "titleEn": "Highly Responsive to Prayers",
     "shortName": "TH01",
-    "pinyinInitials": ["lyc", "dflyc"],
+    "pinyinInitials": [
+      "lyz",
+      "dflyz"
+    ],
     "type": "stg",
     "releaseYear": 1996,
     "mainlineIndex": 1,
@@ -17,7 +20,10 @@
     "titleJa": "東方封魔録",
     "titleEn": "Story of Eastern Wonderland",
     "shortName": "TH02",
-    "pinyinInitials": ["fml", "dffml"],
+    "pinyinInitials": [
+      "fml",
+      "dffml"
+    ],
     "type": "stg",
     "releaseYear": 1997,
     "mainlineIndex": 2,
@@ -29,7 +35,10 @@
     "titleJa": "東方幻想郷",
     "titleEn": "Lotus Land Story",
     "shortName": "TH04",
-    "pinyinInitials": ["hxx", "dfhxx"],
+    "pinyinInitials": [
+      "hxx",
+      "dfhxx"
+    ],
     "type": "stg",
     "releaseYear": 1998,
     "mainlineIndex": 4,
@@ -41,7 +50,10 @@
     "titleJa": "東方怪綺談",
     "titleEn": "Mystic Square",
     "shortName": "TH05",
-    "pinyinInitials": ["gqt", "dfgqt"],
+    "pinyinInitials": [
+      "gqt",
+      "dfgqt"
+    ],
     "type": "stg",
     "releaseYear": 1998,
     "mainlineIndex": 5,
@@ -53,7 +65,10 @@
     "titleJa": "東方紅魔郷",
     "titleEn": "Embodiment of Scarlet Devil",
     "shortName": "TH06",
-    "pinyinInitials": ["hmx", "dfhmx"],
+    "pinyinInitials": [
+      "hmx",
+      "dfhmx"
+    ],
     "type": "stg",
     "releaseYear": 2002,
     "mainlineIndex": 6,
@@ -65,7 +80,10 @@
     "titleJa": "東方妖々夢",
     "titleEn": "Perfect Cherry Blossom",
     "shortName": "TH07",
-    "pinyinInitials": ["yym", "dfyym"],
+    "pinyinInitials": [
+      "yym",
+      "dfyym"
+    ],
     "type": "stg",
     "releaseYear": 2003,
     "mainlineIndex": 7,
@@ -77,7 +95,10 @@
     "titleJa": "東方永夜抄",
     "titleEn": "Imperishable Night",
     "shortName": "TH08",
-    "pinyinInitials": ["yyc", "dfyyc"],
+    "pinyinInitials": [
+      "yyc",
+      "dfyyc"
+    ],
     "type": "stg",
     "releaseYear": 2004,
     "mainlineIndex": 8,
@@ -89,7 +110,10 @@
     "titleJa": "東方花映塚",
     "titleEn": "Phantasmagoria of Flower View",
     "shortName": "TH09",
-    "pinyinInitials": ["hyz", "dfhyz"],
+    "pinyinInitials": [
+      "hyz",
+      "dfhyz"
+    ],
     "type": "stg",
     "releaseYear": 2005,
     "mainlineIndex": 9,
@@ -101,7 +125,10 @@
     "titleJa": "東方風神録",
     "titleEn": "Mountain of Faith",
     "shortName": "TH10",
-    "pinyinInitials": ["fsl", "dffsl"],
+    "pinyinInitials": [
+      "fsl",
+      "dffsl"
+    ],
     "type": "stg",
     "releaseYear": 2007,
     "mainlineIndex": 10,
@@ -113,7 +140,10 @@
     "titleJa": "東方地霊殿",
     "titleEn": "Subterranean Animism",
     "shortName": "TH11",
-    "pinyinInitials": ["dld", "dfdld"],
+    "pinyinInitials": [
+      "dld",
+      "dfdld"
+    ],
     "type": "stg",
     "releaseYear": 2008,
     "mainlineIndex": 11,
@@ -125,7 +155,10 @@
     "titleJa": "東方星蓮船",
     "titleEn": "Undefined Fantastic Object",
     "shortName": "TH12",
-    "pinyinInitials": ["xlc", "dfxlc"],
+    "pinyinInitials": [
+      "xlc",
+      "dfxlc"
+    ],
     "type": "stg",
     "releaseYear": 2009,
     "mainlineIndex": 12,
@@ -137,7 +170,10 @@
     "titleJa": "東方神霊廟",
     "titleEn": "Ten Desires",
     "shortName": "TH13",
-    "pinyinInitials": ["slm", "dfslm"],
+    "pinyinInitials": [
+      "slm",
+      "dfslm"
+    ],
     "type": "stg",
     "releaseYear": 2011,
     "mainlineIndex": 13,
@@ -149,7 +185,10 @@
     "titleJa": "東方輝針城",
     "titleEn": "Double Dealing Character",
     "shortName": "TH14",
-    "pinyinInitials": ["hzc", "dfhzc"],
+    "pinyinInitials": [
+      "hzc",
+      "dfhzc"
+    ],
     "type": "stg",
     "releaseYear": 2013,
     "mainlineIndex": 14,
@@ -161,7 +200,10 @@
     "titleJa": "東方紺珠伝",
     "titleEn": "Legacy of Lunatic Kingdom",
     "shortName": "TH15",
-    "pinyinInitials": ["gzc", "dfgzc"],
+    "pinyinInitials": [
+      "gzz",
+      "dfgzz"
+    ],
     "type": "stg",
     "releaseYear": 2015,
     "mainlineIndex": 15,
@@ -173,7 +215,10 @@
     "titleJa": "東方天空璋",
     "titleEn": "Hidden Star in Four Seasons",
     "shortName": "TH16",
-    "pinyinInitials": ["tkz", "dftkz"],
+    "pinyinInitials": [
+      "tkz",
+      "dftkz"
+    ],
     "type": "stg",
     "releaseYear": 2017,
     "mainlineIndex": 16,
@@ -185,7 +230,10 @@
     "titleJa": "東方鬼形獣",
     "titleEn": "Wily Beast and Weakest Creature",
     "shortName": "TH17",
-    "pinyinInitials": ["gxs", "dfgxs"],
+    "pinyinInitials": [
+      "gxs",
+      "dfgxs"
+    ],
     "type": "stg",
     "releaseYear": 2019,
     "mainlineIndex": 17,
@@ -197,7 +245,10 @@
     "titleJa": "東方虹龍洞",
     "titleEn": "Unconnected Marketeers",
     "shortName": "TH18",
-    "pinyinInitials": ["hld", "dfhld"],
+    "pinyinInitials": [
+      "hld",
+      "dfhld"
+    ],
     "type": "stg",
     "releaseYear": 2021,
     "mainlineIndex": 18,
@@ -209,7 +260,10 @@
     "titleJa": "東方獣王園",
     "titleEn": "Unfinished Dream of All Living Ghost",
     "shortName": "TH19",
-    "pinyinInitials": ["swy", "dfswy"],
+    "pinyinInitials": [
+      "swy",
+      "dfswy"
+    ],
     "type": "stg",
     "releaseYear": 2023,
     "mainlineIndex": 19,
@@ -221,7 +275,10 @@
     "titleJa": "東方錦上京",
     "titleEn": "Fossilized Wonders",
     "shortName": "TH20",
-    "pinyinInitials": ["jsj", "dfjsj"],
+    "pinyinInitials": [
+      "jsj",
+      "dfjsj"
+    ],
     "type": "stg",
     "releaseYear": 2025,
     "mainlineIndex": 20,
@@ -233,7 +290,9 @@
     "titleJa": "蓮台野夜行　～ Ghostly Field Club",
     "titleEn": "Ghostly Field Club",
     "shortName": "莲台野夜行",
-    "pinyinInitials": ["ltyyx"],
+    "pinyinInitials": [
+      "ltyyx"
+    ],
     "type": "music_cd",
     "releaseYear": 2003,
     "era": "other"
@@ -244,7 +303,10 @@
     "titleJa": "東方香霖堂　～ Curiosities of Lotus Asia",
     "titleEn": "Curiosities of Lotus Asia",
     "shortName": "香霖堂",
-    "pinyinInitials": ["xlt", "dfxlt"],
+    "pinyinInitials": [
+      "xlt",
+      "dfxlt"
+    ],
     "type": "print",
     "releaseYear": 2004,
     "era": "other"
@@ -255,7 +317,10 @@
     "titleJa": "東方萃夢想　～ Immaterial and Missing Power",
     "titleEn": "Immaterial and Missing Power",
     "shortName": "TH7.5",
-    "pinyinInitials": ["cmx", "dfcmx"],
+    "pinyinInitials": [
+      "cmx",
+      "dfcmx"
+    ],
     "type": "ftg",
     "releaseYear": 2004,
     "era": "windows"
@@ -266,7 +331,10 @@
     "titleJa": "東方三月精　～ Eastern and Little Nature Deity",
     "titleEn": "Eastern and Little Nature Deity",
     "shortName": "三月精",
-    "pinyinInitials": ["syj", "dfsyj"],
+    "pinyinInitials": [
+      "syj",
+      "dfsyj"
+    ],
     "type": "print",
     "releaseYear": 2005,
     "era": "other"
@@ -277,7 +345,10 @@
     "titleJa": "東方求聞史紀　～ Perfect Memento in Strict Sense",
     "titleEn": "Perfect Memento in Strict Sense",
     "shortName": "求闻史纪",
-    "pinyinInitials": ["qwsj", "dfqwsj"],
+    "pinyinInitials": [
+      "qwsj",
+      "dfqwsj"
+    ],
     "type": "print",
     "releaseYear": 2006,
     "era": "other"
@@ -288,7 +359,10 @@
     "titleJa": "東方儚月抄　～ Silent Sinner in Blue",
     "titleEn": "Silent Sinner in Blue",
     "shortName": "儚月抄",
-    "pinyinInitials": ["myc", "dfmyc"],
+    "pinyinInitials": [
+      "myc",
+      "dfmyc"
+    ],
     "type": "print",
     "releaseYear": 2007,
     "era": "other"
@@ -299,7 +373,10 @@
     "titleJa": "東方緋想天　～ Scarlet Weather Rhapsody",
     "titleEn": "Scarlet Weather Rhapsody",
     "shortName": "TH10.5",
-    "pinyinInitials": ["fxt", "dffxt"],
+    "pinyinInitials": [
+      "fxt",
+      "dffxt"
+    ],
     "type": "ftg",
     "releaseYear": 2008,
     "era": "windows"
@@ -310,7 +387,11 @@
     "titleJa": "ダブルスポイラー　～ 東方文花帖",
     "titleEn": "Double Spoiler",
     "shortName": "TH12.5",
-    "pinyinInitials": ["whtds", "dfwhtds"],
+    "pinyinInitials": [
+      "whtds",
+      "dfwhtds",
+      "ds"
+    ],
     "type": "stg",
     "releaseYear": 2010,
     "era": "windows"
@@ -321,7 +402,10 @@
     "titleJa": "東方茨歌仙　～ Wild and Horned Hermit",
     "titleEn": "Wild and Horned Hermit",
     "shortName": "茨歌仙",
-    "pinyinInitials": ["cgx", "dfcgx"],
+    "pinyinInitials": [
+      "cgx",
+      "dfcgx"
+    ],
     "type": "print",
     "releaseYear": 2010,
     "era": "other"
@@ -332,7 +416,10 @@
     "titleJa": "東方鈴奈庵　～ Forbidden Scrollery",
     "titleEn": "Forbidden Scrollery",
     "shortName": "铃奈庵",
-    "pinyinInitials": ["lna", "dflna"],
+    "pinyinInitials": [
+      "lna",
+      "dflna"
+    ],
     "type": "print",
     "releaseYear": 2012,
     "era": "other"
@@ -343,7 +430,10 @@
     "titleJa": "東方心綺楼　～ Hopeless Masquerade",
     "titleEn": "Hopeless Masquerade",
     "shortName": "TH13.5",
-    "pinyinInitials": ["xql", "dfxql"],
+    "pinyinInitials": [
+      "xql",
+      "dfxql"
+    ],
     "type": "ftg",
     "releaseYear": 2013,
     "era": "windows"
@@ -354,7 +444,10 @@
     "titleJa": "東方深秘録　～ Urban Legend in Limbo",
     "titleEn": "Urban Legend in Limbo",
     "shortName": "TH14.5",
-    "pinyinInitials": ["sml", "dfsml"],
+    "pinyinInitials": [
+      "sml",
+      "dfsml"
+    ],
     "type": "ftg",
     "releaseYear": 2015,
     "era": "windows"
@@ -365,7 +458,10 @@
     "titleJa": "東方憑依華　～ Antinomy of Common Flowers",
     "titleEn": "Antinomy of Common Flowers",
     "shortName": "TH15.5",
-    "pinyinInitials": ["pyh", "dfpyh"],
+    "pinyinInitials": [
+      "pyh",
+      "dfpyh"
+    ],
     "type": "ftg",
     "releaseYear": 2017,
     "era": "windows"
@@ -376,7 +472,10 @@
     "titleJa": "東方智霊奇伝　反則探偵さとり",
     "titleEn": "Cheating Detective Satori",
     "shortName": "智灵奇传",
-    "pinyinInitials": ["zlqc", "dfzlqc"],
+    "pinyinInitials": [
+      "zlqz",
+      "dfzlqz"
+    ],
     "type": "print",
     "releaseYear": 2019,
     "era": "other"
@@ -387,7 +486,10 @@
     "titleJa": "東方酔蝶華　～ ロータスイーター達の酔醒",
     "titleEn": "Lotus Eaters",
     "shortName": "醉蝶华",
-    "pinyinInitials": ["zdh", "dfzdh"],
+    "pinyinInitials": [
+      "zdh",
+      "dfzdh"
+    ],
     "type": "print",
     "releaseYear": 2019,
     "era": "other"
@@ -398,7 +500,10 @@
     "titleJa": "東方剛欲異聞　～ 水没した沈愁地獄",
     "titleEn": "Sunken Fossil World",
     "shortName": "TH17.5",
-    "pinyinInitials": ["gyyw", "dfgyyw"],
+    "pinyinInitials": [
+      "gyyw",
+      "dfgyyw"
+    ],
     "type": "ftg",
     "releaseYear": 2021,
     "era": "windows"
@@ -409,7 +514,10 @@
     "titleJa": "东方文花帖 ～ Bohemian Archive in Japanese Red",
     "titleEn": "Bohemian Archive in Japanese Red",
     "shortName": "文花帖",
-    "pinyinInitials": ["wht", "dfwht"],
+    "pinyinInitials": [
+      "wht",
+      "dfwht"
+    ],
     "type": "print",
     "releaseYear": 2005,
     "era": "other"

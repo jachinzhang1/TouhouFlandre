@@ -24,19 +24,44 @@ import (
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool           *pgxpool.Pool
-	q              *repo.Queries
-	now            func() time.Time
-	rng            *rand.Rand
-	lobbyTTL       time.Duration      // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention time.Duration      // closed 保留期（关闭时 expires_at）
-	joinLimiter    *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
-	timing         multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	hub            *hub.Hub           // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	pool             *pgxpool.Pool
+	q                *repo.Queries
+	now              func() time.Time
+	rng              *rand.Rand
+	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
+	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	chatRetention    time.Duration
+	chatRate         multi.ChatRateConfig
+	chatCursor       *multi.ChatCursorCodec
+	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
+	rollout          RolloutConfig
 }
 
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
+
+// RolloutConfig 定义 MPX-010 灰度开关。默认关闭新增暴露面，测试/灰度环境显式开启。
+type RolloutConfig struct {
+	NPlayerRaceEnabled bool
+	ChatSendEnabled    bool
+}
+
+func rolloutConfigFromEnv() RolloutConfig {
+	return RolloutConfig{
+		NPlayerRaceEnabled: config.MultiNPlayerRaceEnabled(),
+		ChatSendEnabled:    config.MultiChatSendEnabled(),
+	}
+}
+
+// WithRolloutConfig 覆盖 MPX-010 灰度开关（集成测试和灰度环境注入用）。
+func WithRolloutConfig(rollout RolloutConfig) Option {
+	return func(s *Server) {
+		s.rollout = rollout
+	}
+}
 
 // WithJoinRateLimit 覆盖加入/预检限流参数（默认每分钟 10 次，进程内计数）。
 func WithJoinRateLimit(limit int, window time.Duration) Option {
@@ -52,10 +77,20 @@ func WithMultiTiming(timing multi.TimingConfig) Option {
 	}
 }
 
+// WithChatConfig 覆盖聊天保留、限流与 cursor 签名配置（测试注入用）。
+func WithChatConfig(retention time.Duration, rate multi.ChatRateConfig, secret []byte) Option {
+	return func(s *Server) {
+		s.chatRetention = retention
+		s.chatRate = rate
+		s.chatCursor = multi.NewChatCursorCodec(secret)
+	}
+}
+
 // WithHub 注入实时通道（server.NewWithOptions 默认创建；单实例共享给 sweeper 时显式传入）。
 func WithHub(h *hub.Hub) Option {
 	return func(s *Server) {
 		s.hub = h
+		s.projectionSecret = h.ProjectionSecret()
 	}
 }
 
@@ -66,16 +101,27 @@ func (s *Server) publish(roomID string) {
 	}
 }
 
+func (s *Server) publishChat(message repo.MultiChatMessage) {
+	if s.hub != nil {
+		s.hub.PublishChat(message.RoomID)
+	}
+}
+
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	s := &Server{
-		pool:           pool,
-		q:              repo.New(pool),
-		now:            time.Now,
-		rng:            rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
-		lobbyTTL:       config.MultiLobbyTTL(),
-		eventRetention: config.MultiEventRetention(),
-		joinLimiter:    newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
-		timing:         multi.DefaultTimingConfig(),
+		pool:             pool,
+		q:                repo.New(pool),
+		now:              time.Now,
+		rng:              rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
+		lobbyTTL:         config.MultiLobbyTTL(),
+		eventRetention:   config.MultiEventRetention(),
+		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		timing:           multi.DefaultTimingConfig(),
+		chatRetention:    config.MultiChatRetention(),
+		chatRate:         config.MultiChatRate(),
+		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
+		projectionSecret: config.MultiProjectionSecret(),
+		rollout:          rolloutConfigFromEnv(),
 	}
 	for _, opt := range opts {
 		opt(s)

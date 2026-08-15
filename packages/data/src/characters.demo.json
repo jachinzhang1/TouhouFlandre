@@ -9,7 +9,6 @@
       "en": "Reimu Hakurei",
       "romaji": "Hakurei Reimu",
       "aliases": [
-        "灵梦",
         "红白",
         "博丽巫女",
         "bllm"
@@ -33,8 +32,10 @@
       "博丽神社"
     ],
     "roles": [
+      "Boss",
       "自机",
-      "主角组"
+      "主角组",
+      "四面关底Boss"
     ],
     "hairColors": [
       "brown",
@@ -58,7 +59,6 @@
       "en": "Marisa Kirisame",
       "romaji": "Kirisame Marisa",
       "aliases": [
-        "魔理沙",
         "黑白",
         "普通的魔法使",
         "wymls"
@@ -82,8 +82,10 @@
       "魔法之森"
     ],
     "roles": [
+      "Boss",
       "自机",
-      "主角组"
+      "主角组",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -132,8 +134,10 @@
       "妖怪之山"
     ],
     "roles": [
+      "Boss",
       "自机",
-      "新闻记者"
+      "新闻记者",
+      "四面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -158,7 +162,8 @@
       "aliases": [
         "十进制",
         "宵暗的妖怪",
-        "lmy"
+        "lmy",
+        "⑩"
       ]
     },
     "firstAppearance": {
@@ -180,7 +185,8 @@
       "妖怪兽道"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -223,7 +229,8 @@
       "雾之湖"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "二面道中Boss"
     ],
     "hairColors": [
       "green"
@@ -273,7 +280,8 @@
     ],
     "roles": [
       "Boss",
-      "自机"
+      "自机",
+      "二面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -321,7 +329,9 @@
     ],
     "roles": [
       "Boss",
-      "门卫"
+      "自机",
+      "门卫",
+      "三面关底Boss"
     ],
     "hairColors": [
       "red"
@@ -365,7 +375,8 @@
     ],
     "roles": [
       "Midboss",
-      "图书馆助手"
+      "图书馆助手",
+      "四面道中Boss"
     ],
     "hairColors": [
       "red"
@@ -414,7 +425,10 @@
       "红魔馆"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "四面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "purple"
@@ -463,7 +477,9 @@
     "roles": [
       "Boss",
       "自机",
-      "女仆"
+      "女仆",
+      "五面关底Boss",
+      "六面道中Boss"
     ],
     "hairColors": [
       "white"
@@ -513,7 +529,8 @@
     "roles": [
       "Boss",
       "EX Midboss",
-      "自机"
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -560,7 +577,9 @@
       "红魔馆"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -582,7 +601,8 @@
       "en": "Letty Whiterock",
       "romaji": "Retii Howaitorokku",
       "aliases": [
-        "ldhwtlk"
+        "ldhwtlk",
+        "雪女"
       ]
     },
     "firstAppearance": {
@@ -604,7 +624,8 @@
       "无固定地点"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "pink"
@@ -629,7 +650,8 @@
       "aliases": [
         "式神猫",
         "猫又",
-        "c"
+        "c",
+        "chen"
       ]
     },
     "firstAppearance": {
@@ -653,7 +675,10 @@
     ],
     "roles": [
       "Boss",
-      "式神"
+      "式神",
+      "二面道中Boss",
+      "二面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "brown"
@@ -703,7 +728,9 @@
     ],
     "roles": [
       "Boss",
-      "自机"
+      "自机",
+      "三面道中Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -725,7 +752,9 @@
       "en": "Lily White",
       "romaji": "Ririi Howaito",
       "aliases": [
-        "llb"
+        "llb",
+        "莉莉霍瓦特",
+        "llhwt"
       ]
     },
     "firstAppearance": {
@@ -747,7 +776,8 @@
       "无固定地点"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "四面道中Boss"
     ],
     "hairColors": [
       "blonde"
@@ -793,7 +823,9 @@
     ],
     "roles": [
       "Boss",
-      "演奏者"
+      "演奏者",
+      "自机",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -839,7 +871,9 @@
     ],
     "roles": [
       "Boss",
-      "演奏者"
+      "演奏者",
+      "自机",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -885,7 +919,9 @@
     ],
     "roles": [
       "Boss",
-      "演奏者"
+      "演奏者",
+      "自机",
+      "四面关底Boss"
     ],
     "hairColors": [
       "brown"
@@ -908,10 +944,10 @@
       "en": "Youmu Konpaku",
       "romaji": "Konpaku Youmu",
       "aliases": [
-        "妖梦",
         "半人半灵",
         "庭师",
-        "hpym"
+        "hpym",
+        "半灵"
       ]
     },
     "firstAppearance": {
@@ -935,7 +971,9 @@
     "roles": [
       "Boss",
       "自机",
-      "庭师"
+      "庭师",
+      "五面道中Boss",
+      "五面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -958,9 +996,9 @@
       "en": "Yuyuko Saigyouji",
       "romaji": "Saigyouji Yuyuko",
       "aliases": [
-        "幽幽子",
         "亡灵公主",
-        "xxsyyz"
+        "xxsyyz",
+        "uuz"
       ]
     },
     "firstAppearance": {
@@ -984,12 +1022,14 @@
     ],
     "roles": [
       "Boss",
-      "自机"
+      "自机",
+      "一面关底Boss",
+      "六面关底Boss"
     ],
     "hairColors": [
       "pink"
     ],
-    "playable": false,
+    "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
@@ -1007,7 +1047,6 @@
       "en": "Ran Yakumo",
       "romaji": "Yakumo Ran",
       "aliases": [
-        "蓝",
         "九尾狐",
         "紫的式神",
         "byl"
@@ -1035,12 +1074,14 @@
     "roles": [
       "EX Boss",
       "式神",
-      "自机"
+      "自机",
+      "EX面关底Boss",
+      "PH面道中Boss"
     ],
     "hairColors": [
       "blonde"
     ],
-    "playable": false,
+    "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
@@ -1058,7 +1099,6 @@
       "en": "Yukari Yakumo",
       "romaji": "Yakumo Yukari",
       "aliases": [
-        "紫",
         "妖怪贤者",
         "境界妖怪",
         "byz"
@@ -1085,12 +1125,13 @@
     ],
     "roles": [
       "Phantasm Boss",
-      "自机"
+      "自机",
+      "PH面关底Boss"
     ],
     "hairColors": [
       "blonde"
     ],
-    "playable": false,
+    "playable": true,
     "enabledAsAnswer": true,
     "enabledAsGuess": true,
     "difficultyTier": "easy",
@@ -1108,10 +1149,9 @@
       "en": "Wriggle Nightbug",
       "romaji": "Riguru Naitobagu",
       "aliases": [
-        "莉格露",
         "虫子",
         "萤火虫妖怪",
-        "lglnbtg"
+        "lglnybg"
       ]
     },
     "firstAppearance": {
@@ -1133,7 +1173,8 @@
       "妖怪兽道"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -1156,10 +1197,10 @@
       "en": "Mystia Lorelei",
       "romaji": "Misutia Roorerai",
       "aliases": [
-        "米斯蒂娅",
         "夜雀",
-        "烧八目鳗",
-        "msdylll"
+        "八目鳗",
+        "msdylll",
+        "老板娘"
       ]
     },
     "firstAppearance": {
@@ -1181,7 +1222,9 @@
     ],
     "roles": [
       "Boss",
-      "商人"
+      "自机",
+      "商人",
+      "二面关底Boss"
     ],
     "hairColors": [
       "pink"
@@ -1230,7 +1273,9 @@
     ],
     "roles": [
       "Boss",
-      "教师"
+      "教师",
+      "三面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "white",
@@ -1253,7 +1298,10 @@
       "en": "Tewi Inaba",
       "romaji": "Inaba Tewi",
       "aliases": [
-        "yftw"
+        "yftw",
+        "因幡帝",
+        "兔",
+        "yfd"
       ]
     },
     "firstAppearance": {
@@ -1276,7 +1324,9 @@
       "永远亭"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "自机",
+      "四面道中Boss"
     ],
     "hairColors": [
       "black"
@@ -1328,7 +1378,8 @@
     ],
     "roles": [
       "Boss",
-      "自机"
+      "自机",
+      "四面关底Boss"
     ],
     "hairColors": [
       "purple"
@@ -1350,7 +1401,10 @@
       "en": "Eirin Yagokoro",
       "romaji": "Yagokoro Eirin",
       "aliases": [
-        "byyl"
+        "byyl",
+        "月之头脑",
+        "月之贤者",
+        "八意思兼神"
       ]
     },
     "firstAppearance": {
@@ -1375,7 +1429,9 @@
     ],
     "roles": [
       "Boss",
-      "药师"
+      "药师",
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -1423,7 +1479,10 @@
       "永远亭"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "月之公主",
+      "五面关底Boss",
+      "六面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -1472,7 +1531,9 @@
       "人间之里"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -1516,7 +1577,8 @@
       "无名之丘"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "blonde"
@@ -1559,7 +1621,8 @@
       "太阳花田"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "green"
@@ -1581,7 +1644,8 @@
       "en": "Komachi Onozuka",
       "romaji": "Onozuka Komachi",
       "aliases": [
-        "xyzxm"
+        "xyzxt",
+        "死神"
       ]
     },
     "firstAppearance": {
@@ -1606,7 +1670,8 @@
     ],
     "roles": [
       "Boss",
-      "死神"
+      "死神",
+      "自机"
     ],
     "hairColors": [
       "red"
@@ -1628,7 +1693,8 @@
       "en": "Eiki Shiki, Yamaxanadu",
       "romaji": "Shiki Eiki Yamazanadu",
       "aliases": [
-        "sjyjymxnd"
+        "sjyjymxnd",
+        "阎魔"
       ]
     },
     "firstAppearance": {
@@ -1651,7 +1717,8 @@
     ],
     "roles": [
       "Boss",
-      "审判官"
+      "审判官",
+      "自机"
     ],
     "hairColors": [
       "green"
@@ -1673,7 +1740,8 @@
       "en": "Shizuha Aki",
       "romaji": "Aki Shizuha",
       "aliases": [
-        "qjy"
+        "qjy",
+        "秋姐妹"
       ]
     },
     "firstAppearance": {
@@ -1694,7 +1762,8 @@
       "妖怪之山"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "一面道中Boss"
     ],
     "hairColors": [
       "blonde"
@@ -1716,7 +1785,8 @@
       "en": "Minoriko Aki",
       "romaji": "Aki Minoriko",
       "aliases": [
-        "qrz"
+        "qrz",
+        "秋姐妹"
       ]
     },
     "firstAppearance": {
@@ -1737,7 +1807,8 @@
       "妖怪之山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -1759,6 +1830,7 @@
       "en": "Hina Kagiyama",
       "romaji": "Kagiyama Hina",
       "aliases": [
+        "转转",
         "jsc"
       ]
     },
@@ -1766,6 +1838,7 @@
       "workId": "th10_mof"
     },
     "species": [
+      "妖怪",
       "神明"
     ],
     "abilityDisplay": "储存厄运程度的能力",
@@ -1780,7 +1853,9 @@
       "妖怪之山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -1830,7 +1905,10 @@
     ],
     "roles": [
       "Boss",
-      "工程师"
+      "自机",
+      "工程师",
+      "三面道中Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -1852,7 +1930,8 @@
       "en": "Momiji Inubashiri",
       "romaji": "Inubashiri Momiji",
       "aliases": [
-        "qzh"
+        "qzh",
+        "大狗"
       ]
     },
     "firstAppearance": {
@@ -1875,7 +1954,8 @@
     ],
     "roles": [
       "Midboss",
-      "哨戒天狗"
+      "哨戒天狗",
+      "四面道中Boss"
     ],
     "hairColors": [
       "white"
@@ -1926,7 +2006,9 @@
     "roles": [
       "Boss",
       "自机",
-      "风祝"
+      "风祝",
+      "五面道中Boss",
+      "五面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -1951,7 +2033,7 @@
       "aliases": [
         "神奈子",
         "山坂与湖水的化身",
-        "bssnz"
+        "bbsnz"
       ]
     },
     "firstAppearance": {
@@ -1972,7 +2054,10 @@
       "妖怪之山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "六面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "purple"
@@ -2019,7 +2104,9 @@
       "妖怪之山"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -2062,7 +2149,8 @@
       "旧地狱"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "一面道中Boss"
     ],
     "hairColors": [
       "green"
@@ -2105,7 +2193,8 @@
       "旧地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -2148,7 +2237,9 @@
       "旧地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -2170,7 +2261,8 @@
       "en": "Yuugi Hoshiguma",
       "romaji": "Hoshiguma Yuugi",
       "aliases": [
-        "xxyy"
+        "xxyy",
+        "鬼"
       ]
     },
     "firstAppearance": {
@@ -2192,7 +2284,9 @@
       "旧地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "三面道中Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -2216,7 +2310,7 @@
       "romaji": "Komeiji Satori",
       "aliases": [
         "觉",
-        "小五萝",
+        "小五萝莉",
         "读心妖怪",
         "gmdj"
       ]
@@ -2241,7 +2335,8 @@
       "地灵殿"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "pink"
@@ -2287,7 +2382,11 @@
     ],
     "roles": [
       "Boss",
-      "宠物"
+      "自机",
+      "宠物",
+      "四面道中Boss",
+      "五面关底Boss",
+      "六面道中Boss"
     ],
     "hairColors": [
       "red"
@@ -2313,7 +2412,8 @@
         "阿空",
         "空",
         "核融合鸦",
-        "lwlk"
+        "lwlk",
+        "三足"
       ]
     },
     "firstAppearance": {
@@ -2336,7 +2436,9 @@
       "地灵殿"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -2362,7 +2464,8 @@
         "恋恋",
         "小五萝妹",
         "无意识",
-        "gmdl"
+        "gmdl",
+        "小石"
       ]
     },
     "firstAppearance": {
@@ -2385,7 +2488,9 @@
       "地灵殿"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "green",
@@ -2430,7 +2535,11 @@
     ],
     "roles": [
       "Boss",
-      "探宝者"
+      "自机",
+      "探宝者",
+      "一面道中Boss",
+      "一面关底Boss",
+      "五面道中Boss"
     ],
     "hairColors": [
       "gray"
@@ -2474,7 +2583,10 @@
     ],
     "roles": [
       "Boss",
-      "EX Midboss"
+      "EX Midboss",
+      "二面道中Boss",
+      "二面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "blue"
@@ -2491,7 +2603,7 @@
     "id": "ichirin_kumoi_unzan",
     "avatarUrl": "/characters/1203-云居一轮·云山.png",
     "names": {
-      "zhHans": "云居一轮·云山",
+      "zhHans": "云居一轮&云山",
       "ja": "雲居一輪＆雲山",
       "en": "Ichirin Kumoi & Unzan",
       "romaji": "Kumoi Ichirin to Unzan",
@@ -2519,10 +2631,13 @@
     ],
     "roles": [
       "Boss",
-      "僧侣"
+      "自机",
+      "僧侣",
+      "三面关底Boss"
     ],
     "hairColors": [
-      "none"
+      "none",
+      "blue"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -2542,14 +2657,15 @@
       "en": "Minamitsu Murasa",
       "romaji": "Murasa Minamitsu",
       "aliases": [
-        "cssm"
+        "cssm",
+        "船长"
       ]
     },
     "firstAppearance": {
       "workId": "th12_ufo"
     },
     "species": [
-      "幽灵",
+      "亡灵",
       "灵"
     ],
     "abilityDisplay": "引发水难程度的能力",
@@ -2565,7 +2681,9 @@
     ],
     "roles": [
       "Boss",
-      "船长"
+      "自机",
+      "船长",
+      "四面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -2587,7 +2705,7 @@
       "en": "Shou Toramaru",
       "romaji": "Toramaru Shou",
       "aliases": [
-        "ymx"
+        "ywx"
       ]
     },
     "firstAppearance": {
@@ -2610,7 +2728,8 @@
     ],
     "roles": [
       "Boss",
-      "毘沙门天代理"
+      "毘沙门天代理",
+      "五面关底Boss"
     ],
     "hairColors": [
       "black",
@@ -2656,7 +2775,9 @@
     ],
     "roles": [
       "Boss",
-      "住持"
+      "住持",
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "purple",
@@ -2679,7 +2800,7 @@
       "en": "Nue Houjuu",
       "romaji": "Houjuu Nue",
       "aliases": [
-        "fsn"
+        "fsy"
       ]
     },
     "firstAppearance": {
@@ -2703,7 +2824,10 @@
       "命莲寺"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "四面道中Boss",
+      "六面道中Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -2725,14 +2849,16 @@
       "en": "Kyouko Kasodani",
       "romaji": "Kasodani Kyouko",
       "aliases": [
-        "ygxz"
+        "ygxz",
+        "山彦"
       ]
     },
     "firstAppearance": {
       "workId": "th13_td"
     },
     "species": [
-      "妖怪"
+      "妖怪",
+      "妖兽"
     ],
     "abilityDisplay": "反射声音程度的能力",
     "abilityTags": [
@@ -2747,7 +2873,9 @@
     ],
     "roles": [
       "Boss",
-      "僧侣"
+      "僧侣",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -2791,7 +2919,8 @@
     ],
     "roles": [
       "Boss",
-      "守卫"
+      "守卫",
+      "三面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -2813,7 +2942,8 @@
       "en": "Seiga Kaku",
       "romaji": "Kaku Seiga",
       "aliases": [
-        "hqe"
+        "hqe",
+        "邪仙"
       ]
     },
     "firstAppearance": {
@@ -2835,7 +2965,9 @@
     ],
     "roles": [
       "Boss",
-      "仙人"
+      "仙人",
+      "四面道中Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -2880,7 +3012,8 @@
       "神灵庙"
     ],
     "roles": [
-      "Midboss"
+      "Midboss",
+      "五面道中Boss"
     ],
     "hairColors": [
       "green"
@@ -2925,7 +3058,9 @@
       "神灵庙"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "五面关底Boss"
     ],
     "hairColors": [
       "gray"
@@ -2969,7 +3104,9 @@
       "神灵庙"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -2991,7 +3128,8 @@
       "en": "Mamizou Futatsuiwa",
       "romaji": "Futatsuiwa Mamizou",
       "aliases": [
-        "eytz"
+        "eytz",
+        "大狸子"
       ]
     },
     "firstAppearance": {
@@ -3016,7 +3154,9 @@
       "人间之里"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "brown"
@@ -3038,7 +3178,8 @@
       "en": "Wakasagihime",
       "romaji": "Wakasagihime",
       "aliases": [
-        "rlj"
+        "rlj",
+        "人鱼"
       ]
     },
     "firstAppearance": {
@@ -3059,7 +3200,8 @@
       "雾之湖"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -3102,7 +3244,9 @@
       "人间之里"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "red"
@@ -3145,7 +3289,9 @@
       "迷途竹林"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "三面道中Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "brown"
@@ -3188,7 +3334,9 @@
       "无固定地点"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面道中Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "purple"
@@ -3231,7 +3379,9 @@
       "无固定地点"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面道中Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "brown"
@@ -3275,11 +3425,15 @@
       "辉针城"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "五面关底Boss",
+      "六面道中Boss"
     ],
     "hairColors": [
       "black",
-      "red"
+      "red",
+      "white"
     ],
     "playable": false,
     "enabledAsAnswer": true,
@@ -3298,7 +3452,9 @@
       "en": "Shinmyoumaru Sukuna",
       "romaji": "Sukuna Shinmyoumaru",
       "aliases": [
-        "snzmw"
+        "snzmw",
+        "小人",
+        "三寸法师"
       ]
     },
     "firstAppearance": {
@@ -3320,7 +3476,9 @@
       "博丽神社"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "六面关底Boss"
     ],
     "hairColors": [
       "purple"
@@ -3364,7 +3522,8 @@
       "无固定地点"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "red"
@@ -3411,7 +3570,8 @@
     "roles": [
       "Boss",
       "士兵",
-      "自机"
+      "自机",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -3457,7 +3617,9 @@
     ],
     "roles": [
       "Boss",
-      "士兵"
+      "士兵",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -3501,7 +3663,11 @@
       "梦境世界"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机",
+      "三面道中",
+      "三面关底",
+      "EX面道中"
     ],
     "hairColors": [
       "blue"
@@ -3545,7 +3711,9 @@
       "月之都"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面道中Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -3589,7 +3757,8 @@
       "博丽神社"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "五面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -3633,7 +3802,9 @@
       "月之都"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "六面关底Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -3655,7 +3826,8 @@
       "en": "Hecatia Lapislazuli",
       "romaji": "Hekaathia Rapisurazuri",
       "aliases": [
-        "hktylbslzl"
+        "hktylbslzl",
+        "地狱女神"
       ]
     },
     "firstAppearance": {
@@ -3679,7 +3851,8 @@
       "地球"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "red",
@@ -3703,7 +3876,8 @@
       "en": "Eternity Larva",
       "romaji": "Etanitiraruva",
       "aliases": [
-        "atntlew"
+        "atntlew",
+        "大蛾子"
       ]
     },
     "firstAppearance": {
@@ -3721,10 +3895,12 @@
       "无明确阵营"
     ],
     "locations": [
-      "无固定地点"
+      "太阳花田",
+      "魔法之森"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -3765,10 +3941,12 @@
       "无明确阵营"
     ],
     "locations": [
-      "妖怪之山"
+      "圣域"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -3790,7 +3968,8 @@
       "en": "Aunn Komano",
       "romaji": "Komano Aunn",
       "aliases": [
-        "glyah"
+        "glyah",
+        "我是博丽灵梦的狗"
       ]
     },
     "firstAppearance": {
@@ -3813,7 +3992,8 @@
     "roles": [
       "Boss",
       "守护者",
-      "自机"
+      "自机",
+      "三面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -3856,7 +4036,8 @@
       "魔法之森"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -3878,7 +4059,7 @@
       "en": "Satono Nishida",
       "romaji": "Nishida Satono",
       "aliases": [
-        "ezdln"
+        "eztln"
       ]
     },
     "firstAppearance": {
@@ -3900,7 +4081,10 @@
     ],
     "roles": [
       "Boss",
-      "童子"
+      "童子",
+      "五面道中Boss",
+      "五面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "brown"
@@ -3944,7 +4128,10 @@
     ],
     "roles": [
       "Boss",
-      "童子"
+      "童子",
+      "五面关底Boss",
+      "四面道中Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "green"
@@ -3991,7 +4178,9 @@
     ],
     "roles": [
       "Boss",
-      "EX Boss"
+      "EX Boss",
+      "六面关底Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -4035,7 +4224,9 @@
       "地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面道中Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -4057,7 +4248,8 @@
       "en": "Urumi Ushizaki",
       "romaji": "Ushizaki Urumi",
       "aliases": [
-        "nqrm"
+        "nqrm",
+        "牛鬼"
       ]
     },
     "firstAppearance": {
@@ -4079,7 +4271,9 @@
       "地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "white",
@@ -4102,7 +4296,8 @@
       "en": "Kutaka Niwatari",
       "romaji": "Niwatari Kutaka",
       "aliases": [
-        "tdjtg"
+        "tdjcg",
+        "鸡你太美"
       ]
     },
     "firstAppearance": {
@@ -4126,7 +4321,10 @@
     ],
     "roles": [
       "Boss",
-      "关卡守卫"
+      "关卡守卫",
+      "三面道中Boss",
+      "三面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "blonde",
@@ -4172,7 +4370,10 @@
     ],
     "roles": [
       "Boss",
-      "组长"
+      "组长",
+      "自机",
+      "四面道中Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -4217,7 +4418,10 @@
     ],
     "roles": [
       "Boss",
-      "将领"
+      "将领",
+      "五面道中Boss",
+      "五面关底Boss",
+      "六面道中Boss"
     ],
     "hairColors": [
       "blonde"
@@ -4239,7 +4443,8 @@
       "en": "Keiki Haniyasushin",
       "romaji": "Haniyasushin Keiki",
       "aliases": [
-        "zasgj"
+        "zasgj",
+        "造型神"
       ]
     },
     "firstAppearance": {
@@ -4261,7 +4466,8 @@
       "畜生界"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "六面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -4283,7 +4489,8 @@
       "en": "Saki Kurokoma",
       "romaji": "Kurokoma Saki",
       "aliases": [
-        "ljzg"
+        "ljzg",
+        "天马"
       ]
     },
     "firstAppearance": {
@@ -4306,7 +4513,9 @@
     ],
     "roles": [
       "EX Boss",
-      "组长"
+      "组长",
+      "自机",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -4328,7 +4537,8 @@
       "en": "Mike Goutokuji",
       "romaji": "Goutokuji Mike",
       "aliases": [
-        "hdssh"
+        "hdssh",
+        "招财猫"
       ]
     },
     "firstAppearance": {
@@ -4350,7 +4560,9 @@
     ],
     "roles": [
       "Boss",
-      "商人"
+      "商人",
+      "一面道中Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "blonde",
@@ -4399,7 +4611,9 @@
     ],
     "roles": [
       "Boss",
-      "商人"
+      "商人",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "green"
@@ -4421,7 +4635,8 @@
       "en": "Sannyo Komakusa",
       "romaji": "Komakusa Sannyo",
       "aliases": [
-        "jcsr"
+        "jcsr",
+        "赌场老板娘"
       ]
     },
     "firstAppearance": {
@@ -4445,7 +4660,9 @@
     ],
     "roles": [
       "Boss",
-      "商人"
+      "商人",
+      "三面道中Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "purple"
@@ -4489,7 +4706,8 @@
       "妖怪之山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -4511,7 +4729,8 @@
       "en": "Tsukasa Kudamaki",
       "romaji": "Kudamaki Tsukasa",
       "aliases": [
-        "jmd"
+        "jmd",
+        "管狐"
       ]
     },
     "firstAppearance": {
@@ -4534,7 +4753,11 @@
     ],
     "roles": [
       "Boss",
-      "中间管理"
+      "中间管理",
+      "自机",
+      "五面道中Boss",
+      "六面道中Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "blonde"
@@ -4556,7 +4779,8 @@
       "en": "Megumu Iizunamaru",
       "romaji": "Iizunamaru Megumu",
       "aliases": [
-        "fgwl"
+        "fgwl",
+        "龙可是帝王之征啊"
       ]
     },
     "firstAppearance": {
@@ -4580,7 +4804,8 @@
     ],
     "roles": [
       "Boss",
-      "大天狗"
+      "大天狗",
+      "五面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -4602,7 +4827,9 @@
       "en": "Chimata Tenkyuu",
       "romaji": "Tenkyuu Chimata",
       "aliases": [
-        "tgqy"
+        "tgqy",
+        "市场神",
+        "彩虹"
       ]
     },
     "firstAppearance": {
@@ -4624,7 +4851,8 @@
     ],
     "roles": [
       "Boss",
-      "市场神"
+      "市场神",
+      "六面关底Boss"
     ],
     "hairColors": [
       "blue",
@@ -4647,7 +4875,8 @@
       "en": "Momoyo Himemushi",
       "romaji": "Himemushi Momoyo",
       "aliases": [
-        "jcbbs"
+        "jcbbs",
+        "噬龙者"
       ]
     },
     "firstAppearance": {
@@ -4671,7 +4900,8 @@
       "妖怪之山"
     ],
     "roles": [
-      "EX Boss"
+      "EX Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blue",
@@ -4709,13 +4939,15 @@
       "操纵"
     ],
     "affiliations": [
-      "劲牙组"
+      "鬼杰组",
+      "日白残无"
     ],
     "locations": [
-      "畜生界"
+      "圣域"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "brown"
@@ -4755,10 +4987,11 @@
       "无明确阵营"
     ],
     "locations": [
-      "魔法森林"
+      "魔法之森"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "white"
@@ -4803,7 +5036,8 @@
       "血之池地狱"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "自机"
     ],
     "hairColors": [
       "purple"
@@ -4847,7 +5081,9 @@
     ],
     "roles": [
       "Boss",
-      "案内人"
+      "案内人",
+      "自机",
+      "五面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -4892,7 +5128,9 @@
     ],
     "roles": [
       "Boss",
-      "僧侣"
+      "自机",
+      "僧侣",
+      "六面关底Boss"
     ],
     "hairColors": [
       "black"
@@ -4936,7 +5174,9 @@
       "圣域"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "一面道中Boss",
+      "一面关底Boss"
     ],
     "hairColors": [
       "gray",
@@ -4983,7 +5223,9 @@
       "圣域"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "二面道中Boss",
+      "二面关底Boss"
     ],
     "hairColors": [
       "white"
@@ -5026,7 +5268,8 @@
       "圣域"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "三面关底Boss"
     ],
     "hairColors": [
       "blue"
@@ -5069,7 +5312,9 @@
       "浅间净秽山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "四面关底Boss",
+      "EX面道中Boss"
     ],
     "hairColors": [
       "white"
@@ -5112,7 +5357,8 @@
       "浅间净秽山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "六面关底Boss"
     ],
     "hairColors": [
       "brown"
@@ -5134,7 +5380,9 @@
       "en": "Nina Watari",
       "romaji": "Watari Nina",
       "aliases": [
-        "dlbz"
+        "dlbz",
+        "渡里妮娜",
+        "dlnn"
       ]
     },
     "firstAppearance": {
@@ -5155,7 +5403,8 @@
       "浅间净秽山"
     ],
     "roles": [
-      "Boss"
+      "Boss",
+      "EX面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -5178,8 +5427,8 @@
       "en": "Renko Usami",
       "romaji": "Usami Renko",
       "aliases": [
-        "莲子",
-        "ysjlz"
+        "yzjlz",
+        "秘封"
       ]
     },
     "firstAppearance": {
@@ -5227,7 +5476,8 @@
         "梅莉",
         "Merry",
         "ml",
-        "malblhn"
+        "malblhn",
+        "秘封"
       ]
     },
     "firstAppearance": {
@@ -5272,8 +5522,7 @@
       "en": "Rinnosuke Morichika",
       "romaji": "Morichika Rinnosuke",
       "aliases": [
-        "霖之助",
-        "香霖",
+        "香霖堂",
         "店主",
         "sjlzz"
       ]
@@ -5322,9 +5571,10 @@
       "en": "Tokiko",
       "romaji": "Tokiko",
       "aliases": [
-        "读书妖怪",
+        "无名的读书妖怪",
         "书妖",
-        "zlz"
+        "zlz",
+        "wmddsyg"
       ]
     },
     "firstAppearance": {
@@ -5368,8 +5618,8 @@
       "en": "Sunny Milk",
       "romaji": "Sanii Miruku",
       "aliases": [
-        "桑尼",
-        "snmek"
+        "snmek",
+        "阳光牛奶"
       ]
     },
     "firstAppearance": {
@@ -5387,7 +5637,7 @@
       "光之三妖精"
     ],
     "locations": [
-      "魔法森林",
+      "魔法之森",
       "博丽神社"
     ],
     "roles": [
@@ -5415,7 +5665,6 @@
       "en": "Luna Child",
       "romaji": "Runa Chairudo",
       "aliases": [
-        "露娜",
         "lnqld"
       ]
     },
@@ -5434,7 +5683,7 @@
       "光之三妖精"
     ],
     "locations": [
-      "魔法森林",
+      "魔法之森",
       "博丽神社"
     ],
     "roles": [
@@ -5462,7 +5711,6 @@
       "en": "Star Sapphire",
       "romaji": "Sutaa Safaia",
       "aliases": [
-        "斯塔",
         "stsfy"
       ]
     },
@@ -5481,7 +5729,7 @@
       "光之三妖精"
     ],
     "locations": [
-      "魔法森林",
+      "魔法之森",
       "博丽神社"
     ],
     "roles": [
@@ -5509,9 +5757,8 @@
       "en": "Hieda no Akyuu",
       "romaji": "Hieda no Akyuu",
       "aliases": [
-        "阿求",
         "幻想乡缘起",
-        "bd aq"
+        "btaq"
       ]
     },
     "firstAppearance": {
@@ -5556,7 +5803,6 @@
       "en": "Watatsuki no Toyohime",
       "romaji": "Watatsuki no Toyohime",
       "aliases": [
-        "丰姬",
         "myfj"
       ]
     },
@@ -5578,8 +5824,10 @@
       "月之都"
     ],
     "roles": [
+      "Boss",
       "书籍角色",
-      "月之公主"
+      "月之公主",
+      "五面关底Boss"
     ],
     "hairColors": [
       "blonde"
@@ -5602,7 +5850,6 @@
       "en": "Watatsuki no Yorihime",
       "romaji": "Watatsuki no Yorihime",
       "aliases": [
-        "依姬",
         "myyj"
       ]
     },
@@ -5694,7 +5941,6 @@
       "en": "Kasen Ibaraki",
       "romaji": "Ibaraki Kasen",
       "aliases": [
-        "华扇",
         "片臂有角的仙人",
         "cmhs"
       ]
@@ -5719,8 +5965,10 @@
       "人间之里"
     ],
     "roles": [
+      "Boss",
       "书籍角色",
-      "仙人"
+      "仙人",
+      "自机"
     ],
     "hairColors": [
       "pink"
@@ -5838,7 +6086,6 @@
       "en": "Kosuzu Motoori",
       "romaji": "Motoori Kosuzu",
       "aliases": [
-        "小铃",
         "铃奈庵",
         "bjxl"
       ]
@@ -5885,7 +6132,6 @@
       "en": "Mizuchi Miyadeguchi",
       "romaji": "Miyadeguchi Mizuchi",
       "aliases": [
-        "瑞灵",
         "怨灵",
         "gckrl"
       ]
@@ -5934,9 +6180,8 @@
       "en": "Miyoi Okunoda",
       "romaji": "Okunoda Miyoi",
       "aliases": [
-        "美宵",
         "鲵吞亭",
-        "aytmy"
+        "aytmx"
       ]
     },
     "firstAppearance": {
@@ -5980,7 +6225,6 @@
       "en": "Suika Ibuki",
       "romaji": "Ibuki Suika",
       "aliases": [
-        "萃香",
         "鬼王",
         "yccx"
       ]
@@ -6028,7 +6272,6 @@
       "en": "Iku Nagae",
       "romaji": "Nagae Iku",
       "aliases": [
-        "衣玖",
         "龙宫使",
         "yjyj"
       ]
@@ -6076,7 +6319,6 @@
       "en": "Tenshi Hinanawi",
       "romaji": "Hinanawi Tenshi",
       "aliases": [
-        "天子",
         "有顶天人",
         "bnmjtz"
       ]
@@ -6123,9 +6365,10 @@
       "en": "Hatate Himekaidou",
       "romaji": "Himekaidou Hatate",
       "aliases": [
-        "果",
         "念写记者",
-        "jhtg"
+        "jhtg",
+        "姬海棠羽立",
+        "jhtyl"
       ]
     },
     "firstAppearance": {
@@ -6147,6 +6390,7 @@
       "妖怪之山"
     ],
     "roles": [
+      "Boss",
       "自机",
       "新闻记者"
     ],
@@ -6171,9 +6415,9 @@
       "en": "Hata no Kokoro",
       "romaji": "Hata no Kokoro",
       "aliases": [
-        "心",
         "面灵气",
-        "qx"
+        "qx",
+        "最强"
       ]
     },
     "firstAppearance": {
@@ -6223,7 +6467,8 @@
       "aliases": [
         "堇子",
         "秘封俱乐部初代会长",
-        "ysjjz"
+        "yzjjz",
+        "女高中生"
       ]
     },
     "firstAppearance": {
@@ -6245,6 +6490,7 @@
       "无固定地点"
     ],
     "roles": [
+      "Boss",
       "自机",
       "学生"
     ],
@@ -6366,9 +6612,8 @@
       "en": "Yuuma Toutetsu",
       "romaji": "Toutetsu Yuuma",
       "aliases": [
-        "尤魇",
-        "饕餮",
-        "ttyy"
+        "ttym",
+        "小羊"
       ]
     },
     "firstAppearance": {
@@ -6391,7 +6636,8 @@
     ],
     "roles": [
       "Boss",
-      "组织首领"
+      "组织首领",
+      "自机"
     ],
     "hairColors": [
       "white"

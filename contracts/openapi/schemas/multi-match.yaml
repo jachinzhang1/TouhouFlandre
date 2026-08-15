@@ -1,14 +1,98 @@
-# 多人场次 schema：MatchView
+# 多人场次 schema：MatchView 与按 memberId 关联的比分/再来一局集合
 # 对应 docs/multiplayer.md（match 快照）
+
+ScoringMode:
+  type: string
+  enum:
+    - wins
+    - placement
+
+MatchPlayerStatus:
+  type: string
+  enum:
+    - active
+    - eliminated
+    - left
+
+MemberScoreView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - score
+    - status
+    - bestRoundScore
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    score:
+      type: integer
+      minimum: 0
+    status:
+      $ref: "#/MatchPlayerStatus"
+    bestRoundScore:
+      type: integer
+      minimum: 0
+    eliminatedRound:
+      type: integer
+      minimum: 1
+
+MemberRankingView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - rank
+    - score
+    - status
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    rank:
+      type: integer
+      minimum: 1
+    score:
+      type: integer
+      minimum: 0
+    status:
+      $ref: "#/MatchPlayerStatus"
+    eliminatedRound:
+      type: integer
+      minimum: 1
+
+MemberRematchReadyView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - ready
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    ready:
+      type: boolean
 
 MatchView:
   type: object
   description: 场次视图。场次自包含：比分、题库版本绑定（catalogVersion 见事件）、round_count 归场行。
   required:
     - matchIndex
+    - scoringMode
+    - rosterSize
     - targetWins
-    - scoreSlot1
-    - scoreSlot2
+    - scores
     - roundIndex
     - maxRounds
     - rematchReady
@@ -18,32 +102,34 @@ MatchView:
       type: integer
       minimum: 0
       description: 场次序号；0 = 首场，1 = 第一次再来一局……
+    scoringMode:
+      $ref: "#/ScoringMode"
+    rosterSize:
+      type: integer
+      minimum: 2
+      maximum: 8
+      description: 场次创建时冻结的实际 roster 人数。
     targetWins:
       type: integer
       minimum: 1
-      description: 目标胜场 = (N+1)/2。
-    scoreSlot1:
-      type: integer
-      minimum: 0
-      description: slot 1 已胜局数（平局不计入）。
-    scoreSlot2:
-      type: integer
-      minimum: 0
-      description: slot 2 已胜局数（平局不计入）。
+      description: wins 模式目标胜场；placement 模式保留兼容值但不参与终止判定。
+    scores:
+      type: array
+      description: 按 seat 稳定排序的公开比分；身份关联使用 memberId。
+      items:
+        $ref: "#/MemberScoreView"
     roundIndex:
       type: integer
       minimum: 0
       description: 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。
     maxRounds:
       type: integer
-      description: 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。
+      description: wins 模式按 BO 计算；placement 模式为 3 × rosterSize。
     rematchReady:
       type: array
-      description: 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。
+      description: 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。
       items:
-        type: boolean
-      minItems: 2
-      maxItems: 2
+        $ref: "#/MemberRematchReadyView"
     catalogVersion:
       type: string
       description: 本场绑定的题库版本。

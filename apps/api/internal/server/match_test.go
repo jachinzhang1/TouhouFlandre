@@ -83,12 +83,28 @@ func advanceRounds(t *testing.T) {
 	}
 }
 
-// matchFixture 双人房间夹具（host 为房主 slot1，joiner slot2）。
+// matchFixture 双人房间夹具（host 为房主 seat 1，joiner seat 2）。
 type matchFixture struct {
 	roomID      string
 	roomCode    string
 	hostToken   string
 	joinerToken string
+}
+
+func collectionEntryAtSeat(t *testing.T, payload map[string]any, field string, seat int) map[string]any {
+	t.Helper()
+	entries, ok := payload[field].([]any)
+	if !ok || entries == nil {
+		t.Fatalf("%s = %#v, want non-nil array", field, payload[field])
+	}
+	for _, raw := range entries {
+		entry, ok := raw.(map[string]any)
+		if ok && entry["seat"] == float64(seat) {
+			return entry
+		}
+	}
+	t.Fatalf("%s has no seat %d entry: %#v", field, seat, entries)
+	return nil
 }
 
 // createMatchFixture 创建 bo3 双人房间（fast server）。
@@ -137,7 +153,7 @@ func createMatchFixtureMode(t *testing.T, format, mode string, turnSeconds int) 
 func startMatch(t *testing.T, fixture matchFixture) openapi.RoomSnapshot {
 	t.Helper()
 	for _, token := range []string{fixture.hostToken, fixture.joinerToken} {
-		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, nil)
+		resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", token, map[string]bool{"ready": true})
 		if resp.StatusCode != http.StatusNoContent {
 			t.Fatalf("ready: %d %s", resp.StatusCode, payload)
 		}
@@ -229,7 +245,7 @@ func TestMultiMatchStart(t *testing.T) {
 	fixture := createMatchFixture(t)
 
 	// 单方 ready → 不开局
-	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, nil)
+	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.hostToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host ready: %d %s", resp.StatusCode, payload)
 	}
@@ -246,17 +262,139 @@ func TestMultiMatchStart(t *testing.T) {
 	if snap.Round == nil || snap.Round.Status != openapi.RoundStatusPlaying {
 		t.Fatalf("round view = %+v, want playing", snap.Round)
 	}
+	if len(snap.Members) != 2 || snap.Members[0].Seat != 1 || snap.Members[1].Seat != 2 ||
+		snap.Members[0].MemberId == "" || snap.Members[1].MemberId == "" {
+		t.Fatalf("member collection = %+v, want two public identities in seat order", snap.Members)
+	}
+	if snap.Viewer.MemberId != snap.Members[0].MemberId || snap.Viewer.Seat == nil || *snap.Viewer.Seat != 1 {
+		t.Fatalf("viewer = %+v, want seat 1 member identity", snap.Viewer)
+	}
+	if len(snap.Match.Scores) != 2 ||
+		snap.Match.Scores[0].MemberId != snap.Members[0].MemberId || snap.Match.Scores[0].Seat != 1 ||
+		snap.Match.Scores[1].MemberId != snap.Members[1].MemberId || snap.Match.Scores[1].Seat != 2 {
+		t.Fatalf("score collection = %+v, want member identities in seat order", snap.Match.Scores)
+	}
+	if snap.Round.Self.MemberId == nil || *snap.Round.Self.MemberId != snap.Members[0].MemberId ||
+		snap.Round.Self.Seat == nil || *snap.Round.Self.Seat != 1 || len(snap.Round.Opponents) != 1 ||
+		snap.Round.Opponents[0].MemberId != snap.Members[1].MemberId || snap.Round.Opponents[0].Seat != 2 {
+		t.Fatalf("race board identities = self:%+v opponents:%+v", snap.Round.Self, snap.Round.Opponents)
+	}
 	if len(snap.Events) < 2 {
 		t.Fatalf("expected match.started + round.started events, got %d", len(snap.Events))
 	}
 
 	// 对局已开始后的重复 ready → MATCH_ALREADY_STARTED
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, nil)
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusConflict {
 		t.Fatalf("repeat ready status %d: %s", resp.StatusCode, payload)
 	}
 	if err := decodeError(t, payload); err.Code != "MATCH_ALREADY_STARTED" {
 		t.Fatalf("want MATCH_ALREADY_STARTED, got %s", err.Code)
+	}
+}
+
+func TestMultiFlexibleRaceRosterStart(t *testing.T) {
+	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{
+		"format": "bo1",
+		"mode":   "race",
+	})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("create: %d %s", resp.StatusCode, payload)
+	}
+	var created openapi.CreateRoomResponse
+	if err := json.Unmarshal(payload, &created); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 8 WHERE id = $1", created.RoomId); err != nil {
+		t.Fatal(err)
+	}
+	tokens := []string{string(created.GuestToken)}
+	wantPlayers := map[string]bool{created.Viewer.MemberId: true}
+	for i := 0; i < 2; i++ {
+		resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+created.RoomCode+"/join", map[string]string{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("join player %d: %d %s", i+2, resp.StatusCode, payload)
+		}
+		var joined openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &joined); err != nil {
+			t.Fatal(err)
+		}
+		if joined.JoinRole != openapi.ParticipantRolePlayer {
+			t.Fatalf("join player %d role = %s", i+2, joined.JoinRole)
+		}
+		tokens = append(tokens, string(joined.GuestToken))
+		wantPlayers[joined.Viewer.MemberId] = true
+	}
+
+	// 两名已准备玩家不能绕过第三名未准备玩家开局。
+	for _, token := range tokens[:2] {
+		resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", token, map[string]bool{"ready": true})
+		if resp.StatusCode != http.StatusNoContent {
+			t.Fatalf("partial ready: %d %s", resp.StatusCode, payload)
+		}
+	}
+	var roomStatus string
+	var matchCount int
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, count(m.id)
+		FROM multi_room r LEFT JOIN multi_match m ON m.room_id = r.id
+		WHERE r.id = $1 GROUP BY r.status`, created.RoomId).Scan(&roomStatus, &matchCount); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusLobby) || matchCount != 0 {
+		t.Fatalf("unready player was bypassed: status=%s matches=%d", roomStatus, matchCount)
+	}
+
+	// 第三名准备后以 3/8 的未满阵容开局。
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+created.RoomId+"/ready", tokens[2], map[string]bool{"ready": true})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("final ready: %d %s", resp.StatusCode, payload)
+	}
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, count(m.id)
+		FROM multi_room r LEFT JOIN multi_match m ON m.room_id = r.id
+		WHERE r.id = $1 GROUP BY r.status`, created.RoomId).Scan(&roomStatus, &matchCount); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusPlaying) || matchCount != 1 {
+		t.Fatalf("3/8 ready roster did not start: status=%s matches=%d", roomStatus, matchCount)
+	}
+
+	// 开局后新 member 只能观战，隐式冻结的 player 集合保持不变。
+	resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+created.RoomCode+"/join", map[string]string{})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("post-start spectator join: %d %s", resp.StatusCode, payload)
+	}
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.JoinRole != openapi.ParticipantRoleSpectator {
+		t.Fatalf("post-start join role = %s, want spectator", spectator.JoinRole)
+	}
+	rows, err := pool.Query(ctx, "SELECT id FROM multi_member WHERE room_id = $1 AND role = 'player' ORDER BY seat", created.RoomId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	gotPlayers := map[string]bool{}
+	for rows.Next() {
+		var memberID string
+		if err := rows.Scan(&memberID); err != nil {
+			t.Fatal(err)
+		}
+		gotPlayers[memberID] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(gotPlayers) != len(wantPlayers) {
+		t.Fatalf("frozen players = %v, want %v", gotPlayers, wantPlayers)
+	}
+	for memberID := range wantPlayers {
+		if !gotPlayers[memberID] {
+			t.Fatalf("frozen roster lost member %s: %v", memberID, gotPlayers)
+		}
 	}
 }
 
@@ -297,17 +435,17 @@ func TestMultiGuessWin(t *testing.T) {
 		t.Fatal("round.ended event missing")
 	}
 	payloadMap := ended.Payload
-	if payloadMap["result"] != "win" {
-		t.Fatalf("round.ended result = %v, want win", payloadMap["result"])
+	if payloadMap["viewerResult"] != "win" {
+		t.Fatalf("round.ended viewerResult = %v, want win", payloadMap["viewerResult"])
 	}
 	answerView, _ := payloadMap["answer"].(map[string]any)
 	if answerView["name"] == "" || answerView["avatarUrl"] == "" ||
 		answerView["workId"] == "" || answerView["workTitle"] == "" || answerView["workCode"] == "" {
 		t.Fatalf("round.ended answer not revealed: %v", payloadMap["answer"])
 	}
-	scores, _ := payloadMap["scores"].(map[string]any)
-	if scores["slot1"] != float64(1) || scores["slot2"] != float64(0) {
-		t.Fatalf("round.ended scores = %v", scores)
+	if collectionEntryAtSeat(t, payloadMap, "scores", 1)["score"] != float64(1) ||
+		collectionEntryAtSeat(t, payloadMap, "scores", 2)["score"] != float64(0) {
+		t.Fatalf("round.ended scores = %v", payloadMap["scores"])
 	}
 
 	// 逐观察者：host 自己的猜测事件不在其回放中；joiner 视角可见（已列置换、无 memberSlot/roundId）
@@ -376,7 +514,7 @@ func TestMultiGuessRace(t *testing.T) {
 }
 
 func TestRelayModeSharedTurns(t *testing.T) {
-	fixture := createMatchFixtureMode(t, "bo3", "relay", 30)
+	fixture := createMatchFixtureMode(t, "bo1", "relay", 30)
 	resp, payload := fastRequest(http.MethodGet, "/api/rooms/"+fixture.roomCode, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("info status %d: %s", resp.StatusCode, payload)
@@ -393,7 +531,8 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if snap.Mode != openapi.Relay || int(snap.TurnSeconds) != 30 {
 		t.Fatalf("snapshot mode/turn = %s/%d, want relay/30", snap.Mode, snap.TurnSeconds)
 	}
-	if snap.Round == nil || snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 1 ||
+	if snap.Round == nil || snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 1 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[0].MemberId ||
 		snap.Round.TurnDeadline == nil || snap.Round.MaxTurnsPerPlayer == nil || *snap.Round.MaxTurnsPerPlayer != 8 {
 		t.Fatalf("relay round fields = %+v", snap.Round)
 	}
@@ -417,11 +556,12 @@ func TestRelayModeSharedTurns(t *testing.T) {
 		t.Fatalf("joiner shared rows = %+v", snap.Round)
 	}
 	row := snap.Round.Shared.Rows[0]
-	if row.Kind != "guess" || row.MemberSlot != 1 || row.Guess == nil || len(row.Guess.Feedback) != 6 {
+	if row.Kind != "guess" || row.Seat != 1 || row.MemberId != snap.Members[0].MemberId || row.Guess == nil || len(row.Guess.Feedback) != 6 {
 		t.Fatalf("shared guess row = %+v", row)
 	}
-	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
-		t.Fatalf("turn slot after host guess = %+v, want 2", snap.Round.TurnSlot)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[1].MemberId {
+		t.Fatalf("turn after host guess = member:%+v seat:%+v, want seat 2 member", snap.Round.TurnMemberId, snap.Round.TurnSeat)
 	}
 
 	if _, err := pool.Exec(ctx, `
@@ -440,14 +580,66 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if snap.Round == nil || snap.Round.Shared == nil || len(snap.Round.Shared.Rows) != 3 {
 		t.Fatalf("shared rows after timeout = %+v", snap.Round)
 	}
-	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].MemberSlot != 2 {
+	if snap.Round.Shared.Rows[1].Kind != "timeout" || snap.Round.Shared.Rows[1].Seat != 2 ||
+		snap.Round.Shared.Rows[1].MemberId != snap.Members[1].MemberId {
 		t.Fatalf("timeout row = %+v", snap.Round.Shared.Rows[1])
 	}
-	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].MemberSlot != 1 {
+	if snap.Round.Shared.Rows[2].Kind != "guess" || snap.Round.Shared.Rows[2].Seat != 1 ||
+		snap.Round.Shared.Rows[2].MemberId != snap.Members[0].MemberId {
 		t.Fatalf("post-timeout guess row = %+v", snap.Round.Shared.Rows[2])
 	}
-	if snap.Round.TurnSlot == nil || *snap.Round.TurnSlot != 2 {
-		t.Fatalf("turn slot after post-timeout host guess = %+v, want 2", snap.Round.TurnSlot)
+	if snap.Round.TurnSeat == nil || *snap.Round.TurnSeat != 2 ||
+		snap.Round.TurnMemberId == nil || *snap.Round.TurnMemberId != snap.Members[1].MemberId {
+		t.Fatalf("turn after post-timeout host guess = member:%+v seat:%+v, want seat 2 member", snap.Round.TurnMemberId, snap.Round.TurnSeat)
+	}
+
+	resp, payload = guess(t, fixture.roomID, fixture.joinerToken, 1, answer, "relay-joiner-win")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("joiner relay win status %d: %s", resp.StatusCode, payload)
+	}
+	var roundEnded, matchEnded map[string]any
+	for _, event := range eventsOf(t, fixture) {
+		switch event.Type {
+		case "round.ended":
+			roundEnded = event.Payload
+		case "match.ended":
+			matchEnded = event.Payload
+		}
+	}
+	if roundEnded == nil || matchEnded == nil {
+		t.Fatalf("relay terminal events missing: round=%v match=%v", roundEnded, matchEnded)
+	}
+	seat2Result := collectionEntryAtSeat(t, roundEnded, "results", 2)
+	if roundEnded["viewerResult"] != "loss" || roundEnded["winnerMemberId"] != seat2Result["memberId"] || seat2Result["result"] != "win" {
+		t.Fatalf("relay round result = %v, want host loss and seat 2 winner", roundEnded)
+	}
+	if collectionEntryAtSeat(t, roundEnded, "scores", 1)["score"] != float64(0) ||
+		collectionEntryAtSeat(t, roundEnded, "scores", 2)["score"] != float64(1) {
+		t.Fatalf("relay round scores = %v, want 0-1", roundEnded["scores"])
+	}
+	turns, ok := roundEnded["turns"].([]any)
+	if !ok || len(turns) != 4 {
+		t.Fatalf("relay turns = %#v, want four preserved rows", roundEnded["turns"])
+	}
+	lastTurn, _ := turns[3].(map[string]any)
+	if lastTurn["memberId"] != seat2Result["memberId"] || lastTurn["seat"] != float64(2) || lastTurn["kind"] != "guess" {
+		t.Fatalf("relay winning turn = %#v, want seat 2 member guess", lastTurn)
+	}
+	if matchEnded["viewerResult"] != "loss" || matchEnded["winnerMemberId"] != seat2Result["memberId"] || matchEnded["reason"] != "normal" {
+		t.Fatalf("relay match result = %v, want normal seat 2 win", matchEnded)
+	}
+	joinerEvents := eventsOfAs(t, fixture, fixture.joinerToken)
+	joinerWon := false
+	for _, event := range joinerEvents {
+		if event.Type == "match.ended" {
+			joinerWon = true
+			if event.Payload["viewerResult"] != "win" {
+				t.Fatalf("joiner relay viewerResult = %v, want win", event.Payload["viewerResult"])
+			}
+		}
+	}
+	if !joinerWon {
+		t.Fatal("joiner relay match.ended event missing")
 	}
 }
 
@@ -476,7 +668,7 @@ func TestMultiDuplicateAndIdempotentGuess(t *testing.T) {
 		SELECT count(*) FROM multi_guess g
 		JOIN multi_round r ON r.id = g.round_id
 		JOIN multi_match m ON m.id = r.match_id
-		WHERE m.room_id = $1 AND g.member_id = (SELECT id FROM multi_member WHERE room_id = $1 AND slot = 1)`,
+		WHERE m.room_id = $1 AND g.member_id = (SELECT id FROM multi_member WHERE room_id = $1 AND seat = 1)`,
 		fixture.roomID).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
@@ -536,8 +728,8 @@ func TestMultiGuessLimitAndDraw(t *testing.T) {
 	if ended == nil {
 		t.Fatal("round.ended missing after draw")
 	}
-	if ended.Payload["result"] != "draw" {
-		t.Fatalf("draw result = %v", ended.Payload["result"])
+	if ended.Payload["viewerResult"] != "draw" {
+		t.Fatalf("draw viewerResult = %v", ended.Payload["viewerResult"])
 	}
 }
 
@@ -582,19 +774,14 @@ func TestRoundEndedBoardsNotNull(t *testing.T) {
 	if ended == nil {
 		t.Fatalf("round.ended 事件缺失: %+v", snap.Events)
 	}
-	boards, ok := ended.Payload["boards"].(map[string]any)
-	if !ok {
-		t.Fatalf("boards 缺失: %+v", ended.Payload)
+	seat2 := collectionEntryAtSeat(t, ended.Payload, "boards", 2)
+	seat2Guesses, ok := seat2["guesses"].([]any)
+	if !ok || seat2Guesses == nil || len(seat2Guesses) != 0 {
+		t.Fatalf("seat 2 guesses = %#v, want non-nil empty array", seat2["guesses"])
 	}
-	slot2, ok := boards["slot2"].([]any)
-	if !ok || slot2 == nil {
-		t.Fatalf("slot2 = %#v, want 非 nil 空数组（对手 0 猜测）", boards["slot2"])
-	}
-	if len(slot2) != 0 {
-		t.Fatalf("slot2 len = %d, want 0", len(slot2))
-	}
-	if slot1, ok := boards["slot1"].([]any); !ok || len(slot1) != 1 {
-		t.Fatalf("slot1 = %#v, want 1 条（我方猜测）", boards["slot1"])
+	seat1 := collectionEntryAtSeat(t, ended.Payload, "boards", 1)
+	if seat1Guesses, ok := seat1["guesses"].([]any); !ok || len(seat1Guesses) != 1 {
+		t.Fatalf("seat 1 guesses = %#v, want one guess", seat1["guesses"])
 	}
 	// 弹窗倒计时：nextStartsAt = 本局 ended_at + INTERMISSION（服务端驱动，08 §局末交互）。
 	next, ok := ended.Payload["nextStartsAt"].(string)
@@ -727,12 +914,12 @@ func TestMultiFullBO3AndIntermission(t *testing.T) {
 		t.Fatal("match.ended missing")
 	}
 	p := ended.Payload
-	if p["reason"] != "normal" || p["result"] != "win" {
+	if p["reason"] != "normal" || p["viewerResult"] != "win" {
 		t.Fatalf("match.ended payload = %v", p)
 	}
-	scores := p["scores"].(map[string]any)
-	if scores["slot1"] != float64(2) || scores["slot2"] != float64(0) {
-		t.Fatalf("final scores = %v", scores)
+	if collectionEntryAtSeat(t, p, "scores", 1)["score"] != float64(2) ||
+		collectionEntryAtSeat(t, p, "scores", 2)["score"] != float64(0) {
+		t.Fatalf("final scores = %v", p["scores"])
 	}
 	// 房间 finished（展示期）
 	snap := startMatchSnapshot(t, fixture)
@@ -780,15 +967,16 @@ func TestMultiForfeit(t *testing.T) {
 		t.Fatal("match.ended missing after forfeit")
 	}
 	p := ended.Payload
-	if p["reason"] != "forfeit" || p["result"] != "win" {
+	if p["reason"] != "forfeit" || p["viewerResult"] != "win" {
 		t.Fatalf("forfeit payload = %v（对方视角应为 win）", p)
 	}
-	if p["winnerSlot"] != float64(2) {
-		t.Fatalf("winnerSlot = %v, want 2", p["winnerSlot"])
+	winner := collectionEntryAtSeat(t, p, "results", 2)
+	if p["winnerMemberId"] != winner["memberId"] || winner["result"] != "win" {
+		t.Fatalf("winnerMemberId/results = %v / %v, want seat 2 winner", p["winnerMemberId"], winner)
 	}
 	// 成员行置 left 保留
 	var status string
-	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&status); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
 	if status != "left" {
@@ -809,7 +997,7 @@ func TestMultiForfeit(t *testing.T) {
 			leftEnded = event.Payload
 		}
 	}
-	if leftEnded["result"] != "loss" || leftEnded["reason"] != "forfeit" {
+	if leftEnded["viewerResult"] != "loss" || leftEnded["reason"] != "forfeit" {
 		t.Fatalf("left member terminal event = %v", leftEnded)
 	}
 	// 写命令仍拒绝 left 令牌。
@@ -826,7 +1014,7 @@ func TestMultiDisconnectGrace(t *testing.T) {
 	// joiner 断线且宽限逾期（直改 DB 模拟 Phase 4 的状态）
 	if _, err := pool.Exec(ctx, `
 		UPDATE multi_member SET status = 'disconnected', grace_until = now() - interval '1 second'
-		WHERE room_id = $1 AND slot = 2`, fixture.roomID); err != nil {
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
@@ -844,6 +1032,88 @@ func TestMultiDisconnectGrace(t *testing.T) {
 	}
 	if ended.Payload["reason"] != "disconnect" {
 		t.Fatalf("reason = %v, want disconnect", ended.Payload["reason"])
+	}
+	winner := collectionEntryAtSeat(t, ended.Payload, "results", 1)
+	if ended.Payload["winnerMemberId"] != winner["memberId"] || winner["result"] != "win" {
+		t.Fatalf("disconnect winner = %v, want unchanged seat 1 winner", ended.Payload)
+	}
+	var roomStatus, matchStatus, memberStatus string
+	if err := pool.QueryRow(ctx, `
+		SELECT r.status, m.status, p.status
+		FROM multi_room r
+		JOIN multi_match m ON m.room_id = r.id AND m.match_index = 0
+		JOIN multi_member p ON p.room_id = r.id AND p.seat = 2
+		WHERE r.id = $1`, fixture.roomID).Scan(&roomStatus, &matchStatus, &memberStatus); err != nil {
+		t.Fatal(err)
+	}
+	if roomStatus != string(multi.RoomStatusFinished) || matchStatus != "finished" || memberStatus != string(multi.MemberStatusLeft) {
+		t.Fatalf("disconnect terminal state room=%s match=%s member=%s", roomStatus, matchStatus, memberStatus)
+	}
+}
+
+func TestMultiSpectatorLeaveDoesNotAffectMatch(t *testing.T) {
+	type matchState struct {
+		roomStatus  string
+		matchStatus string
+		score1      int32
+		score2      int32
+		endReason   string
+		winnerSeat  string
+	}
+	stateOf := func(t *testing.T, roomID string) matchState {
+		t.Helper()
+		var state matchState
+		if err := pool.QueryRow(ctx, `
+			SELECT r.status,
+			       (SELECT status FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       (SELECT score_slot1 FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       (SELECT score_slot2 FROM multi_match WHERE room_id = r.id ORDER BY match_index DESC LIMIT 1),
+			       COALESCE((SELECT payload->>'reason' FROM room_event WHERE room_id = r.id AND type = 'match.ended' ORDER BY sequence DESC LIMIT 1), ''),
+			       COALESCE((SELECT payload->>'winnerSlot' FROM room_event WHERE room_id = r.id AND type = 'match.ended' ORDER BY sequence DESC LIMIT 1), '')
+			FROM multi_room r WHERE r.id = $1`, roomID).Scan(
+			&state.roomStatus, &state.matchStatus, &state.score1, &state.score2, &state.endReason, &state.winnerSeat,
+		); err != nil {
+			t.Fatal(err)
+		}
+		return state
+	}
+
+	for _, phase := range []string{"playing", "finished"} {
+		t.Run(phase, func(t *testing.T) {
+			fixture := createMatchFixtureFormat(t, "bo1")
+			resp, payload := fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "旁观者"})
+			if resp.StatusCode != http.StatusCreated {
+				t.Fatalf("spectator join: %d %s", resp.StatusCode, payload)
+			}
+			var spectator openapi.JoinRoomResponse
+			if err := json.Unmarshal(payload, &spectator); err != nil {
+				t.Fatal(err)
+			}
+			startMatch(t, fixture)
+			if phase == "finished" {
+				answer := currentAnswer(t, fixture.roomID)
+				if resp, payload = guess(t, fixture.roomID, fixture.hostToken, 1, answer, "spectator-leave-finish"); resp.StatusCode != http.StatusOK {
+					t.Fatalf("finish match: %d %s", resp.StatusCode, payload)
+				}
+			}
+
+			before := stateOf(t, fixture.roomID)
+			resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/leave", string(spectator.GuestToken), nil)
+			if resp.StatusCode != http.StatusNoContent {
+				t.Fatalf("spectator leave: %d %s", resp.StatusCode, payload)
+			}
+			after := stateOf(t, fixture.roomID)
+			if after != before {
+				t.Fatalf("spectator leave changed match state: before=%+v after=%+v", before, after)
+			}
+			var spectatorStatus string
+			if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE id = $1", spectator.Viewer.MemberId).Scan(&spectatorStatus); err != nil {
+				t.Fatal(err)
+			}
+			if spectatorStatus != string(multi.MemberStatusLeft) {
+				t.Fatalf("spectator status = %s, want left", spectatorStatus)
+			}
+		})
 	}
 }
 
@@ -864,13 +1134,13 @@ func TestMultiRestartTermination(t *testing.T) {
 		switch e.Type {
 		case "round.ended":
 			roundEnded = true
-			if e.Payload["result"] != "draw" {
-				t.Fatalf("restart round result = %v, want draw", e.Payload["result"])
+			if e.Payload["viewerResult"] != "draw" {
+				t.Fatalf("restart round viewerResult = %v, want draw", e.Payload["viewerResult"])
 			}
 		case "match.ended":
 			matchEnded = true
 			p := e.Payload
-			if p["reason"] != "server_restart" || p["result"] != "draw" {
+			if p["reason"] != "server_restart" || p["viewerResult"] != "draw" {
 				t.Fatalf("restart match payload = %v", p)
 			}
 		}
@@ -943,8 +1213,13 @@ func TestMultiRematch(t *testing.T) {
 			advanceRounds(t)
 		}
 	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_member SET status = 'disconnected', grace_until = now() + interval '30 seconds'
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
 
-	// 单方 rematch → 等待态（match.rematch 事件，matchIndex 仍 0）
+	// 单方 rematch → 等待态；断线的原 roster 成员不能确认或触发新场。
 	resp, payload := fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host rematch: %d %s", resp.StatusCode, payload)
@@ -953,8 +1228,17 @@ func TestMultiRematch(t *testing.T) {
 	if snap.Match == nil || snap.Match.MatchIndex != 0 {
 		t.Fatalf("single rematch should not start new match: %+v", snap.Match)
 	}
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.joinerToken, nil)
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "REMATCH_NOT_AVAILABLE" {
+		t.Fatalf("disconnected roster rematch = %d %s, want REMATCH_NOT_AVAILABLE", resp.StatusCode, payload)
+	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_member SET status = 'connected', grace_until = NULL
+		WHERE room_id = $1 AND seat = 2`, fixture.roomID); err != nil {
+		t.Fatal(err)
+	}
 
-	// 双方 rematch → 新场行（matchIndex 1、比分清零、版本重绑）
+	// 原 roster 恢复 connected 且双方确认 → 新场行（matchIndex 1、比分清零、版本重绑）。
 	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.joinerToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("joiner rematch: %d %s", resp.StatusCode, payload)
@@ -967,7 +1251,7 @@ func TestMultiRematch(t *testing.T) {
 	if snap.Status != openapi.RoomStatusPlaying {
 		t.Fatalf("after rematch status = %s, want playing", snap.Status)
 	}
-	if snap.Match == nil || snap.Match.MatchIndex != 1 || snap.Match.ScoreSlot1 != 0 || snap.Match.ScoreSlot2 != 0 {
+	if snap.Match == nil || snap.Match.MatchIndex != 1 || len(snap.Match.Scores) != 2 || snap.Match.Scores[0].Score != 0 || snap.Match.Scores[1].Score != 0 {
 		t.Fatalf("new match view = %+v, want matchIndex 1 score 0-0", snap.Match)
 	}
 	if snap.Round == nil {
@@ -983,7 +1267,7 @@ func TestMultiRematch(t *testing.T) {
 	}
 	// rematch_ready 已重置
 	var rematchReady bool
-	if err := pool.QueryRow(ctx, "SELECT rematch_ready FROM multi_member WHERE room_id = $1 AND slot = 1", fixture.roomID).Scan(&rematchReady); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT rematch_ready FROM multi_member WHERE room_id = $1 AND seat = 1", fixture.roomID).Scan(&rematchReady); err != nil {
 		t.Fatal(err)
 	}
 	if rematchReady {
@@ -991,7 +1275,7 @@ func TestMultiRematch(t *testing.T) {
 	}
 }
 
-func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
+func TestMultiFinishedLeaveRetainsRoom(t *testing.T) {
 	fixture := createMatchFixtureFormat(t, "bo1")
 	startMatch(t, fixture)
 
@@ -1001,7 +1285,7 @@ func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("win: %d %s", resp.StatusCode, payload)
 	}
-	// host 确认 rematch，等待期 joiner 离开 → 房间关闭
+	// host 确认 rematch，等待期 joiner 离开；finished 房间仍保留用于终态恢复/观战。
 	resp, _ = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host rematch: %d", resp.StatusCode)
@@ -1010,12 +1294,43 @@ func TestMultiRematchWaitLeaveClosesRoom(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("joiner leave: %d %s", resp.StatusCode, payload)
 	}
-	// 房间已关闭 → rematch ROOM_CLOSED
-	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
-	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("rematch on closed: %d %s", resp.StatusCode, payload)
+	resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.hostToken, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("retained snapshot: %d %s", resp.StatusCode, payload)
 	}
-	if err := decodeError(t, payload); err.Code != "ROOM_CLOSED" {
-		t.Fatalf("want ROOM_CLOSED, got %s", err.Code)
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Status != openapi.RoomStatusFinished {
+		t.Fatalf("room status after finished leave = %s, want finished", snapshot.Status)
+	}
+	var status string
+	if err := pool.QueryRow(ctx, "SELECT status FROM multi_member WHERE room_id = $1 AND seat = 2", fixture.roomID).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != string(multi.MemberStatusLeft) {
+		t.Fatalf("joiner status after leave = %s, want left", status)
+	}
+
+	// 任一原 roster 成员 left 后明确拒绝 rematch；新加入者只能观战，不能替代原身份。
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", fixture.hostToken, nil)
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "REMATCH_NOT_AVAILABLE" {
+		t.Fatalf("rematch with left roster member = %d %s, want REMATCH_NOT_AVAILABLE", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequest(http.MethodPost, "/api/rooms/"+fixture.roomCode+"/join", map[string]string{"displayName": "新加入者"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("finished join: %d %s", resp.StatusCode, payload)
+	}
+	var newcomer openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &newcomer); err != nil {
+		t.Fatal(err)
+	}
+	if newcomer.JoinRole != openapi.ParticipantRoleSpectator {
+		t.Fatalf("finished newcomer role = %s, want spectator", newcomer.JoinRole)
+	}
+	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/rematch", string(newcomer.GuestToken), nil)
+	if resp.StatusCode != http.StatusForbidden || decodeError(t, payload).Code != "SPECTATOR_READ_ONLY" {
+		t.Fatalf("newcomer rematch = %d %s, want SPECTATOR_READ_ONLY", resp.StatusCode, payload)
 	}
 }

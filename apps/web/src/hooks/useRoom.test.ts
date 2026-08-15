@@ -1,12 +1,7 @@
-// useRoom reducer 单测（08 §10.3）：乱序/重复去重、事件应用、局/场流转。
 import { describe, expect, it } from "vitest";
 import type { Envelope } from "@touhouflandre/shared";
-import type { RoomUiState } from "../domain/roomState";
-import {
-  applySnapshot,
-  initialRoomState,
-  roomReducer,
-} from "../domain/roomState";
+import type { RoomUiState } from "../hooks/useRoom";
+import { applySnapshot, initialRoomState, roomReducer } from "../hooks/useRoom";
 
 const event = (type: string, sequence: number, payload: unknown): Envelope =>
   ({
@@ -18,38 +13,200 @@ const event = (type: string, sequence: number, payload: unknown): Envelope =>
     payload,
   }) as unknown as Envelope;
 
+const membersFixture = [
+  {
+    memberId: "member-host",
+    seat: 1,
+    displayName: "host",
+    status: "connected" as const,
+    ready: false,
+  },
+  {
+    memberId: "member-guest",
+    seat: 2,
+    displayName: "guest",
+    status: "connected" as const,
+    ready: false,
+  },
+];
+
+const scoresFixture = [
+  { memberId: "member-host", seat: 1, score: 0 },
+  { memberId: "member-guest", seat: 2, score: 0 },
+];
+
+const playerState = (): RoomUiState => ({
+  ...initialRoomState,
+  viewer: {
+    memberId: "member-host",
+    role: "player",
+    seat: 1,
+    displayName: "host",
+    status: "connected",
+  },
+  members: membersFixture,
+});
+
+const roomFixture = (
+  status: NonNullable<RoomUiState["room"]>["status"] = "playing",
+): NonNullable<RoomUiState["room"]> => ({
+  roomId: "room-1",
+  roomCode: "ABC123",
+  format: "bo3",
+  mode: "race",
+  turnSeconds: 60,
+  playerLimit: 2,
+  minPlayers: 2,
+  playerCount: 2,
+  availableSeats: 0,
+  status,
+  expiresAt: "2026-08-06T12:30:00Z",
+  spectatorCount: 0,
+});
+
+const matchFixture: NonNullable<RoomUiState["match"]> = {
+  matchIndex: 0,
+  targetWins: 2,
+  scores: scoresFixture,
+  roundIndex: 1,
+  maxRounds: 9,
+  rematchReady: membersFixture.map((member) => ({
+    memberId: member.memberId,
+    seat: member.seat,
+    ready: false,
+  })),
+  catalogVersion: "v1",
+};
+
+const guessResult = {
+  kind: "guess",
+  guessId: "a",
+  guessName: "A",
+  isCorrect: false,
+  feedback: [],
+};
+
 describe("roomReducer", () => {
-  it("room.updated 更新成员列表", () => {
+  it("keeps N-player identity associations stable across seat compaction", () => {
+    const members = Array.from({ length: 4 }, (_, index) => ({
+      memberId: `member-${index + 1}`,
+      seat: index + 1,
+      displayName: `player ${index + 1}`,
+      status: "connected" as const,
+      ready: false,
+    }));
+    let state: RoomUiState = {
+      ...initialRoomState,
+      viewer: {
+        memberId: "member-4",
+        role: "player",
+        seat: 4,
+        displayName: "player 4",
+        status: "connected",
+      },
+      members,
+      rematchReady: members.map((member) => ({
+        memberId: member.memberId,
+        seat: member.seat,
+        ready: false,
+      })),
+    };
+    state = roomReducer(
+      state,
+      event("match.rematch", 1, { memberId: "member-4", seat: 4 }),
+    );
+    state = roomReducer(
+      state,
+      event("room.updated", 2, {
+        format: "bo3",
+        mode: "race",
+        turnSeconds: 60,
+        playerLimit: 4,
+        minPlayers: 2,
+        playerCount: 3,
+        availableSeats: 1,
+        spectatorCount: 0,
+        members: [
+          members[0],
+          { ...members[2], seat: 2 },
+          { ...members[3], seat: 3 },
+        ],
+      }),
+    );
+    expect(
+      state.members.find((member) => member.memberId === "member-4")?.seat,
+    ).toBe(3);
+    expect(
+      state.rematchReady.find((member) => member.memberId === "member-4")
+        ?.ready,
+    ).toBe(true);
+  });
+
+  it.each([3, 4, 8])("builds a %i-player race round", (count) => {
+    const members = Array.from({ length: count }, (_, index) => ({
+      memberId: `member-${index + 1}`,
+      seat: index + 1,
+      displayName: `player ${index + 1}`,
+      status: "connected" as const,
+      ready: true,
+    }));
+    const state = roomReducer(
+      {
+        ...initialRoomState,
+        viewer: {
+          memberId: "member-1",
+          role: "player",
+          seat: 1,
+          displayName: "player 1",
+          status: "connected",
+        },
+        members,
+      },
+      event("round.started", 1, {
+        matchIndex: 0,
+        roundIndex: 1,
+        startsAt: "2026-08-06T12:00:03Z",
+        deadline: "2026-08-06T12:15:03Z",
+        maxGuesses: 8,
+      }),
+    );
+    expect(state.round?.self.memberId).toBe("member-1");
+    expect(state.round?.opponents).toHaveLength(count - 1);
+    expect(state.round?.opponents.map((opponent) => opponent.memberId)).toEqual(
+      members.slice(1).map((member) => member.memberId),
+    );
+  });
+
+  it("updates members on room.updated", () => {
     const state = roomReducer(
       initialRoomState,
       event("room.updated", 1, {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
-        members: [
-          { slot: 1, displayName: "房主", status: "connected", ready: false },
-        ],
+        playerLimit: 2,
+        minPlayers: 2,
+        playerCount: 1,
+        availableSeats: 1,
+        members: [membersFixture[0]],
+        spectatorCount: 1,
       }),
     );
+
     expect(state.members).toHaveLength(1);
-    expect(state.room).toBeNull(); // room 信息由快照提供
+    expect(state.room).toBeNull();
   });
 
-  it("match.started 重置比分与历史（新场行）", () => {
+  it("resets score and history on match.started", () => {
     let state: RoomUiState = {
-      ...initialRoomState,
+      ...playerState(),
       match: {
-        matchIndex: 0,
-        targetWins: 2,
-        scoreSlot1: 1,
-        scoreSlot2: 0,
-        roundIndex: 1,
-        maxRounds: 9,
-        rematchReady: [false, false],
-        catalogVersion: "v1",
+        ...matchFixture,
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
       },
-      history: [{ roundIndex: 1, result: "win" as const }],
+      history: [{ roundIndex: 1, result: "win" }],
     };
+
     state = roomReducer(
       state,
       event("match.started", 3, {
@@ -61,26 +218,18 @@ describe("roomReducer", () => {
         matchIndex: 1,
       }),
     );
+
     expect(state.match?.matchIndex).toBe(1);
-    expect(state.match?.scoreSlot1).toBe(0);
+    expect(state.match?.scores.find((score) => score.seat === 1)?.score).toBe(
+      0,
+    );
     expect(state.history).toHaveLength(0);
     expect(state.round).toBeNull();
   });
 
-  it("round.started 建局且 round.playing 解锁（弹窗在 playing 时关闭）", () => {
-    let state: RoomUiState = {
-      ...initialRoomState,
-      match: {
-        matchIndex: 0,
-        targetWins: 2,
-        scoreSlot1: 0,
-        scoreSlot2: 0,
-        roundIndex: 1,
-        maxRounds: 9,
-        rematchReady: [false, false],
-        catalogVersion: "v1",
-      },
-    };
+  it("builds rounds and clears the result once playing starts", () => {
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
+
     state = roomReducer(
       state,
       event("round.started", 4, {
@@ -92,20 +241,30 @@ describe("roomReducer", () => {
       }),
     );
     expect(state.round?.status).toBe("countdown");
+
     state = roomReducer(
       state,
       event("round.ended", 5, {
         matchIndex: 0,
         roundIndex: 1,
-        result: "win",
-        winnerSlot: 1,
-        scores: { slot1: 1, slot2: 0 },
+        viewerResult: "win",
+        winnerMemberId: "member-host",
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
+        results: [
+          { memberId: "member-host", seat: 1, result: "win" },
+          { memberId: "member-guest", seat: 2, result: "loss" },
+        ],
         answer: { id: "a", name: "A", avatarUrl: "" },
-        boards: { slot1: [], slot2: [] },
+        boards: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          guesses: [],
+        })),
       }),
     );
-    expect(state.roundResult?.result).toBe("win");
-    // 下一局 started：弹窗保留（显示倒计时）
+    expect(state.roundResult?.viewerResult).toBe("win");
+    expect(state.roundArchives).toHaveLength(1);
+
     state = roomReducer(
       state,
       event("round.started", 6, {
@@ -118,7 +277,7 @@ describe("roomReducer", () => {
     );
     expect(state.roundResult).not.toBeNull();
     expect(state.round?.status).toBe("countdown");
-    // round.playing：弹窗关闭，新局可猜
+
     state = roomReducer(
       state,
       event("round.playing", 7, { matchIndex: 0, roundIndex: 2 }),
@@ -127,20 +286,9 @@ describe("roomReducer", () => {
     expect(state.round?.status).toBe("playing");
   });
 
-  it("round.opponent.guess 追加对手行；round.ended 更新比分与历史", () => {
-    let state: RoomUiState = {
-      ...initialRoomState,
-      match: {
-        matchIndex: 0,
-        targetWins: 2,
-        scoreSlot1: 0,
-        scoreSlot2: 0,
-        roundIndex: 1,
-        maxRounds: 9,
-        rematchReady: [false, false],
-        catalogVersion: "v1",
-      },
-    };
+  it("updates opponent rows, score, and history", () => {
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
+
     state = roomReducer(
       state,
       event("round.started", 4, {
@@ -156,41 +304,69 @@ describe("roomReducer", () => {
       event("round.opponent.guess", 5, {
         matchIndex: 0,
         roundIndex: 1,
+        memberId: "member-guest",
+        seat: 2,
         rowIndex: 1,
+        fieldOrder: [
+          "species",
+          "firstAppearance",
+          "affiliations",
+          "releaseYear",
+          "locations",
+          "hairColors",
+        ],
         statuses: ["miss", "exact", "partial", "lower", "miss", "unknown"],
       }),
     );
-    expect(state.round?.opponent.rows).toHaveLength(1);
+    expect(state.round?.opponents[0]?.rows).toHaveLength(1);
+    expect(state.round?.opponents[0]?.fieldOrder).toEqual([
+      "species",
+      "firstAppearance",
+      "affiliations",
+      "releaseYear",
+      "locations",
+      "hairColors",
+    ]);
+
     state = roomReducer(
       state,
       event("round.ended", 6, {
         matchIndex: 0,
         roundIndex: 1,
-        result: "loss",
-        winnerSlot: 2,
-        scores: { slot1: 0, slot2: 1 },
+        viewerResult: "loss",
+        winnerMemberId: "member-guest",
+        scores: [scoresFixture[0], { ...scoresFixture[1], score: 1 }],
+        results: [
+          { memberId: "member-host", seat: 1, result: "loss" },
+          { memberId: "member-guest", seat: 2, result: "win" },
+        ],
         answer: { id: "a", name: "A", avatarUrl: "" },
-        boards: { slot1: [], slot2: [] },
+        boards: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          guesses: [],
+        })),
       }),
     );
-    expect(state.match?.scoreSlot2).toBe(1);
+    expect(state.match?.scores.find((score) => score.seat === 2)?.score).toBe(
+      1,
+    );
     expect(state.history[0]).toEqual({ roundIndex: 1, result: "loss" });
   });
 
-  it("接力事件追加共享行并更新当前手", () => {
+  it("adds full spectator guess rows to both boards", () => {
     let state: RoomUiState = {
       ...initialRoomState,
-      match: {
-        matchIndex: 0,
-        targetWins: 2,
-        scoreSlot1: 0,
-        scoreSlot2: 0,
-        roundIndex: 1,
-        maxRounds: 9,
-        rematchReady: [false, false],
-        catalogVersion: "v1",
+      viewer: {
+        memberId: "spectator",
+        role: "spectator",
+        displayName: "watcher",
+        status: "connected",
       },
+      members: membersFixture,
+      match: matchFixture,
     };
+
     state = roomReducer(
       state,
       event("round.started", 4, {
@@ -199,13 +375,48 @@ describe("roomReducer", () => {
         startsAt: "2026-08-06T12:00:03Z",
         deadline: "2026-08-06T12:15:03Z",
         maxGuesses: 8,
-        turnSlot: 1,
+      }),
+    );
+    state = roomReducer(
+      state,
+      event("round.spectator.guess", 5, {
+        matchIndex: 0,
+        roundIndex: 1,
+        memberId: "member-guest",
+        seat: 2,
+        rowIndex: 1,
+        guess: guessResult,
+      }),
+    );
+
+    expect(
+      state.round?.boards?.find((board) => board.seat === 1)?.guesses,
+    ).toHaveLength(0);
+    expect(
+      state.round?.boards?.find((board) => board.seat === 2)?.guesses,
+    ).toEqual([guessResult]);
+  });
+
+  it("updates relay shared rows and current turn", () => {
+    let state: RoomUiState = { ...playerState(), match: matchFixture };
+
+    state = roomReducer(
+      state,
+      event("round.started", 4, {
+        matchIndex: 0,
+        roundIndex: 1,
+        startsAt: "2026-08-06T12:00:03Z",
+        deadline: "2026-08-06T12:15:03Z",
+        maxGuesses: 8,
+        turnMemberId: "member-host",
+        turnSeat: 1,
         turnDeadline: "2026-08-06T12:01:03Z",
         maxTurnsPerPlayer: 8,
         maxSkipsPerPlayer: 2,
       }),
     );
     expect(state.round?.maxSkipsPerPlayer).toBe(2);
+
     state = roomReducer(
       state,
       event("round.shared.guess", 5, {
@@ -213,55 +424,60 @@ describe("roomReducer", () => {
         roundIndex: 1,
         row: {
           index: 1,
-          memberSlot: 1,
+          memberId: "member-host",
+          seat: 1,
           kind: "guess",
-          guess: {
-            guessId: "a",
-            guessName: "A",
-            isCorrect: false,
-            feedback: [],
-          },
+          guess: guessResult,
         },
-        nextTurnSlot: 2,
+        nextTurnMemberId: "member-guest",
+        nextTurnSeat: 2,
         nextTurnDeadline: "2026-08-06T12:02:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(1);
-    expect(state.round?.turnSlot).toBe(2);
+    expect(state.round?.turnSeat).toBe(2);
+
     state = roomReducer(
       state,
       event("round.turn.timeout", 6, {
         matchIndex: 0,
         roundIndex: 1,
-        row: { index: 2, memberSlot: 2, kind: "timeout" },
-        nextTurnSlot: 1,
+        row: { index: 2, memberId: "member-guest", seat: 2, kind: "timeout" },
+        nextTurnMemberId: "member-host",
+        nextTurnSeat: 1,
         nextTurnDeadline: "2026-08-06T12:03:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(2);
-    expect(state.round?.turnSlot).toBe(1);
+    expect(state.round?.turnSeat).toBe(1);
+
     state = roomReducer(
       state,
       event("round.turn.pass", 7, {
         matchIndex: 0,
         roundIndex: 1,
-        row: { index: 3, memberSlot: 1, kind: "pass" },
-        nextTurnSlot: 2,
+        row: { index: 3, memberId: "member-host", seat: 1, kind: "pass" },
+        nextTurnMemberId: "member-guest",
+        nextTurnSeat: 2,
         nextTurnDeadline: "2026-08-06T12:04:03Z",
       }),
     );
     expect(state.round?.shared?.rows).toHaveLength(3);
     expect(state.round?.shared?.rows[2]?.kind).toBe("pass");
-    expect(state.round?.turnSlot).toBe(2);
+    expect(state.round?.turnSeat).toBe(2);
   });
 
-  it("match.ended 切终态（finished）", () => {
+  it("marks the room finished on match.ended", () => {
     const existingRoundResult = {
       matchIndex: 0,
       roundIndex: 2,
-      result: "win",
-      winnerSlot: 1,
-      scores: { slot1: 2, slot2: 0 },
+      viewerResult: "win",
+      winnerMemberId: "member-host",
+      scores: [{ ...scoresFixture[0], score: 2 }, scoresFixture[1]],
+      results: [
+        { memberId: "member-host", seat: 1, result: "win" },
+        { memberId: "member-guest", seat: 2, result: "loss" },
+      ],
       answer: {
         id: "a",
         name: "A",
@@ -270,28 +486,22 @@ describe("roomReducer", () => {
         workTitle: "TH01",
         workCode: "TH01",
       },
-      boards: { slot1: [], slot2: [] },
+      boards: membersFixture.map((member) => ({
+        memberId: member.memberId,
+        seat: member.seat,
+        guesses: [],
+      })),
     };
     const state = roomReducer(
       {
         ...initialRoomState,
-        room: {
-          roomId: "room-1",
-          roomCode: "ABC123",
-          format: "bo3",
-          mode: "race",
-          turnSeconds: 60,
-          status: "playing",
-        },
+        room: roomFixture("playing"),
+        members: membersFixture,
+        viewer: playerState().viewer,
         match: {
-          matchIndex: 0,
-          targetWins: 2,
-          scoreSlot1: 1,
-          scoreSlot2: 0,
+          ...matchFixture,
+          scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
           roundIndex: 2,
-          maxRounds: 9,
-          rematchReady: [false, false],
-          catalogVersion: "v1",
         },
         round: {
           status: "ended",
@@ -299,41 +509,63 @@ describe("roomReducer", () => {
           deadline: "2026-08-06T12:15:03Z",
           maxGuesses: 8,
           self: { guesses: [] },
-          opponent: { rows: [] },
+          opponents: [
+            {
+              memberId: "member-guest",
+              seat: 2,
+              fieldOrder: [
+                "firstAppearance",
+                "releaseYear",
+                "species",
+                "affiliations",
+                "locations",
+                "hairColors",
+              ],
+              rows: [],
+            },
+          ],
         },
         roundResult: existingRoundResult,
       } as RoomUiState,
       event("match.ended", 9, {
         matchIndex: 0,
-        result: "win",
-        winnerSlot: 1,
-        scores: { slot1: 2, slot2: 0 },
+        viewerResult: "win",
+        winnerMemberId: "member-host",
+        scores: [{ ...scoresFixture[0], score: 2 }, scoresFixture[1]],
+        results: [
+          { memberId: "member-host", seat: 1, result: "win" },
+          { memberId: "member-guest", seat: 2, result: "loss" },
+        ],
         reason: "normal",
+        retentionEndsAt: "2026-08-06T12:30:00Z",
       }),
     );
+
     expect(state.matchResult?.reason).toBe("normal");
     expect(state.roundResult?.answer.name).toBe("A");
     expect(state.round?.status).toBe("ended");
     expect(state.room?.status).toBe("finished");
+    expect(state.room?.expiresAt).toBe("2026-08-06T12:30:00Z");
   });
 
-  it("match.rematch 标记确认；room.closed 终态", () => {
+  it("marks rematch and closes the room", () => {
     let state = roomReducer(
       {
         ...initialRoomState,
-        room: {
-          roomId: "room-1",
-          roomCode: "ABC123",
-          format: "bo3",
-          mode: "race",
-          turnSeconds: 60,
-          status: "finished",
-        },
-        rematchReady: [false, false],
+        room: roomFixture("finished"),
+        rematchReady: membersFixture.map((member) => ({
+          memberId: member.memberId,
+          seat: member.seat,
+          ready: false,
+        })),
       } as RoomUiState,
-      event("match.rematch", 10, { memberSlot: 2 }),
+      event("match.rematch", 10, { memberId: "member-guest", seat: 2 }),
     );
-    expect(state.rematchReady).toEqual([false, true]);
+    expect(state.rematchReady).toEqual([
+      { memberId: "member-host", seat: 1, ready: false },
+      { memberId: "member-guest", seat: 2, ready: true },
+    ]);
+
     state = roomReducer(
       state,
       event("room.closed", 11, { reason: "member_left" }),
@@ -341,8 +573,7 @@ describe("roomReducer", () => {
     expect(state.room?.status).toBe("closed");
   });
 
-  it("乱序/重复按 sequence 去重", () => {
-    // 模拟调用方去重：sequence 不递增的事件被跳过
+  it("deduplicates by sequence", () => {
     let applied = 0;
     let state = initialRoomState;
     for (const e of [
@@ -350,59 +581,103 @@ describe("roomReducer", () => {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
+        minPlayers: 2,
+        playerCount: 0,
+        availableSeats: 2,
         members: [],
+        spectatorCount: 0,
       }),
       event("room.updated", 3, {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
+        minPlayers: 2,
+        playerCount: 0,
+        availableSeats: 2,
         members: [],
-      }), // 乱序：跳过
+        spectatorCount: 0,
+      }),
       event("room.updated", 5, {
         format: "bo3",
         mode: "race",
         turnSeconds: 60,
+        playerLimit: 2,
+        minPlayers: 2,
+        playerCount: 0,
+        availableSeats: 2,
         members: [],
-      }), // 重复：跳过
+        spectatorCount: 0,
+      }),
     ]) {
       if (e.sequence <= applied) continue;
       applied = e.sequence;
       state = roomReducer(state, e);
     }
     expect(applied).toBe(5);
+    expect(state.members).toHaveLength(0);
   });
 });
 
 describe("applySnapshot", () => {
-  it("快照应用状态并回放事件（去重）", () => {
+  it("applies snapshot state and replays events", () => {
     const snapshot = {
       roomId: "room-1",
       roomCode: "ABC123",
       format: "bo3",
       mode: "race",
       turnSeconds: 60,
+      playerLimit: 2,
+      minPlayers: 2,
+      playerCount: 1,
+      availableSeats: 1,
       status: "playing",
+      expiresAt: "2026-08-06T12:30:00Z",
+      viewer: {
+        memberId: "member-host",
+        role: "player",
+        seat: 1,
+        displayName: "host",
+        status: "connected",
+      },
       members: [
-        { slot: 1, displayName: "房主", status: "connected", ready: true },
+        {
+          memberId: "member-host",
+          seat: 1,
+          displayName: "host",
+          status: "connected",
+          ready: true,
+        },
       ],
+      spectatorCount: 0,
       match: {
-        matchIndex: 0,
-        targetWins: 2,
-        scoreSlot1: 1,
-        scoreSlot2: 0,
-        roundIndex: 1,
-        maxRounds: 9,
-        rematchReady: [false, false],
-        catalogVersion: "v1",
+        ...matchFixture,
+        scores: [{ ...scoresFixture[0], score: 1 }, scoresFixture[1]],
       },
       round: {
         status: "playing",
         startsAt: "2026-08-06T12:00:03Z",
         deadline: "2026-08-06T12:15:03Z",
         maxGuesses: 8,
-        self: { guesses: [] },
-        opponent: { rows: [] },
+        self: { memberId: "member-host", seat: 1, guesses: [] },
+        opponents: [
+          {
+            memberId: "member-guest",
+            seat: 2,
+            fieldOrder: [
+              "firstAppearance",
+              "releaseYear",
+              "species",
+              "affiliations",
+              "locations",
+              "hairColors",
+            ],
+            rows: [],
+          },
+        ],
       },
+      gameSequence: 1,
       events: [
         event("match.started", 1, {
           format: "bo3",
@@ -414,11 +689,13 @@ describe("applySnapshot", () => {
         }),
       ],
     };
+
     const state = applySnapshot(initialRoomState, snapshot as never);
     expect(state.room?.roomCode).toBe("ABC123");
+    expect(state.viewer?.role).toBe("player");
     expect(state.match?.matchIndex).toBe(0);
     expect(state.round?.status).toBe("playing");
-    expect(state.lastSequence).toBe(1);
+    expect(state.appliedGameSequence).toBe(1);
   });
 
   it("preserves the current sequence when a fallback snapshot has no new events", () => {
@@ -428,20 +705,41 @@ describe("applySnapshot", () => {
       format: "bo3",
       mode: "race",
       turnSeconds: 60,
+      playerLimit: 2,
+      minPlayers: 2,
+      playerCount: 1,
+      availableSeats: 1,
       status: "lobby",
+      expiresAt: "2026-08-06T12:30:00Z",
+      viewer: {
+        memberId: "member-host",
+        role: "player",
+        seat: 1,
+        displayName: "host",
+        status: "connected",
+      },
       members: [
-        { slot: 1, displayName: "host", status: "connected", ready: false },
+        {
+          memberId: "member-host",
+          seat: 1,
+          displayName: "host",
+          status: "connected",
+          ready: false,
+        },
       ],
+      spectatorCount: 0,
       match: null,
       round: null,
+      gameSequence: 12,
       events: [],
     };
+
     const state = applySnapshot(
-      { ...initialRoomState, lastSequence: 12 },
+      { ...initialRoomState, appliedGameSequence: 12 },
       snapshot as never,
     );
 
-    expect(state.lastSequence).toBe(12);
+    expect(state.appliedGameSequence).toBe(12);
     expect(state.room?.roomCode).toBe("ABC123");
   });
 });

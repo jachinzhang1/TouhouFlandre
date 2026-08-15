@@ -26,6 +26,7 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
+import { isNPlayerRaceUiEnabled } from "../../config/multiplayerRollout";
 import {
   clearMultiplayerGameSeed,
   installGameSeedConsole,
@@ -38,14 +39,16 @@ import {
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
 const MODE_RULES: Record<MultiplayerMode, string> = {
-  race: `**竞速模式**中，双方会同时竞猜同一个隐藏角色。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。任意一方率先猜中目标角色时，本局**立即结束**并为该玩家记一胜；若双方都用尽次数限制仍无人猜中，或本局总倒计时结束，则本局判为平局。
+  race: `**竞速模式**中，2 至 8 名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
 
-每一小局结束后会揭示答案、当前比分和双方完整棋盘。先达到目标胜局的一方赢得整场对局。`,
+实际开局为 2 人时使用所选双人赛制，率先猜中者赢得本局。实际开局超过 2 人时使用积分淘汰制：猜中越快，本局得分越高；放弃、次数耗尽或超时得 0 分。达到淘汰轮次后，每局会淘汰累计积分最低的玩家，直至决出最终排行榜。`,
   relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，出题范围和猜测次数限制**由房主决定**。当前轮到的玩家可以提交一次猜测或主动选择空过。猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
 };
+const DUO_RACE_RULE = `**竞速模式**中，两名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
 
+率先猜中者赢得本局，并按所选双人赛制决定整场胜负。`;
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "操作失败。";
 
@@ -54,6 +57,7 @@ export function MultiLobby() {
   const [format, setFormat] = useState<MultiRoomFormat>("bo3");
   const [mode, setMode] = useState<MultiplayerMode>("race");
   const [turnSeconds, setTurnSeconds] = useState<RelayTurnSeconds>(60);
+  const [playerLimit, setPlayerLimit] = useState(2);
   const [nickname, setNickname] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [joinNickname, setJoinNickname] = useState("");
@@ -62,6 +66,7 @@ export function MultiLobby() {
   const [infoError, setInfoError] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
 
   useEffect(() => {
     return installGameSeedConsole({
@@ -108,6 +113,7 @@ export function MultiLobby() {
       const created = await api.createRoom({
         format,
         mode,
+        ...(mode === "race" && nPlayerRaceEnabled ? { playerLimit } : {}),
         turnSeconds,
         displayName: nickname || undefined,
         questionScope,
@@ -117,7 +123,8 @@ export function MultiLobby() {
         roomId: created.roomId,
         roomCode: created.roomCode,
         guestToken: created.guestToken,
-        memberSlot: created.member.slot === 2 ? 2 : 1,
+        role: created.viewer.role,
+        memberId: created.viewer.memberId,
       });
       router.push(`/multi/room/${created.roomCode}`);
     } catch (e) {
@@ -138,7 +145,8 @@ export function MultiLobby() {
         roomId: joined.roomId,
         roomCode: normalizedCode,
         guestToken: joined.guestToken,
-        memberSlot: joined.member.slot === 2 ? 2 : 1,
+        role: joined.viewer.role,
+        memberId: joined.viewer.memberId,
       });
       router.push(`/multi/room/${normalizedCode}`);
     } catch (e) {
@@ -223,7 +231,10 @@ export function MultiLobby() {
                     <span className="mt-0.5 text-[0.68rem] font-normal text-ink-soft">
                       {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
                     </span>
-                    <ModeRulePopover mode={option} />
+                    <ModeRulePopover
+                      mode={option}
+                      nPlayerRaceEnabled={nPlayerRaceEnabled}
+                    />
                   </label>
                 ))}
               </div>
@@ -257,8 +268,38 @@ export function MultiLobby() {
                 </div>
               </fieldset>
             )}
+            {mode === "race" && nPlayerRaceEnabled && (
+              <label className="mb-4 block">
+                <span className="mb-1 flex items-center justify-between text-[0.75rem] text-ink-soft">
+                  <span>玩家上限</span>
+                  <output
+                    htmlFor="create-player-limit"
+                    className="font-bold tabular-nums text-ink"
+                  >
+                    {playerLimit} 人
+                  </output>
+                </span>
+                <input
+                  id="create-player-limit"
+                  aria-label="玩家上限（2-8）"
+                  type="range"
+                  min={2}
+                  max={8}
+                  step={1}
+                  value={playerLimit}
+                  onChange={(event) =>
+                    setPlayerLimit(
+                      Math.min(8, Math.max(2, Number(event.target.value) || 2)),
+                    )
+                  }
+                  className="w-full accent-vermilion"
+                />
+              </label>
+            )}
             <fieldset className="mb-4">
-              <legend className="sr-only">赛制</legend>
+              <legend className="mb-1 text-[0.75rem] text-ink-soft">
+                双人赛制
+              </legend>
               <div className="grid grid-cols-2 gap-2">
                 {FORMATS.map((f) => (
                   <label
@@ -342,8 +383,12 @@ export function MultiLobby() {
                 {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ??
                   info.mode}
                 {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
-                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 当前{" "}
-                {info.memberCount}/2 人
+                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家{" "}
+                {info.playerCount}/{info.playerLimit} · 最少 {info.minPlayers}{" "}
+                人开局
+                {info.spectatorCount > 0
+                  ? ` · 观战 ${info.spectatorCount}`
+                  : ""}
               </p>
             )}
             {codeValid && infoError && !infoLoading && (
@@ -383,7 +428,11 @@ export function MultiLobby() {
               className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <DoorOpen size={16} aria-hidden="true" />
-              {busy === "join" ? "加入中……" : "加入房间"}
+              {busy === "join"
+                ? "加入中……"
+                : info?.joinRole === "spectator"
+                  ? "进入观战"
+                  : "加入房间"}
             </button>
           </div>
         </div>
@@ -392,7 +441,15 @@ export function MultiLobby() {
   );
 }
 
-function ModeRulePopover({ mode }: { mode: MultiplayerMode }) {
+function ModeRulePopover({
+  mode,
+  nPlayerRaceEnabled,
+}: {
+  mode: MultiplayerMode;
+  nPlayerRaceEnabled: boolean;
+}) {
+  const rule =
+    mode === "race" && !nPlayerRaceEnabled ? DUO_RACE_RULE : MODE_RULES[mode];
   return (
     <div
       id={`mode-rule-${mode}`}
@@ -400,7 +457,7 @@ function ModeRulePopover({ mode }: { mode: MultiplayerMode }) {
       className="mode-rule-popover pointer-events-none absolute right-0 bottom-[calc(100%+10px)] left-0 z-20 rounded-[6px] border border-line bg-paper px-3 py-2.5 text-left text-[0.72rem] font-normal leading-[1.65] text-ink shadow-lg"
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
-        {MODE_RULES[mode]}
+        {rule}
       </ReactMarkdown>
     </div>
   );

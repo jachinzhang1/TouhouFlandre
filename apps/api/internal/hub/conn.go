@@ -4,12 +4,14 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -30,39 +32,64 @@ const HeartbeatInterval = 30 * time.Second
 
 // Conn 单成员连接。
 type Conn struct {
-	hub          *Hub
-	ws           *websocket.Conn
-	roomID       string
-	member       repo.MultiMember
-	lastSequence int64 // hello 携带的客户端水位（重放起点）
+	hub              *Hub
+	ws               *websocket.Conn
+	roomID           string
+	member           repo.MultiMember
+	lastGameSequence int64 // hello 携带的客户端已确认游戏水位（重放起点）
+	chatSubscribed   bool
+	lastChatPosition int64
+	barrierMu        sync.Mutex
+	buffering        bool
+	buffered         map[int64][]byte
+	bufferedChat     map[int64]bufferedChatFrame
 
-	send      chan []byte
-	closeOnce sync.Once
-	closed    chan struct{}
-	aliveMu   sync.Mutex
-	isAlive   bool
-	afterReplaced atomic.Bool // replaced 帧已入队（写出后关闭连接）
+	send           chan outboundFrame
+	closeOnce      sync.Once
+	closed         chan struct{}
+	aliveMu        sync.Mutex
+	isAlive        bool
+	invalidated    atomic.Bool // role/seat 已变化，停止使用连接建立时的缓存身份
+	skipDisconnect atomic.Bool // 服务端身份失效关闭不应写入 disconnected
 
 	reasonMu    sync.Mutex
 	closeReason string // 断开原因（cleanup 统一记录；首个设置者生效）
 }
 
+type outboundFrame struct {
+	data       []byte
+	closeAfter bool
+}
+
+type bufferedChatFrame struct {
+	data    []byte
+	visible bool
+}
+
 // NewConn 构造连接（hello 鉴权由调用方完成；Serve 阻塞运行）。发送队列长度取自 hub 配置。
-func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMember, lastSequence int64) *Conn {
+func NewConn(hub *Hub, ws *websocket.Conn, roomID string, member repo.MultiMember, lastGameSequence int64, lastChatPosition *int64) *Conn {
 	queue := hub.sendQueue
 	if queue <= 0 {
 		queue = SendQueueSize
 	}
-	return &Conn{
-		hub:          hub,
-		ws:           ws,
-		roomID:       roomID,
-		member:       member,
-		lastSequence: lastSequence,
-		send:         make(chan []byte, queue),
-		closed:       make(chan struct{}),
-		isAlive:      true,
+	c := &Conn{
+		hub:              hub,
+		ws:               ws,
+		roomID:           roomID,
+		member:           member,
+		lastGameSequence: lastGameSequence,
+		buffering:        true,
+		buffered:         make(map[int64][]byte),
+		bufferedChat:     make(map[int64]bufferedChatFrame),
+		send:             make(chan outboundFrame, queue),
+		closed:           make(chan struct{}),
+		isAlive:          true,
 	}
+	if lastChatPosition != nil {
+		c.chatSubscribed = true
+		c.lastChatPosition = *lastChatPosition
+	}
+	return c
 }
 
 // setCloseReason 记录断开原因（first-wins：具体路径先设置，通用关闭不覆盖）。
@@ -91,14 +118,48 @@ func (c *Conn) alive() bool {
 // enqueue 非阻塞入队；队列写满返回 false（慢消费者，08 §8.5）。
 func (c *Conn) enqueue(frame []byte) bool {
 	select {
-	case c.send <- frame:
+	case c.send <- outboundFrame{data: frame}:
 		return true
 	default:
 		return false
 	}
 }
 
-// Serve 阻塞运行连接：注册（替换旧连接）→ hello-ok → 重放 → 补推 → 读写循环。
+// deliverGameFrame buffers room publications until replay and barrier draining finish.
+func (c *Conn) deliverGameFrame(sequence int64, frame []byte) bool {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		return true
+	}
+	if c.buffering {
+		if _, exists := c.buffered[sequence]; !exists {
+			c.buffered[sequence] = frame
+		}
+		return true
+	}
+	return c.enqueue(frame)
+}
+
+func (c *Conn) deliverChatFrame(position int64, frame []byte, visible bool) bool {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() || !c.chatSubscribed {
+		return true
+	}
+	if c.buffering {
+		if _, exists := c.bufferedChat[position]; !exists {
+			c.bufferedChat[position] = bufferedChatFrame{data: frame, visible: visible}
+		}
+		return true
+	}
+	if !visible {
+		return true
+	}
+	return c.enqueue(frame)
+}
+
+// Serve 阻塞运行连接：注册（替换旧连接）→ hello-ok → 重放 → sync.complete → 实时流。
 func (c *Conn) Serve() {
 	defer c.cleanup()
 
@@ -106,69 +167,240 @@ func (c *Conn) Serve() {
 	if old := c.hub.Register(c); old != nil {
 		old.sendReplacedAndClose()
 	}
-	if err := c.writeText(multi.HelloOkMessage{Type: "hello-ok", RoomId: c.roomID, NextSequence: c.hub.roomEventSeq(c.roomID)}); err != nil {
+	c.hub.runSyncHook("registered")
+	room, err := c.hub.roomState(c.roomID)
+	if err != nil {
+		c.setCloseReason("watermark_failed")
+		return
+	}
+	targetGameSequence := room.EventSeq
+	targetChatPosition := c.lastChatPosition
+	var targetChatCursor *string
+	if c.chatSubscribed {
+		targetChatPosition = room.ChatSeq
+		cursor := c.hub.chatCursor.Encode(room.ID, room.CreatedAt.Time, targetChatPosition, multi.ChatCursorAfter)
+		targetChatCursor = &cursor
+	}
+	c.hub.runSyncHook("watermark_captured")
+	// Bring the room publisher watermark up to date after registration. The new
+	// connection remains buffering, so overlap with replay is deduplicated below.
+	c.hub.Publish(c.roomID)
+	if c.chatSubscribed {
+		c.hub.PublishChat(c.roomID)
+	}
+	if err := c.writeText(multi.HelloOkMessage{Type: "hello-ok", RoomID: c.roomID, TargetGameSequence: targetGameSequence, TargetChatCursor: targetChatCursor}); err != nil {
 		c.setCloseReason("hello_ok_failed")
 		slog.Error("ws: hello-ok write failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
 		return
 	}
-	if err := c.replay(); err != nil {
-		c.setCloseReason("replay_failed")
-		slog.Error("ws: replay failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
-		return
-	}
-	c.hub.Publish(c.roomID) // 注册与重放间隙产生的事件立即补推（水位已被 Register 校准）
-
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		c.writeLoop()
 	}()
+	defer func() {
+		c.closeQuietly()
+		wg.Wait()
+	}()
+	deliveredGameSequence, err := c.replay(targetGameSequence)
+	if err != nil {
+		c.setCloseReason("replay_failed")
+		slog.Error("ws: replay failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
+		return
+	}
+	deliveredChatPosition := c.lastChatPosition
+	if c.chatSubscribed {
+		deliveredChatPosition, err = c.replayChat(room, targetChatPosition)
+		if err != nil {
+			multi.DefaultMetrics.IncChatProjectionFailure("replay")
+			c.setCloseReason("chat_replay_failed")
+			slog.Error("ws: chat replay failed", "room_id", c.roomID, "member_id", c.member.ID, "error", err)
+			return
+		}
+	}
+	c.hub.runSyncHook("replay_complete")
+	if !c.finishBarrier(room, deliveredGameSequence, deliveredChatPosition) {
+		c.closeSlow()
+		return
+	}
+	c.hub.runSyncHook("live")
+
 	c.readLoop()
-	close(c.send)
-	wg.Wait()
 }
 
-// replay 从 lastSequence+1 重放缺口事件（逐观察者投影，08 §8.4）。
-func (c *Conn) replay() error {
+func (c *Conn) replayChat(room repo.MultiRoom, targetChatPosition int64) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	current, err := c.hub.q.GetMember(ctx, c.member.ID)
+	if err != nil || current.Role != c.member.Role {
+		return c.lastChatPosition, errors.New("chat member role changed")
+	}
+	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-c.hub.chatRetention), Valid: true}
+	delivered := c.lastChatPosition
+	for delivered < targetChatPosition {
+		rows, err := c.hub.q.ListChatMessagesAfter(ctx, repo.ListChatMessagesAfterParams{
+			RoomID: c.roomID, AfterPosition: delivered, HighPosition: targetChatPosition, Cutoff: cutoff,
+		})
+		if err != nil {
+			return delivered, err
+		}
+		if len(rows) == 0 {
+			return delivered, errors.New("chat replay history unavailable")
+		}
+		for _, message := range rows {
+			visible := multi.CanViewChatChannel(current.Role, message.Channel)
+			var frame []byte
+			if visible {
+				frame, err = c.hub.chatFrame(message, room)
+				if err != nil {
+					return delivered, err
+				}
+			}
+			ok, invalidated := c.deliverReplayChatFrame(message.Position, frame, visible)
+			if invalidated {
+				return delivered, nil
+			}
+			if !ok {
+				return delivered, errors.New("chat replay queue full")
+			}
+			delivered = message.Position
+			c.lastChatPosition = delivered
+		}
+	}
+	return delivered, nil
+}
+
+func (c *Conn) deliverReplayChatFrame(position int64, frame []byte, visible bool) (delivered bool, invalidated bool) {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		return false, true
+	}
+	if visible && !c.enqueue(frame) {
+		return false, false
+	}
+	delete(c.bufferedChat, position)
+	return true, false
+}
+
+// replay 从 lastGameSequence+1 重放缺口；每个 sequence 投递业务事件或 cursor。
+func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	events, err := c.hub.q.ListEventsAfterSeq(ctx, repo.ListEventsAfterSeqParams{
-		RoomID: c.roomID, Sequence: c.lastSequence,
+		RoomID: c.roomID, Sequence: c.lastGameSequence,
 	})
 	if err != nil {
-		return err
+		return c.lastGameSequence, err
 	}
 	if len(events) == 0 {
-		return nil
+		return c.lastGameSequence, nil
 	}
 	members, err := c.hub.q.ListMembers(ctx, c.roomID)
 	if err != nil {
-		return err
+		return c.lastGameSequence, err
 	}
 	memberSlotByID := map[string]int32{}
 	for _, m := range members {
-		memberSlotByID[m.ID] = m.Slot
+		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
 	charCache := map[string]map[string]game.Character{}
 	for _, event := range events {
-		payload, skip, err := multi.ProjectEvent(ctx, c.hub.q, event, c.roomID, c.member, memberSlotByID, charCache)
-		if err != nil || skip {
-			if err != nil {
-				return err
-			}
-			continue
+		if event.Sequence > targetGameSequence {
+			break
 		}
-		frame, err := envelopeFrame(event, payload)
+		projected, skip, err := multi.ProjectEvent(ctx, c.hub.q, c.hub.projectionSecret, event, c.roomID, c.member, memberSlotByID, charCache)
 		if err != nil {
-			return err
+			return c.lastGameSequence, err
 		}
-		if !c.enqueue(frame) {
+		frame, err := gameFrame(event, projected, skip)
+		if err != nil {
+			return c.lastGameSequence, err
+		}
+		delivered, invalidated := c.deliverReplayFrame(event.Sequence, frame)
+		if invalidated {
+			return c.lastGameSequence, nil
+		}
+		if !delivered {
 			c.closeSlow()
-			return nil
+			return event.Sequence, nil
+		}
+		if event.Sequence > c.lastGameSequence {
+			c.lastGameSequence = event.Sequence
 		}
 	}
-	return nil
+	return c.lastGameSequence, nil
+}
+
+func (c *Conn) deliverReplayFrame(sequence int64, frame []byte) (delivered bool, invalidated bool) {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		return false, true
+	}
+	if !c.enqueue(frame) {
+		return false, false
+	}
+	delete(c.buffered, sequence)
+	return true, false
+}
+
+// finishBarrier drains buffered publications in sequence order while new publications
+// keep joining the same map. With the barrier lock held, enqueue sync.complete and flip
+// live atomically so all later publications can only follow the completion frame.
+func (c *Conn) finishBarrier(room repo.MultiRoom, deliveredGameSequence, deliveredChatPosition int64) bool {
+	c.barrierMu.Lock()
+	defer c.barrierMu.Unlock()
+	if c.invalidated.Load() {
+		clear(c.buffered)
+		clear(c.bufferedChat)
+		return true
+	}
+
+	for {
+		frame, ok := c.buffered[deliveredGameSequence+1]
+		if !ok {
+			break
+		}
+		if !c.enqueue(frame) {
+			return false
+		}
+		deliveredGameSequence++
+		delete(c.buffered, deliveredGameSequence)
+	}
+	for sequence := range c.buffered {
+		if sequence <= deliveredGameSequence {
+			delete(c.buffered, sequence)
+		}
+	}
+	var chatCursor *string
+	if c.chatSubscribed {
+		for {
+			frame, ok := c.bufferedChat[deliveredChatPosition+1]
+			if !ok {
+				break
+			}
+			if frame.visible && !c.enqueue(frame.data) {
+				return false
+			}
+			deliveredChatPosition++
+			delete(c.bufferedChat, deliveredChatPosition)
+		}
+		for position := range c.bufferedChat {
+			if position <= deliveredChatPosition {
+				delete(c.bufferedChat, position)
+			}
+		}
+		cursor := c.hub.chatCursor.Encode(room.ID, room.CreatedAt.Time, deliveredChatPosition, multi.ChatCursorAfter)
+		chatCursor = &cursor
+	}
+	complete, err := json.Marshal(multi.SyncCompleteMessage{Type: "sync.complete", GameSequence: deliveredGameSequence, ChatCursor: chatCursor})
+	if err != nil || !c.enqueue(complete) {
+		return false
+	}
+	c.buffering = false
+	return true
 }
 
 // writeLoop 推送队列帧并定期心跳。
@@ -182,15 +414,15 @@ func (c *Conn) writeLoop() {
 				return
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
-			err := c.ws.Write(ctx, websocket.MessageText, frame)
+			err := c.ws.Write(ctx, websocket.MessageText, frame.data)
 			cancel()
 			if err != nil {
 				c.setCloseReason("write_error")
 				c.closeQuietly()
 				return
 			}
-			if c.afterReplaced.Load() && len(c.send) == 0 {
-				c.closeQuietly() // replaced 帧已送达（队列排空），关闭旧连接
+			if frame.closeAfter {
+				c.closeQuietly()
 				return
 			}
 		case <-heartbeat.C:
@@ -245,11 +477,34 @@ func (c *Conn) sendReplacedAndClose() {
 	c.setCloseReason("replaced")
 	frame, _ := json.Marshal(multi.ReplacedMessage{Type: "replaced", Reason: "replaced"})
 	select {
-	case c.send <- frame:
-		c.afterReplaced.Store(true)
+	case c.send <- outboundFrame{data: frame, closeAfter: true}:
 	default:
 		c.closeQuietly()
 	}
+}
+
+// sendMemberChangedAndClose 使连接建立时缓存的 role/seat 立即失效。该关闭由服务端
+// 身份转换触发，不应把仍在线的 member 误记为 disconnected。
+func (c *Conn) sendMemberChangedAndClose() {
+	if !c.invalidated.CompareAndSwap(false, true) {
+		return
+	}
+	c.setCloseReason("member_changed")
+	c.skipDisconnect.Store(true)
+	c.aliveMu.Lock()
+	c.isAlive = false
+	c.aliveMu.Unlock()
+
+	c.barrierMu.Lock()
+	clear(c.buffered)
+	clear(c.bufferedChat)
+	frame, _ := json.Marshal(multi.ReplacedMessage{Type: "replaced", Reason: "member_changed"})
+	select {
+	case c.send <- outboundFrame{data: frame, closeAfter: true}:
+	default:
+		c.closeQuietly()
+	}
+	c.barrierMu.Unlock()
 }
 
 // closeSlow 慢消费者：发送队列写满 → 1013（08 §8.5），不阻塞房间广播。
@@ -291,7 +546,9 @@ func (c *Conn) closeQuietly() {
 func (c *Conn) cleanup() {
 	c.closeQuietly()
 	c.hub.Unregister(c)
-	c.hub.markDisconnected(c.member.ID, c.roomID)
+	if !c.skipDisconnect.Load() {
+		c.hub.markDisconnected(c.member.ID, c.roomID)
+	}
 	reason := c.closeReasonValue()
 	if reason == "" {
 		reason = "unknown"

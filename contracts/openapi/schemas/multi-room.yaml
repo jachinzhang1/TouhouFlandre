@@ -5,16 +5,20 @@ MemberView:
   type: object
   description: 房间成员视图。
   required:
-    - slot
+    - memberId
+    - seat
     - displayName
     - status
     - ready
   properties:
-    slot:
+    memberId:
+      type: string
+      description: 房间内稳定、可公开的成员标识；不是鉴权凭据。
+    seat:
       type: integer
       minimum: 1
-      maximum: 2
-      description: 席位；slot 1 = 房主（DELETE 权限判定）。
+      maximum: 8
+      description: 房间内展示顺序；seat 1 为房主，但身份关联使用 memberId。
     displayName:
       type: string
       description: 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。
@@ -24,16 +28,67 @@ MemberView:
       type: boolean
       description: 大厅就绪态（仅 lobby 态使用）。
 
+PublicMemberView:
+  type: object
+  description: 公开房间预检中的玩家摘要；不含昵称或任何鉴权凭据。
+  required:
+    - memberId
+    - seat
+    - status
+    - ready
+  properties:
+    memberId:
+      type: string
+      description: 房间内稳定、可公开的成员标识；不是鉴权凭据。
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    status:
+      $ref: "./multi-common.yaml#/MemberStatus"
+    ready:
+      type: boolean
+
+ParticipantView:
+  type: object
+  description: 当前访问者视图。观战者不占玩家 seat。
+  required:
+    - memberId
+    - role
+    - displayName
+    - status
+  properties:
+    memberId:
+      type: string
+      description: 当前访问者在房间内的稳定成员标识。
+    role:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+      description: 玩家席位；观战者缺省。
+    displayName:
+      type: string
+    status:
+      $ref: "./multi-common.yaml#/MemberStatus"
+
 RoomInfo:
   type: object
-  description: 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
+  description: 公开只读预检（加入前可见赛制，08 §4.2）。成员集合不含昵称/token。
   required:
     - roomCode
     - format
     - mode
     - turnSeconds
     - status
-    - memberCount
+    - members
+    - playerCount
+    - spectatorCount
+    - joinRole
+    - playerLimit
+    - minPlayers
+    - availableSeats
   properties:
     roomCode:
       type: string
@@ -48,10 +103,36 @@ RoomInfo:
       description: 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
-    memberCount:
+    members:
+      type: array
+      description: 当前玩家的公开身份与席位摘要，不含观战者。
+      items:
+        $ref: "#/PublicMemberView"
+    playerCount:
       type: integer
       minimum: 0
-      maximum: 2
+      maximum: 8
+      description: 当前 PK 玩家数（不含观战者）。
+    spectatorCount:
+      type: integer
+      minimum: 0
+      description: 当前未离开的观战者数量。
+    joinRole:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+    playerLimit:
+      type: integer
+      minimum: 2
+      maximum: 8
+      description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    minPlayers:
+      type: integer
+      enum: [2]
+      description: 服务端固定的最少开局玩家数。
+    availableSeats:
+      type: integer
+      minimum: 0
+      maximum: 8
+      description: playerLimit 与当前玩家数之间的空余席位数。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -62,7 +143,7 @@ CreateRoomResponse:
     - roomId
     - roomCode
     - guestToken
-    - member
+    - viewer
   properties:
     roomId:
       type: string
@@ -70,8 +151,8 @@ CreateRoomResponse:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
-    member:
-      $ref: "#/MemberView"
+    viewer:
+      $ref: "#/ParticipantView"
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
 
@@ -81,20 +162,25 @@ JoinRoomResponse:
   required:
     - roomId
     - guestToken
-    - member
+    - joinRole
+    - viewer
   properties:
     roomId:
       type: string
     guestToken:
       $ref: "./multi-common.yaml#/GuestToken"
-    member:
-      $ref: "#/MemberView"
+    joinRole:
+      $ref: "./multi-common.yaml#/ParticipantRole"
+      description: 此次加入实际获得的角色；满 playerLimit 后明确为 spectator。
+    viewer:
+      $ref: "#/ParticipantView"
 
 RoomSnapshot:
   type: object
   description: |
-    逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
-    events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+    逐观察者投影的房间权威快照：self（完整棋盘）、opponents（每名对手独立匿名矩阵与 HMAC 列置换）。
+    gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
+    被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
     round 仅在局处于 countdown/playing 时存在。
   required:
     - roomId
@@ -103,7 +189,15 @@ RoomSnapshot:
     - mode
     - turnSeconds
     - status
+    - expiresAt
+    - viewer
     - members
+    - playerCount
+    - spectatorCount
+    - playerLimit
+    - minPlayers
+    - availableSeats
+    - gameSequence
     - events
   properties:
     roomId:
@@ -119,12 +213,44 @@ RoomSnapshot:
       enum: [30, 60, 90, 120]
     status:
       $ref: "./multi-common.yaml#/RoomStatus"
+    expiresAt:
+      type: string
+      format: date-time
+      description: 当前房间状态的到期时间；finished 态用于观战席保留倒计时。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
+    viewer:
+      $ref: "#/ParticipantView"
     members:
       type: array
+      description: PK 玩家视图，不含观战者。
       items:
         $ref: "#/MemberView"
+    playerCount:
+      type: integer
+      minimum: 0
+      maximum: 8
+    spectatorCount:
+      type: integer
+      minimum: 0
+    playerLimit:
+      type: integer
+      minimum: 2
+      maximum: 8
+      description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    minPlayers:
+      type: integer
+      enum: [2]
+      description: 服务端固定的最少开局玩家数。
+    availableSeats:
+      type: integer
+      minimum: 0
+      maximum: 8
+      description: playerLimit 与当前玩家数之间的空余席位数。
+    gameSequence:
+      type: integer
+      minimum: 0
+      description: 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。
     match:
       type: object
       description: 当前场次（lobby 态不存在；含 finished 等待再来一局）。

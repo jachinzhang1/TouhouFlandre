@@ -11,7 +11,8 @@ import {
   type RoundEndedPayload,
   type SinglePlayerGameMode,
 } from "@touhouflandre/shared";
-import type { RoomUiState } from "../domain/roomState";
+import type { RoomUiState } from "../hooks/useRoom";
+import { initialRoomChatState } from "../domain/multiChat";
 
 export const SINGLE_GAME_SEED_PRESETS = [
   "loading",
@@ -41,6 +42,8 @@ export type MultiplayerGameSeedPreset =
 export const MULTIPLAYER_DEVELOPMENT_ROOM_CODE = "DEV222";
 const MULTIPLAYER_SEED_STORAGE_KEY = "touhouflandre:dev:multiplayer-seed";
 const CATALOG_VERSION = "development-game-seed";
+const SELF_MEMBER_ID = "development-self";
+const OPPONENT_MEMBER_ID = "development-opponent";
 
 export interface SingleGameSeed {
   session: PublicGameSession | null;
@@ -216,13 +219,15 @@ export function buildMultiplayerGameSeed(
       : "playing";
   const members = [
     {
-      slot: 1,
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
       displayName: "调试玩家",
       status: "connected" as const,
       ready: preset === "lobby-ready",
     },
     {
-      slot: 2,
+      memberId: OPPONENT_MEMBER_ID,
+      seat: 2,
       displayName: "雾之湖对手",
       status:
         preset === "reconnecting"
@@ -231,6 +236,8 @@ export function buildMultiplayerGameSeed(
       ready: preset === "lobby-ready",
     },
   ];
+  const visibleMembers =
+    preset === "lobby-alone" ? members.slice(0, 1) : members;
   const state: RoomUiState = {
     connection: preset === "reconnecting" ? "reconnecting" : "connected",
     connectionIssue:
@@ -241,29 +248,45 @@ export function buildMultiplayerGameSeed(
       format: "bo3",
       mode,
       turnSeconds: 60,
+      playerLimit: 2,
+      minPlayers: 2,
+      playerCount: visibleMembers.length,
+      availableSeats: 2 - visibleMembers.length,
       status: roomStatus,
+      expiresAt: isoFrom(now, 30 * 60_000),
+      spectatorCount: 0,
     },
-    members: preset === "lobby-alone" ? members.slice(0, 1) : members,
+    viewer: {
+      memberId: SELF_MEMBER_ID,
+      role: "player",
+      seat: 1,
+      displayName: "调试玩家",
+      status: "connected",
+    },
+    members: visibleMembers,
     match: null,
     round: null,
     catalogVersion: null,
     questionScope: developmentQuestionScope(8),
     roundResult: null,
     matchResult: null,
-    rematchReady: [false, false],
+    rematchReady: [],
     history: [],
-    lastSequence: 42,
+    roundArchives: [],
+    appliedGameSequence: 42,
+    chat: developmentChat(now),
   };
 
   if (roomStatus !== "lobby") {
     state.match = {
       matchIndex: 0,
+      scoringMode: "wins",
+      rosterSize: 2,
       targetWins: 2,
-      scoreSlot1: 1,
-      scoreSlot2: 0,
+      scores: memberScores(1, 0),
       roundIndex: 2,
       maxRounds: 9,
-      rematchReady: [false, false],
+      rematchReady: memberReady(false, false),
       catalogVersion: CATALOG_VERSION,
       questionScope: developmentQuestionScope(8),
     };
@@ -288,33 +311,33 @@ export function buildMultiplayerGameSeed(
     const result = roundResult(now, relay);
     state.round = relay ? relayRound(now, "ended") : raceRound(now, "ended");
     state.roundResult = result;
+    state.roundArchives = [result];
     state.history = [
       { roundIndex: 1, result: "loss" },
       { roundIndex: 2, result: "win" },
     ];
-    if (state.match) {
-      state.match.scoreSlot1 = 1;
-      state.match.scoreSlot2 = 1;
-    }
+    if (state.match) state.match.scores = result.scores;
   } else if (preset === "race-match-result") {
+    const scores = memberScores(2, 1);
     state.matchResult = {
       matchIndex: 0,
-      result: "win",
-      winnerSlot: 1,
-      scores: { slot1: 2, slot2: 1 },
+      viewerResult: "win",
+      winnerMemberId: SELF_MEMBER_ID,
+      scores,
+      results: memberResults("win", "loss"),
       reason: "normal",
+      retentionEndsAt: isoFrom(now, 30 * 60_000),
     };
-    state.rematchReady = [false, true];
+    state.rematchReady = memberReady(false, true);
     state.history = [
       { roundIndex: 1, result: "win" },
       { roundIndex: 2, result: "loss" },
       { roundIndex: 3, result: "win" },
     ];
     if (state.match) {
-      state.match.scoreSlot1 = 2;
-      state.match.scoreSlot2 = 1;
+      state.match.scores = scores;
       state.match.roundIndex = 3;
-      state.match.rematchReady = [false, true];
+      state.match.rematchReady = memberReady(false, true);
     }
   }
 
@@ -472,35 +495,45 @@ function raceRound(
     startsAt: isoFrom(now, countdown ? 30_000 : -8_000),
     deadline: isoFrom(now, 8 * 60_000),
     maxGuesses: 8,
-    self: { guesses: countdown ? [] : developmentGuesses().slice(0, 3) },
-    opponent: {
-      rows: countdown
-        ? []
-        : [
-            {
-              index: 1,
-              statuses: [
-                "miss",
-                "higher",
-                "partial",
-                "exact",
-                "unknown",
-                "lower",
-              ],
-            },
-            {
-              index: 2,
-              statuses: [
-                "partial",
-                "lower",
-                "miss",
-                "partial",
-                "exact",
-                "miss",
-              ],
-            },
-          ],
+    self: {
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
+      participationStatus: "active",
+      guesses: countdown ? [] : developmentGuesses().slice(0, 3),
     },
+    opponents: [
+      {
+        memberId: OPPONENT_MEMBER_ID,
+        seat: 2,
+        fieldOrder: CHARACTER_GUESS_FIELDS.map((field) => field.key),
+        rows: countdown
+          ? []
+          : [
+              {
+                index: 1,
+                statuses: [
+                  "miss",
+                  "higher",
+                  "partial",
+                  "exact",
+                  "unknown",
+                  "lower",
+                ],
+              },
+              {
+                index: 2,
+                statuses: [
+                  "partial",
+                  "lower",
+                  "miss",
+                  "partial",
+                  "exact",
+                  "miss",
+                ],
+              },
+            ],
+      },
+    ],
   };
 }
 
@@ -511,15 +544,27 @@ function relayRound(
   const rows = [
     {
       index: 1,
-      memberSlot: 1,
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
       kind: "guess" as const,
       guess: developmentGuesses()[0],
     },
-    { index: 2, memberSlot: 2, kind: "pass" as const },
-    { index: 3, memberSlot: 1, kind: "timeout" as const },
+    {
+      index: 2,
+      memberId: OPPONENT_MEMBER_ID,
+      seat: 2,
+      kind: "pass" as const,
+    },
+    {
+      index: 3,
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
+      kind: "timeout" as const,
+    },
     {
       index: 4,
-      memberSlot: 2,
+      memberId: OPPONENT_MEMBER_ID,
+      seat: 2,
       kind: "guess" as const,
       guess: developmentGuesses()[2],
     },
@@ -529,10 +574,16 @@ function relayRound(
     startsAt: isoFrom(now, -8_000),
     deadline: isoFrom(now, 8 * 60_000),
     maxGuesses: 8,
-    self: { guesses: [] },
-    opponent: { rows: [] },
+    self: {
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
+      participationStatus: "active",
+      guesses: [],
+    },
+    opponents: [],
     shared: { rows },
-    turnSlot: status === "playing" ? 1 : undefined,
+    turnMemberId: status === "playing" ? SELF_MEMBER_ID : undefined,
+    turnSeat: status === "playing" ? 1 : undefined,
     turnDeadline: status === "playing" ? isoFrom(now, 50_000) : undefined,
     maxTurnsPerPlayer: 8,
     maxSkipsPerPlayer: 2,
@@ -540,13 +591,13 @@ function relayRound(
 }
 
 function roundResult(now: Date, relay: boolean): RoundEndedPayload {
-  const slot1 = [...developmentGuesses().slice(0, 2), correctGuess()];
-  const slot2 = developmentGuesses().slice(2);
+  const selfGuesses = [...developmentGuesses().slice(0, 2), correctGuess()];
+  const opponentGuesses = developmentGuesses().slice(2);
   return {
     matchIndex: 0,
     roundIndex: 2,
-    result: "win" as const,
-    winnerSlot: 1,
+    viewerResult: "win",
+    winnerMemberId: SELF_MEMBER_ID,
     answer: {
       id: FLANDRE.id,
       name: FLANDRE.names.zhHans,
@@ -555,10 +606,94 @@ function roundResult(now: Date, relay: boolean): RoundEndedPayload {
       workTitle: FLANDRE.firstAppearance.workTitle,
       workCode: "TH06",
     },
-    boards: { slot1, slot2 },
+    boards: [
+      { memberId: SELF_MEMBER_ID, seat: 1, guesses: selfGuesses },
+      { memberId: OPPONENT_MEMBER_ID, seat: 2, guesses: opponentGuesses },
+    ],
     ...(relay ? { turns: relayRound(now, "ended").shared?.rows } : {}),
-    scores: { slot1: 1, slot2: 1 },
+    scores: memberScores(1, 1),
+    results: memberResults("win", "loss"),
     nextStartsAt: isoFrom(now, 60_000),
+  };
+}
+
+function memberScores(
+  selfScore: number,
+  opponentScore: number,
+): NonNullable<RoomUiState["match"]>["scores"] {
+  return [
+    {
+      memberId: SELF_MEMBER_ID,
+      seat: 1,
+      score: selfScore,
+      status: "active",
+      bestRoundScore: 0,
+    },
+    {
+      memberId: OPPONENT_MEMBER_ID,
+      seat: 2,
+      score: opponentScore,
+      status: "active",
+      bestRoundScore: 0,
+    },
+  ];
+}
+
+function memberReady(
+  selfReady: boolean,
+  opponentReady: boolean,
+): RoomUiState["rematchReady"] {
+  return [
+    { memberId: SELF_MEMBER_ID, seat: 1, ready: selfReady },
+    { memberId: OPPONENT_MEMBER_ID, seat: 2, ready: opponentReady },
+  ];
+}
+
+function memberResults(
+  selfResult: "win" | "loss" | "draw",
+  opponentResult: "win" | "loss" | "draw",
+): RoundEndedPayload["results"] {
+  return [
+    { memberId: SELF_MEMBER_ID, seat: 1, result: selfResult },
+    { memberId: OPPONENT_MEMBER_ID, seat: 2, result: opponentResult },
+  ];
+}
+
+function developmentChat(now: Date): RoomUiState["chat"] {
+  return {
+    ...initialRoomChatState,
+    historyStatus: "ready",
+    scannedCursor: "development-chat-2",
+    messages: [
+      {
+        messageId: "development-chat-1",
+        roomId: "development-room",
+        senderMemberId: OPPONENT_MEMBER_ID,
+        senderDisplayName: "雾之湖对手",
+        senderRole: "player",
+        senderSeat: 2,
+        kind: "text",
+        content: "这局从哪条线索开始？",
+        channel: "room",
+        cursor: "development-chat-1",
+        createdAt: isoFrom(now, -20_000),
+        deliveryStatus: "sent",
+      },
+      {
+        messageId: "development-chat-2",
+        roomId: "development-room",
+        senderMemberId: SELF_MEMBER_ID,
+        senderDisplayName: "调试玩家",
+        senderRole: "player",
+        senderSeat: 1,
+        kind: "emoji",
+        content: "🌸",
+        channel: "room",
+        cursor: "development-chat-2",
+        createdAt: isoFrom(now, -8_000),
+        deliveryStatus: "sent",
+      },
+    ],
   };
 }
 

@@ -11,20 +11,26 @@ import (
 )
 
 type Querier interface {
+	AwardMatchPlayerPoints(ctx context.Context, arg AwardMatchPlayerPointsParams) (MultiMatchPlayer, error)
+	AwardRoundPlayerPoints(ctx context.Context, arg AwardRoundPlayerPointsParams) (MultiRoundPlayer, error)
+	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)
+	CountCorrectRoundPlayers(ctx context.Context, roundID string) (int32, error)
 	CountGuessesForRoundMember(ctx context.Context, arg CountGuessesForRoundMemberParams) (int64, error)
 	// 指标采集（members{status}）。
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
 	CountSkipsForRoundMember(ctx context.Context, arg CountSkipsForRoundMemberParams) (int64, error)
+	CountSpectators(ctx context.Context, roomID string) (int32, error)
 	CountTurnsForRound(ctx context.Context, roundID string) (int64, error)
 	CountTurnsForRoundMember(ctx context.Context, arg CountTurnsForRoundMemberParams) (int64, error)
 	CreateDailyPuzzle(ctx context.Context, arg CreateDailyPuzzleParams) (DailyPuzzle, error)
 	// 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
+	CreateMatchPlayer(ctx context.Context, arg CreateMatchPlayerParams) (MultiMatchPlayer, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
@@ -33,14 +39,23 @@ type Querier interface {
 	// max_rounds = factor × N，按赛制计算，bo3 为 9 而非 target_wins×factor=6）。
 	// 达到上限（round_count >= max_rounds）时 UPDATE 影响 0 行 → 无 INSERT → 返回 ErrNoRows。
 	CreateRound(ctx context.Context, arg CreateRoundParams) (MultiRound, error)
+	CreateRoundPlayersForMatch(ctx context.Context, arg CreateRoundPlayersForMatchParams) error
 	// 会话：创建、查询、乐观锁更新
 	CreateSession(ctx context.Context, arg CreateSessionParams) (GameSession, error)
+	CreateSpectatorMember(ctx context.Context, arg CreateSpectatorMemberParams) (MultiMember, error)
 	DeleteCharactersNotIn(ctx context.Context, ids []string) error
+	DeleteExpiredChatMessages(ctx context.Context, cutoff pgtype.Timestamptz) (int64, error)
 	DeleteMember(ctx context.Context, id string) error
 	DeleteRoom(ctx context.Context, id string) error
 	DeleteWorksNotIn(ctx context.Context, ids []string) error
 	EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch, error)
+	EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (MultiMatch, error)
+	EndRaceRound(ctx context.Context, arg EndRaceRoundParams) (MultiRound, error)
 	EndRound(ctx context.Context, arg EndRoundParams) (MultiRound, error)
+	// A roster departure before settlement always scores zero for the current
+	// round, including a player that had already submitted a correct answer.
+	ForfeitDepartedRoundPlayer(ctx context.Context, arg ForfeitDepartedRoundPlayerParams) (int64, error)
+	ForfeitRoundPlayer(ctx context.Context, arg ForfeitRoundPlayerParams) (int64, error)
 	// 房间当前进行中的场（forfeit/重启终止路径）。
 	GetActiveMatchForUpdate(ctx context.Context, roomID string) (MultiMatch, error)
 	// 房间当前进行中的局（countdown|playing；对局中 leave/sweeper 结算取当前局）。
@@ -49,6 +64,8 @@ type Querier interface {
 	GetCatalogCounts(ctx context.Context) (GetCatalogCountsRow, error)
 	// 题库快照与当前版本
 	GetCatalogState(ctx context.Context) (CatalogState, error)
+	GetChatMessageByIdempotency(ctx context.Context, arg GetChatMessageByIdempotencyParams) (MultiChatMessage, error)
+	GetChatReplayBounds(ctx context.Context, arg GetChatReplayBoundsParams) (GetChatReplayBoundsRow, error)
 	// 房间当前场（playing）的最新局（countdown|playing|ended 均返回），按 局→场→房间 锁序先锁局行。
 	GetCurrentRoundForUpdateByRoom(ctx context.Context, roomID string) (MultiRound, error)
 	// 每日题
@@ -57,11 +74,16 @@ type Querier interface {
 	// 按 (room, match_index) 取场（快照事件水合用）。
 	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
 	GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error)
+	GetMatchPlayer(ctx context.Context, arg GetMatchPlayerParams) (MultiMatchPlayer, error)
+	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
+	GetMemberForUpdate(ctx context.Context, id string) (MultiMember, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)
 	// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
 	GetRoomByCodeForUpdate(ctx context.Context, code string) (MultiRoom, error)
+	// 当前房间可重放历史边界；空事件房间用 0/0 表示。
+	GetRoomEventReplayBounds(ctx context.Context, roomID string) (GetRoomEventReplayBoundsRow, error)
 	// 大厅命令（ready/leave/close）锁房间行。
 	GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, error)
 	// 快照单查询组装（§7.3/§9.4）：room/match/round/members + 当前局双方猜测一次取回，
@@ -69,21 +91,30 @@ type Querier interface {
 	GetRoomSnapshotState(ctx context.Context, id string) ([]byte, error)
 	GetRound(ctx context.Context, id string) (MultiRound, error)
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
+	GetRoundPlayer(ctx context.Context, arg GetRoundPlayerParams) (MultiRoundPlayer, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
+	HasRoomMatch(ctx context.Context, roomID string) (bool, error)
+	IncrementMatchPlayerWin(ctx context.Context, arg IncrementMatchPlayerWinParams) (MultiMatchPlayer, error)
+	IncrementRoomChatSeq(ctx context.Context, id string) (int64, error)
 	// 事件序号分配器（§9.2 步骤 9：事务内 UPDATE 取号）。
 	IncrementRoomEventSeq(ctx context.Context, id string) (int64, error)
 	// 站点级计数器
 	IncrementSiteVisitCount(ctx context.Context) (int64, error)
+	InsertChatMessage(ctx context.Context, arg InsertChatMessageParams) (MultiChatMessage, error)
 	// 幂等：ON CONFLICT (round_id, member_id, idempotency_key) DO NOTHING；
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
 	InsertGuess(ctx context.Context, arg InsertGuessParams) (MultiGuess, error)
 	InsertRoomEvent(ctx context.Context, arg InsertRoomEventParams) (RoomEvent, error)
 	InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTurn, error)
+	ListActiveMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
 	// 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
 	ListActiveMatches(ctx context.Context) ([]MultiMatch, error)
+	ListActiveRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
+	ListChatMessagesAfter(ctx context.Context, arg ListChatMessagesAfterParams) ([]MultiChatMessage, error)
+	ListChatMessagesBefore(ctx context.Context, arg ListChatMessagesBeforeParams) ([]MultiChatMessage, error)
 	ListEventsAfterSeq(ctx context.Context, arg ListEventsAfterSeqParams) ([]RoomEvent, error)
 	ListExpiredClosedRooms(ctx context.Context) ([]MultiRoom, error)
 	ListExpiredLobbyRooms(ctx context.Context) ([]MultiRoom, error)
@@ -94,8 +125,12 @@ type Querier interface {
 	// 兼容期内保留的完整可猜角色表。
 	ListGuessCharacters(ctx context.Context) ([]Character, error)
 	ListGuessesForRound(ctx context.Context, roundID string) ([]MultiGuess, error)
+	ListMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListRoundPlayerGuessCounts(ctx context.Context, roundID string) ([]ListRoundPlayerGuessCountsRow, error)
+	ListRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
 	ListRoundsAwaitingAdvance(ctx context.Context, intermission pgtype.Interval) ([]ListRoundsAwaitingAdvanceRow, error)
 	ListRoundsForMatch(ctx context.Context, matchID string) ([]MultiRound, error)
@@ -103,12 +138,21 @@ type Querier interface {
 	ListTurnsForRound(ctx context.Context, roundID string) ([]MultiTurn, error)
 	ListUsedAnswersForMatch(ctx context.Context, matchID string) ([]string, error)
 	ListWorks(ctx context.Context) ([]Work, error)
+	MarkMatchPlayerEliminated(ctx context.Context, arg MarkMatchPlayerEliminatedParams) (int64, error)
+	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
+	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)
+	MarkRoundPlayerExhausted(ctx context.Context, arg MarkRoundPlayerExhaustedParams) (int64, error)
+	MarkRoundPlayerTimedOut(ctx context.Context, arg MarkRoundPlayerTimedOutParams) (int64, error)
 	SetMemberReady(ctx context.Context, arg SetMemberReadyParams) (MultiMember, error)
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
 	// countdown → playing（条件更新兜底：sweeper 到点唯一过渡）。
 	StartRound(ctx context.Context, id string) (MultiRound, error)
-	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (MultiMatch, error)
+	UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error)
+	UpdateMemberChatRate(ctx context.Context, arg UpdateMemberChatRateParams) error
+	UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatParams) (MultiMember, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
+	UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error
+	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
 	UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams) (MultiRound, error)

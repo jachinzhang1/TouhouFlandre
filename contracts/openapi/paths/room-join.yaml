@@ -1,4 +1,4 @@
-# POST /api/rooms/{roomCode}/join — 加入房间（入座 slot 2）
+# POST /api/rooms/{roomCode}/join — 加入房间（分配 player seat 或 spectator）
 # 对应 docs/multiplayer.md
 post:
   operationId: rooms_join
@@ -6,7 +6,8 @@ post:
     - rooms
   summary: 加入房间
   description: |
-    无鉴权。校验：房间存在且处于 lobby、未满 2 人，否则 ROOM_NOT_FOUND / ROOM_FULL / ROOM_CLOSED。
+    无鉴权。lobby 在 playerLimit 内分配最小可用 player seat；满员或对局已开始后以 spectator 加入。
+    spectatorCap 固定为 32，达到上限后返回 ROOM_FULL 且不创建 member。
     房间号输入归一化（去空格/连字符、转大写）。与公开预检共用按 IP 速率限制。
   parameters:
     - name: roomCode
@@ -38,7 +39,7 @@ post:
           schema:
             $ref: "../schemas/common.yaml#/ErrorResponse"
     "409":
-      description: 房间已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED）
+      description: spectatorCap 已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED）
       content:
         application/json:
           schema:

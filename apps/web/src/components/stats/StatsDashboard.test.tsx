@@ -113,8 +113,31 @@ const multiplayerRecord: MultiplayerStatsRecord = {
   outcome: "win",
   reason: "normal",
   scoreSelf: 1,
-  scoreOpponent: 0,
+  opponentScores: [0],
+  rosterSize: 2,
+  playerLimit: 2,
+  scoringMode: "wins",
   rounds: [record.round],
+};
+
+const placementRecord: MultiplayerStatsRecord = {
+  ...multiplayerRecord,
+  id: "record-placement",
+  scoreSelf: 6,
+  opponentScores: [4, 2, 0],
+  rosterSize: 4,
+  playerLimit: 6,
+  scoringMode: "placement",
+  finalRank: 1,
+  tiedForFirst: true,
+  eliminatedRound: 2,
+  rounds: [
+    {
+      ...record.round,
+      pointsAwarded: 3,
+      participationStatus: "correct",
+    },
+  ],
 };
 
 function makeWorkRecord(index: number): SingleStatsRecord {
@@ -288,6 +311,20 @@ describe("StatsDashboard", () => {
     await userEvent.click(details);
     expect(await screen.findByText("第 1 局")).toBeTruthy();
     expect(screen.getByRole("button", { name: "收起局详情" })).toBeTruthy();
+  });
+
+  it("展示积分制名次、人数和逐局得分", async () => {
+    await statsDb.records.clear();
+    await statsDb.records.put(placementRecord);
+    render(<StatsDashboard />);
+
+    expect(
+      await screen.findByText(
+        /竞速 · 积分制 · 6 分 · 并列第 1 名 · 第 2 局淘汰 · 4 人\/6/,
+      ),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "查看局详情" }));
+    expect(await screen.findByText("+3 分 · 猜中")).toBeTruthy();
   });
 
   it("在表头上方使用标准分组按钮翻页", async () => {

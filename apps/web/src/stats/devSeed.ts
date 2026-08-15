@@ -187,13 +187,7 @@ function buildMultiplayerRecord(
         ? ["loss", "win", "loss"]
         : ["win", "loss", "draw"];
   const rounds = results.map((result, roundIndex) =>
-    buildMultiplayerRound(
-      index,
-      roundIndex + 1,
-      started,
-      multiplayerMode,
-      result,
-    ),
+    buildMultiplayerRound(index, roundIndex + 1, started, result),
   );
   const wins = rounds.filter((round) => round.result === "win").length;
   const losses = rounds.filter((round) => round.result === "loss").length;
@@ -207,11 +201,13 @@ function buildMultiplayerRecord(
     difficulty: DIFFICULTIES[(index + 1) % DIFFICULTIES.length],
     format: FORMATS[index % FORMATS.length],
     multiplayerMode,
-    memberSlot: 1,
     matchIndex: index + 1,
     reason: "normal",
     scoreSelf: wins,
-    scoreOpponent: losses,
+    opponentScores: [losses],
+    rosterSize: 2,
+    playerLimit: 2,
+    scoringMode: "wins",
     startedAt: started.toISOString(),
     endedAt,
     durationMs: rounds.reduce((sum, round) => sum + round.durationMs, 0),
@@ -224,17 +220,14 @@ function buildMultiplayerRound(
   matchIndex: number,
   roundIndex: number,
   matchStarted: Date,
-  mode: MultiplayerMode,
   result: StatsRound["result"],
 ): StatsRound {
   const started = new Date(matchStarted.getTime() + (roundIndex - 1) * 150_000);
   const answer =
     SEED_CHARACTERS[(matchIndex + roundIndex + 2) % SEED_CHARACTERS.length];
   const guessCount = 3 + ((matchIndex + roundIndex) % 5);
-  const winningSlot = result === "win" ? 1 : result === "loss" ? 2 : undefined;
   const guesses = Array.from({ length: guessCount }, (_, index) => {
-    const memberSlot = ((index % 2) + 1) as 1 | 2;
-    const correct = winningSlot !== undefined && index === guessCount - 1;
+    const correct = result === "win" && index === guessCount - 1;
     const character = correct
       ? answer
       : SEED_CHARACTERS[
@@ -243,14 +236,9 @@ function buildMultiplayerRound(
     return {
       ...character,
       correct,
-      memberSlot: mode === "relay" ? memberSlot : undefined,
       durationMs: 5_000 + ((matchIndex * 2_100 + index * 3_100) % 24_000),
     } satisfies StatsGuessSnapshot;
   });
-  if (winningSlot !== undefined && guesses.length) {
-    guesses[guesses.length - 1].memberSlot =
-      mode === "relay" ? winningSlot : undefined;
-  }
   const durationMs =
     guesses.reduce((sum, guess) => sum + (guess.durationMs ?? 0), 0) + 12_000;
 

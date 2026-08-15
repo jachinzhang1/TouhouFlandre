@@ -59,6 +59,10 @@ paths:
     $ref: ./paths/room-snapshot.yaml
   /api/rooms/{roomId}/ready:
     $ref: ./paths/room-ready.yaml
+  /api/rooms/{roomId}/settings:
+    $ref: ./paths/room-settings.yaml
+  /api/rooms/{roomId}/claim-seat:
+    $ref: ./paths/room-claim-seat.yaml
   /api/rooms/{roomId}/rematch:
     $ref: ./paths/room-rematch.yaml
   /api/rooms/{roomId}/leave:
@@ -67,6 +71,8 @@ paths:
     $ref: ./paths/room-close.yaml
   /api/rooms/{roomId}/ws:
     $ref: ./paths/room-ws.yaml
+  /api/rooms/{roomId}/messages:
+    $ref: ./paths/room-messages.yaml
   /api/rooms/{roomId}/rounds/{roundIndex}/guess:
     $ref: ./paths/room-rounds.yaml
   /api/rooms/{roomId}/rounds/{roundIndex}/forfeit:
@@ -159,6 +165,8 @@ components:
       $ref: ./schemas/multi-common.yaml#/RoomStatus
     MemberStatus:
       $ref: ./schemas/multi-common.yaml#/MemberStatus
+    ParticipantRole:
+      $ref: ./schemas/multi-common.yaml#/ParticipantRole
     RoundStatus:
       $ref: ./schemas/multi-common.yaml#/RoundStatus
     MatchResult:
@@ -173,6 +181,10 @@ components:
       $ref: ./schemas/multi-common.yaml#/RoomEventEnvelope
     MemberView:
       $ref: ./schemas/multi-room.yaml#/MemberView
+    PublicMemberView:
+      $ref: ./schemas/multi-room.yaml#/PublicMemberView
+    ParticipantView:
+      $ref: ./schemas/multi-room.yaml#/ParticipantView
     RoomInfo:
       $ref: ./schemas/multi-room.yaml#/RoomInfo
     CreateRoomResponse:
@@ -191,6 +203,16 @@ components:
       $ref: ./schemas/multi-round.yaml#/RelayTurnRow
     GuessResponse:
       $ref: ./schemas/multi-round.yaml#/GuessResponse
+    ChatMessage:
+      $ref: ./schemas/multi-chat.yaml#/ChatMessage
+    SendChatMessageRequest:
+      $ref: ./schemas/multi-chat.yaml#/SendChatMessageRequest
+    ChatHistoryResponse:
+      $ref: ./schemas/multi-chat.yaml#/ChatHistoryResponse
+    ChatResyncRequiredResponse:
+      $ref: ./schemas/multi-chat.yaml#/ChatResyncRequiredResponse
+    RateLimitedErrorResponse:
+      $ref: ./schemas/multi-chat.yaml#/RateLimitedErrorResponse
   securitySchemes:
     GuestBearer:
       type: http

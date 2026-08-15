@@ -2,8 +2,11 @@
 
 // 房间大厅（08 §10.2）：房间号大字 + 复制、成员列表与就绪态、准备/离开按钮。
 import { Check, Copy, LogOut, Play } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { components } from "../../generated/api";
+import { isNPlayerRaceUiEnabled } from "../../config/multiplayerRollout";
+import { ApiRequestError } from "../../lib/api";
+import { sortMembersBySeat } from "../../domain/memberCollections";
 
 type MemberView = components["schemas"]["MemberView"];
 import {
@@ -26,20 +29,49 @@ export function RoomLobby({
   mySlot,
   onReady,
   onLeave,
+  playerLimit,
+  playerCount,
+  availableSeats,
+  spectatorCount,
+  isHost,
+  onApplyLimit,
+  onClaimSeat,
+  viewerRole,
+  viewerMemberId,
 }: {
   roomCode: string;
   format: string;
   mode: string;
   turnSeconds: number;
   members: MemberView[];
-  mySlot: 1 | 2;
-  onReady: () => void;
+  mySlot: number;
+  playerLimit: number;
+  playerCount: number;
+  availableSeats: number;
+  spectatorCount: number;
+  isHost: boolean;
+  onReady: (ready?: boolean) => void;
+  onApplyLimit?: (limit: number) => Promise<void>;
+  onClaimSeat?: () => Promise<void>;
+  viewerRole?: "player" | "spectator";
+  viewerMemberId?: string | null;
   onLeave: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const mine = members.find((m) => m.slot === mySlot);
-  const other = members.find((m) => m.slot !== mySlot);
-  const bothReady = members.length === 2 && members.every((m) => m.ready);
+  const mine =
+    viewerRole === "player"
+      ? members.find((member) => member.memberId === viewerMemberId)
+      : undefined;
+  const allReady = members.length >= 2 && members.every((m) => m.ready);
+  const [limitDraft, setLimitDraft] = useState(playerLimit);
+  const [limitBusy, setLimitBusy] = useState(false);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const minimumLimit = Math.max(2, playerCount);
+  const settingsLocked = members.some((member) => member.ready);
+  const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
+
+  useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
 
   const copyCode = async () => {
     try {
@@ -84,24 +116,24 @@ export function RoomLobby({
         </button>
 
         <ul className="mb-6 grid gap-2 text-left">
-          {members.map((member) => (
+          {sortMembersBySeat(members).map((member) => (
             <li
-              key={member.slot}
+              key={member.memberId}
               className="flex items-center justify-between rounded-[6px] border border-line bg-paper-muted px-3.5 py-2.5"
             >
               <span className="flex items-center gap-2">
                 <span
                   className={`inline-flex size-5 items-center justify-center rounded text-[0.62rem] font-black ${
-                    member.slot === 1
+                    member.seat === 1
                       ? "bg-vermilion text-white"
                       : "bg-jade text-white"
                   }`}
                 >
-                  {member.slot}
+                  {member.seat}
                 </span>
                 <span className="text-[0.85rem] font-semibold">
                   {member.displayName}
-                  {member.slot === mySlot ? "（我）" : ""}
+                  {member.memberId === viewerMemberId ? "（我）" : ""}
                 </span>
               </span>
               <span className="flex items-center gap-2 text-[0.72rem] text-ink-soft">
@@ -116,26 +148,124 @@ export function RoomLobby({
               </span>
             </li>
           ))}
-          {!other && (
+          {availableSeats > 0 && (
             <li className="rounded-[6px] border border-dashed border-line-strong px-3.5 py-2.5 text-[0.78rem] text-ink-soft">
-              等待好友加入……（房间号 {roomCode}）
+              等待好友加入……（房间号 {roomCode}），剩余席位 {availableSeats}
             </li>
           )}
         </ul>
 
-        <div className="grid gap-2">
+        <p className="mb-4 text-left text-[0.78rem] text-ink-soft">
+          当前玩家 {playerCount}/{playerLimit} · 观战 {spectatorCount} ·{" "}
+          {mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始"}
+        </p>
+        {isHost && mode === "race" ? (
+          <p className="mb-3 text-left text-[0.75rem] text-ink-soft">
+            保持未准备可继续等人；准备后若当前全员已准备将立即开局。
+          </p>
+        ) : null}
+        {isHost && mode === "race" && nPlayerRaceEnabled && (
+          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 text-left">
+            <label
+              className="min-w-0 text-[0.78rem] text-ink-soft"
+              htmlFor="player-limit"
+            >
+              <span className="mb-1 flex justify-between">
+                <span>玩家上限</span>
+                <output
+                  htmlFor="player-limit"
+                  className="font-bold tabular-nums text-ink"
+                >
+                  {limitDraft} 人
+                </output>
+              </span>
+              <input
+                id="player-limit"
+                aria-label="玩家上限"
+                type="range"
+                min={minimumLimit}
+                max={8}
+                step={1}
+                value={limitDraft}
+                onChange={(event) =>
+                  setLimitDraft(
+                    Math.min(
+                      8,
+                      Math.max(minimumLimit, Number(event.target.value)),
+                    ),
+                  )
+                }
+                className="block w-full accent-vermilion"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={
+                limitBusy ||
+                limitDraft < minimumLimit ||
+                limitDraft === playerLimit ||
+                settingsLocked
+              }
+              onClick={async () => {
+                if (!onApplyLimit) return;
+                setActionError("");
+                setLimitBusy(true);
+                try {
+                  await onApplyLimit(limitDraft);
+                } catch (error) {
+                  setActionError(lobbyActionError(error));
+                } finally {
+                  setLimitBusy(false);
+                }
+              }}
+              className="rounded border border-line px-2 py-1 text-xs font-bold disabled:opacity-50"
+            >
+              应用
+            </button>
+          </div>
+        )}
+        {viewerRole === "spectator" && availableSeats > 0 && (
           <button
             type="button"
-            disabled={!other || mine?.ready}
-            onClick={onReady}
-            className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={claimBusy}
+            onClick={async () => {
+              if (!onClaimSeat) return;
+              setActionError("");
+              setClaimBusy(true);
+              try {
+                await onClaimSeat();
+              } catch (error) {
+                setActionError(lobbyActionError(error));
+              } finally {
+                setClaimBusy(false);
+              }
+            }}
+            className="mb-3 flex w-full items-center justify-center rounded border border-jade bg-jade-soft px-3 py-2 font-bold text-jade disabled:opacity-50"
           >
-            <Play size={16} aria-hidden="true" />
-            {mine?.ready ? "已准备，等待对方……" : "准备"}
+            认领席位
           </button>
-          {bothReady && (
+        )}
+        {actionError ? (
+          <p role="alert" className="mb-3 text-[0.75rem] text-vermilion">
+            {actionError}
+          </p>
+        ) : null}
+
+        <div className="grid gap-2">
+          {viewerRole === "player" ? (
+            <button
+              type="button"
+              disabled={!mine}
+              onClick={() => onReady(!mine?.ready)}
+              className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Play size={16} aria-hidden="true" />
+              {mine?.ready ? "取消准备" : "准备"}
+            </button>
+          ) : null}
+          {allReady && (
             <p className="m-0 text-[0.75rem] text-jade" aria-live="polite">
-              双方已就绪，对局即将开始……
+              当前全员已就绪，对局即将开始……
             </p>
           )}
           <button
@@ -150,4 +280,18 @@ export function RoomLobby({
       </div>
     </section>
   );
+}
+
+function lobbyActionError(error: unknown): string {
+  if (!(error instanceof ApiRequestError))
+    return error instanceof Error ? error.message : "操作失败，请重试。";
+  if (error.code === "ROOM_FULL")
+    return "席位刚被其他观战者认领，请刷新后重试。";
+  if (error.code === "MATCH_ALREADY_STARTED")
+    return "对局刚刚开始，已无法认领席位。";
+  if (error.code === "ROOM_SETTINGS_LOCKED")
+    return "当前有人已准备，请先取消准备后再修改。";
+  if (error.code === "INVALID_PLAYER_LIMIT")
+    return "玩家上限必须为 2 至 8，且不能低于当前玩家数。";
+  return error.message;
 }

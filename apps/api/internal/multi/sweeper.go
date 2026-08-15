@@ -3,6 +3,7 @@
 //   - 对局：countdown→playing、局超时平局（与猜测事务共用结算语义）、
 //     间歇后开下一局（startsAt = 上局 ended_at + INTERMISSION）、3×N 上限判平、宽限期逾期；
 //   - 房间：大厅 TTL 过期关闭、finished 展示期关闭、closed 保留期删除（单条 DELETE CASCADE）。
+//
 // 锁序纪律（§9.2）：所有触碰局/场行的路径统一 局→场→房间，绝不先锁房间。
 package multi
 
@@ -25,6 +26,7 @@ import (
 type SweeperConfig struct {
 	Timing         TimingConfig     // 对局时间常量（Phase 6 由 internal/config 注入）
 	EventRetention time.Duration    // closed 到删除的保留时长（MULTI_EVENT_RETENTION）
+	ChatRetention  time.Duration    // 聊天消息独立保留期（MULTI_CHAT_RETENTION）
 	Interval       time.Duration    // tick 间隔（默认 1s）
 	Broadcaster    EventBroadcaster // 事件入库后广播（先入库后广播，07 §7.2；nil 时空转）
 }
@@ -41,6 +43,9 @@ type Sweeper struct {
 func NewSweeper(pool *pgxpool.Pool, cfg SweeperConfig) *Sweeper {
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Second
+	}
+	if cfg.ChatRetention <= 0 {
+		cfg.ChatRetention = 24 * time.Hour
 	}
 	return &Sweeper{
 		pool: pool,
@@ -88,6 +93,7 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 		s.expireDisconnectedMembers,
 		s.closeExpiredLobbies,
 		s.closeExpiredFinishedRooms,
+		s.deleteExpiredChatMessages,
 		s.deleteExpiredClosedRooms,
 		s.updateStatusMetrics,
 	}
@@ -97,6 +103,13 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *Sweeper) deleteExpiredChatMessages(ctx context.Context) error {
+	_, err := repo.New(s.pool).DeleteExpiredChatMessages(ctx, pgtype.Timestamptz{
+		Time: s.now().Add(-s.cfg.ChatRetention), Valid: true,
+	})
+	return err
 }
 
 // updateStatusMetrics 采集时聚合 rooms{status}/members{status}/active_rounds（08 §11.2；失败静默）。
@@ -259,6 +272,7 @@ func (s *Sweeper) settleTimedOutRounds(ctx context.Context) error {
 }
 
 func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
+	now := s.now()
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -269,21 +283,35 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	if err != nil {
 		return err
 	}
-	if round.Status != string(RoundStatusPlaying) || round.Deadline.Time.After(s.now()) {
+	if round.Status != string(RoundStatusPlaying) || round.Deadline.Time.After(now) {
 		return tx.Commit(ctx) // 已结算/未超时
 	}
 	match, err := q.GetMatchForUpdate(ctx, round.MatchID)
 	if err != nil {
 		return err
 	}
+	room, err := q.GetRoom(ctx, match.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		if _, err := CompleteRaceRoundTx(ctx, q, room, round, match, "", now, s.cfg.Timing); err != nil {
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return err
+		}
+		s.notify(match.RoomID)
+		return nil
+	}
 	if _, err := q.EndRound(ctx, repo.EndRoundParams{
 		ID:         round.ID,
 		WinnerSlot: pgtype.Int4{},
-		EndedAt:    pgtypeTimestamptz(s.now()),
+		EndedAt:    pgtypeTimestamptz(now),
 	}); err != nil {
 		return err
 	}
-	nextStarts := s.now().Add(s.cfg.Timing.Intermission)
+	nextStarts := now.Add(s.cfg.Timing.Intermission)
 	if err := AppendEvent(ctx, q, match.RoomID, EventRoundEnded, RoundEndedEventPayload{
 		RoundID:      round.ID,
 		MatchIndex:   int(match.MatchIndex),
@@ -365,7 +393,13 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		return err
 	}
 	format := RoomFormat(room.Format)
-	maxRounds := MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
+	maxRounds := int(match.MaxRounds)
+	if maxRounds <= 0 {
+		maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
+		if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+			maxRounds = int(match.RosterSize) * s.cfg.Timing.MaxRoundsFactor
+		}
+	}
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)
 	turnSlot, turnDeadline := InitialTurnParams(room, int(round.RoundIndex+1), startsAt)
 	newRound, err := q.CreateRound(ctx, repo.CreateRoundParams{
@@ -375,14 +409,14 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		RoundIndex:   round.RoundIndex + 1,
 		AnswerID:     answer,
 		StartsAt:     pgtypeTimestamptz(startsAt),
-		Deadline:     pgtypeTimestamptz(startsAt.Add(s.cfg.Timing.RoundSeconds)),
+		Deadline:     pgtypeTimestamptz(startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing))),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// 已达 3×N 上限且无胜者 → 整场判平（round_cap）
-			if err := s.endMatchByCap(ctx, q, match, s.now()); err != nil {
+			if err := s.endMatchByCap(ctx, q, room, match, s.now()); err != nil {
 				return err
 			}
 			if err := tx.Commit(ctx); err != nil {
@@ -393,14 +427,29 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		}
 		return err
 	}
+	if err := q.CreateRoundPlayersForMatch(ctx, repo.CreateRoundPlayersForMatchParams{
+		RoundID: newRound.ID,
+		MatchID: match.ID,
+	}); err != nil {
+		return err
+	}
 	roundStarted := RoundStartedPayload{
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
-		Deadline:   startsAt.Add(s.cfg.Timing.RoundSeconds),
+		Deadline:   startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing)),
 		MaxGuesses: MaxGuessesForMatch(match),
 	}
-	AddRelayRoundStartedFields(&roundStarted, room, int(newRound.RoundIndex), startsAt)
+	activeMatchPlayers, err := q.ListActiveMatchPlayers(ctx, match.ID)
+	if err != nil {
+		return err
+	}
+	roundStarted.ActivePlayerCount = len(activeMatchPlayers)
+	members, err := q.ListMembers(ctx, room.ID)
+	if err != nil {
+		return err
+	}
+	AddRelayRoundStartedFields(&roundStarted, room, members, int(newRound.RoundIndex), startsAt)
 	if err := AppendEvent(ctx, q, roomID, EventRoundStarted, roundStarted); err != nil {
 		return err
 	}
@@ -412,33 +461,42 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 }
 
 // endMatchByCap 3×N 上限判平：场次与房间 finished + match.ended(reason=round_cap, draw)。
-func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, match repo.MultiMatch, now time.Time) error {
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.MultiRoom, match repo.MultiMatch, now time.Time) error {
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		_, err := EndRaceMatchTx(ctx, q, room, match, "", MatchEndReasonRoundCap, now, s.cfg.Timing)
 		return err
 	}
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: pgtype.Int4{}}); err != nil {
+		return err
+	}
+	retentionEndsAt := now.Add(s.cfg.Timing.FinishedRetention)
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
 		ID:        match.RoomID,
 		Status:    string(RoomStatusFinished),
-		ExpiresAt: pgtypeTimestamptz(now.Add(s.cfg.Timing.FinishedRetention)),
+		ExpiresAt: pgtypeTimestamptz(retentionEndsAt),
 	}); err != nil {
 		return err
 	}
 	return AppendEvent(ctx, q, match.RoomID, EventMatchEnded, MatchEndedEventPayload{
-		MatchIndex: int(match.MatchIndex),
-		WinnerSlot: nil,
-		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
-		Reason:     MatchEndReasonRoundCap,
+		MatchIndex:      int(match.MatchIndex),
+		WinnerSlot:      nil,
+		Scores:          ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		Reason:          MatchEndReasonRoundCap,
+		RetentionEndsAt: retentionEndsAt,
 	})
 }
 
 // expireDisconnectedMembers 断线宽限逾期（08 §4.6/§6.2）：
 // lobby：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot；
-// 对局中：判对方胜（reason=disconnect）+ match.ended；finished：房间关闭。
+// 对局中：race 按房间批量标记 roster left 并套用 N 人终态表，relay 判对方胜；
+// finished：成员只标记 left，房间等待 retention 到期；观战者任何状态下均只标记 left。
 func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
+	now := s.now()
 	members, err := repo.New(s.pool).ListTimedOutMembers(ctx)
 	if err != nil {
 		return err
 	}
+	raceBatches := map[string][]repo.MultiMember{}
 	for _, member := range members {
 		room, err := repo.New(s.pool).GetRoom(ctx, member.RoomID)
 		if err != nil {
@@ -447,20 +505,37 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 			}
 			return err
 		}
-		switch room.Status {
-		case string(RoomStatusPlaying):
-			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, s.now(), s.cfg.Timing); err != nil {
+		if IsSpectator(member) {
+			if err := s.markDisconnectedMemberLeft(ctx, room, member); err != nil {
 				return err
 			}
+			continue
+		}
+		switch room.Status {
+		case string(RoomStatusPlaying):
+			if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+				raceBatches[room.ID] = append(raceBatches[room.ID], member)
+				continue
+			}
+			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
+				return err
+			}
+			s.notify(room.ID)
 		case string(RoomStatusLobby):
 			if err := s.expireLobbyMember(ctx, member); err != nil {
 				return err
 			}
 		case string(RoomStatusFinished):
-			if err := s.closeFinishedRoom(ctx, room.ID, member); err != nil {
+			if err := s.markDisconnectedMemberLeft(ctx, room, member); err != nil {
 				return err
 			}
 		}
+	}
+	for roomID, batch := range raceBatches {
+		if err := ForfeitRaceMembersMatch(ctx, s.pool, batch, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
+			return err
+		}
+		s.notify(roomID)
 	}
 	return nil
 }
@@ -480,7 +555,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if room.Status != string(RoomStatusLobby) {
 		return tx.Commit(ctx)
 	}
-	if member.Slot == 1 {
+	if MemberSeat(member) == 1 {
 		if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
 			ID:        room.ID,
 			ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
@@ -503,12 +578,11 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, RoomUpdatedPayload{
-		Format:      RoomFormat(room.Format),
-		Mode:        MultiplayerMode(room.Mode),
-		TurnSeconds: int(room.TurnSeconds),
-		Members:     MemberViews(remaining),
-	}); err != nil {
+	spectatorCount, err := q.CountSpectators(ctx, room.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -562,41 +636,45 @@ func (s *Sweeper) closeFinishedRoomByMatch(ctx context.Context, match repo.Multi
 	return nil
 }
 
-// closeFinishedRoom 成员在 finished 房间逾期 → 关闭（host → host_left，加入者 → member_left）。
-func (s *Sweeper) closeFinishedRoom(ctx context.Context, roomID string, member repo.MultiMember) error {
+// markDisconnectedMemberLeft 断线宽限逾期后仅移出成员/观战者；finished 房间继续保留到 retention。
+func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.MultiRoom, member repo.MultiMember) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
-	room, err := q.GetRoomForUpdate(ctx, roomID)
+	lockedRoom, err := q.GetRoomForUpdate(ctx, room.ID)
 	if err != nil {
 		return err
 	}
-	if room.Status != string(RoomStatusFinished) {
+	if lockedRoom.Status == string(RoomStatusClosed) {
 		return tx.Commit(ctx)
 	}
-	if _, err := q.CloseRoom(ctx, repo.CloseRoomParams{
-		ID:        room.ID,
-		ExpiresAt: pgtypeTimestamptz(s.now().Add(s.cfg.EventRetention)),
+	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
+		ID:         member.ID,
+		Status:     string(MemberStatusLeft),
+		GraceUntil: pgtype.Timestamptz{},
 	}); err != nil {
 		return err
 	}
-	reason := RoomCloseReasonMemberLeft
-	if member.Slot == 1 {
-		reason = RoomCloseReasonHostLeft
+	players, err := q.ListMembers(ctx, lockedRoom.ID)
+	if err != nil {
+		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomClosed, RoomClosedPayload{Reason: reason}); err != nil {
+	spectatorCount, err := q.CountSpectators(ctx, lockedRoom.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.notify(room.ID)
+	s.notify(lockedRoom.ID)
 	return nil
 }
-
 func (s *Sweeper) closeExpiredLobbies(ctx context.Context) error {
 	rooms, err := repo.New(s.pool).ListExpiredLobbyRooms(ctx)
 	if err != nil {

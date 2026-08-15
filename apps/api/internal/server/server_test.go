@@ -138,7 +138,10 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("integration: seeded catalog %s\n", version)
 
-	ts := httptest.NewServer(server.NewWithOptions(pool, handler.WithJoinRateLimit(10000, time.Minute)))
+	enabledRollout := handler.RolloutConfig{NPlayerRaceEnabled: true, ChatSendEnabled: true}
+	ts := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithRolloutConfig(enabledRollout)))
 	baseURL = ts.URL
 	client = ts.Client()
 
@@ -151,10 +154,12 @@ func TestMain(m *testing.M) {
 		MaxRoundsFactor:   3,
 		FinishedRetention: time.Hour,
 	}
-	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64)
+	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"), 24*time.Hour, []byte("integration-test-chat-cursor-secret"))
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithMultiTiming(fastTiming),
+		handler.WithChatConfig(24*time.Hour, multi.DefaultChatRateConfig(), []byte("integration-test-chat-cursor-secret")),
+		handler.WithRolloutConfig(enabledRollout),
 		handler.WithHub(fastHub)))
 	fastBaseURL = fastTS.URL
 	fastClient = fastTS.Client()
@@ -339,11 +344,8 @@ func TestSearchReimu(t *testing.T) {
 	if err := json.Unmarshal(payload, &search); err != nil {
 		t.Fatal(err)
 	}
-	if search.Total != 1 || len(search.Results) != 1 {
-		t.Fatalf("expected 1 result, got %+v", search)
-	}
-	if search.Results[0].Id != "reimu_hakurei" {
-		t.Fatalf("unexpected result: %+v", search.Results[0])
+	if !searchContainsCharacter(search, "reimu_hakurei") {
+		t.Fatalf("expected Reimu in results, got %+v", search)
 	}
 }
 
@@ -510,7 +512,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(currentPayload, &current); err != nil {
 		t.Fatal(err)
 	}
-	if current.Total != 0 {
+	if searchContainsCharacter(current, "reimu_hakurei") {
 		t.Fatalf("current catalog should exclude Reimu: %+v", current)
 	}
 
@@ -523,7 +525,7 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Total != 1 || snapshot.Results[0].Id != "reimu_hakurei" {
+	if !searchContainsCharacter(snapshot, "reimu_hakurei") {
 		t.Fatalf("session snapshot should include Reimu: %+v", snapshot)
 	}
 
@@ -535,6 +537,15 @@ func TestSessionSearchUsesBoundCatalogSnapshot(t *testing.T) {
 	if guessResp.StatusCode != http.StatusOK {
 		t.Fatalf("snapshot guess status %d: %s", guessResp.StatusCode, guessPayload)
 	}
+}
+
+func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
+	for _, result := range search.Results {
+		if result.Id == characterID {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSessionSearchPaginationAndMissingSession(t *testing.T) {

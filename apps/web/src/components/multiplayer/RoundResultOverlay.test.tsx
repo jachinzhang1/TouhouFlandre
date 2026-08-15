@@ -9,8 +9,8 @@ import { RoundResultOverlay } from "./RoundResultOverlay";
 const RESULT: RoundEndedPayload = {
   matchIndex: 0,
   roundIndex: 1,
-  result: "win",
-  winnerSlot: 1,
+  viewerResult: "win",
+  winnerMemberId: "member-host",
   answer: {
     id: "reimu_hakurei",
     name: "博丽灵梦",
@@ -19,8 +19,18 @@ const RESULT: RoundEndedPayload = {
     workTitle: "东方灵异传",
     workCode: "TH01",
   },
-  boards: { slot1: [], slot2: [] },
-  scores: { slot1: 1, slot2: 0 },
+  boards: [
+    { memberId: "member-host", seat: 1, guesses: [] },
+    { memberId: "member-guest", seat: 2, guesses: [] },
+  ],
+  scores: [
+    { memberId: "member-host", seat: 1, score: 1 },
+    { memberId: "member-guest", seat: 2, score: 0 },
+  ],
+  results: [
+    { memberId: "member-host", seat: 1, result: "win" },
+    { memberId: "member-guest", seat: 2, result: "loss" },
+  ],
   nextStartsAt: "2026-08-06T12:00:04Z",
 };
 
@@ -37,7 +47,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -49,7 +59,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -61,7 +71,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
@@ -72,7 +82,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={{ ...RESULT, nextStartsAt: undefined }}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={null}
       />,
     );
@@ -84,7 +94,7 @@ describe("RoundResultOverlay", () => {
     render(
       <RoundResultOverlay
         result={RESULT}
-        mySlot={1}
+        memberId="member-host"
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
         autoDismissAtCountdownEnd
         onDismiss={onDismiss}

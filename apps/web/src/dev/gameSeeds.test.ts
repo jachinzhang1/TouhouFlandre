@@ -86,7 +86,8 @@ describe("multiplayer game UI seeds", () => {
       buildMultiplayerGameSeed("race-countdown", NOW).state.round?.status,
     ).toBe("countdown");
     expect(
-      buildMultiplayerGameSeed("race-playing", NOW).state.round?.opponent.rows,
+      buildMultiplayerGameSeed("race-playing", NOW).state.round?.opponents[0]
+        ?.rows,
     ).not.toHaveLength(0);
 
     const relay = buildMultiplayerGameSeed("relay-playing", NOW).state.round;
@@ -96,7 +97,10 @@ describe("multiplayer game UI seeds", () => {
       "timeout",
       "guess",
     ]);
-    expect(relay?.turnSlot).toBe(1);
+    expect(relay?.turnSeat).toBe(1);
+    expect(
+      buildMultiplayerGameSeed("race-playing", NOW).state.chat.messages,
+    ).toHaveLength(2);
 
     expect(
       buildMultiplayerGameSeed("race-round-result", NOW).state.roundResult,
@@ -107,7 +111,7 @@ describe("multiplayer game UI seeds", () => {
     ).not.toHaveLength(0);
     expect(
       buildMultiplayerGameSeed("race-match-result", NOW).state.matchResult
-        ?.result,
+        ?.viewerResult,
     ).toBe("win");
     expect(
       buildMultiplayerGameSeed("reconnecting", NOW).state.connectionIssue,

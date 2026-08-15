@@ -66,4 +66,37 @@ describe("OpponentBoard", () => {
     render(<OpponentBoard rows={[]} />);
     expect(screen.getByText(/等待对方猜测/)).toBeTruthy();
   });
+
+  it("按固定属性顺序展示置换后的对手状态", () => {
+    const { container } = render(
+      <OpponentBoard
+        fieldOrder={[
+          "species",
+          "firstAppearance",
+          "affiliations",
+          "releaseYear",
+          "locations",
+          "hairColors",
+        ]}
+        rows={[row(["miss", "exact", "partial", "lower", "miss", "unknown"])]}
+      />,
+    );
+
+    const headers = Array.from(container.querySelectorAll("thead th")).map(
+      (header) => header.textContent,
+    );
+    expect(headers).toEqual([
+      "角色",
+      "初登场作品",
+      "初登场年份",
+      "种族",
+      "阵营",
+      "地点",
+      "头发颜色",
+    ]);
+    const labels = Array.from(container.querySelectorAll('span[role="img"]')).map(
+      (el) => el.getAttribute("aria-label"),
+    );
+    expect(labels).toEqual(["命中", "更低", "未中", "部分", "未中", "未知"]);
+  });
 });

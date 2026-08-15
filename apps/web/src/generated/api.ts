@@ -246,7 +246,8 @@ export interface paths {
         put?: never;
         /**
          * 加入房间
-         * @description 无鉴权。校验：房间存在且处于 lobby、未满 2 人，否则 ROOM_NOT_FOUND / ROOM_FULL / ROOM_CLOSED。
+         * @description 无鉴权。lobby 在 playerLimit 内分配最小可用 player seat；满员或对局已开始后以 spectator 加入。
+         *     spectatorCap 固定为 32，达到上限后返回 ROOM_FULL 且不创建 member。
          *     房间号输入归一化（去空格/连字符、转大写）。与公开预检共用按 IP 速率限制。
          */
         post: operations["rooms_join"];
@@ -287,10 +288,55 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * 就绪
-         * @description 幂等置位。双方就绪 → 对局开始（事件驱动，客户端经 WS/快照获知）。
+         * 设置就绪态
+         * @description 显式提交 ready=true/false 并保持幂等。ready=false 仅允许在尚未创建 match 的 lobby；
+         *     ready=true 后若当前 2..playerLimit 名玩家均 connected + ready，则冻结当前阵容并开局。
          */
         post: operations["rooms_setReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 更新房间设置
+         * @description 仅 connected 的 lobby 房主可用。race 的 playerLimit 可设为 2..8，且不得低于当前玩家数；
+         *     relay 固定两人并拒绝该竞速设置。任一玩家 ready 或 match 已创建后配置锁定，
+         *     所有玩家取消准备后可再次修改。降容时按旧 seat、memberId 稳定压紧非房主 seat，
+         *     memberId、token 和房主不变；修改设置本身不触发开局。
+         */
+        patch: operations["rooms_updateSettings"];
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/claim-seat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 认领玩家席位
+         * @description connected spectator 可在 lobby 明确认领空席位。服务端在房间行锁下复用原 memberId/token，
+         *     分配最小可用 seat，并转换为 ready=false 的 player；不会自动提升其他 spectator。
+         */
+        post: operations["rooms_claimSeat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -308,7 +354,7 @@ export interface paths {
         put?: never;
         /**
          * 确认再来一局
-         * @description 幂等。仅 finished 态可用；双方确认且都 connected 时开新对局（事件驱动）。
+         * @description 幂等。仅 finished 态且原 match roster 无人 left 时可用；原 roster 全员确认且都 connected 后开新对局（事件驱动）。
          */
         post: operations["rooms_rematch"];
         delete?: never;
@@ -329,7 +375,8 @@ export interface paths {
         /**
          * 离开房间
          * @description 大厅：加入者删除成员行释放 slot，房主离开则房间关闭（reason=host_left）；
-         *     对局中：弃赛判对方胜（reason=forfeit）；对局结束后离开 → 房间关闭。
+         *     对局中：race 将该 roster member 标记为 left，剩余玩家继续，仅剩一名 active member 时其直接赢得整场；
+         *     relay 固定两人，离开者弃赛并判对方胜（reason=forfeit）。对局结束后仅标记成员 left，房间等待保留期关闭。
          */
         post: operations["rooms_leave"];
         delete?: never;
@@ -367,13 +414,33 @@ export interface paths {
         };
         /**
          * WebSocket 事件通道
-         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v1；
-         *     建连后第一条消息必须是 hello{token, lastSequence}（鉴权前不收发房间事件）。
+         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v2；
+         *     建连后第一条消息必须是 hello{token, lastGameSequence}（鉴权前不收发房间事件）。
          *     事件协议与有效/无效示例见 contracts/ws/protocol.yaml。
          */
         get: operations["rooms_connectWs"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        /** 查询房间聊天历史 */
+        get: operations["rooms_listMessages"];
+        put?: never;
+        /** 发送房间聊天消息 */
+        post: operations["rooms_sendMessage"];
         delete?: never;
         options?: never;
         head?: never;
@@ -391,7 +458,7 @@ export interface paths {
         put?: never;
         /**
          * 提交猜测
-         * @description 成员令牌鉴权。竞速模式：无回合交替，任何时刻（局处于 playing）双方都可提交。
+         * @description 成员令牌鉴权。竞速模式：无回合交替，局处于 playing 时每名 active round roster player 都可提交。
          *     接力模式：仅当前 turnSlot 可提交，提交或超时空过都会消耗该玩家一次轮次。
          *     携带 idempotencyKey（客户端 UUID），重试返回首次结果。
          *     响应为自视角完整反馈；竞速局中不返回答案与对手信息（匿名矩阵经 WS round.opponent.guess / 快照投影），
@@ -415,8 +482,9 @@ export interface paths {
         put?: never;
         /**
          * 放弃本局
-         * @description 成员令牌鉴权。仅结束当前小局：放弃者判负，对手获得本局胜利。
-         *     多局赛制下由既有局间推进机制进入下一小局；若对手因此达到 targetWins，则整场结束。
+         * @description 成员令牌鉴权。race 仅将该玩家在当前小局标记为 forfeited；只剩一名 active 玩家时该玩家赢得本局，
+         *     否则本局继续，放弃者下一局恢复 active。relay 固定两人，仍由对方赢得本局。
+         *     多局赛制下由既有局间推进机制进入下一小局；若本局胜者因此达到 targetWins，则整场结束。
          */
         post: operations["rooms_forfeitRound"];
         delete?: never;
@@ -454,7 +522,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "INVALID_FORMAT" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -724,6 +792,11 @@ export interface components {
          */
         MemberStatus: "connected" | "disconnected" | "left";
         /**
+         * @description 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+         * @enum {string}
+         */
+        ParticipantRole: "player" | "spectator";
+        /**
          * @description 单局状态：countdown（倒计时）→ playing → ended。
          * @enum {string}
          */
@@ -766,15 +839,35 @@ export interface components {
         };
         /** @description 房间成员视图。 */
         MemberView: {
-            /** @description 席位；slot 1 = 房主（DELETE 权限判定）。 */
-            slot: number;
+            /** @description 房间内稳定、可公开的成员标识；不是鉴权凭据。 */
+            memberId: string;
+            /** @description 房间内展示顺序；seat 1 为房主，但身份关联使用 memberId。 */
+            seat: number;
             /** @description 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。 */
             displayName: string;
             status: components["schemas"]["MemberStatus"];
             /** @description 大厅就绪态（仅 lobby 态使用）。 */
             ready: boolean;
         };
-        /** @description 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。 */
+        /** @description 公开房间预检中的玩家摘要；不含昵称或任何鉴权凭据。 */
+        PublicMemberView: {
+            /** @description 房间内稳定、可公开的成员标识；不是鉴权凭据。 */
+            memberId: string;
+            seat: number;
+            status: components["schemas"]["MemberStatus"];
+            ready: boolean;
+        };
+        /** @description 当前访问者视图。观战者不占玩家 seat。 */
+        ParticipantView: {
+            /** @description 当前访问者在房间内的稳定成员标识。 */
+            memberId: string;
+            role: components["schemas"]["ParticipantRole"];
+            /** @description 玩家席位；观战者缺省。 */
+            seat?: number;
+            displayName: string;
+            status: components["schemas"]["MemberStatus"];
+        };
+        /** @description 公开只读预检（加入前可见赛制，08 §4.2）。成员集合不含昵称/token。 */
         RoomInfo: {
             /** @description 6 位房间号。 */
             roomCode: string;
@@ -786,7 +879,22 @@ export interface components {
              */
             turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
-            memberCount: number;
+            /** @description 当前玩家的公开身份与席位摘要，不含观战者。 */
+            members: components["schemas"]["PublicMemberView"][];
+            /** @description 当前 PK 玩家数（不含观战者）。 */
+            playerCount: number;
+            /** @description 当前未离开的观战者数量。 */
+            spectatorCount: number;
+            joinRole: components["schemas"]["ParticipantRole"];
+            /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
+            playerLimit: number;
+            /**
+             * @description 服务端固定的最少开局玩家数。
+             * @enum {integer}
+             */
+            minPlayers: 2;
+            /** @description playerLimit 与当前玩家数之间的空余席位数。 */
+            availableSeats: number;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 创建房间响应。guestToken 明文仅此一次返回。 */
@@ -794,18 +902,21 @@ export interface components {
             roomId: string;
             roomCode: string;
             guestToken: components["schemas"]["GuestToken"];
-            member: components["schemas"]["MemberView"];
+            viewer: components["schemas"]["ParticipantView"];
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /** @description 加入房间响应。guestToken 明文仅此一次返回。 */
         JoinRoomResponse: {
             roomId: string;
             guestToken: components["schemas"]["GuestToken"];
-            member: components["schemas"]["MemberView"];
+            /** @description 此次加入实际获得的角色；满 playerLimit 后明确为 spectator。 */
+            joinRole: components["schemas"]["ParticipantRole"];
+            viewer: components["schemas"]["ParticipantView"];
         };
         /**
-         * @description 逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
-         *     events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+         * @description 逐观察者投影的房间权威快照：self（完整棋盘）、opponents（每名对手独立匿名矩阵与 HMAC 列置换）。
+         *     gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
+         *     被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
          *     round 仅在局处于 countdown/playing 时存在。
          */
         RoomSnapshot: {
@@ -816,8 +927,28 @@ export interface components {
             /** @enum {integer} */
             turnSeconds: 30 | 60 | 90 | 120;
             status: components["schemas"]["RoomStatus"];
+            /**
+             * Format: date-time
+             * @description 当前房间状态的到期时间；finished 态用于观战席保留倒计时。
+             */
+            expiresAt: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
+            viewer: components["schemas"]["ParticipantView"];
+            /** @description PK 玩家视图，不含观战者。 */
             members: components["schemas"]["MemberView"][];
+            playerCount: number;
+            spectatorCount: number;
+            /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
+            playerLimit: number;
+            /**
+             * @description 服务端固定的最少开局玩家数。
+             * @enum {integer}
+             */
+            minPlayers: 2;
+            /** @description playerLimit 与当前玩家数之间的空余席位数。 */
+            availableSeats: number;
+            /** @description 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。 */
+            gameSequence: number;
             /** @description 当前场次（lobby 态不存在；含 finished 等待再来一局）。 */
             match?: components["schemas"]["MatchView"];
             /** @description 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。 */
@@ -829,25 +960,27 @@ export interface components {
         MatchView: {
             /** @description 场次序号；0 = 首场，1 = 第一次再来一局…… */
             matchIndex: number;
-            /** @description 目标胜场 = (N+1)/2。 */
+            scoringMode: components["schemas"]["ScoringMode"];
+            /** @description 场次创建时冻结的实际 roster 人数。 */
+            rosterSize: number;
+            /** @description wins 模式目标胜场；placement 模式保留兼容值但不参与终止判定。 */
             targetWins: number;
-            /** @description slot 1 已胜局数（平局不计入）。 */
-            scoreSlot1: number;
-            /** @description slot 2 已胜局数（平局不计入）。 */
-            scoreSlot2: number;
+            /** @description 按 seat 稳定排序的公开比分；身份关联使用 memberId。 */
+            scores: components["schemas"]["MemberScoreView"][];
             /** @description 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。 */
             roundIndex: number;
-            /** @description 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。 */
+            /** @description wins 模式按 BO 计算；placement 模式为 3 × rosterSize。 */
             maxRounds: number;
-            /** @description 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。 */
-            rematchReady: boolean[];
+            /** @description 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。 */
+            rematchReady: components["schemas"]["MemberRematchReadyView"][];
             /** @description 本场绑定的题库版本。 */
             catalogVersion: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-         *     opponent 为匿名矩阵（只含状态颜色序列）。接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
+         *     opponents 为按 seat 排序的匿名矩阵集合（只含匿名列顺序与状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
+         *     接力模式额外提供 shared.rows、turnMemberId、turnSeat、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
          */
         RoundView: {
             status: components["schemas"]["RoundStatus"];
@@ -858,25 +991,33 @@ export interface components {
             startsAt: string;
             /**
              * Format: date-time
-             * @description 整局超时平局时刻（默认 startsAt + 15min）。
+             * @description 整局截止时刻；race 默认 startsAt + 5min，relay 默认 startsAt + 15min。
              */
             deadline: string;
             /** @description 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。 */
             maxGuesses: number;
             /** @description 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。 */
             self: {
+                /** @description 玩家视角为本人 memberId；观战者缺省。 */
+                memberId?: string;
+                /** @description 玩家视角为本人 seat；观战者缺省。 */
+                seat?: number;
+                participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
+                finishRank?: number;
                 guesses: components["schemas"]["GuessResult"][];
             };
-            /** @description 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。 */
-            opponent: {
-                rows: components["schemas"]["OpponentRow"][];
-            };
+            /** @description 对手匿名矩阵集合；按 seat 稳定排序并以 memberId 关联。 */
+            opponents: components["schemas"]["OpponentBoardView"][];
+            /** @description 观战者当前局完整棋盘集合；玩家视角缺省，避免泄露对手猜测明细。 */
+            boards?: components["schemas"]["MemberBoardView"][];
             /** @description 接力模式共享棋盘；竞速模式为空或缺省。 */
             shared?: {
                 rows: components["schemas"]["RelayTurnRow"][];
             };
-            /** @description 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。 */
-            turnSlot?: number;
+            /** @description 接力模式当前可提交玩家的稳定成员标识。 */
+            turnMemberId?: string;
+            /** @description 接力模式当前可提交玩家的展示席位。 */
+            turnSeat?: number;
             /**
              * Format: date-time
              * @description 接力模式当前玩家本轮截止时刻。
@@ -891,15 +1032,17 @@ export interface components {
         OpponentRow: {
             /** @description 该成员局内猜测序号（1 起）。 */
             index: number;
-            /** @description 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。 */
+            /** @description 当前匿名字段位置的状态；与所属 OpponentBoardView.fieldOrder 一一对应。 */
             statuses: components["schemas"]["FeedbackStatus"][];
         };
         /** @description 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。 */
         RelayTurnRow: {
             /** @description 本局共享轮次序号（1 起）。 */
             index: number;
-            /** @description 本轮归属玩家 slot。 */
-            memberSlot: number;
+            /** @description 本轮归属玩家的稳定成员标识。 */
+            memberId: string;
+            /** @description 本轮发生时的展示席位。 */
+            seat: number;
             /** @enum {string} */
             kind: "guess" | "timeout" | "pass";
             guess?: components["schemas"]["GuessResult"];
@@ -908,6 +1051,51 @@ export interface components {
         GuessResponse: {
             roundIndex: number;
             guess: components["schemas"]["GuessResult"];
+            participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
+            finishRank?: number;
+        };
+        ChatMessage: {
+            messageId: string;
+            roomId: string;
+            senderMemberId: string;
+            senderDisplayName: string;
+            senderRole: components["schemas"]["ParticipantRole"];
+            senderSeat?: number;
+            kind: components["schemas"]["ChatKind"];
+            content: string;
+            channel: components["schemas"]["ChatChannel"];
+            /** @description 服务端签发的 after-direction 不透明 cursor。 */
+            cursor: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SendChatMessageRequest: {
+            /** @description 规范小写 UUID；仅用于当前成员在本房间内的发送幂等。 */
+            clientMessageId: string;
+            /** @description 语义值只允许 text 或 emoji；非法值由服务端返回 CHAT_MESSAGE_INVALID。 */
+            kind: string;
+            content: string;
+        };
+        ChatHistoryResponse: {
+            messages: components["schemas"]["ChatMessage"][];
+            hasMore: boolean;
+            /** @description 初始/after 查询最远扫描到的 after-direction cursor。 */
+            scannedCursor?: string;
+            /** @description 初始/before 查询继续加载更早消息的 before-direction cursor。 */
+            beforeCursor?: string;
+        };
+        ChatResyncRequiredResponse: {
+            /** @enum {string} */
+            code: "CHAT_RESYNC_REQUIRED";
+            error: string;
+            oldestAvailableCursor: string;
+            highWatermarkCursor: string;
+        };
+        RateLimitedErrorResponse: {
+            /** @enum {string} */
+            code: "RATE_LIMITED";
+            error: string;
+            retryAfterMs: number;
         };
         /**
          * @deprecated
@@ -918,6 +1106,41 @@ export interface components {
             version: string;
             characters: components["schemas"]["CharacterSearchResult"][];
         };
+        /** @enum {string} */
+        ScoringMode: "wins" | "placement";
+        /** @enum {string} */
+        MatchPlayerStatus: "active" | "eliminated" | "left";
+        MemberScoreView: {
+            memberId: string;
+            seat: number;
+            score: number;
+            status: components["schemas"]["MatchPlayerStatus"];
+            bestRoundScore: number;
+            eliminatedRound?: number;
+        };
+        MemberRematchReadyView: {
+            memberId: string;
+            seat: number;
+            ready: boolean;
+        };
+        /** @enum {string} */
+        RaceRoundParticipantStatus: "active" | "correct" | "forfeited" | "exhausted" | "timed_out";
+        OpponentBoardView: {
+            memberId: string;
+            seat: number;
+            /** @description 该观察者看到的匿名矩阵列顺序；rows.statuses 按此顺序排列。 */
+            fieldOrder: components["schemas"]["GuessFieldKey"][];
+            rows: components["schemas"]["OpponentRow"][];
+        };
+        MemberBoardView: {
+            memberId: string;
+            seat: number;
+            guesses: components["schemas"]["GuessResult"][];
+        };
+        /** @enum {string} */
+        ChatKind: "text" | "emoji";
+        /** @enum {string} */
+        ChatChannel: "room" | "spectator";
     };
     responses: never;
     parameters: never;
@@ -1404,6 +1627,11 @@ export interface operations {
                     /** @description 可选玩法模式；缺省为 race（竞速）。 */
                     mode?: components["schemas"]["MultiplayerMode"];
                     /**
+                     * @description race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
+                     * @default 2
+                     */
+                    playerLimit?: number;
+                    /**
                      * @description 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
                      * @default 60
                      * @enum {integer}
@@ -1425,7 +1653,7 @@ export interface operations {
                     "application/json": components["schemas"]["CreateRoomResponse"];
                 };
             };
-            /** @description 非法赛制（INVALID_FORMAT） */
+            /** @description 非法赛制（INVALID_FORMAT）或玩家上限（INVALID_PLAYER_LIMIT） */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1521,7 +1749,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 房间已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED） */
+            /** @description spectatorCap 已满（ROOM_FULL）或状态不允许加入（ROOM_CLOSED） */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1593,17 +1821,41 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    ready: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description 已就绪 */
+            /** @description 已设置；重复提交相同值不产生事件 */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+            /** @description 缺少或非法请求体（INVALID_REQUEST） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 令牌无效（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可设置准备状态（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1621,6 +1873,133 @@ export interface operations {
                 };
             };
             /** @description 房间状态不允许（ROOM_CLOSED）或对局已开始（MATCH_ALREADY_STARTED） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_updateSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    playerLimit: number;
+                };
+            };
+        };
+        responses: {
+            /** @description 设置已更新；重复提交相同值不产生事件 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 缺少或非法请求体（INVALID_REQUEST）或上限不合法/低于当前玩家数（INVALID_PLAYER_LIMIT） */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 非 lobby、已有 match 或当前有人 ready（ROOM_SETTINGS_LOCKED） */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_claimSeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已认领席位；客户端应使用同一 token 重新连接以取得 player 视图 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 令牌无效或成员未连接（GUEST_UNAUTHORIZED） */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 当前成员不是 spectator（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间不存在（ROOM_NOT_FOUND） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 房间已满（ROOM_FULL）或对局已开始（MATCH_ALREADY_STARTED） */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -1651,6 +2030,15 @@ export interface operations {
             };
             /** @description 令牌无效（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可确认重赛（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1752,7 +2140,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 令牌有效但非房主（GUEST_UNAUTHORIZED，权限不足） */
+            /** @description spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED） */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1828,6 +2216,158 @@ export interface operations {
             };
         };
     };
+    rooms_listMessages: {
+        parameters: {
+            query?: {
+                after?: string;
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 按当前成员角色授权投影的历史消息 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatHistoryResponse"];
+                };
+            };
+            /** @description INVALID_REQUEST 或 CHAT_CURSOR_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GUEST_UNAUTHORIZED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_CLOSED 或 CHAT_CURSOR_AHEAD */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description cursor 早于最老保留位置 */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatResyncRequiredResponse"];
+                };
+            };
+        };
+    };
+    rooms_sendMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendChatMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description 首次提交或相同幂等请求对应的不可变消息 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChatMessage"];
+                };
+            };
+            /** @description INVALID_REQUEST 或 CHAT_MESSAGE_INVALID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description GUEST_UNAUTHORIZED */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CHAT_SEND_FORBIDDEN */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_NOT_FOUND */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ROOM_CLOSED 或 CHAT_IDEMPOTENCY_CONFLICT */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description member 或 room token bucket 已耗尽 */
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitedErrorResponse"];
+                };
+            };
+        };
+    };
     rooms_submitGuess: {
         parameters: {
             query?: never;
@@ -1870,6 +2410,15 @@ export interface operations {
             };
             /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可猜测（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1931,6 +2480,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description spectator 不可放弃小局（SPECTATOR_READ_ONLY） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 房间不存在/已过期（ROOM_NOT_FOUND） */
             404: {
                 headers: {
@@ -1973,6 +2531,15 @@ export interface operations {
             };
             /** @description 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED） */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 不可空过（SPECTATOR_READ_ONLY） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

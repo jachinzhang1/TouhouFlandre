@@ -6,8 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -22,7 +24,7 @@ import (
 )
 
 // wsSubprotocol 子协议版本协商（08 §8.1）。
-const wsSubprotocol = "touhouflandre-multi.v1"
+const wsSubprotocol = "touhouflandre-multi.v2"
 
 // helloTimeout 首帧 hello 等待上限（10s）。
 const helloTimeout = 10 * time.Second
@@ -73,7 +75,7 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		return nil, nil
 	}
 	var hello multi.HelloMessage
-	if err := json.Unmarshal(data, &hello); err != nil || hello.Type != "hello" {
+	if err := decodeHello(data, &hello); err != nil {
 		slog.Warn("ws: invalid hello frame", "room_id", request.RoomId)
 		_ = ws.Close(websocket.StatusPolicyViolation, "first frame must be hello")
 		return nil, nil
@@ -91,15 +93,130 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 		return nil, nil
 	}
 
+	room, err := s.q.GetRoom(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	replayBounds, err := s.q.GetRoomEventReplayBounds(ctx, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	gameReason := gameResyncReason(hello.LastGameSequence, room.EventSeq, replayBounds.MinSequence)
+	var lastChatPosition *int64
+	chatReason := ""
+	var oldestChatCursor, targetChatCursor *string
+	if hello.LastChatCursor != nil {
+		target := s.chatCursor.Encode(room.ID, room.CreatedAt.Time, room.ChatSeq, multi.ChatCursorAfter)
+		targetChatCursor = &target
+		if validateChatRoom(room, s.now()) != nil {
+			chatReason = "history_unavailable"
+		} else if position, decodeErr := s.chatCursor.Decode(*hello.LastChatCursor, room.ID, room.CreatedAt.Time, multi.ChatCursorAfter); decodeErr != nil {
+			chatReason = "invalid_cursor"
+		} else {
+			bounds, boundsErr := s.q.GetChatReplayBounds(ctx, repo.GetChatReplayBoundsParams{
+				RoomID: room.ID,
+				Cutoff: pgtype.Timestamptz{Time: s.now().Add(-s.chatRetention), Valid: true},
+			})
+			if boundsErr != nil {
+				return nil, internalError(boundsErr)
+			}
+			switch {
+			case position > room.ChatSeq:
+				chatReason = "ahead_of_server"
+			case chatHistoryUnavailable(position, room.ChatSeq, bounds.MinPosition):
+				chatReason = "history_unavailable"
+				oldest := room.ChatSeq
+				if bounds.MinPosition > 0 {
+					oldest = bounds.MinPosition - 1
+				}
+				cursor := s.chatCursor.Encode(room.ID, room.CreatedAt.Time, oldest, multi.ChatCursorAfter)
+				oldestChatCursor = &cursor
+			default:
+				lastChatPosition = &position
+			}
+		}
+	}
+	if gameReason != "" || chatReason != "" {
+		scope := "game"
+		reason := gameReason
+		var gameSequence *int64
+		if gameReason != "" {
+			value := room.EventSeq
+			gameSequence = &value
+		}
+		if chatReason != "" {
+			scope = "chat"
+			reason = chatReason
+		}
+		if gameReason != "" && chatReason != "" {
+			scope = "all"
+			reason = gameReason
+		}
+		if err := writeWSControl(ws, multi.ResyncRequiredMessage{
+			Type: "resync.required", Scope: scope, Reason: reason,
+			GameSequence: gameSequence, OldestAvailableChatCursor: oldestChatCursor,
+			TargetChatCursor: targetChatCursor,
+		}); err != nil {
+			slog.Warn("ws: resync frame write failed", "room_id", request.RoomId, "error", err)
+		}
+		_ = ws.Close(websocket.StatusPolicyViolation, "game resync required")
+		return nil, nil
+	}
+
 	// 连接生效：成员 connected（清宽限）+ room.updated 事件广播（对端可见在线，08 §4.6）
 	if err := s.markMemberConnected(ctx, request.RoomId, member.ID); err != nil {
 		return nil, internalError(err)
 	}
 
 	// 注册/重放/实时流（阻塞直到断开；返回 nil 由 strict handler 正常结束）
-	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastSequence)
+	conn := hub.NewConn(s.hub, ws, request.RoomId, *member, hello.LastGameSequence, lastChatPosition)
 	conn.Serve()
 	return nil, nil
+}
+
+func decodeHello(data []byte, hello *multi.HelloMessage) error {
+	var raw struct {
+		Type             string  `json:"type"`
+		Token            string  `json:"token"`
+		LastGameSequence *int64  `json:"lastGameSequence"`
+		LastChatCursor   *string `json:"lastChatCursor"`
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&raw); err != nil {
+		return err
+	}
+	if raw.Type != "hello" || raw.Token == "" || raw.LastGameSequence == nil {
+		return errors.New("invalid hello")
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("multiple json values")
+	}
+	*hello = multi.HelloMessage{Type: raw.Type, Token: raw.Token, LastGameSequence: *raw.LastGameSequence, LastChatCursor: raw.LastChatCursor}
+	return nil
+}
+
+func gameResyncReason(lastGameSequence, currentGameSequence, minReplaySequence int64) string {
+	switch {
+	case lastGameSequence < 0:
+		return "negative_sequence"
+	case lastGameSequence > currentGameSequence:
+		return "ahead_of_server"
+	case lastGameSequence < currentGameSequence && (minReplaySequence == 0 || minReplaySequence > lastGameSequence+1):
+		return "history_unavailable"
+	default:
+		return ""
+	}
+}
+
+func writeWSControl(ws *websocket.Conn, value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return ws.Write(writeCtx, websocket.MessageText, data)
 }
 
 // markMemberConnected 成员连接状态落地 + room.updated 事件（事务内取号入库）。
@@ -110,6 +227,11 @@ func (s *Server) markMemberConnected(ctx context.Context, roomID, memberID strin
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
+	// 所有成员状态写入与大厅命令保持 room -> member 锁序，避免与 claim-seat 互锁。
+	room, err := q.GetRoomForUpdate(ctx, roomID)
+	if err != nil {
+		return internalError(err)
+	}
 	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
 		ID:         memberID,
 		Status:     string(multi.MemberStatusConnected),
@@ -117,15 +239,15 @@ func (s *Server) markMemberConnected(ctx context.Context, roomID, memberID strin
 	}); err != nil {
 		return internalError(err)
 	}
-	room, err := q.GetRoomForUpdate(ctx, roomID)
-	if err != nil {
-		return internalError(err)
-	}
 	members, err := q.ListMembers(ctx, roomID)
 	if err != nil {
 		return internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, roomUpdatedPayload(room, members)); err != nil {
+	spectatorCount, err := q.CountSpectators(ctx, roomID)
+	if err != nil {
+		return internalError(err)
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, roomUpdatedPayload(room, members, int(spectatorCount))); err != nil {
 		return internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {

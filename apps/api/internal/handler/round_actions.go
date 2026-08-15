@@ -46,10 +46,8 @@ func (s *Server) currentRoundCommandState(ctx context.Context, q *repo.Queries, 
 		return repo.MultiRoom{}, repo.MultiRound{}, repo.MultiMatch{}, roundNotActiveError("本局尚未开始。")
 	}
 	if !s.now().Before(round.Deadline.Time) {
-		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, 0, s.now(), s.timing); err != nil {
-			return repo.MultiRoom{}, repo.MultiRound{}, repo.MultiMatch{}, internalError(err)
-		}
-		return repo.MultiRoom{}, repo.MultiRound{}, repo.MultiMatch{}, roundNotActiveError("本局已超时（按平局结算）。")
+		// 超时权威结算由 sweeper 或猜测事务完成；本命令不得在返回错误时让 defer 回滚一份伪结算。
+		return repo.MultiRoom{}, repo.MultiRound{}, repo.MultiMatch{}, roundNotActiveError("本局已超时，正在结算。")
 	}
 	if s.now().Before(round.StartsAt.Time) {
 		return repo.MultiRoom{}, repo.MultiRound{}, repo.MultiMatch{}, roundNotActiveError("本局尚未到开猜时间。")
@@ -62,6 +60,9 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
 	}
+	if apiErr := requirePlayer(member); apiErr != nil {
+		return nil, apiErr
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
@@ -73,9 +74,18 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	winnerSlot := multi.OtherSlot(int(member.Slot))
-	if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing); err != nil {
-		return nil, internalError(err)
+	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace {
+		if _, _, err := multi.ForfeitRaceRoundTx(ctx, q, room, round, match, member.ID, s.now(), s.timing); err != nil {
+			if errors.Is(err, multi.ErrRaceRoundPlayerInactive) {
+				return nil, roundNotActiveError("你已放弃本局。")
+			}
+			return nil, internalError(err)
+		}
+	} else {
+		winnerSlot := multi.OtherSlot(multi.MemberSeat(*member))
+		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSeat(*member)); err != nil {
+			return nil, internalError(err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
@@ -88,6 +98,9 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	member, ok := GuestMemberFromContext(ctx)
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
+	}
+	if apiErr := requirePlayer(member); apiErr != nil {
+		return nil, apiErr
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -110,7 +123,7 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		if err != nil {
 			return nil, internalError(err)
 		}
-		if result.ExpiredSlot == int(member.Slot) {
+		if result.ExpiredSlot == multi.MemberSeat(*member) {
 			expiredOwnTurn = true
 		}
 		round = result.Round
@@ -129,7 +142,7 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		s.publish(request.RoomId)
 		return nil, turnExpiredError("本轮已超时空过。")
 	}
-	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != int(member.Slot) {
+	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSeat(*member) {
 		return nil, notYourTurnError()
 	}
 	if _, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing); err != nil {

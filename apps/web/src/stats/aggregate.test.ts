@@ -9,7 +9,11 @@ import {
   summarize,
   winningGuessDistribution,
 } from "./aggregate";
-import { STATS_SCHEMA_VERSION, type StatsRecord, type StatsRound } from "./types";
+import {
+  STATS_SCHEMA_VERSION,
+  type StatsRecord,
+  type StatsRound,
+} from "./types";
 
 const round = (
   roundIndex: number,
@@ -25,7 +29,11 @@ const round = (
   answer: {
     id: `answer-${roundIndex}`,
     name: `答案 ${roundIndex}`,
-    work: { id: workId, title: workId === "th06" ? "东方红魔乡" : "东方妖妖梦", code: workId === "th06" ? "TH06" : "TH07" },
+    work: {
+      id: workId,
+      title: workId === "th06" ? "东方红魔乡" : "东方妖妖梦",
+      code: workId === "th06" ? "TH06" : "TH07",
+    },
   },
   guesses: Array.from({ length: guesses }, (_, index) => ({
     id: `guess-${roundIndex}-${index}`,
@@ -37,29 +45,78 @@ const round = (
 
 const records: StatsRecord[] = [
   {
-    id: "daily-win", schemaVersion: STATS_SCHEMA_VERSION, kind: "single", mode: "daily",
-    puzzleKey: "2026-01-01", startedAt: "2026-01-01T10:00:00Z", endedAt: "2026-01-01T10:01:00Z",
-    durationMs: 10_000, outcome: "win", round: round(1, "win", "th06", 2),
+    id: "daily-win",
+    schemaVersion: STATS_SCHEMA_VERSION,
+    kind: "single",
+    mode: "daily",
+    puzzleKey: "2026-01-01",
+    startedAt: "2026-01-01T10:00:00Z",
+    endedAt: "2026-01-01T10:01:00Z",
+    durationMs: 10_000,
+    outcome: "win",
+    round: round(1, "win", "th06", 2),
   },
   {
-    id: "random-loss", schemaVersion: STATS_SCHEMA_VERSION, kind: "single", mode: "random",
-    startedAt: "2026-01-02T10:00:00Z", endedAt: "2026-01-02T10:01:00Z",
-    durationMs: 20_000, outcome: "loss", round: round(2, "loss", "th07", 3),
+    id: "random-loss",
+    schemaVersion: STATS_SCHEMA_VERSION,
+    kind: "single",
+    mode: "random",
+    startedAt: "2026-01-02T10:00:00Z",
+    endedAt: "2026-01-02T10:01:00Z",
+    durationMs: 20_000,
+    outcome: "loss",
+    round: round(2, "loss", "th07", 3),
   },
   {
-    id: "multi-win", schemaVersion: STATS_SCHEMA_VERSION, kind: "multiplayer", mode: "multiplayer",
-    format: "bo3", multiplayerMode: "race", matchIndex: 0, startedAt: "2026-01-03T10:00:00Z", endedAt: "2026-01-03T10:03:00Z",
-    durationMs: 70_000, outcome: "win", reason: "normal", scoreSelf: 2, scoreOpponent: 1,
-    rounds: [round(1, "win", "th06", 1), round(2, "loss", "th07", 2), round(3, "win", "th06", 3)],
+    id: "multi-win",
+    schemaVersion: STATS_SCHEMA_VERSION,
+    kind: "multiplayer",
+    mode: "multiplayer",
+    format: "bo3",
+    multiplayerMode: "race",
+    matchIndex: 0,
+    startedAt: "2026-01-03T10:00:00Z",
+    endedAt: "2026-01-03T10:03:00Z",
+    durationMs: 70_000,
+    outcome: "win",
+    reason: "normal",
+    scoreSelf: 2,
+    opponentScores: [1],
+    rosterSize: 2,
+    playerLimit: 2,
+    rounds: [
+      round(1, "win", "th06", 1),
+      round(2, "loss", "th07", 2),
+      round(3, "win", "th06", 3),
+    ],
   },
 ];
 
 describe("stats aggregation", () => {
   it("按 match 统计多人游玩次数，按 round 统计作品", () => {
-    expect(summarize(records)).toMatchObject({ plays: 3, wins: 2, losses: 1, draws: 0 });
+    expect(summarize(records)).toMatchObject({
+      plays: 3,
+      wins: 2,
+      losses: 1,
+      draws: 0,
+    });
     expect(aggregateWorks(records)).toEqual([
-      { id: "th06", code: "TH06", title: "东方红魔乡", total: 3, wins: 3, winRate: 1 },
-      { id: "th07", code: "TH07", title: "东方妖妖梦", total: 2, wins: 0, winRate: 0 },
+      {
+        id: "th06",
+        code: "TH06",
+        title: "东方红魔乡",
+        total: 3,
+        wins: 3,
+        winRate: 1,
+      },
+      {
+        id: "th07",
+        code: "TH07",
+        title: "东方妖妖梦",
+        total: 2,
+        wins: 0,
+        winRate: 0,
+      },
     ]);
     expect(winningGuessDistribution(records)).toEqual([
       { guesses: 1, count: 1 },
@@ -69,23 +126,56 @@ describe("stats aggregation", () => {
   });
 
   it("支持模式、日期和多人赛制筛选", () => {
-    expect(filterStatsRecords(records, { mode: "multiplayer", format: "bo3", multiplayerMode: "all" })).toHaveLength(1);
-    expect(filterStatsRecords(records, { mode: "all", format: "all", multiplayerMode: "race" }).map((item) => item.id)).toEqual(["multi-win"]);
-    expect(filterStatsRecords(records, { mode: "all", format: "all", multiplayerMode: "all", from: "2026-01-02", to: "2026-01-02" }).map((item) => item.id)).toEqual(["random-loss"]);
+    expect(
+      filterStatsRecords(records, {
+        mode: "multiplayer",
+        format: "bo3",
+        multiplayerMode: "all",
+      }),
+    ).toHaveLength(1);
+    expect(
+      filterStatsRecords(records, {
+        mode: "all",
+        format: "all",
+        multiplayerMode: "race",
+      }).map((item) => item.id),
+    ).toEqual(["multi-win"]);
+    expect(
+      filterStatsRecords(records, {
+        mode: "all",
+        format: "all",
+        multiplayerMode: "all",
+        from: "2026-01-02",
+        to: "2026-01-02",
+      }).map((item) => item.id),
+    ).toEqual(["random-loss"]);
   });
 
   it("处理零分母、分位数和直方图区间", () => {
     expect(summarize([]).winRate).toBe(0);
     expect(quantile([10, 20, 30, 40], 0.5)).toBe(25);
     expect(quantile([10, 20, 30, 40], 0.9)).toBeCloseTo(37);
-    expect(buildHistogram([0, 999, 1000], 2).reduce((sum, bin) => sum + bin.count, 0)).toBe(3);
+    expect(
+      buildHistogram([0, 999, 1000], 2).reduce(
+        (sum, bin) => sum + bin.count,
+        0,
+      ),
+    ).toBe(3);
   });
 
   it("每日连胜可跨年，并允许今天尚未游玩时延续到昨天", () => {
-    const streakRecords = ["2025-12-31", "2026-01-01", "2026-01-02"].map((puzzleKey, index) => ({
-      ...records[0], id: `daily-${index}`, puzzleKey, startedAt: `${puzzleKey}T10:00:00Z`, endedAt: `${puzzleKey}T10:01:00Z`,
-    })) as StatsRecord[];
-    expect(dailyStreak(streakRecords, new Date("2026-01-03T12:00:00"))).toEqual({ current: 3, longest: 3 });
+    const streakRecords = ["2025-12-31", "2026-01-01", "2026-01-02"].map(
+      (puzzleKey, index) => ({
+        ...records[0],
+        id: `daily-${index}`,
+        puzzleKey,
+        startedAt: `${puzzleKey}T10:00:00Z`,
+        endedAt: `${puzzleKey}T10:01:00Z`,
+      }),
+    ) as StatsRecord[];
+    expect(dailyStreak(streakRecords, new Date("2026-01-03T12:00:00"))).toEqual(
+      { current: 3, longest: 3 },
+    );
   });
 
   it("接力游玩记录只展示本地玩家的猜测头像", () => {
@@ -96,7 +186,6 @@ describe("stats aggregation", () => {
       mode: "multiplayer",
       format: "bo3",
       multiplayerMode: "relay",
-      memberSlot: 1,
       matchIndex: 0,
       startedAt: "2026-01-04T10:00:00Z",
       endedAt: "2026-01-04T10:04:00Z",
@@ -104,17 +193,36 @@ describe("stats aggregation", () => {
       outcome: "loss",
       reason: "normal",
       scoreSelf: 0,
-      scoreOpponent: 2,
-      rounds: [{
-        ...round(4, "loss", "th06", 0),
-        guesses: [
-          { id: "mine", name: "我的猜测", correct: false, memberSlot: 1 },
-          { id: "opponent", name: "对手猜测", correct: true, memberSlot: 2 },
-        ],
-      }],
+      opponentScores: [2],
+      rosterSize: 2,
+      playerLimit: 2,
+      rounds: [
+        {
+          ...round(4, "loss", "th06", 0),
+          guesses: [
+            { id: "mine", name: "我的猜测", correct: false },
+            { id: "opponent", name: "对手猜测", correct: true },
+          ],
+          turns: [
+            {
+              index: 1,
+              actor: "self",
+              kind: "guess",
+              guess: { id: "mine", name: "我的猜测", correct: false },
+            },
+            {
+              index: 2,
+              actor: "other",
+              kind: "guess",
+              guess: { id: "opponent", name: "对手猜测", correct: true },
+            },
+          ],
+        },
+      ],
     };
 
-    expect(displayGuessesForRecord(relayRecord).map((guess) => guess.id)).toEqual(["mine"]);
+    expect(
+      displayGuessesForRecord(relayRecord).map((guess) => guess.id),
+    ).toEqual(["mine"]);
   });
 });
-

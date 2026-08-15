@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,11 +77,11 @@ func TestMultiCreateRoom(t *testing.T) {
 	if len(created.RoomCode) != 6 {
 		t.Fatalf("roomCode %q, want 6 chars", created.RoomCode)
 	}
-	if created.Member.Slot != 1 {
-		t.Fatalf("host slot = %d, want 1", created.Member.Slot)
+	if created.Viewer.Seat == nil || *created.Viewer.Seat != 1 {
+		t.Fatalf("host seat = %v, want 1", created.Viewer.Seat)
 	}
-	if created.Member.DisplayName != "房主" {
-		t.Fatalf("displayName = %q, want 房主（trim）", created.Member.DisplayName)
+	if created.Viewer.DisplayName != "房主" {
+		t.Fatalf("displayName = %q, want 房主（trim）", created.Viewer.DisplayName)
 	}
 	if created.GuestToken == "" {
 		t.Fatal("guestToken empty")
@@ -106,8 +107,8 @@ func TestMultiCreateRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Member.DisplayName != "匿名玩家" {
-		t.Fatalf("empty displayName = %q, want 匿名玩家", created.Member.DisplayName)
+	if created.Viewer.DisplayName != "匿名玩家" {
+		t.Fatalf("empty displayName = %q, want 匿名玩家", created.Viewer.DisplayName)
 	}
 }
 
@@ -122,7 +123,7 @@ func TestMultiRoomInfo(t *testing.T) {
 	if err := json.Unmarshal(payload, &info); err != nil {
 		t.Fatal(err)
 	}
-	if info.Format != openapi.Bo3 || info.Status != openapi.RoomStatusLobby || info.MemberCount != 1 {
+	if info.Format != openapi.Bo3 || info.Status != openapi.RoomStatusLobby || info.PlayerCount != 1 {
 		t.Fatalf("unexpected info: %+v", info)
 	}
 
@@ -157,17 +158,138 @@ func TestMultiJoinRoom(t *testing.T) {
 	if err := json.Unmarshal(payload, &joined); err != nil {
 		t.Fatal(err)
 	}
-	if joined.Member.Slot != 2 || joined.Member.DisplayName != "玩家B" {
-		t.Fatalf("unexpected member: %+v", joined.Member)
+	if joined.Viewer.Seat == nil || *joined.Viewer.Seat != 2 || joined.Viewer.DisplayName != "玩家B" {
+		t.Fatalf("unexpected viewer: %+v", joined.Viewer)
 	}
 
-	// 满房 → 409 ROOM_FULL
+	// 满员后继续加入 → spectator
 	resp, payload = request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{})
-	if resp.StatusCode != http.StatusConflict {
-		t.Fatalf("full room status %d: %s", resp.StatusCode, payload)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("spectator join status %d: %s", resp.StatusCode, payload)
 	}
-	if err := decodeError(t, payload); err.Code != "ROOM_FULL" {
-		t.Fatalf("want ROOM_FULL, got %s", err.Code)
+	var spectator openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &spectator); err != nil {
+		t.Fatal(err)
+	}
+	if spectator.Viewer.Role != openapi.ParticipantRoleSpectator || spectator.Viewer.Seat != nil {
+		t.Fatalf("unexpected spectator viewer: %+v", spectator.Viewer)
+	}
+
+	// 观战者不占玩家容量：seat 2 释放后，下一名加入者仍成为玩家。
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/leave", string(joined.GuestToken), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("player leave status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{"displayName": "补位玩家"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("replacement join status %d: %s", resp.StatusCode, payload)
+	}
+	var replacement openapi.JoinRoomResponse
+	if err := json.Unmarshal(payload, &replacement); err != nil {
+		t.Fatal(err)
+	}
+	if replacement.Viewer.Role != openapi.ParticipantRolePlayer || replacement.Viewer.Seat == nil || *replacement.Viewer.Seat != 2 {
+		t.Fatalf("spectator consumed player capacity: %+v", replacement.Viewer)
+	}
+}
+
+func TestMultiConcurrentJoinSeatsAndSpectatorCap(t *testing.T) {
+	fixture := createRoom(t)
+	if _, err := pool.Exec(ctx, "UPDATE multi_room SET player_limit = 8 WHERE id = $1", fixture.RoomId); err != nil {
+		t.Fatal(err)
+	}
+
+	type joinResult struct {
+		status  int
+		payload []byte
+	}
+	const concurrentJoins = 12
+	start := make(chan struct{})
+	results := make(chan joinResult, concurrentJoins)
+	var wg sync.WaitGroup
+	for i := 0; i < concurrentJoins; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			resp, payload := request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{})
+			results <- joinResult{status: resp.StatusCode, payload: payload}
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+
+	playerSeats := map[int]bool{}
+	spectators := 0
+	for result := range results {
+		if result.status != http.StatusCreated {
+			t.Fatalf("concurrent join status %d: %s", result.status, result.payload)
+		}
+		var joined openapi.JoinRoomResponse
+		if err := json.Unmarshal(result.payload, &joined); err != nil {
+			t.Fatal(err)
+		}
+		if joined.JoinRole != joined.Viewer.Role {
+			t.Fatalf("joinRole %s disagrees with viewer role %s", joined.JoinRole, joined.Viewer.Role)
+		}
+		switch joined.JoinRole {
+		case openapi.ParticipantRolePlayer:
+			if joined.Viewer.Seat == nil {
+				t.Fatalf("player join has no seat: %+v", joined)
+			}
+			seat := *joined.Viewer.Seat
+			if playerSeats[seat] {
+				t.Fatalf("duplicate concurrent seat %d", seat)
+			}
+			playerSeats[seat] = true
+		case openapi.ParticipantRoleSpectator:
+			if joined.Viewer.Seat != nil {
+				t.Fatalf("spectator received seat: %+v", joined.Viewer)
+			}
+			spectators++
+		default:
+			t.Fatalf("unexpected joinRole %s", joined.JoinRole)
+		}
+	}
+	if len(playerSeats) != 7 || spectators != concurrentJoins-7 {
+		t.Fatalf("concurrent joins players=%v spectators=%d, want seats 2..8 and %d spectators", playerSeats, spectators, concurrentJoins-7)
+	}
+	for seat := 2; seat <= 8; seat++ {
+		if !playerSeats[seat] {
+			t.Fatalf("minimum seat allocation missed seat %d: %v", seat, playerSeats)
+		}
+	}
+
+	for spectators < multi.SpectatorCap {
+		resp, payload := request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{})
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("fill spectator %d: %d %s", spectators+1, resp.StatusCode, payload)
+		}
+		var joined openapi.JoinRoomResponse
+		if err := json.Unmarshal(payload, &joined); err != nil {
+			t.Fatal(err)
+		}
+		if joined.JoinRole != openapi.ParticipantRoleSpectator || joined.Viewer.Role != openapi.ParticipantRoleSpectator {
+			t.Fatalf("full player room did not return explicit spectator role: %+v", joined)
+		}
+		spectators++
+	}
+
+	var membersBefore int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM multi_member WHERE room_id = $1", fixture.RoomId).Scan(&membersBefore); err != nil {
+		t.Fatal(err)
+	}
+	resp, payload := request(http.MethodPost, "/api/rooms/"+fixture.RoomCode+"/join", map[string]string{})
+	if resp.StatusCode != http.StatusConflict || decodeError(t, payload).Code != "ROOM_FULL" {
+		t.Fatalf("spectator cap join = %d %s, want ROOM_FULL", resp.StatusCode, payload)
+	}
+	var membersAfter int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM multi_member WHERE room_id = $1", fixture.RoomId).Scan(&membersAfter); err != nil {
+		t.Fatal(err)
+	}
+	if membersAfter != membersBefore {
+		t.Fatalf("spectator cap rejection created a member: %d -> %d", membersBefore, membersAfter)
 	}
 }
 
@@ -240,15 +362,19 @@ func TestMultiSnapshotAndEvents(t *testing.T) {
 	}
 }
 
-func TestMultiReadyIdempotent(t *testing.T) {
+func TestMultiReadyUnreadyIdempotent(t *testing.T) {
 	fixture := createRoom(t)
+	var initialSequence int64
+	if err := pool.QueryRow(ctx, "SELECT event_seq FROM multi_room WHERE id = $1", fixture.RoomId).Scan(&initialSequence); err != nil {
+		t.Fatal(err)
+	}
 
-	resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("ready status %d: %s", resp.StatusCode, payload)
 	}
 	// 幂等：重复 ready 不报错
-	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true})
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("repeat ready status %d: %s", resp.StatusCode, payload)
 	}
@@ -260,12 +386,36 @@ func TestMultiReadyIdempotent(t *testing.T) {
 	if !snap.Members[0].Ready {
 		t.Fatalf("host ready not set: %+v", snap.Members[0])
 	}
+	if int64(snap.GameSequence) != initialSequence+1 {
+		t.Fatalf("repeated ready emitted event: initial=%d current=%d", initialSequence, snap.GameSequence)
+	}
+
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": false})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("unready status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": false})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("repeat unready status %d: %s", resp.StatusCode, payload)
+	}
+	resp, payload = requestAuth(http.MethodGet, "/api/rooms/"+fixture.RoomId+"/snapshot", fixture.GuestToken, nil)
+	if err := json.Unmarshal(payload, &snap); err != nil {
+		t.Fatal(err)
+	}
+	if snap.Members[0].Ready || int64(snap.GameSequence) != initialSequence+2 {
+		t.Fatalf("unready state/event = ready:%v sequence:%d, want false/%d", snap.Members[0].Ready, snap.GameSequence, initialSequence+2)
+	}
+
+	resp, payload = requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil)
+	if resp.StatusCode != http.StatusBadRequest || decodeError(t, payload).Code != "INVALID_REQUEST" {
+		t.Fatalf("missing ready body = %d %s, want INVALID_REQUEST", resp.StatusCode, payload)
+	}
 }
 
 func TestMultiLeaveReleasesSlot(t *testing.T) {
 	fixture := createRoom(t)
 	// 房主 ready
-	if resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, nil); resp.StatusCode != http.StatusNoContent {
+	if resp, payload := requestAuth(http.MethodPost, "/api/rooms/"+fixture.RoomId+"/ready", fixture.GuestToken, map[string]bool{"ready": true}); resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("host ready status %d: %s", resp.StatusCode, payload)
 	}
 	// 加入者加入并 ready
@@ -409,8 +559,8 @@ func TestMultiJoinRateLimit(t *testing.T) {
 	if code := doJoin(); code != http.StatusCreated {
 		t.Fatalf("1st join status %d", code)
 	}
-	if code := doJoin(); code != http.StatusConflict { // 满房（409 ROOM_FULL）优先于限流
-		t.Fatalf("2nd join status %d, want 409", code)
+	if code := doJoin(); code != http.StatusCreated { // 玩家满员后仍可在限流配额内作为 spectator 加入
+		t.Fatalf("2nd join status %d, want 201 spectator", code)
 	}
 	if code := doJoin(); code != http.StatusTooManyRequests {
 		t.Fatalf("3rd join status %d, want 429", code)

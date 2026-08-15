@@ -216,6 +216,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 | [部署指南](./docs/deployment.md) | Docker Compose 生产部署与运维注意事项 |
 | [站点开发计划](./docs/site-development-plan.md) | 开发边界、PR 对齐标准和维护重点 |
 | [多人房间开发文档](./docs/multiplayer.md) | 多人规则、状态机、REST 与 WebSocket 协议 |
+| [多人房间扩展开发计划](./docs/multiplayer-expansion/README.md) | 玩家席位/队伍泛化、竞速人数设置和房间聊天的 Issue 拆分、依赖与验收标准 |
 
 ## 测试与质量
 

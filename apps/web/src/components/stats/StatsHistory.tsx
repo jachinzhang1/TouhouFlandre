@@ -410,6 +410,7 @@ function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
 }
 
 function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
+  const placement = record.scoringMode === "placement";
   return (
     <div className="grid gap-2">
       {record.rounds.map((round) => (
@@ -417,14 +418,22 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
           <strong>第 {round.roundIndex} 局</strong>
           <span
             className={
-              round.result === "win" ? "text-jade" : "text-[var(--error-text)]"
+              placement
+                ? round.pointsAwarded
+                  ? "font-bold text-jade"
+                  : "text-ink-soft"
+                : round.result === "win"
+                  ? "text-jade"
+                  : "text-[var(--error-text)]"
             }
           >
-            {round.result === "win"
-              ? "胜"
-              : round.result === "loss"
-                ? "负"
-                : "平"}
+            {placement
+              ? `+${round.pointsAwarded ?? 0} 分 · ${participationLabel(round.participationStatus)}`
+              : round.result === "win"
+                ? "胜"
+                : round.result === "loss"
+                  ? "负"
+                  : "平"}
           </span>
           <span className="stats-history-round-duration">
             {formatDuration(round.durationMs)}
@@ -447,13 +456,41 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
   );
 }
 
+function participationLabel(status: StatsRound["participationStatus"]): string {
+  switch (status) {
+    case "correct":
+      return "猜中";
+    case "forfeited":
+      return "放弃";
+    case "exhausted":
+      return "次数耗尽";
+    case "timed_out":
+      return "超时";
+    default:
+      return "未得分";
+  }
+}
+
 function modeLabel(record: StatsRecord): string {
   if (record.kind === "single") {
     return record.mode === "daily" ? "每日" : "随机";
   }
   const multiplayerMode =
     MULTIPLAYER_MODE_LABELS[record.multiplayerMode ?? "race"];
-  return `${multiplayerMode} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}`;
+  const rosterLabel =
+    (record.rosterSize ?? 2) > 2
+      ? ` · ${record.rosterSize} 人/${record.playerLimit ?? record.rosterSize}`
+      : "";
+  if (record.scoringMode === "placement") {
+    const rank = record.finalRank
+      ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名`
+      : "";
+    const eliminated = record.eliminatedRound
+      ? ` · 第 ${record.eliminatedRound} 局淘汰`
+      : "";
+    return `${multiplayerMode} · 积分制 · ${record.scoreSelf} 分${rank}${eliminated}${rosterLabel}`;
+  }
+  return `${multiplayerMode} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`;
 }
 
 function formatDuration(ms: number): string {
