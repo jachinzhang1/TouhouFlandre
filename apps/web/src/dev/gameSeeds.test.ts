@@ -6,7 +6,9 @@ import {
   loadMultiplayerGameSeed,
   MULTIPLAYER_GAME_SEED_PRESETS,
   parseMultiplayerGameSeedPreset,
+  parseSingleGameResultSeed,
   parseSingleGameSeedPreset,
+  SINGLE_GAME_RESULT_SEEDS,
   SINGLE_GAME_SEED_PRESETS,
   storeMultiplayerGameSeed,
 } from "./gameSeeds";
@@ -57,6 +59,14 @@ describe("singleplayer game UI seeds", () => {
     expect(parseSingleGameSeedPreset(undefined)).toBe("playing");
     expect(() => parseSingleGameSeedPreset("missing")).toThrow(
       SINGLE_GAME_SEED_PRESETS.join(", "),
+    );
+  });
+
+  it("parses replayable singleplayer result seeds", () => {
+    expect(parseSingleGameResultSeed(undefined)).toBe("won");
+    expect(parseSingleGameResultSeed("lost")).toBe("lost");
+    expect(() => parseSingleGameResultSeed("missing")).toThrow(
+      SINGLE_GAME_RESULT_SEEDS.join(", "),
     );
   });
 });

@@ -25,6 +25,9 @@ export const SINGLE_GAME_SEED_PRESETS = [
 ] as const;
 export type SingleGameSeedPreset = (typeof SINGLE_GAME_SEED_PRESETS)[number];
 
+export const SINGLE_GAME_RESULT_SEEDS = ["won", "lost"] as const;
+export type SingleGameResultSeed = (typeof SINGLE_GAME_RESULT_SEEDS)[number];
+
 export const MULTIPLAYER_GAME_SEED_PRESETS = [
   "lobby-alone",
   "lobby-ready",
@@ -69,7 +72,9 @@ export interface MultiplayerGameSeed {
 export interface GameSeedConsole {
   readonly page: "singleplayer" | "multiplayer";
   readonly presets: readonly string[];
+  readonly resultPresets?: readonly string[];
   seed: (preset?: string) => string;
+  seedResult?: (result?: string) => Promise<string>;
   reset: () => void;
 }
 
@@ -102,6 +107,18 @@ export function parseSingleGameSeedPreset(
   if (isSingleGameSeedPreset(preset)) return preset;
   throw new Error(
     `Unknown singleplayer seed "${preset}". Available: ${SINGLE_GAME_SEED_PRESETS.join(", ")}`,
+  );
+}
+
+export function parseSingleGameResultSeed(
+  value: string | undefined,
+): SingleGameResultSeed {
+  const result = value ?? "won";
+  if ((SINGLE_GAME_RESULT_SEEDS as readonly string[]).includes(result)) {
+    return result as SingleGameResultSeed;
+  }
+  throw new Error(
+    `Unknown singleplayer result seed "${result}". Available: ${SINGLE_GAME_RESULT_SEEDS.join(", ")}`,
   );
 }
 

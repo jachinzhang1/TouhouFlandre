@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Search, Send } from "lucide-react";
-import { message as globalMessage } from "antd";
+import { message as antdMessage } from "antd";
 import { createPortal } from "react-dom";
 import {
   useCallback,
@@ -49,8 +49,10 @@ import {
 import {
   buildSingleGameSeed,
   installGameSeedConsole,
+  parseSingleGameResultSeed,
   parseSingleGameSeedPreset,
   SINGLE_GAME_SEED_PRESETS,
+  SINGLE_GAME_RESULT_SEEDS,
 } from "../../dev/gameSeeds";
 import { PaperSearchInput } from "../controls/PaperSearchInput";
 import { FeedbackLegend } from "../game/FeedbackLegend";
@@ -208,10 +210,12 @@ function SuggestionPopover({
 }
 
 export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
+  const [messageApi, messageContextHolder] = antdMessage.useMessage();
   const listboxId = useId();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const loadRequestIdRef = useRef(0);
   const developmentSeedActiveRef = useRef(false);
+  const developmentResultReplayRef = useRef(0);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
@@ -540,32 +544,50 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   useEffect(() => {
+    const applySeed = (seed: ReturnType<typeof buildSingleGameSeed>) => {
+      setSession(seed.session);
+      setPuzzleLabel(seed.puzzleLabel);
+      setLoading(seed.loading);
+      setSubmitting(false);
+      setEndingSession(false);
+      setTimingOut(false);
+      setMessage(seed.message);
+      setQuery("");
+      setSelectedId("");
+      setActiveSuggestionId("");
+      setSuggestionsDismissed(false);
+      setInitialElapsedMs(seed.initialElapsedMs);
+      setGuessCompletedElapsedMs(seed.guessCompletedElapsedMs);
+      setDailyDifficulty(seed.dailyDifficulty);
+      setDailyStatuses(seed.dailyStatuses);
+    };
+
     return installGameSeedConsole({
       page: "singleplayer",
       presets: SINGLE_GAME_SEED_PRESETS,
+      resultPresets: SINGLE_GAME_RESULT_SEEDS,
       seed: (value) => {
         const preset = parseSingleGameSeedPreset(value);
-        const seed = buildSingleGameSeed(preset, mode);
+        developmentResultReplayRef.current += 1;
         loadRequestIdRef.current += 1;
         developmentSeedActiveRef.current = true;
-        setSession(seed.session);
-        setPuzzleLabel(seed.puzzleLabel);
-        setLoading(seed.loading);
-        setSubmitting(false);
-        setEndingSession(false);
-        setTimingOut(false);
-        setMessage(seed.message);
-        setQuery("");
-        setSelectedId("");
-        setActiveSuggestionId("");
-        setSuggestionsDismissed(false);
-        setInitialElapsedMs(seed.initialElapsedMs);
-        setGuessCompletedElapsedMs(seed.guessCompletedElapsedMs);
-        setDailyDifficulty(seed.dailyDifficulty);
-        setDailyStatuses(seed.dailyStatuses);
+        applySeed(buildSingleGameSeed(preset, mode));
         return preset;
       },
+      seedResult: async (value) => {
+        const result = parseSingleGameResultSeed(value);
+        const replayId = ++developmentResultReplayRef.current;
+        loadRequestIdRef.current += 1;
+        developmentSeedActiveRef.current = true;
+        applySeed(buildSingleGameSeed("playing", mode));
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 80));
+        if (developmentResultReplayRef.current === replayId) {
+          applySeed(buildSingleGameSeed(result, mode));
+        }
+        return result;
+      },
       reset: () => {
+        developmentResultReplayRef.current += 1;
         developmentSeedActiveRef.current = false;
         void loadSession(mode, dailyDifficulty);
       },
@@ -929,9 +951,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       await navigator.clipboard.writeText(
         createShareText(session, sharePuzzleLabel, window.location.origin),
       );
-      globalMessage.success("分享文本已复制");
+      messageApi.success("分享文本已复制");
     } catch {
-      globalMessage.error("复制失败，请检查浏览器的剪贴板权限");
+      messageApi.error("复制失败，请检查浏览器的剪贴板权限");
     }
   };
 
@@ -990,6 +1012,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       className={`single-game-shell ${mode}`}
       aria-label="TouhouFlandre 游戏区域"
     >
+      {messageContextHolder}
       <div className="single-game-history-region">
         <SingleGuessHistory
           session={session}
