@@ -169,7 +169,7 @@ describe("SingleGamePage", () => {
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
   });
 
-  it("shows the feedback icon legend from the guess form", async () => {
+  it("keeps the guess action focused on submission", async () => {
     vi.mocked(api.catalog).mockResolvedValue({
       dailyDateKey: "2026-08-05",
       contents: [],
@@ -184,31 +184,7 @@ describe("SingleGamePage", () => {
 
     const submitButton = screen.getByRole("button", { name: "提交猜测" });
     expect(submitButton.querySelector(".lucide-send")).toBeTruthy();
-    expect(submitButton.querySelector(".lucide-search")).toBeNull();
-
-    const legendButton = screen.getByRole("button", { name: "查看图例" });
-    expect(legendButton.querySelector(".lucide-search")).toBeTruthy();
-    expect(screen.queryByRole("tooltip")).toBeNull();
-
-    await userEvent.click(legendButton);
-
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toBeTruthy();
-    expect(tooltip.parentElement).toBe(document.body);
-    expect(screen.getByText("该属性完全命中")).toBeTruthy();
-    expect(screen.getByText("该属性仅部分命中")).toBeTruthy();
-    expect(screen.getByText("该属性正确答案的数值高于本条猜测")).toBeTruthy();
-    expect(screen.getByText("该属性正确答案的数值低于本条猜测")).toBeTruthy();
-    expect(screen.getByText("该属性完全未命中")).toBeTruthy();
-    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-triangle")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-chevrons-down")).toBeTruthy();
-    expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);
-    expect(tooltip.querySelector(".feedback-question-mark-icon")).toBeTruthy();
-
-    await userEvent.click(document.body);
+    expect(screen.queryByRole("button", { name: "查看图例" })).toBeNull();
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 

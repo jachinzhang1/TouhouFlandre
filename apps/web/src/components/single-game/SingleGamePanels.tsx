@@ -178,23 +178,23 @@ export function SingleGuessHistory({
   }, [guessCount]);
 
   return (
-    <Paper
-      animateOnMount={false}
-      as="div"
-      className="single-game-history-paper"
-      folded={false}
-      sticker={false}
-      unfoldOnHover={false}
-      variant="plain"
+    <div
+      aria-label="猜测记录"
+      className="single-game-history-scroll"
+      data-guess-count={guessCount}
+      ref={viewportRef}
+      role="region"
     >
-      <div
-        aria-label="猜测记录"
-        className="single-game-history-scroll"
-        data-guess-count={guessCount}
-        ref={viewportRef}
-        role="region"
-      >
-        {guessCount > 0 ? (
+      {guessCount > 0 ? (
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="single-game-history-table-paper"
+          folded={false}
+          sticker={false}
+          unfoldOnHover={false}
+          variant="plain"
+        >
           <table className="guess-table">
             <thead>
               <tr>
@@ -259,26 +259,26 @@ export function SingleGuessHistory({
               })}
             </tbody>
           </table>
-        ) : (
-          <div className="empty-state" role="status">
-            {loading ? (
-              <span>
-                <Loader2 className="spin" size={20} aria-hidden="true" />{" "}
-                正在连接本地题库
-              </span>
-            ) : !session && message ? (
-              <span>
-                <X size={20} aria-hidden="true" /> 本局加载失败
-              </span>
-            ) : (
-              <span>
-                <Search size={20} aria-hidden="true" /> 等待第一次猜测
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </Paper>
+        </Paper>
+      ) : (
+        <div className="empty-state" role="status">
+          {loading ? (
+            <span>
+              <Loader2 className="spin" size={20} aria-hidden="true" />{" "}
+              正在连接本地题库
+            </span>
+          ) : !session && message ? (
+            <span>
+              <X size={20} aria-hidden="true" /> 本局加载失败
+            </span>
+          ) : (
+            <span>
+              <Search size={20} aria-hidden="true" /> 等待第一次猜测
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

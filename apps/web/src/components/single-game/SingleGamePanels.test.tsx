@@ -42,6 +42,10 @@ describe("SingleGuessHistory", () => {
       />,
     );
     const viewport = screen.getByRole("region", { name: "猜测记录" });
+    expect(viewport.closest(".paper-surface")).toBeNull();
+    expect(
+      viewport.querySelector(".single-game-history-table-paper"),
+    ).toBeNull();
     Object.defineProperty(viewport, "scrollHeight", {
       configurable: true,
       value: 480,
@@ -57,6 +61,11 @@ describe("SingleGuessHistory", () => {
       />,
     );
     expect(viewport.scrollTop).toBe(480);
+    const tablePaper = viewport.querySelector(
+      ".single-game-history-table-paper",
+    ) as HTMLElement;
+    expect(tablePaper).toBeTruthy();
+    expect(tablePaper.dataset.paperVariant).toBe("plain");
 
     Object.defineProperty(viewport, "scrollHeight", {
       configurable: true,

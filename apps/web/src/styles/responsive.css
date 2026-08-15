@@ -269,41 +269,32 @@
     padding-inline: 10px;
   }
 
-  .single-game-history-paper {
-    border-radius: 0;
-  }
-
-  .single-game-history-scroll .guess-table {
+  .single-game-history-table-paper,
+  .single-game-history-table-paper .guess-table {
     min-width: 900px;
   }
 
-  .single-game-input-paper {
-    padding: 7px;
-  }
-
-  .single-game-input-paper .guess-form {
+  .single-game-input-group .guess-form {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px;
     padding: 0;
   }
 
-  .single-game-input-paper .guess-form-actions {
+  .single-game-input-group .guess-form-actions {
     display: flex;
     grid-template-columns: none;
     gap: 6px;
   }
 
-  .single-game-input-paper .paper-button,
-  .single-game-input-paper .guess-form-actions .paper-button,
-  .single-game-input-paper .legend-button {
+  .single-game-input-group .paper-button,
+  .single-game-input-group .guess-form-actions .paper-button {
     width: 44px;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
   }
 
-  .single-game-input-paper .paper-button > span,
-  .single-game-input-paper .legend-button > span {
+  .single-game-input-group .paper-button > span {
     position: absolute;
     width: 1px;
     height: 1px;

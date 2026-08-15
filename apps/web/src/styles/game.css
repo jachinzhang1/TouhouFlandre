@@ -876,15 +876,6 @@ body:has(.single-game-shell) main {
   min-height: 0;
 }
 
-.single-game-history-paper {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  isolation: isolate;
-  box-shadow: var(--shadow-sm);
-}
-
 .single-game-history-scroll {
   position: relative;
   z-index: 1;
@@ -896,12 +887,22 @@ body:has(.single-game-shell) main {
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  height: 100%;
 }
 
-.single-game-history-scroll .guess-table {
+.single-game-history-table-paper {
   flex: 0 0 auto;
+  width: 100%;
+  min-width: 940px;
   margin-top: auto;
-  background: color-mix(in srgb, var(--paper-plain-bg) 92%, transparent);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--shadow-sm);
+}
+
+.single-game-history-table-paper .guess-table {
+  min-width: 940px;
+  background: transparent;
 }
 
 .single-game-history-scroll .guess-table thead th {
@@ -924,23 +925,17 @@ body:has(.single-game-shell) main {
   flex: 1 0 auto;
   place-items: center;
   padding: 24px;
+  background: transparent;
 }
 
-.single-game-input-paper {
+.single-game-input-group {
   z-index: 10;
   display: grid;
   min-width: 0;
-  padding: 10px 12px;
-  overflow: visible;
   isolation: isolate;
-  box-shadow: var(--shadow-sm);
 }
 
-.single-game-input-paper::before {
-  opacity: 0.58;
-}
-
-.single-game-input-paper .guess-form {
+.single-game-input-group .guess-form {
   position: relative;
   z-index: 1;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -967,11 +962,11 @@ body:has(.single-game-shell) main {
   outline-offset: -2px;
 }
 
-.single-game-input-paper .guess-form-actions {
+.single-game-input-group .guess-form-actions {
   align-items: stretch;
 }
 
-.single-game-input-paper .paper-button {
+.single-game-input-group .paper-button {
   min-height: 48px;
 }
 
@@ -979,7 +974,7 @@ body:has(.single-game-shell) main {
   min-width: 148px;
 }
 
-.single-game-input-paper .message {
+.single-game-input-group .message {
   position: relative;
   z-index: 1;
   margin: 8px 0 0;

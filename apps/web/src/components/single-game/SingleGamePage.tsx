@@ -27,7 +27,6 @@ import type {
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
-import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
 import {
   SingleGameResult,
   SingleGameStatusBar,
@@ -1006,14 +1005,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           />
         ) : null}
       </div>
-      <Paper
-        animateOnMount={false}
-        as="div"
-        className="single-game-input-paper"
-        folded={false}
-        sticker={false}
-        unfoldOnHover={false}
-        variant="plain"
+      <div
+        aria-label="猜测操作"
+        className="single-game-input-group"
+        role="group"
       >
         <form
           className="guess-form"
@@ -1178,12 +1173,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               )}
               <span>提交猜测</span>
             </PaperButton>
-            <FeedbackLegendButton />
           </div>
         </form>
 
         {message ? <p className="message error">{message}</p> : null}
-      </Paper>
+      </div>
 
       <SingleGameStatusBar
         mode={mode}
