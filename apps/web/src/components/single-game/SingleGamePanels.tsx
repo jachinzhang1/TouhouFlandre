@@ -155,13 +155,14 @@ export function SingleGameStatusBar({
         ) : null}
         <PaperButton
           ariaLabel="放弃游戏"
+          className="single-game-forfeit"
           filled
           disabled={disabled || !sessionStatus || sessionStatus !== "playing"}
           onClick={onForfeit}
           title="放弃游戏"
           tone="danger"
         >
-          <Flag size={17} aria-hidden="true" />
+          <Flag size={18} aria-hidden="true" />
           <span>放弃游戏</span>
         </PaperButton>
       </div>
@@ -418,14 +419,14 @@ function DailyDifficultyButtons({
               disabled={disabled && !selected}
               onClick={() => onSelect(difficulty)}
             >
-              <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
               {status === "won" ? (
-                <Check size={13} aria-hidden="true" />
+                <Check size={16} aria-hidden="true" />
               ) : status === "lost" ? (
-                <X size={13} aria-hidden="true" />
+                <X size={16} aria-hidden="true" />
               ) : (
-                <Play size={12} aria-hidden="true" />
+                <Play size={16} aria-hidden="true" />
               )}
+              <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
             </PaperSegmentButton>
           </Fragment>
         );

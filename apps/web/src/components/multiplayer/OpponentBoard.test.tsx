@@ -46,7 +46,10 @@ describe("OpponentBoard", () => {
     expect(partialIcon?.querySelector(".lucide-check")).toBeTruthy();
     const slash = partialIcon?.querySelector<SVGElement>(".lucide-slash");
     expect(slash).toBeTruthy();
-    expect(slash?.style.transform).toBe("scaleX(-1)");
+    expect(slash?.style.transform).toBe(
+      "translate(1px, -1px) scaleX(-1) scale(0.68)",
+    );
+    expect(slash?.style.transformOrigin).toBe("center");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
     // 表头列标签各出现一次（布局重构：标签只在表最上方）

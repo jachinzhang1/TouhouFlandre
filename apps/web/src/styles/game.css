@@ -1129,6 +1129,10 @@ body:has(.single-game-shell) main {
   align-items: center;
 }
 
+.paper-surface.paper-button.single-game-forfeit {
+  min-height: 48px;
+}
+
 .single-game-result-layer {
   position: absolute;
   inset: 12px;

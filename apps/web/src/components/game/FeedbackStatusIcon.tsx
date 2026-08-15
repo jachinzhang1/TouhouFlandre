@@ -54,7 +54,10 @@ function SlashedCheckIcon({
         aria-hidden="true"
         size={size}
         strokeWidth={2.4}
-        style={{ transform: "scaleX(-1)" }}
+        style={{
+          transform: "translate(1px, -1px) scaleX(-1) scale(0.68)",
+          transformOrigin: "center",
+        }}
       />
     </span>
   );

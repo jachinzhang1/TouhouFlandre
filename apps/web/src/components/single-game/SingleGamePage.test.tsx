@@ -223,12 +223,20 @@ describe("SingleGamePage", () => {
         button.classList.contains("paper-segment-button"),
       ),
     ).toBe(true);
+    expect(
+      difficultyButtons.every(
+        (button) =>
+          button.firstElementChild?.tagName === "svg" &&
+          button.firstElementChild.getAttribute("width") === "16",
+      ),
+    ).toBe(true);
     const metrics = status.querySelector(".single-game-metrics");
     expect(status.children[1]).toBe(metrics);
     expect(status.children[2]).toBe(difficultyGroup);
     const forfeit = screen.getByRole("button", { name: "放弃游戏" });
     expect(forfeit.classList.contains("paper-button-filled")).toBe(true);
     expect(forfeit.classList.contains("paper-button-compact")).toBe(false);
+    expect(forfeit.querySelector("svg")?.getAttribute("width")).toBe("18");
     expect(status.classList.contains("paper-surface")).toBe(false);
     expect(screen.queryByRole("button", { name: "查看图例" })).toBeNull();
     expect(screen.queryByRole("tooltip")).toBeNull();
