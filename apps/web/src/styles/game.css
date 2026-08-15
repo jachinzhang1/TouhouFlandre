@@ -847,25 +847,16 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 }
 
 /* Single-player game desk: the history is the only scrolling surface. */
-body:has(.single-game-shell) {
-  overflow: hidden;
-}
-
 body:has(.single-game-shell) > div:has(.single-game-shell) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100dvh;
   min-height: 0;
-  overflow: hidden;
 }
 
 body:has(.single-game-shell) main {
-  height: calc(100dvh - var(--site-nav-height));
   min-height: 0;
-  padding-block: 12px;
   overflow: hidden;
-}
-
-body:has(.single-game-shell) .site-footer {
-  display: none;
 }
 
 .single-game-shell {

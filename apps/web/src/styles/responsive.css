@@ -260,13 +260,8 @@
 }
 
 @media (max-width: 680px) {
-  body:has(.single-game-shell) {
-    padding-bottom: 0;
-  }
-
-  body:has(.single-game-shell) main {
-    height: calc(100dvh - var(--site-nav-height) - 68px);
-    padding-block: 7px;
+  body:has(.single-game-shell) > div:has(.single-game-shell) {
+    height: calc(100dvh - 68px);
   }
 
   .single-game-shell {
