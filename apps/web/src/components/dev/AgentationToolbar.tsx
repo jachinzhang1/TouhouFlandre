@@ -3,5 +3,5 @@
 import { Agentation } from "agentation";
 
 export function AgentationToolbar() {
-  return <Agentation />;
+  return <Agentation endpoint="http://localhost:4747" />;
 }
