@@ -6,16 +6,23 @@
 import { Check, X } from "lucide-react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  resultForMemberId,
+  sortMembersBySeat,
+} from "../domain/memberCollections";
+import type { components } from "../generated/api";
 
 export function RoundResultOverlay({
   result,
-  mySlot,
+  memberId,
+  members,
   nextRoundStartsAt,
   onDismiss,
   autoDismissAtCountdownEnd = false,
 }: {
   result: RoundEndedPayload;
-  mySlot: 1 | 2;
+  memberId?: string | null;
+  members?: components["schemas"]["MemberView"][];
   nextRoundStartsAt: string | null;
   onDismiss?: () => void;
   autoDismissAtCountdownEnd?: boolean;
@@ -23,7 +30,11 @@ export function RoundResultOverlay({
   const [dismissed, setDismissed] = useState(false);
   const dismissedRef = useRef(false);
   const onDismissRef = useRef(onDismiss);
-  const won = result.result === "win";
+  const viewerResult =
+    result.viewerResult ??
+    resultForMemberId(result.results, memberId) ??
+    "draw";
+  const won = viewerResult === "win";
 
   useEffect(() => {
     onDismissRef.current = onDismiss;
@@ -49,7 +60,10 @@ export function RoundResultOverlay({
       return;
     }
     const tick = () => {
-      const nextRemaining = Math.max(0, new Date(nextRoundStartsAt).getTime() - Date.now());
+      const nextRemaining = Math.max(
+        0,
+        new Date(nextRoundStartsAt).getTime() - Date.now(),
+      );
       setRemaining(nextRemaining);
       if (autoDismissAtCountdownEnd && nextRemaining === 0) dismiss();
     };
@@ -63,16 +77,32 @@ export function RoundResultOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
       <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
-        <p className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-jade" : "text-vermilion"}`}>
-          ROUND {result.roundIndex} · {won ? "本局获胜" : result.result === "draw" ? "本局平局" : "本局失利"}
+        <p
+          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-jade" : "text-vermilion"}`}
+        >
+          ROUND {result.roundIndex} ·{" "}
+          {won ? "本局获胜" : viewerResult === "draw" ? "本局平局" : "本局失利"}
         </p>
         <div className="mb-4 flex items-center justify-center gap-2">
-          {won ? <Check size={18} className="text-jade" /> : <X size={18} className="text-vermilion" />}
+          {won ? (
+            <Check size={18} className="text-jade" />
+          ) : (
+            <X size={18} className="text-vermilion" />
+          )}
           <span className="font-brand text-[1.4rem]">{result.answer.name}</span>
         </div>
         <p className="mb-4 text-[0.8rem] text-ink-soft">
-          答案是 {result.answer.name} · 当前比分 {result.scores.slot1} : {result.scores.slot2}
+          答案是 {result.answer.name} · 当前比分{" "}
+          {sortMembersBySeat(result.scores)
+            .map((entry) => entry.score)
+            .join(" : ")}
         </p>
+        <ResultList
+          members={members ?? []}
+          scores={result.scores}
+          results={result.results}
+          viewerMemberId={memberId}
+        />
         <button
           type="button"
           onClick={dismiss}
@@ -87,5 +117,44 @@ export function RoundResultOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+function ResultList({
+  members,
+  scores,
+  results,
+  viewerMemberId,
+}: {
+  members: components["schemas"]["MemberView"][];
+  scores: RoundEndedPayload["scores"];
+  results: RoundEndedPayload["results"];
+  viewerMemberId?: string | null;
+}) {
+  return (
+    <ul className="mb-4 grid gap-1 text-left">
+      {sortMembersBySeat(results).map((entry) => (
+        <li
+          key={entry.memberId}
+          className={`flex items-center justify-between rounded border px-2 py-1 text-[0.75rem] ${entry.memberId === viewerMemberId ? "border-vermilion bg-vermilion-soft" : "border-line bg-paper-muted"}`}
+        >
+          <span className="truncate">
+            {members.find((member) => member.memberId === entry.memberId)
+              ?.displayName ?? `玩家 ${entry.seat}`}
+            {entry.memberId === viewerMemberId ? "（我）" : ""}
+          </span>
+          <span className="font-bold">
+            {scores.find((score) => score.memberId === entry.memberId)?.score ??
+              0}{" "}
+            ·{" "}
+            {entry.result === "win"
+              ? "胜"
+              : entry.result === "loss"
+                ? "负"
+                : "平"}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }

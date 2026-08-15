@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BarChart3,
-  CalendarDays,
-  Home,
-  Megaphone,
-  Search,
-} from "lucide-react";
+import { BarChart3, CalendarDays, Home, Megaphone, Search } from "lucide-react";
 import { useAnnouncementUnreadCount } from "../hooks/useAnnouncementUnreadCount";
 import { YinYangMark } from "./YinYangMark";
 
@@ -68,7 +62,10 @@ export function SiteNav() {
           <small className="text-[0.68rem] text-ink-soft">东方芙一把</small>
         </span>
       </Link>
-      <div className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--mobile-nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[14px]">
+      <div
+        data-site-nav-links
+        className="flex items-center gap-[3px] max-[680px]:fixed max-[680px]:inset-x-0 max-[680px]:bottom-0 max-[680px]:z-40 max-[680px]:grid max-[680px]:h-[68px] max-[680px]:grid-cols-5 max-[680px]:border-t max-[680px]:border-line max-[680px]:bg-[var(--mobile-nav-bg)] max-[680px]:px-[max(5px,env(safe-area-inset-right))] max-[680px]:py-[5px] max-[680px]:pb-[max(5px,env(safe-area-inset-bottom))] max-[680px]:shadow-[var(--mobile-nav-shadow)] max-[680px]:backdrop-blur-[14px]"
+      >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);

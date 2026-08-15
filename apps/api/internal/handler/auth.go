@@ -42,7 +42,7 @@ func GuestMemberFromContext(ctx context.Context) (*repo.MultiMember, bool) {
 
 // RoomGuardMiddleware 返回 strict 中间件（仅作用于 rooms_* 操作）：
 //   - rooms_getInfo / rooms_join：公开 + 按 IP 速率限制（08 §8.5，与 join 共用）；
-//   - rooms_getSnapshot / setReady / rematch / submitGuess / leave / close：
+//   - rooms_getSnapshot / claimSeat / setReady / updateSettings / rematch / submitGuess / leave / close：
 //     解析 Authorization: Bearer guest:{token} → 类型前缀/哈希/房间归属/成员状态校验，
 //     通过则注入成员到请求上下文，失败返回 GUEST_UNAUTHORIZED（401）；
 //   - rooms_connectWs：不做头鉴权（WS 走 hello 首帧鉴权，Phase 4 实现）；
@@ -67,7 +67,17 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
-			case "RoomsSetReady", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn":
+			case "RoomsListMessages", "RoomsSendMessage":
+				member, apiErr := s.authenticateGuestWithPolicy(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"), true)
+				if apiErr != nil {
+					return nil, apiErr
+				}
+				if roomID, ok := roomIDFromRequest(request); ok && member.RoomID != roomID {
+					return nil, guestUnauthorized("令牌不属于该房间。")
+				}
+				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
+				ctx.SetRequest(req)
+			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn":
 				member, apiErr := s.authenticateGuest(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
@@ -144,7 +154,11 @@ func roomIDFromRequest(request any) (string, bool) {
 	switch r := request.(type) {
 	case openapi.RoomsGetSnapshotRequestObject:
 		return r.RoomId, true
+	case openapi.RoomsClaimSeatRequestObject:
+		return r.RoomId, true
 	case openapi.RoomsSetReadyRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsUpdateSettingsRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsRematchRequestObject:
 		return r.RoomId, true
@@ -157,6 +171,10 @@ func roomIDFromRequest(request any) (string, bool) {
 	case openapi.RoomsForfeitRoundRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsPassRelayTurnRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsListMessagesRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsSendMessageRequestObject:
 		return r.RoomId, true
 	}
 	return "", false

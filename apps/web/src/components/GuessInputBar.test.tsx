@@ -78,4 +78,33 @@ describe("GuessInputBar", () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
+
+  it("禁用后清空搜索并展示权威只读状态", async () => {
+    const { rerender } = render(
+      <GuessInputBar
+        onGuess={onGuess}
+        catalogVersion="v1"
+        guessedIds={new Set()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("搜索角色"), {
+      target: { value: "灵梦" },
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: /博丽灵梦/ })).toBeTruthy());
+
+    rerender(
+      <GuessInputBar
+        onGuess={onGuess}
+        catalogVersion="v1"
+        guessedIds={new Set()}
+        disabled
+        statusMessage="你已放弃本局"
+      />,
+    );
+
+    expect((screen.getByLabelText("搜索角色") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("搜索角色") as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("status").textContent).toContain("你已放弃本局");
+    expect(screen.queryByRole("button", { name: /博丽灵梦/ })).toBeNull();
+  });
 });

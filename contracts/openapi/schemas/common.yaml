@@ -24,7 +24,10 @@ ErrorResponse:
         - ROOM_FULL
         - ROOM_CLOSED
         - GUEST_UNAUTHORIZED
+        - SPECTATOR_READ_ONLY
         - INVALID_FORMAT
+        - INVALID_PLAYER_LIMIT
+        - ROOM_SETTINGS_LOCKED
         - MATCH_ALREADY_STARTED
         - REMATCH_NOT_AVAILABLE
         - ROUND_NOT_ACTIVE
@@ -34,5 +37,12 @@ ErrorResponse:
         - GUESS_LIMIT_REACHED
         # 加入/预检按 IP 速率限制（08 §8.5）
         - RATE_LIMITED
+        # MPX-008 房间聊天
+        - CHAT_MESSAGE_INVALID
+        - CHAT_CURSOR_INVALID
+        - CHAT_SEND_FORBIDDEN
+        - CHAT_IDEMPOTENCY_CONFLICT
+        - CHAT_CURSOR_AHEAD
+        - CHAT_RESYNC_REQUIRED
     error:
       type: string

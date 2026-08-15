@@ -5,8 +5,9 @@ post:
     - rooms
   summary: 放弃本局
   description: |
-    成员令牌鉴权。仅结束当前小局：放弃者判负，对手获得本局胜利。
-    多局赛制下由既有局间推进机制进入下一小局；若对手因此达到 targetWins，则整场结束。
+    成员令牌鉴权。race 仅将该玩家在当前小局标记为 forfeited；只剩一名 active 玩家时该玩家赢得本局，
+    否则本局继续，放弃者下一局恢复 active。relay 固定两人，仍由对方赢得本局。
+    多局赛制下由既有局间推进机制进入下一小局；若本局胜者因此达到 targetWins，则整场结束。
   parameters:
     - name: roomId
       in: path
@@ -25,6 +26,12 @@ post:
       description: 本局已放弃
     "401":
       description: 令牌缺失/无效/不属于该房间（GUEST_UNAUTHORIZED）
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: spectator 不可放弃小局（SPECTATOR_READ_ONLY）
       content:
         application/json:
           schema:

@@ -1,4 +1,11 @@
-import type { MultiplayerStatsRecord, StatsDifficulty, StatsFilters, StatsGuessSnapshot, StatsRecord, StatsRound } from "./types";
+import type {
+  MultiplayerStatsRecord,
+  StatsDifficulty,
+  StatsFilters,
+  StatsGuessSnapshot,
+  StatsRecord,
+  StatsRound,
+} from "./types";
 
 export interface WorkMetric {
   id: string;
@@ -27,45 +34,61 @@ export interface SummaryMetrics {
   p90Ms: number;
 }
 
-export function filterStatsRecords(records: StatsRecord[], filters: StatsFilters): StatsRecord[] {
-  const from = filters.from ? Date.parse(`${filters.from}T00:00:00`) : Number.NEGATIVE_INFINITY;
-  const to = filters.to ? Date.parse(`${filters.to}T23:59:59.999`) : Number.POSITIVE_INFINITY;
+export function filterStatsRecords(
+  records: StatsRecord[],
+  filters: StatsFilters,
+): StatsRecord[] {
+  const from = filters.from
+    ? Date.parse(`${filters.from}T00:00:00`)
+    : Number.NEGATIVE_INFINITY;
+  const to = filters.to
+    ? Date.parse(`${filters.to}T23:59:59.999`)
+    : Number.POSITIVE_INFINITY;
   return records.filter((record) => {
     const startedAt = Date.parse(record.startedAt);
     if (filters.mode !== "all" && record.mode !== filters.mode) return false;
-    if (filters.difficulty && filters.difficulty !== "all" && (record.difficulty ?? "unknown") !== filters.difficulty) return false;
+    if (
+      filters.difficulty &&
+      filters.difficulty !== "all" &&
+      (record.difficulty ?? "unknown") !== filters.difficulty
+    )
+      return false;
     if (startedAt < from || startedAt > to) return false;
     if (
       filters.multiplayerMode !== "all" &&
-      (record.kind !== "multiplayer" || (record.multiplayerMode ?? "race") !== filters.multiplayerMode)
-    ) return false;
-    return filters.format === "all" || (record.kind === "multiplayer" && record.format === filters.format);
+      (record.kind !== "multiplayer" ||
+        (record.multiplayerMode ?? "race") !== filters.multiplayerMode)
+    )
+      return false;
+    return (
+      filters.format === "all" ||
+      (record.kind === "multiplayer" && record.format === filters.format)
+    );
   });
 }
 
 export function roundsForRecords(records: StatsRecord[]): StatsRound[] {
-  return records.flatMap((record) => record.kind === "single" ? [record.round] : record.rounds);
+  return records.flatMap((record) =>
+    record.kind === "single" ? [record.round] : record.rounds,
+  );
 }
 
-function inferRelayMemberSlot(record: MultiplayerStatsRecord): 1 | 2 | undefined {
-  if ((record.multiplayerMode ?? "race") !== "relay") return record.memberSlot;
-  if (record.memberSlot) return record.memberSlot;
-  for (const round of record.rounds) {
-    const winnerGuess = round.guesses.find((guess) => guess.correct && guess.memberSlot);
-    if (!winnerGuess?.memberSlot) continue;
-    if (round.result === "win") return winnerGuess.memberSlot;
-    if (round.result === "loss") return winnerGuess.memberSlot === 1 ? 2 : 1;
-  }
-  return undefined;
-}
-
-export function displayGuessesForRecord(record: StatsRecord): StatsGuessSnapshot[] {
+export function displayGuessesForRecord(
+  record: StatsRecord,
+): StatsGuessSnapshot[] {
   const guesses = roundsForRecords([record]).flatMap((round) => round.guesses);
-  if (record.kind !== "multiplayer" || (record.multiplayerMode ?? "race") !== "relay") return guesses;
-  const selfSlot = inferRelayMemberSlot(record);
-  if (!selfSlot) return guesses;
-  if (!guesses.some((guess) => guess.memberSlot)) return guesses;
-  return guesses.filter((guess) => guess.memberSlot === selfSlot);
+  if (
+    record.kind !== "multiplayer" ||
+    (record.multiplayerMode ?? "race") !== "relay"
+  )
+    return guesses;
+  const actorGuesses = record.rounds.flatMap((round) =>
+    (round.turns ?? []).flatMap((turn) =>
+      turn.kind === "guess" && turn.actor === "self" ? [turn.guess] : [],
+    ),
+  );
+  if (actorGuesses.length > 0) return actorGuesses;
+  return guesses;
 }
 
 export function quantile(values: number[], percentile: number): number {
@@ -91,7 +114,9 @@ export function summarize(records: StatsRecord[]): SummaryMetrics {
     losses,
     draws,
     winRate: eligible.length ? wins / eligible.length : 0,
-    averageMs: durations.length ? durations.reduce((sum, value) => sum + value, 0) / durations.length : 0,
+    averageMs: durations.length
+      ? durations.reduce((sum, value) => sum + value, 0) / durations.length
+      : 0,
     medianMs: quantile(durations, 0.5),
     p90Ms: quantile(durations, 0.9),
   };
@@ -99,43 +124,74 @@ export function summarize(records: StatsRecord[]): SummaryMetrics {
 
 export function aggregateWorks(records: StatsRecord[]): WorkMetric[] {
   const metrics = new Map<string, WorkMetric>();
-  for (const round of roundsForRecords(records.filter((record) => record.outcome !== "incomplete"))) {
+  for (const round of roundsForRecords(
+    records.filter((record) => record.outcome !== "incomplete"),
+  )) {
     const work = round.answer.work;
     if (!work) continue;
-    const current = metrics.get(work.id) ?? { id: work.id, code: work.code, title: work.title, total: 0, wins: 0, winRate: 0 };
+    const current = metrics.get(work.id) ?? {
+      id: work.id,
+      code: work.code,
+      title: work.title,
+      total: 0,
+      wins: 0,
+      winRate: 0,
+    };
     current.total += 1;
     if (round.result === "win") current.wins += 1;
     current.winRate = current.wins / current.total;
     metrics.set(work.id, current);
   }
-  return [...metrics.values()].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+  return [...metrics.values()].sort((a, b) =>
+    a.code.localeCompare(b.code, undefined, { numeric: true }),
+  );
 }
 
-export function winningGuessDistribution(records: StatsRecord[]): { guesses: number; count: number }[] {
+export function winningGuessDistribution(
+  records: StatsRecord[],
+): { guesses: number; count: number }[] {
   const counts = new Map<number, number>();
   for (const round of roundsForRecords(records)) {
     if (round.result !== "win") continue;
-    counts.set(round.guesses.length, (counts.get(round.guesses.length) ?? 0) + 1);
+    counts.set(
+      round.guesses.length,
+      (counts.get(round.guesses.length) ?? 0) + 1,
+    );
   }
-  return [...counts].sort(([left], [right]) => left - right).map(([guesses, count]) => ({ guesses, count }));
+  return [...counts]
+    .sort(([left], [right]) => left - right)
+    .map(([guesses, count]) => ({ guesses, count }));
 }
 
 export function guessDurations(records: StatsRecord[]): number[] {
-  return roundsForRecords(records).flatMap((round) => round.guesses.map((guess) => guess.durationMs).filter((value): value is number => Number.isFinite(value)));
+  return roundsForRecords(records).flatMap((round) =>
+    round.guesses
+      .map((guess) => guess.durationMs)
+      .filter((value): value is number => Number.isFinite(value)),
+  );
 }
 
 export function buildHistogram(values: number[], binCount = 8): HistogramBin[] {
   const safe = values.filter((value) => Number.isFinite(value) && value >= 0);
   if (safe.length === 0) return [];
   const max = Math.max(...safe);
-  const width = Math.max(1000, Math.ceil(Math.max(max, 1000) / Math.max(1, binCount) / 1000) * 1000);
+  const width = Math.max(
+    1000,
+    Math.ceil(Math.max(max, 1000) / Math.max(1, binCount) / 1000) * 1000,
+  );
   const count = Math.max(1, Math.ceil((max + 1) / width));
   const bins = Array.from({ length: count }, (_, index) => {
     const min = index * width;
     const upper = (index + 1) * width;
-    return { label: `${Math.round(min / 1000)}-${Math.round(upper / 1000)}s`, min, max: upper, count: 0 };
+    return {
+      label: `${Math.round(min / 1000)}-${Math.round(upper / 1000)}s`,
+      min,
+      max: upper,
+      count: 0,
+    };
   });
-  for (const value of safe) bins[Math.min(bins.length - 1, Math.floor(value / width))].count += 1;
+  for (const value of safe)
+    bins[Math.min(bins.length - 1, Math.floor(value / width))].count += 1;
   return bins;
 }
 
@@ -151,7 +207,10 @@ function addDays(key: string, delta: number): string {
   return localDateKey(date.toISOString());
 }
 
-function streakForDailyWins(wins: Set<string>, now: Date): { current: number; longest: number } {
+function streakForDailyWins(
+  wins: Set<string>,
+  now: Date,
+): { current: number; longest: number } {
   const sorted = [...wins].sort();
   let longest = 0;
   let run = 0;
@@ -178,7 +237,11 @@ export function dailyStreak(
 ): { current: number; longest: number } {
   const winsByDifficulty = new Map<StatsDifficulty, Set<string>>();
   for (const record of records) {
-    if (record.kind !== "single" || record.mode !== "daily" || record.outcome !== "win") {
+    if (
+      record.kind !== "single" ||
+      record.mode !== "daily" ||
+      record.outcome !== "win"
+    ) {
       continue;
     }
     const recordDifficulty = record.difficulty ?? "unknown";
@@ -188,7 +251,10 @@ export function dailyStreak(
     winsByDifficulty.set(recordDifficulty, wins);
   }
   if (difficulty) {
-    return streakForDailyWins(winsByDifficulty.get(difficulty) ?? new Set(), now);
+    return streakForDailyWins(
+      winsByDifficulty.get(difficulty) ?? new Set(),
+      now,
+    );
   }
   let current = 0;
   let longest = 0;
@@ -201,5 +267,5 @@ export function dailyStreak(
 }
 
 export function selfScore(record: MultiplayerStatsRecord): string {
-  return `${record.scoreSelf}:${record.scoreOpponent}`;
+  return `${record.scoreSelf}:${record.opponentScores.join(":")}`;
 }

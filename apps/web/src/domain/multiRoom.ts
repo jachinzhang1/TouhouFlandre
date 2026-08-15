@@ -1,5 +1,9 @@
 // 多人房间持久化与展示工具（08 §10.1）。
-import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
+import type {
+  MultiParticipantRole,
+  MultiRoomFormat,
+  MultiplayerMode,
+} from "@touhouflandre/shared";
 
 export const MULTI_ROOM_STORAGE_KEY = "touhouflandre:multi-room";
 
@@ -7,12 +11,18 @@ export interface StoredMultiRoom {
   roomId: string;
   roomCode: string;
   guestToken: string;
+  role: MultiParticipantRole;
   /** 自身席位（1 = 房主；结果展示/离开判断用）。 */
-  memberSlot: 1 | 2;
+  memberId?: string;
+  memberSlot?: 1 | 2;
 }
 
 export function saveMultiRoom(room: StoredMultiRoom): void {
-  window.localStorage.setItem(MULTI_ROOM_STORAGE_KEY, JSON.stringify(room));
+  const { memberSlot: _legacySlot, ...authoritative } = room;
+  window.localStorage.setItem(
+    MULTI_ROOM_STORAGE_KEY,
+    JSON.stringify(authoritative),
+  );
 }
 
 export function loadMultiRoom(): StoredMultiRoom | null {
@@ -28,9 +38,22 @@ export function loadMultiRoom(): StoredMultiRoom | null {
       typeof (parsed as StoredMultiRoom).guestToken === "string"
     ) {
       const slot = (parsed as StoredMultiRoom).memberSlot;
-      return {
+      const role =
+        (parsed as StoredMultiRoom).role === "spectator"
+          ? "spectator"
+          : "player";
+      const loaded: StoredMultiRoom = {
         ...(parsed as StoredMultiRoom),
-        memberSlot: slot === 2 ? 2 : 1, // 兼容旧存储：缺省视为房主
+        role,
+        memberId:
+          typeof (parsed as StoredMultiRoom).memberId === "string"
+            ? (parsed as StoredMultiRoom).memberId
+            : undefined,
+      };
+      return {
+        ...loaded,
+        memberSlot:
+          role === "player" && (slot === 1 || slot === 2) ? slot : undefined,
       };
     }
   } catch {
@@ -81,7 +104,7 @@ export const TURN_SECONDS_OPTIONS = [30, 60, 90, 120] as const;
 export type RelayTurnSeconds = (typeof TURN_SECONDS_OPTIONS)[number];
 
 type RelaySkipRow = {
-  memberSlot: number;
+  seat: number;
   kind: string;
 };
 
@@ -91,7 +114,7 @@ export function countRelaySkips(
 ): number {
   return rows.filter(
     (row) =>
-      row.memberSlot === slot && (row.kind === "timeout" || row.kind === "pass"),
+      row.seat === slot && (row.kind === "timeout" || row.kind === "pass"),
   ).length;
 }
 

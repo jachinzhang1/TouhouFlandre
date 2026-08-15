@@ -57,12 +57,27 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 	if locked.Status != string(MatchStatusPlaying) {
 		return tx.Commit(ctx)
 	}
+	room, err := q.GetRoomForUpdate(ctx, locked.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		if hasRound {
+			if err := EndRaceRoundWithoutScoreTx(ctx, q, room, round, locked, "", "", now, timing); err != nil {
+				return err
+			}
+		}
+		if _, err := EndRaceMatchTx(ctx, q, room, locked, "", MatchEndReasonServerRestart, now, timing); err != nil {
+			return err
+		}
+		return tx.Commit(ctx)
+	}
 	// 3. 终止当前局（平局；含 countdown 态局）
 	if hasRound {
 		if _, err := q.EndRound(ctx, repo.EndRoundParams{
-			ID:        round.ID,
+			ID:         round.ID,
 			WinnerSlot: pgtype.Int4{},
-			EndedAt:   pgtypeTimestamptz(now),
+			EndedAt:    pgtypeTimestamptz(now),
 		}); err != nil {
 			return err
 		}
@@ -80,21 +95,23 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		}
 	}
 	// 4. 场次与房间 finished
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: pgtype.Int4{}}); err != nil {
 		return err
 	}
+	retentionEndsAt := now.Add(timing.FinishedRetention)
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
 		ID:        match.RoomID,
 		Status:    string(RoomStatusFinished),
-		ExpiresAt: pgtypeTimestamptz(now.Add(timing.FinishedRetention)),
+		ExpiresAt: pgtypeTimestamptz(retentionEndsAt),
 	}); err != nil {
 		return err
 	}
 	if err := AppendEvent(ctx, q, match.RoomID, EventMatchEnded, MatchEndedEventPayload{
-		MatchIndex: int(match.MatchIndex),
-		WinnerSlot: nil,
-		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
-		Reason:     MatchEndReasonServerRestart,
+		MatchIndex:      int(match.MatchIndex),
+		WinnerSlot:      nil,
+		Scores:          ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		Reason:          MatchEndReasonServerRestart,
+		RetentionEndsAt: retentionEndsAt,
 	}); err != nil {
 		return err
 	}

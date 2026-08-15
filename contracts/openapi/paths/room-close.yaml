@@ -22,7 +22,7 @@ delete:
           schema:
             $ref: "../schemas/common.yaml#/ErrorResponse"
     "403":
-      description: 令牌有效但非房主（GUEST_UNAUTHORIZED，权限不足）
+      description: spectator 只读（SPECTATOR_READ_ONLY）或玩家非房主（GUEST_UNAUTHORIZED）
       content:
         application/json:
           schema:

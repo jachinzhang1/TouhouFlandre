@@ -23,6 +23,57 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ChatChannel.
+const (
+	Room      ChatChannel = "room"
+	Spectator ChatChannel = "spectator"
+)
+
+// Valid indicates whether the value is a known member of the ChatChannel enum.
+func (e ChatChannel) Valid() bool {
+	switch e {
+	case Room:
+		return true
+	case Spectator:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatKind.
+const (
+	Emoji ChatKind = "emoji"
+	Text  ChatKind = "text"
+)
+
+// Valid indicates whether the value is a known member of the ChatKind enum.
+func (e ChatKind) Valid() bool {
+	switch e {
+	case Emoji:
+		return true
+	case Text:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ChatResyncRequiredResponseCode.
+const (
+	ChatResyncRequiredResponseCodeCHATRESYNCREQUIRED ChatResyncRequiredResponseCode = "CHAT_RESYNC_REQUIRED"
+)
+
+// Valid indicates whether the value is a known member of the ChatResyncRequiredResponseCode enum.
+func (e ChatResyncRequiredResponseCode) Valid() bool {
+	switch e {
+	case ChatResyncRequiredResponseCodeCHATRESYNCREQUIRED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DifficultyTier.
 const (
 	DifficultyTierEasy    DifficultyTier = "easy"
@@ -70,79 +121,106 @@ func (e Era) Valid() bool {
 
 // Defines values for ErrorResponseCode.
 const (
-	CATALOGNOTREADY        ErrorResponseCode = "CATALOG_NOT_READY"
-	CATALOGVERSIONNOTFOUND ErrorResponseCode = "CATALOG_VERSION_NOT_FOUND"
-	CONCURRENTUPDATE       ErrorResponseCode = "CONCURRENT_UPDATE"
-	DUPLICATEGUESS         ErrorResponseCode = "DUPLICATE_GUESS"
-	GUESSLIMITREACHED      ErrorResponseCode = "GUESS_LIMIT_REACHED"
-	GUESTUNAUTHORIZED      ErrorResponseCode = "GUEST_UNAUTHORIZED"
-	INTERNAL               ErrorResponseCode = "INTERNAL"
-	INVALIDFORMAT          ErrorResponseCode = "INVALID_FORMAT"
-	INVALIDGUESS           ErrorResponseCode = "INVALID_GUESS"
-	INVALIDREQUEST         ErrorResponseCode = "INVALID_REQUEST"
-	MATCHALREADYSTARTED    ErrorResponseCode = "MATCH_ALREADY_STARTED"
-	NOTYOURTURN            ErrorResponseCode = "NOT_YOUR_TURN"
-	RATELIMITED            ErrorResponseCode = "RATE_LIMITED"
-	REMATCHNOTAVAILABLE    ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
-	ROOMCLOSED             ErrorResponseCode = "ROOM_CLOSED"
-	ROOMFULL               ErrorResponseCode = "ROOM_FULL"
-	ROOMNOTFOUND           ErrorResponseCode = "ROOM_NOT_FOUND"
-	ROUNDENDED             ErrorResponseCode = "ROUND_ENDED"
-	ROUNDNOTACTIVE         ErrorResponseCode = "ROUND_NOT_ACTIVE"
-	SESSIONCLOSED          ErrorResponseCode = "SESSION_CLOSED"
-	SESSIONNOTFOUND        ErrorResponseCode = "SESSION_NOT_FOUND"
-	TURNEXPIRED            ErrorResponseCode = "TURN_EXPIRED"
-	UNSUPPORTEDCONTENTTYPE ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
+	ErrorResponseCodeCATALOGNOTREADY         ErrorResponseCode = "CATALOG_NOT_READY"
+	ErrorResponseCodeCATALOGVERSIONNOTFOUND  ErrorResponseCode = "CATALOG_VERSION_NOT_FOUND"
+	ErrorResponseCodeCHATCURSORAHEAD         ErrorResponseCode = "CHAT_CURSOR_AHEAD"
+	ErrorResponseCodeCHATCURSORINVALID       ErrorResponseCode = "CHAT_CURSOR_INVALID"
+	ErrorResponseCodeCHATIDEMPOTENCYCONFLICT ErrorResponseCode = "CHAT_IDEMPOTENCY_CONFLICT"
+	ErrorResponseCodeCHATMESSAGEINVALID      ErrorResponseCode = "CHAT_MESSAGE_INVALID"
+	ErrorResponseCodeCHATRESYNCREQUIRED      ErrorResponseCode = "CHAT_RESYNC_REQUIRED"
+	ErrorResponseCodeCHATSENDFORBIDDEN       ErrorResponseCode = "CHAT_SEND_FORBIDDEN"
+	ErrorResponseCodeCONCURRENTUPDATE        ErrorResponseCode = "CONCURRENT_UPDATE"
+	ErrorResponseCodeDUPLICATEGUESS          ErrorResponseCode = "DUPLICATE_GUESS"
+	ErrorResponseCodeGUESSLIMITREACHED       ErrorResponseCode = "GUESS_LIMIT_REACHED"
+	ErrorResponseCodeGUESTUNAUTHORIZED       ErrorResponseCode = "GUEST_UNAUTHORIZED"
+	ErrorResponseCodeINTERNAL                ErrorResponseCode = "INTERNAL"
+	ErrorResponseCodeINVALIDFORMAT           ErrorResponseCode = "INVALID_FORMAT"
+	ErrorResponseCodeINVALIDGUESS            ErrorResponseCode = "INVALID_GUESS"
+	ErrorResponseCodeINVALIDPLAYERLIMIT      ErrorResponseCode = "INVALID_PLAYER_LIMIT"
+	ErrorResponseCodeINVALIDREQUEST          ErrorResponseCode = "INVALID_REQUEST"
+	ErrorResponseCodeMATCHALREADYSTARTED     ErrorResponseCode = "MATCH_ALREADY_STARTED"
+	ErrorResponseCodeNOTYOURTURN             ErrorResponseCode = "NOT_YOUR_TURN"
+	ErrorResponseCodeRATELIMITED             ErrorResponseCode = "RATE_LIMITED"
+	ErrorResponseCodeREMATCHNOTAVAILABLE     ErrorResponseCode = "REMATCH_NOT_AVAILABLE"
+	ErrorResponseCodeROOMCLOSED              ErrorResponseCode = "ROOM_CLOSED"
+	ErrorResponseCodeROOMFULL                ErrorResponseCode = "ROOM_FULL"
+	ErrorResponseCodeROOMNOTFOUND            ErrorResponseCode = "ROOM_NOT_FOUND"
+	ErrorResponseCodeROOMSETTINGSLOCKED      ErrorResponseCode = "ROOM_SETTINGS_LOCKED"
+	ErrorResponseCodeROUNDENDED              ErrorResponseCode = "ROUND_ENDED"
+	ErrorResponseCodeROUNDNOTACTIVE          ErrorResponseCode = "ROUND_NOT_ACTIVE"
+	ErrorResponseCodeSESSIONCLOSED           ErrorResponseCode = "SESSION_CLOSED"
+	ErrorResponseCodeSESSIONNOTFOUND         ErrorResponseCode = "SESSION_NOT_FOUND"
+	ErrorResponseCodeSPECTATORREADONLY       ErrorResponseCode = "SPECTATOR_READ_ONLY"
+	ErrorResponseCodeTURNEXPIRED             ErrorResponseCode = "TURN_EXPIRED"
+	ErrorResponseCodeUNSUPPORTEDCONTENTTYPE  ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
 )
 
 // Valid indicates whether the value is a known member of the ErrorResponseCode enum.
 func (e ErrorResponseCode) Valid() bool {
 	switch e {
-	case CATALOGNOTREADY:
+	case ErrorResponseCodeCATALOGNOTREADY:
 		return true
-	case CATALOGVERSIONNOTFOUND:
+	case ErrorResponseCodeCATALOGVERSIONNOTFOUND:
 		return true
-	case CONCURRENTUPDATE:
+	case ErrorResponseCodeCHATCURSORAHEAD:
 		return true
-	case DUPLICATEGUESS:
+	case ErrorResponseCodeCHATCURSORINVALID:
 		return true
-	case GUESSLIMITREACHED:
+	case ErrorResponseCodeCHATIDEMPOTENCYCONFLICT:
 		return true
-	case GUESTUNAUTHORIZED:
+	case ErrorResponseCodeCHATMESSAGEINVALID:
 		return true
-	case INTERNAL:
+	case ErrorResponseCodeCHATRESYNCREQUIRED:
 		return true
-	case INVALIDFORMAT:
+	case ErrorResponseCodeCHATSENDFORBIDDEN:
 		return true
-	case INVALIDGUESS:
+	case ErrorResponseCodeCONCURRENTUPDATE:
 		return true
-	case INVALIDREQUEST:
+	case ErrorResponseCodeDUPLICATEGUESS:
 		return true
-	case MATCHALREADYSTARTED:
+	case ErrorResponseCodeGUESSLIMITREACHED:
 		return true
-	case NOTYOURTURN:
+	case ErrorResponseCodeGUESTUNAUTHORIZED:
 		return true
-	case RATELIMITED:
+	case ErrorResponseCodeINTERNAL:
 		return true
-	case REMATCHNOTAVAILABLE:
+	case ErrorResponseCodeINVALIDFORMAT:
 		return true
-	case ROOMCLOSED:
+	case ErrorResponseCodeINVALIDGUESS:
 		return true
-	case ROOMFULL:
+	case ErrorResponseCodeINVALIDPLAYERLIMIT:
 		return true
-	case ROOMNOTFOUND:
+	case ErrorResponseCodeINVALIDREQUEST:
 		return true
-	case ROUNDENDED:
+	case ErrorResponseCodeMATCHALREADYSTARTED:
 		return true
-	case ROUNDNOTACTIVE:
+	case ErrorResponseCodeNOTYOURTURN:
 		return true
-	case SESSIONCLOSED:
+	case ErrorResponseCodeRATELIMITED:
 		return true
-	case SESSIONNOTFOUND:
+	case ErrorResponseCodeREMATCHNOTAVAILABLE:
 		return true
-	case TURNEXPIRED:
+	case ErrorResponseCodeROOMCLOSED:
 		return true
-	case UNSUPPORTEDCONTENTTYPE:
+	case ErrorResponseCodeROOMFULL:
+		return true
+	case ErrorResponseCodeROOMNOTFOUND:
+		return true
+	case ErrorResponseCodeROOMSETTINGSLOCKED:
+		return true
+	case ErrorResponseCodeROUNDENDED:
+		return true
+	case ErrorResponseCodeROUNDNOTACTIVE:
+		return true
+	case ErrorResponseCodeSESSIONCLOSED:
+		return true
+	case ErrorResponseCodeSESSIONNOTFOUND:
+		return true
+	case ErrorResponseCodeSPECTATORREADONLY:
+		return true
+	case ErrorResponseCodeTURNEXPIRED:
+		return true
+	case ErrorResponseCodeUNSUPPORTEDCONTENTTYPE:
 		return true
 	default:
 		return false
@@ -356,21 +434,42 @@ func (e HairColor) Valid() bool {
 	}
 }
 
+// Defines values for MatchPlayerStatus.
+const (
+	MatchPlayerStatusActive     MatchPlayerStatus = "active"
+	MatchPlayerStatusEliminated MatchPlayerStatus = "eliminated"
+	MatchPlayerStatusLeft       MatchPlayerStatus = "left"
+)
+
+// Valid indicates whether the value is a known member of the MatchPlayerStatus enum.
+func (e MatchPlayerStatus) Valid() bool {
+	switch e {
+	case MatchPlayerStatusActive:
+		return true
+	case MatchPlayerStatusEliminated:
+		return true
+	case MatchPlayerStatusLeft:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MemberStatus.
 const (
-	Connected    MemberStatus = "connected"
-	Disconnected MemberStatus = "disconnected"
-	Left         MemberStatus = "left"
+	MemberStatusConnected    MemberStatus = "connected"
+	MemberStatusDisconnected MemberStatus = "disconnected"
+	MemberStatusLeft         MemberStatus = "left"
 )
 
 // Valid indicates whether the value is a known member of the MemberStatus enum.
 func (e MemberStatus) Valid() bool {
 	switch e {
-	case Connected:
+	case MemberStatusConnected:
 		return true
-	case Disconnected:
+	case MemberStatusDisconnected:
 		return true
-	case Left:
+	case MemberStatusLeft:
 		return true
 	default:
 		return false
@@ -389,6 +488,24 @@ func (e MultiplayerMode) Valid() bool {
 	case Race:
 		return true
 	case Relay:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ParticipantRole.
+const (
+	ParticipantRolePlayer    ParticipantRole = "player"
+	ParticipantRoleSpectator ParticipantRole = "spectator"
+)
+
+// Valid indicates whether the value is a known member of the ParticipantRole enum.
+func (e ParticipantRole) Valid() bool {
+	switch e {
+	case ParticipantRolePlayer:
+		return true
+	case ParticipantRoleSpectator:
 		return true
 	default:
 		return false
@@ -521,6 +638,48 @@ func (e QuestionScopeWorkSelection) Valid() bool {
 	}
 }
 
+// Defines values for RaceRoundParticipantStatus.
+const (
+	RaceRoundParticipantStatusActive    RaceRoundParticipantStatus = "active"
+	RaceRoundParticipantStatusCorrect   RaceRoundParticipantStatus = "correct"
+	RaceRoundParticipantStatusExhausted RaceRoundParticipantStatus = "exhausted"
+	RaceRoundParticipantStatusForfeited RaceRoundParticipantStatus = "forfeited"
+	RaceRoundParticipantStatusTimedOut  RaceRoundParticipantStatus = "timed_out"
+)
+
+// Valid indicates whether the value is a known member of the RaceRoundParticipantStatus enum.
+func (e RaceRoundParticipantStatus) Valid() bool {
+	switch e {
+	case RaceRoundParticipantStatusActive:
+		return true
+	case RaceRoundParticipantStatusCorrect:
+		return true
+	case RaceRoundParticipantStatusExhausted:
+		return true
+	case RaceRoundParticipantStatusForfeited:
+		return true
+	case RaceRoundParticipantStatusTimedOut:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RateLimitedErrorResponseCode.
+const (
+	RateLimitedErrorResponseCodeRATELIMITED RateLimitedErrorResponseCode = "RATE_LIMITED"
+)
+
+// Valid indicates whether the value is a known member of the RateLimitedErrorResponseCode enum.
+func (e RateLimitedErrorResponseCode) Valid() bool {
+	switch e {
+	case RateLimitedErrorResponseCodeRATELIMITED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RelayTurnRowKind.
 const (
 	RelayTurnRowKindGuess   RelayTurnRowKind = "guess"
@@ -566,6 +725,21 @@ func (e RoomFormat) Valid() bool {
 	}
 }
 
+// Defines values for RoomInfoMinPlayers.
+const (
+	RoomInfoMinPlayersN2 RoomInfoMinPlayers = 2
+)
+
+// Valid indicates whether the value is a known member of the RoomInfoMinPlayers enum.
+func (e RoomInfoMinPlayers) Valid() bool {
+	switch e {
+	case RoomInfoMinPlayersN2:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RoomInfoTurnSeconds.
 const (
 	RoomInfoTurnSecondsN120 RoomInfoTurnSeconds = 120
@@ -584,6 +758,21 @@ func (e RoomInfoTurnSeconds) Valid() bool {
 	case RoomInfoTurnSecondsN60:
 		return true
 	case RoomInfoTurnSecondsN90:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RoomSnapshotMinPlayers.
+const (
+	RoomSnapshotMinPlayersN2 RoomSnapshotMinPlayers = 2
+)
+
+// Valid indicates whether the value is a known member of the RoomSnapshotMinPlayers enum.
+func (e RoomSnapshotMinPlayers) Valid() bool {
+	switch e {
+	case RoomSnapshotMinPlayersN2:
 		return true
 	default:
 		return false
@@ -653,6 +842,24 @@ func (e RoundStatus) Valid() bool {
 	case RoundStatusEnded:
 		return true
 	case RoundStatusPlaying:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ScoringMode.
+const (
+	Placement ScoringMode = "placement"
+	Wins      ScoringMode = "wins"
+)
+
+// Valid indicates whether the value is a known member of the ScoringMode enum.
+func (e ScoringMode) Valid() bool {
+	switch e {
+	case Placement:
+		return true
+	case Wins:
 		return true
 	default:
 		return false
@@ -880,19 +1087,66 @@ type CharacterSearchResult struct {
 	WorkId     string   `json:"workId"`
 }
 
+// ChatChannel defines model for ChatChannel.
+type ChatChannel string
+
+// ChatHistoryResponse defines model for ChatHistoryResponse.
+type ChatHistoryResponse struct {
+	// BeforeCursor 初始/before 查询继续加载更早消息的 before-direction cursor。
+	BeforeCursor *string       `json:"beforeCursor,omitempty"`
+	HasMore      bool          `json:"hasMore"`
+	Messages     []ChatMessage `json:"messages"`
+
+	// ScannedCursor 初始/after 查询最远扫描到的 after-direction cursor。
+	ScannedCursor *string `json:"scannedCursor,omitempty"`
+}
+
+// ChatKind defines model for ChatKind.
+type ChatKind string
+
+// ChatMessage defines model for ChatMessage.
+type ChatMessage struct {
+	Channel   ChatChannel `json:"channel"`
+	Content   string      `json:"content"`
+	CreatedAt time.Time   `json:"createdAt"`
+
+	// Cursor 服务端签发的 after-direction 不透明 cursor。
+	Cursor            string   `json:"cursor"`
+	Kind              ChatKind `json:"kind"`
+	MessageId         string   `json:"messageId"`
+	RoomId            string   `json:"roomId"`
+	SenderDisplayName string   `json:"senderDisplayName"`
+	SenderMemberId    string   `json:"senderMemberId"`
+
+	// SenderRole 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+	SenderRole ParticipantRole `json:"senderRole"`
+	SenderSeat *int            `json:"senderSeat,omitempty"`
+}
+
+// ChatResyncRequiredResponse defines model for ChatResyncRequiredResponse.
+type ChatResyncRequiredResponse struct {
+	Code                  ChatResyncRequiredResponseCode `json:"code"`
+	Error                 string                         `json:"error"`
+	HighWatermarkCursor   string                         `json:"highWatermarkCursor"`
+	OldestAvailableCursor string                         `json:"oldestAvailableCursor"`
+}
+
+// ChatResyncRequiredResponseCode defines model for ChatResyncRequiredResponse.Code.
+type ChatResyncRequiredResponseCode string
+
 // CreateRoomResponse 创建房间响应。guestToken 明文仅此一次返回。
 type CreateRoomResponse struct {
 	// GuestToken 游客令牌：服务端签发的匿名身份凭据，仅绑定单个房间。
 	// 传输约定：REST 用 Authorization: Bearer guest:{token}；WS 在 hello 首帧携带（不进 URL/日志）。
 	// 令牌带 guest: 前缀，未来账号令牌以 jwt: 前缀共存（令牌类型不匹配 → GUEST_UNAUTHORIZED）。
 	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
-	GuestToken GuestToken `json:"guestToken"`
-
-	// Member 房间成员视图。
-	Member        MemberView           `json:"member"`
+	GuestToken    GuestToken           `json:"guestToken"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 	RoomCode      string               `json:"roomCode"`
 	RoomId        string               `json:"roomId"`
+
+	// Viewer 当前访问者视图。观战者不占玩家 seat。
+	Viewer ParticipantView `json:"viewer"`
 }
 
 // DifficultyTier defines model for DifficultyTier.
@@ -948,8 +1202,10 @@ type GuessFieldKey string
 
 // GuessResponse 猜测被接受的自视角响应（完整反馈；局中不返回答案与对手信息）。
 type GuessResponse struct {
-	Guess      GuessResult `json:"guess"`
-	RoundIndex int         `json:"roundIndex"`
+	FinishRank          *int                        `json:"finishRank,omitempty"`
+	Guess               GuessResult                 `json:"guess"`
+	ParticipationStatus *RaceRoundParticipantStatus `json:"participationStatus,omitempty"`
+	RoundIndex          int                         `json:"roundIndex"`
 }
 
 // GuessResult defines model for GuessResult.
@@ -986,9 +1242,12 @@ type JoinRoomResponse struct {
 	// 库中只存 sha256(token) 哈希，明文只在签发响应中出现一次。
 	GuestToken GuestToken `json:"guestToken"`
 
-	// Member 房间成员视图。
-	Member MemberView `json:"member"`
-	RoomId string     `json:"roomId"`
+	// JoinRole 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+	JoinRole ParticipantRole `json:"joinRole"`
+	RoomId   string          `json:"roomId"`
+
+	// Viewer 当前访问者视图。观战者不占玩家 seat。
+	Viewer ParticipantView `json:"viewer"`
 }
 
 // LocalizedNames defines model for LocalizedNames.
@@ -1001,6 +1260,9 @@ type LocalizedNames struct {
 	ZhHant  *string  `json:"zhHant,omitempty"`
 }
 
+// MatchPlayerStatus defines model for MatchPlayerStatus.
+type MatchPlayerStatus string
+
 // MatchView 场次视图。场次自包含：比分、题库版本绑定（catalogVersion 见事件）、round_count 归场行。
 type MatchView struct {
 	// CatalogVersion 本场绑定的题库版本。
@@ -1009,24 +1271,49 @@ type MatchView struct {
 	// MatchIndex 场次序号；0 = 首场，1 = 第一次再来一局……
 	MatchIndex int `json:"matchIndex"`
 
-	// MaxRounds 总局数安全上限 = 3 × N（bo1→3、bo3→9、bo5→15、bo7→21）。
+	// MaxRounds wins 模式按 BO 计算；placement 模式为 3 × rosterSize。
 	MaxRounds     int                  `json:"maxRounds"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
-	// RematchReady 再来一局确认态，索引 0/1 对应 slot 1/2（仅 finished 态有意义）。
-	RematchReady []bool `json:"rematchReady"`
+	// RematchReady 按 seat 稳定排序的再来一局确认态（仅 finished 态有意义）。
+	RematchReady []MemberRematchReadyView `json:"rematchReady"`
+
+	// RosterSize 场次创建时冻结的实际 roster 人数。
+	RosterSize int `json:"rosterSize"`
 
 	// RoundIndex 当前局号（0 = 本场尚未开局；对局中为当前局序号，1 起）。
 	RoundIndex int `json:"roundIndex"`
 
-	// ScoreSlot1 slot 1 已胜局数（平局不计入）。
-	ScoreSlot1 int `json:"scoreSlot1"`
+	// Scores 按 seat 稳定排序的公开比分；身份关联使用 memberId。
+	Scores      []MemberScoreView `json:"scores"`
+	ScoringMode ScoringMode       `json:"scoringMode"`
 
-	// ScoreSlot2 slot 2 已胜局数（平局不计入）。
-	ScoreSlot2 int `json:"scoreSlot2"`
-
-	// TargetWins 目标胜场 = (N+1)/2。
+	// TargetWins wins 模式目标胜场；placement 模式保留兼容值但不参与终止判定。
 	TargetWins int `json:"targetWins"`
+}
+
+// MemberBoardView defines model for MemberBoardView.
+type MemberBoardView struct {
+	Guesses  []GuessResult `json:"guesses"`
+	MemberId string        `json:"memberId"`
+	Seat     int           `json:"seat"`
+}
+
+// MemberRematchReadyView defines model for MemberRematchReadyView.
+type MemberRematchReadyView struct {
+	MemberId string `json:"memberId"`
+	Ready    bool   `json:"ready"`
+	Seat     int    `json:"seat"`
+}
+
+// MemberScoreView defines model for MemberScoreView.
+type MemberScoreView struct {
+	BestRoundScore  int               `json:"bestRoundScore"`
+	EliminatedRound *int              `json:"eliminatedRound,omitempty"`
+	MemberId        string            `json:"memberId"`
+	Score           int               `json:"score"`
+	Seat            int               `json:"seat"`
+	Status          MatchPlayerStatus `json:"status"`
 }
 
 // MemberStatus 成员连接状态。
@@ -1037,11 +1324,14 @@ type MemberView struct {
 	// DisplayName 昵称（纯展示，≤16 字符；空则服务端给「匿名玩家」）。
 	DisplayName string `json:"displayName"`
 
+	// MemberId 房间内稳定、可公开的成员标识；不是鉴权凭据。
+	MemberId string `json:"memberId"`
+
 	// Ready 大厅就绪态（仅 lobby 态使用）。
 	Ready bool `json:"ready"`
 
-	// Slot 席位；slot 1 = 房主（DELETE 权限判定）。
-	Slot int `json:"slot"`
+	// Seat 房间内展示顺序；seat 1 为房主，但身份关联使用 memberId。
+	Seat int `json:"seat"`
 
 	// Status 成员连接状态。
 	Status MemberStatus `json:"status"`
@@ -1050,13 +1340,42 @@ type MemberView struct {
 // MultiplayerMode 多人玩法模式。race = 竞速；relay = 接力。
 type MultiplayerMode string
 
+// OpponentBoardView defines model for OpponentBoardView.
+type OpponentBoardView struct {
+	// FieldOrder 该观察者看到的匿名矩阵列顺序；rows.statuses 按此顺序排列。
+	FieldOrder []GuessFieldKey `json:"fieldOrder"`
+	MemberId   string          `json:"memberId"`
+	Rows       []OpponentRow   `json:"rows"`
+	Seat       int             `json:"seat"`
+}
+
 // OpponentRow 对手一行猜测（匿名矩阵行）。局中只含状态颜色序列，不含角色名/字段标签/值。
 type OpponentRow struct {
 	// Index 该成员局内猜测序号（1 起）。
 	Index int `json:"index"`
 
-	// Statuses 当前可见字段位置的状态；已按观察者列置换（客户端永远拿不到真实列序）。
+	// Statuses 当前匿名字段位置的状态；与所属 OpponentBoardView.fieldOrder 一一对应。
 	Statuses []FeedbackStatus `json:"statuses"`
+}
+
+// ParticipantRole 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+type ParticipantRole string
+
+// ParticipantView 当前访问者视图。观战者不占玩家 seat。
+type ParticipantView struct {
+	DisplayName string `json:"displayName"`
+
+	// MemberId 当前访问者在房间内的稳定成员标识。
+	MemberId string `json:"memberId"`
+
+	// Role 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+	Role ParticipantRole `json:"role"`
+
+	// Seat 玩家席位；观战者缺省。
+	Seat *int `json:"seat,omitempty"`
+
+	// Status 成员连接状态。
+	Status MemberStatus `json:"status"`
 }
 
 // PublicGameSession 公开会话视图。answer 仅在会话结束后返回。
@@ -1078,6 +1397,17 @@ type PublicGameSession struct {
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 	StartedAt     time.Time            `json:"startedAt"`
 	Status        SessionStatus        `json:"status"`
+}
+
+// PublicMemberView 公开房间预检中的玩家摘要；不含昵称或任何鉴权凭据。
+type PublicMemberView struct {
+	// MemberId 房间内稳定、可公开的成员标识；不是鉴权凭据。
+	MemberId string `json:"memberId"`
+	Ready    bool   `json:"ready"`
+	Seat     int    `json:"seat"`
+
+	// Status 成员连接状态。
+	Status MemberStatus `json:"status"`
 }
 
 // PuzzleCreateRequest defines model for PuzzleCreateRequest.
@@ -1166,6 +1496,19 @@ type QuestionScopeWorkState struct {
 	WorkId        string                     `json:"workId"`
 }
 
+// RaceRoundParticipantStatus defines model for RaceRoundParticipantStatus.
+type RaceRoundParticipantStatus string
+
+// RateLimitedErrorResponse defines model for RateLimitedErrorResponse.
+type RateLimitedErrorResponse struct {
+	Code         RateLimitedErrorResponseCode `json:"code"`
+	Error        string                       `json:"error"`
+	RetryAfterMs int                          `json:"retryAfterMs"`
+}
+
+// RateLimitedErrorResponseCode defines model for RateLimitedErrorResponse.Code.
+type RateLimitedErrorResponseCode string
+
 // RelayTurnRow 接力模式共享棋盘中的一行。guess 行包含完整反馈；timeout/pass 行分别表示超时空过/主动空过。
 type RelayTurnRow struct {
 	Guess *GuessResult `json:"guess,omitempty"`
@@ -1174,8 +1517,11 @@ type RelayTurnRow struct {
 	Index int              `json:"index"`
 	Kind  RelayTurnRowKind `json:"kind"`
 
-	// MemberSlot 本轮归属玩家 slot。
-	MemberSlot int `json:"memberSlot"`
+	// MemberId 本轮归属玩家的稳定成员标识。
+	MemberId string `json:"memberId"`
+
+	// Seat 本轮发生时的展示席位。
+	Seat int `json:"seat"`
 }
 
 // RelayTurnRowKind defines model for RelayTurnRow.Kind.
@@ -1198,18 +1544,38 @@ type RoomEventEnvelope struct {
 // RoomFormat 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
 type RoomFormat string
 
-// RoomInfo 公开只读预检（加入前可见赛制，08 §4.2）。不含成员名/token。
+// RoomInfo 公开只读预检（加入前可见赛制，08 §4.2）。成员集合不含昵称/token。
 type RoomInfo struct {
+	// AvailableSeats playerLimit 与当前玩家数之间的空余席位数。
+	AvailableSeats int `json:"availableSeats"`
+
 	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
-	Format      RoomFormat `json:"format"`
-	MemberCount int        `json:"memberCount"`
+	Format RoomFormat `json:"format"`
+
+	// JoinRole 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+	JoinRole ParticipantRole `json:"joinRole"`
+
+	// Members 当前玩家的公开身份与席位摘要，不含观战者。
+	Members []PublicMemberView `json:"members"`
+
+	// MinPlayers 服务端固定的最少开局玩家数。
+	MinPlayers RoomInfoMinPlayers `json:"minPlayers"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode          MultiplayerMode      `json:"mode"`
+	Mode MultiplayerMode `json:"mode"`
+
+	// PlayerCount 当前 PK 玩家数（不含观战者）。
+	PlayerCount int `json:"playerCount"`
+
+	// PlayerLimit 允许同时入座的最大玩家数；不表示开局必须凑满。
+	PlayerLimit   int                  `json:"playerLimit"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
 	// RoomCode 6 位房间号。
 	RoomCode string `json:"roomCode"`
+
+	// SpectatorCount 当前未离开的观战者数量。
+	SpectatorCount int `json:"spectatorCount"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
 	Status RoomStatus `json:"status"`
@@ -1218,36 +1584,65 @@ type RoomInfo struct {
 	TurnSeconds RoomInfoTurnSeconds `json:"turnSeconds"`
 }
 
+// RoomInfoMinPlayers 服务端固定的最少开局玩家数。
+type RoomInfoMinPlayers int
+
 // RoomInfoTurnSeconds 接力模式单用户猜测时限（秒）。竞速模式固定返回 60 以保持形状稳定。
 type RoomInfoTurnSeconds int
 
-// RoomSnapshot 逐观察者投影的房间快照：self（完整棋盘）、opponent（匿名矩阵 + 对方列置换）、
-// events 为 after 游标之后的事件重放（同样投影）。match 仅在已有场次时存在（playing 起），
+// RoomSnapshot 逐观察者投影的房间权威快照：self（完整棋盘）、opponents（每名对手独立匿名矩阵与 HMAC 列置换）。
+// gameSequence 是快照捕获的权威游戏水位；events 为 after 游标之后可见的业务事件投影，
+// 被隐藏的 sequence 可由客户端直接对齐到 gameSequence。match 仅在已有场次时存在，
 // round 仅在局处于 countdown/playing 时存在。
 type RoomSnapshot struct {
+	// AvailableSeats playerLimit 与当前玩家数之间的空余席位数。
+	AvailableSeats int `json:"availableSeats"`
+
 	// Events after 游标之后的事件（逐观察者投影后）。
 	Events []RoomEventEnvelope `json:"events"`
+
+	// ExpiresAt 当前房间状态的到期时间；finished 态用于观战席保留倒计时。
+	ExpiresAt time.Time `json:"expiresAt"`
 
 	// Format 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
 	Format RoomFormat `json:"format"`
 
+	// GameSequence 此快照捕获的 room_event 权威高水位；用于 v2 缺口补齐后重置 appliedGameSequence。
+	GameSequence int `json:"gameSequence"`
+
 	// Match 当前场次（lobby 态不存在；含 finished 等待再来一局）。
-	Match   *MatchView   `json:"match,omitempty"`
+	Match *MatchView `json:"match,omitempty"`
+
+	// Members PK 玩家视图，不含观战者。
 	Members []MemberView `json:"members"`
 
+	// MinPlayers 服务端固定的最少开局玩家数。
+	MinPlayers RoomSnapshotMinPlayers `json:"minPlayers"`
+
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode          MultiplayerMode      `json:"mode"`
+	Mode        MultiplayerMode `json:"mode"`
+	PlayerCount int             `json:"playerCount"`
+
+	// PlayerLimit 允许同时入座的最大玩家数；不表示开局必须凑满。
+	PlayerLimit   int                  `json:"playerLimit"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 	RoomCode      string               `json:"roomCode"`
 	RoomId        string               `json:"roomId"`
 
 	// Round 当前局（仅 countdown/playing 态存在；投影语义见 multi-round.yaml）。
-	Round *RoundView `json:"round,omitempty"`
+	Round          *RoundView `json:"round,omitempty"`
+	SpectatorCount int        `json:"spectatorCount"`
 
 	// Status 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
 	Status      RoomStatus              `json:"status"`
 	TurnSeconds RoomSnapshotTurnSeconds `json:"turnSeconds"`
+
+	// Viewer 当前访问者视图。观战者不占玩家 seat。
+	Viewer ParticipantView `json:"viewer"`
 }
+
+// RoomSnapshotMinPlayers 服务端固定的最少开局玩家数。
+type RoomSnapshotMinPlayers int
 
 // RoomSnapshotTurnSeconds defines model for RoomSnapshot.TurnSeconds.
 type RoomSnapshotTurnSeconds int
@@ -1259,9 +1654,13 @@ type RoomStatus string
 type RoundStatus string
 
 // RoundView 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
-// opponent 为匿名矩阵（只含状态颜色序列）。接力模式额外提供 shared.rows、turnSlot、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
+// opponents 为按 seat 排序的匿名矩阵集合（只含匿名列顺序与状态颜色序列）。观战者会额外收到 boards 完整棋盘集合。
+// 接力模式额外提供 shared.rows、turnMemberId、turnSeat、turnDeadline、maxTurnsPerPlayer 与 maxSkipsPerPlayer。
 type RoundView struct {
-	// Deadline 整局超时平局时刻（默认 startsAt + 15min）。
+	// Boards 观战者当前局完整棋盘集合；玩家视角缺省，避免泄露对手猜测明细。
+	Boards *[]MemberBoardView `json:"boards,omitempty"`
+
+	// Deadline 整局截止时刻；race 默认 startsAt + 5min，relay 默认 startsAt + 15min。
 	Deadline time.Time `json:"deadline"`
 
 	// MaxGuesses 每局每人猜测上限；由本场题库设置决定，无次数限制时为 999。
@@ -1273,14 +1672,20 @@ type RoundView struct {
 	// MaxTurnsPerPlayer 接力模式每名玩家每局的轮次上限（猜测与超时空过均计入）。
 	MaxTurnsPerPlayer *int `json:"maxTurnsPerPlayer,omitempty"`
 
-	// Opponent 对手匿名矩阵（只含状态颜色；列序已按观察者置换）。
-	Opponent struct {
-		Rows []OpponentRow `json:"rows"`
-	} `json:"opponent"`
+	// Opponents 对手匿名矩阵集合；按 seat 稳定排序并以 memberId 关联。
+	Opponents []OpponentBoardView `json:"opponents"`
 
 	// Self 自己的完整棋盘（角色名/头像/每字段标签、状态、符号、展示值）。
 	Self struct {
-		Guesses []GuessResult `json:"guesses"`
+		FinishRank *int          `json:"finishRank,omitempty"`
+		Guesses    []GuessResult `json:"guesses"`
+
+		// MemberId 玩家视角为本人 memberId；观战者缺省。
+		MemberId            *string                     `json:"memberId,omitempty"`
+		ParticipationStatus *RaceRoundParticipantStatus `json:"participationStatus,omitempty"`
+
+		// Seat 玩家视角为本人 seat；观战者缺省。
+		Seat *int `json:"seat,omitempty"`
 	} `json:"self"`
 
 	// Shared 接力模式共享棋盘；竞速模式为空或缺省。
@@ -1297,8 +1702,24 @@ type RoundView struct {
 	// TurnDeadline 接力模式当前玩家本轮截止时刻。
 	TurnDeadline *time.Time `json:"turnDeadline,omitempty"`
 
-	// TurnSlot 接力模式当前可提交的玩家 slot；非接力或局未处于 playing 时可缺省。
-	TurnSlot *int `json:"turnSlot,omitempty"`
+	// TurnMemberId 接力模式当前可提交玩家的稳定成员标识。
+	TurnMemberId *string `json:"turnMemberId,omitempty"`
+
+	// TurnSeat 接力模式当前可提交玩家的展示席位。
+	TurnSeat *int `json:"turnSeat,omitempty"`
+}
+
+// ScoringMode defines model for ScoringMode.
+type ScoringMode string
+
+// SendChatMessageRequest defines model for SendChatMessageRequest.
+type SendChatMessageRequest struct {
+	// ClientMessageId 规范小写 UUID；仅用于当前成员在本房间内的发送幂等。
+	ClientMessageId string `json:"clientMessageId"`
+	Content         string `json:"content"`
+
+	// Kind 语义值只允许 text 或 emoji；非法值由服务端返回 CHAT_MESSAGE_INVALID。
+	Kind string `json:"kind"`
 }
 
 // SessionStatus defines model for SessionStatus.
@@ -1366,7 +1787,10 @@ type RoomsCreateJSONBody struct {
 	Format RoomFormat `json:"format"`
 
 	// Mode 多人玩法模式。race = 竞速；relay = 接力。
-	Mode          *MultiplayerMode     `json:"mode,omitempty"`
+	Mode *MultiplayerMode `json:"mode,omitempty"`
+
+	// PlayerLimit race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
+	PlayerLimit   *int                 `json:"playerLimit,omitempty"`
 	QuestionScope *QuestionScopeConfig `json:"questionScope,omitempty"`
 
 	// TurnSeconds 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
@@ -1382,6 +1806,18 @@ type RoomsJoinJSONBody struct {
 	DisplayName *string `json:"displayName,omitempty"`
 }
 
+// RoomsListMessagesParams defines parameters for RoomsListMessages.
+type RoomsListMessagesParams struct {
+	After  *string `form:"after,omitempty" json:"after,omitempty"`
+	Before *string `form:"before,omitempty" json:"before,omitempty"`
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// RoomsSetReadyJSONBody defines parameters for RoomsSetReady.
+type RoomsSetReadyJSONBody struct {
+	Ready *bool `json:"ready"`
+}
+
 // RoomsSubmitGuessJSONBody defines parameters for RoomsSubmitGuess.
 type RoomsSubmitGuessJSONBody struct {
 	// GuessId 被猜角色 id（须在场次绑定的题库版本快照且 EnabledAsGuess，否则 INVALID_GUESS）。
@@ -1389,6 +1825,11 @@ type RoomsSubmitGuessJSONBody struct {
 
 	// IdempotencyKey 客户端 UUID；同一 (round, member, key) 重试返回首次结果。
 	IdempotencyKey string `json:"idempotencyKey"`
+}
+
+// RoomsUpdateSettingsJSONBody defines parameters for RoomsUpdateSettings.
+type RoomsUpdateSettingsJSONBody struct {
+	PlayerLimit *int `json:"playerLimit"`
 }
 
 // RoomsGetSnapshotParams defines parameters for RoomsGetSnapshot.
@@ -1421,8 +1862,17 @@ type RoomsCreateJSONRequestBody RoomsCreateJSONBody
 // RoomsJoinJSONRequestBody defines body for RoomsJoin for application/json ContentType.
 type RoomsJoinJSONRequestBody RoomsJoinJSONBody
 
+// RoomsSendMessageJSONRequestBody defines body for RoomsSendMessage for application/json ContentType.
+type RoomsSendMessageJSONRequestBody = SendChatMessageRequest
+
+// RoomsSetReadyJSONRequestBody defines body for RoomsSetReady for application/json ContentType.
+type RoomsSetReadyJSONRequestBody RoomsSetReadyJSONBody
+
 // RoomsSubmitGuessJSONRequestBody defines body for RoomsSubmitGuess for application/json ContentType.
 type RoomsSubmitGuessJSONRequestBody RoomsSubmitGuessJSONBody
+
+// RoomsUpdateSettingsJSONRequestBody defines body for RoomsUpdateSettings for application/json ContentType.
+type RoomsUpdateSettingsJSONRequestBody RoomsUpdateSettingsJSONBody
 
 // SessionsSubmitGuessJSONRequestBody defines body for SessionsSubmitGuess for application/json ContentType.
 type SessionsSubmitGuessJSONRequestBody SessionsSubmitGuessJSONBody
@@ -1464,10 +1914,19 @@ type ServerInterface interface {
 	// RoomsClose 关闭大厅房间
 	// (DELETE /api/rooms/{roomId})
 	RoomsClose(ctx *echo.Context, roomId string) error
+	// RoomsClaimSeat 认领玩家席位
+	// (POST /api/rooms/{roomId}/claim-seat)
+	RoomsClaimSeat(ctx *echo.Context, roomId string) error
 	// RoomsLeave 离开房间
 	// (POST /api/rooms/{roomId}/leave)
 	RoomsLeave(ctx *echo.Context, roomId string) error
-	// RoomsSetReady 就绪
+	// RoomsListMessages 查询房间聊天历史
+	// (GET /api/rooms/{roomId}/messages)
+	RoomsListMessages(ctx *echo.Context, roomId string, params RoomsListMessagesParams) error
+	// RoomsSendMessage 发送房间聊天消息
+	// (POST /api/rooms/{roomId}/messages)
+	RoomsSendMessage(ctx *echo.Context, roomId string) error
+	// RoomsSetReady 设置就绪态
 	// (POST /api/rooms/{roomId}/ready)
 	RoomsSetReady(ctx *echo.Context, roomId string) error
 	// RoomsRematch 确认再来一局
@@ -1482,6 +1941,9 @@ type ServerInterface interface {
 	// RoomsPassRelayTurn 接力主动空过本轮
 	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/pass)
 	RoomsPassRelayTurn(ctx *echo.Context, roomId string, roundIndex int) error
+	// RoomsUpdateSettings 更新房间设置
+	// (PATCH /api/rooms/{roomId}/settings)
+	RoomsUpdateSettings(ctx *echo.Context, roomId string) error
 	// RoomsGetSnapshot 房间快照与事件重放
 	// (GET /api/rooms/{roomId}/snapshot)
 	RoomsGetSnapshot(ctx *echo.Context, roomId string, params RoomsGetSnapshotParams) error
@@ -1686,6 +2148,22 @@ func (w *ServerInterfaceWrapper) RoomsClose(ctx *echo.Context) error {
 	return err
 }
 
+// RoomsClaimSeat converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsClaimSeat(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsClaimSeat(ctx, roomId)
+	return err
+}
+
 // RoomsLeave converts echo context to params.
 func (w *ServerInterfaceWrapper) RoomsLeave(ctx *echo.Context) error {
 	var err error
@@ -1699,6 +2177,61 @@ func (w *ServerInterfaceWrapper) RoomsLeave(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.RoomsLeave(ctx, roomId)
+	return err
+}
+
+// RoomsListMessages converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsListMessages(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RoomsListMessagesParams
+	// ------------- Optional query parameter "after" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "after", ctx.QueryParams(), &params.After, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter after: %s", err))
+	}
+
+	// ------------- Optional query parameter "before" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "before", ctx.QueryParams(), &params.Before, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter before: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", ctx.QueryParams(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsListMessages(ctx, roomId, params)
+	return err
+}
+
+// RoomsSendMessage converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsSendMessage(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsSendMessage(ctx, roomId)
 	return err
 }
 
@@ -1803,6 +2336,22 @@ func (w *ServerInterfaceWrapper) RoomsPassRelayTurn(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.RoomsPassRelayTurn(ctx, roomId, roundIndex)
+	return err
+}
+
+// RoomsUpdateSettings converts echo context to params.
+func (w *ServerInterfaceWrapper) RoomsUpdateSettings(ctx *echo.Context) error {
+	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RoomsUpdateSettings(ctx, roomId)
 	return err
 }
 
@@ -1983,10 +2532,14 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/api/rooms/:roomCode/join", wrapper.RoomsJoin, options.OperationMiddlewares["rooms_join"]...)
 	router.GET(options.BaseURL+"/api/rooms/:roomId/snapshot", wrapper.RoomsGetSnapshot, options.OperationMiddlewares["rooms_getSnapshot"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/ready", wrapper.RoomsSetReady, options.OperationMiddlewares["rooms_setReady"]...)
+	router.PATCH(options.BaseURL+"/api/rooms/:roomId/settings", wrapper.RoomsUpdateSettings, options.OperationMiddlewares["rooms_updateSettings"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/claim-seat", wrapper.RoomsClaimSeat, options.OperationMiddlewares["rooms_claimSeat"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/rematch", wrapper.RoomsRematch, options.OperationMiddlewares["rooms_rematch"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/leave", wrapper.RoomsLeave, options.OperationMiddlewares["rooms_leave"]...)
 	router.DELETE(options.BaseURL+"/api/rooms/:roomId", wrapper.RoomsClose, options.OperationMiddlewares["rooms_close"]...)
 	router.GET(options.BaseURL+"/api/rooms/:roomId/ws", wrapper.RoomsConnectWs, options.OperationMiddlewares["rooms_connectWs"]...)
+	router.GET(options.BaseURL+"/api/rooms/:roomId/messages", wrapper.RoomsListMessages, options.OperationMiddlewares["rooms_listMessages"]...)
+	router.POST(options.BaseURL+"/api/rooms/:roomId/messages", wrapper.RoomsSendMessage, options.OperationMiddlewares["rooms_sendMessage"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/guess", wrapper.RoomsSubmitGuess, options.OperationMiddlewares["rooms_submitGuess"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/forfeit", wrapper.RoomsForfeitRound, options.OperationMiddlewares["rooms_forfeitRound"]...)
 	router.POST(options.BaseURL+"/api/rooms/:roomId/rounds/:roundIndex/pass", wrapper.RoomsPassRelayTurn, options.OperationMiddlewares["rooms_passRelayTurn"]...)
@@ -2488,6 +3041,78 @@ func (response RoomsClose409JSONResponse) VisitRoomsCloseResponse(w http.Respons
 	return err
 }
 
+type RoomsClaimSeatRequestObject struct {
+	RoomId string `json:"roomId"`
+}
+
+type RoomsClaimSeatResponseObject interface {
+	VisitRoomsClaimSeatResponse(w http.ResponseWriter) error
+}
+
+type RoomsClaimSeat204Response struct {
+}
+
+func (response RoomsClaimSeat204Response) VisitRoomsClaimSeatResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsClaimSeat401JSONResponse ErrorResponse
+
+func (response RoomsClaimSeat401JSONResponse) VisitRoomsClaimSeatResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClaimSeat403JSONResponse ErrorResponse
+
+func (response RoomsClaimSeat403JSONResponse) VisitRoomsClaimSeatResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClaimSeat404JSONResponse ErrorResponse
+
+func (response RoomsClaimSeat404JSONResponse) VisitRoomsClaimSeatResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsClaimSeat409JSONResponse ErrorResponse
+
+func (response RoomsClaimSeat409JSONResponse) VisitRoomsClaimSeatResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsLeaveRequestObject struct {
 	RoomId string `json:"roomId"`
 }
@@ -2546,8 +3171,219 @@ func (response RoomsLeave409JSONResponse) VisitRoomsLeaveResponse(w http.Respons
 	return err
 }
 
+type RoomsListMessagesRequestObject struct {
+	RoomId string `json:"roomId"`
+	Params RoomsListMessagesParams
+}
+
+type RoomsListMessagesResponseObject interface {
+	VisitRoomsListMessagesResponse(w http.ResponseWriter) error
+}
+
+type RoomsListMessages200JSONResponse ChatHistoryResponse
+
+func (response RoomsListMessages200JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsListMessages400JSONResponse ErrorResponse
+
+func (response RoomsListMessages400JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsListMessages401JSONResponse ErrorResponse
+
+func (response RoomsListMessages401JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsListMessages404JSONResponse ErrorResponse
+
+func (response RoomsListMessages404JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsListMessages409JSONResponse ErrorResponse
+
+func (response RoomsListMessages409JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsListMessages410JSONResponse ChatResyncRequiredResponse
+
+func (response RoomsListMessages410JSONResponse) VisitRoomsListMessagesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(410)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessageRequestObject struct {
+	RoomId string `json:"roomId"`
+	Body   *RoomsSendMessageJSONRequestBody
+}
+
+type RoomsSendMessageResponseObject interface {
+	VisitRoomsSendMessageResponse(w http.ResponseWriter) error
+}
+
+type RoomsSendMessage200JSONResponse ChatMessage
+
+func (response RoomsSendMessage200JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage400JSONResponse ErrorResponse
+
+func (response RoomsSendMessage400JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage401JSONResponse ErrorResponse
+
+func (response RoomsSendMessage401JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage403JSONResponse ErrorResponse
+
+func (response RoomsSendMessage403JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage404JSONResponse ErrorResponse
+
+func (response RoomsSendMessage404JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage409JSONResponse ErrorResponse
+
+func (response RoomsSendMessage409JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSendMessage429ResponseHeaders struct {
+	RetryAfter *int
+}
+
+type RoomsSendMessage429JSONResponse struct {
+	Body    RateLimitedErrorResponse
+	Headers RoomsSendMessage429ResponseHeaders
+}
+
+func (response RoomsSendMessage429JSONResponse) VisitRoomsSendMessageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsSetReadyRequestObject struct {
 	RoomId string `json:"roomId"`
+	Body   *RoomsSetReadyJSONRequestBody
 }
 
 type RoomsSetReadyResponseObject interface {
@@ -2562,6 +3398,20 @@ func (response RoomsSetReady204Response) VisitRoomsSetReadyResponse(w http.Respo
 	return nil
 }
 
+type RoomsSetReady400JSONResponse ErrorResponse
+
+func (response RoomsSetReady400JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsSetReady401JSONResponse ErrorResponse
 
 func (response RoomsSetReady401JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
@@ -2572,6 +3422,20 @@ func (response RoomsSetReady401JSONResponse) VisitRoomsSetReadyResponse(w http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsSetReady403JSONResponse ErrorResponse
+
+func (response RoomsSetReady403JSONResponse) VisitRoomsSetReadyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -2634,6 +3498,20 @@ func (response RoomsRematch401JSONResponse) VisitRoomsRematchResponse(w http.Res
 	return err
 }
 
+type RoomsRematch403JSONResponse ErrorResponse
+
+func (response RoomsRematch403JSONResponse) VisitRoomsRematchResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsRematch404JSONResponse ErrorResponse
 
 func (response RoomsRematch404JSONResponse) VisitRoomsRematchResponse(w http.ResponseWriter) error {
@@ -2689,6 +3567,20 @@ func (response RoomsForfeitRound401JSONResponse) VisitRoomsForfeitRoundResponse(
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsForfeitRound403JSONResponse ErrorResponse
+
+func (response RoomsForfeitRound403JSONResponse) VisitRoomsForfeitRoundResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -2773,6 +3665,20 @@ func (response RoomsSubmitGuess401JSONResponse) VisitRoomsSubmitGuessResponse(w 
 	return err
 }
 
+type RoomsSubmitGuess403JSONResponse ErrorResponse
+
+func (response RoomsSubmitGuess403JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsSubmitGuess404JSONResponse ErrorResponse
 
 func (response RoomsSubmitGuess404JSONResponse) VisitRoomsSubmitGuessResponse(w http.ResponseWriter) error {
@@ -2832,6 +3738,20 @@ func (response RoomsPassRelayTurn401JSONResponse) VisitRoomsPassRelayTurnRespons
 	return err
 }
 
+type RoomsPassRelayTurn403JSONResponse ErrorResponse
+
+func (response RoomsPassRelayTurn403JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type RoomsPassRelayTurn404JSONResponse ErrorResponse
 
 func (response RoomsPassRelayTurn404JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
@@ -2849,6 +3769,93 @@ func (response RoomsPassRelayTurn404JSONResponse) VisitRoomsPassRelayTurnRespons
 type RoomsPassRelayTurn409JSONResponse ErrorResponse
 
 func (response RoomsPassRelayTurn409JSONResponse) VisitRoomsPassRelayTurnResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsUpdateSettingsRequestObject struct {
+	RoomId string `json:"roomId"`
+	Body   *RoomsUpdateSettingsJSONRequestBody
+}
+
+type RoomsUpdateSettingsResponseObject interface {
+	VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error
+}
+
+type RoomsUpdateSettings204Response struct {
+}
+
+func (response RoomsUpdateSettings204Response) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RoomsUpdateSettings400JSONResponse ErrorResponse
+
+func (response RoomsUpdateSettings400JSONResponse) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsUpdateSettings401JSONResponse ErrorResponse
+
+func (response RoomsUpdateSettings401JSONResponse) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsUpdateSettings403JSONResponse ErrorResponse
+
+func (response RoomsUpdateSettings403JSONResponse) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsUpdateSettings404JSONResponse ErrorResponse
+
+func (response RoomsUpdateSettings404JSONResponse) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RoomsUpdateSettings409JSONResponse ErrorResponse
+
+func (response RoomsUpdateSettings409JSONResponse) VisitRoomsUpdateSettingsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -3308,10 +4315,19 @@ type StrictServerInterface interface {
 	// RoomsClose 关闭大厅房间
 	// (DELETE /api/rooms/{roomId})
 	RoomsClose(ctx context.Context, request RoomsCloseRequestObject) (RoomsCloseResponseObject, error)
+	// RoomsClaimSeat 认领玩家席位
+	// (POST /api/rooms/{roomId}/claim-seat)
+	RoomsClaimSeat(ctx context.Context, request RoomsClaimSeatRequestObject) (RoomsClaimSeatResponseObject, error)
 	// RoomsLeave 离开房间
 	// (POST /api/rooms/{roomId}/leave)
 	RoomsLeave(ctx context.Context, request RoomsLeaveRequestObject) (RoomsLeaveResponseObject, error)
-	// RoomsSetReady 就绪
+	// RoomsListMessages 查询房间聊天历史
+	// (GET /api/rooms/{roomId}/messages)
+	RoomsListMessages(ctx context.Context, request RoomsListMessagesRequestObject) (RoomsListMessagesResponseObject, error)
+	// RoomsSendMessage 发送房间聊天消息
+	// (POST /api/rooms/{roomId}/messages)
+	RoomsSendMessage(ctx context.Context, request RoomsSendMessageRequestObject) (RoomsSendMessageResponseObject, error)
+	// RoomsSetReady 设置就绪态
 	// (POST /api/rooms/{roomId}/ready)
 	RoomsSetReady(ctx context.Context, request RoomsSetReadyRequestObject) (RoomsSetReadyResponseObject, error)
 	// RoomsRematch 确认再来一局
@@ -3326,6 +4342,9 @@ type StrictServerInterface interface {
 	// RoomsPassRelayTurn 接力主动空过本轮
 	// (POST /api/rooms/{roomId}/rounds/{roundIndex}/pass)
 	RoomsPassRelayTurn(ctx context.Context, request RoomsPassRelayTurnRequestObject) (RoomsPassRelayTurnResponseObject, error)
+	// RoomsUpdateSettings 更新房间设置
+	// (PATCH /api/rooms/{roomId}/settings)
+	RoomsUpdateSettings(ctx context.Context, request RoomsUpdateSettingsRequestObject) (RoomsUpdateSettingsResponseObject, error)
 	// RoomsGetSnapshot 房间快照与事件重放
 	// (GET /api/rooms/{roomId}/snapshot)
 	RoomsGetSnapshot(ctx context.Context, request RoomsGetSnapshotRequestObject) (RoomsGetSnapshotResponseObject, error)
@@ -3652,6 +4671,31 @@ func (sh *strictHandler) RoomsClose(ctx *echo.Context, roomId string) error {
 	return nil
 }
 
+// RoomsClaimSeat operation middleware
+func (sh *strictHandler) RoomsClaimSeat(ctx *echo.Context, roomId string) error {
+	var request RoomsClaimSeatRequestObject
+
+	request.RoomId = roomId
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsClaimSeat(ctx.Request().Context(), request.(RoomsClaimSeatRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsClaimSeat")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsClaimSeatResponseObject); ok {
+		return validResponse.VisitRoomsClaimSeatResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // RoomsLeave operation middleware
 func (sh *strictHandler) RoomsLeave(ctx *echo.Context, roomId string) error {
 	var request RoomsLeaveRequestObject
@@ -3677,11 +4721,94 @@ func (sh *strictHandler) RoomsLeave(ctx *echo.Context, roomId string) error {
 	return nil
 }
 
+// RoomsListMessages operation middleware
+func (sh *strictHandler) RoomsListMessages(ctx *echo.Context, roomId string, params RoomsListMessagesParams) error {
+	var request RoomsListMessagesRequestObject
+
+	request.RoomId = roomId
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsListMessages(ctx.Request().Context(), request.(RoomsListMessagesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsListMessages")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsListMessagesResponseObject); ok {
+		return validResponse.VisitRoomsListMessagesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsSendMessage operation middleware
+func (sh *strictHandler) RoomsSendMessage(ctx *echo.Context, roomId string) error {
+	var request RoomsSendMessageRequestObject
+
+	request.RoomId = roomId
+
+	var body RoomsSendMessageJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsSendMessage(ctx.Request().Context(), request.(RoomsSendMessageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsSendMessage")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsSendMessageResponseObject); ok {
+		return validResponse.VisitRoomsSendMessageResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // RoomsSetReady operation middleware
 func (sh *strictHandler) RoomsSetReady(ctx *echo.Context, roomId string) error {
 	var request RoomsSetReadyRequestObject
 
 	request.RoomId = roomId
+
+	var body RoomsSetReadyJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.RoomsSetReady(ctx.Request().Context(), request.(RoomsSetReadyRequestObject))
@@ -3815,6 +4942,47 @@ func (sh *strictHandler) RoomsPassRelayTurn(ctx *echo.Context, roomId string, ro
 		return err
 	} else if validResponse, ok := response.(RoomsPassRelayTurnResponseObject); ok {
 		return validResponse.VisitRoomsPassRelayTurnResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// RoomsUpdateSettings operation middleware
+func (sh *strictHandler) RoomsUpdateSettings(ctx *echo.Context, roomId string) error {
+	var request RoomsUpdateSettingsRequestObject
+
+	request.RoomId = roomId
+
+	var body RoomsUpdateSettingsJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RoomsUpdateSettings(ctx.Request().Context(), request.(RoomsUpdateSettingsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RoomsUpdateSettings")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(RoomsUpdateSettingsResponseObject); ok {
+		return validResponse.VisitRoomsUpdateSettingsResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
@@ -4035,183 +5203,239 @@ func (sh *strictHandler) SiteVisitsCreate(ctx *echo.Context) error {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7H1tU9vWtvBf0fi5H86ZuDEkbe9NZjp3OEBSzk0gl5f29Da9GWELUGMsKstNaYc7JsEgBxuThJdgnBAI",
-	"BJoEG9IUjC3CzPP8k6C9JX/yX3hm7y3Jki35JSFpem6+JMaW9l577fW+1l77F5eXGx7hAkxACLrO/+IK",
-	"eoeYYRp/bKUF2s8Ntg7RPO0VGB5/6WNGeMZLC4zPdV7gQ4zb5WOCXp4dEVgu4DrvAvsvgHRLmdtSkhMg",
-	"HYPzL0Eio8RS6uZdNfpCXd0qSstyPiJnc3BxE6TXoLivPMvIRw+U+SU5G5azT0FEAukDJSrC1PPj8E2X",
-	"2zXCcyMML7AMhsBrgYcVmGH84V94ZsB13vV/PKX1eLTFeIwl9DA07x3qZoIhv+Aac7uE0RHGdd5F8zw9",
-	"iv7+keGDeB2/lC/r8B6Ixgtr90HuHgEN3BNBNlaUxCDD+Ci4uAeXX8KFnaK0XFpVfgNur8PHYfj7tLq6",
-	"pT8QJavS5g4KPBsYdI2NuV0880OI5RFmvzUgcZvX+53xFtf/PePFS9B3iQsITEDoCQ0P0/woWoAVa3Qg",
-	"eIPh6X4/g/4aZgPscGjYdb7JGJENCMwgw6MhvWSsXvxDdcxepIeZVtPjY27XYIgJBuubyE/3M370WBku",
-	"3K5h+qeLaBwCvDFKs90oAifQ/tqT/cgG2X4/c4Fl/L5WLhQQar1StiNmrOig65ObV+0249qyEjsYqmzp",
-	"hZDf70SJILJVmEoQegRHz5TI5nH4pvxqmXyjpl8ph2kgHShPF8HdGCFY+SgNtx/Lh0fK3FZRisnZuHyY",
-	"krM5wplwNqW8XFOke2D7PszNnjTj2TGbjxmgQ37hP0NMEK2tx8vVpjfLw61cYIAdLOPbClK6wfHX64f4",
-	"a46/XgmsI3OSwS1M6rCwKhvtyLQayTWAb1thYId7mvWPttEC8x/MaCWNydkkuL0KFzdgaqUwly5KYl9v",
-	"KwUzCbi4UVi7T34oSjH4SAJSgvrmm2+++eTy5U/a2pyE2zvZBcsa3CVk6ZPZYtwgyIpFEz4gOkv9fQIu",
-	"LBUlUT2aVVdjcHEPHK7B8HhRioHZZxQ9MsLQPB3wMl28j+EpOTsDdueBFFaSE9QAyweFFuMJAyVl8rif",
-	"9bPCaBsbHPHTo5oousQEBoUhs5grIVB7oZcetKKxUnSygQ7yY3PlvtMDA6yfpdGS32oYKwIw+PRPRJKe",
-	"O3funLuGLKZ/pAWa7+OxfBuhBYHh0Rb8t6fER55v/9vz3amrV0+PBAb/xY6ifOzAAOsN+YXRXpaAUI2i",
-	"2qxPj7ldTABJaF9LsAWLaxMS+jnOz9ABy0NYhts/U7bhtSC5UPb4mNs1RLN8K+fnGpCsX+qv1Nwr1lcH",
-	"dfk571sTRYAeZmrCfYnz0n72Z8bXiZ8ec7sQ/evmQiVyec7PvA1QQS7Ee5luZsA6yADHD9OC67wrxLN2",
-	"xFV9zBHGy74FVGVyjPW5zBxRyV06aitJrQSLu1yiWCVGGeebN1zHsYUMTdtSySkVbFHBjBa8V5XDhkU+",
-	"wgWCTKUK5LGt/g5M/bqsxrKd0oHR365vZQiACm1D7C0QX1WiU+rmJFh+BbdWwcPpoiQWliZA9gmFlFiH",
-	"j5LzG/KrIxiLyocpcG9c2V4uhKNOSqVu6V6HQK8htSuGtBGD5VvpZ+gg8w1DO4yPVtzLChZR4OAelR51",
-	"W8a125G3la72ArVi/WyAFVjab4/vOuWrnUi1fRD90MPxgmG+NeCVz8aVzR04cxfkEti4W4YLO4bPqszt",
-	"EtKkWq50UGpmH+7eJM8q+XvwYcrBvAtiYu9lfhIaBmd7EaZ/V18dKPMxMjNcmIKp52Vwydk4eLUI42m4",
-	"va5OPUVGWXQT/YtfcYKqHkFdId1D/YIDERIS7fDVpk8s0/HumQY00Ugtga/NU13im2V4mXi3iHLT5lgp",
-	"x1Z+8QwtMN0cN2wWymX7Jy6DfA6KR4XFl+BeHOTmjsM3kQcs9HLXmQAF78/AhSk5H4Hb63I2DJ+vqkdz",
-	"YPmhncwqvVYz1lB6EulXZri/ttl3GT/1FcvcQO/8cAKuJs9xw62cz5480I/1kIf2nGk0txkRxursNqit",
-	"wu5lAkh9feti6CDS+wFk2/gxEfBoDn8oQAus1zRYCeB2njaPMOI992+I+tiAj7uBSIcThixgmN/kOd6Z",
-	"RJT8ipwNF+aW1EwGS46J4/BNL+djKDmbU7Z+A+mk9uMj5FUxaDT0k5zLKbt5kMiomTzcE+F4piiJllBh",
-	"PqJm8iCxoGY2iOxwUIZebZP0tXV0ftVyqaPtWnf7f/a19/S63MY3F/vae3pcbldPe09PR1fntc6u3msX",
-	"uvo620zftV7q6mlHX7T1XbnU0drS22681trV2drX3d3e2Xut70pbS2+7y+3q6+zpu3Klq7u3ve1aa1dn",
-	"L/qx95sr6KfWlt6WS10X8Szd7S1t35i++6q9uwKCjs7e9u7Olksut6u7q+uy5Tf8xYW+S8aPBpgIuN5r",
-	"fZ0tfb1fdnV3/Fd7m2nBF7q6L7cgDFxu6W398lrLJQzHtZ7eFgQwGqud/ILmavmqpeNSy98uteM5+jrb",
-	"yLetvR1flb5q72zDL6Kfvunq677W29fd6XK70H/X2v9xpaPbgKrn2qWOyx147a1fktkQNvGX7W22tIap",
-	"ozZXeQkjkaftWOcCw/j6ae/1HoEWQkEL6/xEe5F0HKF5JKARB7LYsB1iB4ewRPZzxPQNBa4HuBsBWziN",
-	"8UeH+zm72F0iXngiKs+fgMR+URK7KA/1P5SH+gfloV5P3sH/3qM81L8bFK2D1+Vyu/7H5Xb9w+V2vZ68",
-	"g/+953K7/t0eDJbx+3RYKu0wH/EQvqL9IaYx1TiABq5HTAcxCEjFVI3yBo19qOowW3cNvWfgt673yNPl",
-	"1EIWU4rkasAYo7utiLKlp1omL0PEazUokQTGAW824GcDTEfAx/xkbx7XZT931OPtWwztep6tIxPwtf6c",
-	"namOdZ3ZZjdGrW2+l6cYTFxrRIts2QC9eLlMCeCYIZqUDvi4YcTmIb/Aol12GsRCzaaRKg0z80JsHPM3",
-	"8sMdQaqieWMp+Pu0uvYMzmyAxKKSnED28uakunmX2GpFSdQzc0gcFaVlsBuWs9tyNk7MNGV7Dq6KcnYG",
-	"ZA5gdFo+WsVqOOpkvgXrEgklV5znQgGfQejVkjsVZpPxopZxsacY03QVLDlgkot1+YJWaWojFTEgLWbf",
-	"uMzVX9xU0zvgcB5ZNbcOFSkHdu4Y1ouD64IH7bD3NPFvnU6uIRts5XgeocI2oHadDfhsiEbKgfVduLgH",
-	"Y1G4lC6Ek4SMKDwXBdYnlNlJq04a1EI/AjvMcCHBhlTLdg/PXFqZeR1mqN2lLXLa3JK/UIbpbBak1+T8",
-	"uhKNFaUkTMXB7VXk1G6/Aok7yNmMHYHZuJp7JucPwdQ2jKeLUkzOR5T8HZBOgvi8nH1K3Jrj8M2rAVl6",
-	"pL66p+SegHSyKCW723t6KWVui2oJCUMcz/6MOfc89TeG5hkeo0o4/4uAYBsrSstf91AgtUUNMX4/RxWe",
-	"LIDsJpzNgeyToiRiXlum+roveeDiBjhaJOx1NUCAB9kn2nAUiMYVKVyUYjD1FD7YUF8i44E8Jec3qO9v",
-	"GM+AyC7Yvo8Gx78iM/rhNPKbYweFSJx6PXmXqrQK9XlB7p6c3QaJp2D7PhUcos989vlf8Er+SumZ7hhx",
-	"69AzqS2CUiJQ0ItTOWVmh/h6eDw7mi5FVUxytN+Pdtrt6ueRVeV29fu5ADbjbgyxAvZ3Wf+P2PJCZOR2",
-	"jbAB9PhIiB/BmqQfKWe3a5BnsOPE8XRgkHyBg6BYvnvxpLo3gzykAGMrWv/OsYEaru/tRyCy8edzfRv2",
-	"TOt1R8sC+pWFB36WDjYagyEYqWGZfE/X8RDPDdPfs7aT/jz0JR0I1jEGflCojTttQAwZXoPbWL0d5i7T",
-	"gncI708llaVyiHJwXPg4fFP7c+opiEXA7DMk2jJzQJw8Do+bS1KIFCtKopekgb8iaWpK3RyXc9Nyfg8z",
-	"+zjWote8XCggUODwLkjl1NWYrQdtGcZG3Kaeg1SOzKokJ8ygOGi1YbRkQ/PbrRnkEtg5Wm6ivsBCM5Ur",
-	"SrFm6gtKef6cMBSYjMMHG3I2DHbDr8NPXoefuGrlG4fpn7rRqoM2iwjnwW4Yzu+AdBREtuTs7cLSLPUF",
-	"dZb6f4tUZ1ES+7nm15N3zx6Hx/u5s68n757Dnz57PXm3+TP88V9fT94901ye+jbNfiJhJwbjrpuhfTYJ",
-	"ezNKlNW0ml4nyWrl5RqQ5qkmTzMFMgcgN0cF/ZxANXvOYDURoQbYABscYnwUDI/DVBROJOSDUnahnGFN",
-	"ZsQw/ZOW3jpjznWdqeRlq7VnW8yyGyYOMdpzQlRgJwlTT4GEFoQM1MyBbqPmSu9opBJrptTf9w2gq1NC",
-	"0MvxTI+fE5oroSG4ocD+C/VWihAFspUPfsNzx9X0KohsNDrPGYd5zpzMPALNDzLC12zAhrSV5TR8NIXm",
-	"SOWoL6i/dJ5q/qvnTNmota1uE9Na5rMg07Jit9VSL3FfGR27y0WMrZjEuqcUsiljX3EW3LmvHj2EMxvK",
-	"7T0YHrdaqV4uEGC8AjYdfGzQ/KefGRBsrQCT5rSZD2l+bVZdPldITi1yoNvoZUPc/13ZRDuu5DJgd15Z",
-	"RxLudXS9+XMKbC8qz58UpWXl1xwQl0oGbH7pOBwj1qsy8ytI7x2H487FNryDlFjfBDMRsLOr5J9i+YBF",
-	"gJ/r7x9F/K+XhllHNfE8olubUbPb8mG8KC1r7PMFBcUjOZsvSmJb+6X23nYKPrhVWJoF4jrWTjpZ6/Ui",
-	"Z9w16vvqixJZyKSchDHkbsu2mAI+BF22tFeKDuiRhHKUJuVcTpn5Ff42D7dWgZQ4Dt/kaS+DFNazh4Xw",
-	"SlFa5hk/PYrwMrMBbi9b6RM9S2IH9KgtMXaNkJV2c3Z2AnHQs2F1NUYcNiRICJms/Fq4/7u6GiMYJ+IT",
-	"2e6zzwifFNZSavQFEqLiIqkHBLPPtCKo2biHeKfw0ZSy/coDwpIdmbP2Ul3NbBAGQUJ6MkIA06W1aJXW",
-	"TtvNBB21RSKjbo4T8OTDuHKYVpITZElIU+y/gLGounkTZFbUcASIi8phGsbXcNBDSyHAnax6lILTR2jN",
-	"4o6SWgHph0BcBLlEpeprLDJZvdBDk4fGCu1I7kqo3896L9LDTA8TdChGjjwHUliWkmrmgSGDSNEpJecj",
-	"ILVFflPy9+CDFTA74+yC0EbtE+33dw24zn9bd0Hnd+VZXRI2IhRE3OrqkFQsvZa9qY9lY29athdZEDta",
-	"LjkW1WxjXNnqAeJ+lRrsty19ZgI+xtciOEOuYQFG42ZEGMVIPlpgPhFYLJ3soz5M/TUMZUG3OqsYGim8",
-	"HtZEYi0sYdE5hnz2n3/26xWnFTOfhJUcFGhe0LegPrTWp100XnRQLzjbP0yyT9YycUPHWMrAB41PJYDt",
-	"ZQFCmJaRZzCC7NI5ej64XqSVMshXeCbICCeD/THHBdQqJECMvBtWkhNGQKVCThHSueScSSrJymqAVwrX",
-	"8q00T1Qa1m5zKrHZQC7e7fKGggI3bKvyHffp7XL9drtWWXJeIYOrFN42TnD1ig0LrLr84EP+2gWmlje7",
-	"8RvYHUO/mlal4fHMd7YmCOPHToKh7Tp8DQawbnA8tgoakNcWwL/W369pVFhXVqFEDblk2jWHBVqg1rFd",
-	"jfIxpDg90q3vTPV6xLpqpysfshbwVf5uKa6zKSG25k3rJ57SezoFmgrKyuepyC7XnR50TgjaJgId9gFr",
-	"l0vsMGujIrRyXcdIjlnjG25ZU0NBAn0Ky3g1gS5Pz44QOVeXdLTdI9NYQ6zPh2OwuLajK4Dzvj6WZ7zo",
-	"bUv1rtPg9lSNCwcaY2cTk+iWnLFVdQ9i2mHEFHh5FwxYrIr1EjNIe0cpi3Cgmik2MBISTlOdWGuwPzM+",
-	"itd0c5AKBRmKLO10vf5PRalHRZF1iA80vtBe4y1tiB7GywVOcJkGWKcbi4RpO29el2U3a9J7rxkfDfBo",
-	"sIQAg0GbLRx6tqkBFtWHqwkvVkNYV1jVJvIWLdVSjhk1B61WsXxDI9VzMpPY1UzjGtVYin4AoM7p6i37",
-	"NWpdCHzusmVZJrVDfjfjp0cRkdhGe0j8iISZQGRXzj2Dj6eV5ftydltJTpAokJaNDFLqaoxki8pqPbR0",
-	"vWeE1h4SJ4H4TF3dUtZz6l4ELu4pv+bUoymPnM2D21vkj5Oq/HAIGCGPfTdMlqQepk1pINEhtm/rj+ql",
-	"DU4VCohgg/Y1NSTB2WMb4ISp5+phGhzeBbsPSfAVZ1EaC2M6hIJM82rw25IFxw23/8gEhPbAj4xfc9Ds",
-	"4tIkzScfrYIdHN7NzlDIH0U2XtBzI+gZ4TmB83L+06P0sJ9CFDP1kiB3hB71c7SPAodryu09Ob8B4gk1",
-	"nVY3J9TYLTmbA1OTdkTAIKgcylQ4rzfE84154xoY2Hj0+Viiqa+YpiTHCSow5JjeRiz4Q4jRbEs7nIHJ",
-	"CIjPqzu3CuG7YO0hQaFBf6Wo0vgaWI/DbBY+mqoSvRRG7XaHDEoqMoqSiKA9HRpBmPBRHgpnRE5roQDK",
-	"Q+HkifG3sh0tSjF1c7zKVtbZVEAgQQl909ylbL+BJMu2lfbDiSovaLtaEQL+fRmIe8fhm3/rutZJfUGB",
-	"iKjeSukpKApn9bTMarORWT1jZFbPGonVTytqYfu5Zpfb1c+dxf9+hv/9V1umRgB2BAY4pwgqSDxVM/nC",
-	"2gR8jMAhpR1GhJksoSjFmv6N+r+bn54+QyAhcXItvj0b9+AiGTvWGDBQU01AmpBoiKGSUrITLk1vGoor",
-	"T2a8gwMRVix/TsmHcY3JEvtOZ3Tqir8hNJmi7NVsQouWjM8rc1uIgXEOAi7uFZZmi5KobN4lu0lyNNrD",
-	"yzmQTpLALPV5Ez55d/QAxsaJTCSHFiy0eLbJ/XmT+1yTu/lM03d1VC8aZz002jCcc/OCzEFDEzk4cWBP",
-	"gB4JDtnprUJ41siDwNvz4HBXSU5o24FbRhSlZJDxDxj1oMSaIEUinJZ2KssnUacokDmACwemxAp6/GoA",
-	"C5UgJWdzFD0gMDxFRKV8MA1mZ5B5gkVgYSoO516hQWdj8NE+AYtsBZaCWv4C7L+AqSipCIGLe2D7Pkht",
-	"FSURUS8bGNRsgqIUuxrAwlJ/bTcM1ifkHNJ6oYDg424EPPorxjB6eZqNIrOhpiprKUpiJYrB7ExjOaRK",
-	"3W5XeP8msgThs/7MTqkaqTKzoyXe8HYUJbGUMc7G9a1ZBrPPStUkynYUvIqYq1LKNVSJiAmR1x8ns9a1",
-	"lWPqAxGE9Z8M02ol6t8oXEpRfaOwdpXzETs2CI8bW0YoVs1sywdRZF/gWslPiPVhZ1WU9uwEhPYbi9Dy",
-	"c3MNydKgbv4EnQWqY6UJkpzK3Aq4cwjubMHUip50TmKGQGqFkD22I4pS9PXkXUrHO/pssAf6w+vngoyv",
-	"KC2TD/hYXF6sqF/BQ2vH8RG9uF36KC63i7zqYPuEAj6npYD4PNgNG+AbVILkcviumkYy1wZ+nN4sL6/R",
-	"XrWAiB90Bsu+ssZWXRFISZJbU1cIU1Z9hZQJiM/LuRzpz1IqYiiVL+jqQtdreBSTYkOjOBZHIDYwmxWF",
-	"tQdgfQEmZuVXy1RwiOYZ32meuxE8Do9j6sPeIf7YxtA+PxtgjsPjw/RPyLMPXmH4K1j2UMg9G6Z/6rnO",
-	"jpS+tVdPPm0cG7Kcf4kwhD13UkKGPoh5pJ3y99X0OoUdiWCLQJ2imj8bZgMGW9fnklnjw2WTZxJowkxC",
-	"zuWIiUXqJ4vSsjK3S0r5LC2pJn/DNUAxuPgIqfb5HVwYtAcX95DhcO7cuXr8/AqcVTcCEZB62RQBGCQy",
-	"JK5BYNBhFs0hDzk7Yw6HkOBEnUV5FVvdKIBKcoLEQQzQdOxagXow5VQsaIs4nfidColqMgTS87hOpqzM",
-	"xmQKVjpCiDPq1u7mcqdaqS88sJ0YR2LCxiedegr2d42+hIb0MNU8rb8EtxIetAem6qfj8LheWThOzm4e",
-	"h8dJ4R4RLI7RsZOq1ihb92CV9AqRRvXHDhGnmnwgpIV+zUFxQZFySmr8rbfTEtB88/3UJJhj5DCRAVIY",
-	"sYgu+gw1RmpuyBm3wuLLwuJLuD0FIpJ8mDKrukYEYr3GT0kBa9ZPm7MQN+8OtuE0aYBDj1B8CrfXyNoa",
-	"AVTXRfXMBxIZpM9y60pywhTkLErLhQcPtcfFBSTsU081H8vsWSUyZoJ5w6Bo6QSuvt/ukuIrK6HBLG6S",
-	"aHZkYy3aMacZDUvlBk6R+7mgfSVwDyswX7FBVqhy3PLZknLzQE0fFRbTcH6HnPQz90op70oQCtj66nfB",
-	"2kPiXYLIlvJsSRsRK6iyTWcDwuef1lBCFUfjnWIIuNXeWxxcrqu9WB2nm0fYwCgb6DA10SkLoeL2R3J2",
-	"Gy5MwUdThbX7iFJxTAZOS4WV3wpPFpDUzsTh47Dyck3NxJHaTIeVzR05O4OQurlT6Zqbms99S3/yc9Mn",
-	"57479S8NdwSreTQ7OMTxgl4OXgNZuFlMu33tDf7t73S9o/zXUD1Pvs3pblz6ps9Vgs+84oq9deuB6FpH",
-	"v782nT03kjpkyAFhEAuKQcxhLE6uDYeCrPea11elbwnJpYZ4VhjtQUsj1I6P15FTnOjPfvxJD227LOc6",
-	"Xe4qZ04L0Zfwwa2iJOKQ8WentUNB9R0XPZGzn3We+iRHPtMPC0sRArMyt0td5KghOuDzY89ku7D4ksS4",
-	"kE98MUTzvsusz+dnbtA8U5SiyFsjzaFwGyYM43PweAfen5HzEcSsG3eU3BPErKuPdZ8GUxNObRNcG9sz",
-	"JAgjrrExnCG0i9fL2RRcOFBvL8nZMLx9uyiJvVxoiAtd8NMBH4an5UoHRaY8Dt8E60l8CHMPTk8CcZIA",
-	"p31zPwPmMnI2DCIbIPEY+4QwGoapqDK3AsVZsLRF0gIgsWC8VJSWR2hhKIg9No0lqEI4iTwIXGxMId6h",
-	"gDSvzBnxRT/rZTSNQdp4uS539LrcrhDv11YcPO/xDLLCUKj/tJcb9liW5BHwXwPaX/1+rt+DpKjnUkdr",
-	"e2dPu8HirvMuy4tUy5UOl6kjrqv5dNPpJmL9MwF6hHWdd5093XT6LM7uCEOYATz0COvRKsew9UqKDZFG",
-	"wETb4XOd17vVXsQFOkZBBXruTFOTqV0tDmWNjPhZUsjk+T5IagcI4upsYWv0rh0bK+c44lDCO/fVJ+No",
-	"XZ81nT2x2a1djZwnTz0F4gOwOQ1iC0So6C18XerMPkgsWGB0uwTctfVbvTjP9R16x4x0j7W5sob/yj5q",
-	"tjvSam4+/K43xjSZDXoq27+bG79bGs3hBlHkzBFFUFHq/Uo6liFV/YHur21re2RmVPSJr2v3B7RW39X4",
-	"DrcDf/f7i6ex21mHvuNydobEmciXhUhcOUx/yDvnsI7q+1ROms6bZTxJ+n+SKil6mCGs/W1F4GVmBWxO",
-	"kyQlXNlQM5rhChIZ4ovjwOWy6SQgYhtweBf9G1sAB3swFtUaV5CWojhyQbS/ZuuieX4IMfyo3pPwvOsH",
-	"XRvTtkVNNo01oJggp1go1ocAwsFPMDsDY1E1s2F7NIcg1tyh0Q4UrcaelCHUD5L19M8yAgafxSOHCWAs",
-	"qvX0sMKAFbg+ISXn7sKFDWfQKmqpG4EvvAgS+0CcLCTnlOQEcV8o1kcBcdG4BkOZ25JzM3BuT3k6oXXg",
-	"N3mOdiCRCrNgLVjsXvVrBYulF0t++mc1q33tx+QGBkjBrmnQql6p/TBBjrcOolv7WgvNUoNMW5veflCj",
-	"1td2ZDro1Wx5uyG/e5eC1qH3sY1MM9MEEqifniAYNQUqse9B4iYOkcfBrAh/mydQfPr+oDCLHigumNne",
-	"SD9/eLqGbByxDMyaxXSXi6FchhjaLzhrlC/xz61DDG6T81ZUaY3xcNedio35H1lvHU2Yueuu0tOV/rvN",
-	"XmItBrcfg2y2HGH4JzC+AXL78HEYrmyY0KZhqIQyckor6PllmPMxY3hpXNAGd+T8WZCcoKtUxVhqICeo",
-	"JDS0JHJpmcTurpQfZZ3knGQILiz4G0eO458IcdodChwbI3vzjiRW2TE+B4bYDet9gWfB7ZX3Lq70BIZJ",
-	"UH32PucnMkHObsMXqzAVRQYcvl+HHItWkhOaNPjgZJX5EKaJ6TQeM3Edz3Fa0FRjtvI+d49IMOk4fBM+",
-	"Wi08jRkllCS2QlkLAouSePaM1vKisDxZlGJg8oXydLwwFVcz8yRhT9qMmWNsxDSysnk3Asxg8jdlugZa",
-	"eIBEphCO6o08kgLPDlOnKDCThzObQNwja6JOUW/Q1cOhTPKNKsD+uFqoigpNfCOS6/znTe4TK9c8OlTm",
-	"N9TMhtGc4o1KijTE2qsvqxqoFLHNJ2cUVrZdt5NxhHf2XxCexaUvzwyGkrMzpEMWDG9aWyFG37s0Ljx4",
-	"CH+b1wWAaO08rQH0XsWzZmAsbYHJSOHWFmk+bisJCT5NkpDIvTI56PlFr0Ebs0TsbCUiCSkXpaS2V9hq",
-	"heFN6hRFUESdokiNAXWKknM53BFq2anU/GoAubHfc2yAApFdxDGxKNVxhSqEV5SZKVJRY5T/wEwCOaF3",
-	"V6jmJgrXb+JqJp1m1Ff3QGTDiCcgiprJK7/m4CPJox49JKLrODyuHj4H65tgcklvGGkvhC8yAq64r8fU",
-	"MtXwOZtb79MxM84LOHIeaYX7/n0gMrnu7niQAIj8VljcRp9wEmKlKInW7vA605859x49xs0nSFvbUqO5",
-	"yTuGzcp5+EAGWSc5kNEA/3kQKzRil5Qxopyd00oacLXlcXgcpp7C/Cp1htJrCp8AcYmyIpjyUEb7ff0z",
-	"ab+P+eNtOQznrBFSCDocGb0KM/4doeXdcuI/naU19gfbARUdaB2SLFqNsUiOq1RX+38SSdV07n3DCfZf",
-	"wPyqDhBi5KIUheICUcVoFZFxNZ01kG3i8T+ZeDV1La5PsHb4xggz+hnB7kBjPmJ0+dP6/hE7pShFdT9t",
-	"3NJd8Dh8k1ACmJ0hgKhHyyCyYRTCi/rh1QfK/BJM4T5Z2YgyO2kU7dg5fejlumUcOTrwFrbGpzYCSqdw",
-	"QsPN748ctDbfuHO7By4+gvOiB9Hs7kM5N4N78CEsFyXRtus3Affs+wYXpqJwXpQPJ5GDoFOQHYAx0jVS",
-	"zsbVvd8+EFH2wQmwckGFCbFcUMUKDx5S2hGVSrsLsyRuDNqgePD4GfpHxtnsIoMWpSQRPrgZ46PC0rrW",
-	"O3U1Vpi6DedeaWWmMUIMypM8kMJIdRMBrS+IZ+ggF/hiiAsK1/zMgECyolcDRmNgNI90CztT6+SEonor",
-	"VXpxgOMHGFZ7jbxkdOMjc+JKKfOsVQyrS3jlf7DUIWD/QVKHiJvqsuUjr1ZEbWz5s5wnycY2yo1Gz18H",
-	"bjy4qWxHlcO0fIgMX5CIwYUD0goYUz7hCcR7m9OGLi78ugtubyEHqFS1k6C+7vGQrLo6s6+sbFRTzz2M",
-	"oHd6/mM1NF7oR175k+q1Co6B4oJGsPsvDJq1vczORuURWmiAsYyT1NVYC7nsZQ31QSKDG2ovE24jjfnl",
-	"7Fzh1iFlNCLHxyekMFzYISuqYD5n7urWIPujFRFe10fm+vCZCxmCZgL1aLFl3ZhAQNrd/Eg4rlE1hsnC",
-	"3AOgAZ7D1wWgv/VrBMY8mglXJc6HF2OuxCc8qRl6pO5vJ4F5LAnnXiF7ERml6+rLFaTj8BFIdWYfvFok",
-	"x8rUWykg/kpq5deT6Ascq5ez08rcLlxcg6koOVUGZ7bUo2WYygFxj3i1cnYarVmbbVmd3tBOWC4/gtvr",
-	"6qtXQNyhSncpoOnFJTj/Et+ngsCtYn1eIIjAB8zeFe+77e+SMG7qKKzmSYmhqeNA1FS1Vg6A6TYIZyCq",
-	"FqDVJY2044D7L8j2/ild8o/SygKdx+hUYJgDZHPJXlulEI7DW6+oNb7CV9RWiinzYG8noIyGeA2IJ3NC",
-	"G0mlxUdg+SGYFeXcOlw+wl308/LhfOlcq9HhRjvDWJSixLoo3Do0znCSBIQpsV6UknI+QniV0o+FUsbz",
-	"yP3GH6C4YD5fXrh1KEtJuCeq4UU1s0Ei59qtZvh4OpkIX2pHsT5meIQTmIB39D+YUXPrNKqvr6ON1HOQ",
-	"2g4StC48WYDPV42C16sB/Ta5XOnCSmvvQoKt+m6rtLQtIm6L1lhNPzN6mjRK9FBajbDei4icCcLYI1Ph",
-	"M5mlI9OWwbTuD3ZDgdkY3N6oIsh7Qv3DrHBR61L4wchxLd0FY0i7wfC41hGrJmO9e/F/Etkm08WaZdH1",
-	"tWfGYQ5c446Rk9oibY9sb53QT0DMUe2kt2pLEO9mKWVouWLc+doJK+/YWNllrLQMZmNyNkz9BaPWTZHm",
-	"Nm7qOjP6V6oKj9XsEFi6nLMMpDerjzm53Lz10lsbbVF27W1REh2kSPQPKqSGjyRSnwi3HyuraSRqMa0h",
-	"tZbaIgqIEJepXgbTDeWhyi6vN1bx0bb5c9s22OW3M3FSzxHfalc6Ja8GrEaObajDxvgpSmKpBRhy87Bv",
-	"gXGB1XxRiumNZeJgcol0kvGg2UyCXSQEqzHY0QoQd5DBgLW+Fkd/mNJukDLGoBAQ33T1dV/r7evupDwU",
-	"+u9a+z+udHQjSK8GMGWTjOW17vaW1i/xAtr6rlzqaG3pbSeUT5RnmcFG2lRgaN7OYMPdgBt2Jy0Fi1qE",
-	"JyZn58BRpLCaVw/TQNwx9/DQCrZMnYWqmlQwlZOlJLgbI19qhtjaA5B7gtQKPu9FQFA3J5Caxr4nEHeI",
-	"ywmj05UT2rUyIk2bSLsh6gxVMdUy+aCGF8HOIZidQY68/kxRihmway4X9qKr2DpXaCS+tWYwH71WuwbT",
-	"+y8Idj9K9n8Or9VDGLpMsuscVNttrSZBbfxYLBPMbE/Iqn4RGTR1krUvZ7WTiMTONIftqVNaLQg56Uid",
-	"ohptoqo7YcTKVZ5llJsHMHoEpyPH4RiZhJjex+G4nJ05DsfIYOrqRuFwFn+5LmefquMx9eXj6tWqRvvc",
-	"9yWS5HyEoAwxlgNGSC8lqgk3zt4qTCWsYqrsnCPGruWMo1Fu31SjSdC7rqY1sGsXjK7VnvijHDxROWiV",
-	"FiY8y9kZc3Pm+gXGjaCjqPia6e/hvNcZgQLxKSW3WZSSpPSW6uLZQTZAvRZF6uv2v13r6u642NHZQ8nZ",
-	"GbA9Sy4doCy9Tz7BbWlP/9hMCj7yOfUIN8oi14E/WIV7IhzPEOsL3s9QQ4zfz5G2Om7KTweFHq23/RiS",
-	"NaQcPxpHftjcHkjcMV+coNe2a3cAYGDk7AypWdIoQlnPya+mq7fjryJyWkne7+vg+8raNTfZ3HTdc4MV",
-	"vENsYJC6osEdLEpJslXk+B4y8UgmA+MC/j6OOyXWuITgvbvWGsiYtMD6rvpyoyiJhMQ8Bj3J2TiuCo5C",
-	"caHwZAFkN8nplI8py7cVIyU21yRIOFkYv1dFgmi9F4KeX4wuDGOOJ5+1/n1B0nGoNreYO0m8vxMl5fcY",
-	"ndBFlM5XT9rQFbkKOPME3oq8d/ohk5vO4lsVDb42hTxjogudDmqQhl3S155GtKToRzqpTSdGHOiPJ5X3",
-	"7JuZ1p8ooeCDO4bokJKsl2cq8pD2HNNo9uktuOYk8jbMTyO4XgoD3GrfRbV0WRPJZi7uKalpIO4oyQkt",
-	"eom7s5LTlaT3TmH8CETipA8wSb2qa8/AAbIMSdi+MBUH63G4J6ovD+rp/V1vfqmRbMz7SL58AOKJ7BGy",
-	"P/A2fTB5mlKI3JqnkbPb/5tFKClTGicMop3YFxcI75BODh+KdEVQvEczHyZvYvcyA2PjSnICTEZA+oA0",
-	"Zq0vl1GvpNcvNqwp63tNNyD+M8l5ktaoLucNitWq9Bb35GycEC15jAxSW7bbHQ39J5C6ltSQVfb+r5Zr",
-	"MPUUSGEwmwHxeRidLizNIlL7MAWctc8l3kFyIY55c2sIGFZgPD+yQVaoZjvq/fDN3XbeUfy4sve+HfFa",
-	"++6XWk+9110pg4IEomx3xXxbADjY05In4bwxgnmTWIFBG6S1ZNNFNukf7cG3f2mP/mJPJdZmapp413qp",
-	"VSYmiGVKGteZWmCa2v069OA0uhxbu2Y6PK93CSs9rzeassmVaEJhxtCQVh1l9w7pAmqE6slkHnIG0UPO",
-	"fnjIcEb1hfWaOmv01W4KsolKbpPUGiL48itqetUEH9q6se/G/n8AAAD//w==",
+	"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",
+	"HgLDV3iobi2b4MNXN/bD2P8LAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

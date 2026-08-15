@@ -1,6 +1,11 @@
 import createClient from "openapi-fetch";
-import type { paths } from "../generated/api";
-import type { MultiRoomFormat, MultiplayerMode, QuestionDifficultyPreset, QuestionScopeConfig } from "@touhouflandre/shared";
+import type { components, paths } from "../generated/api";
+import type {
+  MultiRoomFormat,
+  MultiplayerMode,
+  QuestionDifficultyPreset,
+  QuestionScopeConfig,
+} from "@touhouflandre/shared";
 
 type RelayTurnSeconds = 30 | 60 | 90 | 120;
 
@@ -82,7 +87,10 @@ export const api = {
     requestApi(client.GET("/api/catalog/full", { signal })),
   createPuzzle: (
     mode: "daily" | "random",
-    body?: { questionScope?: QuestionScopeConfig; difficulty?: QuestionDifficultyPreset },
+    body?: {
+      questionScope?: QuestionScopeConfig;
+      difficulty?: QuestionDifficultyPreset;
+    },
   ) =>
     requestApi(
       client.POST("/api/puzzles/{mode}", { params: { path: { mode } }, body }),
@@ -127,8 +135,14 @@ export const api = {
   },
 
   // ---- 多人房间（08 §7.1） ----
-  createRoom: (body: { format: MultiRoomFormat; mode: MultiplayerMode; turnSeconds: RelayTurnSeconds; displayName?: string; questionScope?: QuestionScopeConfig }) =>
-    requestApi(client.POST("/api/rooms", { body })),
+  createRoom: (body: {
+    format: MultiRoomFormat;
+    mode: MultiplayerMode;
+    playerLimit?: number;
+    turnSeconds: RelayTurnSeconds;
+    displayName?: string;
+    questionScope?: QuestionScopeConfig;
+  }) => requestApi(client.POST("/api/rooms", { body })),
   roomInfo: (roomCode: string) =>
     requestApi(
       client.GET("/api/rooms/{roomCode}", { params: { path: { roomCode } } }),
@@ -147,9 +161,25 @@ export const api = {
         headers: guestAuthHeader(token),
       }),
     ),
-  setReady: (roomId: string, token: string) =>
+  setReady: (roomId: string, token: string, ready: boolean) =>
     requestApi(
       client.POST("/api/rooms/{roomId}/ready", {
+        params: { path: { roomId } },
+        headers: guestAuthHeader(token),
+        body: { ready },
+      }),
+    ),
+  updateRoomSettings: (roomId: string, token: string, playerLimit: number) =>
+    requestApi(
+      client.PATCH("/api/rooms/{roomId}/settings", {
+        params: { path: { roomId } },
+        headers: guestAuthHeader(token),
+        body: { playerLimit },
+      }),
+    ),
+  claimSeat: (roomId: string, token: string) =>
+    requestApi(
+      client.POST("/api/rooms/{roomId}/claim-seat", {
         params: { path: { roomId } },
         headers: guestAuthHeader(token),
       }),
@@ -187,6 +217,29 @@ export const api = {
       client.POST("/api/rooms/{roomId}/rounds/{roundIndex}/pass", {
         params: { path: { roomId, roundIndex } },
         headers: guestAuthHeader(token),
+      }),
+    ),
+  listRoomMessages: (
+    roomId: string,
+    token: string,
+    query: { after?: string; before?: string; limit?: number } = {},
+  ) =>
+    requestApi(
+      client.GET("/api/rooms/{roomId}/messages", {
+        params: { path: { roomId }, query },
+        headers: guestAuthHeader(token),
+      }),
+    ),
+  sendRoomMessage: (
+    roomId: string,
+    token: string,
+    body: components["schemas"]["SendChatMessageRequest"],
+  ) =>
+    requestApi(
+      client.POST("/api/rooms/{roomId}/messages", {
+        params: { path: { roomId } },
+        headers: guestAuthHeader(token),
+        body,
       }),
     ),
   submitMultiGuess: (

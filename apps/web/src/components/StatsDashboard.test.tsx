@@ -3,7 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { statsDb } from "../stats/db";
-import { STATS_SCHEMA_VERSION, type SingleStatsRecord } from "../stats/types";
+import {
+  STATS_SCHEMA_VERSION,
+  type MultiplayerStatsRecord,
+  type SingleStatsRecord,
+} from "../stats/types";
 import { StatsDashboard } from "./StatsDashboard";
 
 const { statsChartCalls } = vi.hoisted(() => ({
@@ -56,6 +60,37 @@ const record: SingleStatsRecord = {
     result: "win", answer: { id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", work: { id: "th01", title: "东方灵异传", code: "TH01" } },
     guesses: [{ id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", correct: true, durationMs: 30_000 }],
   },
+};
+
+const placementRecord: MultiplayerStatsRecord = {
+  id: "placement-record",
+  schemaVersion: STATS_SCHEMA_VERSION,
+  kind: "multiplayer",
+  mode: "multiplayer",
+  format: "bo3",
+  multiplayerMode: "race",
+  matchIndex: 1,
+  startedAt: "2026-08-08T10:20:30Z",
+  endedAt: "2026-08-08T10:23:00Z",
+  durationMs: 150_000,
+  outcome: "draw",
+  reason: "normal",
+  scoreSelf: 6,
+  opponentScores: [6, 3, 0],
+  rosterSize: 4,
+  playerLimit: 6,
+  scoringMode: "placement",
+  finalRank: 1,
+  tiedForFirst: true,
+  eliminatedRound: 2,
+  rounds: [
+    {
+      ...record.round,
+      roundIndex: 1,
+      pointsAwarded: 3,
+      participationStatus: "correct",
+    },
+  ],
 };
 
 function makeWorkRecord(index: number): SingleStatsRecord {
@@ -165,6 +200,21 @@ describe("StatsDashboard", () => {
     const sequence = screen.getAllByLabelText(/猜测角色：博丽灵梦/)[0];
     expect(sequence.className).toContain("gap-1");
     expect(sequence.querySelector("[class*='-ml-']")).toBeNull();
+  });
+
+  it("展示积分制最终名次、淘汰局和逐局积分", async () => {
+    await statsDb.records.put(placementRecord);
+    render(<StatsDashboard />);
+
+    expect(await screen.findByText(/竞速 · 积分制 · 6 分 · 并列第 1 名/)).toBeTruthy();
+    expect(screen.getByText(/第 2 局淘汰/)).toBeTruthy();
+    const row = screen.getByText(/竞速 · 积分制/).closest("tr");
+    const detailsButton = row?.querySelector<HTMLButtonElement>(
+      'button[aria-label="展开详情"]',
+    );
+    expect(detailsButton).toBeTruthy();
+    fireEvent.click(detailsButton!);
+    expect(screen.getByText("+3 分 · 猜中")).toBeTruthy();
   });
 
   it("清除数据要求确认且不直接误触执行", async () => {

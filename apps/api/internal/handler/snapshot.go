@@ -20,12 +20,14 @@ import (
 // 注意：to_jsonb 把 multi_guess.statuses（jsonb 数组）渲染为 JSON 数组，不能直接
 // unmarshal 进 repo.MultiGuess.Statuses（[]byte）——用快照专用形态承接。
 type snapshotState struct {
-	Room    repo.MultiRoom     `json:"room"`
-	Members []repo.MultiMember `json:"members"`
-	Match   *repo.MultiMatch   `json:"match"`
-	Round   *repo.MultiRound   `json:"round"`
-	Guesses []snapshotGuess    `json:"guesses"`
-	Turns   []snapshotTurn     `json:"turns"`
+	Room           repo.MultiRoom          `json:"room"`
+	Members        []repo.MultiMember      `json:"members"`
+	SpectatorCount int32                   `json:"spectatorCount"`
+	Match          *repo.MultiMatch        `json:"match"`
+	Round          *repo.MultiRound        `json:"round"`
+	Guesses        []snapshotGuess         `json:"guesses"`
+	RoundPlayers   []repo.MultiRoundPlayer `json:"roundPlayers"`
+	Turns          []snapshotTurn          `json:"turns"`
 }
 
 type snapshotRoom struct {
@@ -39,6 +41,7 @@ type snapshotRoom struct {
 	Mode          string             `json:"mode"`
 	TurnSeconds   int32              `json:"turn_seconds"`
 	QuestionScope json.RawMessage    `json:"question_scope"`
+	PlayerLimit   int32              `json:"player_limit"`
 }
 
 type snapshotMatch struct {
@@ -54,6 +57,9 @@ type snapshotMatch struct {
 	StartedAt      pgtype.Timestamptz `json:"started_at"`
 	EndedAt        pgtype.Timestamptz `json:"ended_at"`
 	QuestionScope  json.RawMessage    `json:"question_scope"`
+	ScoringMode    string             `json:"scoring_mode"`
+	RosterSize     int32              `json:"roster_size"`
+	MaxRounds      int32              `json:"max_rounds"`
 }
 
 func (room snapshotRoom) toRepo() repo.MultiRoom {
@@ -68,6 +74,7 @@ func (room snapshotRoom) toRepo() repo.MultiRoom {
 		Mode:          room.Mode,
 		TurnSeconds:   room.TurnSeconds,
 		QuestionScope: append([]byte{}, room.QuestionScope...),
+		PlayerLimit:   room.PlayerLimit,
 	}
 }
 
@@ -85,23 +92,29 @@ func (match snapshotMatch) toRepo() repo.MultiMatch {
 		StartedAt:      match.StartedAt,
 		EndedAt:        match.EndedAt,
 		QuestionScope:  append([]byte{}, match.QuestionScope...),
+		ScoringMode:    match.ScoringMode,
+		RosterSize:     match.RosterSize,
+		MaxRounds:      match.MaxRounds,
 	}
 }
 
 func (state *snapshotState) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Room    snapshotRoom       `json:"room"`
-		Members []repo.MultiMember `json:"members"`
-		Match   *snapshotMatch     `json:"match"`
-		Round   *repo.MultiRound   `json:"round"`
-		Guesses []snapshotGuess    `json:"guesses"`
-		Turns   []snapshotTurn     `json:"turns"`
+		Room           snapshotRoom            `json:"room"`
+		Members        []repo.MultiMember      `json:"members"`
+		SpectatorCount int32                   `json:"spectatorCount"`
+		Match          *snapshotMatch          `json:"match"`
+		Round          *repo.MultiRound        `json:"round"`
+		Guesses        []snapshotGuess         `json:"guesses"`
+		RoundPlayers   []repo.MultiRoundPlayer `json:"roundPlayers"`
+		Turns          []snapshotTurn          `json:"turns"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
 	state.Room = raw.Room.toRepo()
 	state.Members = raw.Members
+	state.SpectatorCount = raw.SpectatorCount
 	if raw.Match != nil {
 		match := raw.Match.toRepo()
 		state.Match = &match
@@ -110,6 +123,7 @@ func (state *snapshotState) UnmarshalJSON(data []byte) error {
 	}
 	state.Round = raw.Round
 	state.Guesses = raw.Guesses
+	state.RoundPlayers = raw.RoundPlayers
 	state.Turns = raw.Turns
 	return nil
 }
@@ -172,14 +186,23 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	for _, view := range multi.MemberViews(state.Members) {
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
+	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
 	snapshot := openapi.RoomSnapshot{
-		RoomId:      state.Room.ID,
-		RoomCode:    state.Room.Code,
-		Format:      openapi.RoomFormat(state.Room.Format),
-		Mode:        openapi.MultiplayerMode(state.Room.Mode),
-		TurnSeconds: openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
-		Status:      openapi.RoomStatus(state.Room.Status),
-		Members:     memberViews,
+		RoomId:         state.Room.ID,
+		RoomCode:       state.Room.Code,
+		Format:         openapi.RoomFormat(state.Room.Format),
+		Mode:           openapi.MultiplayerMode(state.Room.Mode),
+		TurnSeconds:    openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
+		Status:         openapi.RoomStatus(state.Room.Status),
+		ExpiresAt:      state.Room.ExpiresAt.Time,
+		Viewer:         toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
+		Members:        memberViews,
+		PlayerCount:    capacity.PlayerCount,
+		SpectatorCount: int(state.SpectatorCount),
+		PlayerLimit:    capacity.PlayerLimit,
+		MinPlayers:     openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
+		AvailableSeats: capacity.AvailableSeats,
+		GameSequence:   int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {
@@ -189,18 +212,36 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	snapshot.QuestionScope = &openapiRoomScope
 
 	if state.Match != nil {
-		format := multi.RoomFormat(state.Room.Format)
 		roundIndex := 0
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
 		}
-		rematchReady := [2]bool{}
+		roster, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		scoreByMemberID := make(map[string]int, len(roster))
+		for _, player := range roster {
+			scoreByMemberID[player.MemberID] = int(player.Score)
+		}
+		scores := make([]openapi.MemberScoreView, 0, len(state.Members))
+		rematchReady := make([]openapi.MemberRematchReadyView, 0, len(state.Members))
 		for _, m := range state.Members {
-			if m.Slot == 1 {
-				rematchReady[0] = m.RematchReady
-			} else {
-				rematchReady[1] = m.RematchReady
+			seat := multi.MemberSeat(m)
+			var player repo.MultiMatchPlayer
+			for _, candidate := range roster {
+				if candidate.MemberID == m.ID {
+					player = candidate
+					break
+				}
 			}
+			var eliminatedRound *int
+			if player.EliminatedRound.Valid {
+				value := int(player.EliminatedRound.Int32)
+				eliminatedRound = &value
+			}
+			scores = append(scores, openapi.MemberScoreView{MemberId: m.ID, Seat: seat, Score: scoreByMemberID[m.ID], Status: openapi.MatchPlayerStatus(player.Status), BestRoundScore: int(player.BestRoundScore), EliminatedRound: eliminatedRound})
+			rematchReady = append(rematchReady, openapi.MemberRematchReadyView{MemberId: m.ID, Seat: seat, Ready: m.RematchReady})
 		}
 		matchScope, err := storedQuestionScopeFromJSON(state.Match.QuestionScope)
 		if err != nil {
@@ -213,11 +254,12 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		matchView := openapi.MatchView{
 			MatchIndex:     int(state.Match.MatchIndex),
 			TargetWins:     int(state.Match.TargetWins),
-			ScoreSlot1:     int(state.Match.ScoreSlot1),
-			ScoreSlot2:     int(state.Match.ScoreSlot2),
+			Scores:         scores,
 			RoundIndex:     roundIndex,
-			MaxRounds:      multi.MaxRounds(format, s.timing.MaxRoundsFactor),
-			RematchReady:   rematchReady[:],
+			MaxRounds:      int(state.Match.MaxRounds),
+			ScoringMode:    openapi.ScoringMode(state.Match.ScoringMode),
+			RosterSize:     int(state.Match.RosterSize),
+			RematchReady:   rematchReady,
 			CatalogVersion: state.Match.CatalogVersion,
 			QuestionScope:  &openapiMatchScope,
 		}
@@ -248,22 +290,73 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 	}
 	byID := multi.CharactersByID(characters)
 	fields := multi.FieldsForMatch(*state.Match)
-	perm := multi.ColumnPermutation(state.Round.ID, observer.ID, len(fields))
+	matchPlayers, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	observerEliminated := false
+	for _, player := range matchPlayers {
+		if player.MemberID == observer.ID && player.Status != "active" {
+			observerEliminated = true
+			break
+		}
+	}
+	readOnlyObserver := multi.IsSpectator(observer) || observerEliminated
+	participationByMemberID := make(map[string]repo.MultiRoundPlayer, len(state.RoundPlayers))
+	for _, player := range state.RoundPlayers {
+		participationByMemberID[player.MemberID] = player
+	}
+	permutationByMemberID := make(map[string][]int, len(state.Members))
 
 	self := []openapi.GuessResult{}
-	opponentRows := []openapi.OpponentRow{} // 空对手矩阵序列化为 []（前端按数组消费）
+	opponents := make([]openapi.OpponentBoardView, 0, len(state.Members))
+	opponentIndexByMemberID := make(map[string]int, len(state.Members))
+	spectatorBoards := make([]openapi.MemberBoardView, 0, len(state.Members))
+	boardIndexByMemberID := make(map[string]int, len(state.Members))
+	for _, member := range state.Members {
+		seat := multi.MemberSeat(member)
+		boardIndexByMemberID[member.ID] = len(spectatorBoards)
+		spectatorBoards = append(spectatorBoards, openapi.MemberBoardView{
+			MemberId: member.ID,
+			Seat:     seat,
+			Guesses:  []openapi.GuessResult{},
+		})
+		if !readOnlyObserver && multi.IsPlayer(observer) && member.ID != observer.ID {
+			perm := multi.ColumnPermutation(s.projectionSecret, state.Round.ID, observer.ID, member.ID, multi.ProjectionSchemaVersion, len(fields))
+			permutationByMemberID[member.ID] = perm
+			opponentIndexByMemberID[member.ID] = len(opponents)
+			opponents = append(opponents, openapi.OpponentBoardView{
+				MemberId:   member.ID,
+				Seat:       seat,
+				FieldOrder: toOpenAPIGuessFieldKeys(multi.PermuteFieldOrder(fields, perm)),
+				Rows:       []openapi.OpponentRow{},
+			})
+		}
+	}
 	for _, guess := range state.Guesses {
 		statuses := guess.Statuses
 		guessChar, ok := byID[guess.GuessID]
 		if !ok {
 			return nil, internalError(errors.New("guess character missing from snapshot"))
 		}
+		if readOnlyObserver {
+			hydrated := toOpenAPIGuessResult(multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields))
+			if index, ok := boardIndexByMemberID[guess.MemberID]; ok {
+				spectatorBoards[index].Guesses = append(spectatorBoards[index].Guesses, hydrated)
+			}
+			continue
+		}
 		if guess.MemberID == observer.ID {
 			hydrated := multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields)
 			self = append(self, toOpenAPIGuessResult(hydrated))
 		} else {
 			visibleStatuses := multi.StatusesForFields(statuses, fields)
-			opponentRows = append(opponentRows, openapi.OpponentRow{
+			perm := permutationByMemberID[guess.MemberID]
+			index, ok := opponentIndexByMemberID[guess.MemberID]
+			if !ok {
+				continue
+			}
+			opponents[index].Rows = append(opponents[index].Rows, openapi.OpponentRow{
 				Index:    int(guess.Sequence),
 				Statuses: toOpenAPIFeedbackStatuses(multi.PermuteStatuses(visibleStatuses, perm)),
 			})
@@ -274,16 +367,34 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 		StartsAt:   state.Round.StartsAt.Time,
 		Deadline:   state.Round.Deadline.Time,
 		MaxGuesses: multi.MaxGuessesForMatch(*state.Match),
+		Opponents:  opponents,
 	}
 	roundView.Self.Guesses = self
-	roundView.Opponent.Rows = opponentRows
+	if !readOnlyObserver && multi.IsPlayer(observer) {
+		memberID := observer.ID
+		seat := multi.MemberSeat(observer)
+		roundView.Self.MemberId = &memberID
+		roundView.Self.Seat = &seat
+	}
+	if readOnlyObserver {
+		roundView.Boards = &spectatorBoards
+	}
+	if participant, ok := participationByMemberID[observer.ID]; ok {
+		status := openapi.RaceRoundParticipantStatus(participant.Status)
+		roundView.Self.ParticipationStatus = &status
+		if participant.FinishRank.Valid {
+			rank := int(participant.FinishRank.Int32)
+			roundView.Self.FinishRank = &rank
+		}
+	}
 	if multi.MultiplayerMode(state.Room.Mode) == multi.MultiplayerModeRelay {
 		rows := make([]openapi.RelayTurnRow, 0, len(state.Turns))
 		for _, turn := range state.Turns {
 			row := openapi.RelayTurnRow{
-				Index:      int(turn.TurnIndex),
-				Kind:       openapi.RelayTurnRowKind(turn.Kind),
-				MemberSlot: memberSlotForID(state.Members, turn.MemberID),
+				Index:    int(turn.TurnIndex),
+				Kind:     openapi.RelayTurnRowKind(turn.Kind),
+				MemberId: turn.MemberID,
+				Seat:     memberSlotForID(state.Members, turn.MemberID),
 			}
 			if turn.Kind == string(multi.RelayTurnKindGuess) && turn.GuessID != nil && turn.Statuses != nil {
 				guessChar, ok := byID[*turn.GuessID]
@@ -300,8 +411,15 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			Rows []openapi.RelayTurnRow `json:"rows"`
 		}{Rows: rows}
 		if state.Round.TurnSlot.Valid {
-			slot := int(state.Round.TurnSlot.Int32)
-			roundView.TurnSlot = &slot
+			seat := int(state.Round.TurnSlot.Int32)
+			roundView.TurnSeat = &seat
+			for _, member := range state.Members {
+				if multi.MemberSeat(member) == seat {
+					memberID := member.ID
+					roundView.TurnMemberId = &memberID
+					break
+				}
+			}
 		}
 		if state.Round.TurnDeadline.Valid {
 			deadline := state.Round.TurnDeadline.Time
@@ -316,32 +434,32 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 func memberSlotForID(members []repo.MultiMember, memberID string) int {
 	for _, member := range members {
 		if member.ID == memberID {
-			return int(member.Slot)
+			return multi.MemberSeat(member)
 		}
 	}
 	return 0
 }
 
 // projectEvents 事件重放投影（08 §4.5 三路径共用投影语义）：
-// round.opponent.guess 仅推对手（剥离 memberSlot/roundID、按观察者列置换）；
-// round.ended/match.ended 的 result 按观察者推导（round.ended 另水合答案与双方完整棋盘）。
+// round.opponent.guess 仅推对手（内部 slot 适配为 memberId + seat、按观察者列置换）；
+// round.ended/match.ended 按观察者补 viewerResult，并生成按 seat 排序的公开集合。
 func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, state snapshotState, observer repo.MultiMember) ([]openapi.RoomEventEnvelope, error) {
 	out := make([]openapi.RoomEventEnvelope, 0, len(events))
 	charCache := map[string]map[string]game.Character{}
 	memberSlotByID := map[string]int32{}
 	for _, m := range state.Members {
-		memberSlotByID[m.ID] = m.Slot
+		memberSlotByID[m.ID] = int32(multi.MemberSeat(m))
 	}
 
 	for _, event := range events {
-		payload, skip, err := multi.ProjectEvent(ctx, s.q, event, state.Room.ID, observer, memberSlotByID, charCache)
+		projected, skip, err := multi.ProjectEvent(ctx, s.q, s.projectionSecret, event, state.Room.ID, observer, memberSlotByID, charCache)
 		if err != nil {
 			return nil, internalError(err)
 		}
 		if skip {
 			continue
 		}
-		raw, err := json.Marshal(payload)
+		raw, err := json.Marshal(projected.Payload)
 		if err != nil {
 			return nil, internalError(err)
 		}
@@ -350,50 +468,24 @@ func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, sta
 			return nil, internalError(err)
 		}
 		out = append(out, openapi.RoomEventEnvelope{
-			Type: event.Type, EventId: eventID(event), RoomId: event.RoomID,
+			Type: string(projected.Type), EventId: eventID(event), RoomId: event.RoomID,
 			Sequence: int(event.Sequence), OccurredAt: event.OccurredAt.Time, Payload: wire,
 		})
 	}
 	return out, nil
 }
-
-// hydrateBoards 局末双方完整棋盘（按成员 slot 分组、时间序）。
-func hydrateBoards(guesses []repo.MultiGuess, chars map[string]game.Character, memberSlotByID map[string]int32) map[string][]openapi.GuessResult {
-	boards := map[string][]openapi.GuessResult{"slot1": {}, "slot2": {}}
-	for _, guess := range guesses {
-		var statuses []string
-		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
-			continue
-		}
-		guessChar, ok := chars[guess.GuessID]
-		if !ok {
-			continue
-		}
-		slot := memberSlotByID[guess.MemberID]
-		key := "slot2"
-		if slot == 1 {
-			key = "slot1"
-		}
-		boards[key] = append(boards[key], toOpenAPIGuessResult(multi.HydrateGuessResult(guessChar, statuses, guess.IsCorrect)))
-	}
-	return boards
-}
-
-// resultForObserver 由 winnerSlot 推导观察者视角结果（win/loss/draw）。
-func resultForObserver(winnerSlot *int, observerSlot int) string {
-	if winnerSlot == nil {
-		return "draw"
-	}
-	if *winnerSlot == observerSlot {
-		return "win"
-	}
-	return "loss"
-}
-
 func toOpenAPIFeedbackStatuses(statuses []string) []openapi.FeedbackStatus {
 	out := make([]openapi.FeedbackStatus, len(statuses))
 	for i, s := range statuses {
 		out[i] = openapi.FeedbackStatus(s)
+	}
+	return out
+}
+
+func toOpenAPIGuessFieldKeys(keys []game.GuessFieldKey) []openapi.GuessFieldKey {
+	out := make([]openapi.GuessFieldKey, len(keys))
+	for i, key := range keys {
+		out[i] = openapi.GuessFieldKey(key)
 	}
 	return out
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -48,6 +49,26 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	fields := multi.FieldsForMatch(match)
 	storageFields := multi.StorageFieldsForMatch(match)
 	maxGuesses := multi.MaxGuessesForMatch(match)
+	roundPlayer, err := q.GetRoundPlayer(ctx, repo.GetRoundPlayerParams{RoundID: round.ID, MemberID: member.ID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return submitGuessResult{}, roundNotActiveError("你不在本局阵容中。")
+		}
+		return submitGuessResult{}, internalError(err)
+	}
+	if roundPlayer.Status != "active" {
+		if roundPlayer.Status == "exhausted" {
+			return submitGuessResult{}, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
+		}
+		message := "你已放弃本局。"
+		switch roundPlayer.Status {
+		case "correct":
+			message = "你已猜中本局。"
+		case "timed_out":
+			message = "本局已超时。"
+		}
+		return submitGuessResult{}, roundNotActiveError(message)
+	}
 
 	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
 	if apiErr != nil {
@@ -63,7 +84,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, roundNotActiveError("本局尚未开始。")
 	case string(multi.RoundStatusPlaying):
 		if !s.now().Before(round.Deadline.Time) {
-			if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, 0, s.now(), s.timing); err != nil {
+			if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, "", s.now(), s.timing); err != nil {
 				return submitGuessResult{}, internalError(err)
 			}
 			return submitGuessResult{commit: true, publish: true}, roundNotActiveError("本局已超时（按平局结算）。")
@@ -121,40 +142,63 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundOpponentGuess, multi.RoundGuessPayload{
 		RoundID:    round.ID,
+		MemberID:   member.ID,
+		GuessID:    guessChar.ID,
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(round.RoundIndex),
-		MemberSlot: int(member.Slot),
+		MemberSlot: multi.MemberSeat(member),
 		RowIndex:   sequence,
 		Statuses:   statuses,
 	}); err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
 
-	members, err := q.ListMembers(ctx, room.ID)
-	if err != nil {
-		return submitGuessResult{}, internalError(err)
-	}
-	opponentID := ""
-	for _, m := range members {
-		if m.ID != member.ID {
-			opponentID = m.ID
-			break
-		}
-	}
-	opponentCount := int64(0)
-	if opponentID != "" {
-		opponentCount, err = q.CountGuessesForRoundMember(ctx, repo.CountGuessesForRoundMemberParams{
-			RoundID: round.ID, MemberID: opponentID,
-		})
+	placementRace := multi.ScoringMode(match.ScoringMode) == multi.ScoringModePlacement
+	var participationStatus *openapi.RaceRoundParticipantStatus
+	var finishRank *int
+	roundEnded := false
+	if placementRace && isCorrect {
+		correctCount, err := q.CountCorrectRoundPlayers(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
+		updated, err := q.MarkRoundPlayerCorrect(ctx, repo.MarkRoundPlayerCorrectParams{RoundID: round.ID, MemberID: member.ID, FinishRank: pgtype.Int4{Int32: correctCount + 1, Valid: true}, CompletedAt: timestamptz(s.now())})
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		status := openapi.RaceRoundParticipantStatus(updated.Status)
+		participationStatus = &status
+		rank := int(updated.FinishRank.Int32)
+		finishRank = &rank
+	} else if placementRace && int(count)+1 >= maxGuesses {
+		if _, err := q.MarkRoundPlayerExhausted(ctx, repo.MarkRoundPlayerExhaustedParams{RoundID: round.ID, MemberID: member.ID, CompletedAt: timestamptz(s.now())}); err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		status := openapi.RaceRoundParticipantStatusExhausted
+		participationStatus = &status
 	}
-	winnerSlot := 0
-	if isCorrect {
-		winnerSlot = int(member.Slot)
+	if placementRace {
+		activePlayers, err := q.ListActiveRoundPlayers(ctx, round.ID)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		roundEnded = len(activePlayers) == 0
+	} else {
+		roundEnded = isCorrect
 	}
-	roundEnd := multi.SettleRoundEnd(winnerSlot, [2]int{sequence, int(opponentCount)}, maxGuesses, false)
+	if !roundEnded && !placementRace {
+		counts, err := q.ListRoundPlayerGuessCounts(ctx, round.ID)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		roundEnded = len(counts) > 0
+		for _, count := range counts {
+			if int(count.GuessCount) < maxGuesses {
+				roundEnded = false
+				break
+			}
+		}
+	}
 
 	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
 		GuessID:   guessChar.ID,
@@ -164,8 +208,18 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, err
 	}
-	if roundEnd.Ended {
-		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, roundEnd.WinnerSlot, s.now(), s.timing); err != nil {
+	if placementRace {
+		accepted := response.(openapi.RoomsSubmitGuess200JSONResponse)
+		accepted.ParticipationStatus = participationStatus
+		accepted.FinishRank = finishRank
+		response = accepted
+	}
+	if roundEnded {
+		winnerMemberID := ""
+		if isCorrect && !placementRace {
+			winnerMemberID = member.ID
+		}
+		if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, winnerMemberID, s.now(), s.timing); err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
 	}

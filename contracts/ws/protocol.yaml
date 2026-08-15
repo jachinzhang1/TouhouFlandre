@@ -1,4 +1,4 @@
-# touhouflandre-multi.v1 WebSocket 子协议规范
+# touhouflandre-multi.v2 WebSocket 子协议规范
 #
 # 依据：docs/multiplayer.md（WebSocket 协议）
 # 校验：scripts/check-ws-protocol.mjs（`task check:ws-protocol` / CI）
@@ -7,15 +7,14 @@
 #   - TS 类型（packages/shared/src/multi.ts）payload 字段名集合与 events/clientMessages 对齐
 
 info:
-  version: "1.0"
+  version: "2.0"
   description: |
-    touhouflandre-multi.v1：多人房间实时事件协议。
-    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v1）。
-    鉴权：建连后第一条消息必须是 hello{token, lastSequence}；鉴权前不收发房间事件。
+    touhouflandre-multi.v2：多人房间游戏事件同步协议。
+    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v2）。
+    鉴权：建连后第一条消息必须是 hello{token, lastGameSequence}；鉴权前不收发房间事件。
     令牌只在首帧出现，不进 URL/查询参数/日志。
 
-# 事件信封（08 §8.2）。sequence 由 room_event.sequence 持久化，房间内单调递增；
-# 客户端按 sequence 去重、排序，发现缺口时 GET /api/rooms/{roomId}/snapshot?after=<seq> 补齐。
+# 业务事件信封。sequence 由 room_event.sequence 持久化，房间内单调递增。
 envelope:
   type: object
   additionalProperties: false
@@ -37,29 +36,115 @@ envelope:
     payload:
       type: object
 
-# 握手流程（08 §8.1）：升级校验 → hello → hello-ok → 重放缺口 → 实时流
+# 观察者无权或无需消费业务 payload 时发送同 sequence 的连续性占位帧。
+cursorEnvelope:
+  type: object
+  additionalProperties: false
+  required: [type, eventId, roomId, sequence, occurredAt]
+  properties:
+    type:
+      type: string
+      const: room.cursor
+    eventId:
+      type: string
+    roomId:
+      type: string
+    sequence:
+      type: integer
+      minimum: 1
+    occurredAt:
+      type: string
+      format: date-time
+
+# 独立聊天帧；不使用 room event 信封，也没有游戏 sequence。
+chatFrame:
+  type: object
+  additionalProperties: false
+  required:
+    [
+      type,
+      messageId,
+      roomId,
+      senderMemberId,
+      senderDisplayName,
+      senderRole,
+      kind,
+      content,
+      channel,
+      cursor,
+      createdAt,
+    ]
+  properties:
+    type:
+      type: string
+      const: chat.message
+    messageId:
+      type: string
+    roomId:
+      type: string
+    senderMemberId:
+      type: string
+    senderDisplayName:
+      type: string
+    senderRole:
+      type: string
+      enum: [player, spectator]
+    senderSeat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    kind:
+      type: string
+      enum: [text, emoji]
+    content:
+      type: string
+    channel:
+      type: string
+      enum: [room, spectator]
+    cursor:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+
+# 握手流程：升级校验 → hello → 注册缓冲 → 捕获水位 → hello-ok → 重放/排空 → sync.complete → 实时流
 handshake:
   - step: upgrade
-    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v1；不符拒绝升级。"
+    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v2；不符拒绝升级。"
   - step: hello
-    detail: 第一条消息必须是 hello{token, lastSequence}；鉴权失败/非首帧 → 关闭连接。
+    detail: 第一条消息必须是 hello{token, lastGameSequence}；鉴权失败/非首帧 → 关闭连接。
+  - step: buffer
+    detail: 鉴权后先注册为 buffering，再捕获房间游戏事件高水位。
   - step: hello-ok
-    detail: 鉴权通过 → 下发 hello-ok{roomId, nextSequence}。
+    detail: 下发 hello-ok{roomId, targetGameSequence}；仅声明目标水位，不表示同步完成。
   - step: replay
-    detail: 从 lastSequence+1 起重放缺口事件（逐观察者投影后），再进入实时流。
+    detail: 重放至目标水位；每个 sequence 为业务事件或 room.cursor，再排空较新的缓冲帧。
+  - step: complete
+    detail: FIFO 队尾发送 sync.complete{gameSequence} 后切入实时流。
   - step: replace
-    detail: 同成员新连接注册时，旧连接收到 replaced 帧后关闭（每成员单活跃连接）。
+    detail: 同成员新连接注册或 member role 变化时，旧连接收到 replaced 帧后关闭并重新鉴权；仅降容压紧 seat 时保留同一连接和 memberId，并使用最新 seat 投影。
 
 # 服务端 → 客户端事件（08 §8.3 全表）
-# observer: all = 全体成员；opponent = 仅对手（逐观察者投影，唯一例外）
+# observer: all = 全体成员；opponent = 仅对手；spectator = 仅观战者（逐观察者投影）
 events:
   - type: room.updated
     observer: all
-    summary: 大厅任何成员变化/就绪（成员列表全量视图，无独立 join/leave 事件）。
+    summary: 大厅任何成员变化/就绪（玩家列表全量视图，无独立 join/leave 事件）。
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, members]
+      required:
+        [
+          format,
+          mode,
+          turnSeconds,
+          playerLimit,
+          minPlayers,
+          playerCount,
+          availableSeats,
+          members,
+          spectatorCount,
+        ]
       properties:
         format:
           type: string
@@ -70,17 +155,35 @@ events:
         turnSeconds:
           type: integer
           enum: [30, 60, 90, 120]
+        playerLimit:
+          type: integer
+          minimum: 2
+          maximum: 8
+        minPlayers:
+          type: integer
+          enum: [2]
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 8
+        availableSeats:
+          type: integer
+          minimum: 0
+          maximum: 8
         members:
           type: array
+          description: PK 玩家视图，不含观战者。
           items:
             type: object
             additionalProperties: false
-            required: [slot, displayName, status, ready]
+            required: [memberId, seat, displayName, status, ready]
             properties:
-              slot:
+              memberId:
+                type: string
+              seat:
                 type: integer
                 minimum: 1
-                maximum: 2
+                maximum: 8
               displayName:
                 type: string
               status:
@@ -88,14 +191,29 @@ events:
                 enum: [connected, disconnected, left]
               ready:
                 type: boolean
+        spectatorCount:
+          type: integer
+          minimum: 0
 
   - type: match.started
     observer: all
-    summary: 双方就绪 / 双方确认再来一局（新场次开始，比分与抽题池自然重置）。
+    summary: 当前完整 roster 就绪 / 确认再来一局（新场次开始，比分与抽题池自然重置）。
     payload:
       type: object
       additionalProperties: false
-      required: [format, mode, turnSeconds, targetWins, catalogVersion, matchIndex, questionScope]
+      required:
+        [
+          format,
+          mode,
+          turnSeconds,
+          targetWins,
+          catalogVersion,
+          matchIndex,
+          questionScope,
+          scoringMode,
+          rosterSize,
+          maxRounds,
+        ]
       properties:
         format:
           type: string
@@ -118,19 +236,32 @@ events:
         questionScope:
           type: object
           additionalProperties: true
+        scoringMode:
+          type: string
+          enum: [wins, placement]
+          description: placement 仅用于实际 roster 人数大于 2 的 race。
+        rosterSize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        maxRounds:
+          type: integer
+          minimum: 1
 
   - type: match.rematch
     observer: all
-    summary: 成员点击「再来一局」确认（等待对方）。
+    summary: 成员点击「再来一局」确认（等待原 roster 其他成员）。
     payload:
       type: object
       additionalProperties: false
-      required: [memberSlot]
+      required: [memberId, seat]
       properties:
-        memberSlot:
+        memberId:
+          type: string
+        seat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
 
   - type: round.started
     observer: all
@@ -138,7 +269,15 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, startsAt, deadline, maxGuesses]
+      required:
+        [
+          matchIndex,
+          roundIndex,
+          startsAt,
+          deadline,
+          maxGuesses,
+          activePlayerCount,
+        ]
       properties:
         matchIndex:
           type: integer
@@ -157,10 +296,18 @@ events:
         maxGuesses:
           type: integer
           minimum: 1
-        turnSlot:
+        activePlayerCount:
+          type: integer
+          minimum: 2
+          maximum: 8
+          description: 本局创建时冻结的 active roster 人数；placement race 用于积分公式。
+        turnMemberId:
+          type: string
+          description: 接力模式首个可提交玩家的稳定成员标识；竞速模式缺省。
+        turnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
           description: 接力模式首个可提交玩家；竞速模式缺省。
         turnDeadline:
           type: string
@@ -177,7 +324,7 @@ events:
 
   - type: round.playing
     observer: all
-    summary: 倒计时结束，双方可开猜。
+    summary: 倒计时结束；race 的 active roster players 可并行开猜，relay 仅当前行动者可猜。
     payload:
       type: object
       additionalProperties: false
@@ -194,12 +341,15 @@ events:
     observer: opponent
     summary: |
       对手每次被接受的猜测（唯一逐观察者事件）。
-      statuses 为当前可见字段位置的状态，已按观察者 (roundId, observerMemberId) 种子列置换；
+      statuses 为当前匿名字段位置的状态；fieldOrder 是同一观察者看到的匿名列顺序。
+      服务端秘密 HMAC 绑定
+      (roundId, observerMemberId, subjectMemberId, schemaVersion) 后派生列置换；
       不含角色名/字段标签/值（08 §4.5 数据最小化）。
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, rowIndex, statuses]
+      required:
+        [matchIndex, roundIndex, memberId, seat, rowIndex, fieldOrder, statuses]
       properties:
         matchIndex:
           type: integer
@@ -207,16 +357,56 @@ events:
         roundIndex:
           type: integer
           minimum: 1
+        memberId:
+          type: string
+          description: 匿名矩阵所属对手的稳定成员标识。
+        seat:
+          type: integer
+          minimum: 1
+          maximum: 8
         rowIndex:
           type: integer
           minimum: 1
           description: 该成员局内猜测序号（1 起）。
+        fieldOrder:
+          type: array
+          minItems: 1
+          maxItems: 8
+          description: 该观察者看到的匿名矩阵列顺序；statuses 按此顺序排列。
+          items:
+            $ref: "#/definitions/GuessFieldKey"
         statuses:
           type: array
-          minItems: 6
-          maxItems: 6
+          minItems: 1
+          maxItems: 8
           items:
             $ref: "#/definitions/FeedbackStatus"
+
+  - type: round.spectator.guess
+    observer: spectator
+    summary: 竞速模式中观战者收到的完整猜测行，包含猜测角色、字段值与反馈。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, roundIndex, memberId, seat, rowIndex, guess]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        roundIndex:
+          type: integer
+          minimum: 1
+        memberId:
+          type: string
+        seat:
+          type: integer
+          minimum: 1
+          maximum: 8
+        rowIndex:
+          type: integer
+          minimum: 1
+        guess:
+          $ref: "#/definitions/GuessResult"
 
   - type: round.shared.guess
     observer: all
@@ -234,10 +424,12 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
@@ -258,10 +450,12 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
@@ -282,21 +476,32 @@ events:
           minimum: 1
         row:
           $ref: "#/definitions/RelayTurnRow"
-        nextTurnSlot:
+        nextTurnMemberId:
+          type: string
+        nextTurnSeat:
           type: integer
           minimum: 1
-          maximum: 2
+          maximum: 8
         nextTurnDeadline:
           type: string
           format: date-time
 
   - type: round.ended
     observer: all
-    summary: 局结束（猜中/双方用尽/超时/对局被终止）。result 为观察者视角；揭示答案与双方完整棋盘。
+    summary: 局结束（猜中/玩家用尽/超时/对局被终止）。viewerResult 为观察者视角；揭示答案与按 seat 排序的成员棋盘。
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, roundIndex, result, winnerSlot, answer, boards, scores]
+      required:
+        [
+          matchIndex,
+          roundIndex,
+          winnerMemberId,
+          answer,
+          boards,
+          scores,
+          results,
+        ]
       properties:
         matchIndex:
           type: integer
@@ -304,16 +509,18 @@ events:
         roundIndex:
           type: integer
           minimum: 1
-        result:
+        viewerResult:
           type: string
           enum: [win, loss, draw]
-        winnerSlot:
+          description: 玩家观察者的自身结果；观战者可缺省。
+        winnerMemberId:
           oneOf:
-            - type: integer
-              minimum: 1
-              maximum: 2
+            - type: string
             - type: "null"
           description: 平局为 null。
+        forfeitedMemberId:
+          type: string
+          description: 主动放弃本局的玩家 memberId；非放弃结算时缺省。
         answer:
           type: object
           additionalProperties: false
@@ -340,16 +547,22 @@ events:
           items:
             $ref: "#/definitions/RelayTurnRow"
         scores:
-          type: object
-          additionalProperties: false
-          required: [slot1, slot2]
-          properties:
-            slot1:
-              type: integer
-              minimum: 0
-            slot2:
-              type: integer
-              minimum: 0
+          type: array
+          items:
+            $ref: "#/definitions/MemberScore"
+        results:
+          type: array
+          items:
+            $ref: "#/definitions/MemberResult"
+        placements:
+          type: array
+          description: placement race 每名玩家的本局状态、完成名次和得分。
+          items:
+            $ref: "#/definitions/RoundPlacement"
+        eliminatedMemberIds:
+          type: array
+          items:
+            type: string
         nextStartsAt:
           type: string
           format: date-time
@@ -361,35 +574,41 @@ events:
     payload:
       type: object
       additionalProperties: false
-      required: [matchIndex, result, winnerSlot, scores, reason]
+      required:
+        [matchIndex, winnerMemberId, scores, results, reason, retentionEndsAt]
       properties:
         matchIndex:
           type: integer
           minimum: 0
-        result:
+        viewerResult:
           type: string
           enum: [win, loss, draw]
-        winnerSlot:
+          description: 玩家观察者的自身结果；观战者可缺省。
+        winnerMemberId:
           oneOf:
-            - type: integer
-              minimum: 1
-              maximum: 2
+            - type: string
             - type: "null"
           description: 平局为 null。
         scores:
-          type: object
-          additionalProperties: false
-          required: [slot1, slot2]
-          properties:
-            slot1:
-              type: integer
-              minimum: 0
-            slot2:
-              type: integer
-              minimum: 0
+          type: array
+          items:
+            $ref: "#/definitions/MemberScore"
+        results:
+          type: array
+          items:
+            $ref: "#/definitions/MemberResult"
+        ranking:
+          type: array
+          description: 终局总积分排行榜；rank 可共享。
+          items:
+            $ref: "#/definitions/MemberRanking"
         reason:
           type: string
           enum: [normal, forfeit, disconnect, server_restart, round_cap]
+        retentionEndsAt:
+          type: string
+          format: date-time
+          description: finished 房间保留到期时间；观战席据此显示倒计时。
 
   - type: room.closed
     observer: all
@@ -406,22 +625,68 @@ events:
 # 服务端控制帧（非事件，无 sequence；平铺消息含 type）
 control:
   - type: hello-ok
-    summary: 鉴权通过。之后从 lastSequence+1 重放事件。
+    summary: 鉴权通过并声明本次同步目标水位；不表示重放完成。
     payload:
       type: object
       additionalProperties: false
-      required: [type, roomId, nextSequence]
+      required: [type, roomId, targetGameSequence]
       properties:
         type:
           type: string
           const: hello-ok
         roomId:
           type: string
-        nextSequence:
+        targetGameSequence:
           type: integer
           minimum: 0
+        targetChatCursor:
+          type: string
+  - type: sync.complete
+    summary: FIFO 中此前的重放与缓冲游戏帧已全部交付；该水位可持久化。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, gameSequence]
+      properties:
+        type:
+          type: string
+          const: sync.complete
+        gameSequence:
+          type: integer
+          minimum: 0
+        chatCursor:
+          type: string
+  - type: resync.required
+    summary: hello 水位无法连续恢复；客户端必须拉取权威 snapshot 后重新握手。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [type, scope, reason]
+      properties:
+        type:
+          type: string
+          const: resync.required
+        scope:
+          type: string
+          enum: [game, chat, all]
+        reason:
+          type: string
+          enum:
+            [
+              negative_sequence,
+              invalid_cursor,
+              ahead_of_server,
+              history_unavailable,
+            ]
+        gameSequence:
+          type: integer
+          minimum: 0
+        oldestAvailableChatCursor:
+          type: string
+        targetChatCursor:
+          type: string
   - type: replaced
-    summary: 同成员新连接注册，本连接被替换。
+    summary: 同成员新连接注册，或当前连接缓存的 member role/seat 已失效。
     payload:
       type: object
       additionalProperties: false
@@ -432,7 +697,7 @@ control:
           const: replaced
         reason:
           type: string
-          enum: [replaced]
+          enum: [replaced, member_changed]
 
 # 客户端 → 服务端消息（仅两类；均为平铺消息，无信封）
 clientMessages:
@@ -441,7 +706,7 @@ clientMessages:
     payload:
       type: object
       additionalProperties: false
-      required: [type, token, lastSequence]
+      required: [type, token, lastGameSequence]
       properties:
         type:
           type: string
@@ -449,25 +714,41 @@ clientMessages:
         token:
           type: string
           description: 游客令牌（Bearer guest:{token} 中冒号后的部分）。
-        lastSequence:
+        lastGameSequence:
           type: integer
           minimum: 0
-          description: 本地最后已应用的事件序号（首连为 0）。
+          description: 本地最后经 sync.complete 确认的游戏事件序号（首连为 0）。
+        lastChatCursor:
+          type: string
+          description: 存在时启用聊天订阅；省略表示 game-only 连接。
   - type: ack
     summary: 水位推进；服务端据此检测慢消费者。
     payload:
       type: object
       additionalProperties: false
-      required: [type, lastSequence]
+      required: [type, gameSequence]
       properties:
         type:
           type: string
           const: ack
-        lastSequence:
+        gameSequence:
           type: integer
           minimum: 0
 
 definitions:
+  GuessFieldKey:
+    type: string
+    enum:
+      [
+        firstAppearance,
+        releaseYear,
+        species,
+        abilityTags,
+        affiliations,
+        locations,
+        roles,
+        hairColors,
+      ]
   FeedbackStatus:
     type: string
     enum: [exact, partial, miss, higher, lower, unknown]
@@ -510,29 +791,119 @@ definitions:
   RelayTurnRow:
     type: object
     additionalProperties: false
-    required: [index, memberSlot, kind]
+    required: [index, memberId, seat, kind]
     properties:
       index:
         type: integer
         minimum: 1
-      memberSlot:
+      memberId:
+        type: string
+      seat:
         type: integer
         minimum: 1
-        maximum: 2
+        maximum: 8
       kind:
         type: string
         enum: [guess, timeout, pass]
       guess:
         $ref: "#/definitions/GuessResult"
   Boards:
+    type: array
+    items:
+      $ref: "#/definitions/MemberBoard"
+  MemberBoard:
     type: object
     additionalProperties: false
-    required: [slot1, slot2]
+    required: [memberId, seat, guesses]
     properties:
-      slot1:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      guesses:
         $ref: "#/definitions/GuessList"
-      slot2:
-        $ref: "#/definitions/GuessList"
+  MemberScore:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, score]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      score:
+        type: integer
+        minimum: 0
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      bestRoundScore:
+        type: integer
+        minimum: 0
+      eliminatedRound:
+        type: integer
+        minimum: 1
+  RoundPlacement:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, status, pointsAwarded]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      status:
+        type: string
+        enum: [active, correct, forfeited, exhausted, timed_out]
+      finishRank:
+        type: integer
+        minimum: 1
+      pointsAwarded:
+        type: integer
+        minimum: 0
+  MemberRanking:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, rank, score, status]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      rank:
+        type: integer
+        minimum: 1
+      score:
+        type: integer
+        minimum: 0
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      eliminatedRound:
+        type: integer
+        minimum: 1
+  MemberResult:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, result]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      result:
+        type: string
+        enum: [win, loss, draw]
 
 # 有效示例：每个事件 1 个 + hello/ack/hello-ok/replaced 各 1 个
 examples:
@@ -548,17 +919,24 @@ examples:
           format: bo3
           mode: race
           turnSeconds: 60
+          playerLimit: 2
+          minPlayers: 2
+          playerCount: 2
+          availableSeats: 0
           members:
-            - slot: 1
+            - memberId: member-host
+              seat: 1
               displayName: 房主
               status: connected
               ready: false
-            - slot: 2
+            - memberId: member-guest
+              seat: 2
               displayName: 匿名玩家
               status: connected
               ready: false
+          spectatorCount: 0
 
-    - label: match.started（双方就绪）
+    - label: match.started（完整 roster 就绪）
       message:
         type: match.started
         eventId: evt_01J8Z0
@@ -572,6 +950,9 @@ examples:
           targetWins: 2
           catalogVersion: 66b0a79b
           matchIndex: 0
+          scoringMode: wins
+          rosterSize: 2
+          maxRounds: 9
           questionScope:
             schemaVersion: 2
             catalogVersion: 66b0a79b
@@ -602,7 +983,8 @@ examples:
         sequence: 30
         occurredAt: "2026-08-06T12:30:00Z"
         payload:
-          memberSlot: 1
+          memberId: member-host
+          seat: 1
 
     - label: round.started（首局 countdown）
       message:
@@ -615,8 +997,9 @@ examples:
           matchIndex: 0
           roundIndex: 1
           startsAt: "2026-08-06T12:00:11Z"
-          deadline: "2026-08-06T12:15:11Z"
+          deadline: "2026-08-06T12:05:11Z"
           maxGuesses: 8
+          activePlayerCount: 2
 
     - label: round.playing（倒计时结束）
       message:
@@ -639,8 +1022,44 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
+          memberId: member-guest
+          seat: 2
           rowIndex: 1
+          fieldOrder:
+            [
+              species,
+              firstAppearance,
+              affiliations,
+              releaseYear,
+              locations,
+              hairColors,
+            ]
           statuses: [miss, exact, partial, lower, miss, unknown]
+
+    - label: round.spectator.guess（观战者完整行）
+      message:
+        type: round.spectator.guess
+        eventId: evt_01J8Z3S
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 11
+        occurredAt: "2026-08-06T12:00:13Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          memberId: member-host
+          seat: 1
+          rowIndex: 1
+          guess:
+            guessId: reimu
+            guessName: 博丽灵梦
+            guessAvatarUrl: /avatars/reimu.png
+            isCorrect: false
+            feedback:
+              - field: species
+                label: 种族
+                status: exact
+                symbol: ●
+                displayValue: [人类]
 
     - label: round.shared.guess（接力共享猜测行）
       message:
@@ -654,7 +1073,8 @@ examples:
           roundIndex: 1
           row:
             index: 1
-            memberSlot: 1
+            memberId: member-host
+            seat: 1
             kind: guess
             guess:
               guessId: marisa_kirisame
@@ -666,7 +1086,8 @@ examples:
                   status: partial
                   symbol: "~"
                   displayValue: [游戏]
-          nextTurnSlot: 2
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
           nextTurnDeadline: "2026-08-06T12:01:14Z"
 
     - label: round.turn.timeout（接力超时空过）
@@ -681,9 +1102,11 @@ examples:
           roundIndex: 1
           row:
             index: 2
-            memberSlot: 2
+            memberId: member-guest
+            seat: 2
             kind: timeout
-          nextTurnSlot: 1
+          nextTurnMemberId: member-host
+          nextTurnSeat: 1
           nextTurnDeadline: "2026-08-06T12:02:14Z"
 
     - label: round.turn.pass（接力主动空过）
@@ -698,9 +1121,11 @@ examples:
           roundIndex: 1
           row:
             index: 3
-            memberSlot: 1
+            memberId: member-host
+            seat: 1
             kind: pass
-          nextTurnSlot: 2
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
           nextTurnDeadline: "2026-08-06T12:03:00Z"
 
     - label: round.ended（玩家1猜中）
@@ -713,8 +1138,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
-          result: win
-          winnerSlot: 1
+          viewerResult: win
+          winnerMemberId: member-host
           answer:
             id: reimu_hakurei
             name: 博丽灵梦
@@ -723,38 +1148,71 @@ examples:
             workTitle: 东方灵异传
             workCode: TH01
           boards:
-            slot1:
-              - guessId: marisa_kirisame
-                guessName: 雾雨魔理沙
-                isCorrect: false
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: partial
-                    symbol: "~"
-                    displayValue: [游戏]
-              - guessId: reimu_hakurei
-                guessName: 博丽灵梦
-                isCorrect: true
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: exact
-                    symbol: "O"
-                    displayValue: [东方灵异传]
-            slot2:
-              - guessId: remilia_scarlet
-                guessName: 蕾米莉亚·斯卡蕾特
-                isCorrect: false
-                feedback:
-                  - field: firstAppearance
-                    label: 初登场作品
-                    status: miss
-                    symbol: "X"
-                    displayValue: [东方红魔乡]
+            - memberId: member-host
+              seat: 1
+              guesses:
+                - guessId: marisa_kirisame
+                  guessName: 雾雨魔理沙
+                  isCorrect: false
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: partial
+                      symbol: "~"
+                      displayValue: [游戏]
+                - guessId: reimu_hakurei
+                  guessName: 博丽灵梦
+                  isCorrect: true
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: exact
+                      symbol: "O"
+                      displayValue: [东方灵异传]
+            - memberId: member-guest
+              seat: 2
+              guesses:
+                - guessId: remilia_scarlet
+                  guessName: 蕾米莉亚·斯卡蕾特
+                  isCorrect: false
+                  feedback:
+                    - field: firstAppearance
+                      label: 初登场作品
+                      status: miss
+                      symbol: "X"
+                      displayValue: [东方红魔乡]
+            - memberId: member-third
+              seat: 3
+              guesses: []
+            - memberId: member-fourth
+              seat: 4
+              guesses: []
           scores:
-            slot1: 1
-            slot2: 0
+            - memberId: member-host
+              seat: 1
+              score: 1
+            - memberId: member-guest
+              seat: 2
+              score: 0
+            - memberId: member-third
+              seat: 3
+              score: 0
+            - memberId: member-fourth
+              seat: 4
+              score: 0
+          results:
+            - memberId: member-host
+              seat: 1
+              result: win
+            - memberId: member-guest
+              seat: 2
+              result: loss
+            - memberId: member-third
+              seat: 3
+              result: loss
+            - memberId: member-fourth
+              seat: 4
+              result: loss
           nextStartsAt: "2026-08-06T12:00:18Z"
 
     - label: match.ended（达到 targetWins）
@@ -766,12 +1224,36 @@ examples:
         occurredAt: "2026-08-06T12:20:00Z"
         payload:
           matchIndex: 0
-          result: win
-          winnerSlot: 1
+          viewerResult: win
+          winnerMemberId: member-host
           scores:
-            slot1: 2
-            slot2: 0
+            - memberId: member-host
+              seat: 1
+              score: 2
+            - memberId: member-guest
+              seat: 2
+              score: 0
+            - memberId: member-third
+              seat: 3
+              score: 1
+            - memberId: member-fourth
+              seat: 4
+              score: 0
+          results:
+            - memberId: member-host
+              seat: 1
+              result: win
+            - memberId: member-guest
+              seat: 2
+              result: loss
+            - memberId: member-third
+              seat: 3
+              result: loss
+            - memberId: member-fourth
+              seat: 4
+              result: loss
           reason: normal
+          retentionEndsAt: "2026-08-06T12:30:00Z"
 
     - label: room.closed（房主离开）
       message:
@@ -783,27 +1265,70 @@ examples:
         payload:
           reason: host_left
 
+    - label: room.cursor（无权消费业务 payload）
+      message:
+        type: room.cursor
+        eventId: evt_01J8Z8
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 23
+        occurredAt: "2026-08-06T12:20:02Z"
+
+    - label: chat.message（独立聊天位置）
+      message:
+        type: chat.message
+        messageId: m1b2c3d4e5f6g7h8i9j0k1l2m
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        senderMemberId: p1b2c3d4e5f6g7h8i9j0k1l2m
+        senderDisplayName: 博丽灵梦
+        senderRole: player
+        senderSeat: 1
+        kind: text
+        content: 准备好了
+        channel: room
+        cursor: chat_cursor_after_24
+        createdAt: "2026-08-06T12:20:03Z"
+
     - label: hello-ok（鉴权通过）
       message:
         type: hello-ok
         roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
-        nextSequence: 23
+        targetGameSequence: 23
+        targetChatCursor: chat_cursor_after_24
+
+    - label: sync.complete（游戏同步完成）
+      message:
+        type: sync.complete
+        gameSequence: 23
+        chatCursor: chat_cursor_after_24
+
+    - label: resync.required（历史不可连续恢复）
+      message:
+        type: resync.required
+        scope: game
+        reason: history_unavailable
+        gameSequence: 23
 
     - label: replaced（旧连接被替换）
       message:
         type: replaced
         reason: replaced
 
+    - label: replaced（成员身份变化，必须重连）
+      message:
+        type: replaced
+        reason: member_changed
+
     - label: hello（首帧）
       message:
         type: hello
         token: 9qZtXw2yR4vB7nM1pLk8jH3
-        lastSequence: 0
+        lastGameSequence: 0
+        lastChatCursor: chat_cursor_after_0
 
     - label: ack（水位推进）
       message:
         type: ack
-        lastSequence: 21
+        gameSequence: 21
 
   # 无效示例：expectFail 为预期失败类别
   #   schema        —— 消息不满足 schema/枚举/信封要求
@@ -815,20 +1340,30 @@ examples:
       expectFail: schema
       message:
         type: hello
-        lastSequence: 0
+        lastGameSequence: 0
 
     - label: hello token 非字符串
       expectFail: schema
       message:
         type: hello
         token: 12345
-        lastSequence: 0
+        lastGameSequence: 0
 
     - label: 首帧不是 hello（ack 先行）
       expectFail: first-frame
       message:
         type: ack
-        lastSequence: 0
+        gameSequence: 0
+
+    - label: room.cursor 不得携带 payload
+      expectFail: schema
+      message:
+        type: room.cursor
+        eventId: evt_cursor_bad
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 3
+        occurredAt: "2026-08-06T12:00:02Z"
+        payload: {}
 
     - label: 未知事件类型
       expectFail: unknown-type
@@ -865,6 +1400,8 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
+          memberId: member_guest
+          seat: 2
           rowIndex: 1
 
     - label: round.ended result 非法枚举
@@ -878,8 +1415,31 @@ examples:
         payload:
           matchIndex: 0
           roundIndex: 1
-          result: timeout
-          winnerSlot: null
+          viewerResult: timeout
+          winnerMemberId: null
+          answer:
+            id: reimu_hakurei
+            name: 博丽灵梦
+            avatarUrl: https://example.com/avatars/reimu.png
+            workId: th01
+            workTitle: 东方灵异传
+            workCode: TH01
+          boards: []
+          scores: []
+          results: []
+
+    - label: round.ended 拒绝旧 slot 棋盘和比分形状
+      expectFail: schema
+      message:
+        type: round.ended
+        eventId: evt_legacy_slots
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 12
+        occurredAt: "2026-08-06T12:00:14Z"
+        payload:
+          matchIndex: 0
+          roundIndex: 1
+          winnerMemberId: null
           answer:
             id: reimu_hakurei
             name: 博丽灵梦
@@ -893,6 +1453,7 @@ examples:
           scores:
             slot1: 0
             slot2: 0
+          results: []
 
     - label: match.ended reason 非法枚举
       expectFail: schema
@@ -904,12 +1465,12 @@ examples:
         occurredAt: "2026-08-06T12:20:00Z"
         payload:
           matchIndex: 0
-          result: draw
-          winnerSlot: null
-          scores:
-            slot1: 0
-            slot2: 0
+          viewerResult: draw
+          winnerMemberId: null
+          scores: []
+          results: []
           reason: host_left
+          retentionEndsAt: "2026-08-06T13:20:00Z"
 
     - label: 信封缺 occurredAt
       expectFail: schema

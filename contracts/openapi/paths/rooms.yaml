@@ -20,6 +20,12 @@ post:
             mode:
               $ref: "../schemas/multi-common.yaml#/MultiplayerMode"
               description: 可选玩法模式；缺省为 race（竞速）。
+            playerLimit:
+              type: integer
+              minimum: 2
+              maximum: 8
+              default: 2
+              description: race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
             turnSeconds:
               type: integer
               enum: [30, 60, 90, 120]
@@ -38,7 +44,7 @@ post:
           schema:
             $ref: "../schemas/multi-room.yaml#/CreateRoomResponse"
     "400":
-      description: 非法赛制（INVALID_FORMAT）
+      description: 非法赛制（INVALID_FORMAT）或玩家上限（INVALID_PLAYER_LIMIT）
       content:
         application/json:
           schema:

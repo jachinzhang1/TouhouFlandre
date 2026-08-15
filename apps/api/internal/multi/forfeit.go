@@ -15,10 +15,16 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
-// ForfeitMemberMatch 弃赛/断线判负：
-// 结束当前局（对方胜，若有 countdown/playing 局）→ 场次与房间 finished（reason=forfeit/disconnect）
-// → 成员行置 left。判对方胜不要求对方在线（双方离线先逾期者触发，确定性优先，08 §4.6）。
+// ForfeitMemberMatch 处理对局级弃赛/断线：race 委托 N 人 roster 终态表；
+// relay 保持两人规则（结束当前局、对方胜、整场 finished），08 §4.6。
 func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig) error {
+	room, err := repo.New(pool).GetRoom(ctx, member.RoomID)
+	if err != nil {
+		return err
+	}
+	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		return ForfeitRaceMembersMatch(ctx, pool, []repo.MultiMember{member}, reason, now, timing)
+	}
 	DefaultMetrics.IncForfeits(string(reason))
 	slog.Info("match forfeited", "room_id", member.RoomID, "member_id", member.ID, "reason", string(reason))
 	tx, err := pool.Begin(ctx)
@@ -52,7 +58,7 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 		}
 		return err
 	}
-	opponentSlot := 3 - int(member.Slot)
+	opponentSlot := OtherSlot(MemberSeat(member))
 
 	// 3. 结束当前局（对方胜）——仅 countdown/playing 局；已 ended 的局保持原结果
 	if hasRound && round.Status != string(RoundStatusEnded) {
@@ -62,21 +68,27 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 		}
 		scores := ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)}
 		nextStarts := now.Add(timing.Intermission)
+		forfeitedSlot := MemberSeat(member)
 		if err := AppendEvent(ctx, q, member.RoomID, EventRoundEnded, RoundEndedEventPayload{
-			RoundID:      round.ID,
-			MatchIndex:   int(match.MatchIndex),
-			RoundIndex:   int(round.RoundIndex),
-			WinnerSlot:   &opponentSlot,
-			AnswerID:     round.AnswerID,
-			Scores:       scores,
-			NextStartsAt: &nextStarts,
+			RoundID:       round.ID,
+			MatchIndex:    int(match.MatchIndex),
+			RoundIndex:    int(round.RoundIndex),
+			WinnerSlot:    &opponentSlot,
+			ForfeitedSlot: &forfeitedSlot,
+			AnswerID:      round.AnswerID,
+			Scores:        scores,
+			NextStartsAt:  &nextStarts,
 		}); err != nil {
 			return err
 		}
 	}
 
 	// 4. 场次与房间 finished
-	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now)}); err != nil {
+	if _, err := q.EndMatch(ctx, repo.EndMatchParams{
+		ID:         match.ID,
+		EndedAt:    pgtypeTimestamptz(now),
+		WinnerSeat: pgtype.Int4{Int32: int32(opponentSlot), Valid: true},
+	}); err != nil {
 		return err
 	}
 	expires := now.Add(timing.FinishedRetention)
@@ -89,10 +101,11 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 	}
 	winnerSlot := opponentSlot
 	if err := AppendEvent(ctx, q, member.RoomID, EventMatchEnded, MatchEndedEventPayload{
-		MatchIndex: int(match.MatchIndex),
-		WinnerSlot: &winnerSlot,
-		Scores:     ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
-		Reason:     reason,
+		MatchIndex:      int(match.MatchIndex),
+		WinnerSlot:      &winnerSlot,
+		Scores:          ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
+		Reason:          reason,
+		RetentionEndsAt: expires,
 	}); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ type TimingConfig struct {
 	RoundCountdown    time.Duration // 首局倒计时（仅 round 1）
 	Intermission      time.Duration // 局间间歇（下一局 startsAt = 上局 ended_at + 此值，兼作倒计时）
 	RoundSeconds      time.Duration // 单局整局时限（超时平局）
+	RaceRoundSeconds  time.Duration // 竞速模式单局整局时限
 	TurnSeconds       time.Duration // 接力模式单用户猜测时限默认值
 	DisconnectGrace   time.Duration // 断线宽限期
 	MaxRoundsFactor   int           // 总局数安全上限系数（maxRounds = factor × N）
@@ -20,9 +21,20 @@ func DefaultTimingConfig() TimingConfig {
 		RoundCountdown:    3 * time.Second,
 		Intermission:      5 * time.Second,
 		RoundSeconds:      900 * time.Second,
+		RaceRoundSeconds:  300 * time.Second,
 		TurnSeconds:       60 * time.Second,
 		DisconnectGrace:   60 * time.Second,
 		MaxRoundsFactor:   3,
-		FinishedRetention: 30 * time.Minute,
+		FinishedRetention: 10 * time.Minute,
 	}
+}
+
+// RoundDurationForMode keeps relay's legacy 15-minute limit while race uses
+// the five-minute placement-round limit. A zero race value is tolerated for
+// old tests/configuration and falls back to the relay duration.
+func RoundDurationForMode(mode MultiplayerMode, timing TimingConfig) time.Duration {
+	if mode == MultiplayerModeRace && timing.RaceRoundSeconds > 0 {
+		return timing.RaceRoundSeconds
+	}
+	return timing.RoundSeconds
 }

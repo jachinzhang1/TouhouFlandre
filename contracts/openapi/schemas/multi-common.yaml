@@ -34,6 +34,16 @@ MemberStatus:
     - disconnected
     - left
 
+ParticipantRole:
+  type: string
+  description: 房间参与者身份。player 为 PK 玩家；spectator 为观战者。
+  enum:
+    - player
+    - spectator
+  x-enum-varnames:
+    - ParticipantRolePlayer
+    - ParticipantRoleSpectator
+
 RoundStatus:
   type: string
   description: 单局状态：countdown（倒计时）→ playing → ended。
