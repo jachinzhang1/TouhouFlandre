@@ -122,19 +122,19 @@ func TestSearchCharactersReturnsEveryCharacterSharingAlias(t *testing.T) {
 	})
 	minoriko := withPatch(baseCharacter(), func(c *game.Character) {
 		c.ID = "minoriko_aki"
-		c.AppearanceOrder = 1002
+		c.AppearanceOrder = 1001
 		c.Names.ZhHans = "秋穰子"
 		c.Names.En = "Minoriko Aki"
 		c.Names.Aliases = []string{"秋姐妹"}
 	})
 
-	page := game.SearchCharacters([]game.Character{minoriko, shizuha}, game.CharacterSearchOptions{
+	page := game.SearchCharacters([]game.Character{shizuha, minoriko}, game.CharacterSearchOptions{
 		Query: "秋姐妹", SortBy: "appearance", Limit: -1,
 	})
 	if page.Total != 2 || len(page.Characters) != 2 {
 		t.Fatalf("shared alias should return both characters: %+v", page)
 	}
-	if page.Characters[0].ID != "shizuha_aki" || page.Characters[1].ID != "minoriko_aki" {
-		t.Fatalf("shared alias results are incorrect: %+v", page.Characters)
+	if page.Characters[0].ID != "minoriko_aki" || page.Characters[1].ID != "shizuha_aki" {
+		t.Fatalf("shared alias results should use ID as a stable tie-breaker: %+v", page.Characters)
 	}
 }

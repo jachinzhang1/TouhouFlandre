@@ -63,6 +63,17 @@ for (const character of demoCharacters) {
 }
 
 for (const character of demoCharacters) {
+  for (const alias of character.names.aliases) {
+    const canonicalOwner = canonicalNames.get(normalizeSearchText(alias));
+    if (canonicalOwner && canonicalOwner !== character.id) {
+      throw new Error(
+        `Alias ${alias} of ${character.id} conflicts with a canonical name of ${canonicalOwner}.`,
+      );
+    }
+  }
+}
+
+for (const character of demoCharacters) {
   if (!workIds.has(character.firstAppearance.workId)) {
     throw new Error(
       `${character.id} references missing work ${character.firstAppearance.workId}.`,
