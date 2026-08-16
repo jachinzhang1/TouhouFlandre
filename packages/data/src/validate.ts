@@ -41,25 +41,24 @@ if (appearanceOrders.size !== demoCharacters.length) {
   throw new Error("Duplicate character appearance orders found.");
 }
 
-const names = new Map<string, string>();
+const canonicalNames = new Map<string, string>();
 for (const character of demoCharacters) {
-  const characterNames = [
+  const characterCanonicalNames = [
     character.names.zhHans,
     character.names.zhHant,
     character.names.ja,
     character.names.en,
     character.names.romaji,
-    ...character.names.aliases,
   ].filter((value): value is string => Boolean(value));
-  for (const name of characterNames) {
+  for (const name of characterCanonicalNames) {
     const normalized = normalizeSearchText(name);
-    const owner = names.get(normalized);
+    const owner = canonicalNames.get(normalized);
     if (owner && owner !== character.id) {
       throw new Error(
-        `Search name ${name} is shared by ${owner} and ${character.id}.`,
+        `Canonical name ${name} is shared by ${owner} and ${character.id}.`,
       );
     }
-    names.set(normalized, character.id);
+    canonicalNames.set(normalized, character.id);
   }
 }
 
