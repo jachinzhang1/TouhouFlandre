@@ -114,6 +114,39 @@ html[data-theme-mode="dark"] .site-nav {
   background: color-mix(in srgb, var(--theme-color) 14%, transparent);
 }
 
+body:has(.home-hero)
+  .site-footer-home
+  :is(
+    .site-footer-meta-viewport,
+    .site-footer-artwork-credit,
+    .site-footer-actions
+  ) {
+  opacity: 0.72;
+  transition: opacity 150ms ease;
+}
+
+body:has(.home-hero)
+  .site-footer-home
+  :is(
+    .site-footer-meta-viewport,
+    .site-footer-artwork-credit,
+    .site-footer-actions
+  ):focus-within {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body:has(.home-hero)
+    .site-footer-home
+    :is(
+      .site-footer-meta-viewport,
+      .site-footer-artwork-credit,
+      .site-footer-actions
+    ):hover {
+    opacity: 1;
+  }
+}
+
 body:has(.home-hero) .site-footer {
   color: rgba(255, 255, 255, 0.78);
   background: linear-gradient(
@@ -678,6 +711,11 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
     inset: 0;
     color: var(--ink);
     border-radius: 4px;
+  }
+
+  .appearance-palette-icon,
+  .appearance-mode-icon {
+    translate: none;
   }
 
   .appearance-toggle:hover {
