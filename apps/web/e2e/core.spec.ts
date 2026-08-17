@@ -17,6 +17,25 @@ test.describe("站点骨架", () => {
         page.getByRole("link", { name: new RegExp(label) }),
       ).toBeVisible();
     }
+    await expect(
+      page.getByRole("link", { name: "背景图 Pixiv 作品 56866592" }),
+    ).toHaveAttribute("href", "https://www.pixiv.net/artworks/56866592");
+    await expect(
+      page.getByRole("link", { name: "背景图画师 Pixiv 用户 2179695" }),
+    ).toHaveAttribute("href", "https://www.pixiv.net/users/2179695");
+  });
+
+  test("友链页展示当前首页背景图署名", async ({ page }) => {
+    await page.goto("/links");
+    await expect(
+      page.getByText("羽々斬 - Pixiv 作品 56866592", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('a[href="https://www.pixiv.net/artworks/56866592"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('a[href="https://www.pixiv.net/users/2179695"]'),
+    ).toHaveCount(1);
   });
 
   test("未知路径渲染 404 页", async ({ page }) => {
@@ -47,6 +66,23 @@ test.describe("站点骨架", () => {
     const links = navigation.locator(".nav-links");
     await expect(toggle).toBeVisible();
     await expect(links).toHaveCSS("visibility", "hidden");
+
+    await page.getByRole("button", { name: "打开主题颜色" }).click();
+    await expect(navigation).toHaveAttribute(
+      "data-mobile-presentation",
+      "palette",
+    );
+    await expect(links).toHaveCSS("visibility", "hidden");
+    await expect(page.locator(".appearance-swatch")).toHaveCount(6);
+    await expect(page.locator(".appearance-swatch:visible")).toHaveCount(6);
+    await expect(
+      page.locator('.appearance-swatch[data-selected="true"] .lucide-check'),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "关闭主题颜色" }).click();
+    await expect(navigation).toHaveAttribute(
+      "data-mobile-presentation",
+      "none",
+    );
 
     await toggle.click();
     await expect(

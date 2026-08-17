@@ -549,6 +549,9 @@ test.describe("多人聊天发布闸门", () => {
       await guest.getByLabel("关闭聊天").click();
       await expect(guest.getByLabel("聊天输入")).toBeDisabled();
       await sendChatViaUI(host, "muted hello");
+      await expect(spectatorA.getByText("muted hello")).toBeVisible({
+        timeout: 10_000,
+      });
       await expect(guest.getByText("muted hello")).toHaveCount(0, {
         timeout: 1500,
       });
