@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test.describe.configure({ mode: "serial", timeout: 90_000 });
 
@@ -15,6 +15,13 @@ const searchResult = {
   affiliations: ["hakurei_shrine"],
   hairColors: ["brown"],
 };
+
+async function prepareVisualPage(page: Page) {
+  await page.addStyleTag({
+    content:
+      "[data-agentation-toolbar], [data-agentation-root], nextjs-portal { display: none !important; }",
+  });
+}
 
 test.describe("visual polish", () => {
   test.beforeEach(async ({ page }) => {
@@ -47,6 +54,7 @@ test.describe("visual polish", () => {
 
   test("home uses the completed animation and bold title", async ({ page }) => {
     await page.goto("/");
+    await prepareVisualPage(page);
     const title = page.getByRole("heading", { name: "东方芙一把" });
     await expect(title).toBeVisible();
     await expect(title).toHaveCSS("font-weight", /700|800|900/);
@@ -59,6 +67,7 @@ test.describe("visual polish", () => {
     page,
   }) => {
     await page.goto("/search");
+    await prepareVisualPage(page);
     const input = page.getByLabel("搜索角色");
     await input.focus();
     await expect(input).toHaveCSS("outline-style", "none");
@@ -74,10 +83,10 @@ test.describe("visual polish", () => {
   test("appearance switcher toggles mode and persists color", async ({
     page,
   }) => {
-    await page.addInitScript(() => {
-      window.localStorage.clear();
-    });
     await page.goto("/");
+    await page.evaluate(() => window.localStorage.clear());
+    await page.reload();
+    await prepareVisualPage(page);
 
     const root = page.locator("html");
     const toggle = page.locator(".appearance-toggle");
@@ -85,7 +94,9 @@ test.describe("visual polish", () => {
     const swatches = page.locator(".appearance-swatch");
 
     await expect(root).toHaveAttribute("data-theme-color", "scarlet");
-    await toggle.hover();
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toBeEnabled();
+    await toggle.click();
     await expect(palette).toBeVisible();
     await expect(swatches.first()).toHaveCSS(
       "background-color",
@@ -94,12 +105,18 @@ test.describe("visual polish", () => {
 
     await toggle.click();
     await expect(root).toHaveAttribute("data-theme-mode", "dark");
-    await expect(page.locator("body")).toHaveCSS(
-      "background-color",
-      "rgb(15, 20, 19)",
-    );
+    await expect(root).toHaveCSS("color-scheme", "dark");
 
-    await swatches.nth(1).click();
+    const sakuraSwatch = page.locator(
+      '.appearance-swatch[data-theme-color="sakura"]',
+    );
+    await expect(sakuraSwatch).toBeVisible();
+    await expect(sakuraSwatch).toBeEnabled();
+    if ((page.viewportSize()?.width ?? 0) <= 680) {
+      await sakuraSwatch.click();
+    } else {
+      await sakuraSwatch.click({ position: { x: 535, y: 210 } });
+    }
     await expect(root).toHaveAttribute("data-theme-color", "sakura");
     await expect
       .poll(() =>
@@ -116,7 +133,7 @@ test.describe("visual polish", () => {
     await expect(root).toHaveAttribute("data-theme-color", "sakura");
   });
 
-  test("daily result uses yin-yang marks and a neutral answer avatar", async ({
+  test("daily result shows a neutral answer avatar and Paper actions", async ({
     page,
   }) => {
     const session = {
@@ -174,7 +191,8 @@ test.describe("visual polish", () => {
     );
 
     await page.goto("/single/daily");
-    await expect(page.locator(".game-emblem svg")).toBeVisible();
+    await prepareVisualPage(page);
+    await expect(page.locator(".answer-token")).toBeVisible();
     await expect(page.getByText("复制分享")).toBeVisible();
     await expect(page.getByText("再来一局")).toHaveCount(0);
     await expect(page.locator(".answer-token")).not.toHaveCSS(

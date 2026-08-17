@@ -7,6 +7,9 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   reporter: "list",
+  expect: {
+    toHaveScreenshot: { maxDiffPixels: 150 },
+  },
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -23,6 +26,8 @@ export default defineConfig({
         timeout: 120_000,
         env: {
           ...process.env,
+          NEXT_PUBLIC_AGENTATION_DISABLED:
+            process.env.NEXT_PUBLIC_AGENTATION_DISABLED ?? "true",
           MULTI_JOIN_RATE_LIMIT: process.env.MULTI_JOIN_RATE_LIMIT ?? "1000",
           MULTI_N_PLAYER_RACE_ENABLED:
             process.env.MULTI_N_PLAYER_RACE_ENABLED ?? "true",

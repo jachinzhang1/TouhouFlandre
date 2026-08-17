@@ -203,6 +203,7 @@ async function prepareVisualSnapshot(page: Page) {
   });
   await page.addStyleTag({
     content: `
+      [data-agentation-toolbar], [data-agentation-root], nextjs-portal,
       .appearance-switcher { display: none !important; }
       @media (max-width: 680px) {
         [data-site-nav-links] { display: none !important; }
@@ -272,8 +273,10 @@ test.describe("多人房间", () => {
       await guessViaUI(host, "灵梦");
       await guessViaUI(guest, "魔理沙");
       // host 自视角出现 1 条猜测；guest 矩阵出现 1 行对手猜测
-      await expect(host.getByText("博丽灵梦")).toBeVisible({ timeout: 10_000 });
-      await expect(guest.getByText("雾雨魔理沙")).toBeVisible({
+      await expect(host.getByText("博丽灵梦", { exact: true })).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(guest.getByText("雾雨魔理沙", { exact: true })).toBeVisible({
         timeout: 10_000,
       });
       await expect(guest.getByText("等待对方猜测……")).toHaveCount(0);
@@ -341,8 +344,8 @@ test.describe("多人房间", () => {
         );
       }, questionScope);
       await host.goto("/multi");
-      await host.locator("label", { hasText: "接力" }).click();
-      await host.locator("label", { hasText: "30s" }).click();
+      await host.getByRole("button", { name: /接力/ }).click();
+      await host.getByRole("radio", { name: "30s" }).click();
       await host.getByRole("button", { name: "创建房间" }).click();
       await host.waitForURL(/\/multi\/room\/[A-Z2-9]{6}/);
       const roomCode = new URL(host.url()).pathname.split("/").pop()!;
@@ -366,14 +369,14 @@ test.describe("多人房间", () => {
       });
 
       await guessViaUI(host, "灵梦");
-      await expect(guest.getByText("博丽灵梦")).toBeVisible({
+      await expect(guest.getByText("博丽灵梦", { exact: true })).toBeVisible({
         timeout: 10_000,
       });
       await expect(host.getByLabel("搜索角色")).toBeDisabled();
       await expect(guest.getByLabel("搜索角色")).toBeEnabled();
 
       await guessViaUI(guest, "魔理沙");
-      await expect(host.getByText("雾雨魔理沙")).toBeVisible({
+      await expect(host.getByText("雾雨魔理沙", { exact: true })).toBeVisible({
         timeout: 10_000,
       });
       await expect(host.getByLabel("搜索角色")).toBeEnabled();
@@ -514,12 +517,23 @@ test.describe("多人聊天发布闸门", () => {
       ]);
 
       await sendChatViaUI(host, "player hello");
-      await expect(guest.getByText("Player 1(P1): player hello")).toBeVisible({
-        timeout: 10_000,
+      const guestPlayerMessage = guest.locator('[role="status"]', {
+        hasText: "player hello",
       });
+      await expect(guestPlayerMessage).toBeVisible({ timeout: 10_000 });
       await expect(
-        spectatorA.getByText("Player 1(P1): player hello"),
-      ).toBeVisible({ timeout: 10_000 });
+        guestPlayerMessage.getByText("Player 1", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        guestPlayerMessage.getByText("P1", { exact: true }),
+      ).toBeVisible();
+      const spectatorPlayerMessage = spectatorA.locator('[role="status"]', {
+        hasText: "player hello",
+      });
+      await expect(spectatorPlayerMessage).toBeVisible({ timeout: 10_000 });
+      await expect(
+        spectatorPlayerMessage.getByText("P1", { exact: true }),
+      ).toBeVisible();
 
       await sendChatViaUI(spectatorA, "spectator hello");
       await expect(
@@ -532,7 +546,7 @@ test.describe("多人聊天发布闸门", () => {
         },
       );
 
-      await guest.getByLabel("闭麦").click();
+      await guest.getByLabel("关闭聊天").click();
       await expect(guest.getByLabel("聊天输入")).toBeDisabled();
       await sendChatViaUI(host, "muted hello");
       await expect(guest.getByText("muted hello")).toHaveCount(0, {
@@ -566,9 +580,9 @@ test.describe("N 人竞速扩展", () => {
     await range.press("ArrowRight");
     await range.press("ArrowRight");
     await expect(range).toHaveValue("5");
-    await expect(page.locator('output[for="create-player-limit"]')).toHaveText(
-      "5 人",
-    );
+    await expect(
+      page.getByRole("spinbutton", { name: "玩家上限数值" }),
+    ).toHaveValue("5");
     await expect(page.getByText("双人赛制", { exact: true })).toBeVisible();
     await expect(page.getByText("BO3", { exact: true })).toBeVisible();
   });
@@ -617,15 +631,28 @@ test.describe("N 人竞速扩展", () => {
     ).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     if (testInfo.project.name === "mobile-chromium") {
+      const navigation = page.getByRole("navigation", { name: "站点导航" });
+      const toggle = page.getByRole("button", { name: "展开站点导航" });
+      await toggle.click();
+      const links = navigation.locator("[data-site-nav-links]");
+      await expect(links).toHaveCSS("visibility", "visible");
       const inputBar = await page
         .locator("[data-guess-input-bar]")
         .boundingBox();
-      const navigation = await page
-        .locator("[data-site-nav-links]")
-        .boundingBox();
+      const navigationBox = await navigation.boundingBox();
+      const linksBox = await links.boundingBox();
       expect(inputBar).not.toBeNull();
-      expect(navigation).not.toBeNull();
-      expect(inputBar!.y + inputBar!.height).toBeLessThanOrEqual(navigation!.y);
+      expect(navigationBox).not.toBeNull();
+      expect(linksBox).not.toBeNull();
+      expect(navigationBox!.y).toBeLessThanOrEqual(1);
+      expect(linksBox!.y).toBeGreaterThanOrEqual(navigationBox!.y);
+      expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(
+        navigationBox!.y + navigationBox!.height + 1,
+      );
+      expect(inputBar!.y).toBeGreaterThanOrEqual(
+        navigationBox!.y + navigationBox!.height,
+      );
+      await page.getByRole("button", { name: "关闭站点导航" }).click();
     }
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-8-player.png", {

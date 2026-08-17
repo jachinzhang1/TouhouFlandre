@@ -12,6 +12,11 @@ test.describe("站点骨架", () => {
     await expect(
       page.getByRole("navigation", { name: "站点导航" }),
     ).toBeVisible();
+    for (const label of ["每日题", "随机题", "其他模式", "题库索引"]) {
+      await expect(
+        page.getByRole("link", { name: new RegExp(label) }),
+      ).toBeVisible();
+    }
   });
 
   test("未知路径渲染 404 页", async ({ page }) => {
@@ -24,9 +29,46 @@ test.describe("站点骨架", () => {
   test("导航高亮随路由切换", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".nav-link.active")).toContainText("首页");
-    await page.locator(".nav-link", { hasText: "搜索" }).click();
+    const mobileToggle = page.getByRole("button", {
+      name: "展开站点导航",
+    });
+    if (await mobileToggle.isVisible()) await mobileToggle.click();
+    await page.getByRole("link", { name: "搜索" }).click();
     await expect(page).toHaveURL(/\/search/);
     await expect(page.locator(".nav-link.active")).toContainText("搜索");
+  });
+
+  test("移动端导航在页眉内展开并在跳转后收起", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/single");
+
+    const navigation = page.getByRole("navigation", { name: "站点导航" });
+    const toggle = page.getByRole("button", { name: "展开站点导航" });
+    const links = navigation.locator(".nav-links");
+    await expect(toggle).toBeVisible();
+    await expect(links).toHaveCSS("visibility", "hidden");
+
+    await toggle.click();
+    await expect(
+      page.getByRole("button", { name: "关闭站点导航" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(links).toHaveCSS("visibility", "visible");
+    const navigationBox = await navigation.boundingBox();
+    const linksBox = await links.boundingBox();
+    expect(navigationBox).not.toBeNull();
+    expect(linksBox).not.toBeNull();
+    expect(navigationBox!.y).toBeLessThanOrEqual(1);
+    expect(linksBox!.y).toBeGreaterThanOrEqual(navigationBox!.y);
+    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(
+      navigationBox!.y + navigationBox!.height + 1,
+    );
+    await page.getByRole("link", { name: "统计" }).click();
+
+    await expect(page).toHaveURL(/\/stats/);
+    await expect(
+      page.getByRole("button", { name: "展开站点导航" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    await expect(links).toHaveCSS("visibility", "hidden");
   });
 });
 
@@ -74,23 +116,22 @@ test.describe("每日题游戏流程", () => {
     await expect(page.locator(".status-strip")).toContainText(/进度\s*1\/8/);
 
     // 伪造旧会话 id → 404 → 自动重建
-      await page.evaluate(() => {
-        localStorage.setItem(
-          "touhouflandre:daily-session",
-          JSON.stringify({
-            id: "stale-session-from-vite",
-            puzzleKey: "2026-08-05",
-          }),
-        );
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "touhouflandre:daily-session",
+        JSON.stringify({
+          id: "stale-session-from-vite",
+          puzzleKey: "2026-08-05",
+        }),
+      );
     });
     await page.reload();
     await expect(page.locator(".status-strip")).toContainText(/进度\s*0\/8/);
   });
 
-  test("模式切换创建随机题新局", async ({ page }) => {
-    await page.goto("/single/daily");
-    await expect(page.locator(".status-strip")).toContainText("进行中");
-    await page.locator(".mode-tab", { hasText: "随机题" }).click();
+  test("模式入口创建随机题新局", async ({ page }) => {
+    await page.goto("/single");
+    await page.getByRole("link", { name: /随机题/ }).click();
     await expect(page).toHaveURL(/\/single\/random/);
     await expect(page.locator(".status-strip")).toContainText(/进度\s*0\/8/);
     await expect(page.locator(".status-strip")).toContainText("随机题");
