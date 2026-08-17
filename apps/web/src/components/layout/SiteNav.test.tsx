@@ -46,6 +46,7 @@ describe("SiteNav", () => {
   });
 
   it("切换移动端导航并在导航后转移焦点", async () => {
+    mockMobileViewport();
     mockAnnouncementSummary([]);
     const { container } = render(
       <>
@@ -60,6 +61,7 @@ describe("SiteNav", () => {
 
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
+    expect(navigation.getAttribute("data-mobile-presentation")).toBe("none");
     toggle.focus();
     fireEvent.click(toggle);
     expect(
@@ -68,11 +70,31 @@ describe("SiteNav", () => {
         .getAttribute("aria-expanded"),
     ).toBe("true");
     expect(navigation.getAttribute("data-mobile-menu-open")).toBe("true");
+    expect(navigation.getAttribute("data-mobile-presentation")).toBe(
+      "navigation",
+    );
     expect(container.querySelector(".site-nav-menu-icon")).toBeTruthy();
     expect(container.querySelector(".site-nav-close-icon")).toBeTruthy();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
     expect(document.activeElement).toBe(toggle);
+    expect(navigation.getAttribute("data-mobile-presentation")).toBe("none");
+    await fireEvent.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
+    expect(navigation.getAttribute("data-mobile-presentation")).toBe("palette");
+    expect(
+      screen
+        .getByRole("button", { name: "关闭主题颜色" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(screen.getAllByRole("button", { name: /主题色/ })).toHaveLength(6);
+    expect(
+      container.querySelector(
+        '.appearance-swatch[data-selected="true"] .lucide-check',
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "关闭主题颜色" }));
+    expect(navigation.getAttribute("data-mobile-presentation")).toBe("none");
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole("link", { name: "游戏" }), {
       ctrlKey: true,
@@ -152,4 +174,21 @@ function mockAnnouncementSummary(
       ),
     ),
   );
+}
+
+function mockMobileViewport() {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: query === "(max-width: 680px)",
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 }

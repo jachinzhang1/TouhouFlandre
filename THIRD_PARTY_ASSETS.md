@@ -21,8 +21,10 @@
 | 项目     | 内容                                      |
 | -------- | ----------------------------------------- |
 | 素材     | 首页封面图                                |
-| 来源     | Pixiv 作品 50752377                       |
-| 来源链接 | https://www.pixiv.net/artworks/50752377   |
+| 来源     | Pixiv 作品 56866592                       |
+| 来源链接 | https://www.pixiv.net/artworks/56866592   |
+| 画师     | 羽々斬（Pixiv 用户 2179695）              |
+| 画师主页 | https://www.pixiv.net/users/2179695       |
 | 仓库位置 | `apps/web/public/hero-touhou-collage.jpg` |
 | 用途     | 首页首屏背景视觉                          |
 | 授权状态 | 需继续核对原作者许可与再分发条件          |

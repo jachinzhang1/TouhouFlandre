@@ -2,11 +2,13 @@
 
 import { SiGithub } from "@icons-pack/react-simple-icons";
 import { Link as LinkIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { YinYangMark } from "./YinYangMark";
 import { api } from "../../lib/api";
 import { VisualAlign } from "./VisualAlign";
+import { HOME_ARTWORK_CREDIT } from "../../lib/homeArtworkCredit";
 
 let siteVisitPromise: Promise<number | null> | null = null;
 
@@ -25,6 +27,8 @@ function recordSiteVisitOnce() {
 }
 
 export function SiteFooter() {
+  const pathname = usePathname();
+  const showArtworkCredit = pathname === "/";
   const [visitCount, setVisitCount] = useState<number | null>(null);
   const footerMetaViewportRef = useRef<HTMLSpanElement>(null);
   const footerMetaContentRef = useRef<HTMLSpanElement>(null);
@@ -75,7 +79,9 @@ export function SiteFooter() {
   }, [visitCount]);
 
   return (
-    <footer className="site-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-[0.72rem]">
+    <footer
+      className={`site-footer flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3 text-[0.72rem]${showArtworkCredit ? " site-footer-home" : ""}`}
+    >
       <span
         className="site-footer-meta-viewport min-w-0 basis-96 grow"
         ref={footerMetaViewportRef}
@@ -95,6 +101,7 @@ export function SiteFooter() {
           </span>
         </span>
       </span>
+      {showArtworkCredit ? <HomeArtworkCredit /> : null}
       <VisualAlign
         className="site-footer-actions flex min-w-0 flex-wrap items-center justify-end gap-2"
         edge="responsive"
@@ -120,6 +127,32 @@ export function SiteFooter() {
         </Link>
       </VisualAlign>
     </footer>
+  );
+}
+
+function HomeArtworkCredit() {
+  return (
+    <span className="site-footer-artwork-credit">
+      <Link
+        aria-label={`背景图 Pixiv 作品 ${HOME_ARTWORK_CREDIT.artworkId}`}
+        className="site-footer-credit-link"
+        href={HOME_ARTWORK_CREDIT.artworkUrl}
+        rel="noreferrer"
+        target="_blank"
+      >
+        背景图 PID：{HOME_ARTWORK_CREDIT.artworkId}
+      </Link>
+      <FooterSeparator />
+      <Link
+        aria-label={`背景图画师 Pixiv 用户 ${HOME_ARTWORK_CREDIT.artistId}`}
+        className="site-footer-credit-link"
+        href={HOME_ARTWORK_CREDIT.artistUrl}
+        rel="noreferrer"
+        target="_blank"
+      >
+        画师：{HOME_ARTWORK_CREDIT.artistName}
+      </Link>
+    </span>
   );
 }
 

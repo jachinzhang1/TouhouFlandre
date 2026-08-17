@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Moon, Palette, Sun } from "lucide-react";
+import { Check, Moon, Palette, Sun } from "lucide-react";
 import { Paper } from "@/components/paper";
 import {
   applyAppearance,
@@ -76,7 +76,13 @@ function getCollapsedFanTriangle(index: number) {
   return `polygon(100% ${FAN_APEX_Y}%, ${point}% 100%, ${point}% 100%)`;
 }
 
-export function AppearanceSwitcher() {
+export function AppearanceSwitcher({
+  mobilePaletteOpen = false,
+  onMobilePaletteOpenChange,
+}: {
+  mobilePaletteOpen?: boolean;
+  onMobilePaletteOpenChange?: (open: boolean) => void;
+}) {
   const [settings, setSettings] = useState<AppearanceSettings>(defaultSettings);
   const [appearance, setAppearance] =
     useState<ResolvedAppearance>(defaultAppearance);
@@ -84,7 +90,8 @@ export function AppearanceSwitcher() {
   const [hoverOpen, setHoverOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const paletteVisible = paletteOpen || hoverOpen;
+  const internalPaletteVisible = paletteOpen || hoverOpen;
+  const paletteVisible = mobilePaletteOpen || internalPaletteVisible;
 
   useEffect(() => {
     const nextSettings = readAppearanceSettings();
@@ -113,8 +120,8 @@ export function AppearanceSwitcher() {
     return () => media.removeEventListener("change", handleSystemModeChange);
   }, [settings]);
   useEffect(() => {
+    if (!internalPaletteVisible) return;
     const closePalette = (restoreToggleFocus = false) => {
-      if (!paletteVisible) return;
       setPaletteOpen(false);
       setHoverOpen(false);
       if (restoreToggleFocus) {
@@ -138,7 +145,7 @@ export function AppearanceSwitcher() {
       }
     };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !paletteVisible) return;
+      if (event.key !== "Escape") return;
       event.preventDefault();
       closePalette(true);
     };
@@ -149,7 +156,7 @@ export function AppearanceSwitcher() {
       document.removeEventListener("pointerdown", handleOutsidePointer);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [paletteVisible]);
+  }, [internalPaletteVisible]);
 
   const activeTheme = useMemo(
     () =>
@@ -183,6 +190,14 @@ export function AppearanceSwitcher() {
     applyAppearance(nextAppearance);
   };
   const handleToggleClick = () => {
+    const usesMobilePresentation =
+      Boolean(onMobilePaletteOpenChange) &&
+      window.matchMedia("(max-width: 680px)").matches;
+    if (usesMobilePresentation) {
+      if (mobilePaletteOpen) handleModeToggle();
+      else onMobilePaletteOpenChange?.(true);
+      return;
+    }
     if (!paletteOpen) {
       setPaletteOpen(true);
       return;
@@ -194,7 +209,7 @@ export function AppearanceSwitcher() {
     <div
       ref={switcherRef}
       className="appearance-switcher"
-      data-open={paletteOpen ? "true" : "false"}
+      data-open={mobilePaletteOpen || paletteOpen ? "true" : "false"}
       data-hovered={hoverOpen ? "true" : "false"}
       style={
         {
@@ -225,7 +240,7 @@ export function AppearanceSwitcher() {
         type="button"
         className="appearance-toggle"
         aria-label={
-          paletteOpen
+          mobilePaletteOpen || paletteOpen
             ? appearance.mode === "dark"
               ? "切换到浅色模式"
               : "切换到深色模式"
@@ -233,9 +248,13 @@ export function AppearanceSwitcher() {
         }
         aria-controls="appearance-palette"
         aria-expanded={paletteVisible}
-        aria-pressed={paletteOpen ? appearance.mode === "dark" : undefined}
+        aria-pressed={
+          mobilePaletteOpen || paletteOpen
+            ? appearance.mode === "dark"
+            : undefined
+        }
         title={
-          paletteOpen
+          mobilePaletteOpen || paletteOpen
             ? appearance.mode === "dark"
               ? "切换到浅色模式"
               : "切换到深色模式"
@@ -290,14 +309,25 @@ export function AppearanceSwitcher() {
                   "--swatch-clip": triangleClip,
                 } as CSSProperties
               }
-              aria-hidden={!paletteVisible || selected || undefined}
+              aria-hidden={
+                !paletteVisible || (selected && !mobilePaletteOpen) || undefined
+              }
               aria-label={themeControlLabel(theme.label)}
+              aria-pressed={selected}
               disabled={selected}
               tabIndex={paletteVisible && !selected ? 0 : -1}
               title={themeControlLabel(theme.label)}
               onClick={() => handleColorSelect(theme.id)}
             >
               <span className="sr-only">{themeControlLabel(theme.label)}</span>
+              {selected ? (
+                <Check
+                  className="appearance-swatch-check"
+                  size={18}
+                  strokeWidth={2.4}
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
           );
         })}

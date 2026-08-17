@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SiBilibili, SiGithub, SiPixiv } from "@icons-pack/react-simple-icons";
+import { HOME_ARTWORK_CREDIT } from "../../lib/homeArtworkCredit";
 
 type IconComponent = (props: {
   "aria-hidden"?: boolean | "true" | "false";
@@ -50,12 +51,18 @@ export const creditSections: CreditSectionDefinition[] = [
         ],
       },
       {
-        title: "うらないし - Pixiv 作品 50752377",
-        subtitle: "首页视觉素材来源",
+        title: `${HOME_ARTWORK_CREDIT.artistName} - Pixiv 作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
+        subtitle: "首页背景视觉素材来源",
         links: [
           {
-            name: "Pixiv",
-            href: "https://www.pixiv.net/artworks/50752377",
+            name: `作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
+            href: HOME_ARTWORK_CREDIT.artworkUrl,
+            Icon: SiPixiv,
+            className: platformStyles.pixiv,
+          },
+          {
+            name: `画师 ${HOME_ARTWORK_CREDIT.artistName}`,
+            href: HOME_ARTWORK_CREDIT.artistUrl,
             Icon: SiPixiv,
             className: platformStyles.pixiv,
           },

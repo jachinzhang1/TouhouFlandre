@@ -56,12 +56,18 @@ const NAV_ITEMS: {
   },
 ];
 
+type MobilePresentation = "navigation" | "palette" | null;
+
 export function SiteNav() {
   const pathname = usePathname();
   const unreadAnnouncements = useAnnouncementUnreadCount();
   const navLinksRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobilePresentation, setMobilePresentation] =
+    useState<MobilePresentation>(null);
+  const mobileMenuOpen = mobilePresentation === "navigation";
+  const mobilePaletteOpen = mobilePresentation === "palette";
+  const mobilePresentationOpen = mobilePresentation !== null;
   const [activeIndicatorHovered, setActiveIndicatorHovered] = useState(false);
   const [indicatorMoving, setIndicatorMoving] = useState(false);
   const hasActiveNavItem = NAV_ITEMS.some((item) => item.isActive(pathname));
@@ -77,19 +83,19 @@ export function SiteNav() {
 
   useEffect(() => {
     setActiveIndicatorHovered(false);
-    setMobileMenuOpen(false);
+    setMobilePresentation(null);
   }, [pathname]);
 
   useEffect(() => {
-    if (!mobileMenuOpen) return;
+    if (!mobilePresentationOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setMobileMenuOpen(false);
+      setMobilePresentation(null);
       toggleRef.current?.focus();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [mobileMenuOpen]);
+  }, [mobilePresentationOpen]);
 
   useLayoutEffect(() => {
     const navLinks = navLinksRef.current;
@@ -167,13 +173,14 @@ export function SiteNav() {
       aria-label="站点导航"
       className="site-nav"
       data-mobile-menu-open={mobileMenuOpen ? "true" : "false"}
+      data-mobile-presentation={mobilePresentation ?? "none"}
     >
       <span className="site-nav-paper-layer" aria-hidden="true" />
       <Link
         aria-label="返回首页"
         className="site-brand"
         href="/"
-        onClick={() => setMobileMenuOpen(false)}
+        onClick={() => setMobilePresentation(null)}
       >
         <Paper
           className="brand-paper-mark"
@@ -191,13 +198,28 @@ export function SiteNav() {
         </span>
       </Link>
       <div className="site-nav-actions">
-        <AppearanceSwitcher />
+        <AppearanceSwitcher
+          mobilePaletteOpen={mobilePaletteOpen}
+          onMobilePaletteOpenChange={(open) =>
+            setMobilePresentation(open ? "palette" : null)
+          }
+        />
         <button
-          aria-controls="site-navigation-links"
-          aria-expanded={mobileMenuOpen}
-          aria-label={mobileMenuOpen ? "关闭站点导航" : "展开站点导航"}
+          aria-controls="site-navigation-links appearance-palette"
+          aria-expanded={mobilePresentationOpen}
+          aria-label={
+            mobilePresentation === "palette"
+              ? "关闭主题颜色"
+              : mobileMenuOpen
+                ? "关闭站点导航"
+                : "展开站点导航"
+          }
           className="site-nav-toggle"
-          onClick={() => setMobileMenuOpen((open) => !open)}
+          onClick={() =>
+            setMobilePresentation((current) =>
+              current === null ? "navigation" : null,
+            )
+          }
           ref={toggleRef}
           type="button"
         >
@@ -260,7 +282,7 @@ export function SiteNav() {
               href={item.href}
               key={item.label}
               onClick={() => {
-                setMobileMenuOpen(false);
+                setMobilePresentation(null);
                 if (mobileMenuOpen) {
                   document
                     .querySelector<HTMLElement>(".site-main")
