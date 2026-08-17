@@ -935,7 +935,7 @@ html[data-theme-mode="dark"] .appearance-swatch {
 .home-hero {
   background-color: var(--hero-bg);
   background-image: url("/hero-touhou-collage.jpg");
-  background-position: 48% top;
+  background-position: 48% 12%;
   background-size: cover;
 }
 

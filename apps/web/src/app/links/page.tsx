@@ -32,9 +32,9 @@ const assetCredits = [
   },
   {
     eyebrow: "首页封面图",
-    title: "pixiv 作品 50752377",
+    title: "pixiv 作品 56866592",
     description: "首页视觉素材来源",
-    href: "https://www.pixiv.net/artworks/50752377",
+    href: "https://www.pixiv.net/artworks/56866592",
     Icon: PixivIcon,
     iconClassName: platformStyles.pixiv,
   },
