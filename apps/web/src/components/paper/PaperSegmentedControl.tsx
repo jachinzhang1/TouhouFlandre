@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Paper } from "../Paper";
+import { Paper, type PaperTone } from "./Paper";
 
 export function PaperSegmentGroup({
   children,
@@ -23,35 +23,46 @@ export function PaperSegmentGroup({
 
 export function PaperSegmentButton({
   active,
+  ariaDescribedBy,
   ariaLabel,
   children,
   className = "",
   disabled = false,
+  folded = active,
+  pattern = true,
   onClick,
+  tone = "default",
   title,
 }: {
   active: boolean;
+  ariaDescribedBy?: string;
   ariaLabel?: string;
   className?: string;
   disabled?: boolean;
+  folded?: boolean;
+  pattern?: boolean;
   children: ReactNode;
   onClick: () => void;
   title?: string;
+  tone?: PaperTone;
 }) {
   return (
     <Paper
       animateOnMount={false}
       ariaLabel={ariaLabel}
+      ariaDescribedBy={ariaDescribedBy}
       ariaPressed={active}
       as="button"
       className={`paper-segment-button${active ? " active" : ""}${className ? ` ${className}` : ""}`}
       disabled={disabled}
-      folded={active}
+      folded={folded}
       foldSize={12}
       onClick={onClick}
+      pattern={pattern}
       sticker={false}
       title={title}
-      unfoldOnHover={active && !disabled}
+      unfoldOnHover={folded && active && !disabled}
+      tone={active ? tone : "default"}
       variant={active ? "tinted" : "plain"}
     >
       {children}
@@ -59,6 +70,19 @@ export function PaperSegmentButton({
   );
 }
 
-export function PaperSegmentSeparator() {
-  return <span className="paper-segment-separator" aria-hidden="true" />;
+export type PaperSegmentSeparatorOrientation =
+  "vertical" | "horizontal" | "responsive";
+
+export function PaperSegmentSeparator({
+  orientation = "vertical",
+}: {
+  orientation?: PaperSegmentSeparatorOrientation;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className="paper-segment-separator"
+      data-orientation={orientation}
+    />
+  );
 }

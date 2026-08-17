@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -221,6 +222,7 @@ describe("StatsDashboard", () => {
       ),
     ).toBeNull();
     const historyTable = screen.getByRole("table", { name: "游玩记录" });
+    expect(historyTable.dataset.paperResponsiveStacked).toBe("true");
     const historyPaper = historyTable.closest(
       ".stats-history-paper",
     ) as HTMLElement;
@@ -276,11 +278,11 @@ describe("StatsDashboard", () => {
     expect(within(historyHeader).getAllByRole("columnheader")).toHaveLength(8);
     const historyRow = within(historyTable).getByRole("row");
     expect(within(historyRow).getAllByRole("cell")).toHaveLength(8);
-    expect(
-      within(historyRow)
-        .getByText("成功")
-        .closest(".stats-history-outcome-success"),
-    ).toBeTruthy();
+    const successCell = within(historyRow)
+      .getByText("成功")
+      .closest(".stats-history-outcome-success") as HTMLElement;
+    expect(successCell).toBeTruthy();
+    expect(successCell.classList.contains("paper-tinted-cell")).toBe(true);
     expect(
       within(historyRow).queryByRole("button", { name: /局详情/ }),
     ).toBeNull();
@@ -305,12 +307,19 @@ describe("StatsDashboard", () => {
     render(<StatsDashboard />);
 
     const details = await screen.findByRole("button", { name: "查看局详情" });
+    expect(details.getAttribute("aria-expanded")).toBe("false");
     expect(details.textContent).toContain("详情");
     expect(details.className).not.toContain("paper-button-compact");
     expect(details.closest(".stats-history-mode")).toBeTruthy();
     await userEvent.click(details);
-    expect(await screen.findByText("第 1 局")).toBeTruthy();
+    const firstRound = await screen.findByText("第 1 局");
+    expect(firstRound.closest(".paper-data-table-detail")).toBeTruthy();
     expect(screen.getByRole("button", { name: "收起局详情" })).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "收起局详情" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
   });
 
   it("展示积分制名次、人数和逐局得分", async () => {
@@ -334,7 +343,7 @@ describe("StatsDashboard", () => {
     render(<StatsDashboard />);
 
     const next = await screen.findByRole("button", { name: "下一页" });
-    expect(screen.getByText("1 / 2")).toBeTruthy();
+    expect(await screen.findByText("1 / 2")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "上一页" }) as HTMLButtonElement)
         .disabled,
@@ -422,12 +431,12 @@ describe("StatsDashboard", () => {
     expect(
       screen
         .getByRole("button", { name: "导出" })
-        .querySelector(".lucide-upload"),
+        .querySelector(".lucide-download"),
     ).toBeTruthy();
     expect(
       screen
         .getByRole("button", { name: "导入" })
-        .querySelector(".lucide-download"),
+        .querySelector(".lucide-upload"),
     ).toBeTruthy();
 
     const formatPicker = screen.getByRole("combobox", { name: "多人赛制" });
@@ -443,11 +452,14 @@ describe("StatsDashboard", () => {
         .closest(".paper-surface")
         ?.getAttribute("data-paper-variant"),
     ).toBe("tinted");
+    fireEvent.click(screen.getByRole("button", { name: "每日" }));
+    expect((formatPicker as HTMLSelectElement).disabled).toBe(true);
+    expect((modePicker as HTMLSelectElement).disabled).toBe(true);
 
     const from = screen.getByLabelText("开始日期");
     const to = screen.getByLabelText("结束日期");
-    expect(from.closest(".stats-date-picker")).toBeTruthy();
-    expect(to.closest(".stats-date-picker")).toBeTruthy();
+    expect(from.closest(".paper-date-picker")).toBeTruthy();
+    expect(to.closest(".paper-date-picker")).toBeTruthy();
     const fromPaper = from.closest(".stats-date-paper-button") as HTMLElement;
     const toPaper = to.closest(".stats-date-paper-button") as HTMLElement;
     const clearDate = screen.getByRole("button", { name: "清除日期筛选" });
@@ -455,9 +467,11 @@ describe("StatsDashboard", () => {
     expect(fromPaper.dataset.paperFolded).toBe("false");
     expect(toPaper.dataset.paperVariant).toBe("plain");
     expect(clearDate.getAttribute("aria-disabled")).toBe("true");
-    expect((clearDate as HTMLButtonElement).disabled).toBe(false);
+    expect((clearDate as HTMLButtonElement).disabled).toBe(true);
     expect(document.querySelector(".stats-date-icon")).toBeNull();
-    expect(document.querySelectorAll(".stats-date-separator")).toHaveLength(1);
+    expect(
+      document.querySelectorAll(".stats-date-range > .paper-segment-separator"),
+    ).toHaveLength(1);
     expect(document.querySelector(".stats-date-connector")).toBeTruthy();
 
     fireEvent.change(from, { target: { value: "2026-08-01" } });
@@ -496,6 +510,22 @@ describe("StatsDashboard", () => {
     expect(
       failureCell.classList.contains("stats-history-outcome-success"),
     ).toBe(false);
+    expect(failureCell.classList.contains("paper-tinted-cell")).toBe(true);
+    const drawRecord: SingleStatsRecord = {
+      ...record,
+      id: "record-draw",
+      startedAt: "2026-08-07T12:20:30Z",
+      endedAt: "2026-08-07T12:21:00Z",
+      outcome: "draw",
+      round: { ...record.round, result: "draw" },
+    };
+    await act(() => statsDb.records.put(drawRecord));
+    const draw = await screen.findByText("平局");
+    expect(
+      draw
+        .closest(".stats-history-outcome-cell")
+        ?.classList.contains("stats-history-outcome-draw"),
+    ).toBe(true);
     const sequence = screen.getAllByLabelText(/猜测角色：博丽灵梦/)[0];
     expect(sequence.className).toContain("gap-1");
     expect(sequence.querySelector("[class*='-ml-']")).toBeNull();
@@ -504,6 +534,11 @@ describe("StatsDashboard", () => {
   it("清除数据要求确认且不直接误触执行", async () => {
     render(<StatsDashboard />);
     await screen.findByLabelText(/猜测角色：博丽灵梦/);
+    expect(
+      screen
+        .getByRole("button", { name: "清除数据" })
+        .classList.contains("page-header-action-danger"),
+    ).toBe(true);
     await userEvent.click(screen.getByRole("button", { name: "清除数据" }));
     expect(await statsDb.records.count()).toBe(1);
     expect(

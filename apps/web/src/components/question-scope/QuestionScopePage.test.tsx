@@ -107,6 +107,18 @@ describe("QuestionScopePage", () => {
     expect(sticky?.contains(screen.getByRole("button", { name: "取消" }))).toBe(
       true,
     );
+    const actionGroup = within(sticky as HTMLElement).getByRole("group", {
+      name: "题库设置操作",
+    });
+    expect(
+      actionGroup.querySelectorAll(".paper-segment-separator"),
+    ).toHaveLength(1);
+    expect(
+      within(actionGroup).getByRole("button", { name: "取消" }).className,
+    ).toContain("paper-button-plain");
+    expect(
+      within(actionGroup).getByRole("button", { name: "应用设置" }).className,
+    ).toContain("paper-button-filled");
 
     const sections = container.querySelectorAll(".question-scope-section");
     expect(sections).toHaveLength(3);
@@ -183,10 +195,29 @@ describe("QuestionScopePage", () => {
     expect(localStorage.getItem(QUESTION_SCOPE_STORAGE_KEY)).toBeTruthy();
   });
 
+  it("keeps grouped actions visible over a flat loading state", () => {
+    mocks.catalogFull.mockReturnValue(new Promise(() => undefined));
+    const { container } = render(<QuestionScopePage backHref="/single" />);
+
+    const loading = screen.getByRole("status");
+    expect(loading.textContent).toContain("正在读取题库");
+    expect(loading.closest(".paper-surface")).toBeNull();
+    expect(container.querySelector(".question-scope-state")).toBe(loading);
+    expect(screen.getByRole("button", { name: "取消" })).toBeTruthy();
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "应用设置",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+  });
+
   it("loads a room scope as a read-only standalone page", async () => {
-    mocks.roomInfo.mockResolvedValue({
-      questionScope: normalizeQuestionScope(null, snapshot).config,
-    });
+    const roomScope = normalizeQuestionScope(null, snapshot).config;
+    roomScope.rules.turnLimit.enabled = true;
+    roomScope.rules.guessLimit.enabled = true;
+    mocks.roomInfo.mockResolvedValue({ questionScope: roomScope });
     render(<QuestionScopePage backHref="/multi" roomCode="ABC123" />);
 
     expect(
@@ -196,6 +227,63 @@ describe("QuestionScopePage", () => {
     expect(screen.queryByRole("button", { name: "导出" })).toBeNull();
     expect(screen.queryByRole("button", { name: "导入" })).toBeNull();
     expect(screen.queryByRole("button", { name: "应用设置" })).toBeNull();
+    expect(screen.getByText("自定义")).toBeTruthy();
+    const normalPreset = screen.getByRole("radio", { name: /Normal/ });
+    expect((normalPreset as HTMLButtonElement).disabled).toBe(true);
+    expect(normalPreset.getAttribute("data-paper-variant")).toBe("plain");
+    expect(normalPreset.getAttribute("data-paper-folded")).toBe("false");
+    expect(normalPreset.getAttribute("data-paper-preserve-appearance")).toBe(
+      "true",
+    );
+    const selectedWork = screen.getByRole("checkbox", {
+      name: /东方红魔乡/,
+    });
+    expect((selectedWork as HTMLButtonElement).disabled).toBe(true);
+    expect(selectedWork.getAttribute("data-paper-variant")).toBe("tinted");
+    expect(selectedWork.getAttribute("data-paper-preserve-appearance")).toBe(
+      "true",
+    );
+    for (const control of [
+      screen.getByRole("slider", { name: "设置单手限时滑块" }),
+      screen.getByRole("spinbutton", { name: "设置单手限时数值" }),
+      screen.getByRole("slider", { name: "设置猜测次数限制滑块" }),
+      screen.getByRole("spinbutton", { name: "设置猜测次数限制数值" }),
+    ]) {
+      expect(
+        control
+          .closest(".paper-surface")
+          ?.getAttribute("data-paper-preserve-appearance"),
+      ).toBe("true");
+    }
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "按角色筛选" }));
+    const selectedCharacter = screen.getByRole("checkbox", {
+      name: /博丽灵梦/,
+    });
+    expect((selectedCharacter as HTMLButtonElement).disabled).toBe(true);
+    expect(selectedCharacter.getAttribute("data-paper-variant")).toBe("tinted");
+    expect(
+      selectedCharacter.getAttribute("data-paper-preserve-appearance"),
+    ).toBe("true");
     expect(screen.getByRole("button", { name: "返回" })).toBeTruthy();
+  });
+
+  it("preserves a selected preset on a read-only room scope", async () => {
+    const roomScope = normalizeQuestionScope(null, snapshot).config;
+    mocks.roomInfo.mockResolvedValue({ questionScope: roomScope });
+    render(<QuestionScopePage backHref="/multi" roomCode="ABC123" />);
+
+    expect(
+      await screen.findByRole("heading", { name: "房主题库设置" }),
+    ).toBeTruthy();
+    const selectedPreset = screen.getByRole("radio", { name: /Normal/ });
+    await waitFor(() =>
+      expect(selectedPreset.getAttribute("data-paper-variant")).toBe("tinted"),
+    );
+    expect(selectedPreset.getAttribute("data-paper-folded")).toBe("true");
+    expect(selectedPreset.getAttribute("data-paper-preserve-appearance")).toBe(
+      "true",
+    );
   });
 });

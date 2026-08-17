@@ -1,4 +1,4 @@
-import { Paper } from "../Paper";
+import { Paper } from "@/components/paper";
 import type { CreditEntry } from "./creditData";
 
 export function CreditEntryCard({
@@ -11,7 +11,7 @@ export function CreditEntryCard({
   return (
     <Paper
       as="article"
-      className="credit-entry-card grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand text-ink"
+      className="credit-entry-card grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand"
       foldSize={18}
       stackOrder={stackOrder}
       variant="plain"
@@ -25,7 +25,7 @@ export function CreditEntryCard({
           {entry.subtitle}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-2">
+      <span className="credit-entry-actions flex shrink-0 items-center gap-2">
         {entry.links.map(({ className, href, Icon, name }) => (
           <a
             aria-label={`${entry.title} 的 ${name} 主页`}

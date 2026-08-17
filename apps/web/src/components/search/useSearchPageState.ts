@@ -5,17 +5,6 @@ import type { CharacterSort, SortDirection, Work } from "@touhouflandre/shared";
 import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 import type { CharacterView, WorkFilterMode } from "./types";
 
-const initialParams =
-  typeof window === "undefined"
-    ? new URLSearchParams()
-    : new URLSearchParams(window.location.search);
-const initialView: CharacterView =
-  initialParams.get("view") === "list" ? "list" : "grid";
-const initialSort: CharacterSort =
-  initialParams.get("sort") === "name" ? "name" : "appearance";
-const initialDirection: SortDirection =
-  initialParams.get("direction") === "desc" ? "desc" : "asc";
-
 const compareWorks = (left: Work, right: Work) =>
   left.releaseYear - right.releaseYear ||
   (left.mainlineIndex ?? Number.MAX_SAFE_INTEGER) -
@@ -23,7 +12,15 @@ const compareWorks = (left: Work, right: Work) =>
   left.shortName.localeCompare(right.shortName) ||
   left.id.localeCompare(right.id);
 
-export function useSearchPageState() {
+export function useSearchPageState({
+  initialDirection,
+  initialSort,
+  initialView,
+}: {
+  initialDirection: SortDirection;
+  initialSort: CharacterSort;
+  initialView: CharacterView;
+}) {
   const catalog = useCatalogSummary();
   const [query, setQuery] = useState("");
   const [view, setView] = useState<CharacterView>(initialView);

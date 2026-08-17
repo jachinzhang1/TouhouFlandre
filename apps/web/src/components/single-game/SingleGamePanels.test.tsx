@@ -30,6 +30,24 @@ const timeoutGuess: PublicGameSession["guesses"][number] = {
   feedback: [],
 };
 
+const correctGuess: PublicGameSession["guesses"][number] = {
+  kind: "guess",
+  guessId: "flandre_scarlet",
+  guessName: "芙兰朵露·斯卡蕾特",
+  isCorrect: true,
+  feedback: [],
+};
+
+const wonHistorySession = {
+  ...session([reimuGuess, correctGuess]),
+  status: "won",
+} as PublicGameSession;
+
+const lostHistorySession = {
+  ...session([reimuGuess, timeoutGuess]),
+  status: "lost",
+} as PublicGameSession;
+
 describe("SingleGuessHistory", () => {
   it("keeps chronological rows at the bottom and follows each new guess", () => {
     const { rerender } = render(
@@ -70,11 +88,14 @@ describe("SingleGuessHistory", () => {
     expect(
       viewport.querySelector(".single-game-history-fade-spacer"),
     ).toBeTruthy();
+    const footer = viewport.querySelector("tfoot");
+    expect(footer?.classList.contains("paper-data-table-header")).toBe(true);
+    expect(footer?.previousElementSibling?.tagName).toBe("TBODY");
+    expect(within(footer as HTMLElement).getByText("角色")).toBeTruthy();
     expect(
-      viewport
-        .querySelector("thead")
-        ?.classList.contains("paper-data-table-header"),
-    ).toBe(true);
+      within(footer as HTMLElement).getByText("本次猜测用时"),
+    ).toBeTruthy();
+    expect(viewport.querySelector("thead")).toBeNull();
 
     Object.defineProperty(viewport, "scrollHeight", {
       configurable: true,
@@ -102,6 +123,12 @@ describe("SingleGuessHistory", () => {
       "超时跳过00:08",
     ]);
     expect(viewport.scrollTop).toBe(720);
+    viewport.scrollLeft = 24;
+    fireEvent.scroll(viewport);
+    expect(viewport.dataset.scrollX).toBe("true");
+    viewport.scrollLeft = 0;
+    fireEvent.scroll(viewport);
+    expect(viewport.dataset.scrollX).toBe("false");
     Object.defineProperty(viewport, "clientHeight", {
       configurable: true,
       value: 400,
@@ -112,5 +139,108 @@ describe("SingleGuessHistory", () => {
     viewport.scrollTop = 320;
     fireEvent.scroll(viewport);
     expect(viewport.dataset.scrollBottom).toBe("true");
+  });
+
+  it("hides the first-guess placeholder after a terminal empty session", () => {
+    render(
+      <SingleGuessHistory
+        session={{ ...session([]), status: "won" }}
+        visibleFields={[]}
+        guessCompletedElapsedMs={[]}
+        loading={false}
+        message=""
+      />,
+    );
+
+    const viewport = screen.getByRole("region", { name: "猜测记录" });
+    expect(viewport.querySelector(".empty-state")).toBeNull();
+    expect(screen.queryByText("等待第一次猜测")).toBeNull();
+  });
+
+  it("keeps the final correct guess clear and locks the won history to the bottom", () => {
+    const { rerender } = render(
+      <SingleGuessHistory
+        session={session([reimuGuess, correctGuess])}
+        visibleFields={[]}
+        guessCompletedElapsedMs={[4_000, 9_000]}
+        loading={false}
+        message=""
+      />,
+    );
+    const viewport = screen.getByRole("region", { name: "猜测记录" });
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      value: 720,
+    });
+
+    rerender(
+      <SingleGuessHistory
+        session={wonHistorySession}
+        visibleFields={[]}
+        guessCompletedElapsedMs={[4_000, 9_000]}
+        loading={false}
+        message=""
+      />,
+    );
+
+    expect(viewport.dataset.result).toBe("won");
+    expect(viewport.dataset.scrollBottom).toBe("true");
+    expect(viewport.dataset.scrollLocked).toBe("true");
+    expect(viewport.scrollTop).toBe(720);
+
+    const rows = within(
+      viewport.querySelector("tbody") as HTMLElement,
+    ).getAllByRole("row");
+    expect(rows[0].classList.contains("guess-history-obscured")).toBe(true);
+    expect(rows[1].classList.contains("guess-correct-row")).toBe(true);
+    expect(rows[1].classList.contains("guess-history-obscured")).toBe(false);
+
+    viewport.scrollTop = 120;
+    fireEvent.scroll(viewport);
+    expect(viewport.scrollTop).toBe(720);
+  });
+
+  it("keeps the final lost row clear and locks the history to the bottom", () => {
+    const { rerender } = render(
+      <SingleGuessHistory
+        session={session([reimuGuess, timeoutGuess])}
+        visibleFields={[]}
+        guessCompletedElapsedMs={[4_000, 12_000]}
+        loading={false}
+        message=""
+      />,
+    );
+    const viewport = screen.getByRole("region", { name: "猜测记录" });
+    Object.defineProperty(viewport, "scrollHeight", {
+      configurable: true,
+      value: 720,
+    });
+
+    rerender(
+      <SingleGuessHistory
+        session={lostHistorySession}
+        visibleFields={[]}
+        guessCompletedElapsedMs={[4_000, 12_000]}
+        loading={false}
+        message=""
+      />,
+    );
+
+    expect(viewport.dataset.result).toBe("lost");
+    expect(viewport.dataset.completed).toBe("true");
+    expect(viewport.dataset.scrollBottom).toBe("true");
+    expect(viewport.dataset.scrollLocked).toBe("true");
+    expect(viewport.scrollTop).toBe(720);
+
+    const rows = within(
+      viewport.querySelector("tbody") as HTMLElement,
+    ).getAllByRole("row");
+    expect(rows[0].classList.contains("guess-history-obscured")).toBe(true);
+    expect(rows[1].classList.contains("guess-final-row")).toBe(true);
+    expect(rows[1].classList.contains("guess-correct-row")).toBe(false);
+
+    viewport.scrollTop = 120;
+    fireEvent.scroll(viewport);
+    expect(viewport.scrollTop).toBe(720);
   });
 });

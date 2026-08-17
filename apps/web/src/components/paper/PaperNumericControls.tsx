@@ -1,18 +1,20 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { Paper } from "../Paper";
+import { Paper } from "./Paper";
 
 export function PaperSwitch({
   ariaLabel,
   checked,
   disabled = false,
   onChange,
+  preserveAppearanceWhenDisabled = false,
 }: {
   ariaLabel: string;
   checked: boolean;
   disabled?: boolean;
   onChange: (checked: boolean) => void;
+  preserveAppearanceWhenDisabled?: boolean;
 }) {
   return (
     <Paper
@@ -22,13 +24,17 @@ export function PaperSwitch({
       as="button"
       className="paper-switch-control"
       disabled={disabled}
+      preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={false}
-      foldSize={7}
       onClick={() => onChange(!checked)}
       role="switch"
       sticker={false}
       unfoldOnHover={false}
-      variant={checked && !disabled ? "tinted" : "plain"}
+      variant={
+        checked && (!disabled || preserveAppearanceWhenDisabled)
+          ? "tinted"
+          : "plain"
+      }
     >
       <span className="paper-switch-track" aria-hidden="true">
         <span className="paper-switch-thumb" />
@@ -43,6 +49,8 @@ export function PaperRange({
   max,
   min,
   onChange,
+  preserveAppearanceWhenDisabled = false,
+  step = 1,
   value,
 }: {
   ariaLabel: string;
@@ -50,6 +58,8 @@ export function PaperRange({
   max: number;
   min: number;
   onChange: (value: number) => void;
+  preserveAppearanceWhenDisabled?: boolean;
+  step?: number;
   value: number;
 }) {
   const progress = max === min ? 0 : ((value - min) / (max - min)) * 100;
@@ -62,6 +72,8 @@ export function PaperRange({
       animateOnMount={false}
       as="span"
       className="paper-range-control"
+      disabled={disabled}
+      preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={false}
       sticker={false}
       unfoldOnHover={false}
@@ -73,6 +85,7 @@ export function PaperRange({
         disabled={disabled}
         max={max}
         min={min}
+        step={step}
         onChange={(event) => onChange(Number(event.target.value))}
         style={style}
         type="range"
@@ -88,6 +101,7 @@ export function PaperNumberInput({
   max,
   min,
   onChange,
+  preserveAppearanceWhenDisabled = false,
   suffix,
   value,
 }: {
@@ -96,6 +110,7 @@ export function PaperNumberInput({
   max: number;
   min: number;
   onChange: (value: number) => void;
+  preserveAppearanceWhenDisabled?: boolean;
   suffix: ReactNode;
   value: number;
 }) {
@@ -104,6 +119,8 @@ export function PaperNumberInput({
       animateOnMount={false}
       as="span"
       className="paper-number-control"
+      disabled={disabled}
+      preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={false}
       sticker={false}
       unfoldOnHover={false}

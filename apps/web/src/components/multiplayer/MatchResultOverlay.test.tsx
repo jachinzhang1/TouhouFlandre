@@ -63,6 +63,11 @@ describe("MatchResultOverlay", () => {
         onLeave={vi.fn()}
       />,
     );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "返回大厅" }),
+    );
 
     expect(screen.getByText("2 : 1 : 0")).toBeTruthy();
     expect(screen.getByText("待确认：Two")).toBeTruthy();

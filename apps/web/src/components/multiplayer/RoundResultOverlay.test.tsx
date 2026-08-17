@@ -53,6 +53,7 @@ describe("RoundResultOverlay", () => {
     );
     expect(screen.getByText(/本局获胜/)).toBeTruthy();
     expect(screen.getByText("博丽灵梦")).toBeTruthy();
+    expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
   });
 
   it("点击查看对局本地关闭弹窗", () => {
@@ -65,6 +66,19 @@ describe("RoundResultOverlay", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "查看对局" }));
     expect(screen.queryByText(/本局获胜/)).toBeNull();
+  });
+
+  it("Escape dismisses the modal", () => {
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("显示下一局倒计时（服务端 startsAt 驱动）", () => {

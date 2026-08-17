@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ANNOUNCEMENTS_READ_STORAGE_KEY } from "../../announcements/readState";
 import { SiteNav } from "./SiteNav";
@@ -29,10 +29,56 @@ describe("SiteNav", () => {
     for (const label of ["首页", "游戏", "搜索", "统计", "公告"]) {
       expect(screen.getByRole("link", { name: label })).toBeTruthy();
     }
+    expect(
+      navigation.contains(screen.getByRole("button", { name: "打开主题颜色" })),
+    ).toBe(true);
     const activeCopy = container.querySelector(".nav-active-copy");
     expect(activeCopy?.getAttribute("aria-hidden")).toBe("true");
     expect(activeCopy?.querySelector("a")).toBeNull();
     expect(container.querySelector(".site-nav .paper-sticker")).toBeNull();
+    const contrastPapers = container.querySelectorAll(
+      '[data-paper-tone="contrast"]',
+    );
+    expect(contrastPapers).toHaveLength(2);
+    for (const paper of contrastPapers) {
+      expect(paper.getAttribute("data-paper-elevation")).toBe("accent");
+    }
+  });
+
+  it("切换移动端导航并在导航后转移焦点", async () => {
+    mockAnnouncementSummary([]);
+    const { container } = render(
+      <>
+        <SiteNav />
+        <main className="site-main" tabIndex={-1} />
+      </>,
+    );
+
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
+    const navigation = screen.getByRole("navigation", { name: "站点导航" });
+    const toggle = screen.getByRole("button", { name: "展开站点导航" });
+
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
+    toggle.focus();
+    fireEvent.click(toggle);
+    expect(
+      screen
+        .getByRole("button", { name: "关闭站点导航" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(navigation.getAttribute("data-mobile-menu-open")).toBe("true");
+    expect(container.querySelector(".site-nav-menu-icon")).toBeTruthy();
+    expect(container.querySelector(".site-nav-close-icon")).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("link", { name: "游戏" }), {
+      ctrlKey: true,
+    });
+    expect(navigation.getAttribute("data-mobile-menu-open")).toBe("false");
+    expect(document.activeElement).toBe(container.querySelector(".site-main"));
   });
 
   it("没有匹配页签时不渲染白色遮罩副本", async () => {

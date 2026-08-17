@@ -71,7 +71,11 @@ export function normalizeChatDraft(
 ): { kind: ChatKind; content: string } | null {
   const content = draft.replace(/\r\n?/g, "\n").normalize("NFC").trim();
   if (!content) return null;
-  if (CHAT_EMOJI_WHITELIST.includes(content as (typeof CHAT_EMOJI_WHITELIST)[number])) {
+  if (
+    CHAT_EMOJI_WHITELIST.includes(
+      content as (typeof CHAT_EMOJI_WHITELIST)[number],
+    )
+  ) {
     return { kind: "emoji", content };
   }
   return { kind: "text", content };
@@ -159,9 +163,7 @@ export function chatStateWithInitialHistory(
   };
 }
 
-export function chatStateWithHistoryError(
-  error: string,
-): RoomChatState {
+export function chatStateWithHistoryError(error: string): RoomChatState {
   return {
     ...initialRoomChatState,
     historyStatus: "error",
@@ -174,7 +176,8 @@ export function mergeChatEntries(
   entries: RoomChatEntry[],
 ): RoomChatState {
   const merged = new Map<string, RoomChatEntry>();
-  for (const message of state.messages) merged.set(chatEntryKey(message), message);
+  for (const message of state.messages)
+    merged.set(chatEntryKey(message), message);
   for (const entry of entries) merged.set(chatEntryKey(entry), entry);
   return {
     ...state,
@@ -238,14 +241,6 @@ export function advanceChatCursor(
     ...state,
     scannedCursor: cursor,
   };
-}
-
-export function chatSenderLabel(entry: RoomChatEntry): string {
-  const name = entry.senderDisplayName || "匿名玩家";
-  if (entry.senderRole === "player" && typeof entry.senderSeat === "number") {
-    return `${name}(P${entry.senderSeat}):`;
-  }
-  return `${name}:`;
 }
 
 export function isOwnChatEntry(

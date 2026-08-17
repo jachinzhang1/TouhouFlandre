@@ -27,13 +27,13 @@ import {
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
 import {
+  Paper,
+  PaperButton,
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+} from "@/components/paper";
 
 export type DailySessionStatus = "won" | "lost" | "playing" | null;
 
@@ -206,39 +206,55 @@ export function SingleGuessHistory({
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const guessCount = session?.guesses.length ?? 0;
+  const completed = session?.status === "won" || session?.status === "lost";
+  const lockToBottom = completed;
   const [atBottom, setAtBottom] = useState(true);
-  const updateScrollBoundary = useCallback(() => {
+  const [scrolledHorizontally, setScrolledHorizontally] = useState(false);
+  const syncScrollPosition = useCallback(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    setScrolledHorizontally((current) => {
+      const next = viewport.scrollLeft > 1;
+      return current === next ? current : next;
+    });
+    if (lockToBottom) {
+      viewport.scrollTop = viewport.scrollHeight;
+      setAtBottom(true);
+      return;
+    }
     const next =
       viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= 1;
     setAtBottom((current) => (current === next ? current : next));
-  }, []);
+  }, [lockToBottom]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     if (guessCount > 0) viewport.scrollTop = viewport.scrollHeight;
-    updateScrollBoundary();
+    syncScrollPosition();
     const observer =
       typeof ResizeObserver === "undefined"
         ? null
-        : new ResizeObserver(updateScrollBoundary);
+        : new ResizeObserver(syncScrollPosition);
     observer?.observe(viewport);
     if (viewport.lastElementChild instanceof HTMLElement) {
       observer?.observe(viewport.lastElementChild);
     }
     return () => observer?.disconnect();
-  }, [guessCount, updateScrollBoundary]);
+  }, [guessCount, syncScrollPosition]);
 
   return (
     <div
       aria-label="猜测记录"
       className="single-game-history-scroll"
       data-guess-count={guessCount}
+      data-result={session?.status ?? "empty"}
+      data-completed={completed ? "true" : "false"}
       data-scroll-bottom={atBottom ? "true" : "false"}
+      data-scroll-x={scrolledHorizontally ? "true" : "false"}
+      data-scroll-locked={lockToBottom ? "true" : "false"}
       ref={viewportRef}
-      onScroll={updateScrollBoundary}
+      onScroll={syncScrollPosition}
       role="region"
     >
       {guessCount > 0 ? (
@@ -248,38 +264,57 @@ export function SingleGuessHistory({
             animateOnMount={false}
             as="div"
             className="paper-data-table single-game-history-table-paper"
+            elevation="sm"
             folded={false}
             sticker={false}
             unfoldOnHover={false}
             variant="plain"
           >
             <table className="guess-table">
-              <thead className="paper-data-table-header">
-                <tr className="paper-data-table-row">
-                  <th>角色</th>
-                  {visibleFields.map((field) => (
-                    <th key={field.key}>{field.label}</th>
-                  ))}
-                  <th>本次猜测用时</th>
-                </tr>
-              </thead>
+              <colgroup>
+                <col className="guess-character-column" />
+                {visibleFields.map((field) => (
+                  <col className="guess-feedback-column" key={field.key} />
+                ))}
+                <col className="guess-duration-column" />
+              </colgroup>
               <tbody className="paper-data-table-body">
                 {session!.guesses.map((guess, index) => {
                   const timeout = guess.kind === "timeout";
+                  const finalCompletedGuess =
+                    completed && index === guessCount - 1;
+                  const finalCorrectGuess =
+                    finalCompletedGuess &&
+                    session!.status === "won" &&
+                    guess.isCorrect;
+                  const obscuredByResult = completed && !finalCompletedGuess;
                   return (
                     <tr
-                      className={`paper-data-table-row${timeout ? " guess-timeout-row" : ""}`}
+                      className={[
+                        "paper-data-table-row",
+                        timeout ? "guess-timeout-row" : "",
+                        obscuredByResult ? "guess-history-obscured" : "",
+                        finalCompletedGuess ? "guess-final-row" : "",
+                        finalCorrectGuess ? "guess-correct-row" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
                       key={guess.guessId}
                       style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
                     >
                       {timeout ? (
-                        <th
-                          scope="row"
-                          colSpan={visibleFields.length + 1}
-                          className="guess-timeout-cell"
-                        >
-                          <span>超时跳过</span>
-                        </th>
+                        <>
+                          <th scope="row" className="guess-timeout-cell">
+                            <span>超时跳过</span>
+                          </th>
+                          {visibleFields.map((field) => (
+                            <td
+                              aria-hidden="true"
+                              className="guess-timeout-placeholder-cell"
+                              key={field.key}
+                            />
+                          ))}
+                        </>
                       ) : (
                         <>
                           <th scope="row">
@@ -295,7 +330,7 @@ export function SingleGuessHistory({
                           </th>
                           {guess.feedback.map((feedback) => (
                             <td
-                              className={`feedback-cell feedback-cell-${feedback.status}`}
+                              className={`paper-tinted-cell feedback-cell feedback-cell-${feedback.status}`}
                               key={feedback.field}
                             >
                               <span
@@ -322,10 +357,19 @@ export function SingleGuessHistory({
                   );
                 })}
               </tbody>
+              <tfoot className="paper-data-table-header single-game-history-footer">
+                <tr className="paper-data-table-row">
+                  <th>角色</th>
+                  {visibleFields.map((field) => (
+                    <th key={field.key}>{field.label}</th>
+                  ))}
+                  <th>本次猜测用时</th>
+                </tr>
+              </tfoot>
             </table>
           </Paper>
         </>
-      ) : (
+      ) : completed ? null : (
         <div className="empty-state" role="status">
           {loading ? (
             <span>
@@ -360,81 +404,190 @@ export function SingleGameResult({
   onRestart: () => void;
   onShare: () => void;
 }) {
+  const won = session.status === "won";
+  const answerName = session.answer?.names.zhHans;
+  const resultSectionRef = useRef<HTMLElement>(null);
+  const resultStageRef = useRef<HTMLDivElement>(null);
+  const resultPanelRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const panel = resultPanelRef.current;
+    const titleRow = panel?.querySelector<HTMLElement>(".result-title-row");
+    const details = panel?.querySelector<HTMLElement>(".answer-details");
+    if (!panel || !titleRow) return;
+
+    const syncAvatarSize = () => {
+      const titleTop = titleRow.offsetTop;
+      const contentBottom = details
+        ? details.offsetTop + details.offsetHeight
+        : titleRow.offsetTop + titleRow.offsetHeight;
+      const nextSize = Math.ceil(contentBottom - titleTop);
+      if (nextSize <= 0) return;
+      const value = `${nextSize}px`;
+      if (
+        panel.style.getPropertyValue("--single-game-result-avatar-size") !==
+        value
+      ) {
+        panel.style.setProperty("--single-game-result-avatar-size", value);
+      }
+    };
+
+    syncAvatarSize();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncAvatarSize);
+    observer?.observe(titleRow);
+    if (details) observer?.observe(details);
+    return () => observer?.disconnect();
+  }, [session.id, session.status]);
+
+  useLayoutEffect(() => {
+    const section = resultSectionRef.current;
+    const stage = resultStageRef.current;
+    const panel = resultPanelRef.current;
+    if (!section || !stage || !panel) return;
+
+    const syncPanelScale = () => {
+      if (
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(max-width: 680px)").matches
+      ) {
+        stage.style.removeProperty("--single-game-result-scale");
+        delete stage.dataset.scaled;
+        return;
+      }
+      const availableWidth = section.clientWidth;
+      const availableHeight = section.clientHeight;
+      const naturalWidth = panel.offsetWidth;
+      const naturalHeight = panel.scrollHeight;
+      if (
+        availableWidth <= 0 ||
+        availableHeight <= 0 ||
+        naturalWidth <= 0 ||
+        naturalHeight <= 0
+      ) {
+        return;
+      }
+      const scale = Math.max(
+        0.1,
+        Math.min(
+          1,
+          availableWidth / naturalWidth,
+          availableHeight / naturalHeight,
+        ),
+      );
+      stage.style.setProperty("--single-game-result-scale", String(scale));
+      stage.dataset.scaled = scale < 0.999 ? "true" : "false";
+    };
+
+    syncPanelScale();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(syncPanelScale);
+    observer?.observe(section);
+    observer?.observe(panel);
+    return () => observer?.disconnect();
+  }, [mode, session.id, session.status]);
+
   return (
-    <aside className="single-game-result-layer" aria-label="游戏结果">
-      <Paper
-        animateOnMount={false}
-        as="div"
-        className="result-panel"
-        foldSize={18}
-        sticker={false}
-        variant="plain"
-      >
-        <div className="result-summary">
-          <p className="kicker">
-            {session.status === "won" ? "Clear" : "Failed"}
-          </p>
-          <h2>{session.status === "won" ? "猜中了" : "本次游戏结束"}</h2>
-          <p>
-            答案是 <strong>{session.answer?.names.zhHans}</strong>，共使用{" "}
-            {session.guesses.length} 次猜测。
-          </p>
-        </div>
-        {session.answer ? (
-          <CharacterAvatar
-            avatarUrl={session.answer.avatarUrl}
-            name={session.answer.names.zhHans}
-            initials={session.answer.names.zhHans.slice(0, 2)}
-            className="answer-token"
-          />
-        ) : null}
-        {session.answer ? (
-          <dl className="answer-details" aria-label="答案角色资料">
-            <div>
-              <dt>日文名</dt>
-              <dd lang="ja">{session.answer.names.ja}</dd>
+    <section
+      aria-label="游戏结果"
+      className="single-game-result-section"
+      data-result={session.status}
+      ref={resultSectionRef}
+    >
+      <div className="result-panel-stage" ref={resultStageRef}>
+        <div className="result-panel" ref={resultPanelRef}>
+          <div className="result-info">
+            <div className="result-title-row">
+              <div className="result-summary">
+                <h2>{won ? "恭喜你，猜中了！" : "本次游戏结束"}</h2>
+                <p>
+                  {won ? (
+                    <>
+                      你用{session.guesses.length}次机会猜出了
+                      <strong>{answerName}</strong>。
+                    </>
+                  ) : (
+                    <>
+                      你用尽了{session.guesses.length}次机会也没能猜出
+                      <strong>{answerName}</strong>。
+                    </>
+                  )}
+                </p>
+              </div>
+              <PaperButton
+                className="result-share-action"
+                filled
+                onClick={onShare}
+                tone="theme"
+              >
+                <Copy size={18} aria-hidden="true" />
+                <span>复制分享</span>
+              </PaperButton>
             </div>
-            <div>
-              <dt>首次登场作品</dt>
-              <dd>{session.answer.firstAppearance.workTitle}</dd>
+            <div className="result-scroll-body">
+              {session.answer ? (
+                <dl className="answer-details" aria-label="答案角色资料">
+                  <div>
+                    <dt>别名</dt>
+                    <dd className="answer-aliases">
+                      <span lang="ja">{session.answer.names.ja}</span>
+                      <span className="answer-romaji" lang="ja-Latn">
+                        {session.answer.names.romaji ?? "暂无资料"}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>首次登场作品</dt>
+                    <dd>{session.answer.firstAppearance.workTitle}</dd>
+                  </div>
+                  <div>
+                    <dt>种族</dt>
+                    <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
+                  </div>
+                  <div>
+                    <dt>能力</dt>
+                    <dd>{session.answer.abilityDisplay}</dd>
+                  </div>
+                  <div>
+                    <dt>出现地点</dt>
+                    <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
+                  </div>
+                  <div>
+                    <dt>身份</dt>
+                    <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              {mode === "random" ? (
+                <div className="result-actions">
+                  <PaperButton
+                    disabled={disabled}
+                    filled
+                    onClick={onRestart}
+                    tone="theme"
+                  >
+                    <RotateCcw size={18} aria-hidden="true" />
+                    <span>再来一局</span>
+                  </PaperButton>
+                </div>
+              ) : null}
             </div>
-            <div>
-              <dt>种族</dt>
-              <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
-            </div>
-            <div>
-              <dt>能力</dt>
-              <dd>{session.answer.abilityDisplay}</dd>
-            </div>
-            <div>
-              <dt>出现地点</dt>
-              <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
-            </div>
-            <div>
-              <dt>身份</dt>
-              <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
-            </div>
-          </dl>
-        ) : null}
-        <div className="result-actions">
-          {mode === "random" ? (
-            <PaperButton
-              disabled={disabled}
-              filled
-              onClick={onRestart}
-              tone="theme"
-            >
-              <RotateCcw size={18} aria-hidden="true" />
-              <span>再来一局</span>
-            </PaperButton>
+          </div>
+          {session.answer ? (
+            <CharacterAvatar
+              avatarUrl={session.answer.avatarUrl}
+              name={session.answer.names.zhHans}
+              initials={session.answer.names.zhHans.slice(0, 2)}
+              className="answer-token"
+            />
           ) : null}
-          <PaperButton onClick={onShare} tone="plain">
-            <Copy size={18} aria-hidden="true" />
-            <span>复制分享</span>
-          </PaperButton>
         </div>
-      </Paper>
-    </aside>
+      </div>
+    </section>
   );
 }
 

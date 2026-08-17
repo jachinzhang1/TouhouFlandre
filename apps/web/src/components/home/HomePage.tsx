@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { GAME_CONTENT_DEFINITIONS } from "@touhouflandre/shared";
-import { Paper } from "../Paper";
+import { Paper } from "@/components/paper";
 import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
@@ -118,13 +118,13 @@ function PaperShortcut({
 }) {
   return (
     <Paper
-      className={`paper-shortcut group ${featured ? "paper-shortcut-featured" : ""}`}
+      className={`paper-shortcut${featured ? " paper-shortcut-featured" : ""}`}
       href={href}
       variant={featured ? "tinted" : "plain"}
       foldDelayMs={foldDelayMs}
       foldSize={24}
     >
-      <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight text-ink">
+      <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight">
         {title}
       </strong>
       <span className="paper-shortcut-description text-sm leading-6 text-ink-soft">

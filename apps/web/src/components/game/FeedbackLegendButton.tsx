@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Paper } from "../Paper";
+import { Paper, PaperButton } from "@/components/paper";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { FEEDBACK_LEGEND_ITEMS } from "./FeedbackLegend";
 
@@ -74,50 +74,56 @@ export function FeedbackLegendButton({
 
   return (
     <div className={`legend-control ${className}`.trim()} ref={controlRef}>
-      <Paper
-        animateOnMount={false}
+      <PaperButton
         ariaControls={open ? legendId : undefined}
         ariaExpanded={open}
-        as="button"
-        className="paper-button paper-button-plain legend-button"
-        foldSize={10}
+        className="legend-button"
         onClick={() => setOpen((value) => !value)}
-        sticker={false}
-        variant="plain"
       >
         <Search size={18} aria-hidden="true" />
         <span>查看图例</span>
-      </Paper>
+      </PaperButton>
       {open && position
         ? createPortal(
             <div
-              className={`feedback-legend-tooltip feedback-legend-tooltip-${placement}`}
+              className={`feedback-legend-tooltip-positioner feedback-legend-tooltip-${placement}`}
               id={legendId}
               role="tooltip"
               style={position}
             >
-              <ul>
-                {FEEDBACK_LEGEND_ITEMS.map((item) => (
-                  <li
-                    className={`feedback-legend-item feedback-legend-${item.status}`}
-                    key={item.status}
-                  >
-                    <span
-                      className={`feedback-legend-icon feedback-legend-icon-${item.status}`}
-                      aria-hidden="true"
+              <Paper
+                animateOnMount={false}
+                as="div"
+                className="feedback-legend-tooltip"
+                elevation="lg"
+                folded={false}
+                pattern={false}
+                sticker={false}
+                unfoldOnHover={false}
+              >
+                <ul>
+                  {FEEDBACK_LEGEND_ITEMS.map((item) => (
+                    <li
+                      className={`feedback-legend-item feedback-legend-${item.status}`}
+                      key={item.status}
                     >
-                      <b>
-                        <FeedbackStatusIcon
-                          decorative
-                          size={14}
-                          status={item.status}
-                        />
-                      </b>
-                    </span>
-                    <span>{item.label}</span>
-                  </li>
-                ))}
-              </ul>
+                      <span
+                        className={`feedback-legend-icon feedback-legend-icon-${item.status}`}
+                        aria-hidden="true"
+                      >
+                        <b>
+                          <FeedbackStatusIcon
+                            decorative
+                            size={14}
+                            status={item.status}
+                          />
+                        </b>
+                      </span>
+                      <span>{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Paper>
             </div>,
             document.body,
           )

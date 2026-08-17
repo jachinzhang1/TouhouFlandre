@@ -145,21 +145,8 @@
   min-width: 0;
   padding: 30px 48px 62px 24px;
   overflow: hidden;
-  border: 0;
-  color: var(--ink);
   text-decoration: none;
   height: 100%;
-}
-.paper-shortcut[data-paper-folded="true"] {
-  transition:
-    background-color 180ms ease,
-    clip-path 180ms ease,
-    filter 180ms ease;
-}
-
-.paper-shortcut:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 4px;
 }
 
 .paper-shortcut-action {
@@ -178,13 +165,13 @@
 }
 
 .paper-shortcut-icon {
-  color: var(--ink);
+  color: currentColor;
   opacity: 0.24;
   transition: opacity 180ms ease;
 }
 
 .paper-shortcut-hover-arrow {
-  color: var(--ink);
+  color: currentColor;
   opacity: 0;
   transform: translateX(-37.5%);
   transition:
@@ -228,24 +215,12 @@
   transform: translateX(0);
 }
 
-.paper-shortcut-featured {
-  color: var(--paper-tinted-ink);
-}
 .paper-shortcut-featured .paper-shortcut-icon {
-  color: #fff;
   opacity: 0.52;
-}
-
-.paper-shortcut-featured .paper-shortcut-title {
-  color: var(--paper-tinted-ink);
 }
 
 .paper-shortcut-featured .paper-shortcut-description {
   color: var(--paper-tinted-ink-muted);
-}
-
-.paper-shortcut-featured .paper-shortcut-hover-arrow {
-  color: #fff;
 }
 
 @keyframes hero-enter {

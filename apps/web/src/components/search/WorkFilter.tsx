@@ -3,13 +3,11 @@ import { Filter } from "lucide-react";
 import type { Work } from "@touhouflandre/shared";
 import {
   FixedTagCombobox,
-  type FixedTagComboboxOption,
-} from "../controls/FixedTagCombobox";
-import {
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+  type FixedTagComboboxOption,
+} from "@/components/paper";
 import type { WorkFilterMode } from "./types";
 
 export function WorkFilter({

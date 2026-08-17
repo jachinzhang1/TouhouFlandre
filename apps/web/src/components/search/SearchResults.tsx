@@ -2,13 +2,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import type { CharacterSearchResult } from "@touhouflandre/shared";
 import { joinValues } from "../../domain/format";
-import { Paper } from "../Paper";
-import { CharacterAvatar } from "../game/CharacterAvatar";
 import {
+  Paper,
+  PaperButton,
   PaperDataTable,
   PaperDataTableBody,
   PaperDataTableHeader,
-} from "../controls/PaperDataTable";
+} from "@/components/paper";
+import { CharacterAvatar } from "../game/CharacterAvatar";
 import type { CharacterView } from "./types";
 
 export function SearchResults({
@@ -201,19 +202,22 @@ function SearchError({
   if (!error) return null;
 
   return (
-    <div className="catalog-feedback" role="alert">
+    <Paper
+      animateOnMount={false}
+      as="div"
+      className="catalog-feedback"
+      folded={false}
+      pattern={false}
+      role="alert"
+      sticker={false}
+      tone="danger"
+      unfoldOnHover={false}
+    >
       <span>{error}</span>
-      <Paper
-        as="button"
-        className="catalog-feedback-button"
-        folded={false}
-        onClick={onRetry}
-        sticker={false}
-        variant="plain"
-      >
+      <PaperButton compact folded={false} onClick={onRetry} tone="danger">
         重新加载
-      </Paper>
-    </div>
+      </PaperButton>
+    </Paper>
   );
 }
 
@@ -282,8 +286,9 @@ function SearchEmptyState() {
     <Paper
       animateOnMount={false}
       as="div"
-      className="catalog-empty-result grid min-h-[180px] place-items-center text-ink-soft"
+      className="catalog-empty-result grid min-h-[180px] place-items-center"
       foldSize={16}
+      unfoldOnHover={false}
     >
       没有找到匹配的角色。
     </Paper>
@@ -358,6 +363,7 @@ function SearchResultTable({ results }: { results: CharacterSearchResult[] }) {
                 headers="catalog-column-name"
                 scope="row"
                 className="catalog-table-name"
+                title={result.name}
               >
                 {result.name}
               </th>

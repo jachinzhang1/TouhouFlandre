@@ -15,18 +15,17 @@ import type {
   StatsRecord,
   StatsRound,
 } from "../../stats/types";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
 import {
+  Paper,
+  PaperButton,
   PaperDataTable,
   PaperDataTableBody,
   PaperDataTableHeader,
-} from "../controls/PaperDataTable";
-import { PaperPicker } from "../controls/PaperPicker";
-import {
+  PaperDataTableDetail,
+  PaperPicker,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+} from "@/components/paper";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 
 const OUTCOME_LABELS: Record<StatsOutcome, string> = {
@@ -70,6 +69,7 @@ export function StatsHistory({ records }: { records: StatsRecord[] }) {
         <PaperDataTableBody
           ariaLabel="游玩记录"
           className="stats-history-paper"
+          responsiveStacked
           viewportClassName="stats-history-ledger"
         >
           <div className="paper-data-table-body" role="rowgroup">
@@ -264,11 +264,7 @@ function HistoryEntry({ record }: { record: StatsRecord }) {
           {difficultyLabel(record.difficulty ?? "unknown")}
         </div>
         <div
-          className={`stats-history-cell stats-history-outcome-cell ${
-            record.outcome === "win"
-              ? "stats-history-outcome-success"
-              : "stats-history-outcome-failure"
-          }`}
+          className={`paper-tinted-cell stats-history-cell stats-history-outcome-cell ${statsOutcomeClass(record.outcome)}`}
           data-label="结果"
           role="cell"
         >
@@ -296,7 +292,7 @@ function HistoryEntry({ record }: { record: StatsRecord }) {
           <GuessSequence guesses={guesses} />
         </div>
         <div
-          className="stats-history-cell stats-history-sequence"
+          className="stats-history-cell stats-history-sequence stats-history-answer"
           data-label="答案"
           role="cell"
         >
@@ -306,6 +302,12 @@ function HistoryEntry({ record }: { record: StatsRecord }) {
       <ExpandedRoundDetails open={open} record={record} />
     </div>
   );
+}
+
+function statsOutcomeClass(outcome: StatsOutcome) {
+  if (outcome === "win") return "stats-history-outcome-success";
+  if (outcome === "draw") return "stats-history-outcome-draw";
+  return "stats-history-outcome-failure";
 }
 
 function DetailsButton({
@@ -321,6 +323,7 @@ function DetailsButton({
 
   return (
     <PaperButton
+      ariaExpanded={expanded}
       ariaLabel={expanded ? "收起局详情" : "查看局详情"}
       className="stats-history-detail-button"
       folded={false}
@@ -347,9 +350,9 @@ function ExpandedRoundDetails({
   if (!open || record.kind !== "multiplayer") return null;
 
   return (
-    <div className="stats-history-rounds">
+    <PaperDataTableDetail className="stats-history-rounds">
       <RoundDetails record={record} />
-    </div>
+    </PaperDataTableDetail>
   );
 }
 

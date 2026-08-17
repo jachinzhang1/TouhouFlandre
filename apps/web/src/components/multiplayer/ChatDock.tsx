@@ -1,15 +1,22 @@
 "use client";
 
-import { History, Mic, MicOff, RefreshCw, Smile } from "lucide-react";
+import { History, RefreshCw, Smile } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { components } from "../../generated/api";
 import {
   CHAT_EMOJI_WHITELIST,
-  chatSenderLabel,
   isOwnChatEntry,
   type RoomChatEntry,
   type RoomChatState,
 } from "../../domain/multiChat";
+import {
+  Paper,
+  PaperButton,
+  PaperSegmentButton,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+  PaperTextInput,
+} from "@/components/paper";
 
 type ParticipantView = components["schemas"]["ParticipantView"];
 
@@ -18,6 +25,7 @@ interface ChatDockProps {
   viewer: ParticipantView | null;
   chat: RoomChatState;
   disabled?: boolean;
+  inline?: boolean;
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
   onRetry: (clientMessageId: string) => Promise<void>;
@@ -34,6 +42,7 @@ export function ChatDock({
   roomId,
   viewer,
   chat,
+  inline = false,
   disabled = false,
   sendEnabled = true,
   onSend,
@@ -186,7 +195,13 @@ export function ChatDock({
   };
 
   return (
-    <div className="fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]">
+    <div
+      className={
+        inline
+          ? "chat-dock chat-dock-inline"
+          : "chat-dock chat-dock-fixed fixed left-4 z-[45] w-[min(420px,calc(100vw-32px))]"
+      }
+    >
       <div className="pointer-events-none absolute right-12 bottom-full left-10 mb-2 flex flex-col gap-2">
         {toasts.map((toast) => (
           <ChatToastCard
@@ -202,33 +217,42 @@ export function ChatDock({
         ))}
       </div>
 
-      <div
-        className={`overflow-hidden rounded-[6px] border bg-paper shadow-lg transition-[height,opacity,transform,border-color,margin] duration-200 ease-out ${
+      <Paper
+        animateOnMount={false}
+        ariaHidden={!historyVisible}
+        as="div"
+        className={`chat-dock-history-paper ${
           historyVisible
-            ? "pointer-events-auto mb-2 h-72 translate-y-0 border-line opacity-100"
-            : "pointer-events-none mb-0 h-0 translate-y-2 border-transparent opacity-0"
+            ? "pointer-events-auto mb-2 h-72 translate-y-0 opacity-100"
+            : "pointer-events-none mb-0 h-0 translate-y-2 opacity-0"
         }`}
-        aria-hidden={!historyVisible}
+        elevation="lg"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+        variant="plain"
       >
         {historyVisible ? (
           <div
             ref={historyRef}
-            className="h-full overflow-y-auto px-3 py-2"
+            className="chat-dock-history-log"
             role="log"
             aria-live="polite"
           >
             {chat.hasMoreOlder && chat.beforeCursor ? (
-              <button
-                type="button"
-                onClick={onLoadOlder}
+              <PaperButton
+                className="mb-2 w-full"
+                compact
                 disabled={chat.loadingOlder}
-                className="mb-2 flex min-h-8 w-full items-center justify-center gap-2 rounded-[5px] border border-line bg-paper-muted px-3 text-[0.75rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-60"
+                folded={false}
+                onClick={onLoadOlder}
               >
                 {chat.loadingOlder ? (
                   <RefreshCw size={14} className="spin" aria-hidden="true" />
                 ) : null}
                 加载更早
-              </button>
+              </PaperButton>
             ) : null}
             <ChatStatus chat={chat} />
             {visibleMessages.length === 0 && chat.historyStatus === "ready" ? (
@@ -236,7 +260,7 @@ export function ChatDock({
                 暂无聊天记录
               </p>
             ) : (
-              <ul className="divide-y divide-line">
+              <ul className="chat-dock-history-list paper-data-table-body">
                 {visibleMessages.map((entry) => (
                   <ChatHistoryMessage
                     key={entry.messageId}
@@ -249,84 +273,97 @@ export function ChatDock({
             )}
           </div>
         ) : null}
-      </div>
+      </Paper>
 
-      <form
-        onSubmit={handleSubmit}
-        className="pointer-events-auto flex items-center gap-2"
-      >
-        <button
-          type="button"
-          aria-label="展开聊天记录"
-          aria-pressed={historyOpen}
-          title="聊天记录"
-          onClick={() => setHistoryOpen((current) => !current)}
-          disabled={historyDisabled}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border border-line bg-paper text-ink-soft shadow-sm hover:bg-paper-muted disabled:cursor-not-allowed disabled:opacity-45"
+      <form onSubmit={handleSubmit} className="chat-dock-form">
+        <PaperSegmentGroup
+          className="chat-dock-composer-group"
+          label="房间聊天"
         >
-          <History size={18} aria-hidden="true" />
-        </button>
-
-        <div className="relative min-w-0 flex-1">
-          <input
-            ref={inputRef}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              if (chat.sendError) onClearError();
-            }}
-            disabled={inputDisabled}
-            maxLength={1024}
-            aria-label="聊天输入"
-            placeholder="请输入消息"
-            className="h-10 w-full rounded-[6px] border border-line-strong bg-paper pr-11 pl-3 text-[0.86rem] text-ink shadow-sm outline-none focus:border-line-strong focus:shadow-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
-          />
-          <button
-            type="button"
-            aria-label="选择表情"
-            title="表情"
-            onClick={() => setEmojiOpen((current) => !current)}
-            disabled={inputDisabled}
-            className="absolute top-1/2 right-1 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-[5px] text-ink-soft hover:bg-paper-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-45"
+          <PaperSegmentButton
+            active={historyOpen}
+            ariaLabel="展开聊天记录"
+            className="chat-dock-composer-button"
+            disabled={historyDisabled}
+            folded={false}
+            onClick={() => setHistoryOpen((current) => !current)}
+            title="聊天记录"
           >
-            <Smile size={17} aria-hidden="true" />
-          </button>
-          {emojiOpen && !inputDisabled ? (
-            <div className="absolute right-0 bottom-full mb-2 grid grid-cols-6 gap-1 rounded-[6px] border border-line bg-paper p-2 shadow-lg">
-              {CHAT_EMOJI_WHITELIST.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertEmoji(emoji)}
-                  className="inline-flex size-8 items-center justify-center rounded-[5px] text-[1.05rem] hover:bg-paper-muted"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+            <History size={18} aria-hidden="true" />
+          </PaperSegmentButton>
 
-        <button
-          type="button"
-          aria-label={muted ? "开启聊天" : "闭麦"}
-          aria-pressed={muted}
-          title={muted ? "开启聊天" : "闭麦"}
-          onClick={toggleReceiveChat}
-          disabled={disabled || !viewer}
-          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border shadow-sm disabled:cursor-not-allowed disabled:opacity-45 ${
-            muted
-              ? "border-vermilion bg-vermilion-soft text-vermilion"
-              : "border-line bg-paper text-ink-soft hover:bg-paper-muted"
-          }`}
-        >
-          {muted ? (
-            <MicOff size={18} aria-hidden="true" />
-          ) : (
-            <Mic size={18} aria-hidden="true" />
-          )}
-        </button>
+          <PaperSegmentSeparator />
+
+          <div className="chat-dock-input-shell">
+            <PaperTextInput
+              ariaLabel="聊天输入"
+              className="chat-dock-input-segment chat-dock-text-control"
+              disabled={inputDisabled}
+              folded={false}
+              inputClassName="chat-dock-input"
+              inputRef={inputRef}
+              maxLength={1024}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                if (chat.sendError) onClearError();
+              }}
+              placeholder="请输入消息"
+              value={draft}
+            />
+            <PaperButton
+              ariaLabel="选择表情"
+              className="chat-dock-emoji-button"
+              compact
+              disabled={inputDisabled}
+              folded={false}
+              iconOnly
+              onClick={() => setEmojiOpen((current) => !current)}
+              title="表情"
+            >
+              <Smile size={17} aria-hidden="true" />
+            </PaperButton>
+            {emojiOpen && !inputDisabled ? (
+              <Paper
+                animateOnMount={false}
+                as="div"
+                className="chat-dock-emoji-menu"
+                elevation="lg"
+                folded={false}
+                sticker={false}
+                pattern={false}
+                unfoldOnHover={false}
+              >
+                {CHAT_EMOJI_WHITELIST.map((emoji) => (
+                  <PaperButton
+                    ariaLabel={`插入表情 ${emoji}`}
+                    className="chat-dock-emoji-option"
+                    compact
+                    folded={false}
+                    iconOnly
+                    key={emoji}
+                    onClick={() => insertEmoji(emoji)}
+                  >
+                    {emoji}
+                  </PaperButton>
+                ))}
+              </Paper>
+            ) : null}
+          </div>
+
+          <PaperSegmentSeparator />
+
+          <PaperSegmentButton
+            active={!muted}
+            ariaLabel={muted ? "开启聊天" : "关闭聊天"}
+            className="chat-dock-composer-button"
+            disabled={disabled || !viewer}
+            folded={false}
+            onClick={toggleReceiveChat}
+            title={muted ? "开启聊天" : "关闭聊天"}
+          >
+            {muted ? <MessageCircleOffIcon /> : <MessageCircleCheckIcon />}
+          </PaperSegmentButton>
+        </PaperSegmentGroup>
       </form>
 
       {chat.sendError ? (
@@ -335,6 +372,49 @@ export function ChatDock({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function MessageCircleCheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="lucide lucide-message-circle-check"
+      fill="none"
+      focusable="false"
+      height="18"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function MessageCircleOffIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="lucide lucide-message-circle-off"
+      fill="none"
+      focusable="false"
+      height="18"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <path d="m2 2 20 20" />
+      <path d="M4.93 4.929a10 10 0 0 0-1.938 11.412 2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 0 0 11.302-1.989" />
+      <path d="M8.35 2.69A10 10 0 0 1 21.3 15.65" />
+    </svg>
   );
 }
 
@@ -369,32 +449,36 @@ function ChatHistoryMessage({
   const sending = entry.deliveryStatus === "sending";
   return (
     <li
-      className={`py-1.5 text-[0.82rem] leading-5 ${
+      className={`paper-data-table-row text-[0.82rem] leading-5 ${
         failed ? "text-vermilion" : "text-ink"
       }`}
     >
-      <ChatMessageLine entry={entry} viewerMemberId={viewerMemberId} />
-      {sending ? (
-        <small className="mt-1 block text-[0.7rem] font-bold text-ink-soft">
-          发送中
-        </small>
-      ) : null}
-      {failed ? (
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <small className="min-w-0 text-[0.7rem] font-bold">
-            {entry.error ?? "发送失败"}
+      <div>
+        <ChatMessageLine entry={entry} viewerMemberId={viewerMemberId} />
+        {sending ? (
+          <small className="mt-1 block text-[0.7rem] font-bold text-ink-soft">
+            发送中
           </small>
-          {entry.clientMessageId ? (
-            <button
-              type="button"
-              onClick={() => void onRetry(entry.clientMessageId!)}
-              className="shrink-0 rounded-[5px] border border-vermilion px-2 py-0.5 text-[0.68rem] font-black"
-            >
-              重试
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+        {failed ? (
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <small className="min-w-0 text-[0.7rem] font-bold">
+              {entry.error ?? "发送失败"}
+            </small>
+            {entry.clientMessageId ? (
+              <PaperButton
+                className="shrink-0"
+                compact
+                folded={false}
+                onClick={() => void onRetry(entry.clientMessageId!)}
+                tone="danger"
+              >
+                重试
+              </PaperButton>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -442,16 +526,27 @@ function ChatToastCard({
 
   return (
     <div
-      className={`pointer-events-auto rounded-[6px] border border-line bg-paper px-3 py-2 text-[0.82rem] leading-5 text-ink shadow-lg ${
+      className={`pointer-events-auto ${
         leaving
           ? "opacity-0 transition-opacity duration-300"
           : "animate-[row-enter_180ms_ease-out_both]"
       }`}
       onMouseEnter={pauseTimer}
       onMouseLeave={startTimer}
-      role="status"
     >
-      <ChatMessageLine entry={entry} viewerMemberId={viewerMemberId} />
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="lg"
+        className="px-3 py-2 text-[0.82rem] leading-5"
+        folded={false}
+        pattern={false}
+        role="status"
+        sticker={false}
+        unfoldOnHover={false}
+      >
+        <ChatMessageLine entry={entry} viewerMemberId={viewerMemberId} />
+      </Paper>
     </div>
   );
 }
@@ -464,12 +559,20 @@ function ChatMessageLine({
   viewerMemberId?: string;
 }) {
   const own = isOwnChatEntry(entry, viewerMemberId);
+  const senderName = entry.senderDisplayName || "匿名玩家";
+  const seatLabel =
+    entry.senderRole === "player" && typeof entry.senderSeat === "number"
+      ? `P${entry.senderSeat}`
+      : null;
   return (
     <p className="m-0 break-words">
       <strong className={own ? "text-vermilion" : undefined}>
-        {chatSenderLabel(entry)}
-      </strong>{" "}
-      {entry.content}
+        {senderName}
+      </strong>
+      {seatLabel ? (
+        <span className="chat-player-seat-tag">{seatLabel}</span>
+      ) : null}
+      <span aria-hidden="true">:</span> {entry.content}
     </p>
   );
 }

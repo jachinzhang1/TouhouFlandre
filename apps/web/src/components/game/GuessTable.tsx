@@ -12,6 +12,7 @@ import type {
 import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
+import { Paper } from "@/components/paper";
 
 export const STATUS_LABEL: Record<FeedbackStatus, string> = {
   exact: "命中",
@@ -64,8 +65,17 @@ export function GuessTable({
   const isOpponent = variant === "opponent";
 
   return (
-    <div
-      className={`rounded-[6px] border bg-paper p-3 shadow-sm ${highlight ? "border-jade" : "border-line"}`}
+    <Paper
+      animateOnMount={false}
+      as="div"
+      elevation="sm"
+      className="min-w-0 w-full p-3"
+      folded={false}
+      pattern={false}
+      tone={highlight ? "success" : "default"}
+      sticker={false}
+      unfoldOnHover={false}
+      variant="plain"
     >
       {(title || subtitle || headerExtra) && (
         <div className="mb-2 flex items-center justify-between gap-3">
@@ -88,10 +98,10 @@ export function GuessTable({
             isOpponent ? "min-w-[430px]" : "min-w-[560px]"
           }`}
         >
-          <thead>
-            <tr>
+          <thead className="paper-data-table-header">
+            <tr className="paper-data-table-row">
               <th
-                className={`border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft ${
+                className={`p-2 text-left text-[0.72rem] font-bold ${
                   isOpponent ? "w-16" : "w-24"
                 }`}
               >
@@ -100,14 +110,14 @@ export function GuessTable({
               {fields.map((field) => (
                 <th
                   key={field.key}
-                  className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
+                  className="p-2 text-left text-[0.72rem] font-bold"
                 >
                   {field.label}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="paper-data-table-body">
             {rows.length === 0 ? (
               <tr>
                 <td
@@ -121,11 +131,8 @@ export function GuessTable({
               rows.map((row) => {
                 if (row.notice) {
                   return (
-                    <tr key={row.key}>
-                      <td
-                        colSpan={fields.length + 1}
-                        className="border-b border-line p-2"
-                      >
+                    <tr className="paper-data-table-row" key={row.key}>
+                      <td colSpan={fields.length + 1} className="p-2">
                         <span
                           className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
                             row.tone === "danger"
@@ -142,10 +149,10 @@ export function GuessTable({
 
                 const cells = cellsForFields(row.cells, fields);
                 return (
-                  <tr key={row.key}>
+                  <tr className="paper-data-table-row" key={row.key}>
                     <th
                       scope="row"
-                      className="border-b border-line p-1.5 align-top text-left font-normal"
+                      className="p-1.5 align-top text-left font-normal"
                     >
                       {row.name ? (
                         <span className="flex items-center gap-1.5">
@@ -171,7 +178,7 @@ export function GuessTable({
                     {cells.map((cell, index) => (
                       <td
                         key={fields[index]?.key ?? index}
-                        className="border-b border-line p-1.5 align-top"
+                        className="p-1.5 align-top"
                       >
                         <span
                           className={`feedback match-feedback ${
@@ -202,7 +209,7 @@ export function GuessTable({
           </tbody>
         </table>
       </div>
-    </div>
+    </Paper>
   );
 }
 

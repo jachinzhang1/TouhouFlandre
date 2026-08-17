@@ -1,5 +1,7 @@
 "use client";
 
+import type { CharacterSort, SortDirection } from "@touhouflandre/shared";
+import type { CharacterView } from "./types";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { PageHeader } from "../layout/PageHeader";
 import { SearchResults } from "./SearchResults";
@@ -7,8 +9,20 @@ import { SearchToolbar } from "./SearchToolbar";
 import { useSearchPageState } from "./useSearchPageState";
 import { WorkFilter } from "./WorkFilter";
 
-export function SearchPage() {
-  const state = useSearchPageState();
+export function SearchPage({
+  initialDirection,
+  initialSort,
+  initialView,
+}: {
+  initialDirection: SortDirection;
+  initialSort: CharacterSort;
+  initialView: CharacterView;
+}) {
+  const state = useSearchPageState({
+    initialDirection,
+    initialSort,
+    initialView,
+  });
   const search = useCharacterSearch(state.query, {
     limit: 250,
     sort: state.sort,

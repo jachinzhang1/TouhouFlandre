@@ -9,6 +9,8 @@ import {
   sortMembersBySeat,
 } from "../../domain/memberCollections";
 import type { components } from "../../generated/api";
+import { useModalFocus } from "../../hooks/useModalFocus";
+import { Paper, PaperButton } from "@/components/paper";
 
 const REASON_LABEL: Record<string, string> = {
   normal: "正常完赛",
@@ -35,6 +37,7 @@ export function MatchResultOverlay({
   onRematch: () => void;
   onLeave: () => void;
 }) {
+  const { dialogRef, onDialogKeyDown } = useModalFocus<HTMLDivElement>();
   const viewerResult =
     result.viewerResult ??
     resultForMemberId(result.results, memberId) ??
@@ -72,14 +75,31 @@ export function MatchResultOverlay({
   const highlighted = resultLabel === "并列第一" || resultLabel === "对局获胜";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
+    <div
+      aria-labelledby="match-result-title"
+      aria-modal="true"
+      className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]"
+      onKeyDown={onDialogKeyDown}
+      ref={dialogRef}
+      role="dialog"
+    >
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="lg"
+        className="w-full max-w-[420px] p-6 text-center"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <Trophy
           size={30}
           className={`mx-auto mb-2 ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
           aria-hidden="true"
         />
         <p
+          id="match-result-title"
           className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
         >
           MATCH {result.matchIndex} · {resultLabel}
@@ -114,15 +134,16 @@ export function MatchResultOverlay({
           ))}
         </ul>
         <div className="grid gap-2">
-          <button
-            type="button"
-            onClick={onRematch}
+          <PaperButton
+            className="w-full"
             disabled={mine}
-            className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark"
+            filled
+            folded={false}
+            onClick={onRematch}
           >
             <RotateCcw size={16} aria-hidden="true" />
             {mine ? `已确认 ${readyCount}/${rosterSize}` : "再来一局"}
-          </button>
+          </PaperButton>
           {readyCount > 0 && !mine && (
             <p className="m-0 text-[0.75rem] text-jade">
               已有 {readyCount}/{rosterSize} 人确认再来一局
@@ -141,15 +162,11 @@ export function MatchResultOverlay({
                 .join("、")}
             </p>
           )}
-          <button
-            type="button"
-            onClick={onLeave}
-            className="w-full rounded-[6px] border border-line-strong bg-paper px-4 py-2 font-semibold text-ink-soft hover:bg-paper-muted"
-          >
+          <PaperButton className="w-full" folded={false} onClick={onLeave}>
             返回大厅
-          </button>
+          </PaperButton>
         </div>
-      </div>
+      </Paper>
     </div>
   );
 }

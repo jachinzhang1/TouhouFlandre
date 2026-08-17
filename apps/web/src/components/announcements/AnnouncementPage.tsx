@@ -12,7 +12,7 @@ import {
 } from "../../announcements/readState";
 import type { Announcement } from "../../announcements/types";
 import { AnnouncementMarkdown } from "./AnnouncementMarkdown";
-import { Paper } from "../Paper";
+import { Paper, PaperSticker } from "@/components/paper";
 import { PageHeader } from "../layout/PageHeader";
 
 export function AnnouncementPage({
@@ -112,9 +112,19 @@ export function AnnouncementPage({
       />
 
       {error ? (
-        <p className="mt-4 rounded-[5px] border border-error-border bg-error-bg-soft px-4 py-3 text-sm font-bold text-error-text">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="px-4 py-3 text-sm font-bold"
+          folded={false}
+          pattern={false}
+          role="alert"
+          sticker={false}
+          tone="danger"
+          unfoldOnHover={false}
+        >
           {error}
-        </p>
+        </Paper>
       ) : null}
 
       {announcements.length ? (
@@ -123,14 +133,11 @@ export function AnnouncementPage({
             const unread = !readIds.has(announcement.id);
             const tearing = tearingIds.has(announcement.id);
             return (
-              <div
-                className="announcement-entry-shell paper-sticker"
+              <PaperSticker
+                className="announcement-entry-shell"
                 key={announcement.id}
-                style={{ zIndex: announcements.length - index }}
+                stackOrder={announcements.length - index}
               >
-                <span className="paper-sticker-cast" aria-hidden="true">
-                  <span className="paper-sticker-soft-blur" />
-                </span>
                 {announcement.pinned ? (
                   <span
                     className="announcement-pin-corner"
@@ -213,7 +220,7 @@ export function AnnouncementPage({
                     </span>
                   </span>
                 ) : null}
-              </div>
+              </PaperSticker>
             );
           })}
         </div>

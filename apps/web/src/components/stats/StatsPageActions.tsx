@@ -39,42 +39,38 @@ export function StatsPageActions({
         onChange={handleImport}
       />
       <StatsActionButton
-        icon={Upload}
+        icon={Download}
         label="导出"
         onClick={() => void onExport()}
       />
       <StatsActionButton
-        icon={Download}
+        icon={Upload}
         label="导入"
         onClick={() => fileInputRef.current?.click()}
       />
       <StatsActionButton
-        danger
         icon={Trash2}
         label="清除数据"
         onClick={onClear}
+        tone="danger"
       />
     </div>
   );
 }
 
 function StatsActionButton({
-  danger = false,
   icon: Icon,
   label,
   onClick,
+  tone = "plain",
 }: {
-  danger?: boolean;
   icon: LucideIcon;
   label: string;
   onClick: () => void;
+  tone?: "plain" | "danger";
 }) {
   return (
-    <PageHeaderAction
-      ariaLabel={label}
-      onClick={onClick}
-      tone={danger ? "danger" : "plain"}
-    >
+    <PageHeaderAction ariaLabel={label} onClick={onClick} tone={tone}>
       <Icon size={18} aria-hidden="true" />
       <span className="stats-action-label">{label}</span>
     </PageHeaderAction>

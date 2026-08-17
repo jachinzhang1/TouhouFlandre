@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   PaperDataTable,
   PaperDataTableBody,
+  PaperDataTableDetail,
   PaperDataTableHeader,
-} from "./PaperDataTable";
+} from "@/components/paper";
 
 describe("PaperDataTable", () => {
   it("owns its flat paper surface and synchronizes detached scrolling", () => {
@@ -13,8 +14,8 @@ describe("PaperDataTable", () => {
         <PaperDataTableHeader ariaLabel="测试表头">
           <span>表头</span>
         </PaperDataTableHeader>
-        <PaperDataTableBody ariaLabel="测试内容">
-          <span>内容</span>
+        <PaperDataTableBody ariaLabel="测试内容" responsiveStacked>
+          <PaperDataTableDetail>内容</PaperDataTableDetail>
         </PaperDataTableBody>
       </PaperDataTable>,
     );
@@ -24,6 +25,8 @@ describe("PaperDataTable", () => {
     const surface = body.closest(".paper-data-table") as HTMLElement;
     expect(surface.dataset.paperFolded).toBe("false");
     expect(surface.closest(".paper-sticker")).toBeNull();
+    expect(body.dataset.paperResponsiveStacked).toBe("true");
+    expect(body.querySelector(".paper-data-table-detail")).toBeTruthy();
 
     header.scrollLeft = 120;
     fireEvent.scroll(header);
@@ -70,6 +73,7 @@ describe("PaperDataTable", () => {
     });
     fireEvent.scroll(window);
     await waitFor(() => expect(header.dataset.shadow).toBe("true"));
+    expect(sticky.dataset.paperDataTableShadow).toBe("true");
 
     Object.defineProperty(window, "scrollY", {
       configurable: true,
@@ -77,5 +81,6 @@ describe("PaperDataTable", () => {
     });
     fireEvent.scroll(window);
     await waitFor(() => expect(header.dataset.shadow).toBe("false"));
+    expect(sticky.dataset.paperDataTableShadow).toBe("false");
   });
 });

@@ -7,10 +7,21 @@ import type {
 } from "react";
 
 export type PaperVariant = "plain" | "tinted";
+export type PaperTone =
+  | "default"
+  | "success"
+  | "info"
+  | "warning"
+  | "danger"
+  | "neutral"
+  | "contrast";
 
-interface PaperProps {
+export type PaperElevation = "none" | "sm" | "lg" | "accent";
+
+export interface PaperProps {
   ariaLabel?: string;
   ariaChecked?: boolean | "mixed";
+  ariaDescribedBy?: string;
   ariaControls?: string;
   ariaDisabled?: boolean;
   ariaExpanded?: boolean;
@@ -20,17 +31,21 @@ interface PaperProps {
   children?: ReactNode;
   className?: string;
   disabled?: boolean;
+  elevation?: PaperElevation;
   folded?: boolean;
   foldSize?: number;
   href?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   foldDelayMs?: number;
+  pattern?: boolean;
+  preserveAppearanceWhenDisabled?: boolean;
   role?: AriaRole;
   stackOrder?: number;
   sticker?: boolean;
   unfoldOnHover?: boolean;
   unfolded?: boolean;
   ariaHidden?: boolean;
+  tone?: PaperTone;
   title?: string;
   variant?: PaperVariant;
 }
@@ -38,6 +53,7 @@ interface PaperProps {
 export function Paper({
   ariaControls,
   ariaChecked,
+  ariaDescribedBy,
   ariaLabel,
   ariaDisabled,
   ariaExpanded,
@@ -47,42 +63,46 @@ export function Paper({
   children,
   className = "",
   disabled,
+  elevation = "none",
   folded = true,
   foldSize = 12,
   href,
   onClick,
   foldDelayMs = 0,
+  pattern = true,
+  preserveAppearanceWhenDisabled = false,
   role,
   stackOrder,
   sticker = true,
   unfoldOnHover = true,
   unfolded = false,
   ariaHidden,
+  tone = "default",
   title,
   variant = "plain",
 }: PaperProps) {
   const disabledAppearance = disabled === true || ariaDisabled === true;
-  const effectiveFolded = folded && !disabledAppearance;
+  const muteDisabledAppearance =
+    disabledAppearance && !preserveAppearanceWhenDisabled;
+  const effectiveFolded = folded && !muteDisabledAppearance;
   const effectiveUnfoldOnHover = unfoldOnHover && !disabledAppearance;
-  const effectiveVariant = disabledAppearance ? "plain" : variant;
+  const effectiveVariant = muteDisabledAppearance ? "plain" : variant;
   const paperClassName = ["paper-surface", className].filter(Boolean).join(" ");
   const paperStyle = {
     "--paper-fold-delay": `${Math.max(0, foldDelayMs)}ms`,
     "--paper-fold-size": `${Math.max(0, foldSize)}px`,
-    ...(disabledAppearance
-      ? {
-          color: "color-mix(in srgb, var(--ink) 42%, transparent)",
-          background: "var(--paper-plain-bg)",
-          cursor: "not-allowed",
-        }
-      : {}),
   } as CSSProperties;
   const paperProps = {
     className: paperClassName,
     "data-paper-variant": effectiveVariant,
+    "data-paper-pattern": pattern ? "default" : "none",
+    "data-paper-tone": tone,
+    "data-paper-elevation": elevation,
     "data-paper-folded": effectiveFolded ? "true" : "false",
     "data-paper-unfold-hover": effectiveUnfoldOnHover ? "true" : "false",
     "data-paper-disabled": disabledAppearance ? "true" : undefined,
+    "data-paper-preserve-appearance":
+      disabledAppearance && preserveAppearanceWhenDisabled ? "true" : undefined,
     "data-paper-animate-mount": animateOnMount ? "true" : "false",
     style: paperStyle,
     "data-paper-unfolded": unfolded && !disabledAppearance ? "true" : undefined,
@@ -90,26 +110,33 @@ export function Paper({
     "aria-label": ariaLabel,
     "aria-controls": ariaControls,
     "aria-checked": ariaChecked,
+    "aria-describedby": ariaDescribedBy,
     "aria-expanded": ariaExpanded,
-    "aria-disabled": ariaDisabled || undefined,
+    "aria-disabled": disabledAppearance || undefined,
     "aria-pressed": ariaPressed,
     role,
     title,
   } as const;
 
   let surface: ReactNode;
-  if (href) {
+  if (href && !disabledAppearance) {
     surface = (
       <Link href={href} {...paperProps}>
         {children}
       </Link>
     );
+  } else if (href) {
+    surface = (
+      <span {...paperProps} role={role ?? "link"}>
+        {children}
+      </span>
+    );
   } else if (as === "button") {
     surface = (
       <button
         type="button"
-        disabled={disabled}
-        onClick={onClick}
+        disabled={disabledAppearance}
+        onClick={disabledAppearance ? undefined : onClick}
         {...paperProps}
       >
         {children}
@@ -125,16 +152,28 @@ export function Paper({
 
   if (!sticker) return surface;
 
+  return <PaperSticker stackOrder={stackOrder}>{surface}</PaperSticker>;
+}
+
+export function PaperSticker({
+  children,
+  className = "",
+  stackOrder,
+}: {
+  children: ReactNode;
+  className?: string;
+  stackOrder?: number;
+}) {
   return (
     <div
-      className="paper-sticker"
+      className={["paper-sticker", className].filter(Boolean).join(" ")}
       data-paper-sticker="true"
       style={stackOrder === undefined ? undefined : { zIndex: stackOrder }}
     >
       <span className="paper-sticker-cast" aria-hidden="true">
         <span className="paper-sticker-soft-blur" />
       </span>
-      {surface}
+      {children}
     </div>
   );
 }

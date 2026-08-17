@@ -119,6 +119,19 @@ describe("AnnouncementPage", () => {
     await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledOnce());
     expect(screen.queryByRole("button", { name: "刷新公告" })).toBeNull();
   });
+
+  it("announces automatic refresh failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("公告刷新失败。")),
+    );
+
+    render(<AnnouncementPage initialAnnouncements={[markdownAnnouncement]} />);
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "公告刷新失败。",
+    );
+  });
 });
 
 function mockAnnouncementsResponse(announcements: Announcement[]) {

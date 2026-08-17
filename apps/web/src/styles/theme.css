@@ -56,9 +56,39 @@
   --line: #d7dfdb;
   --line-strong: #bbc8c2;
   --theme-color: #ad3334;
+  --semantic-success: #247568;
+  --semantic-info: #3478b4;
+  --semantic-warning: #a76916;
+  --semantic-danger: #ad3334;
+  --semantic-neutral: #66736d;
+  --semantic-success-tint: color-mix(
+    in srgb,
+    var(--semantic-success) 22%,
+    transparent
+  );
+  --semantic-info-tint: color-mix(
+    in srgb,
+    var(--semantic-info) 22%,
+    transparent
+  );
+  --semantic-warning-tint: color-mix(
+    in srgb,
+    var(--semantic-warning) 22%,
+    transparent
+  );
+  --semantic-danger-tint: color-mix(
+    in srgb,
+    var(--semantic-danger) 20%,
+    transparent
+  );
+  --semantic-neutral-tint: color-mix(
+    in srgb,
+    var(--semantic-neutral) 18%,
+    transparent
+  );
   --accent: var(--theme-color);
-  --accent-strong: color-mix(in srgb, var(--theme-color) 82%, #000);
-  --accent-soft: color-mix(in srgb, var(--theme-color) 13%, #fff);
+  --accent-strong: var(--theme-color);
+  --accent-soft: color-mix(in srgb, var(--theme-color) 14%, transparent);
   --accent-contrast: #ffffff;
   --accent-shadow: color-mix(in srgb, var(--theme-color) 20%, transparent);
   --accent-shadow-strong: color-mix(
@@ -71,11 +101,7 @@
     var(--theme-color) 55%,
     var(--line)
   );
-  --page-background: color-mix(
-    in srgb,
-    var(--paper-muted) 96%,
-    var(--theme-color)
-  );
+  --page-background: var(--paper-muted);
   --paper-plain-bg: rgba(255, 255, 255, 0.94);
   --paper-plain-bg-hover: #ffffff;
   --paper-plain-line: rgba(82, 97, 91, 0.12);
@@ -117,7 +143,6 @@
     transparent 9px 17px
   );
   --paper-tinted-ornament-size: auto;
-  --mobile-nav-shadow: 0 -8px 24px rgba(25, 46, 39, 0.08);
   --surface: #ffffff;
   --surface-hover: #ffffff;
   --surface-soft: #f5f7f6;
@@ -155,15 +180,6 @@
     rgba(244, 247, 245, 0.84) 76%,
     rgba(244, 247, 245, 0.16) 100%
   );
-  --topbar-bg: #183e37;
-  --topbar-text: #ffffff;
-  --topbar-muted: #b7d8d1;
-  --topbar-soft: #d8e7e2;
-  --topbar-control-border: rgba(255, 255, 255, 0.2);
-  --topbar-control-bg: rgba(255, 255, 255, 0.06);
-  --topbar-control-hover-bg: rgba(255, 255, 255, 0.12);
-  --topbar-active-text: #173e36;
-  --topbar-active-bg: #ffffff;
   --progress-bg: #dce3df;
   --suggestion-border: #e8ecea;
   --danger-color: #ad3334;
@@ -192,14 +208,14 @@
 
 html[data-theme-mode="dark"] {
   color-scheme: dark;
-  --dark-theme-blend: color-mix(in srgb, var(--theme-color) 45%, #777c79);
+  --dark-theme-blend: #777c79;
   --ink: #edf4f1;
   --paper: color-mix(in srgb, #191c1a 88%, var(--dark-theme-blend));
   --paper-muted: #111312;
   --line: #343936;
   --line-strong: #4a514d;
-  --accent-strong: color-mix(in srgb, var(--theme-color) 64%, #fff);
-  --accent-soft: color-mix(in srgb, var(--theme-color) 34%, #121513);
+  --accent-strong: var(--theme-color);
+  --accent-soft: color-mix(in srgb, var(--theme-color) 22%, transparent);
   --accent-contrast: #ffffff;
   --accent-shadow: color-mix(in srgb, var(--theme-color) 28%, transparent);
   --accent-shadow-strong: color-mix(
@@ -212,11 +228,7 @@ html[data-theme-mode="dark"] {
     var(--theme-color) 68%,
     var(--line)
   );
-  --page-background: color-mix(
-    in srgb,
-    var(--paper-muted) 82%,
-    var(--dark-theme-blend)
-  );
+  --page-background: var(--paper-muted);
   --paper-plain-bg: color-mix(in srgb, #222422 84%, var(--dark-theme-blend));
   --paper-plain-bg-hover: color-mix(
     in srgb,
@@ -259,7 +271,6 @@ html[data-theme-mode="dark"] {
     var(--paper-tinted-bg) 42%,
     transparent
   );
-  --mobile-nav-shadow: 0 -10px 28px rgba(0, 0, 0, 0.34);
   --surface: color-mix(in srgb, #1c201e 88%, var(--dark-theme-blend));
   --surface-hover: color-mix(in srgb, #272b28 84%, var(--dark-theme-blend));
   --surface-soft: color-mix(in srgb, #171a18 92%, var(--dark-theme-blend));
@@ -297,15 +308,6 @@ html[data-theme-mode="dark"] {
     rgba(12, 17, 15, 0.88) 78%,
     rgba(12, 17, 15, 0.42) 100%
   );
-  --topbar-bg: #102c27;
-  --topbar-text: #f0faf6;
-  --topbar-muted: #83cfc2;
-  --topbar-soft: #c6e3dc;
-  --topbar-control-border: rgba(255, 255, 255, 0.18);
-  --topbar-control-bg: rgba(255, 255, 255, 0.07);
-  --topbar-control-hover-bg: rgba(255, 255, 255, 0.14);
-  --topbar-active-text: #10241f;
-  --topbar-active-bg: #e9f5f1;
   --progress-bg: #30413b;
   --suggestion-border: #2d3b36;
   --error-text: #ffaaa5;

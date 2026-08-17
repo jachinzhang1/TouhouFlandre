@@ -20,9 +20,11 @@ const wonSession = {
   status: "won",
   guesses: [
     {
+      kind: "guess",
       guessId: "patchouli_knowledge",
       guessName: "帕秋莉·诺蕾姬",
       guessAvatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
+      isCorrect: true,
       feedback: [],
     },
   ],
@@ -32,7 +34,8 @@ const wonSession = {
       zhHans: "帕秋莉·诺蕾姬",
       ja: "パチュリー・ノーレッジ",
       en: "Patchouli Knowledge",
-      aliases: [],
+      romaji: "Pachurii Noorejji",
+      aliases: ["帕秋莉", "姆Q"],
     },
     avatarUrl: "/characters/0006-帕秋莉·诺蕾姬.png",
     firstAppearance: {
@@ -274,6 +277,9 @@ describe("SingleGamePage", () => {
     expect(guessGroup.contains(submitButton)).toBe(true);
     const legend = screen.getByRole("list", { name: "反馈图例" });
     expect(within(legend).getAllByRole("listitem")).toHaveLength(6);
+    expect(
+      legend.querySelectorAll(".feedback-legend-scroll-spacer"),
+    ).toHaveLength(2);
     expect(within(legend).getByText("答案更高")).toBeTruthy();
     expect(within(legend).getByText("未知，遇到请反馈")).toBeTruthy();
     const status = screen.getByRole("region", { name: "游戏状态" });
@@ -336,22 +342,60 @@ describe("SingleGamePage", () => {
     await userEvent.click(screen.getByText("帕秋莉·诺蕾姬"));
     await userEvent.click(screen.getByText("提交猜测"));
 
-    expect(await screen.findByText("猜中了")).toBeTruthy();
+    expect(await screen.findByText("恭喜你，猜中了！")).toBeTruthy();
+    const resultSection = screen.getByRole("region", { name: "游戏结果" });
+    expect(resultSection.classList.contains("single-game-result-section")).toBe(
+      true,
+    );
+    expect(resultSection.dataset.result).toBe("won");
+    expect(
+      resultSection.querySelector(".result-panel.paper-surface"),
+    ).toBeNull();
+    expect(screen.queryByText("Clear")).toBeNull();
+    const history = screen.getByRole("region", { name: "猜测记录" });
+    expect(history.dataset.scrollLocked).toBe("true");
+    expect(
+      history
+        .querySelector("tbody tr:last-child")
+        ?.classList.contains("guess-correct-row"),
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText("搜索东方角色") as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "提交猜测" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
     const completedProgress = screen.getByRole("progressbar", {
       name: "猜测进度 1/8",
     });
     expect(
       completedProgress.querySelectorAll(".progress-segment.is-filled"),
     ).toHaveLength(1);
-    expect(screen.getByText(/共使用 1 次猜测/)).toBeTruthy();
+    const resultSummary = resultSection.querySelector(".result-summary");
+    expect(resultSummary?.textContent).toBe(
+      "恭喜你，猜中了！你用1次机会猜出了帕秋莉·诺蕾姬。",
+    );
     expect(screen.getByText("パチュリー・ノーレッジ")).toBeTruthy();
+    expect(screen.getByText("Pachurii Noorejji")).toBeTruthy();
+    expect(screen.queryByText("帕秋莉、姆Q")).toBeNull();
     expect(screen.getByText("东方红魔乡")).toBeTruthy();
     expect(screen.getByText("魔法使", { selector: "dd" })).toBeTruthy();
     expect(screen.getByText("操纵火水木金土日月的能力")).toBeTruthy();
     expect(screen.getByText("红魔馆地下图书馆")).toBeTruthy();
     expect(screen.getByText("魔法使、图书馆管理员")).toBeTruthy();
     expect(screen.queryByText("th06_eosd")).toBeNull();
-    await userEvent.click(screen.getByText("复制分享"));
+    const resultPanel = resultSection.querySelector(".result-panel");
+    expect(resultPanel?.children[0].classList.contains("result-info")).toBe(
+      true,
+    );
+    expect(resultPanel?.children[1].classList.contains("answer-token")).toBe(
+      true,
+    );
+    const shareButton = screen.getByRole("button", { name: "复制分享" });
+    expect(shareButton.closest(".result-title-row")).toBeTruthy();
+    expect(shareButton.classList.contains("paper-button-filled")).toBe(true);
+    await userEvent.click(shareButton);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining(window.location.origin),
     );
@@ -376,6 +420,20 @@ describe("SingleGamePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "放弃游戏" }));
 
     expect(await screen.findByText("本次游戏结束")).toBeTruthy();
+    const lostSummary = screen
+      .getByRole("region", { name: "游戏结果" })
+      .querySelector(".result-summary p");
+    expect(lostSummary?.textContent).toBe(
+      "你用尽了1次机会也没能猜出帕秋莉·诺蕾姬。",
+    );
+    const history = screen.getByRole("region", { name: "猜测记录" });
+    expect(history.dataset.completed).toBe("true");
+    expect(history.dataset.scrollLocked).toBe("true");
+    expect(
+      history
+        .querySelector("tbody tr:last-child")
+        ?.classList.contains("guess-final-row"),
+    ).toBe(true);
     expect(
       screen.getByText("帕秋莉·诺蕾姬", { selector: "strong" }),
     ).toBeTruthy();
@@ -503,6 +561,15 @@ describe("SingleGamePage", () => {
     expect(listbox.querySelector(".paper-data-table")).toBeTruthy();
     expect(listbox.querySelector(".paper-data-table-body")).toBeTruthy();
     expect(option.classList.contains("paper-data-table-row")).toBe(true);
+    const columns = listbox.querySelector(".suggestion-columns") as HTMLElement;
+    expect(columns).toBeTruthy();
+    expect(
+      columns.parentElement?.classList.contains("suggestion-list-body"),
+    ).toBe(true);
+    expect(within(columns).getByText("头像")).toBeTruthy();
+    expect(within(columns).getByText("角色")).toBeTruthy();
+    expect(within(columns).getByText("发色 / 状态")).toBeTruthy();
+    expect(option.querySelector(".suggestion-avatar")).toBeTruthy();
     expect(
       container
         .querySelector(".single-game-shell")
@@ -516,6 +583,29 @@ describe("SingleGamePage", () => {
         .querySelector(".single-game-shell")
         ?.getAttribute("data-suggestions-open"),
     ).toBe("false");
+  });
+
+  it("prevents hover interaction for already-guessed suggestions", async () => {
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: sessionWithGuess,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+
+    render(<SingleGamePage mode="daily" />);
+    const input = await screen.findByLabelText("搜索东方角色");
+    await userEvent.type(input, "帕秋莉");
+
+    const option = screen.getByRole("option", {
+      name: /帕秋莉·诺蕾姬.*已猜/,
+    });
+    expect((option as HTMLButtonElement).disabled).toBe(true);
+    expect(option.textContent).toContain("已猜");
+    await userEvent.click(option);
+    expect((input as HTMLInputElement).value).toBe("帕秋莉");
   });
 
   it("selects a search suggestion with the keyboard", async () => {

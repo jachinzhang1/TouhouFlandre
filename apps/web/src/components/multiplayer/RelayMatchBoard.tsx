@@ -23,6 +23,7 @@ import {
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { STATUS_LABEL } from "../game/GuessTable";
+import { Paper } from "@/components/paper";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type MemberView = components["schemas"]["MemberView"];
@@ -87,7 +88,16 @@ export function RelayMatchBoard({
 
   return (
     <section className="px-[18px] pt-5 pb-28">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="sm"
+        className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
           {MULTIPLAYER_MODE_LABELS.relay} ·{" "}
           {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
@@ -114,30 +124,36 @@ export function RelayMatchBoard({
             整局 {formatRemaining(roundRemaining)}
           </span>
         )}
-      </div>
+      </Paper>
 
-      <div
-        className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-3 shadow-sm ${
-          isMyActiveTurn ? "relay-current-turn-active" : ""
-        }`}
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="sm"
+        className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+        variant={isMyActiveTurn ? "tinted" : "plain"}
       >
         {round?.status === "playing" && !ended ? (
           <>
-            <p className="m-0 text-[0.82rem] font-semibold text-ink">
+            <p className="m-0 text-[0.82rem] font-semibold">
               当前轮到 {currentLabel}
               {round.turnDeadline ? (
-                <span className="ml-2 text-ink-soft tabular-nums">
+                <span className="ml-2 tabular-nums">
                   {formatRemaining(turnRemaining)}
                 </span>
               ) : null}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               {viewerRole === "spectator" ? (
-                <span className="rounded bg-paper-muted px-2 py-1 text-[0.72rem] font-bold text-ink-soft">
+                <span className="px-2 py-1 text-[0.72rem] font-bold">
                   空过 {currentSkipRemaining}/{maxSkips}
                 </span>
               ) : (
-                <span className="rounded bg-paper-muted px-2 py-1 text-[0.72rem] font-bold text-ink-soft">
+                <span className="px-2 py-1 text-[0.72rem] font-bold">
                   我的空过 {mySkipCount}/{maxSkips} · 剩余 {mySkipRemaining}
                 </span>
               )}
@@ -153,9 +169,18 @@ export function RelayMatchBoard({
                 : "等待对局同步"}
           </p>
         )}
-      </div>
+      </Paper>
 
-      <div className="rounded-[6px] border border-line bg-paper p-3 shadow-sm">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="sm"
+        className="p-3"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <div className="mb-2 flex items-center justify-between gap-3">
           <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">
             共享棋盘
@@ -168,27 +193,27 @@ export function RelayMatchBoard({
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-[0.78rem]">
-            <thead>
-              <tr>
-                <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
+            <thead className="paper-data-table-header">
+              <tr className="paper-data-table-row">
+                <th className="w-28 p-2 text-left text-[0.72rem] font-bold">
                   回合
                 </th>
-                <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
+                <th className="w-28 p-2 text-left text-[0.72rem] font-bold">
                   角色
                 </th>
                 {fields.map((field) => (
                   <th
                     key={field.key}
-                    className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
+                    className="p-2 text-left text-[0.72rem] font-bold"
                   >
                     {field.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="paper-data-table-body">
               {rows.length === 0 && !forfeitedSlot ? (
-                <tr>
+                <tr className="paper-data-table-row">
                   <td
                     colSpan={fields.length + 2}
                     className="py-4 text-center text-ink-soft"
@@ -223,7 +248,7 @@ export function RelayMatchBoard({
             </tbody>
           </table>
         </div>
-      </div>
+      </Paper>
     </section>
   );
 }
@@ -263,14 +288,11 @@ function RelayForfeitRow({
 }) {
   const owner = ownerLabel({ slot, mySlot, members, viewerRole });
   return (
-    <tr>
-      <th
-        scope="row"
-        className="border-b border-line p-1.5 text-left font-normal text-ink-soft"
-      >
+    <tr className="paper-data-table-row">
+      <th scope="row" className="p-1.5 text-left font-normal">
         {owner}
       </th>
-      <td colSpan={fields.length + 1} className="border-b border-line p-1.5">
+      <td colSpan={fields.length + 1} className="p-1.5">
         <span className="inline-flex rounded bg-vermilion-soft px-2 py-1 text-[0.72rem] font-black text-vermilion">
           玩家放弃此局
         </span>
@@ -303,14 +325,11 @@ function RelayTurn({
   if (row.kind !== "guess" || !row.guess) {
     const label = row.kind === "pass" ? "主动空过" : "超时空过";
     return (
-      <tr>
-        <th
-          scope="row"
-          className="border-b border-line p-1.5 text-left font-normal text-ink-soft"
-        >
+      <tr className="paper-data-table-row">
+        <th scope="row" className="p-1.5 text-left font-normal">
           第 {row.index} 手 · {owner}
         </th>
-        <td colSpan={fields.length + 1} className="border-b border-line p-1.5">
+        <td colSpan={fields.length + 1} className="p-1.5">
           <span
             className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-bold ${
               row.kind === "pass"
@@ -326,17 +345,14 @@ function RelayTurn({
   }
 
   return (
-    <tr className={isWinnerGuess ? "bg-jade-soft" : undefined}>
-      <th
-        scope="row"
-        className="border-b border-line p-1.5 text-left font-normal text-ink-soft"
-      >
+    <tr
+      className="paper-data-table-row"
+      data-paper-row-tone={isWinnerGuess ? "success" : undefined}
+    >
+      <th scope="row" className="p-1.5 text-left font-normal">
         第 {row.index} 手 · {owner}
       </th>
-      <th
-        scope="row"
-        className="border-b border-line p-1.5 align-top text-left font-normal"
-      >
+      <th scope="row" className="p-1.5 align-top text-left font-normal">
         <span className="flex items-center gap-1.5">
           <CharacterAvatar
             avatarUrl={row.guess.guessAvatarUrl}
@@ -355,10 +371,7 @@ function RelayTurn({
         </span>
       </th>
       {feedback.map((field, index) => (
-        <td
-          key={fields[index]?.key ?? index}
-          className="border-b border-line p-1.5 align-top"
-        >
+        <td key={fields[index]?.key ?? index} className="p-1.5 align-top">
           <span
             className={`feedback match-feedback feedback-${field.status}`}
             title={STATUS_LABEL[field.status]}

@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { PaperButton } from "@/components/paper";
 
 type MemberPageItem = { memberId: string; seat: number };
 
@@ -67,30 +68,34 @@ export function MemberPaginator<T extends MemberPageItem>({
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-[0.78rem] font-bold text-ink-soft">{label}</span>
         <div className="flex items-center gap-1 text-[0.7rem] text-ink-soft">
-          <button
-            type="button"
-            aria-label={`${label}上一页`}
-            title="上一页"
+          <PaperButton
+            ariaLabel={`${label}上一页`}
+            className="size-8"
+            compact
             disabled={pageStart === 0}
+            folded={false}
+            iconOnly
             onClick={() => move(pageStart - pageSize)}
-            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
+            title="上一页"
           >
             <ChevronLeft size={15} aria-hidden="true" />
-          </button>
+          </PaperButton>
           <span className="min-w-16 text-center tabular-nums">
             {pageStart + 1}-{Math.min(ordered.length, pageStart + pageSize)}/
             {ordered.length}
           </span>
-          <button
-            type="button"
-            aria-label={`${label}下一页`}
-            title="下一页"
+          <PaperButton
+            ariaLabel={`${label}下一页`}
+            className="size-8"
+            compact
             disabled={pageStart + pageSize >= ordered.length}
+            folded={false}
+            iconOnly
             onClick={() => move(pageStart + pageSize)}
-            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
+            title="下一页"
           >
             <ChevronRight size={15} aria-hidden="true" />
-          </button>
+          </PaperButton>
         </div>
       </div>
       <div

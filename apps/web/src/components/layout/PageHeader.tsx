@@ -1,41 +1,41 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { AriaRole, ReactNode } from "react";
+import { VisualAlign, type VisualAlignInset } from "./VisualAlign";
 
 export function PageHeader({
   description,
   descriptionRole,
   leftSlot,
   rightSlot,
+  rightSlotInset = "icon-button",
   title,
 }: {
   description: ReactNode;
   descriptionRole?: AriaRole;
   leftSlot?: ReactNode;
   rightSlot?: ReactNode;
+  rightSlotInset?: VisualAlignInset;
   title: ReactNode;
 }) {
   return (
     <header
-      className={`page-header text-center${leftSlot ? " page-header-has-left" : ""}${rightSlot ? " page-header-has-right" : ""}`}
+      className={`page-header${leftSlot ? " page-header-has-left" : ""}${rightSlot ? " page-header-has-right" : ""}`}
     >
       {leftSlot ? (
         <div className="page-header-slot page-header-slot-left">{leftSlot}</div>
       ) : null}
       <div className="page-header-copy">
-        <h1 className="mt-0 mb-0 font-brand text-[2.6rem] font-black leading-[1.15] max-[680px]:text-[2.05rem]">
-          {title}
-        </h1>
-        <p
-          className="mx-auto mt-3 mb-0 flex min-h-7 max-w-[720px] items-center justify-center text-center font-brand leading-[1.75] text-ink-soft"
-          role={descriptionRole}
-        >
+        <h1 className="page-header-title">{title}</h1>
+        <p className="page-header-description" role={descriptionRole}>
           {description}
         </p>
       </div>
       {rightSlot ? (
         <div className="page-header-slot page-header-slot-right">
-          {rightSlot}
+          <VisualAlign edge="mobile-start" inset={rightSlotInset}>
+            {rightSlot}
+          </VisualAlign>
         </div>
       ) : null}
     </header>

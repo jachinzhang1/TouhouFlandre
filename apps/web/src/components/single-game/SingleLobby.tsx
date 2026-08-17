@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import { Settings, Users } from "lucide-react";
 import { modeConfig, SINGLE_PLAYER_MODE_IDS } from "../../gameModes";
-import { Paper } from "../Paper";
+import { Paper } from "@/components/paper";
 import { PageHeader } from "../layout/PageHeader";
 
 export function SingleLobby() {
   return (
-    <section className="pt-10 pb-8 max-[680px]:px-[18px] max-[680px]:pt-[28px] max-[680px]:pb-[18px]">
+    <section className="single-lobby-page">
       <PageHeader description="沿着角色留下的线索抵达答案。" title="游戏模式" />
 
       <div className="game-mode-grid">

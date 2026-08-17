@@ -18,19 +18,27 @@ export function SelfBoard({
   maxGuesses?: number;
   fields?: readonly GuessField[];
 }) {
-  const rows: GuessRow[] = useMemo(
+  const rows = useMemo<GuessRow[]>(
     () =>
-      guesses.map((guess) => ({
-        key: guess.guessId,
-        name: guess.guessName,
-        avatarUrl: guess.guessAvatarUrl,
-        isCorrect: guess.isCorrect,
-        cells: guess.feedback.map((field) => ({
-          field: field.field,
-          status: field.status,
-          value: field.displayValue.join("、"),
-        })),
-      })),
+      guesses.map((guess) =>
+        guess.kind === "timeout"
+          ? {
+              key: guess.guessId,
+              notice: "超时跳过",
+              tone: "danger",
+            }
+          : {
+              key: guess.guessId,
+              name: guess.guessName,
+              avatarUrl: guess.guessAvatarUrl,
+              isCorrect: guess.isCorrect,
+              cells: guess.feedback.map((field) => ({
+                field: field.field,
+                status: field.status,
+                value: field.displayValue.join("、"),
+              })),
+            },
+      ),
     [guesses],
   );
   const guessCountLabel = maxGuesses

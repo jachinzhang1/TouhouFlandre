@@ -33,6 +33,7 @@ export function FeedbackLegend({ className = "" }: { className?: string }) {
       className={`feedback-legend-row ${className}`.trim()}
       role="list"
     >
+      <span className="feedback-legend-scroll-spacer" aria-hidden="true" />
       {FEEDBACK_LEGEND_ITEMS.map((item) => (
         <div
           className="feedback-legend-row-item"
@@ -51,6 +52,7 @@ export function FeedbackLegend({ className = "" }: { className?: string }) {
           <span>{item.shortLabel}</span>
         </div>
       ))}
+      <span className="feedback-legend-scroll-spacer" aria-hidden="true" />
     </div>
   );
 }

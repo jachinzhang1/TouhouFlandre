@@ -732,7 +732,8 @@ const FLANDRE: Character = {
     zhHans: "芙兰朵露·斯卡蕾特",
     ja: "フランドール・スカーレット",
     en: "Flandre Scarlet",
-    aliases: ["芙兰"],
+    romaji: "Furandooru Sukaretto",
+    aliases: ["芙兰", "二小姐", "妹样"],
   },
   firstAppearance: {
     workId: "th06_eosd",

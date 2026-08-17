@@ -17,6 +17,7 @@ import { GuessTable, type GuessRow } from "../game/GuessTable";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 import type { RoomUiState } from "../../hooks/useRoom";
+import { Paper } from "@/components/paper";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
@@ -57,7 +58,16 @@ export function MatchBoard({
 
   return (
     <section className="px-[18px] pt-5 pb-28">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="sm"
+        className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
           {placementScoring
             ? "积分制"
@@ -84,7 +94,7 @@ export function MatchBoard({
           </span>
         )}
         {!ended ? roundActions : null}
-      </div>
+      </Paper>
 
       <div
         className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
@@ -176,7 +186,7 @@ function EndedBoards({
     roundResult.boards.filter((board) => board.memberId !== memberId),
   );
   return (
-    <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       {selfBoard ? (
         <GuessTable
           title="我"

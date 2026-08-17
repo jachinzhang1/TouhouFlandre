@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 import type { ChangeEvent } from "react";
 import type { CharacterSort, SortDirection } from "@touhouflandre/shared";
-import { PaperSearchInput } from "../controls/PaperSearchInput";
 import {
+  PaperSearchInput,
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+} from "@/components/paper";
 import type { CharacterView } from "./types";
 
 export function SearchToolbar({

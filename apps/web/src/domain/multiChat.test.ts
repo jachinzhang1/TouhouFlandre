@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   chatEntryFromMessage,
-  chatSenderLabel,
   initialRoomChatState,
   mergeChatEntries,
   normalizeChatDraft,
@@ -24,20 +23,6 @@ const message = (overrides: Partial<ReturnType<typeof chatEntryFromMessage>>) =>
   });
 
 describe("multiChat domain helpers", () => {
-  it("formats player labels with seat and spectator labels without a number", () => {
-    expect(chatSenderLabel(message({ senderSeat: 2 }))).toBe("灵梦(P2):");
-    expect(
-      chatSenderLabel(
-        message({
-          senderRole: "spectator",
-          senderSeat: undefined,
-          senderDisplayName: "观战者",
-          channel: "spectator",
-        }),
-      ),
-    ).toBe("观战者:");
-  });
-
   it("treats a single whitelisted emoji as emoji and mixed text as text", () => {
     expect(normalizeChatDraft(" 🌸 ")).toEqual({
       kind: "emoji",

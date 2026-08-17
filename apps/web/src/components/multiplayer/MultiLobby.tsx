@@ -2,8 +2,8 @@
 
 // 多人大厅（08 §10.1）：创建房间（赛制单选 + 昵称）、加入房间（房间号 + 昵称 + 公开预检）。
 import { useRouter } from "next/navigation";
-import { DoorOpen, Eye, Plus, Settings, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { DoorOpen, Eye, Settings, Users } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { MultiRoomFormat, MultiplayerMode } from "@touhouflandre/shared";
@@ -35,6 +35,24 @@ import {
   parseMultiplayerGameSeedPreset,
   storeMultiplayerGameSeed,
 } from "../../dev/gameSeeds";
+import {
+  Paper,
+  PaperButton,
+  PaperNumberInput,
+  PaperRadioGroup,
+  PaperRadioOption,
+  PaperRange,
+  PaperSegmentButton,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+  PaperTextInput,
+} from "@/components/paper";
+import {
+  PageBackLink,
+  PageHeader,
+  PageHeaderAction,
+} from "../layout/PageHeader";
+import { SectionHeading } from "../layout/SectionHeading";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
@@ -156,229 +174,216 @@ export function MultiLobby() {
   };
 
   return (
-    <section className="px-[18px] pt-12 pb-8">
-      <div className="max-w-[1000px]">
-        <div className="multi-lobby-header max-w-[720px]">
-          <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
-            MULTIPLAYER
-          </p>
-          <h1 className="mt-0 mb-1 font-brand text-[2.6rem] font-bold leading-[1.15] max-[680px]:text-[2.05rem]">
-            多人大厅
-          </h1>
-          <p className="mt-0 text-[0.9rem] leading-[1.75] text-ink-soft">
-            创建房间或输入房间号加入，与好友实时竞猜同一个隐藏角色。
-          </p>
-        </div>
+    <section className="multi-lobby-page">
+      <PageHeader
+        description="创建房间或输入房间号加入，与好友实时竞猜同一个隐藏角色。"
+        leftSlot={<PageBackLink href="/single" />}
+        rightSlot={
+          <PageHeaderAction
+            ariaLabel="题库设置"
+            onClick={() => router.push("/settings?source=multi")}
+          >
+            <Settings size={18} aria-hidden="true" />
+            题库设置
+          </PageHeaderAction>
+        }
+        rightSlotInset="leading-icon-action"
+        title="多人大厅"
+      />
 
-        {error && (
-          <p
-            className="mb-4 rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-3 py-2 text-[0.82rem] text-vermilion"
+      <div className="multi-lobby-content">
+        {error ? (
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="multi-lobby-error"
+            folded={false}
+            pattern={false}
             role="alert"
+            sticker={false}
+            tone="danger"
+            unfoldOnHover={false}
           >
             {error}
-          </p>
-        )}
+          </Paper>
+        ) : null}
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
-                  <Plus
-                    size={17}
-                    className="text-vermilion"
-                    aria-hidden="true"
-                  />
-                  创建房间
-                </h2>
-                <p className="m-0 text-[0.78rem] text-ink-soft">
-                  你是房主，选择玩法和赛制并邀请好友加入。
-                </p>
-              </div>
-              <button
-                type="button"
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[5px] border border-line bg-paper-muted px-2.5 text-[0.72rem] font-bold text-ink-soft hover:bg-paper"
-                onClick={() => router.push("/settings?source=multi")}
+        <div className="multi-lobby-layout">
+          <section className="multi-lobby-pane">
+            <SectionHeading
+              description="选择玩法和赛制，创建房间后邀请好友加入。"
+              title="创建房间"
+            />
+
+            <div className="multi-lobby-fieldset">
+              <span className="multi-lobby-field-label">玩法</span>
+              <PaperSegmentGroup
+                className="multi-lobby-mode-group"
+                label="玩法"
               >
-                <Settings size={14} aria-hidden="true" />
-                题库设置
-              </button>
-            </div>
-            <fieldset className="mb-4">
-              <legend className="mb-1 text-[0.75rem] text-ink-soft">
-                玩法
-              </legend>
-              <div className="grid grid-cols-2 gap-2">
-                {MODES.map((option) => (
-                  <label
-                    key={option}
-                    className={`mode-option relative flex min-h-[58px] cursor-pointer flex-col justify-center rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
-                      mode === option
-                        ? "border-vermilion bg-vermilion-soft text-vermilion"
-                        : "border-line bg-paper-muted hover:bg-paper"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="mode"
-                      value={option}
-                      checked={mode === option}
-                      onChange={() => setMode(option)}
-                      aria-describedby={`mode-rule-${option}`}
-                      className="sr-only"
-                    />
-                    <span>{MULTIPLAYER_MODE_LABELS[option]}</span>
-                    <span className="mt-0.5 text-[0.68rem] font-normal text-ink-soft">
-                      {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
-                    </span>
-                    <ModeRulePopover
-                      mode={option}
-                      nPlayerRaceEnabled={nPlayerRaceEnabled}
-                    />
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            {mode === "relay" && (
-              <fieldset className="mb-4">
-                <legend className="mb-1 text-[0.75rem] text-ink-soft">
-                  单手时限
-                </legend>
-                <div className="grid grid-cols-4 gap-2">
-                  {TURN_SECONDS_OPTIONS.map((seconds) => (
-                    <label
-                      key={seconds}
-                      className={`flex cursor-pointer items-center justify-center rounded-[6px] border px-2 py-2 text-[0.78rem] font-bold tabular-nums ${
-                        turnSeconds === seconds
-                          ? "border-jade bg-jade-soft text-jade"
-                          : "border-line bg-paper-muted hover:bg-paper"
-                      }`}
+                {MODES.map((option, index) => (
+                  <Fragment key={option}>
+                    {index > 0 ? <PaperSegmentSeparator /> : null}
+                    <PaperSegmentButton
+                      active={mode === option}
+                      ariaDescribedBy={`mode-rule-${option}`}
+                      className="mode-option"
+                      folded={false}
+                      onClick={() => setMode(option)}
                     >
-                      <input
-                        type="radio"
-                        name="turnSeconds"
-                        value={seconds}
-                        checked={turnSeconds === seconds}
-                        onChange={() => setTurnSeconds(seconds)}
-                        className="sr-only"
+                      <span className="multi-lobby-segment-copy">
+                        <span>{MULTIPLAYER_MODE_LABELS[option]}</span>
+                        <span className="multi-lobby-segment-description">
+                          {MULTIPLAYER_MODE_DESCRIPTIONS[option]}
+                        </span>
+                      </span>
+                      <ModeRulePopover
+                        mode={option}
+                        nPlayerRaceEnabled={nPlayerRaceEnabled}
                       />
-                      {seconds}s
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            {mode === "race" && nPlayerRaceEnabled && (
-              <label className="mb-4 block">
-                <span className="mb-1 flex items-center justify-between text-[0.75rem] text-ink-soft">
-                  <span>玩家上限</span>
-                  <output
-                    htmlFor="create-player-limit"
-                    className="font-bold tabular-nums text-ink"
-                  >
-                    {playerLimit} 人
-                  </output>
-                </span>
-                <input
-                  id="create-player-limit"
-                  aria-label="玩家上限（2-8）"
-                  type="range"
-                  min={2}
-                  max={8}
-                  step={1}
-                  value={playerLimit}
-                  onChange={(event) =>
-                    setPlayerLimit(
-                      Math.min(8, Math.max(2, Number(event.target.value) || 2)),
-                    )
-                  }
-                  className="w-full accent-vermilion"
-                />
-              </label>
-            )}
-            <fieldset className="mb-4">
-              <legend className="mb-1 text-[0.75rem] text-ink-soft">
-                双人赛制
-              </legend>
-              <div className="grid grid-cols-2 gap-2">
-                {FORMATS.map((f) => (
-                  <label
-                    key={f}
-                    className={`flex cursor-pointer items-center justify-between rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
-                      format === f
-                        ? "border-vermilion bg-vermilion-soft text-vermilion"
-                        : "border-line bg-paper-muted hover:bg-paper"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="format"
-                      value={f}
-                      checked={format === f}
-                      onChange={() => setFormat(f)}
-                      className="sr-only"
-                    />
-                    <span>{ROOM_FORMAT_SHORT[f]}</span>
-                    <span className="text-[0.68rem] font-normal text-ink-soft">
-                      {ROOM_FORMAT_LABELS[f].split(" · ")[1]}
-                    </span>
-                  </label>
+                    </PaperSegmentButton>
+                  </Fragment>
                 ))}
+              </PaperSegmentGroup>
+              <ModeRulePopover
+                mobile
+                mode={mode}
+                nPlayerRaceEnabled={nPlayerRaceEnabled}
+              />
+            </div>
+
+            {mode === "relay" ? (
+              <fieldset className="multi-lobby-fieldset">
+                <legend className="multi-lobby-field-label">单手时限</legend>
+                <PaperRadioGroup
+                  className="multi-lobby-four-option-group"
+                  label="单手时限"
+                >
+                  {TURN_SECONDS_OPTIONS.map((seconds) => (
+                    <PaperRadioOption
+                      checked={turnSeconds === seconds}
+                      className="tabular-nums"
+                      key={seconds}
+                      onSelect={() => setTurnSeconds(seconds)}
+                    >
+                      {seconds}s
+                    </PaperRadioOption>
+                  ))}
+                </PaperRadioGroup>
+              </fieldset>
+            ) : null}
+
+            {mode === "race" && nPlayerRaceEnabled ? (
+              <div className="multi-lobby-fieldset">
+                <span className="multi-lobby-field-label">玩家上限</span>
+                <PaperSegmentGroup
+                  className="multi-lobby-capacity-control"
+                  label="玩家上限"
+                >
+                  <PaperRange
+                    ariaLabel="玩家上限（2-8）"
+                    max={8}
+                    min={2}
+                    onChange={setPlayerLimit}
+                    value={playerLimit}
+                  />
+                  <PaperSegmentSeparator />
+                  <PaperNumberInput
+                    ariaLabel="玩家上限数值"
+                    max={8}
+                    min={2}
+                    onChange={setPlayerLimit}
+                    suffix="人"
+                    value={playerLimit}
+                  />
+                </PaperSegmentGroup>
               </div>
-            </fieldset>
-            <label className="mb-4 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">
+            ) : null}
+
+            <div className="multi-lobby-fieldset">
+              <span className="multi-lobby-field-label">双人赛制</span>
+              <PaperSegmentGroup
+                className="multi-lobby-format-group"
+                label="双人赛制"
+              >
+                {FORMATS.map((roomFormat, index) => (
+                  <Fragment key={roomFormat}>
+                    {index > 0 ? (
+                      <PaperSegmentSeparator
+                        orientation={index === 2 ? "horizontal" : "vertical"}
+                      />
+                    ) : null}
+                    <PaperSegmentButton
+                      active={format === roomFormat}
+                      folded={false}
+                      onClick={() => setFormat(roomFormat)}
+                    >
+                      <span className="multi-lobby-segment-copy">
+                        <span>{ROOM_FORMAT_SHORT[roomFormat]}</span>
+                        <span className="multi-lobby-segment-description">
+                          {ROOM_FORMAT_LABELS[roomFormat].split(" · ")[1]}
+                        </span>
+                      </span>
+                    </PaperSegmentButton>
+                  </Fragment>
+                ))}
+              </PaperSegmentGroup>
+            </div>
+
+            <div className="multi-lobby-fieldset">
+              <span className="multi-lobby-field-label">
                 昵称（可选，≤16 字符）
               </span>
-              <input
-                value={nickname}
+              <PaperTextInput
+                ariaLabel="创建房间昵称"
                 maxLength={16}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(event) => setNickname(event.target.value)}
                 placeholder="匿名玩家"
-                className="w-full rounded-[6px] border border-line-strong bg-paper px-3 py-2 text-[0.85rem] outline-none focus:border-vermilion"
+                value={nickname}
               />
-            </label>
-            <button
-              type="button"
+            </div>
+
+            <PaperButton
+              className="multi-lobby-primary-action"
               disabled={busy !== null}
+              filled
               onClick={handleCreate}
-              className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:opacity-50"
+              tone="theme"
             >
               <Users size={16} aria-hidden="true" />
               {busy === "create" ? "创建中……" : "创建房间"}
-            </button>
-          </div>
+            </PaperButton>
+          </section>
+          <PaperSegmentSeparator />
 
-          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
-            <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
-              <DoorOpen size={17} className="text-jade" aria-hidden="true" />
-              加入房间
-            </h2>
-            <p className="mt-0 mb-4 text-[0.78rem] text-ink-soft">
-              输入好友分享的 6 位房间号。
-            </p>
-            <label className="mb-2 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">
-                房间号
-              </span>
-              <input
-                value={joinCode}
-                onChange={(e) => {
-                  setJoinCode(e.target.value);
+          <section className="multi-lobby-pane">
+            <SectionHeading
+              description="输入好友分享的 6 位房间号。"
+              title="加入房间"
+            />
+
+            <div className="multi-lobby-fieldset">
+              <span className="multi-lobby-field-label">房间号</span>
+              <PaperTextInput
+                ariaLabel="房间号"
+                inputClassName="font-mono uppercase"
+                maxLength={12}
+                onBlur={precheck}
+                onChange={(event) => {
+                  setJoinCode(event.target.value);
                   setInfo(null);
                   setInfoError(false);
                 }}
-                onBlur={precheck}
                 placeholder="如 ABC123（自动忽略空格/连字符）"
-                className="w-full rounded-[6px] border border-line-strong bg-paper px-3 py-2 font-mono text-[0.9rem] uppercase outline-none focus:border-vermilion"
-                maxLength={12}
+                value={joinCode}
               />
-            </label>
-            {infoLoading && (
-              <p className="mt-0 mb-2 text-[0.72rem] text-ink-soft">查询中……</p>
-            )}
-            {info && (
-              <p className="mt-0 mb-2 text-[0.72rem] text-jade">
+            </div>
+
+            {infoLoading ? (
+              <p className="multi-lobby-status">查询中……</p>
+            ) : null}
+            {info ? (
+              <p className="multi-lobby-status multi-lobby-status-success">
                 房间存在 ·{" "}
                 {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ??
                   info.mode}
@@ -390,42 +395,46 @@ export function MultiLobby() {
                   ? ` · 观战 ${info.spectatorCount}`
                   : ""}
               </p>
-            )}
-            {codeValid && infoError && !infoLoading && (
-              <p className="mt-0 mb-2 text-[0.72rem] text-vermilion">
+            ) : null}
+            {codeValid && infoError && !infoLoading ? (
+              <p className="multi-lobby-status multi-lobby-status-error">
                 未找到该房间或查询过于频繁，请稍后再试。
               </p>
-            )}
-            <button
-              type="button"
+            ) : null}
+
+            <PaperButton
+              className="multi-lobby-secondary-action"
               disabled={!info}
+              folded={false}
               onClick={() =>
                 router.push(
                   `/settings?source=multi&room=${encodeURIComponent(normalizedCode)}`,
                 )
               }
-              className="mb-4 inline-flex h-9 items-center justify-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 text-[0.78rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Eye size={15} aria-hidden="true" />
               查看房主所设题库
-            </button>
-            <label className="mb-4 block">
-              <span className="mb-1 block text-[0.75rem] text-ink-soft">
+            </PaperButton>
+
+            <div className="multi-lobby-fieldset">
+              <span className="multi-lobby-field-label">
                 昵称（可选，≤16 字符）
               </span>
-              <input
-                value={joinNickname}
+              <PaperTextInput
+                ariaLabel="加入房间昵称"
                 maxLength={16}
-                onChange={(e) => setJoinNickname(e.target.value)}
+                onChange={(event) => setJoinNickname(event.target.value)}
                 placeholder="匿名玩家"
-                className="w-full rounded-[6px] border border-line-strong bg-paper px-3 py-2 text-[0.85rem] outline-none focus:border-vermilion"
+                value={joinNickname}
               />
-            </label>
-            <button
-              type="button"
+            </div>
+
+            <PaperButton
+              className="multi-lobby-primary-action"
               disabled={busy !== null || !codeValid}
+              filled
               onClick={handleJoin}
-              className="mt-auto flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[6px] bg-jade px-4 py-2.5 font-bold text-white hover:bg-[#1b5a50] disabled:cursor-not-allowed disabled:opacity-50"
+              tone="success"
             >
               <DoorOpen size={16} aria-hidden="true" />
               {busy === "join"
@@ -433,8 +442,8 @@ export function MultiLobby() {
                 : info?.joinRole === "spectator"
                   ? "进入观战"
                   : "加入房间"}
-            </button>
-          </div>
+            </PaperButton>
+          </section>
         </div>
       </div>
     </section>
@@ -442,23 +451,36 @@ export function MultiLobby() {
 }
 
 function ModeRulePopover({
+  mobile = false,
   mode,
   nPlayerRaceEnabled,
 }: {
+  mobile?: boolean;
   mode: MultiplayerMode;
   nPlayerRaceEnabled: boolean;
 }) {
   const rule =
     mode === "race" && !nPlayerRaceEnabled ? DUO_RACE_RULE : MODE_RULES[mode];
   return (
-    <div
-      id={`mode-rule-${mode}`}
-      role="tooltip"
-      className="mode-rule-popover pointer-events-none absolute right-0 bottom-[calc(100%+10px)] left-0 z-20 rounded-[6px] border border-line bg-paper px-3 py-2.5 text-left text-[0.72rem] font-normal leading-[1.65] text-ink shadow-lg"
+    <Paper
+      animateOnMount={false}
+      as="div"
+      elevation="lg"
+      className={mobile ? "mode-rule-disclosure" : "mode-rule-popover"}
+      folded={false}
+      pattern={false}
+      role={mobile ? "note" : "tooltip"}
+      sticker={false}
+      unfoldOnHover={false}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
-        {rule}
-      </ReactMarkdown>
-    </div>
+      <div
+        id={mobile ? undefined : `mode-rule-${mode}`}
+        className="mode-rule-copy"
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
+          {rule}
+        </ReactMarkdown>
+      </div>
+    </Paper>
   );
 }

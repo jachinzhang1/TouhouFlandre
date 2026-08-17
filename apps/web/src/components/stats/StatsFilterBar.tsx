@@ -8,14 +8,16 @@ import "dayjs/locale/zh-cn";
 import { Trash2 } from "lucide-react";
 import { QUESTION_DIFFICULTY_LABELS } from "@touhouflandre/shared";
 import type { StatsFilters } from "../../stats/types";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
-import { PaperPicker } from "../controls/PaperPicker";
 import {
+  PAPER_DATE_PICKER_CLASS_NAME,
+  PAPER_DATE_PICKER_POPUP_CLASS_NAME,
+  Paper,
+  PaperButton,
+  PaperPicker,
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+} from "@/components/paper";
 
 type FilterOption<T extends string> = {
   value: T;
@@ -72,6 +74,8 @@ interface StatsFilterBarProps {
 export function StatsFilterBar({ filters, onChange }: StatsFilterBarProps) {
   const update = (patch: Partial<StatsFilters>) =>
     onChange({ ...filters, ...patch });
+  const multiplayerOnlyDisabled =
+    filters.mode === "daily" || filters.mode === "random";
 
   const updateMode = (mode: StatsFilters["mode"]) => {
     const singlePlayerMode = mode === "daily" || mode === "random";
@@ -101,6 +105,7 @@ export function StatsFilterBar({ filters, onChange }: StatsFilterBarProps) {
         />
         <PickerFilter
           label="多人赛制"
+          disabled={multiplayerOnlyDisabled}
           onChange={(format) => update({ format })}
           options={FORMAT_OPTIONS}
           value={filters.format}
@@ -108,6 +113,7 @@ export function StatsFilterBar({ filters, onChange }: StatsFilterBarProps) {
         <PickerFilter
           label="多人玩法"
           onChange={(multiplayerMode) => update({ multiplayerMode })}
+          disabled={multiplayerOnlyDisabled}
           options={MULTIPLAYER_MODE_OPTIONS}
           value={filters.multiplayerMode}
         />
@@ -158,11 +164,13 @@ function SegmentedFilter<T extends string>({
 }
 
 function PickerFilter<T extends string>({
+  disabled = false,
   label,
   onChange,
   options,
   value,
 }: {
+  disabled?: boolean;
   label: string;
   onChange: (value: T) => void;
   options: readonly FilterOption<T>[];
@@ -173,6 +181,7 @@ function PickerFilter<T extends string>({
       <span className="stats-filter-label">{label}</span>
       <PaperPicker
         aria-label={label}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value as T)}
         value={value}
       >
@@ -209,34 +218,7 @@ function DateRangeFilter({
   return (
     <div className="stats-filter-field stats-date-field">
       <span className="stats-filter-label">日期范围</span>
-      <ConfigProvider
-        locale={zhCN}
-        theme={{
-          token: {
-            borderRadius: 0,
-            colorBgContainer: "var(--paper-plain-bg)",
-            colorBorder: "transparent",
-            colorPrimary: "var(--theme-color)",
-            colorPrimaryBg: "var(--accent-soft)",
-            colorPrimaryBgHover: "var(--accent-soft)",
-            colorPrimaryBorder: "var(--accent-hover-border)",
-            colorPrimaryHover: "var(--accent-strong)",
-            colorText: "var(--ink)",
-            colorTextHeading: "var(--ink)",
-            colorTextLightSolid: "var(--accent-contrast)",
-            colorTextQuaternary: "var(--subtle-text)",
-            colorTextSecondary: "var(--ink-soft)",
-            colorBgElevated: "var(--paper-plain-bg)",
-            colorFillSecondary: "var(--paper-plain-bg-hover)",
-            colorFillTertiary: "var(--surface-muted)",
-            colorSplit: "var(--paper-plain-line)",
-            colorTextPlaceholder: "var(--placeholder-text)",
-            controlItemBgActive: "var(--accent-soft)",
-            controlItemBgHover: "var(--paper-plain-bg-hover)",
-            fontFamily: "var(--font-ui)",
-          },
-        }}
-      >
+      <ConfigProvider locale={zhCN}>
         <div className="stats-date-range">
           <Paper
             animateOnMount={false}
@@ -250,13 +232,14 @@ function DateRangeFilter({
             variant={fromDate ? "tinted" : "plain"}
           >
             <DatePicker
-              className="stats-date-picker"
+              className={PAPER_DATE_PICKER_CLASS_NAME}
               value={fromDate}
               format="YYYY-MM-DD"
               placeholder="开始日期"
               inputReadOnly
               allowClear={false}
               aria-label="开始日期"
+              popupClassName={PAPER_DATE_PICKER_POPUP_CLASS_NAME}
               disabledDate={(current) =>
                 Boolean(toDate && current.isAfter(toDate, "day"))
               }
@@ -264,7 +247,9 @@ function DateRangeFilter({
               onChange={(value) => onFromChange(datePickerValue(value))}
             />
           </Paper>
-          <span className="stats-date-connector" aria-hidden="true" />
+          <span className="stats-date-connector" aria-hidden="true">
+            —
+          </span>
           <Paper
             animateOnMount={false}
             as="div"
@@ -277,13 +262,14 @@ function DateRangeFilter({
             variant={toDate ? "tinted" : "plain"}
           >
             <DatePicker
-              className="stats-date-picker"
+              className={PAPER_DATE_PICKER_CLASS_NAME}
               value={toDate}
               format="YYYY-MM-DD"
               placeholder="结束日期"
               inputReadOnly
               allowClear={false}
               aria-label="结束日期"
+              popupClassName={PAPER_DATE_PICKER_POPUP_CLASS_NAME}
               disabledDate={(current) =>
                 Boolean(fromDate && current.isBefore(fromDate, "day"))
               }
@@ -291,10 +277,10 @@ function DateRangeFilter({
               onChange={(value) => onToChange(datePickerValue(value))}
             />
           </Paper>
-          <span className="stats-date-separator" aria-hidden="true" />
+          <PaperSegmentSeparator />
           <PaperButton
             ariaLabel="清除日期筛选"
-            ariaDisabled={!hasDate}
+            disabled={!hasDate}
             className="stats-date-clear"
             folded={false}
             iconOnly

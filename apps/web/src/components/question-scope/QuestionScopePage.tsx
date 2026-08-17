@@ -16,8 +16,12 @@ import {
   loadLocalQuestionScope,
   saveLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
+import {
+  Paper,
+  PaperButton,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "@/components/paper";
 import {
   PageBackLink,
   PageHeader,
@@ -208,14 +212,18 @@ export function QuestionScopePage({
               : QUESTION_DIFFICULTY_LABELS[currentDifficulty]}
           </strong>
         </div>
-        {!loading && !error ? (
-          <div className="question-scope-page-actions">
-            <PaperButton onClick={() => router.push(backHref)}>
-              {readOnly ? "返回" : "取消"}
-            </PaperButton>
-            {!readOnly ? (
+        <PaperSegmentGroup
+          className="question-scope-page-actions"
+          label="题库设置操作"
+        >
+          <PaperButton folded={false} onClick={() => router.push(backHref)}>
+            {readOnly ? "返回" : "取消"}
+          </PaperButton>
+          {!readOnly ? (
+            <>
+              <PaperSegmentSeparator />
               <PaperButton
-                disabled={!draft || !snapshot}
+                disabled={loading || Boolean(error) || !draft || !snapshot}
                 filled
                 onClick={apply}
                 tone="theme"
@@ -223,19 +231,22 @@ export function QuestionScopePage({
                 <Save size={18} aria-hidden="true" />
                 应用设置
               </PaperButton>
-            ) : null}
-          </div>
-        ) : null}
+            </>
+          ) : null}
+        </PaperSegmentGroup>
       </div>
 
       {notice ? (
         <Paper
           animateOnMount={false}
           as="div"
-          className="question-scope-notice question-scope-notice-success"
+          className="question-scope-notice"
+          pattern={false}
           folded={false}
           role="status"
           sticker={false}
+          tone="success"
+          unfoldOnHover={false}
         >
           {notice}
         </Paper>
@@ -244,32 +255,33 @@ export function QuestionScopePage({
         <Paper
           animateOnMount={false}
           as="div"
-          className="question-scope-notice question-scope-notice-error"
+          className="question-scope-notice"
+          pattern={false}
           folded={false}
           role="alert"
           sticker={false}
+          tone="danger"
+          unfoldOnHover={false}
         >
           当前题库没有可用角色。应用时会自动恢复为 Normal 难度。
         </Paper>
       ) : null}
 
       {loading ? (
-        <Paper
-          animateOnMount={false}
-          as="div"
-          className="question-scope-state"
-          foldSize={14}
-        >
+        <div className="question-scope-state" role="status">
           <Loader2 className="spin" size={20} aria-hidden="true" />
-          正在读取题库
-        </Paper>
+          <span>正在读取题库</span>
+        </div>
       ) : error ? (
         <Paper
           animateOnMount={false}
           as="div"
           className="question-scope-state question-scope-state-error"
           foldSize={14}
+          pattern={false}
           role="alert"
+          unfoldOnHover={false}
+          tone="danger"
         >
           <span>{error}</span>
           <PaperButton onClick={() => setRevision((value) => value + 1)}>

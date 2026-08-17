@@ -14,7 +14,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Paper } from "../Paper";
+import { Paper } from "./Paper";
 
 export type FixedTagComboboxOption = {
   id: string;
@@ -223,7 +223,7 @@ export function FixedTagCombobox({
       ref={rootRef}
       style={
         {
-          "--fixed-tag-input-width": `${reservedInputWidth}px`,
+          "--fixed-tag-preferred-input-width": `${reservedInputWidth}px`,
         } as CSSProperties
       }
     >

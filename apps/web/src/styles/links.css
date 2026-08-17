@@ -41,13 +41,6 @@ html[data-theme-mode="dark"] .brand-icon-github {
   --brand-icon-color: #f0f6fc;
 }
 
-.paper-surface.credit-entry-card[data-paper-folded="true"] {
-  transition:
-    background-color 160ms ease,
-    clip-path 180ms ease,
-    filter 180ms ease;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .brand-icon-link:hover {
     background-color: color-mix(
@@ -58,18 +51,13 @@ html[data-theme-mode="dark"] .brand-icon-github {
   }
 }
 
-.credit-section-rule {
-  flex: 1 1 0;
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    color-mix(in srgb, var(--line-strong) 46%, transparent) 48%,
-    var(--line-strong)
-  );
-  clip-path: polygon(0 42%, 100% 0, 100% 100%, 0 58%);
-}
+@media (max-width: 680px) {
+  .credit-entry-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
 
-.credit-section-rule-right {
-  transform: scaleX(-1);
+  .credit-entry-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
 }

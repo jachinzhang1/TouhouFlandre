@@ -57,6 +57,12 @@ import {
   storeMultiplayerGameSeed,
   type MultiplayerGameSeed,
 } from "../../dev/gameSeeds";
+import {
+  Paper,
+  PaperButton,
+  PaperSegmentButton,
+  PaperSegmentGroup,
+} from "@/components/paper";
 
 const DEVELOPMENT_ROOM_ACTIONS: RoomActions = {
   reconnect: () => undefined,
@@ -315,6 +321,7 @@ export function RoomView({ code }: { code: string }) {
         viewer={state.viewer}
         chat={state.chat}
         disabled={roomUnavailable}
+        inline={status === "lobby" || status === "connecting"}
         sendEnabled={chatSendUiEnabled}
         onSend={actions.sendChat}
         onRetry={actions.retryChat}
@@ -418,35 +425,37 @@ export function RoomView({ code }: { code: string }) {
   if (isSpectator && state.room && state.room.status === "lobby") {
     return (
       <>
-        <RoomLobby
-          roomCode={normalized}
-          format={format}
-          mode={mode}
-          turnSeconds={turnSeconds}
-          members={state.members}
-          mySlot={1}
-          playerLimit={state.room.playerLimit}
-          playerCount={state.room.playerCount}
-          availableSeats={state.room.availableSeats}
-          spectatorCount={state.room.spectatorCount}
-          isHost={false}
-          viewerRole="spectator"
-          viewerMemberId={memberId}
-          onReady={actions.setReady}
-          onClaimSeat={async () => {
-            if (!stored?.roomId || !stored.guestToken) return;
-            await runRoomMutation(() =>
-              api.claimSeat(stored.roomId, stored.guestToken),
-            );
-          }}
-          onLeave={handleLeave}
-        />
+        <div className="room-lobby-view">
+          <RoomLobby
+            roomCode={normalized}
+            format={format}
+            mode={mode}
+            turnSeconds={turnSeconds}
+            members={state.members}
+            mySlot={1}
+            playerLimit={state.room.playerLimit}
+            playerCount={state.room.playerCount}
+            availableSeats={state.room.availableSeats}
+            spectatorCount={state.room.spectatorCount}
+            isHost={false}
+            viewerRole="spectator"
+            viewerMemberId={memberId}
+            onReady={actions.setReady}
+            onClaimSeat={async () => {
+              if (!stored?.roomId || !stored.guestToken) return;
+              await runRoomMutation(() =>
+                api.claimSeat(stored.roomId, stored.guestToken),
+              );
+            }}
+            onLeave={handleLeave}
+          />
+          {chatDock}
+        </div>
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
       </>
     );
   }
@@ -499,41 +508,43 @@ export function RoomView({ code }: { code: string }) {
   if (status === "lobby" || status === "connecting") {
     return (
       <>
-        <RoomLobby
-          roomCode={normalized}
-          format={format}
-          mode={mode}
-          turnSeconds={turnSeconds}
-          members={state.members}
-          mySlot={playerSeat}
-          playerLimit={state.room?.playerLimit ?? 2}
-          playerCount={state.room?.playerCount ?? state.members.length}
-          availableSeats={state.room?.availableSeats ?? 0}
-          spectatorCount={state.room?.spectatorCount ?? 0}
-          isHost={state.viewer?.seat === 1}
-          viewerRole={effectiveRole ?? "player"}
-          viewerMemberId={memberId}
-          onReady={actions.setReady}
-          onApplyLimit={async (limit) => {
-            if (!stored?.roomId || !stored.guestToken) return;
-            await runRoomMutation(() =>
-              api.updateRoomSettings(stored.roomId, stored.guestToken, limit),
-            );
-          }}
-          onClaimSeat={async () => {
-            if (!stored?.roomId || !stored.guestToken) return;
-            await runRoomMutation(() =>
-              api.claimSeat(stored.roomId, stored.guestToken),
-            );
-          }}
-          onLeave={handleLeave}
-        />
+        <div className="room-lobby-view">
+          <RoomLobby
+            roomCode={normalized}
+            format={format}
+            mode={mode}
+            turnSeconds={turnSeconds}
+            members={state.members}
+            mySlot={playerSeat}
+            playerLimit={state.room?.playerLimit ?? 2}
+            playerCount={state.room?.playerCount ?? state.members.length}
+            availableSeats={state.room?.availableSeats ?? 0}
+            spectatorCount={state.room?.spectatorCount ?? 0}
+            isHost={state.viewer?.seat === 1}
+            viewerRole={effectiveRole ?? "player"}
+            viewerMemberId={memberId}
+            onReady={actions.setReady}
+            onApplyLimit={async (limit) => {
+              if (!stored?.roomId || !stored.guestToken) return;
+              await runRoomMutation(() =>
+                api.updateRoomSettings(stored.roomId, stored.guestToken, limit),
+              );
+            }}
+            onClaimSeat={async () => {
+              if (!stored?.roomId || !stored.guestToken) return;
+              await runRoomMutation(() =>
+                api.claimSeat(stored.roomId, stored.guestToken),
+              );
+            }}
+            onLeave={handleLeave}
+          />
+          {chatDock}
+        </div>
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
       </>
     );
   }
@@ -735,21 +746,25 @@ function ConnectionNotice({
   if (!message) return null;
   return (
     <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center px-4">
-      <div
-        className="pointer-events-auto flex items-center gap-2 rounded-[6px] border border-amber-soft bg-paper px-4 py-2 text-[0.78rem] font-semibold text-ink-soft shadow-sm"
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="pointer-events-auto flex items-center gap-2 px-4 py-2 text-[0.78rem] font-semibold"
+        elevation="sm"
+        pattern={false}
+        tone="warning"
+        folded={false}
         role="status"
+        sticker={false}
+        unfoldOnHover={false}
       >
         <span>{message}</span>
         {message.startsWith("其他页面已连接") && onReconnect ? (
-          <button
-            type="button"
-            onClick={onReconnect}
-            className="rounded border border-line px-2 py-1 font-bold"
-          >
+          <PaperButton compact folded={false} onClick={onReconnect}>
             重新连接
-          </button>
+          </PaperButton>
         ) : null}
-      </div>
+      </Paper>
     </div>
   );
 }
@@ -806,7 +821,16 @@ function SpectatorRoom({
   return (
     <section className="px-[18px] pt-5 pb-16">
       <div className="mx-auto max-w-[1280px]">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+          elevation="sm"
+          pattern={false}
+          folded={false}
+          sticker={false}
+          unfoldOnHover={false}
+        >
           <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.72rem] font-black text-jade">
             {eliminated ? "已淘汰 · 观战" : "观战席"} ·{" "}
             {MULTIPLAYER_MODE_LABELS[
@@ -831,28 +855,43 @@ function SpectatorRoom({
           <span className="text-[0.75rem] text-ink-soft">
             观战 {state.room?.spectatorCount ?? 0}
           </span>
-          <button
-            type="button"
-            onClick={onLeave}
-            className="rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.75rem] font-bold text-ink-soft hover:bg-paper"
-          >
+          <PaperButton compact folded={false} onClick={onLeave}>
             退出房间
-          </button>
-        </div>
+          </PaperButton>
+        </Paper>
 
         {state.matchResult ? (
-          <div className="mb-3 rounded-[6px] border border-jade bg-jade-soft px-4 py-3 text-[0.86rem] font-bold text-jade">
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="mb-3 px-4 py-3 text-[0.86rem] font-bold"
+            folded={false}
+            pattern={false}
+            sticker={false}
+            tone="success"
+            unfoldOnHover={false}
+            variant="tinted"
+          >
             {winnerName ? `${winnerName} 赢得本场对局` : "本场对局平局"}
             {state.room?.status === "finished" ? (
-              <span className="ml-2 text-ink-soft tabular-nums">
+              <span className="ml-2 tabular-nums">
                 房间保留 {formatRemaining(remaining)}
               </span>
             ) : null}
-          </div>
+          </Paper>
         ) : preparingNextRound ? (
-          <div className="relay-current-turn-active mb-3 rounded-[6px] border border-vermilion bg-paper px-4 py-3 text-[0.86rem] font-black text-vermilion">
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="mb-3 px-4 py-3 text-[0.86rem] font-black"
+            pattern={false}
+            folded={false}
+            sticker={false}
+            unfoldOnHover={false}
+            variant="tinted"
+          >
             即将进行下一局…
-          </div>
+          </Paper>
         ) : null}
 
         <SpectatorArchiveBar
@@ -903,30 +942,32 @@ function SpectatorArchiveBar({
 }) {
   if (archives.length === 0) return null;
   return (
-    <div className="mb-3 flex flex-wrap gap-1.5">
+    <PaperSegmentGroup className="mb-3 flex flex-wrap gap-1.5" label="对局记录">
       {showCurrent ? (
-        <button
-          type="button"
+        <PaperSegmentButton
+          active={selectedKey === null}
+          className="px-2 py-1 text-[0.7rem]"
+          folded={false}
           onClick={() => onSelect(null)}
-          className={`rounded px-2 py-1 text-[0.7rem] font-bold ${selectedKey === null ? "bg-jade-soft text-jade" : "bg-paper-muted text-ink-soft"}`}
         >
           当前棋盘
-        </button>
+        </PaperSegmentButton>
       ) : null}
       {archives.map((archive) => {
         const key = `${archive.matchIndex}:${archive.roundIndex}`;
         return (
-          <button
+          <PaperSegmentButton
+            active={selectedKey === key}
+            className="px-2 py-1 text-[0.7rem]"
+            folded={false}
             key={key}
-            type="button"
             onClick={() => onSelect(key)}
-            className={`rounded px-2 py-1 text-[0.7rem] font-bold ${selectedKey === key ? "bg-jade-soft text-jade" : "bg-paper-muted text-ink-soft"}`}
           >
             第 {archive.matchIndex + 1} 场 · 第 {archive.roundIndex} 局
-          </button>
+          </PaperSegmentButton>
         );
       })}
-    </div>
+    </PaperSegmentGroup>
   );
 }
 
@@ -975,7 +1016,6 @@ function SpectatorRaceBoards({
   return (
     <MemberPaginator
       items={ordered}
-      pageSize={archive ? 1 : undefined}
       label="玩家棋盘"
       renderItem={(board) => (
         <GuessTable
@@ -1028,34 +1068,34 @@ function RoundActionButtons({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {mode === "relay" ? (
-        <button
-          type="button"
-          onClick={onPass}
+        <PaperButton
+          className="min-h-8"
+          compact
           disabled={passDisabled}
+          folded={false}
+          onClick={onPass}
           title={passTitle}
-          className="inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.75rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
         >
           <FastForward size={14} aria-hidden="true" />
           本轮空过
-          <span className="rounded bg-paper px-1.5 py-0.5 text-[0.68rem] tabular-nums">
+          <span className="tabular-nums">
             余 {relaySkipsRemaining}/{relayMaxSkips}
           </span>
-        </button>
+        </PaperButton>
       ) : null}
-      <button
-        type="button"
-        onClick={onForfeit}
+      <PaperButton
+        className="min-h-8"
+        compact
         disabled={actionBusy !== null}
+        filled={forfeitConfirm}
+        folded={false}
+        onClick={onForfeit}
         title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
-        className={`inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border px-3 py-1.5 text-[0.75rem] font-bold disabled:cursor-not-allowed disabled:opacity-50 ${
-          forfeitConfirm
-            ? "border-vermilion bg-vermilion-soft text-vermilion"
-            : "border-line-strong bg-paper-muted text-ink-soft hover:bg-paper"
-        }`}
+        tone="danger"
       >
         <Flag size={14} aria-hidden="true" />
         {forfeitLabel}
-      </button>
+      </PaperButton>
     </div>
   );
 }
@@ -1075,14 +1115,14 @@ function RoundHistoryBar({
     <div className="px-[18px] pt-3 pb-1">
       <ul className="flex flex-wrap gap-1.5">
         <li>
-          <button
-            type="button"
-            aria-pressed={selectedKey === null}
+          <PaperSegmentButton
+            active={selectedKey === null}
+            className="px-2 py-1 text-[0.7rem]"
+            folded={false}
             onClick={() => onSelect(null)}
-            className={`rounded border px-2 py-1 text-[0.7rem] font-bold ${selectedKey === null ? "border-vermilion bg-vermilion-soft text-vermilion" : "border-transparent bg-paper-muted text-ink-soft"}`}
           >
             返回当前局
-          </button>
+          </PaperSegmentButton>
         </li>
         {archives.map((archive) => {
           const key = `${archive.matchIndex}:${archive.roundIndex}`;
@@ -1093,25 +1133,23 @@ function RoundHistoryBar({
           const placement = archive.placements?.find(
             (entry) => entry.memberId === viewerMemberId,
           );
-          const selectedBorder =
-            result === "win"
-              ? "border-jade"
-              : result === "loss"
-                ? "border-vermilion"
-                : "border-line-strong";
           return (
             <li key={key}>
-              <button
-                type="button"
-                aria-pressed={selectedKey === key}
+              <PaperButton
+                ariaPressed={selectedKey === key}
+                className="text-[0.7rem]"
+                compact
+                filled={selectedKey === key}
+                folded={false}
                 onClick={() => onSelect(key)}
-                className={`rounded border px-2 py-1 text-[0.7rem] font-bold ${selectedKey === key ? selectedBorder : "border-transparent"} ${
+                pattern={false}
+                tone={
                   result === "win"
-                    ? "bg-jade-soft text-jade"
+                    ? "success"
                     : result === "loss"
-                      ? "bg-vermilion-soft text-vermilion"
-                      : "bg-paper-muted text-ink-soft"
-                }`}
+                      ? "danger"
+                      : "neutral"
+                }
               >
                 第 {archive.roundIndex} 局 ·{" "}
                 {placement
@@ -1121,7 +1159,7 @@ function RoundHistoryBar({
                     : result === "loss"
                       ? "负"
                       : "平"}
-              </button>
+              </PaperButton>
             </li>
           );
         })}
@@ -1134,12 +1172,21 @@ function GuessErrorToast({ message }: { message: string }) {
   if (!message) return null;
   return (
     <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
-      <p
-        className="rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-4 py-2 text-[0.8rem] font-semibold text-vermilion shadow-sm"
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="px-4 py-2 text-[0.8rem] font-semibold"
+        elevation="sm"
+        pattern={false}
+        tone="danger"
+        folded={false}
         role="alert"
+        sticker={false}
+        unfoldOnHover={false}
+        variant="tinted"
       >
         {message}
-      </p>
+      </Paper>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { ChevronDown } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
-import { Paper } from "../Paper";
+import { Paper } from "./Paper";
 
-type PaperSelectProps = Omit<
+export type PaperSelectProps = Omit<
   ComponentPropsWithoutRef<"select">,
   "className"
 > & {
@@ -21,6 +21,7 @@ export function PaperSelect({
       animateOnMount={false}
       as="span"
       className={`paper-select-control${compact ? " paper-select-control-compact" : ""} ${className}`.trim()}
+      disabled={selectProps.disabled}
       foldSize={compact ? 8 : 10}
       sticker={false}
       unfoldOnHover={false}

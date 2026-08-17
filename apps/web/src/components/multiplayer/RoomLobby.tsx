@@ -13,6 +13,16 @@ import {
   MULTIPLAYER_MODE_LABELS,
   ROOM_FORMAT_LABELS,
 } from "../../domain/multiRoom";
+import {
+  Paper,
+  PaperButton,
+  PaperNumberInput,
+  PaperRange,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "@/components/paper";
+import { PageHeader, PageHeaderAction } from "../layout/PageHeader";
+import { SectionHeading } from "../layout/SectionHeading";
 
 const MEMBER_STATUS_LABEL: Record<string, string> = {
   connected: "在线",
@@ -70,6 +80,11 @@ export function RoomLobby({
   const minimumLimit = Math.max(2, playerCount);
   const settingsLocked = members.some((member) => member.ready);
   const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
+  const modeLabel =
+    MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ??
+    mode;
+  const formatLabel =
+    ROOM_FORMAT_LABELS[format as keyof typeof ROOM_FORMAT_LABELS] ?? format;
 
   useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
 
@@ -83,199 +98,203 @@ export function RoomLobby({
     }
   };
 
+  const applyLimit = async () => {
+    if (!onApplyLimit) return;
+    setActionError("");
+    setLimitBusy(true);
+    try {
+      await onApplyLimit(limitDraft);
+    } catch (error) {
+      setActionError(lobbyActionError(error));
+    } finally {
+      setLimitBusy(false);
+    }
+  };
+
+  const claimSeat = async () => {
+    if (!onClaimSeat) return;
+    setActionError("");
+    setClaimBusy(true);
+    try {
+      await onClaimSeat();
+    } catch (error) {
+      setActionError(lobbyActionError(error));
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
   return (
-    <section className="px-[18px] pt-12 pb-8">
-      <div className="mx-auto max-w-[560px] rounded-[10px] border border-line bg-paper p-8 text-center shadow-sm">
-        <p className="mt-0 mb-2 text-[0.72rem] font-black tracking-[0.14em] text-vermilion">
-          ROOM LOBBY
-        </p>
-        <h1 className="mt-0 mb-1 font-brand text-[3.2rem] leading-none tracking-[0.1em]">
-          {roomCode}
-        </h1>
-        <p className="mb-5 text-[0.8rem] text-ink-soft">
-          {MULTIPLAYER_MODE_LABELS[
-            mode as keyof typeof MULTIPLAYER_MODE_LABELS
-          ] ?? mode}
-          {mode === "relay" ? ` ${turnSeconds}s` : ""} ·{" "}
-          {ROOM_FORMAT_LABELS[format as keyof typeof ROOM_FORMAT_LABELS] ??
-            format}{" "}
-          · 把房间号发给好友加入
-        </p>
+    <section className="room-lobby-page">
+      <PageHeader
+        description={`${modeLabel}${mode === "relay" ? ` ${turnSeconds}s` : ""} · ${formatLabel} · 把房间号发给好友加入`}
+        rightSlot={
+          <PageHeaderAction ariaLabel="复制房间号" onClick={copyCode}>
+            {copied ? (
+              <Check size={18} className="text-jade" aria-hidden="true" />
+            ) : (
+              <Copy size={18} aria-hidden="true" />
+            )}
+            {copied ? "已复制" : "复制房间号"}
+          </PageHeaderAction>
+        }
+        rightSlotInset="leading-icon-action"
+        title={<span className="room-lobby-code">{roomCode}</span>}
+      />
 
-        <button
-          type="button"
-          onClick={copyCode}
-          className="mb-6 inline-flex items-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.8rem] font-semibold hover:bg-paper"
-        >
-          {copied ? (
-            <Check size={14} className="text-jade" />
-          ) : (
-            <Copy size={14} />
-          )}
-          {copied ? "已复制" : "复制房间号"}
-        </button>
-
-        <ul className="mb-6 grid gap-2 text-left">
-          {sortMembersBySeat(members).map((member) => (
-            <li
-              key={member.memberId}
-              className="flex items-center justify-between rounded-[6px] border border-line bg-paper-muted px-3.5 py-2.5"
-            >
-              <span className="flex items-center gap-2">
-                <span
-                  className={`inline-flex size-5 items-center justify-center rounded text-[0.62rem] font-black ${
-                    member.seat === 1
-                      ? "bg-vermilion text-white"
-                      : "bg-jade text-white"
-                  }`}
-                >
-                  {member.seat}
-                </span>
-                <span className="text-[0.85rem] font-semibold">
-                  {member.displayName}
-                  {member.memberId === viewerMemberId ? "（我）" : ""}
-                </span>
-              </span>
-              <span className="flex items-center gap-2 text-[0.72rem] text-ink-soft">
-                {member.ready ? (
-                  <span className="rounded bg-jade-soft px-1.5 py-0.5 font-bold text-jade">
-                    已准备
+      <div className="room-lobby-content">
+        <section className="room-lobby-section">
+          <SectionHeading
+            description={`当前玩家 ${playerCount}/${playerLimit} · 观战 ${spectatorCount} · ${
+              mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始"
+            }`}
+            title="房间成员"
+          />
+          <ul className="room-lobby-member-list">
+            {sortMembersBySeat(members).map((member) => (
+              <li key={member.memberId}>
+                <div className="room-lobby-member-row">
+                  <span className="room-lobby-member-identity">
+                    <span
+                      className="room-lobby-seat"
+                      data-host={member.seat === 1 ? "true" : "false"}
+                    >
+                      {member.seat}
+                    </span>
+                    <span className="room-lobby-member-name">
+                      {member.displayName}
+                      {member.memberId === viewerMemberId ? "（我）" : ""}
+                    </span>
                   </span>
-                ) : (
-                  <span className="rounded bg-paper px-1.5 py-0.5">未准备</span>
-                )}
-                {MEMBER_STATUS_LABEL[member.status] ?? member.status}
-              </span>
-            </li>
-          ))}
-          {availableSeats > 0 && (
-            <li className="rounded-[6px] border border-dashed border-line-strong px-3.5 py-2.5 text-[0.78rem] text-ink-soft">
-              等待好友加入……（房间号 {roomCode}），剩余席位 {availableSeats}
-            </li>
-          )}
-        </ul>
-
-        <p className="mb-4 text-left text-[0.78rem] text-ink-soft">
-          当前玩家 {playerCount}/{playerLimit} · 观战 {spectatorCount} ·{" "}
-          {mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始"}
-        </p>
-        {isHost && mode === "race" ? (
-          <p className="mb-3 text-left text-[0.75rem] text-ink-soft">
-            保持未准备可继续等人；准备后若当前全员已准备将立即开局。
-          </p>
-        ) : null}
-        {isHost && mode === "race" && nPlayerRaceEnabled && (
-          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 text-left">
-            <label
-              className="min-w-0 text-[0.78rem] text-ink-soft"
-              htmlFor="player-limit"
-            >
-              <span className="mb-1 flex justify-between">
-                <span>玩家上限</span>
-                <output
-                  htmlFor="player-limit"
-                  className="font-bold tabular-nums text-ink"
+                  <span className="room-lobby-member-state">
+                    <span
+                      className="room-lobby-ready-state"
+                      data-ready={member.ready ? "true" : "false"}
+                    >
+                      {member.ready ? "已准备" : "未准备"}
+                    </span>
+                    <span>
+                      {MEMBER_STATUS_LABEL[member.status] ?? member.status}
+                    </span>
+                  </span>
+                </div>
+              </li>
+            ))}
+            {availableSeats > 0 ? (
+              <li>
+                <Paper
+                  animateOnMount={false}
+                  as="div"
+                  className="room-lobby-empty-seat"
+                  folded={false}
+                  sticker={false}
+                  unfoldOnHover={false}
                 >
-                  {limitDraft} 人
-                </output>
-              </span>
-              <input
-                id="player-limit"
-                aria-label="玩家上限"
-                type="range"
-                min={minimumLimit}
-                max={8}
-                step={1}
-                value={limitDraft}
-                onChange={(event) =>
-                  setLimitDraft(
-                    Math.min(
-                      8,
-                      Math.max(minimumLimit, Number(event.target.value)),
-                    ),
-                  )
-                }
-                className="block w-full accent-vermilion"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={
-                limitBusy ||
-                limitDraft < minimumLimit ||
-                limitDraft === playerLimit ||
-                settingsLocked
-              }
-              onClick={async () => {
-                if (!onApplyLimit) return;
-                setActionError("");
-                setLimitBusy(true);
-                try {
-                  await onApplyLimit(limitDraft);
-                } catch (error) {
-                  setActionError(lobbyActionError(error));
-                } finally {
-                  setLimitBusy(false);
-                }
-              }}
-              className="rounded border border-line px-2 py-1 text-xs font-bold disabled:opacity-50"
-            >
-              应用
-            </button>
-          </div>
-        )}
-        {viewerRole === "spectator" && availableSeats > 0 && (
-          <button
-            type="button"
+                  等待好友加入，剩余席位 {availableSeats}
+                </Paper>
+              </li>
+            ) : null}
+          </ul>
+        </section>
+
+        {isHost && mode === "race" ? (
+          <section className="room-lobby-section">
+            <SectionHeading
+              description="保持未准备可继续等人；全员准备后将立即开局。"
+              title="房间设置"
+            />
+            {nPlayerRaceEnabled ? (
+              <div className="room-lobby-limit-field">
+                <span className="room-lobby-limit-label">玩家上限</span>
+                <PaperSegmentGroup
+                  className="room-lobby-limit-control"
+                  label="玩家上限"
+                >
+                  <PaperRange
+                    ariaLabel="玩家上限"
+                    disabled={limitBusy || settingsLocked}
+                    max={8}
+                    min={minimumLimit}
+                    onChange={(value) =>
+                      setLimitDraft(Math.min(8, Math.max(minimumLimit, value)))
+                    }
+                    value={limitDraft}
+                  />
+                  <PaperSegmentSeparator />
+                  <PaperNumberInput
+                    ariaLabel="玩家上限数值"
+                    disabled={limitBusy || settingsLocked}
+                    max={8}
+                    min={minimumLimit}
+                    onChange={(value) =>
+                      setLimitDraft(Math.min(8, Math.max(minimumLimit, value)))
+                    }
+                    suffix="人"
+                    value={limitDraft}
+                  />
+                  <PaperSegmentSeparator />
+                  <PaperButton
+                    disabled={
+                      limitBusy ||
+                      limitDraft < minimumLimit ||
+                      limitDraft === playerLimit ||
+                      settingsLocked
+                    }
+                    folded={false}
+                    onClick={applyLimit}
+                  >
+                    应用
+                  </PaperButton>
+                </PaperSegmentGroup>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {viewerRole === "spectator" && availableSeats > 0 ? (
+          <PaperButton
+            className="room-lobby-claim-action"
             disabled={claimBusy}
-            onClick={async () => {
-              if (!onClaimSeat) return;
-              setActionError("");
-              setClaimBusy(true);
-              try {
-                await onClaimSeat();
-              } catch (error) {
-                setActionError(lobbyActionError(error));
-              } finally {
-                setClaimBusy(false);
-              }
-            }}
-            className="mb-3 flex w-full items-center justify-center rounded border border-jade bg-jade-soft px-3 py-2 font-bold text-jade disabled:opacity-50"
+            filled
+            onClick={claimSeat}
+            tone="success"
           >
             认领席位
-          </button>
-        )}
+          </PaperButton>
+        ) : null}
+
         {actionError ? (
-          <p role="alert" className="mb-3 text-[0.75rem] text-vermilion">
+          <p role="alert" className="room-lobby-error">
             {actionError}
           </p>
         ) : null}
 
-        <div className="grid gap-2">
+        <div className="room-lobby-actions">
           {viewerRole === "player" ? (
-            <button
-              type="button"
+            <PaperButton
+              className="room-lobby-ready-action"
               disabled={!mine}
+              filled
               onClick={() => onReady(!mine?.ready)}
-              className="flex w-full items-center justify-center gap-2 rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark disabled:cursor-not-allowed disabled:opacity-50"
+              tone="theme"
             >
               <Play size={16} aria-hidden="true" />
               {mine?.ready ? "取消准备" : "准备"}
-            </button>
+            </PaperButton>
           ) : null}
-          {allReady && (
-            <p className="m-0 text-[0.75rem] text-jade" aria-live="polite">
+          {allReady ? (
+            <p className="room-lobby-ready-notice" aria-live="polite">
               当前全员已就绪，对局即将开始……
             </p>
-          )}
-          <button
-            type="button"
+          ) : null}
+          <PaperButton
+            className="room-lobby-leave-action"
+            folded={false}
             onClick={onLeave}
-            className="flex w-full items-center justify-center gap-2 rounded-[6px] border border-line-strong bg-paper px-4 py-2 font-semibold text-ink-soft hover:bg-paper-muted"
           >
-            <LogOut size={15} aria-hidden="true" />
+            <LogOut size={16} aria-hidden="true" />
             离开房间
-          </button>
+          </PaperButton>
         </div>
       </div>
     </section>

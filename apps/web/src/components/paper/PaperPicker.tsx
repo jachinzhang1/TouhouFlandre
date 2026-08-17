@@ -1,8 +1,11 @@
 import { ChevronDown } from "lucide-react";
 import type { ComponentPropsWithoutRef } from "react";
-import { Paper, type PaperVariant } from "../Paper";
+import { Paper, type PaperVariant } from "./Paper";
 
-type PaperPickerProps = Omit<
+export const PAPER_DATE_PICKER_CLASS_NAME = "paper-date-picker";
+export const PAPER_DATE_PICKER_POPUP_CLASS_NAME = "paper-date-picker-dropdown";
+
+export type PaperPickerProps = Omit<
   ComponentPropsWithoutRef<"select">,
   "className"
 > & {
@@ -21,6 +24,7 @@ export function PaperPicker({
       animateOnMount={false}
       as="span"
       className={`paper-picker-control ${className}`.trim()}
+      disabled={selectProps.disabled}
       foldSize={10}
       sticker={false}
       unfoldOnHover

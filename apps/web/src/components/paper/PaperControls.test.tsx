@@ -1,14 +1,14 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PaperSearchInput } from "./PaperSearchInput";
 import {
+  PaperButton,
+  PaperPicker,
+  PaperSearchInput,
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "./PaperSegmentedControl";
-import { PaperButton } from "./PaperButton";
-import { PaperSelect } from "./PaperSelect";
-import { PaperPicker } from "./PaperPicker";
+  PaperSelect,
+} from "@/components/paper";
 
 describe("Paper controls", () => {
   it("renders a textureless folded search Paper without sticker effects", () => {
@@ -18,6 +18,7 @@ describe("Paper controls", () => {
         onChange={() => undefined}
         placeholder="例如 灵梦"
         value=""
+        endAdornment={<button type="button">清除</button>}
       />,
     );
 
@@ -26,6 +27,27 @@ describe("Paper controls", () => {
     expect(input.getAttribute("placeholder")).toBe("例如 灵梦");
     expect(paper.dataset.paperFolded).toBe("true");
     expect(paper.closest(".paper-sticker")).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "清除" })
+        .closest(".paper-search-control-adornment"),
+    ).toBeTruthy();
+  });
+
+  it("propagates disabled search state to the Paper surface and input", () => {
+    render(
+      <PaperSearchInput
+        ariaLabel="搜索角色"
+        disabled
+        onChange={() => undefined}
+        value=""
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "搜索角色" });
+    const paper = input.closest(".paper-surface") as HTMLElement;
+    expect((input as HTMLInputElement).disabled).toBe(true);
+    expect(paper.dataset.paperDisabled).toBe("true");
   });
 
   it("renders independently folded selected cells in a Paper group", () => {
@@ -34,6 +56,7 @@ describe("Paper controls", () => {
       <PaperSegmentGroup label="显示方式">
         <PaperSegmentButton
           active={selected === "first"}
+          tone="success"
           onClick={() => (selected = "first")}
         >
           第一项
@@ -52,6 +75,7 @@ describe("Paper controls", () => {
     expect(first.dataset.paperVariant).toBe("tinted");
     expect(first.dataset.paperFolded).toBe("true");
     expect(screen.getByRole("group", { name: "显示方式" })).toBeTruthy();
+    expect(first.dataset.paperTone).toBe("success");
 
     fireEvent.click(screen.getByRole("button", { name: "第二项" }));
     rerender(
@@ -80,7 +104,7 @@ describe("Paper controls", () => {
 
   it("renders pressable actions as folded Paper without sticker movement", () => {
     render(
-      <PaperButton filled onClick={() => undefined} tone="theme">
+      <PaperButton ariaPressed filled onClick={() => undefined} tone="theme">
         应用
       </PaperButton>,
     );
@@ -90,6 +114,7 @@ describe("Paper controls", () => {
     expect(button.dataset.paperFolded).toBe("true");
     expect(button.closest(".paper-sticker")).toBeNull();
     expect(button.className).toContain("paper-button-filled");
+    expect(button.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("marks filled danger actions as tinted Paper surfaces", () => {
@@ -119,6 +144,21 @@ describe("Paper controls", () => {
     expect(button.classList.contains("paper-button-filled")).toBe(false);
   });
 
+  it("prevents interaction for disabled Paper buttons", () => {
+    let clicks = 0;
+    render(
+      <PaperButton disabled onClick={() => (clicks += 1)}>
+        不可用操作
+      </PaperButton>,
+    );
+
+    const button = screen.getByRole("button", { name: "不可用操作" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(button.dataset.paperDisabled).toBe("true");
+    fireEvent.click(button);
+    expect(clicks).toBe(0);
+  });
+
   it("wraps native selects in a focusable folded Paper surface", () => {
     render(
       <PaperSelect aria-label="难度" defaultValue="normal">
@@ -132,6 +172,27 @@ describe("Paper controls", () => {
     expect((select as HTMLSelectElement).value).toBe("normal");
     expect(paper.dataset.paperFolded).toBe("true");
     expect(paper.closest(".paper-sticker")).toBeNull();
+  });
+
+  it("propagates native select disabled state to Paper surfaces", () => {
+    render(
+      <>
+        <PaperSelect aria-label="禁用难度" disabled>
+          <option>Normal</option>
+        </PaperSelect>
+        <PaperPicker aria-label="禁用玩法" disabled>
+          <option>竞速</option>
+        </PaperPicker>
+      </>,
+    );
+
+    for (const name of ["禁用难度", "禁用玩法"]) {
+      const select = screen.getByRole("combobox", { name });
+      expect((select as HTMLSelectElement).disabled).toBe(true);
+      expect(
+        select.closest<HTMLElement>(".paper-surface")?.dataset.paperDisabled,
+      ).toBe("true");
+    }
   });
 
   it("uses a native select inside prominent tinted Paper", () => {

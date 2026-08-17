@@ -38,7 +38,7 @@ import { ConfirmStatsClearDialog, StatsImportDialog } from "./StatsDataDialogs";
 import { StatsFilterBar } from "./StatsFilterBar";
 import { StatsHistory } from "./StatsHistory";
 import { StatsPageActions } from "./StatsPageActions";
-import { Paper } from "../Paper";
+import { Paper } from "@/components/paper";
 import { PageHeader } from "../layout/PageHeader";
 
 function formatDuration(ms: number): string {
@@ -274,7 +274,7 @@ export function StatsDashboard() {
   };
 
   return (
-    <main className="stats-page">
+    <section className="stats-page">
       <PageHeader
         description="你的数据仅保存在此浏览器中。"
         rightSlot={
@@ -402,7 +402,7 @@ export function StatsDashboard() {
           onApply={applyImport}
         />
       ) : null}
-    </main>
+    </section>
   );
 }
 
@@ -419,11 +419,13 @@ function StatsNotice({
     <Paper
       animateOnMount={false}
       as="div"
-      className={`stats-notice stats-notice-${tone}`}
+      className="stats-notice"
       foldSize={10}
+      pattern={false}
       role={role}
       sticker={false}
       unfoldOnHover={false}
+      tone={tone === "error" ? "danger" : "warning"}
     >
       {children}
     </Paper>
@@ -493,6 +495,7 @@ function ChartSection({
       as="article"
       className="stats-chart-paper"
       foldSize={18}
+      pattern={false}
       stackOrder={stackOrder}
     >
       <div className="stats-chart-heading">

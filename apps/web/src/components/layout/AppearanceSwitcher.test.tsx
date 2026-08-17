@@ -50,6 +50,15 @@ describe("AppearanceSwitcher", () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
     expect(document.querySelector(".appearance-fold-flap")).toBeNull();
+    const cornerSurface = document.querySelector(".appearance-corner-surface");
+    expect(cornerSurface?.getAttribute("data-paper-variant")).toBe("tinted");
+    expect(cornerSurface?.getAttribute("data-paper-elevation")).toBe("sm");
+    expect(cornerSurface?.getAttribute("data-paper-folded")).toBe("false");
+    const mobilePalettePaper = document.querySelector(
+      ".appearance-mobile-palette-paper",
+    );
+    expect(mobilePalettePaper?.getAttribute("data-paper-elevation")).toBe("lg");
+    expect(mobilePalettePaper?.getAttribute("data-paper-folded")).toBe("false");
 
     await waitFor(() => {
       expect(document.documentElement.dataset.themeMode).toBe("light");
@@ -77,11 +86,38 @@ describe("AppearanceSwitcher", () => {
     });
   });
 
+  it("keeps closed swatches out of navigation and returns focus on Escape", async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSwitcher />);
+    const toggle = screen.getByRole("button", { name: "打开主题颜色" });
+
+    expect(
+      document
+        .querySelector(".appearance-palette")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    expect(
+      Array.from(
+        document.querySelectorAll<HTMLButtonElement>(".appearance-swatch"),
+      ).every((swatch) => swatch.tabIndex === -1),
+    ).toBe(true);
+
+    await user.click(toggle);
+    const firstSwatch = screen.getByRole("button", { name: "古明地觉主题色" });
+    expect(firstSwatch.tabIndex).toBe(0);
+    firstSwatch.focus();
+    await user.keyboard("{Escape}");
+
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+  });
+
   it("selects a color theme without freezing the system mode default", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
     const sakura = COLOR_THEMES.find((theme) => theme.id === "sakura");
 
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
     await user.click(screen.getByRole("button", { name: "古明地觉主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
@@ -95,6 +131,7 @@ describe("AppearanceSwitcher", () => {
   it("moves only the stripes between the old and new selections", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
     const slot = (name: string) =>
       screen.getByRole("button", { name }).dataset.slot;
 
@@ -123,6 +160,7 @@ describe("AppearanceSwitcher", () => {
   it("offers the five inactive character theme colors", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
 
     expect(screen.queryByRole("button", { name: "博丽灵梦主题色" })).toBeNull();
     for (const name of [

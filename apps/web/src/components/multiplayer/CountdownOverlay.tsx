@@ -2,6 +2,7 @@
 
 // 倒计时/间歇遮罩（08 §4.3）：round 1 倒计时 + 局间间歇，由服务端 startsAt 驱动。
 import { useEffect, useState } from "react";
+import { Paper } from "@/components/paper";
 
 export function CountdownOverlay({ startsAt }: { startsAt: string }) {
   const [remaining, setRemaining] = useState(0);
@@ -19,8 +20,17 @@ export function CountdownOverlay({ startsAt }: { startsAt: string }) {
   const seconds = Math.ceil(remaining / 1000);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] backdrop-blur-[2px]">
-      <div className="rounded-[10px] border border-line bg-paper px-10 py-8 text-center shadow-lg">
+    <div className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-[rgba(18,26,23,0.55)] backdrop-blur-[2px]">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="lg"
+        className="px-10 py-8 text-center"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <p className="mt-0 mb-2 text-[0.72rem] font-black tracking-[0.14em] text-vermilion">
           {seconds > 3 ? "局间准备" : "即将开始"}
         </p>
@@ -33,7 +43,7 @@ export function CountdownOverlay({ startsAt }: { startsAt: string }) {
         <p className="mb-0 mt-3 text-[0.78rem] text-ink-soft">
           倒计时结束后本局开始
         </p>
-      </div>
+      </Paper>
     </div>
   );
 }

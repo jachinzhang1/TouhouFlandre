@@ -1,8 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
+import { useModalFocus } from "../../hooks/useModalFocus";
+import { Paper, PaperButton } from "@/components/paper";
 
 export function ConfirmStatsClearDialog({
   onCancel,
@@ -11,6 +11,7 @@ export function ConfirmStatsClearDialog({
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
 }) {
+  const { dialogRef, onDialogKeyDown } = useModalFocus<HTMLElement>(onCancel);
   return (
     <div className="stats-dialog-backdrop" role="presentation">
       <section
@@ -18,14 +19,17 @@ export function ConfirmStatsClearDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
+        onKeyDown={onDialogKeyDown}
+        ref={dialogRef}
       >
         <Paper
           animateOnMount={false}
           as="div"
           className="stats-dialog-paper"
+          elevation="lg"
           foldSize={18}
           sticker={false}
-          unfoldOnHover
+          unfoldOnHover={false}
         >
           <div className="stats-dialog-heading">
             <div>
@@ -57,6 +61,7 @@ export function StatsImportDialog({
   onClose: () => void;
   onApply: (mode: "merge" | "replace") => void | Promise<void>;
 }) {
+  const { dialogRef, onDialogKeyDown } = useModalFocus<HTMLElement>(onClose);
   return (
     <div className="stats-dialog-backdrop">
       <section
@@ -64,14 +69,17 @@ export function StatsImportDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="import-title"
+        onKeyDown={onDialogKeyDown}
+        ref={dialogRef}
       >
         <Paper
           animateOnMount={false}
           as="div"
           className="stats-dialog-paper"
+          elevation="lg"
           foldSize={18}
           sticker={false}
-          unfoldOnHover
+          unfoldOnHover={false}
         >
           <div className="stats-dialog-heading">
             <div>
@@ -84,11 +92,13 @@ export function StatsImportDialog({
             <Paper
               animateOnMount={false}
               as="div"
-              className="stats-import-count stats-import-count-new"
+              className="stats-import-count"
               foldSize={10}
               stackOrder={2}
               sticker
               unfoldOnHover
+              tone="success"
+              variant="tinted"
             >
               <dt>新增</dt>
               <dd>{preview.additions}</dd>
@@ -96,11 +106,13 @@ export function StatsImportDialog({
             <Paper
               animateOnMount={false}
               as="div"
-              className="stats-import-count stats-import-count-update"
+              className="stats-import-count"
               foldSize={10}
               stackOrder={1}
               sticker
               unfoldOnHover
+              tone="warning"
+              variant="tinted"
             >
               <dt>同 ID 更新</dt>
               <dd>{preview.replacements}</dd>
@@ -121,7 +133,7 @@ export function StatsImportDialog({
             <PaperButton
               filled
               onClick={() => void onApply("merge")}
-              tone="jade"
+              tone="success"
             >
               合并导入
             </PaperButton>
@@ -134,14 +146,16 @@ export function StatsImportDialog({
 
 function CloseButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      aria-label="关闭"
+    <PaperButton
+      ariaLabel="关闭"
       className="stats-dialog-close"
+      compact
+      folded={false}
+      iconOnly
       onClick={onClick}
       title="关闭"
-      type="button"
     >
       <X size={18} aria-hidden="true" />
-    </button>
+    </PaperButton>
   );
 }

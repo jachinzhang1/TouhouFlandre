@@ -12,7 +12,10 @@ import {
   type RefObject,
   type UIEventHandler,
 } from "react";
-import { Paper } from "../Paper";
+import { Paper } from "./Paper";
+
+export type PaperDataTableRowTone =
+  "success" | "info" | "warning" | "danger" | "neutral";
 
 interface PaperDataTableContextValue {
   bodyScrollRef: RefObject<HTMLDivElement | null>;
@@ -116,6 +119,7 @@ export function PaperDataTableHeader({
         window.scrollY > 0 &&
         sticky.getBoundingClientRect().top <= stickyTop + 0.5;
       setStuck((current) => (current === next ? current : next));
+      sticky.dataset.paperDataTableShadow = next ? "true" : "false";
     };
 
     const scheduleUpdate = () => {
@@ -138,6 +142,7 @@ export function PaperDataTableHeader({
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
+      delete sticky.dataset.paperDataTableShadow;
     };
   }, [headerScrollRef, visible]);
 
@@ -161,11 +166,13 @@ export function PaperDataTableBody({
   ariaLabel,
   children,
   className,
+  responsiveStacked = false,
   viewportClassName,
 }: {
   ariaLabel?: string;
   children: ReactNode;
   className?: string;
+  responsiveStacked?: boolean;
   viewportClassName?: string;
 }) {
   const { bodyScrollRef, syncHeaderScroll } = usePaperDataTable();
@@ -186,11 +193,26 @@ export function PaperDataTableBody({
           "paper-data-table-body-scroll",
           viewportClassName,
         )}
+        data-paper-responsive-stacked={responsiveStacked ? "true" : undefined}
         onScroll={syncHeaderScroll}
         ref={bodyScrollRef}
       >
         {children}
       </div>
     </Paper>
+  );
+}
+
+export function PaperDataTableDetail({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={classNames("paper-data-table-detail", className)}>
+      {children}
+    </div>
   );
 }

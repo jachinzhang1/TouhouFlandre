@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   FixedTagCombobox,
   type FixedTagComboboxOption,
-} from "./FixedTagCombobox";
+} from "@/components/paper";
 
 const options: FixedTagComboboxOption[] = [
   {

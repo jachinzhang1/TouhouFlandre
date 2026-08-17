@@ -11,6 +11,8 @@ import {
   sortMembersBySeat,
 } from "../../domain/memberCollections";
 import type { components } from "../../generated/api";
+import { useModalFocus } from "../../hooks/useModalFocus";
+import { Paper, PaperButton } from "@/components/paper";
 
 export function RoundResultOverlay({
   result,
@@ -51,6 +53,10 @@ export function RoundResultOverlay({
     setDismissed(true);
     onDismissRef.current?.();
   }, []);
+  const { dialogRef, onDialogKeyDown } = useModalFocus<HTMLDivElement>(
+    dismiss,
+    !dismissed,
+  );
 
   // 下一局倒计时（服务端 startsAt 驱动；查看对局不暂停）
   const [remaining, setRemaining] = useState(0);
@@ -75,9 +81,26 @@ export function RoundResultOverlay({
   if (dismissed) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
-      <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
+    <div
+      aria-labelledby="round-result-title"
+      aria-modal="true"
+      className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]"
+      onKeyDown={onDialogKeyDown}
+      ref={dialogRef}
+      role="dialog"
+    >
+      <Paper
+        animateOnMount={false}
+        as="div"
+        elevation="lg"
+        className="w-full max-w-[420px] p-6 text-center"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <p
+          id="round-result-title"
           className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${won ? "text-jade" : "text-vermilion"}`}
         >
           ROUND {result.roundIndex} ·{" "}
@@ -103,19 +126,15 @@ export function RoundResultOverlay({
           results={result.results}
           viewerMemberId={memberId}
         />
-        <button
-          type="button"
-          onClick={dismiss}
-          className="w-full rounded-[6px] bg-vermilion px-4 py-2.5 font-bold text-white hover:bg-vermilion-dark"
-        >
+        <PaperButton className="w-full" filled folded={false} onClick={dismiss}>
           查看对局
-        </button>
+        </PaperButton>
         {nextRoundStartsAt && remaining > 0 && (
           <p className="mt-3 text-[0.75rem] text-ink-soft" aria-live="polite">
             下一局 {Math.ceil(remaining / 1000)} 秒后开始（查看对局不会暂停）
           </p>
         )}
-      </div>
+      </Paper>
     </div>
   );
 }

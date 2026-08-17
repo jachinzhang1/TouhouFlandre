@@ -69,6 +69,32 @@ describe("ChatDock", () => {
     window.localStorage.clear();
   });
 
+  it("uses one Paper button group for the inline page-bottom composer", () => {
+    const { container } = renderDock(baseChat, { inline: true });
+    const group = screen.getByRole("group", { name: "房间聊天" });
+    expect(group.classList.contains("paper-segment-group")).toBe(true);
+    expect(group.classList.contains("chat-dock-composer-group")).toBe(true);
+    expect(group.querySelectorAll(".paper-segment-separator")).toHaveLength(2);
+    expect(
+      screen
+        .getByLabelText("展开聊天记录")
+        .classList.contains("paper-segment-button"),
+    ).toBe(true);
+    const chatToggle = screen.getByLabelText("关闭聊天");
+    expect(chatToggle.classList.contains("paper-segment-button")).toBe(true);
+    expect(chatToggle.getAttribute("aria-pressed")).toBe("true");
+    expect(chatToggle.dataset.paperVariant).toBe("tinted");
+    expect(
+      chatToggle.querySelector(".lucide-message-circle-check"),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByLabelText("聊天输入")
+        .closest(".chat-dock-input-segment.paper-surface"),
+    ).toBeTruthy();
+    expect(container.querySelector(".chat-dock-inline")).toBeTruthy();
+  });
+
   it("renders player labels with P number and spectator labels without one", async () => {
     const user = userEvent.setup();
     renderDock({
@@ -90,10 +116,22 @@ describe("ChatDock", () => {
 
     await user.click(screen.getByLabelText("展开聊天记录"));
 
-    expect(screen.getByText("灵梦(P2):")).not.toBeNull();
-    expect(screen.getByText("观战者:")).not.toBeNull();
+    const playerName = screen.getByText("灵梦");
+    const playerSeat = screen.getByText("P2");
+    expect(playerName.tagName).toBe("STRONG");
+    expect(playerSeat.classList.contains("chat-player-seat-tag")).toBe(true);
+    expect(screen.queryByText("(P2)")).toBeNull();
+    expect(screen.getByText("观战者")).not.toBeNull();
     expect(document.querySelector("img")).toBeNull();
     expect(screen.getByText("<img src=x onerror=alert(1)>")).not.toBeNull();
+    const history = screen.getByRole("log");
+    expect(
+      history.closest(".chat-dock-history-paper.paper-surface"),
+    ).toBeTruthy();
+    expect(history.querySelector(".chat-dock-history-list")).toBeTruthy();
+    expect(
+      history.querySelectorAll(".chat-dock-history-list > li"),
+    ).toHaveLength(2);
   });
 
   it("inserts a whitelisted emoji and sends on Enter", async () => {
@@ -118,7 +156,7 @@ describe("ChatDock", () => {
     const user = userEvent.setup();
     renderDock(baseChat);
 
-    await user.click(screen.getByLabelText("闭麦"));
+    await user.click(screen.getByLabelText("关闭聊天"));
 
     expect(
       (screen.getByLabelText("展开聊天记录") as HTMLButtonElement).disabled,
@@ -127,11 +165,19 @@ describe("ChatDock", () => {
       (screen.getByLabelText("聊天输入") as HTMLInputElement).disabled,
     ).toBe(true);
     expect(
+      (
+        screen
+          .getByLabelText("聊天输入")
+          .closest(".chat-dock-input-segment") as HTMLElement | null
+      )?.dataset.paperDisabled,
+    ).toBe("true");
+    expect(
       (screen.getByLabelText("选择表情") as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect(screen.getByLabelText("开启聊天").getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    const enableChat = screen.getByLabelText("开启聊天");
+    expect(enableChat.getAttribute("aria-pressed")).toBe("false");
+    expect(enableChat.dataset.paperVariant).toBe("plain");
+    expect(enableChat.querySelector(".lucide-message-circle-off")).toBeTruthy();
   });
 
   it("disables only sending controls when the viewer is not connected", () => {
@@ -180,11 +226,12 @@ describe("ChatDock", () => {
 
     await user.click(screen.getByLabelText("展开聊天记录"));
 
-    const label = screen.getByText("自机(P1):");
+    const label = screen.getByText("自机");
+    const seat = screen.getByText("P1");
     expect(label.tagName).toBe("STRONG");
     expect(label.className).toContain("text-vermilion");
+    expect(seat.classList.contains("chat-player-seat-tag")).toBe(true);
     expect(label.closest("li")).not.toBeNull();
-    expect(label.closest("li")?.className).not.toContain("border");
     expect(label.closest("li")?.className).not.toContain("rounded");
   });
 
@@ -192,7 +239,7 @@ describe("ChatDock", () => {
     const user = userEvent.setup();
     const { rerender } = renderDock(baseChat);
 
-    await user.click(screen.getByLabelText("闭麦"));
+    await user.click(screen.getByLabelText("关闭聊天"));
     rerender(
       dockElement({
         ...baseChat,
@@ -218,7 +265,7 @@ describe("ChatDock", () => {
         ],
       }),
     );
-    expect(screen.getByRole("status").textContent).toContain("灵梦(P2): fresh");
+    expect(screen.getByRole("status").textContent).toContain("灵梦P2: fresh");
   });
 
   it("shows a floating card for a new received message and fades it out", () => {
@@ -237,7 +284,7 @@ describe("ChatDock", () => {
       />,
     );
 
-    expect(screen.getByRole("status").textContent).toContain("灵梦(P2): hello");
+    expect(screen.getByRole("status").textContent).toContain("灵梦P2: hello");
 
     fireEvent.mouseEnter(screen.getByRole("status"));
     act(() => vi.advanceTimersByTime(6000));

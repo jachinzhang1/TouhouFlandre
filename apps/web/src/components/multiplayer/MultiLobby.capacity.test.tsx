@@ -50,10 +50,16 @@ describe("MultiLobby", () => {
     expect(limit.getAttribute("type")).toBe("range");
     expect(limit.getAttribute("min")).toBe("2");
     expect(limit.getAttribute("max")).toBe("8");
+    const stepper = screen.getByLabelText("玩家上限数值");
+    expect(stepper.getAttribute("type")).toBe("number");
+    expect(stepper.getAttribute("min")).toBe("2");
+    expect(stepper.getAttribute("max")).toBe("8");
+    expect(screen.getByRole("group", { name: "玩家上限" })).toBeTruthy();
     expect(screen.getByText("双人赛制")).toBeTruthy();
     fireEvent.change(limit, {
       target: { value: "6" },
     });
+    expect((stepper as HTMLInputElement).value).toBe("6");
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     expect(vi.mocked(api.createRoom).mock.calls[0][0]).toMatchObject({
@@ -64,7 +70,7 @@ describe("MultiLobby", () => {
 
   it("omits race capacity for relay creation", async () => {
     render(<MultiLobby />);
-    fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    fireEvent.click(screen.getByRole("button", { name: /接力/ }));
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     const body = vi.mocked(api.createRoom).mock.calls[0][0];

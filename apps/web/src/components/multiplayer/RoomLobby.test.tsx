@@ -50,6 +50,50 @@ describe("RoomLobby", () => {
     vi.unstubAllEnvs();
   });
 
+  it("uses an unboxed narrow page with header and Paper sections", () => {
+    const { container } = render(
+      <RoomLobby
+        roomCode="ABC234"
+        format="bo3"
+        mode="race"
+        turnSeconds={60}
+        members={members}
+        mySlot={3}
+        viewerMemberId="guest"
+        viewerRole="player"
+        playerLimit={4}
+        playerCount={2}
+        availableSeats={2}
+        spectatorCount={1}
+        isHost={false}
+        onReady={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
+
+    const page = container.querySelector(".room-lobby-page") as HTMLElement;
+    expect(page).toBeTruthy();
+    expect(page.classList.contains("paper-surface")).toBe(false);
+    expect(screen.getByRole("heading", { name: "ABC234" })).toBeTruthy();
+    const copy = screen.getByRole("button", { name: "复制房间号" });
+    expect(
+      container.querySelector(".page-header-slot-right")?.contains(copy),
+    ).toBe(true);
+    expect(copy.querySelector(".lucide-copy")).toBeTruthy();
+    const memberRows = container.querySelectorAll(".room-lobby-member-row");
+    expect(memberRows).toHaveLength(2);
+    expect(
+      [...memberRows].every((row) => !row.classList.contains("paper-surface")),
+    ).toBe(true);
+    expect(
+      container.querySelector(".room-lobby-empty-seat.paper-surface"),
+    ).toBeTruthy();
+    const leave = screen.getByRole("button", { name: "离开房间" });
+    expect(leave.classList.contains("paper-button-plain")).toBe(true);
+    expect(leave.classList.contains("paper-button-danger")).toBe(false);
+    expect(leave.dataset.paperVariant).toBe("plain");
+  });
+
   it("uses memberId for self and allows ready/unready", () => {
     const props = renderLobby();
     expect(screen.getByText("Guest（我）")).toBeTruthy();
@@ -96,6 +140,24 @@ describe("RoomLobby", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "应用" }));
     await waitFor(() => expect(apply).toHaveBeenCalledWith(6));
+    const limitGroup = screen.getByRole("group", { name: "玩家上限" });
+    expect(limitGroup.classList.contains("paper-segment-group")).toBe(true);
+    expect(limitGroup.querySelector(".paper-range-control")).toBeTruthy();
+    expect(limitGroup.querySelector(".paper-number-control")).toBeTruthy();
+    expect(
+      limitGroup.querySelectorAll(".paper-segment-separator"),
+    ).toHaveLength(2);
+    const stepper = screen.getByRole("spinbutton", {
+      name: "玩家上限数值",
+    }) as HTMLInputElement;
+    expect(stepper.value).toBe("6");
+    expect(stepper.min).toBe("2");
+    expect(stepper.max).toBe("8");
+    fireEvent.change(stepper, { target: { value: "5" } });
+    expect((limit as HTMLInputElement).value).toBe("5");
+    expect(
+      limitGroup.contains(screen.getByRole("button", { name: "应用" })),
+    ).toBe(true);
   });
 
   it("clamps the room limit to the current player count", () => {

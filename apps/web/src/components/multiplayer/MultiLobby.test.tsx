@@ -24,6 +24,93 @@ describe("MultiLobby settings navigation", () => {
     mocks.roomInfo.mockReset();
   });
 
+  it("uses the shared page, heading, and Paper control system", () => {
+    const { container } = render(<MultiLobby />);
+
+    expect(screen.getByRole("heading", { name: "多人大厅" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "返回" }).getAttribute("href"),
+    ).toBe("/single");
+    expect(container.querySelectorAll(".multi-lobby-pane")).toHaveLength(2);
+    expect(
+      container.querySelector(".multi-lobby-pane.paper-surface"),
+    ).toBeNull();
+    expect(container.querySelectorAll(".section-heading")).toHaveLength(2);
+    expect(container.querySelector(".section-heading-icon")).toBeNull();
+
+    const titleAction = screen.getByRole("button", { name: "题库设置" });
+    expect(titleAction.classList.contains("page-header-action")).toBe(true);
+    expect(titleAction.classList.contains("paper-surface")).toBe(false);
+    expect(
+      container.querySelector(".page-header-slot-right")?.contains(titleAction),
+    ).toBe(true);
+    expect(titleAction.querySelector(".lucide-settings")).toBeTruthy();
+    expect(
+      titleAction
+        .closest(".visual-align")
+        ?.getAttribute("data-visual-align-inset"),
+    ).toBe("leading-icon-action");
+    for (const button of container.querySelectorAll(
+      ".multi-lobby-pane button",
+    )) {
+      expect(button.classList.contains("paper-surface")).toBe(true);
+    }
+    for (const input of container.querySelectorAll(".multi-lobby-pane input")) {
+      expect(input.closest(".paper-surface")).toBeTruthy();
+    }
+    expect(container.querySelectorAll(".paper-text-control")).toHaveLength(3);
+    expect(container.querySelector("output")).toBeNull();
+    expect(
+      screen
+        .getByRole("group", { name: "玩家上限" })
+        .classList.contains("multi-lobby-capacity-control"),
+    ).toBe(true);
+    const modeGroup = screen.getByRole("group", { name: "玩法" });
+    expect(modeGroup.classList.contains("paper-segment-group")).toBe(true);
+    expect(modeGroup.querySelectorAll(".paper-segment-button")).toHaveLength(2);
+    expect(modeGroup.querySelectorAll(".paper-segment-separator")).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole("button", { name: /竞速/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: /竞速/ })
+        .getAttribute("aria-describedby"),
+    ).toBe("mode-rule-race");
+    expect(
+      screen.getByRole("button", { name: /竞速/ }).dataset.paperFolded,
+    ).toBe("false");
+    const formatGroup = screen.getByRole("group", { name: "双人赛制" });
+    expect(formatGroup.classList.contains("paper-segment-group")).toBe(true);
+    expect(formatGroup.querySelectorAll(".paper-segment-button")).toHaveLength(
+      4,
+    );
+    expect(
+      formatGroup.querySelectorAll(".paper-segment-separator"),
+    ).toHaveLength(3);
+    expect(
+      formatGroup.querySelectorAll(".multi-lobby-segment-copy"),
+    ).toHaveLength(4);
+
+    const create = screen.getByRole("button", { name: "创建房间" });
+    expect(create.classList.contains("paper-button-filled")).toBe(true);
+    expect(create.dataset.paperVariant).toBe("tinted");
+    const join = screen.getByRole("button", { name: "加入房间" });
+    expect((join as HTMLButtonElement).disabled).toBe(true);
+    expect(join.dataset.paperDisabled).toBe("true");
+    expect(
+      screen.getByRole("button", { name: /BO3/ }).dataset.paperFolded,
+    ).toBe("false");
+    expect(join.dataset.paperVariant).toBe("plain");
+    expect(join.classList.contains("paper-button-filled")).toBe(false);
+    const scope = screen.getByRole("button", {
+      name: "查看房主所设题库",
+    });
+    expect(scope.classList.contains("paper-button-compact")).toBe(false);
+  });
+
   it("opens editable settings as a standalone page", async () => {
     render(<MultiLobby />);
     await userEvent.click(screen.getByRole("button", { name: "题库设置" }));

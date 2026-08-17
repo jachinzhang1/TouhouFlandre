@@ -54,14 +54,14 @@ import {
   SINGLE_GAME_SEED_PRESETS,
   SINGLE_GAME_RESULT_SEEDS,
 } from "../../dev/gameSeeds";
-import { PaperSearchInput } from "../controls/PaperSearchInput";
-import { Paper } from "../Paper";
-import { FeedbackLegend } from "../game/FeedbackLegend";
-import { PaperButton } from "../controls/PaperButton";
 import {
+  Paper,
+  PaperButton,
+  PaperSearchInput,
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+} from "@/components/paper";
+import { FeedbackLegend } from "../game/FeedbackLegend";
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
@@ -209,6 +209,7 @@ function SuggestionPopover({
         animateOnMount={false}
         as="div"
         className="suggestion-list paper-data-table"
+        elevation="lg"
         folded={false}
         sticker={false}
         unfoldOnHover={false}
@@ -1126,57 +1127,69 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     role="alert"
                   >
                     <span>{searchError}</span>
-                    <button
-                      type="button"
-                      onPointerDown={(event) => event.preventDefault()}
-                      onClick={retrySearch}
-                    >
-                      重试
-                    </button>
+                    <span onPointerDown={(event) => event.preventDefault()}>
+                      <PaperButton
+                        compact
+                        folded={false}
+                        onClick={retrySearch}
+                        tone="danger"
+                      >
+                        重试
+                      </PaperButton>
+                    </span>
                   </div>
                 ) : results.length ? (
-                  results.map((result) => {
-                    const disabled = guessedIds.has(result.id);
-                    const active = activeSuggestionId === result.id;
-                    return (
-                      <button
-                        className={`suggestion paper-data-table-row${
-                          active ? " selected" : ""
-                        }`}
-                        id={`${listboxId}-${result.id}`}
-                        key={result.id}
-                        type="button"
-                        tabIndex={-1}
-                        disabled={disabled}
-                        role="option"
-                        aria-selected={active}
-                        onPointerDown={(event) => event.preventDefault()}
-                        onClick={() => selectSuggestion(result)}
-                      >
-                        <span className="suggestion-avatar-cell">
-                          <CharacterAvatar
-                            avatarUrl={result.avatarUrl}
-                            name={result.name}
-                            initials={result.initials}
-                            className="suggestion-avatar"
-                          />
-                        </span>
-                        <span className="suggestion-main">
-                          <strong>{result.name}</strong>
-                          <small>{result.subtitle}</small>
-                        </span>
-                        <span className="suggestion-meta">
-                          {disabled
-                            ? "已猜"
-                            : result.hairColors
-                                .map(
-                                  (color) => HAIR_COLOR_LABELS[color] ?? color,
-                                )
-                                .join("、")}
-                        </span>
-                      </button>
-                    );
-                  })
+                  <>
+                    {results.map((result) => {
+                      const disabled = guessedIds.has(result.id);
+                      const active = activeSuggestionId === result.id;
+                      return (
+                        <button
+                          className="suggestion paper-data-table-row"
+                          id={`${listboxId}-${result.id}`}
+                          key={result.id}
+                          type="button"
+                          tabIndex={-1}
+                          disabled={disabled}
+                          role="option"
+                          aria-selected={active}
+                          onPointerDown={(event) => event.preventDefault()}
+                          onClick={() => selectSuggestion(result)}
+                        >
+                          <span className="suggestion-avatar-cell">
+                            <CharacterAvatar
+                              avatarUrl={result.avatarUrl}
+                              name={result.name}
+                              initials={result.initials}
+                              className="suggestion-avatar"
+                            />
+                          </span>
+                          <span className="suggestion-main">
+                            <strong>{result.name}</strong>
+                            <small>{result.subtitle}</small>
+                          </span>
+                          <span className="suggestion-meta">
+                            {disabled
+                              ? "已猜"
+                              : result.hairColors
+                                  .map(
+                                    (color) =>
+                                      HAIR_COLOR_LABELS[color] ?? color,
+                                  )
+                                  .join("、")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <div
+                      aria-hidden="true"
+                      className="suggestion-columns paper-data-table-header paper-data-table-row"
+                    >
+                      <span>头像</span>
+                      <span>角色</span>
+                      <span>发色 / 状态</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="suggestion-state" role="status">
                     <Search size={17} aria-hidden="true" />
@@ -1204,7 +1217,21 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           </PaperSegmentGroup>
         </form>
 
-        {message ? <p className="message error">{message}</p> : null}
+        {message ? (
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="single-game-message"
+            folded={false}
+            pattern={false}
+            role="alert"
+            sticker={false}
+            tone="danger"
+            unfoldOnHover={false}
+          >
+            {message}
+          </Paper>
+        ) : null}
       </div>
 
       <SingleGameStatusBar

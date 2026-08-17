@@ -31,18 +31,18 @@ import {
   type QuestionScopeRules,
 } from "@touhouflandre/shared";
 import { useStickyState } from "../../hooks/useStickyState";
-import { Paper } from "../Paper";
-import { PaperButton } from "../controls/PaperButton";
 import {
+  Paper,
+  PaperButton,
   PaperNumberInput,
   PaperRange,
-  PaperSwitch,
-} from "../controls/PaperNumericControls";
-import {
   PaperSegmentGroup,
   PaperSegmentSeparator,
-} from "../controls/PaperSegmentedControl";
+  PaperSwitch,
+} from "@/components/paper";
 import { CharacterAvatar } from "../game/CharacterAvatar";
+import { VisualAlign } from "../layout/VisualAlign";
+import { SectionHeading } from "../layout/SectionHeading";
 
 const FIELD_TOGGLE_LABELS = [
   ["firstAppearance", "初登场作品"],
@@ -155,13 +155,16 @@ export function QuestionScopeEditor({
             const active = currentDifficulty === preset;
             return (
               <Fragment key={preset}>
-                {index > 0 ? <PaperSegmentSeparator /> : null}
+                {index > 0 ? (
+                  <PaperSegmentSeparator orientation="responsive" />
+                ) : null}
                 <Paper
                   animateOnMount={false}
                   ariaChecked={active}
                   as="button"
                   className="question-scope-preset"
                   disabled={readOnly}
+                  preserveAppearanceWhenDisabled={readOnly}
                   folded={active}
                   foldSize={12}
                   onClick={() =>
@@ -190,6 +193,7 @@ export function QuestionScopeEditor({
             <ScopeToggleButton
               checked={Boolean(rules.fields[field])}
               disabled={readOnly}
+              preserveAppearanceWhenDisabled={readOnly}
               key={field}
               label={label}
               onClick={() => updateField(field, !rules.fields[field])}
@@ -199,6 +203,7 @@ export function QuestionScopeEditor({
             <ScopeToggleButton
               checked={rules.fields.releaseYear !== "hidden"}
               disabled={readOnly}
+              preserveAppearanceWhenDisabled={readOnly}
               label="初登场年份"
               onClick={() =>
                 updateField(
@@ -209,12 +214,22 @@ export function QuestionScopeEditor({
                 )
               }
             />
-            <div className="question-scope-release-direction">
+            <PaperSegmentSeparator orientation="responsive" />
+            <Paper
+              animateOnMount={false}
+              as="div"
+              className="question-scope-release-direction"
+              folded={false}
+              pattern={false}
+              sticker={false}
+              unfoldOnHover={false}
+            >
               <span>方向性提示</span>
               <PaperSwitch
                 ariaLabel="年份方向性提示"
                 checked={rules.fields.releaseYear === "directional"}
                 disabled={readOnly || rules.fields.releaseYear === "hidden"}
+                preserveAppearanceWhenDisabled={readOnly}
                 onChange={(checked) =>
                   updateField(
                     "releaseYear",
@@ -222,7 +237,7 @@ export function QuestionScopeEditor({
                   )
                 }
               />
-            </div>
+            </Paper>
           </div>
         </div>
 
@@ -366,10 +381,7 @@ function ScopeFilterSection({
             >
               按作品筛选
             </button>
-            <span
-              className="question-scope-filter-tab-separator"
-              aria-hidden="true"
-            />
+            <PaperSegmentSeparator />
             <button
               aria-controls="question-scope-filter-panel"
               aria-selected={activeTab === "character"}
@@ -388,9 +400,14 @@ function ScopeFilterSection({
           />
         </div>
         <div className="question-scope-filter-actions">
-          <span className="question-scope-selected-count">
+          <VisualAlign
+            as="span"
+            className="question-scope-selected-count"
+            edge="mobile-start"
+            inset="padded-label"
+          >
             已选择 {selectedCount}/{answerableCount} 个角色
-          </span>
+          </VisualAlign>
           <BulkSelectControls readOnly={readOnly} onSelect={onSelect} />
         </div>
       </header>
@@ -439,7 +456,9 @@ function WorkFilterContent({
             ariaChecked={checked}
             as="button"
             className="question-scope-option-card"
+            pattern={false}
             disabled={readOnly || (state?.totalCount ?? 0) === 0}
+            preserveAppearanceWhenDisabled={readOnly}
             folded={active}
             foldSize={10}
             key={work.id}
@@ -492,7 +511,9 @@ function CharacterFilterContent({
             ariaChecked={checked}
             as="button"
             className="question-scope-character-card"
+            pattern={false}
             disabled={readOnly || !enabled}
+            preserveAppearanceWhenDisabled={readOnly}
             folded={checked}
             foldSize={10}
             key={character.id}
@@ -538,19 +559,7 @@ function ScopeSection({
 }) {
   return (
     <section className="question-scope-section">
-      <header className="question-scope-section-heading">
-        <div className="question-scope-section-title-row">
-          <span className="question-scope-section-rule" aria-hidden="true" />
-          {typeof title === "string" ? <h2>{title}</h2> : title}
-          <span
-            className="question-scope-section-rule question-scope-section-rule-right"
-            aria-hidden="true"
-          />
-        </div>
-        {action ? (
-          <div className="question-scope-section-actions">{action}</div>
-        ) : null}
-      </header>
+      <SectionHeading action={action} title={title} />
       {children}
     </section>
   );
@@ -561,26 +570,30 @@ function ScopeToggleButton({
   disabled,
   label,
   onClick,
+  preserveAppearanceWhenDisabled = false,
 }: {
   checked: boolean;
   disabled: boolean;
   label: string;
   onClick: () => void;
+  preserveAppearanceWhenDisabled?: boolean;
 }) {
-  const prominent = checked && !disabled;
+  const prominent = checked;
   return (
     <Paper
       animateOnMount={false}
       ariaChecked={checked}
       as="button"
       className="question-scope-toggle-button"
+      pattern={false}
       disabled={disabled}
+      preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={prominent}
       foldSize={9}
       onClick={onClick}
       role="checkbox"
       sticker={false}
-      unfoldOnHover={prominent}
+      unfoldOnHover={prominent && !disabled}
       variant={prominent ? "tinted" : "plain"}
     >
       <BinaryCheck checked={checked} />
@@ -612,15 +625,24 @@ function LimitControl({
 }) {
   return (
     <PaperSegmentGroup className="question-scope-limit-control" label={label}>
-      <div className="question-scope-limit-label">
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="question-scope-limit-label"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
+      >
         <span>{label}</span>
         <PaperSwitch
           ariaLabel={label}
           checked={enabled}
           disabled={readOnly}
+          preserveAppearanceWhenDisabled={readOnly}
           onChange={onEnabledChange}
         />
-      </div>
+      </Paper>
       <PaperSegmentSeparator />
       <PaperRange
         ariaLabel={`${label}滑块`}
@@ -628,15 +650,17 @@ function LimitControl({
         max={max}
         min={min}
         onChange={onValueChange}
+        preserveAppearanceWhenDisabled={readOnly && enabled}
         value={value}
       />
-      <PaperSegmentSeparator />
+      <PaperSegmentSeparator orientation="responsive" />
       <PaperNumberInput
         ariaLabel={`${label}数值`}
         disabled={readOnly || !enabled}
         max={max}
         min={min}
         onChange={onValueChange}
+        preserveAppearanceWhenDisabled={readOnly && enabled}
         suffix={suffix}
         value={value}
       />
