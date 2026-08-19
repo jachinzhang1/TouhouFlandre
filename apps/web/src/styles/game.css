@@ -1181,9 +1181,297 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   margin-inline: auto;
 }
 
+.match-settlement-summary {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.match-settlement-summary h2,
+.match-settlement-summary h3,
+.match-settlement-summary p {
+  margin: 0;
+}
+
+.match-settlement-summary h2 {
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.match-settlement-summary[data-highlighted="true"] h2 {
+  color: var(--vermilion-deep);
+}
+
+.match-settlement-eyebrow {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.match-settlement-standings {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+
+.match-settlement-standings h3 {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.match-settlement-columns,
+.match-settlement-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) minmax(64px, auto) 64px;
+  gap: 10px;
+  align-items: center;
+}
+
+.match-settlement-columns {
+  padding-inline: 10px;
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.match-settlement-columns > :last-child {
+  text-align: right;
+}
+
+.match-settlement-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.match-settlement-row {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+}
+
+.match-settlement-row[data-rank="1"] {
+  border-color: color-mix(in srgb, var(--vermilion) 42%, var(--line));
+  background: color-mix(in srgb, var(--vermilion-soft) 48%, var(--paper));
+}
+
+.match-settlement-row[data-viewer="true"] {
+  border-color: color-mix(in srgb, var(--vermilion) 55%, var(--line));
+  box-shadow: inset 3px 0 0 var(--vermilion);
+}
+
+.match-settlement-rank {
+  color: var(--ink-soft);
+  font-family: var(--font-brand);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.match-settlement-row[data-rank="1"] .match-settlement-rank {
+  color: var(--vermilion-deep);
+}
+
+.match-settlement-identity {
+  display: grid;
+  min-width: 0;
+}
+
+.match-settlement-identity strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-settlement-status {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.match-settlement-score {
+  color: var(--vermilion-deep);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.spectator-room {
+  padding-bottom: calc(
+    var(--site-footer-height) + 96px + var(--game-action-safe-inset)
+  );
+}
+
+.paper-surface.spectator-match-result {
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.spectator-match-result .match-settlement-summary {
+  width: min(100%, 720px);
+  margin-inline: auto;
+}
+
+.spectator-match-retention {
+  display: flex;
+  justify-content: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  width: min(100%, 720px);
+  margin: 20px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+}
+
+.spectator-match-retention strong {
+  color: var(--vermilion-deep);
+}
+
+.paper-surface.spectator-archive-nav {
+  padding: 16px 18px 18px;
+}
+
+.spectator-archive-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.spectator-live-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--jade) 34%, var(--line));
+  background: var(--jade-soft);
+  color: var(--jade);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.spectator-archive-levels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.spectator-archive-level {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+}
+
+.spectator-archive-level > span {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.spectator-archive-level .paper-pagination {
+  justify-self: center;
+}
+
+.spectator-archive-level .paper-pagination-counter {
+  min-width: 0;
+  padding-inline: 14px;
+  font-size: 0.72rem;
+}
+
+.spectator-archive-nav .paper-button-icon {
+  color: var(--ink);
+}
+
+.spectator-player-heading {
+  margin-bottom: 12px;
+}
+
+.spectator-player-heading-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.spectator-player-heading .section-heading-action {
+  justify-content: center;
+}
+.spectator-player-control-label {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.spectator-player-heading .paper-pagination-counter {
+  padding-inline: 14px;
+}
+
 @media (max-width: 680px) {
   :root {
     --multiplayer-command-reserve: 280px;
+  }
+
+  .spectator-room {
+    padding-inline: 10px;
+    padding-bottom: 24px;
+  }
+
+  body:has(.spectator-room) .chat-dock-fixed {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: min(584px, calc(100% - 20px));
+    margin: 0 auto calc(var(--site-footer-height) + 16px);
+  }
+
+  body:has(.spectator-room) .chat-dock-fixed::before {
+    display: none;
+  }
+
+  .spectator-room-utility {
+    align-items: flex-start;
+  }
+
+  .paper-surface.spectator-match-result {
+    padding: 18px 12px;
+  }
+
+  .spectator-archive-levels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .spectator-archive-level {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .spectator-archive-level > span {
+    text-align: center;
+  }
+
+  .spectator-player-heading-actions {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 
   .room-lobby-page {

@@ -20,6 +20,10 @@ const REASON_LABEL: Record<string, string> = {
   round_cap: "局数上限",
 };
 
+export function matchReasonLabel(reason: string) {
+  return REASON_LABEL[reason] ?? reason;
+}
+
 export function MatchResultOverlay({
   result,
   memberId,
@@ -49,9 +53,6 @@ export function MatchResultOverlay({
   );
   const readyCount = rematchReady.filter((entry) => entry.ready).length;
   const rosterSize = result.scores.length;
-  const scoreLine = sortMembersBySeat(result.scores)
-    .map((entry) => entry.score)
-    .join(" : ");
   const waitingMembers = sortMembersBySeat(result.results).filter(
     (entry) =>
       !rematchReady.find((ready) => ready.memberId === entry.memberId)?.ready,
@@ -98,39 +99,18 @@ export function MatchResultOverlay({
           className={`mx-auto mb-2 ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
           aria-hidden="true"
         />
-        <p
-          id="match-result-title"
-          className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
-        >
-          MATCH {result.matchIndex} · {resultLabel}
-        </p>
-        <p className="mb-2 font-brand text-[1.6rem]">{scoreLine}</p>
-        <p className="mb-4 text-[0.8rem] text-ink-soft">
-          {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
-            format}{" "}
-          · {REASON_LABEL[result.reason] ?? result.reason}
-        </p>
-        <ul className="mb-4 grid gap-1 text-left">
-          {(ranking.length > 0
-            ? ranking
-            : sortMembersBySeat(result.results)
-          ).map((entry) => (
-            <li
-              key={entry.memberId}
-              className={`flex items-center justify-between rounded border px-2 py-1 text-[0.75rem] ${entry.memberId === memberId ? "border-vermilion bg-vermilion-soft" : "border-line bg-paper-muted"}`}
-            >
-              <span className="truncate">
-                {"rank" in entry ? `第${entry.rank}名 · ` : ""}
-                {settlementMemberLabel(entry, members, memberId)}
-              </span>
-              <span className="font-bold">
-                {"rank" in entry
-                  ? `${entry.score} 分${entry.eliminatedRound ? ` · 第 ${entry.eliminatedRound} 局淘汰` : entry.status === "left" ? " · 离场" : ""}`
-                  : `${result.scores.find((score) => score.memberId === entry.memberId)?.score ?? 0} · ${entry.result === "win" ? "胜" : entry.result === "loss" ? "负" : "平"}`}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <MatchSettlementSummary
+          eyebrow={`第 ${result.matchIndex + 1} 场 · ${
+            ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
+            format
+          } · ${matchReasonLabel(result.reason)}`}
+          highlighted={highlighted}
+          members={members}
+          result={result}
+          title={resultLabel}
+          titleId="match-result-title"
+          viewerMemberId={memberId}
+        />
         <div className="grid gap-2">
           <PaperButton
             className="w-full"
@@ -167,6 +147,113 @@ export function MatchResultOverlay({
       </Paper>
     </div>
   );
+}
+
+export function MatchSettlementSummary({
+  eyebrow,
+  highlighted = false,
+  members,
+  result,
+  title,
+  titleId,
+  viewerMemberId,
+}: {
+  eyebrow: string;
+  highlighted?: boolean;
+  members?: components["schemas"]["MemberView"][];
+  result: MatchEndedPayload;
+  title: string;
+  titleId: string;
+  viewerMemberId?: string | null;
+}) {
+  const hasRanking = Boolean(result.ranking?.length);
+  const scoresByMemberId = new Map(
+    result.scores.map((entry) => [entry.memberId, entry]),
+  );
+  const rows = hasRanking
+    ? [...(result.ranking ?? [])]
+        .sort((left, right) => left.rank - right.rank || left.seat - right.seat)
+        .map((entry) => ({
+          eliminatedRound: entry.eliminatedRound,
+          memberId: entry.memberId,
+          rank: entry.rank,
+          result: undefined,
+          score: entry.score,
+          seat: entry.seat,
+          status: entry.status,
+        }))
+    : sortMembersBySeat(result.results).map((entry) => ({
+        eliminatedRound: undefined,
+        memberId: entry.memberId,
+        rank: undefined,
+        result: entry.result,
+        score: scoresByMemberId.get(entry.memberId)?.score ?? 0,
+        seat: entry.seat,
+        status: undefined,
+      }));
+
+  return (
+    <div
+      className="match-settlement-summary"
+      data-highlighted={highlighted ? "true" : "false"}
+    >
+      <p className="match-settlement-eyebrow">{eyebrow}</p>
+      <h2 id={titleId}>{title}</h2>
+      <section
+        aria-labelledby={`${titleId}-standings`}
+        className="match-settlement-standings"
+      >
+        <h3 id={`${titleId}-standings`}>
+          {hasRanking ? "最终排名" : "最终比分"}
+        </h3>
+        <div aria-hidden="true" className="match-settlement-columns">
+          <span>{hasRanking ? "名次" : "席位"}</span>
+          <span>玩家</span>
+          <span>状态</span>
+          <span>得分</span>
+        </div>
+        <ol className="match-settlement-list">
+          {rows.map((entry) => (
+            <li
+              className="match-settlement-row"
+              data-rank={entry.rank}
+              data-viewer={entry.memberId === viewerMemberId ? "true" : "false"}
+              key={entry.memberId}
+            >
+              <strong className="match-settlement-rank">
+                {entry.rank ? `#${entry.rank}` : `P${entry.seat}`}
+              </strong>
+              <span className="match-settlement-identity">
+                <strong>
+                  {settlementMemberLabel(entry, members, viewerMemberId)}
+                </strong>
+              </span>
+              <span className="match-settlement-status">
+                {settlementStatusLabel(entry)}
+              </span>
+              <strong className="match-settlement-score">
+                {entry.score} 分
+              </strong>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  );
+}
+
+function settlementStatusLabel(entry: {
+  eliminatedRound?: number;
+  result?: "win" | "draw" | "loss";
+  status?: "active" | "eliminated" | "left";
+}) {
+  if (entry.eliminatedRound) return `第 ${entry.eliminatedRound} 局淘汰`;
+  if (entry.status === "eliminated") return "已淘汰";
+  if (entry.status === "left") return "已离场";
+  if (entry.status === "active") return "完赛";
+  if (entry.result === "win") return "胜";
+  if (entry.result === "draw") return "平";
+  return "负";
 }
 
 function settlementMemberLabel(

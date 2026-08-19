@@ -2,7 +2,7 @@
 
 import { FastForward, Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import {
   CHARACTER_GUESS_FIELDS,
   visibleQuestionFields,
@@ -42,7 +42,11 @@ import { CountdownOverlay } from "./CountdownOverlay";
 import { GuessInputBar } from "../game/GuessInputBar";
 import { GuessTable, type GuessRow } from "../game/GuessTable";
 import { MatchBoard } from "./MatchBoard";
-import { MatchResultOverlay } from "./MatchResultOverlay";
+import {
+  MatchResultOverlay,
+  MatchSettlementSummary,
+  matchReasonLabel,
+} from "./MatchResultOverlay";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 import { boardResultBadges, formatBoardTitle } from "./boardMeta";
@@ -63,10 +67,12 @@ import {
 import {
   Paper,
   PaperButton,
+  PaperPagination,
   PaperSegmentButton,
   PaperSegmentGroup,
   PaperSegmentSeparator,
 } from "@/components/paper";
+import { SectionHeading } from "../layout/SectionHeading";
 
 const DEVELOPMENT_ROOM_ACTIONS: RoomActions = {
   reconnect: () => undefined,
@@ -838,19 +844,22 @@ function SpectatorRoom({
   onLeave: () => void;
   eliminated?: boolean;
 }) {
+  const archiveContentId = useId();
+  const liveAvailable = !state.matchResult && state.room?.status !== "finished";
+  const latestArchive = state.roundArchives.at(-1) ?? null;
   const selectedArchive =
     state.roundArchives.find(
       (archive) =>
         `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
     ) ?? null;
-  const latestArchive = state.roundArchives.at(-1) ?? null;
+  const effectiveArchive =
+    selectedArchive ?? (!liveAvailable ? latestArchive : null);
+  const effectiveArchiveKey = effectiveArchive
+    ? `${effectiveArchive.matchIndex}:${effectiveArchive.roundIndex}`
+    : null;
   const displayArchive =
-    selectedArchive ??
-    (state.room?.status === "finished" ||
-    state.round?.status === "ended" ||
-    !state.round
-      ? latestArchive
-      : null);
+    effectiveArchive ??
+    (state.round?.status === "ended" || !state.round ? latestArchive : null);
   const retentionUntil =
     state.matchResult?.retentionEndsAt ?? state.room?.expiresAt ?? null;
   const remaining = useRoomClock(
@@ -867,14 +876,27 @@ function SpectatorRoom({
         (member) => member.memberId === state.matchResult?.winnerMemberId,
       )?.displayName ?? null)
     : null;
+  const modeLabel =
+    MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ??
+    mode;
+  const formatLabel =
+    ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format;
+  const followLiveLabel =
+    state.match && state.round
+      ? `第 ${state.match.matchIndex + 1} 场 · 第 ${state.match.roundIndex} 局${
+          state.round.status === "playing" ? "进行中" : "已结束"
+        }`
+      : latestArchive
+        ? `第 ${latestArchive.matchIndex + 1} 场 · 第 ${latestArchive.roundIndex} 局已结束`
+        : "等待首局开始";
 
   return (
-    <section className="px-[18px] pt-5 pb-16">
+    <section className="spectator-room px-[18px] pt-5 pb-16">
       <div className="mx-auto max-w-[1280px]">
         <Paper
           animateOnMount={false}
           as="div"
-          className="mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
+          className="spectator-room-utility mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-2.5"
           elevation="sm"
           pattern={false}
           folded={false}
@@ -882,26 +904,20 @@ function SpectatorRoom({
           unfoldOnHover={false}
         >
           <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.72rem] font-black text-jade">
-            {eliminated ? "已淘汰 · 观战" : "观战席"} ·{" "}
-            {MULTIPLAYER_MODE_LABELS[
-              mode as keyof typeof MULTIPLAYER_MODE_LABELS
-            ] ?? mode}{" "}
-            ·{" "}
-            {ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
-              format}
+            {eliminated ? "已淘汰 · 观战" : "观战席"} · {modeLabel} ·{" "}
+            {formatLabel}
           </span>
           {waitingToStart ? (
             <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.82rem] font-black text-vermilion">
               等待开始
             </span>
-          ) : (
+          ) : !state.matchResult ? (
             <MemberScoreStrip
               members={state.members}
               scores={state.match?.scores ?? []}
               viewerMemberId={state.viewer?.memberId}
-              winnerMemberId={state.matchResult?.winnerMemberId}
             />
-          )}
+          ) : null}
           <span className="text-[0.75rem] text-ink-soft">
             观战 {state.room?.spectatorCount ?? 0}
           </span>
@@ -914,19 +930,29 @@ function SpectatorRoom({
           <Paper
             animateOnMount={false}
             as="div"
-            className="mb-3 px-4 py-3 text-[0.86rem] font-bold"
-            folded={false}
-            pattern={false}
+            ariaLabel="本场结果"
+            className="spectator-match-result mb-3"
+            elevation="lg"
+            folded
+            pattern
             sticker={false}
-            tone="success"
             unfoldOnHover={false}
-            variant="tinted"
           >
-            {winnerName ? `${winnerName} 赢得本场对局` : "本场对局平局"}
+            <MatchSettlementSummary
+              eyebrow={`第 ${state.matchResult.matchIndex + 1} 场 · ${modeLabel} · ${formatLabel} · ${matchReasonLabel(state.matchResult.reason)}`}
+              highlighted={Boolean(winnerName)}
+              members={state.members}
+              result={state.matchResult}
+              title={winnerName ? `${winnerName} 赢得本场对局` : "本场对局平局"}
+              titleId="spectator-result-title"
+            />
             {state.room?.status === "finished" ? (
-              <span className="ml-2 tabular-nums">
-                房间保留 {formatRemaining(remaining)}
-              </span>
+              <footer className="spectator-match-retention">
+                <strong className="tabular-nums">
+                  房间保留 {formatRemaining(remaining)}
+                </strong>
+                <span>复盘与聊天在倒计时结束前可用。</span>
+              </footer>
             ) : null}
           </Paper>
         ) : preparingNextRound ? (
@@ -946,79 +972,183 @@ function SpectatorRoom({
 
         <SpectatorArchiveBar
           archives={state.roundArchives}
-          selectedKey={
-            displayArchive
-              ? `${displayArchive.matchIndex}:${displayArchive.roundIndex}`
-              : null
-          }
-          showCurrent={!state.matchResult && state.room?.status !== "finished"}
+          contentId={archiveContentId}
+          followLiveLabel={followLiveLabel}
+          selectedKey={effectiveArchiveKey}
+          showLive={liveAvailable}
           onSelect={onSelectArchive}
         />
 
-        {mode === "relay" ? (
-          <RelayMatchBoard
-            format={format}
-            match={state.match}
-            round={state.round}
-            members={state.members}
-            mySlot={1}
-            viewerRole="spectator"
-            roundResult={displayArchive}
-            fields={fields}
-          />
-        ) : (
-          <SpectatorRaceBoards
-            boards={displayArchive?.boards ?? state.round?.boards ?? []}
-            scores={state.match?.scores}
-            members={state.members}
-            fields={fields}
-            archive={displayArchive}
-          />
-        )}
+        <div id={archiveContentId}>
+          {mode === "relay" ? (
+            <RelayMatchBoard
+              format={format}
+              match={state.match}
+              round={state.round}
+              members={state.members}
+              mySlot={1}
+              viewerRole="spectator"
+              roundResult={displayArchive}
+              fields={fields}
+            />
+          ) : (
+            <SpectatorRaceBoards
+              boards={displayArchive?.boards ?? state.round?.boards ?? []}
+              scores={state.match?.scores}
+              members={state.members}
+              fields={fields}
+              archive={displayArchive}
+            />
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
-function SpectatorArchiveBar({
+export function SpectatorArchiveBar({
   archives,
+  contentId,
+  followLiveLabel,
   selectedKey,
-  showCurrent = true,
+  showLive = true,
   onSelect,
 }: {
   archives: RoundEndedPayload[];
+  contentId: string;
+  followLiveLabel: string;
   selectedKey: string | null;
-  showCurrent?: boolean;
+  showLive?: boolean;
   onSelect: (key: string | null) => void;
 }) {
   if (archives.length === 0) return null;
+
+  const grouped = new Map<number, RoundEndedPayload[]>();
+  for (const archive of archives) {
+    const rounds = grouped.get(archive.matchIndex) ?? [];
+    rounds.push(archive);
+    grouped.set(archive.matchIndex, rounds);
+  }
+  const matchGroups = [...grouped.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([matchIndex, rounds]) => ({
+      matchIndex,
+      rounds: [...rounds].sort(
+        (left, right) => left.roundIndex - right.roundIndex,
+      ),
+    }));
+  const selectedArchive =
+    archives.find(
+      (archive) =>
+        `${archive.matchIndex}:${archive.roundIndex}` === selectedKey,
+    ) ?? archives.at(-1)!;
+  const matchPosition = Math.max(
+    0,
+    matchGroups.findIndex(
+      (group) => group.matchIndex === selectedArchive.matchIndex,
+    ),
+  );
+  const activeMatch = matchGroups[matchPosition];
+  const roundPosition = Math.max(
+    0,
+    activeMatch.rounds.findIndex(
+      (archive) => archive.roundIndex === selectedArchive.roundIndex,
+    ),
+  );
+  const activeArchive = activeMatch.rounds[roundPosition];
+  const selectArchive = (archive: RoundEndedPayload) => {
+    onSelect(`${archive.matchIndex}:${archive.roundIndex}`);
+  };
+  const selectMatch = (position: number) => {
+    const target = matchGroups[position];
+    selectArchive(target.rounds.at(-1)!);
+  };
+
   return (
-    <PaperSegmentGroup className="mb-3 flex flex-wrap gap-1.5" label="对局记录">
-      {showCurrent ? (
-        <PaperSegmentButton
-          active={selectedKey === null}
-          className="px-2 py-1 text-[0.7rem]"
-          folded={false}
-          onClick={() => onSelect(null)}
-        >
-          当前棋盘
-        </PaperSegmentButton>
-      ) : null}
-      {archives.map((archive) => {
-        const key = `${archive.matchIndex}:${archive.roundIndex}`;
-        return (
-          <PaperSegmentButton
-            active={selectedKey === key}
-            className="px-2 py-1 text-[0.7rem]"
-            folded={false}
-            key={key}
-            onClick={() => onSelect(key)}
-          >
-            第 {archive.matchIndex + 1} 场 · 第 {archive.roundIndex} 局
-          </PaperSegmentButton>
-        );
-      })}
-    </PaperSegmentGroup>
+    <Paper
+      animateOnMount={false}
+      ariaLabel="复盘记录"
+      as="div"
+      role="navigation"
+      className="spectator-archive-nav mb-3"
+      elevation="sm"
+      folded
+      pattern
+      sticker={false}
+      unfoldOnHover={false}
+    >
+      <SectionHeading
+        action={
+          showLive ? (
+            selectedKey ? (
+              <PaperButton
+                ariaControls={contentId}
+                compact
+                folded={false}
+                onClick={() => onSelect(null)}
+              >
+                返回实时
+              </PaperButton>
+            ) : (
+              <div className="spectator-archive-heading-actions">
+                <span className="spectator-live-status" role="status">
+                  正在跟随
+                </span>
+                <PaperButton
+                  ariaControls={contentId}
+                  compact
+                  folded={false}
+                  onClick={() => selectArchive(activeArchive)}
+                >
+                  查看所选记录
+                </PaperButton>
+              </div>
+            )
+          ) : null
+        }
+        className="spectator-archive-heading"
+        description={
+          showLive && selectedKey === null
+            ? followLiveLabel
+            : showLive
+              ? "已暂停跟随；返回实时可继续观看。"
+              : "选择场次与局数查看已结束的棋盘。"
+        }
+        title="复盘记录"
+      />
+      <div className="spectator-archive-levels">
+        <div className="spectator-archive-level">
+          <span>场次</span>
+          <PaperPagination
+            controlsId={contentId}
+            counterLabel={`第 ${activeMatch.matchIndex + 1} 场 · ${matchPosition + 1}/${matchGroups.length}`}
+            label="切换复盘场次"
+            nextLabel="下一场"
+            onNext={() => selectMatch(matchPosition + 1)}
+            onPrevious={() => selectMatch(matchPosition - 1)}
+            page={matchPosition + 1}
+            pageCount={matchGroups.length}
+            previousLabel="上一场"
+          />
+        </div>
+        <div className="spectator-archive-level">
+          <span>局数</span>
+          <PaperPagination
+            controlsId={contentId}
+            counterLabel={`第 ${activeArchive.roundIndex} 局 · ${roundPosition + 1}/${activeMatch.rounds.length}`}
+            label="切换复盘局数"
+            nextLabel="下一局"
+            onNext={() => selectArchive(activeMatch.rounds[roundPosition + 1])}
+            onPrevious={() =>
+              selectArchive(activeMatch.rounds[roundPosition - 1])
+            }
+            page={roundPosition + 1}
+            pageCount={activeMatch.rounds.length}
+            previousLabel="上一局"
+          />
+        </div>
+      </div>
+    </Paper>
   );
 }
 
@@ -1042,6 +1172,11 @@ function SpectatorRaceBoards({
       )
     : boards.filter((board) => isActiveMatchMember(scores, board.memberId));
   const ordered = [...visibleBoards].sort((a, b) => a.seat - b.seat);
+  const boardLabel = (board: SpectatorBoards[number]) =>
+    formatBoardTitle(
+      members.find((member) => member.memberId === board.memberId),
+      board.seat,
+    );
   const toRows = (memberId: string): GuessRow[] => {
     const board =
       boards.find((entry) => entry.memberId === memberId)?.guesses ?? [];
@@ -1068,8 +1203,38 @@ function SpectatorRaceBoards({
   const winnerMemberId = archive?.winnerMemberId;
   return (
     <MemberPaginator
+      getPageLabel={({ page, pageCount }) => `${page}/${pageCount}`}
       items={ordered}
       label="玩家棋盘"
+      pageSize={1}
+      renderHeader={({ controls, visibleItems }) => {
+        const board = visibleItems[0];
+        if (!board) return null;
+        const winner = winnerMemberId === board.memberId;
+        const eliminated = Boolean(
+          archive?.eliminatedMemberIds?.includes(board.memberId),
+        );
+        return (
+          <SectionHeading
+            action={
+              <div className="spectator-player-heading-actions">
+                {boardResultBadges({ winner, eliminated })}
+                {controls ? (
+                  <span className="spectator-player-control-label">玩家</span>
+                ) : null}
+                {controls}
+              </div>
+            }
+            className="spectator-player-heading"
+            description={
+              archive
+                ? `第 ${archive.matchIndex + 1} 场 · 第 ${archive.roundIndex} 局复盘`
+                : "实时棋盘"
+            }
+            title={boardLabel(board)}
+          />
+        );
+      }}
       renderItem={(board) => {
         const winner = winnerMemberId === board.memberId;
         const eliminated = Boolean(
@@ -1078,12 +1243,6 @@ function SpectatorRaceBoards({
         return (
           <GuessTable
             key={board.memberId}
-            title={formatBoardTitle(
-              members.find((member) => member.memberId === board.memberId),
-              board.seat,
-            )}
-            subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-            headerExtra={boardResultBadges({ winner, eliminated })}
             rows={toRows(board.memberId)}
             emptyLabel="该玩家暂无猜测。"
             fields={fields}

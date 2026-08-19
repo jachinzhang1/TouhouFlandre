@@ -69,7 +69,10 @@ describe("MatchResultOverlay", () => {
       screen.getByRole("button", { name: "返回大厅" }),
     );
 
-    expect(screen.getByText("2 : 1 : 0")).toBeTruthy();
+    expect(screen.getByText("Self(我)")).toBeTruthy();
+    expect(screen.getByText("Two(P2)")).toBeTruthy();
+    expect(screen.getByText("Three(P3)")).toBeTruthy();
+    expect(screen.getByText("第 1 场 · BO3 · 正常完赛")).toBeTruthy();
     expect(screen.getByText("待确认：Two")).toBeTruthy();
     const confirmed = screen.getByRole("button", { name: "已确认 2/3" });
     expect((confirmed as HTMLButtonElement).disabled).toBe(true);
@@ -113,11 +116,19 @@ describe("MatchResultOverlay", () => {
       />,
     );
 
-    const sharedFirstTitle = screen.getByText(/MATCH 0 · 并列第一/);
-    expect(sharedFirstTitle.className).toContain("text-vermilion");
-    expect(screen.getByText("第1名 · Self(我)")).toBeTruthy();
-    expect(screen.getByText("第1名 · Two(P2)")).toBeTruthy();
-    expect(screen.getByText("第3名 · Three(P3)")).toBeTruthy();
+    const sharedFirstTitle = screen.getByRole("heading", {
+      name: "并列第一",
+    });
+    expect(
+      sharedFirstTitle
+        .closest(".match-settlement-summary")
+        ?.getAttribute("data-highlighted"),
+    ).toBe("true");
+    expect(screen.getAllByText("#1")).toHaveLength(2);
+    expect(screen.getByText("#3")).toBeTruthy();
+    expect(screen.getByText("Self(我)").closest("li")?.dataset.rank).toBe("1");
+    expect(screen.getByText("Two(P2)").closest("li")?.dataset.rank).toBe("1");
+    expect(screen.getByText("第 1 局淘汰")).toBeTruthy();
     expect(container.querySelector("svg")?.getAttribute("class")).toContain(
       "text-vermilion",
     );
@@ -134,12 +145,15 @@ describe("MatchResultOverlay", () => {
       />,
     );
 
-    expect(screen.getByText(/MATCH 0 · 对局失利/).className).toContain(
-      "text-ink-soft",
-    );
+    expect(
+      screen
+        .getByRole("heading", { name: "对局失利" })
+        .closest(".match-settlement-summary")
+        ?.getAttribute("data-highlighted"),
+    ).toBe("false");
     expect(container.querySelector("svg")?.getAttribute("class")).toContain(
       "text-ink-soft",
     );
-    expect(screen.queryByText(/MATCH 0 · 并列第一/)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "并列第一" })).toBeNull();
   });
 });
