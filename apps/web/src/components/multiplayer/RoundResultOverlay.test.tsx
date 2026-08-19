@@ -51,8 +51,12 @@ describe("RoundResultOverlay", () => {
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
-    expect(screen.getByText(/本局获胜/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "你赢得本局" })).toBeTruthy();
     expect(screen.getByText("博丽灵梦")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "本局结果与总分" }),
+    ).toBeTruthy();
+    expect(screen.getByText("1 分")).toBeTruthy();
     expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
   });
 
@@ -64,8 +68,8 @@ describe("RoundResultOverlay", () => {
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "查看对局" }));
-    expect(screen.queryByText(/本局获胜/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "查看本局棋盘" }));
+    expect(screen.queryByRole("heading", { name: "你赢得本局" })).toBeNull();
   });
 
   it("Escape dismisses the modal", () => {
@@ -89,7 +93,8 @@ describe("RoundResultOverlay", () => {
         nextRoundStartsAt={RESULT.nextStartsAt ?? null}
       />,
     );
-    expect(screen.getByText(/下一局 4 秒后开始/)).toBeTruthy();
+    const timer = screen.getByRole("timer", { name: "下一局 4 秒后开始" });
+    expect(timer.textContent).toBe("0:04");
   });
 
   it("无下一局（对局结束）不显示倒计时", () => {
@@ -100,7 +105,8 @@ describe("RoundResultOverlay", () => {
         nextRoundStartsAt={null}
       />,
     );
-    expect(screen.queryByText(/下一局/)).toBeNull();
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(screen.getByRole("button", { name: "查看整场结果" })).toBeTruthy();
   });
 
   it("启用自动关闭时在倒计时结束后触发关闭", () => {
@@ -120,6 +126,6 @@ describe("RoundResultOverlay", () => {
     });
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("button", { name: "查看对局" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "查看本局棋盘" })).toBeNull();
   });
 });

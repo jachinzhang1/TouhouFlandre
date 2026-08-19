@@ -74,12 +74,15 @@ export function MatchResultOverlay({
           ? "对局平局"
           : "对局失利";
   const highlighted = resultLabel === "并列第一" || resultLabel === "对局获胜";
+  const formatLabel = result.ranking?.length
+    ? "积分淘汰"
+    : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format);
 
   return (
     <div
       aria-labelledby="match-result-title"
       aria-modal="true"
-      className="fixed inset-0 z-[var(--layer-modal)] flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]"
+      className="multiplayer-result-backdrop"
       onKeyDown={onDialogKeyDown}
       ref={dialogRef}
       role="dialog"
@@ -88,22 +91,19 @@ export function MatchResultOverlay({
         animateOnMount={false}
         as="div"
         elevation="lg"
-        className="w-full max-w-[420px] p-6 text-center"
-        folded={false}
-        pattern={false}
+        className="match-result-paper"
+        folded
+        pattern
         sticker={false}
         unfoldOnHover={false}
       >
         <Trophy
           size={30}
-          className={`mx-auto mb-2 ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
+          className={`match-result-trophy ${highlighted ? "match-result-trophy-highlighted" : ""}`}
           aria-hidden="true"
         />
         <MatchSettlementSummary
-          eyebrow={`第 ${result.matchIndex + 1} 场 · ${
-            ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
-            format
-          } · ${matchReasonLabel(result.reason)}`}
+          eyebrow={`第 ${result.matchIndex + 1} 场 · ${formatLabel} · ${matchReasonLabel(result.reason)}`}
           highlighted={highlighted}
           members={members}
           result={result}
@@ -111,24 +111,25 @@ export function MatchResultOverlay({
           titleId="match-result-title"
           viewerMemberId={memberId}
         />
-        <div className="grid gap-2">
+        <div className="match-result-actions">
           <PaperButton
-            className="w-full"
+            className="match-result-action"
             disabled={mine}
             filled
             folded={false}
+            pattern={false}
             onClick={onRematch}
           >
             <RotateCcw size={16} aria-hidden="true" />
-            {mine ? `已确认 ${readyCount}/${rosterSize}` : "再来一局"}
+            {mine ? `已确认 ${readyCount}/${rosterSize}` : "确认再来一局"}
           </PaperButton>
           {readyCount > 0 && !mine && (
-            <p className="m-0 text-[0.75rem] text-jade">
+            <p className="match-result-ready-status" data-tone="success">
               已有 {readyCount}/{rosterSize} 人确认再来一局
             </p>
           )}
           {waitingMembers.length > 0 && (
-            <p className="m-0 text-[0.75rem] text-ink-soft">
+            <p className="match-result-ready-status">
               待确认：
               {waitingMembers
                 .map(
@@ -140,7 +141,11 @@ export function MatchResultOverlay({
                 .join("、")}
             </p>
           )}
-          <PaperButton className="w-full" folded={false} onClick={onLeave}>
+          <PaperButton
+            className="match-result-action match-result-secondary-action"
+            folded={false}
+            onClick={onLeave}
+          >
             返回大厅
           </PaperButton>
         </div>
@@ -217,6 +222,7 @@ export function MatchSettlementSummary({
             <li
               className="match-settlement-row"
               data-rank={entry.rank}
+              data-status={entry.status}
               data-viewer={entry.memberId === viewerMemberId ? "true" : "false"}
               key={entry.memberId}
             >

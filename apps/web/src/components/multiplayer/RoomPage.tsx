@@ -879,8 +879,13 @@ function SpectatorRoom({
   const modeLabel =
     MULTIPLAYER_MODE_LABELS[mode as keyof typeof MULTIPLAYER_MODE_LABELS] ??
     mode;
-  const formatLabel =
-    ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format;
+  const placementScoring =
+    mode === "race" &&
+    (Boolean(state.matchResult?.ranking?.length) ||
+      (state.match?.scores.length ?? 0) > 2);
+  const formatLabel = placementScoring
+    ? "积分淘汰"
+    : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format);
   const followLiveLabel =
     state.match && state.round
       ? `第 ${state.match.matchIndex + 1} 场 · 第 ${state.match.roundIndex} 局${

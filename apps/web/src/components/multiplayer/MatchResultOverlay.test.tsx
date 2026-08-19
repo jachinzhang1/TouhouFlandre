@@ -129,8 +129,10 @@ describe("MatchResultOverlay", () => {
     expect(screen.getByText("Self(我)").closest("li")?.dataset.rank).toBe("1");
     expect(screen.getByText("Two(P2)").closest("li")?.dataset.rank).toBe("1");
     expect(screen.getByText("第 1 局淘汰")).toBeTruthy();
-    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
-      "text-vermilion",
+    expect(screen.getByText("第 1 场 · 积分淘汰 · 正常完赛")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "确认再来一局" })).toBeTruthy();
+    expect(container.querySelector("svg")?.classList).toContain(
+      "match-result-trophy-highlighted",
     );
 
     rerender(
@@ -151,8 +153,8 @@ describe("MatchResultOverlay", () => {
         .closest(".match-settlement-summary")
         ?.getAttribute("data-highlighted"),
     ).toBe("false");
-    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
-      "text-ink-soft",
+    expect(container.querySelector("svg")?.classList).not.toContain(
+      "match-result-trophy-highlighted",
     );
     expect(screen.queryByRole("heading", { name: "并列第一" })).toBeNull();
   });

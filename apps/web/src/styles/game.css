@@ -1181,6 +1181,273 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   margin-inline: auto;
 }
 
+.multiplayer-result-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(18, 26, 23, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.paper-surface.round-result-paper {
+  display: grid;
+  width: min(100%, 560px);
+  max-height: calc(100dvh - 32px);
+  gap: 20px;
+  padding: clamp(24px, 5vw, 36px);
+  overflow-y: auto;
+}
+
+.round-result-lead {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.round-result-lead h2,
+.round-result-lead p,
+.round-result-answer h3,
+.round-result-answer span,
+.round-result-ledger h3,
+.round-result-actions p {
+  margin: 0;
+}
+
+.round-result-eyebrow {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.round-result-seal {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  font-family: var(--font-brand);
+  font-size: 1rem;
+  font-weight: 900;
+  transform: rotate(-2deg);
+}
+
+.round-result-seal[data-outcome="win"] {
+  border-color: var(--vermilion);
+  background: var(--vermilion-soft);
+  color: var(--vermilion-deep);
+}
+
+.round-result-lead h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: clamp(1.65rem, 5vw, 2.25rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.round-result-answer {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding-block: 14px;
+  border-block: 1px solid var(--line);
+  text-align: center;
+}
+
+.round-result-answer h3,
+.round-result-ledger h3 {
+  color: var(--ink-soft);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.round-result-answer strong {
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.round-result-answer span {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.round-result-ledger {
+  display: grid;
+  gap: 7px;
+}
+
+.round-result-ledger-columns,
+.round-result-ledger li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 52px 72px;
+  gap: 10px;
+  align-items: center;
+}
+
+.round-result-ledger-columns {
+  padding-inline: 10px;
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.round-result-ledger-columns > :not(:first-child) {
+  text-align: right;
+}
+
+.round-result-ledger ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.round-result-ledger li {
+  min-height: 48px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+}
+
+.round-result-ledger li[data-result="win"] {
+  border-color: color-mix(in srgb, var(--vermilion) 46%, var(--line));
+  background: color-mix(in srgb, var(--vermilion-soft) 44%, var(--paper));
+}
+
+.round-result-ledger li[data-viewer="true"] {
+  box-shadow: inset 3px 0 0 var(--vermilion);
+}
+
+.round-result-player {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.round-result-player strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.round-result-player span {
+  color: var(--ink-soft);
+  font-size: 0.64rem;
+}
+
+.round-result-outcome,
+.round-result-score {
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.round-result-outcome {
+  color: var(--ink-soft);
+}
+
+.round-result-ledger li[data-result="win"] .round-result-outcome,
+.round-result-score {
+  color: var(--vermilion-deep);
+}
+
+.round-result-next-state {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border-block: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.round-result-next-state strong {
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: 1.55rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.round-result-actions {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.round-result-review-action {
+  min-width: 180px;
+}
+
+.paper-surface.paper-button.round-result-review-action,
+.paper-surface.paper-button.match-result-secondary-action {
+  border: 1px solid var(--line-strong);
+  background: var(--paper-muted);
+}
+
+.round-result-actions p {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.paper-surface.match-result-paper {
+  display: grid;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 32px);
+  gap: 16px;
+  padding: clamp(24px, 5vw, 36px);
+  overflow-y: auto;
+  text-align: center;
+}
+
+.match-result-trophy {
+  margin-inline: auto;
+  color: var(--ink-soft);
+}
+
+.match-result-trophy-highlighted {
+  color: var(--vermilion);
+}
+
+.match-result-actions {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.match-result-action {
+  width: 100%;
+}
+
+.match-result-ready-status {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.match-result-ready-status[data-tone="success"] {
+  color: var(--jade);
+}
+
 .match-settlement-summary {
   display: grid;
   gap: 12px;
@@ -1236,7 +1503,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .match-settlement-columns {
   padding-inline: 10px;
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -1295,8 +1562,14 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .match-settlement-status {
   color: var(--ink-soft);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   line-height: 1.25;
+}
+
+.match-settlement-row[data-status="eliminated"] .match-settlement-status,
+.match-settlement-row[data-status="left"] .match-settlement-status {
+  color: var(--vermilion-deep);
+  font-weight: 800;
 }
 
 .match-settlement-score {
