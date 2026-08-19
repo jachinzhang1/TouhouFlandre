@@ -8,18 +8,23 @@ import {
 type MemberView = components["schemas"]["MemberView"];
 
 export function MemberScoreStrip({
+  label = "当前比分",
   members,
   scores,
   viewerMemberId,
   winnerMemberId,
 }: {
+  label?: string;
   members: readonly MemberView[];
   scores: readonly MemberScoreView[];
   viewerMemberId?: string | null;
   winnerMemberId?: string | null;
 }) {
   return (
-    <ol className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 max-[680px]:order-last max-[680px]:w-full max-[680px]:basis-full max-[680px]:justify-start">
+    <ol
+      aria-label={label}
+      className="member-score-strip flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5"
+    >
       {sortMembersBySeat(members).map((member) => {
         const score = scores.find(
           (entry) => entry.memberId === member.memberId,

@@ -65,6 +65,7 @@ import {
   PaperButton,
   PaperSegmentButton,
   PaperSegmentGroup,
+  PaperSegmentSeparator,
 } from "@/components/paper";
 
 const DEVELOPMENT_ROOM_ACTIONS: RoomActions = {
@@ -589,6 +590,28 @@ export function RoomView({ code }: { code: string }) {
                 ? "本局已超时"
                 : null;
     const raceReadOnly = mode === "race" && Boolean(participationMessage);
+    const connectionBlocked =
+      state.connection !== "connected" ||
+      state.viewer?.status !== "connected" ||
+      roomUnavailable;
+    const guessDisabled =
+      connectionBlocked ||
+      (mode === "relay" ? !relayCanGuess : !hasOpponent || raceReadOnly);
+    const guessStatusMessage = connectionBlocked
+      ? "实时同步恢复后可继续猜测"
+      : mode === "race"
+        ? participationMessage
+        : null;
+    const guessStatusTone = connectionBlocked
+      ? ("warning" as const)
+      : participationStatus === "correct"
+        ? ("success" as const)
+        : participationStatus === "forfeited"
+          ? ("danger" as const)
+          : participationStatus === "exhausted" ||
+              participationStatus === "timed_out"
+            ? ("warning" as const)
+            : ("neutral" as const);
     const roundActions =
       state.round?.status === "playing" && !raceReadOnly ? (
         <RoundActionButtons
@@ -641,9 +664,6 @@ export function RoomView({ code }: { code: string }) {
             memberId={memberId}
             members={state.members}
             roundResult={selectedPlayerArchive ?? state.roundResult}
-            catalogVersion={state.catalogVersion ?? undefined}
-            onGuess={actions.submitGuess}
-            disabled={!hasOpponent}
             roundActions={selectedPlayerArchive ? null : roundActions}
             fields={visibleFields}
           />
@@ -673,20 +693,30 @@ export function RoomView({ code }: { code: string }) {
         <GuessErrorToast message={guessError} />
         {showCommandDeck ? (
           <div className="multiplayer-command-deck">
-            <div className="multiplayer-command-deck-inner">
+            <Paper
+              animateOnMount={false}
+              ariaLabel="比赛操作"
+              as="div"
+              className="multiplayer-command-surface"
+              elevation="lg"
+              folded={false}
+              pattern={false}
+              role="group"
+              sticker={false}
+              unfoldOnHover={false}
+            >
               {renderChatDock("deck")}
+              <PaperSegmentSeparator orientation="horizontal" />
               <GuessInputBar
                 onGuess={actions.submitGuess}
-                disabled={
-                  mode === "relay"
-                    ? !relayCanGuess
-                    : !hasOpponent || raceReadOnly
-                }
+                disabled={guessDisabled}
                 catalogVersion={state.catalogVersion ?? undefined}
                 guessedIds={guessedIds}
-                statusMessage={mode === "race" ? participationMessage : null}
+                preserveDraftWhenDisabled={connectionBlocked && !raceReadOnly}
+                statusMessage={guessStatusMessage}
+                statusTone={guessStatusTone}
               />
-            </div>
+            </Paper>
           </div>
         ) : (
           renderChatDock("fixed")

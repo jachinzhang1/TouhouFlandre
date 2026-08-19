@@ -91,6 +91,8 @@ export function PaperSegmentSeparator({
 
 export interface PaperPaginationProps {
   className?: string;
+  controlsId?: string;
+  counterLabel?: ReactNode;
   label: string;
   nextLabel?: string;
   onNext: () => void;
@@ -102,6 +104,8 @@ export interface PaperPaginationProps {
 
 export function PaperPagination({
   className = "",
+  controlsId,
+  counterLabel,
   label,
   nextLabel = "下一页",
   onNext,
@@ -118,6 +122,7 @@ export function PaperPagination({
       label={label}
     >
       <PaperButton
+        ariaControls={controlsId}
         ariaLabel={previousLabel}
         disabled={!hasPrevious}
         filled={hasPrevious}
@@ -140,11 +145,12 @@ export function PaperPagination({
         variant="plain"
       >
         <span aria-live="polite">
-          {page} / {Math.max(1, pageCount)}
+          {counterLabel ?? `${page} / ${Math.max(1, pageCount)}`}
         </span>
       </Paper>
       <PaperSegmentSeparator />
       <PaperButton
+        ariaControls={controlsId}
         ariaLabel={nextLabel}
         disabled={!hasNext}
         filled={hasNext}

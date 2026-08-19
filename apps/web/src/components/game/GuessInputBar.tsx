@@ -20,6 +20,8 @@ export function GuessInputBar({
   onGuess,
   disabled,
   catalogVersion,
+  preserveDraftWhenDisabled = false,
+  statusTone = "warning",
   guessedIds,
   statusMessage,
 }: {
@@ -27,9 +29,12 @@ export function GuessInputBar({
   disabled?: boolean;
   catalogVersion?: string;
   guessedIds: ReadonlySet<string>;
+  preserveDraftWhenDisabled?: boolean;
+  statusTone?: "success" | "warning" | "danger" | "neutral";
   statusMessage?: string | null;
 }) {
   const listboxId = useId();
+  const headingId = useId();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [highlightIndex, setHighlightIndex] = useState(0);
@@ -52,10 +57,10 @@ export function GuessInputBar({
   }, [query, results]);
 
   useEffect(() => {
-    if (!disabled) return;
+    if (!disabled || preserveDraftWhenDisabled) return;
     setQuery("");
     setSelectedId("");
-  }, [disabled]);
+  }, [disabled, preserveDraftWhenDisabled]);
 
   useEffect(() => {
     if (!restoreFocusRequested || disabled) return;
@@ -106,7 +111,17 @@ export function GuessInputBar({
   };
 
   return (
-    <div className="multiplayer-guess-bar" data-guess-input-bar>
+    <section
+      aria-labelledby={headingId}
+      className="multiplayer-command-channel multiplayer-guess-bar"
+      data-guess-input-bar
+    >
+      <header className="multiplayer-command-channel-heading">
+        <strong id={headingId}>猜测</strong>
+        <span>
+          {disabled ? (statusMessage ?? "等待当前轮次") : "选择角色后提交"}
+        </span>
+      </header>
       <div className="multiplayer-guess-composer">
         <FeedbackLegendButton
           className="multiplayer-legend-control"
@@ -114,6 +129,7 @@ export function GuessInputBar({
         />
         <form
           className="multiplayer-guess-form"
+          aria-labelledby={headingId}
           onSubmit={(event) => {
             const restoreFocus = document.activeElement === inputRef.current;
             event.preventDefault();
@@ -258,12 +274,13 @@ export function GuessInputBar({
           pattern={false}
           role="status"
           sticker={false}
-          tone="danger"
+          tone={statusTone}
           unfoldOnHover={false}
+          variant="tinted"
         >
           {statusMessage}
         </Paper>
       ) : null}
-    </div>
+    </section>
   );
 }

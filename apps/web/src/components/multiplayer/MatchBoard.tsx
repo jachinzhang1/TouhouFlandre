@@ -21,7 +21,8 @@ import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 import type { RoomUiState } from "../../hooks/useRoom";
 import { boardResultBadges, formatBoardTitle } from "./boardMeta";
-import { Paper, PaperButton } from "@/components/paper";
+import { Paper, PaperButton, PaperSegmentSeparator } from "@/components/paper";
+import { SectionHeading } from "../layout/SectionHeading";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
@@ -33,9 +34,6 @@ export function MatchBoard({
   memberId,
   members,
   roundResult,
-  catalogVersion,
-  onGuess,
-  disabled,
   roundActions,
   fields,
 }: {
@@ -45,9 +43,6 @@ export function MatchBoard({
   memberId?: string | null;
   members?: components["schemas"]["MemberView"][];
   roundResult: RoundEndedPayload | null;
-  catalogVersion?: string;
-  onGuess: (guessId: string) => void;
-  disabled?: boolean;
   roundActions?: ReactNode;
   fields?: readonly GuessField[];
 }) {
@@ -73,6 +68,10 @@ export function MatchBoard({
     : match.targetWins > 1
       ? `先胜 ${match.targetWins} 局`
       : "一局定胜负";
+  const roundExpired = Boolean(round && !ended && remaining <= 0);
+  const timerText =
+    round && !ended && !roundExpired ? formatRemaining(remaining) : null;
+  const hasDetails = Boolean(showEliminationRule || (!ended && roundActions));
 
   return (
     <section className="multiplayer-match-page">
@@ -93,83 +92,103 @@ export function MatchBoard({
               : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
                 format)}
           </span>
-          <strong className="multiplayer-match-round">
-            第 {roundNumber} 局<span>{roundDescription}</span>
-          </strong>
-          {round && !ended ? (
-            <span className="multiplayer-match-clock tabular-nums">
-              剩余 {formatRemaining(remaining)}
-            </span>
+          <span className="multiplayer-match-round">
+            <strong>第 {roundNumber} 局</strong>
+            <span>{roundDescription}</span>
+          </span>
+          {timerText ? (
+            <time
+              aria-label={`本局剩余 ${timerText}`}
+              className="multiplayer-match-clock tabular-nums"
+              role="timer"
+            >
+              <small>本局剩余</small>
+              {timerText}
+            </time>
           ) : (
-            <span className="multiplayer-match-clock">本局已结束</span>
+            <span className="multiplayer-match-clock multiplayer-match-ended">
+              {roundExpired ? "等待结算" : "本局已结束"}
+            </span>
           )}
-          <PaperButton
-            ariaControls={summaryDetailsId}
-            ariaExpanded={mobileSummaryOpen}
-            ariaLabel={mobileSummaryOpen ? "收起对局信息" : "展开对局信息"}
-            className="multiplayer-match-summary-toggle"
-            compact
-            folded={false}
-            iconOnly
-            onClick={() => setMobileSummaryOpen((open) => !open)}
-            title={mobileSummaryOpen ? "收起对局信息" : "展开对局信息"}
-          >
-            <ChevronDown
-              aria-hidden="true"
-              className={mobileSummaryOpen ? "rotate-180" : ""}
-              size={18}
-            />
-          </PaperButton>
+          {hasDetails ? (
+            <PaperButton
+              ariaControls={summaryDetailsId}
+              ariaExpanded={mobileSummaryOpen}
+              ariaLabel={mobileSummaryOpen ? "收起对局信息" : "展开对局信息"}
+              className="multiplayer-match-summary-toggle"
+              compact
+              folded={false}
+              iconOnly
+              onClick={() => setMobileSummaryOpen((open) => !open)}
+              title={mobileSummaryOpen ? "收起对局信息" : "展开对局信息"}
+            >
+              <ChevronDown
+                aria-hidden="true"
+                className={mobileSummaryOpen ? "rotate-180" : ""}
+                size={18}
+              />
+            </PaperButton>
+          ) : null}
         </div>
-        <div
-          className="multiplayer-match-summary-details"
-          data-open={mobileSummaryOpen ? "true" : "false"}
-          id={summaryDetailsId}
-        >
+        <div className="multiplayer-match-score-row">
           <MemberScoreStrip
+            label="当前积分"
             members={members ?? []}
             scores={roundResult?.scores ?? match.scores}
             viewerMemberId={memberId}
             winnerMemberId={roundResult?.winnerMemberId}
           />
-          {showEliminationRule ? (
-            <span
-              className="multiplayer-elimination-rule"
-              data-eliminates={eliminatesThisRound ? "true" : "false"}
-            >
-              {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
-            </span>
-          ) : null}
-          {!ended ? roundActions : null}
         </div>
+        {hasDetails ? (
+          <div
+            className="multiplayer-match-summary-details"
+            data-open={mobileSummaryOpen ? "true" : "false"}
+            id={summaryDetailsId}
+          >
+            {showEliminationRule ? (
+              <span
+                className="multiplayer-elimination-rule"
+                data-eliminates={eliminatesThisRound ? "true" : "false"}
+              >
+                {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
+              </span>
+            ) : null}
+            {!ended && roundActions ? (
+              <div className="multiplayer-match-summary-actions">
+                <PaperSegmentSeparator orientation="horizontal" />
+                {roundActions}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </Paper>
 
-      <div className="multiplayer-board-stack">
-        {ended && roundResult ? (
+      {ended && roundResult ? (
+        <div className="multiplayer-board-stack">
           <EndedBoards
             roundResult={roundResult}
             memberId={memberId}
             members={members ?? []}
             fields={fields}
           />
-        ) : (
-          <>
-            <SelfBoard
-              guesses={round?.self.guesses ?? []}
-              playing={round?.status === "playing"}
-              maxGuesses={round?.maxGuesses}
-              fields={fields}
-            />
-            <OpponentPages
-              round={round}
-              memberId={memberId}
-              match={match}
-              members={members ?? []}
-              fields={fields}
-            />
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="multiplayer-race-board-pair">
+          <SelfBoard
+            guesses={round?.self.guesses ?? []}
+            playing={round?.status === "playing" && !roundExpired}
+            maxGuesses={round?.maxGuesses}
+            fields={fields}
+          />
+          <OpponentPages
+            round={round}
+            memberId={memberId}
+            match={match}
+            members={members ?? []}
+            fields={fields}
+          />
+        </div>
+      )}
     </section>
   );
 }
@@ -193,25 +212,38 @@ function OpponentPages({
         opponent.memberId !== memberId &&
         isActiveMatchMember(match.scores, opponent.memberId),
     )
-    .sort((a, b) => a.seat - b.seat);
+    .sort((left, right) => left.seat - right.seat);
+  const opponentLabel = (opponent: (typeof opponents)[number] | undefined) => {
+    if (!opponent) return "对手棋盘";
+    const member = members.find(
+      (entry) => entry.memberId === opponent.memberId,
+    );
+    return `P${opponent.seat} ${member?.displayName ?? `玩家 ${opponent.seat}`}`;
+  };
   return (
     <MemberPaginator
+      getPageLabel={({ page, pageCount, visibleItems }) =>
+        `${opponentLabel(visibleItems[0])} · ${page} / ${pageCount}`
+      }
       items={opponents}
       label="对手棋盘"
       pageSize={1}
-      renderItem={(opponent) => {
-        const member = members.find(
-          (entry) => entry.memberId === opponent.memberId,
-        );
-        return (
-          <OpponentBoard
-            title={formatBoardTitle(member, opponent.seat)}
-            rows={opponent.rows}
-            fields={fields}
-            fieldOrder={opponent.fieldOrder}
-          />
-        );
-      }}
+      renderHeader={({ controls, visibleItems }) => (
+        <SectionHeading
+          action={controls}
+          className="member-paginator-header"
+          description="仅显示反馈状态；具体角色与属性值将在局末揭示。"
+          title={opponentLabel(visibleItems[0])}
+        />
+      )}
+      renderItem={(opponent) => (
+        <OpponentBoard
+          rows={opponent.rows}
+          fields={fields}
+          fieldOrder={opponent.fieldOrder}
+          showHeading={false}
+        />
+      )}
     />
   );
 }

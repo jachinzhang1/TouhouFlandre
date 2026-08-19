@@ -1,5 +1,6 @@
 :root {
   --game-action-safe-inset: env(safe-area-inset-bottom, 0px);
+  --multiplayer-command-reserve: 220px;
 }
 
 .chat-dock-fixed {
@@ -40,7 +41,7 @@
   left: 0;
   z-index: 45;
   isolation: isolate;
-  padding: 72px 16px calc(12px + var(--game-action-safe-inset));
+  padding: 64px 16px calc(12px + var(--game-action-safe-inset));
   pointer-events: none;
 }
 
@@ -51,19 +52,51 @@
   background: linear-gradient(
     to bottom,
     transparent,
-    color-mix(in srgb, var(--page-background) 82%, transparent) 64px,
+    color-mix(in srgb, var(--page-background) 82%, transparent) 56px,
     var(--page-background) 100%
   );
   content: "";
   pointer-events: none;
 }
 
-.multiplayer-command-deck-inner {
+.paper-surface.multiplayer-command-surface {
   display: grid;
-  width: min(720px, 100%);
+  width: min(760px, 100%);
   margin-inline: auto;
+  padding: 10px;
   gap: 8px;
   pointer-events: auto;
+}
+
+.multiplayer-command-channel {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.multiplayer-command-channel-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding-inline: 2px;
+}
+
+.multiplayer-command-channel-heading strong {
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.multiplayer-command-channel-heading span {
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .guess-error-toast {
@@ -72,7 +105,8 @@
 
 body:has(.multiplayer-command-deck) .guess-error-toast {
   bottom: calc(
-    var(--site-footer-height) + 210px + var(--game-action-safe-inset)
+    var(--site-footer-height) + var(--multiplayer-command-reserve) +
+      var(--game-action-safe-inset)
   );
 }
 
@@ -827,7 +861,8 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
-  padding: 20px 18px calc(220px + var(--site-footer-height));
+  padding: 20px 18px
+    calc(var(--multiplayer-command-reserve) + var(--site-footer-height));
 }
 
 .paper-surface.multiplayer-match-summary {
@@ -839,43 +874,66 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .multiplayer-match-mode,
 .multiplayer-elimination-rule {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding-inline: 9px;
+  min-height: 24px;
+  padding-inline: 8px;
   font-size: 0.72rem;
   font-weight: 900;
 }
 
 .multiplayer-match-mode {
   color: var(--theme-color);
-  background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+  font-family: var(--font-brand);
 }
 
 .multiplayer-match-round {
+  display: flex;
   min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.multiplayer-match-round strong {
+  color: var(--ink);
   font-family: var(--font-brand);
   font-size: 1rem;
 }
 
-.multiplayer-match-round span {
-  margin-left: 8px;
+.multiplayer-match-round > span {
   color: var(--ink-soft);
-  font-family: var(--font-ui);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .multiplayer-match-clock {
-  color: var(--ink-soft);
-  font-size: 0.74rem;
-  font-weight: 800;
+  display: grid;
+  justify-items: end;
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.multiplayer-match-clock small {
+  margin-bottom: 3px;
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.multiplayer-match-ended {
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
 }
 
 .paper-surface.paper-button.multiplayer-match-summary-toggle {
@@ -886,21 +944,33 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   transition: transform 160ms ease;
 }
 
-.multiplayer-match-summary-details {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 12px;
+.multiplayer-match-score-row {
   margin-top: 12px;
   padding-top: 12px;
+  overflow-x: auto;
   border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+  scrollbar-width: none;
 }
 
-.multiplayer-match-summary-details > ol {
+.multiplayer-match-score-row::-webkit-scrollbar {
+  display: none;
+}
+
+.multiplayer-match-score-row .member-score-strip {
+  width: max-content;
+  min-width: 100%;
+  flex-wrap: nowrap;
   justify-content: flex-start;
 }
 
+.multiplayer-match-summary-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .multiplayer-elimination-rule {
+  width: fit-content;
   color: var(--semantic-success);
   background: var(--semantic-success-tint);
 }
@@ -910,20 +980,99 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   background: var(--semantic-danger-tint);
 }
 
-.multiplayer-match-summary-details > :last-child:not(:first-child) {
+.multiplayer-match-summary-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.multiplayer-match-summary-actions > :last-child {
   justify-self: end;
 }
 
-.multiplayer-board-stack {
+.multiplayer-board-stack,
+.multiplayer-race-board-pair {
   display: grid;
   min-width: 0;
-  gap: 36px;
+  gap: 28px;
 }
 
 .member-paginator-controls {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 14px;
+}
+
+.member-paginator-header {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 1200px) {
+  .multiplayer-race-board-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+
+  .multiplayer-race-board-pair .paper-surface.multiplayer-board-paper {
+    --guess-character-column-width: 128px;
+    --guess-table-width: 100%;
+    min-width: 0;
+  }
+
+  .multiplayer-race-board-pair .multiplayer-guess-table {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .multiplayer-race-board-pair .guess-feedback-column,
+  .multiplayer-race-board-pair .guess-table :is(th, td) {
+    width: auto;
+  }
+
+  .multiplayer-race-board-pair .multiplayer-board-footer th {
+    font-size: 0.78rem;
+  }
+
+  .multiplayer-race-board-pair .feedback {
+    font-size: 0.74rem;
+  }
+
+  .multiplayer-race-board-pair .feedback > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .multiplayer-race-board-pair .member-paginator-header {
+    display: grid;
+    grid-template-areas:
+      "title action"
+      "description action";
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: center;
+  }
+
+  .multiplayer-race-board-pair
+    .member-paginator-header
+    .section-heading-title-row {
+    grid-area: title;
+  }
+
+  .multiplayer-race-board-pair
+    .member-paginator-header
+    .section-heading-description {
+    grid-area: description;
+  }
+
+  .multiplayer-race-board-pair
+    .member-paginator-header
+    .section-heading-action {
+    grid-area: action;
+    margin-top: 0;
+  }
 }
 
 .multiplayer-board {
@@ -1033,6 +1182,10 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 @media (max-width: 680px) {
+  :root {
+    --multiplayer-command-reserve: 280px;
+  }
+
   .room-lobby-page {
     padding: 28px 18px 20px;
   }
@@ -1097,7 +1250,8 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   }
 
   .multiplayer-match-page {
-    padding: 16px 10px calc(210px + var(--site-footer-height));
+    padding: 16px 10px
+      calc(var(--multiplayer-command-reserve) + var(--site-footer-height));
   }
 
   .paper-surface.multiplayer-match-summary {
@@ -1111,23 +1265,29 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   }
 
   .multiplayer-match-mode {
-    min-height: 24px;
-    padding-inline: 7px;
+    min-height: 22px;
+    padding-inline: 5px;
   }
 
   .multiplayer-match-round {
+    display: grid;
+    gap: 2px;
+  }
+
+  .multiplayer-match-round strong {
     font-size: 0.9rem;
   }
 
-  .multiplayer-match-round span {
-    display: block;
-    margin-top: 2px;
-    margin-left: 0;
-    font-size: 0.66rem;
+  .multiplayer-match-round > span {
+    font-size: 0.68rem;
   }
 
   .multiplayer-match-clock {
-    font-size: 0.68rem;
+    font-size: 1.08rem;
+  }
+
+  .multiplayer-match-clock small {
+    font-size: 0.6rem;
   }
 
   .paper-surface.paper-button.multiplayer-match-summary-toggle {
@@ -1138,30 +1298,33 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
     padding: 0;
   }
 
+  .multiplayer-match-score-row .member-score-strip {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
   .multiplayer-match-summary-details {
     display: none;
-    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     margin-top: 10px;
-    padding-top: 10px;
   }
 
   .multiplayer-match-summary-details[data-open="true"] {
     display: grid;
   }
 
-  .multiplayer-match-summary-details > ol {
-    width: 100%;
-    flex-basis: auto;
-    justify-content: flex-start;
-    order: 0;
-  }
-
-  .multiplayer-match-summary-details > :last-child:not(:first-child) {
+  .multiplayer-match-summary-actions > :last-child {
     justify-self: start;
   }
-  .multiplayer-board-stack {
+
+  .multiplayer-board-stack,
+  .multiplayer-race-board-pair {
     gap: 28px;
+  }
+
+  .member-paginator-header .section-heading-action {
+    justify-content: center;
   }
 
   .member-paginator-controls {

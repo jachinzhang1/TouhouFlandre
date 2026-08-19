@@ -38,6 +38,7 @@ describe("MemberScoreStrip", () => {
         ]}
       />,
     );
+    expect(screen.getByRole("list", { name: "当前比分" })).toBeTruthy();
     const rows = screen.getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
       "Self（我）0",

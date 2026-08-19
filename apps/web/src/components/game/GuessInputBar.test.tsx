@@ -45,6 +45,20 @@ describe("GuessInputBar", () => {
     vi.restoreAllMocks();
   });
 
+  it("exposes a visible and accessible guess channel label", () => {
+    render(
+      <GuessInputBar
+        onGuess={onGuess}
+        catalogVersion="v1"
+        guessedIds={new Set()}
+      />,
+    );
+
+    expect(screen.getByText("猜测", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText("选择角色后提交")).toBeTruthy();
+    expect(screen.getByRole("form", { name: "猜测" })).toBeTruthy();
+  });
+
   it("uses arrows and Enter to select, then submits explicitly", async () => {
     render(
       <GuessInputBar
@@ -184,5 +198,35 @@ describe("GuessInputBar", () => {
     );
     expect(screen.getByRole("status").textContent).toContain("你已放弃本局");
     expect(screen.queryByRole("option", { name: /博丽灵梦/ })).toBeNull();
+  });
+
+  it("preserves a typed draft during transient reconnect disablement", () => {
+    const { rerender } = render(
+      <GuessInputBar
+        onGuess={onGuess}
+        catalogVersion="v1"
+        guessedIds={new Set()}
+      />,
+    );
+    const input = screen.getByLabelText("搜索角色") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "灵梦" } });
+
+    rerender(
+      <GuessInputBar
+        onGuess={onGuess}
+        catalogVersion="v1"
+        disabled
+        guessedIds={new Set()}
+        preserveDraftWhenDisabled
+        statusMessage="实时同步恢复后可继续猜测"
+        statusTone="warning"
+      />,
+    );
+
+    expect(input.value).toBe("灵梦");
+    expect(screen.getAllByText("实时同步恢复后可继续猜测")).toHaveLength(2);
+    const status = screen.getByRole("status");
+    expect(status.dataset.paperTone).toBe("warning");
+    expect(status.dataset.paperVariant).toBe("tinted");
   });
 });

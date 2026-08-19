@@ -63,8 +63,8 @@ describe("MatchBoard", () => {
         round={
           {
             status: "playing",
-            startsAt: "2026-08-15T00:00:00Z",
-            deadline: "2026-08-15T00:05:00Z",
+            startsAt: "2099-08-15T00:00:00Z",
+            deadline: "2099-08-15T00:05:00Z",
             maxGuesses: 8,
             self: { guesses: [] },
             opponents: [],
@@ -73,7 +73,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
         fields={[]}
       />,
     );
@@ -103,8 +102,8 @@ describe("MatchBoard", () => {
         round={
           {
             status: "playing",
-            startsAt: "2026-08-15T00:00:00Z",
-            deadline: "2026-08-15T00:05:00Z",
+            startsAt: "2099-08-15T00:00:00Z",
+            deadline: "2099-08-15T00:05:00Z",
             maxGuesses: 8,
             self: { guesses: [] },
             opponents: [],
@@ -113,7 +112,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
         fields={[]}
       />,
     );
@@ -185,7 +183,7 @@ describe("MatchBoard", () => {
         },
       ],
       viewerResult: "win",
-      nextStartsAt: "2026-08-15T00:10:00Z",
+      nextStartsAt: "2099-08-15T00:10:00Z",
     };
 
     render(
@@ -206,7 +204,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={result}
-        onGuess={vi.fn()}
         fields={[]}
       />,
     );
@@ -238,8 +235,8 @@ describe("MatchBoard", () => {
         round={
           {
             status: "playing",
-            startsAt: "2026-08-15T00:00:00Z",
-            deadline: "2026-08-15T00:05:00Z",
+            startsAt: "2099-08-15T00:00:00Z",
+            deadline: "2099-08-15T00:05:00Z",
             maxGuesses: 8,
             self: { guesses: [] },
             opponents: [],
@@ -248,16 +245,22 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
+        roundActions={<span>Actions</span>}
         fields={[]}
       />,
     );
+
+    const scores = screen.getByRole("list", { name: "当前积分" });
+    expect(scores).toBeTruthy();
+    const timer = screen.getByRole("timer", { name: /本局剩余/ });
+    expect(timer.textContent).toContain(":");
 
     expect(screen.getByText("第 2 局")).toBeTruthy();
     const toggle = screen.getByRole("button", { name: "展开对局信息" });
     const details = document.getElementById(
       toggle.getAttribute("aria-controls")!,
     );
+    expect(details?.contains(scores)).toBe(false);
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     expect(details?.dataset.open).toBe("false");
 

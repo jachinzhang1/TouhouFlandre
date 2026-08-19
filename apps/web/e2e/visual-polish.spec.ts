@@ -234,7 +234,8 @@ test.describe("visual polish", () => {
   test("multiplayer boards and command deck match the shared game layout", async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 2738, height: 1607 });
+    await page.clock.install({ time: new Date("2026-08-14T12:00:00Z") });
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await seedMultiplayer(page, "race-n-player");
     await prepareVisualPage(page);
     await page.evaluate(() =>
@@ -248,16 +249,47 @@ test.describe("visual polish", () => {
       const footer = document
         .querySelector(".site-footer")!
         .getBoundingClientRect();
+      const boards = [
+        ...document.querySelectorAll(
+          ".multiplayer-race-board-pair .multiplayer-board-paper",
+        ),
+      ].map((board) => board.getBoundingClientRect());
+      const timer = document
+        .querySelector('[role="timer"]')!
+        .getBoundingClientRect();
+      const mode = document
+        .querySelector(".multiplayer-match-mode")!
+        .getBoundingClientRect();
       return {
         deckBottom: deck.bottom,
         footerTop: footer.top,
         overflow: document.documentElement.scrollWidth > window.innerWidth,
+        boardTopDelta: Math.abs(boards[0].top - boards[1].top),
+        timerHeight: timer.height,
+        modeHeight: mode.height,
       };
     });
     expect(largeGeometry.overflow).toBe(false);
     expect(
       Math.abs(largeGeometry.deckBottom - largeGeometry.footerTop),
     ).toBeLessThanOrEqual(1);
+    expect(largeGeometry.boardTopDelta).toBeLessThanOrEqual(1);
+    expect(largeGeometry.timerHeight).toBeGreaterThan(largeGeometry.modeHeight);
+    await expect(page.getByRole("list", { name: "当前积分" })).toBeVisible();
+    await expect(page.locator(".paper-pagination-counter")).toContainText(
+      "P2 雾之湖对手 · 1 / 3",
+    );
+    await expect(page.getByText("聊天", { exact: true })).toBeVisible();
+    await expect(page.getByText("猜测", { exact: true })).toBeVisible();
+    await page.getByLabel("聊天输入").fill("测试消息");
+    await expect(page.getByLabel("发送消息")).toHaveAttribute(
+      "data-paper-tone",
+      "neutral",
+    );
+    await expect(page.getByLabel("发送消息")).toHaveAttribute(
+      "data-paper-variant",
+      "tinted",
+    );
 
     const selfCell = page
       .locator('.multiplayer-board[data-board-variant="self"] .feedback-cell')
@@ -309,10 +341,49 @@ test.describe("visual polish", () => {
       const footer = document
         .querySelector(".site-footer")!
         .getBoundingClientRect();
-      return { deckBottom: deck.bottom, footerTop: footer.top };
+      const lastBoard = [...document.querySelectorAll(".multiplayer-board")]
+        .at(-1)!
+        .getBoundingClientRect();
+      const scores = [
+        ...document.querySelectorAll(".member-score-strip > li"),
+      ].map((item) => item.getBoundingClientRect());
+      const scoreRow = document
+        .querySelector(".multiplayer-match-score-row")!
+        .getBoundingClientRect();
+      return {
+        deckBottom: deck.bottom,
+        deckTop: deck.top,
+        footerTop: footer.top,
+        lastBoardBottom: lastBoard.bottom,
+        scoresVisible: scores.every(
+          (score) =>
+            score.left >= scoreRow.left - 1 &&
+            score.right <= scoreRow.right + 1,
+        ),
+      };
     });
     expect(
       Math.abs(mobileGeometry.deckBottom - mobileGeometry.footerTop),
     ).toBeLessThanOrEqual(1);
+    expect(mobileGeometry.lastBoardBottom).toBeLessThanOrEqual(
+      mobileGeometry.deckTop,
+    );
+    expect(mobileGeometry.scoresVisible).toBe(true);
+
+    await page.getByLabel("搜索角色").fill("灵梦");
+    await page.evaluate(() => {
+      const game = (
+        window as typeof window & {
+          __touhouflandreDev?: { game?: { seed: (seed: string) => string } };
+        }
+      ).__touhouflandreDev?.game;
+      game?.seed("viewer-disconnected");
+    });
+    await expect(page.getByLabel("搜索角色")).toBeDisabled();
+    await expect(page.getByLabel("搜索角色")).toHaveValue("灵梦");
+    await expect(
+      page.getByText("实时同步恢复后可继续猜测").last(),
+    ).toBeVisible();
+    await expect(page.getByLabel("展开聊天记录")).toBeEnabled();
   });
 });

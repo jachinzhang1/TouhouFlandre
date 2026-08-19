@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { PaperPagination } from "@/components/paper";
 
 type MemberPageItem = { memberId: string; seat: number };
 
 export function MemberPaginator<T extends MemberPageItem>({
+  getPageLabel,
   items,
   label,
+  renderHeader,
   renderItem,
   pageSize: fixedPageSize,
 }: {
+  getPageLabel?: (context: {
+    page: number;
+    pageCount: number;
+    visibleItems: readonly T[];
+  }) => ReactNode;
   items: readonly T[];
   label: string;
+  renderHeader?: (context: {
+    controls: ReactNode;
+    page: number;
+    pageCount: number;
+    visibleItems: readonly T[];
+  }) => ReactNode;
   renderItem: (item: T) => ReactNode;
   pageSize?: 1 | 2;
 }) {
+  const panelId = useId();
   const ordered = useMemo(
     () => [...items].sort((left, right) => left.seat - right.seat),
     [items],
@@ -29,7 +43,7 @@ export function MemberPaginator<T extends MemberPageItem>({
   const pageSize = fixedPageSize ?? (wide ? 2 : 1);
   const pageCount = Math.max(1, Math.ceil(ordered.length / pageSize));
   const pageStart = (page - 1) * pageSize;
-  const visible = ordered.slice(pageStart, pageStart + pageSize);
+  const visibleItems = ordered.slice(pageStart, pageStart + pageSize);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
@@ -49,27 +63,34 @@ export function MemberPaginator<T extends MemberPageItem>({
 
   if (ordered.length === 0) return null;
 
+  const context = { page, pageCount, visibleItems };
+  const controls =
+    pageCount > 1 ? (
+      <PaperPagination
+        controlsId={panelId}
+        counterLabel={getPageLabel?.(context)}
+        label={`${label}翻页`}
+        nextLabel={`${label}下一页`}
+        onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        page={page}
+        pageCount={pageCount}
+        previousLabel={`${label}上一页`}
+      />
+    ) : null;
+
   return (
     <div className="member-paginator min-w-0" data-page-size={pageSize}>
-      {pageCount > 1 ? (
-        <div className="member-paginator-controls">
-          <PaperPagination
-            label={`${label}翻页`}
-            nextLabel={`${label}下一页`}
-            onNext={() =>
-              setPage((current) => Math.min(pageCount, current + 1))
-            }
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            page={page}
-            pageCount={pageCount}
-            previousLabel={`${label}上一页`}
-          />
-        </div>
+      {renderHeader ? (
+        renderHeader({ ...context, controls })
+      ) : controls ? (
+        <div className="member-paginator-controls">{controls}</div>
       ) : null}
       <div
         className={`grid items-start gap-5 ${pageSize === 2 ? "min-[900px]:grid-cols-2" : "grid-cols-1"}`}
+        id={panelId}
       >
-        {visible.map((item) => (
+        {visibleItems.map((item) => (
           <div key={item.memberId} data-member-board={item.memberId}>
             {renderItem(item)}
           </div>

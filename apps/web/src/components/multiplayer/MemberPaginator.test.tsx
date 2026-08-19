@@ -75,4 +75,32 @@ describe("MemberPaginator", () => {
         ?.getAttribute("data-page-size"),
     ).toBe("1");
   });
+
+  it("embeds contextual page controls in a caller-provided header", () => {
+    render(
+      <MemberPaginator
+        getPageLabel={({ page, pageCount, visibleItems }) =>
+          `P${visibleItems[0]?.seat} · ${page} / ${pageCount}`
+        }
+        items={items}
+        label="boards"
+        pageSize={1}
+        renderHeader={({ controls, visibleItems }) => (
+          <header>
+            <strong>{`P${visibleItems[0]?.seat}`}</strong>
+            {controls}
+          </header>
+        )}
+        renderItem={(item) => <span>{item.memberId}</span>}
+      />,
+    );
+
+    expect(screen.getByText("P1 · 1 / 5")).toBeTruthy();
+    const next = screen.getByRole("button", { name: "boards下一页" });
+    const controlsId = next.getAttribute("aria-controls");
+    expect(controlsId).toBeTruthy();
+    expect(document.getElementById(controlsId!)).toBeTruthy();
+    fireEvent.click(next);
+    expect(screen.getByText("P2 · 2 / 5")).toBeTruthy();
+  });
 });

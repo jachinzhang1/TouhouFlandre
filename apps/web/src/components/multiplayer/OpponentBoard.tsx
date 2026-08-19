@@ -16,11 +16,13 @@ export function OpponentBoard({
   title = "对手棋盘",
   rows,
   fields,
+  showHeading = true,
   fieldOrder,
 }: {
   title?: string;
   rows: OpponentRow[];
   fields?: readonly GuessField[];
+  showHeading?: boolean;
   fieldOrder?: readonly GuessFieldKey[];
 }) {
   const displayFields = fields ?? CHARACTER_GUESS_FIELDS;
@@ -35,8 +37,12 @@ export function OpponentBoard({
 
   return (
     <GuessTable
-      title={title}
-      subtitle="仅显示反馈状态，具体角色与属性值将在局末揭示。"
+      title={showHeading ? title : undefined}
+      subtitle={
+        showHeading
+          ? "仅显示反馈状态，具体角色与属性值将在局末揭示。"
+          : undefined
+      }
       variant="opponent"
       rows={tableRows}
       emptyLabel="等待对方猜测……"

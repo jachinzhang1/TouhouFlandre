@@ -1,7 +1,14 @@
 "use client";
 
 import { History, RefreshCw, Send, Smile } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import type { components } from "../../generated/api";
 import {
   CHAT_EMOJI_WHITELIST,
@@ -50,6 +57,7 @@ export function ChatDock({
   onLoadOlder,
   onClearError,
 }: ChatDockProps) {
+  const headingId = useId();
   const storageKey = `touhouflandre:multi:receive-chat:${roomId}:${viewer?.memberId ?? "anonymous"}`;
   const [draft, setDraft] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -199,8 +207,15 @@ export function ChatDock({
     placement === "inline"
       ? "chat-dock-inline"
       : placement === "deck"
-        ? "chat-dock-deck"
+        ? "chat-dock-deck multiplayer-command-channel"
         : "chat-dock-fixed";
+  const channelStatus = muted
+    ? "聊天已关闭"
+    : disabled || viewer?.status !== "connected"
+      ? "连接恢复中"
+      : !sendEnabled
+        ? "聊天只读"
+        : "房间消息";
 
   return (
     <div className={`chat-dock ${placementClass}`}>
@@ -218,6 +233,13 @@ export function ChatDock({
           />
         ))}
       </div>
+
+      {placement === "deck" ? (
+        <header className="multiplayer-command-channel-heading">
+          <strong id={headingId}>聊天</strong>
+          <span>{channelStatus}</span>
+        </header>
+      ) : null}
 
       <Paper
         animateOnMount={false}
@@ -278,7 +300,8 @@ export function ChatDock({
       </Paper>
 
       <form
-        aria-label="房间聊天"
+        aria-label={placement === "deck" ? undefined : "房间聊天"}
+        aria-labelledby={placement === "deck" ? headingId : undefined}
         onSubmit={handleSubmit}
         className="chat-dock-form"
       >
@@ -338,8 +361,9 @@ export function ChatDock({
             ariaLabel="发送消息"
             className="chat-dock-composer-button"
             disabled={!canSend}
-            filled
-            folded
+            filled={canSend}
+            folded={canSend}
+            tone="neutral"
             iconOnly
             onClick={() => void sendDraft()}
             title="发送"
