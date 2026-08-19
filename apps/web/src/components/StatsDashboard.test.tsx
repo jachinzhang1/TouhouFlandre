@@ -93,6 +93,27 @@ const placementRecord: MultiplayerStatsRecord = {
   ],
 };
 
+const pointsRecord: MultiplayerStatsRecord = {
+  ...placementRecord,
+  id: "points-record",
+  endedAt: "2026-08-08T10:25:00Z",
+  durationMs: 180_000,
+  scoreSelf: 4,
+  opponentScores: [4, 2, 1],
+  scoringMode: "points",
+  finalRank: 2,
+  tiedForFirst: false,
+  eliminatedRound: undefined,
+  rounds: [
+    {
+      ...record.round,
+      roundIndex: 1,
+      pointsAwarded: 2,
+      participationStatus: "timed_out",
+    },
+  ],
+};
+
 function makeWorkRecord(index: number): SingleStatsRecord {
   const code = `TH${String(index).padStart(2, "0")}`;
   const day = String(index).padStart(2, "0");
@@ -202,19 +223,34 @@ describe("StatsDashboard", () => {
     expect(sequence.querySelector("[class*='-ml-']")).toBeNull();
   });
 
-  it("展示积分制最终名次、淘汰局和逐局积分", async () => {
+  it("展示积分淘汰最终名次、淘汰局和逐局积分", async () => {
     await statsDb.records.put(placementRecord);
     render(<StatsDashboard />);
 
-    expect(await screen.findByText(/竞速 · 积分制 · 6 分 · 并列第 1 名/)).toBeTruthy();
+    expect(await screen.findByText(/竞速 · 积分淘汰 · 6 分 · 并列第 1 名/)).toBeTruthy();
     expect(screen.getByText(/第 2 局淘汰/)).toBeTruthy();
-    const row = screen.getByText(/竞速 · 积分制/).closest("tr");
+    const row = screen.getByText(/竞速 · 积分淘汰/).closest("tr");
     const detailsButton = row?.querySelector<HTMLButtonElement>(
       'button[aria-label="展开详情"]',
     );
     expect(detailsButton).toBeTruthy();
     fireEvent.click(detailsButton!);
     expect(screen.getByText("+3 分 · 猜中")).toBeTruthy();
+  });
+
+  it("展示积分累计最终名次和逐局积分", async () => {
+    await statsDb.records.put(pointsRecord);
+    render(<StatsDashboard />);
+
+    expect(await screen.findByText(/竞速 · 积分累计 · 4 分 · 第 2 名/)).toBeTruthy();
+    expect(screen.queryByText(/第 2 局淘汰/)).toBeNull();
+    const row = screen.getByText(/竞速 · 积分累计/).closest("tr");
+    const detailsButton = row?.querySelector<HTMLButtonElement>(
+      'button[aria-label="展开详情"]',
+    );
+    expect(detailsButton).toBeTruthy();
+    fireEvent.click(detailsButton!);
+    expect(screen.getByText("+2 分 · 超时")).toBeTruthy();
   });
 
   it("清除数据要求确认且不直接误触执行", async () => {

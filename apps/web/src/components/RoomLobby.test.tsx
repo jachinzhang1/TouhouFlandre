@@ -33,6 +33,7 @@ const renderLobby = (
     viewerMemberId: "guest",
     viewerRole: "player",
     playerLimit: 4,
+    raceEliminationEnabled: false,
     playerCount: 2,
     availableSeats: 2,
     spectatorCount: 1,
@@ -77,6 +78,22 @@ describe("RoomLobby", () => {
       viewerMemberId: "host",
     });
     expect(screen.queryByRole("slider", { name: "玩家上限" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: "淘汰" })).toBeNull();
+  });
+
+  it("disables the elimination switch when the room is still two-player", () => {
+    renderLobby({
+      isHost: true,
+      mySlot: 1,
+      viewerMemberId: "host",
+      playerLimit: 2,
+      raceEliminationEnabled: false,
+    });
+    expect(screen.getByText("2 人 · 3 局 2 胜")).toBeTruthy();
+    expect(
+      (screen.getByRole("switch", { name: "淘汰" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 
   it("lets the host explicitly apply a changed player limit", async () => {
@@ -85,17 +102,28 @@ describe("RoomLobby", () => {
       isHost: true,
       mySlot: 1,
       viewerMemberId: "host",
-      onApplyLimit: apply,
+      onApplySettings: apply,
     });
     const limit = screen.getByRole("slider", { name: "玩家上限" });
     expect(limit.getAttribute("type")).toBe("range");
     expect(limit.getAttribute("min")).toBe("2");
     expect(limit.getAttribute("max")).toBe("8");
+    expect(screen.getByText("4 人 · 积分赛 · 不淘汰")).toBeTruthy();
+    const elimination = screen.getByRole("switch", { name: "淘汰" });
+    expect((elimination as HTMLButtonElement).disabled).toBe(false);
     fireEvent.change(limit, {
       target: { value: "6" },
     });
+    expect(screen.getByText("6 人 · 积分赛 · 不淘汰")).toBeTruthy();
+    fireEvent.click(elimination);
+    expect(screen.getByText("6 人 · 积分赛 · 中途末位淘汰")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "应用" }));
-    await waitFor(() => expect(apply).toHaveBeenCalledWith(6));
+    await waitFor(() =>
+      expect(apply).toHaveBeenCalledWith({
+        playerLimit: 6,
+        raceEliminationEnabled: true,
+      }),
+    );
   });
 
   it("clamps the room limit to the current player count", () => {

@@ -55,7 +55,7 @@ type MatchView = Omit<
   "scores" | "scoringMode" | "rosterSize"
 > & {
   scores: MemberScoreView[];
-  scoringMode?: "wins" | "placement";
+  scoringMode?: "wins" | "points" | "placement";
   rosterSize?: number;
 };
 type MemberView = components["schemas"]["MemberView"];
@@ -90,6 +90,7 @@ export interface RoomUiState {
     mode: MultiplayerMode;
     turnSeconds: number;
     playerLimit: number;
+    raceEliminationEnabled: boolean;
     minPlayers: number;
     playerCount: number;
     availableSeats: number;
@@ -159,6 +160,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               mode: payload.mode,
               turnSeconds: payload.turnSeconds,
               playerLimit: payload.playerLimit,
+              raceEliminationEnabled: payload.raceEliminationEnabled,
               minPlayers: payload.minPlayers,
               playerCount: payload.playerCount,
               availableSeats: payload.availableSeats,
@@ -495,6 +497,7 @@ export function applySnapshot(
       mode: snapshot.mode,
       turnSeconds: snapshot.turnSeconds,
       playerLimit: snapshot.playerLimit,
+      raceEliminationEnabled: snapshot.raceEliminationEnabled,
       minPlayers: snapshot.minPlayers,
       playerCount: snapshot.playerCount,
       availableSeats: snapshot.availableSeats,

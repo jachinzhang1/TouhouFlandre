@@ -116,7 +116,7 @@ const multiplayerSchema = z.object({
   opponentScores: z.array(z.number().int().nonnegative()).optional(),
   rosterSize: z.number().int().min(2).optional(),
   playerLimit: z.number().int().min(2).max(8).optional(),
-  scoringMode: z.enum(["wins", "placement"]).optional(),
+  scoringMode: z.enum(["wins", "points", "placement"]).optional(),
   finalRank: z.number().int().positive().optional(),
   tiedForFirst: z.boolean().optional(),
   eliminatedRound: z.number().int().positive().optional(),

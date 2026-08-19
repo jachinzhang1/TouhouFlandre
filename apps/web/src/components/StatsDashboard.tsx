@@ -951,11 +951,14 @@ function HistoryRow({ record }: { record: StatsRecord }) {
     record.kind === "multiplayer" && (record.rosterSize ?? 2) > 2
       ? ` · ${record.rosterSize} 人/${record.playerLimit ?? record.rosterSize}`
       : "";
+  const scoringMode = record.kind === "multiplayer" ? record.scoringMode : "";
   const multiplayerSummary =
     record.kind === "multiplayer"
-      ? record.scoringMode === "placement"
-        ? `${modeLabel} · 积分制 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedRound ? ` · 第 ${record.eliminatedRound} 局淘汰` : ""}${rosterLabel}`
-        : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`
+      ? scoringMode === "placement"
+        ? `${modeLabel} · 积分淘汰 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedRound ? ` · 第 ${record.eliminatedRound} 局淘汰` : ""}${rosterLabel}`
+        : scoringMode === "points"
+          ? `${modeLabel} · 积分累计 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${rosterLabel}`
+          : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`
       : "";
   return (
     <>
@@ -1081,7 +1084,8 @@ function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
 }
 
 function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
-  const placement = record.scoringMode === "placement";
+  const scoringMode = record.scoringMode ?? "wins";
+  const scored = scoringMode !== "wins";
   return (
     <div className="grid gap-2">
       {record.rounds.map((round) => (
@@ -1092,7 +1096,7 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
           <strong className="text-ink">第 {round.roundIndex} 局</strong>
           <span
             className={
-              placement
+              scored
                 ? round.pointsAwarded
                   ? "font-bold text-jade"
                   : "text-ink-soft"
@@ -1101,7 +1105,7 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
                   : "text-[var(--error-text)]"
             }
           >
-            {placement
+            {scored
               ? `+${round.pointsAwarded ?? 0} 分 · ${participationLabel(round.participationStatus)}`
               : round.result === "win"
                 ? "胜"

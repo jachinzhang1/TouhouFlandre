@@ -56,6 +56,7 @@ const roomFixture = (
   mode: "race",
   turnSeconds: 60,
   playerLimit: 2,
+  raceEliminationEnabled: false,
   minPlayers: 2,
   playerCount: 2,
   availableSeats: 0,
