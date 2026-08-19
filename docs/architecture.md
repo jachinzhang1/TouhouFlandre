@@ -45,7 +45,7 @@ WebSocket 事件协议记录在 `contracts/ws/protocol.yaml`，Go/TS 类型与�
 - 前端只展示服务端返回状态，不选择答案，不重新计算反馈。
 - `packages/shared` 保留前端类型、展示工具、模式配置、题库校验辅助和分享文本；运行时角色搜索由 Go API 统一执行。
 - `packages/data` 负责源数据结构校验，seed 后以 Postgres 和题库快照作为运行时读取来源。
-- 多人规则模块包含竞速和接力；模式枚举需要在 OpenAPI、WebSocket 协议、Go 领域类型和前端共享类型之间保持一致。
+- 多人规则模块包含竞速和接力；竞速内部还冻结 `scoringMode`（`wins | points | placement`），这些枚举需要在 OpenAPI、WebSocket 协议、Go 领域类型和前端共享类型之间保持一致。
 
 ## 题库数据流
 
