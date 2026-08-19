@@ -5,6 +5,7 @@ ScoringMode:
   type: string
   enum:
     - wins
+    - points
     - placement
 
 MatchPlayerStatus:

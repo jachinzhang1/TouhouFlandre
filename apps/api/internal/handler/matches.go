@@ -70,12 +70,10 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	}
 	rosterSize := len(members)
 	scoringMode := multi.ScoringModeWins
-	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace && rosterSize > 2 {
-		scoringMode = multi.ScoringModePlacement
-	}
 	maxRounds := multi.MaxRounds(format, s.timing.MaxRoundsFactor)
-	if scoringMode == multi.ScoringModePlacement {
-		maxRounds = rosterSize * s.timing.MaxRoundsFactor
+	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace {
+		scoringMode = multi.FrozenRaceScoringMode(rosterSize, room.RaceEliminationEnabled)
+		maxRounds = multi.FrozenRaceMaxRounds(scoringMode, rosterSize, format, s.timing.MaxRoundsFactor)
 	}
 	match, err := q.CreateMatch(ctx, repo.CreateMatchParams{
 		ID:             multi.NewID(),

@@ -88,6 +88,7 @@ export interface RoomUpdatedPayload {
   mode: MultiplayerMode;
   turnSeconds: number;
   playerLimit: number;
+  raceEliminationEnabled: boolean;
   minPlayers: number;
   playerCount: number;
   availableSeats: number;
@@ -242,7 +243,7 @@ export interface MemberScoreView {
   eliminatedRound?: number;
 }
 
-export type RaceScoringMode = "wins" | "placement";
+export type RaceScoringMode = "wins" | "points" | "placement";
 export type MatchPlayerStatus = "active" | "eliminated" | "left";
 export type RaceRoundParticipantStatus =
   "active" | "correct" | "forfeited" | "exhausted" | "timed_out";

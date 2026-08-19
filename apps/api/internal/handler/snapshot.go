@@ -31,17 +31,18 @@ type snapshotState struct {
 }
 
 type snapshotRoom struct {
-	ID            string             `json:"id"`
-	Code          string             `json:"code"`
-	Format        string             `json:"format"`
-	Status        string             `json:"status"`
-	EventSeq      int64              `json:"event_seq"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
-	Mode          string             `json:"mode"`
-	TurnSeconds   int32              `json:"turn_seconds"`
-	QuestionScope json.RawMessage    `json:"question_scope"`
-	PlayerLimit   int32              `json:"player_limit"`
+	ID                    string             `json:"id"`
+	Code                  string             `json:"code"`
+	Format                string             `json:"format"`
+	Status                string             `json:"status"`
+	EventSeq              int64              `json:"event_seq"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
+	Mode                  string             `json:"mode"`
+	TurnSeconds           int32              `json:"turn_seconds"`
+	QuestionScope         json.RawMessage    `json:"question_scope"`
+	PlayerLimit           int32              `json:"player_limit"`
+	RaceEliminationEnabled bool              `json:"race_elimination_enabled"`
 }
 
 type snapshotMatch struct {
@@ -64,17 +65,18 @@ type snapshotMatch struct {
 
 func (room snapshotRoom) toRepo() repo.MultiRoom {
 	return repo.MultiRoom{
-		ID:            room.ID,
-		Code:          room.Code,
-		Format:        room.Format,
-		Status:        room.Status,
-		EventSeq:      room.EventSeq,
-		CreatedAt:     room.CreatedAt,
-		ExpiresAt:     room.ExpiresAt,
-		Mode:          room.Mode,
-		TurnSeconds:   room.TurnSeconds,
-		QuestionScope: append([]byte{}, room.QuestionScope...),
-		PlayerLimit:   room.PlayerLimit,
+		ID:                    room.ID,
+		Code:                  room.Code,
+		Format:                room.Format,
+		Status:                room.Status,
+		EventSeq:              room.EventSeq,
+		CreatedAt:             room.CreatedAt,
+		ExpiresAt:             room.ExpiresAt,
+		Mode:                  room.Mode,
+		TurnSeconds:           room.TurnSeconds,
+		QuestionScope:         append([]byte{}, room.QuestionScope...),
+		PlayerLimit:           room.PlayerLimit,
+		RaceEliminationEnabled: room.RaceEliminationEnabled,
 	}
 }
 
@@ -188,21 +190,22 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	}
 	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
 	snapshot := openapi.RoomSnapshot{
-		RoomId:         state.Room.ID,
-		RoomCode:       state.Room.Code,
-		Format:         openapi.RoomFormat(state.Room.Format),
-		Mode:           openapi.MultiplayerMode(state.Room.Mode),
-		TurnSeconds:    openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
-		Status:         openapi.RoomStatus(state.Room.Status),
-		ExpiresAt:      state.Room.ExpiresAt.Time,
-		Viewer:         toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
-		Members:        memberViews,
-		PlayerCount:    capacity.PlayerCount,
-		SpectatorCount: int(state.SpectatorCount),
-		PlayerLimit:    capacity.PlayerLimit,
-		MinPlayers:     openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
-		AvailableSeats: capacity.AvailableSeats,
-		GameSequence:   int(state.Room.EventSeq),
+		RoomId:                  state.Room.ID,
+		RoomCode:                state.Room.Code,
+		Format:                  openapi.RoomFormat(state.Room.Format),
+		Mode:                    openapi.MultiplayerMode(state.Room.Mode),
+		TurnSeconds:             openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
+		Status:                  openapi.RoomStatus(state.Room.Status),
+		ExpiresAt:               state.Room.ExpiresAt.Time,
+		Viewer:                  toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
+		Members:                 memberViews,
+		PlayerCount:             capacity.PlayerCount,
+		SpectatorCount:          int(state.SpectatorCount),
+		PlayerLimit:             capacity.PlayerLimit,
+		RaceEliminationEnabled:  state.Room.RaceEliminationEnabled,
+		MinPlayers:              openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
+		AvailableSeats:          capacity.AvailableSeats,
+		GameSequence:            int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {

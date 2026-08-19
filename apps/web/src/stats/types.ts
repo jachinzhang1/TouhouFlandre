@@ -87,7 +87,7 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   opponentScores: number[];
   rosterSize: number;
   playerLimit: number;
-  scoringMode?: "wins" | "placement";
+  scoringMode?: "wins" | "points" | "placement";
   finalRank?: number;
   tiedForFirst?: boolean;
   eliminatedRound?: number;
@@ -128,7 +128,7 @@ export interface MultiplayerStatsDraft {
   memberSlot?: 1 | 2;
   matchIndex: number;
   playerLimit?: number;
-  scoringMode?: "wins" | "placement";
+  scoringMode?: "wins" | "points" | "placement";
   rosterSize?: number;
   rounds: StatsRound[];
   activeRound?: MultiplayerRoundDraft;

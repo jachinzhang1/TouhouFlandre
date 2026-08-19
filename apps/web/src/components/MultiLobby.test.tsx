@@ -37,6 +37,7 @@ describe("MultiLobby", () => {
     vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED", "false");
     render(<MultiLobby />);
     expect(screen.queryByLabelText("玩家上限（2-8）")).toBeNull();
+    expect(screen.queryByRole("switch", { name: "淘汰" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     const body = vi.mocked(api.createRoom).mock.calls[0][0];
@@ -50,15 +51,23 @@ describe("MultiLobby", () => {
     expect(limit.getAttribute("type")).toBe("range");
     expect(limit.getAttribute("min")).toBe("2");
     expect(limit.getAttribute("max")).toBe("8");
-    expect(screen.getByText("双人赛制")).toBeTruthy();
+    expect(screen.getByText("总局数")).toBeTruthy();
+    expect(screen.getByText("2 人 · 3 局 2 胜")).toBeTruthy();
+    const elimination = screen.getByRole("switch", { name: "淘汰" });
+    expect((elimination as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(limit, {
       target: { value: "6" },
     });
+    expect(screen.getByText("6 人 · 积分赛 · 不淘汰")).toBeTruthy();
+    expect((elimination as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(elimination);
+    expect(screen.getByText("6 人 · 积分赛 · 中途末位淘汰")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     expect(vi.mocked(api.createRoom).mock.calls[0][0]).toMatchObject({
       mode: "race",
       playerLimit: 6,
+      raceEliminationEnabled: true,
     });
   });
 

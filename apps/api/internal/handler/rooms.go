@@ -144,6 +144,10 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	} else if request.Body.PlayerLimit != nil {
 		playerLimit = *request.Body.PlayerLimit
 	}
+	raceEliminationEnabled := false
+	if request.Body.RaceEliminationEnabled != nil {
+		raceEliminationEnabled = *request.Body.RaceEliminationEnabled
+	}
 	if !multi.ValidPlayerLimit(mode, playerLimit) {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
 	}
@@ -178,7 +182,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	scope := correction.Config
 
 	for attempt := 0; attempt < 5; attempt++ {
-		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, playerLimit, displayName, scope)
+		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, playerLimit, raceEliminationEnabled, displayName, scope)
 		if err == nil {
 			return response, nil
 		}
@@ -192,7 +196,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	return nil, internalError(errors.New("room code collision after retries"))
 }
 
-func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds, playerLimit int, displayName string, scope game.QuestionScopeConfig) (openapi.RoomsCreateResponseObject, error) {
+func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds, playerLimit int, raceEliminationEnabled bool, displayName string, scope game.QuestionScopeConfig) (openapi.RoomsCreateResponseObject, error) {
 	roomID := newSessionID()
 	token, err := multi.GenerateGuestToken()
 	if err != nil {
@@ -210,14 +214,15 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 	}
 
 	room, err := q.CreateRoom(ctx, repo.CreateRoomParams{
-		ID:            roomID,
-		Code:          multi.GenerateRoomCode(),
-		Format:        string(format),
-		Mode:          string(mode),
-		TurnSeconds:   int32(turnSeconds),
-		PlayerLimit:   int32(playerLimit),
-		ExpiresAt:     timestamptz(s.now().Add(s.lobbyTTL)),
-		QuestionScope: scopeJSON,
+		ID:                    roomID,
+		Code:                  multi.GenerateRoomCode(),
+		Format:                string(format),
+		Mode:                  string(mode),
+		TurnSeconds:           int32(turnSeconds),
+		PlayerLimit:           int32(playerLimit),
+		RaceEliminationEnabled: raceEliminationEnabled,
+		ExpiresAt:             timestamptz(s.now().Add(s.lobbyTTL)),
+		QuestionScope:         scopeJSON,
 	})
 	if err != nil {
 		return nil, mapRoomWriteError(err)
@@ -267,16 +272,21 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 	if member.Status != string(multi.MemberStatusConnected) {
 		return nil, guestUnauthorized("成员未连接，请先重新连接房间。")
 	}
-	if request.Body == nil || request.Body.PlayerLimit == nil {
+	if request.Body == nil || (request.Body.PlayerLimit == nil && request.Body.RaceEliminationEnabled == nil) {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
 	}
-	desiredLimit := *request.Body.PlayerLimit
-	if desiredLimit < multi.DefaultPlayerLimit || desiredLimit > multi.ServerMaxRacePlayers {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
+	desiredLimit := 0
+	hasLimit := request.Body.PlayerLimit != nil
+	if hasLimit {
+		desiredLimit = *request.Body.PlayerLimit
+		if desiredLimit < multi.DefaultPlayerLimit || desiredLimit > multi.ServerMaxRacePlayers {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
+		}
+		if desiredLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能使用双人上限。"}
+		}
 	}
-	if desiredLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能使用双人上限。"}
-	}
+	hasToggle := request.Body.RaceEliminationEnabled != nil
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -293,7 +303,9 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 		return nil, internalError(err)
 	}
 	if room.Mode != string(multi.MultiplayerModeRace) {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "接力房间固定为两名玩家，不能设置竞速玩家上限。"}
+		if hasLimit {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "接力房间固定为两名玩家，不能设置竞速玩家上限。"}
+		}
 	}
 	if room.Status != string(multi.RoomStatusLobby) {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeRoomSettingsLocked, Message: "对局开始后房间设置已锁定。"}
@@ -314,46 +326,63 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeRoomSettingsLocked, Message: "当前有玩家已准备，请先全部取消准备。"}
 		}
 	}
-	if desiredLimit < len(players) {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "玩家上限不能低于当前玩家数。"}
-	}
-	if desiredLimit == int(room.PlayerLimit) {
-		if err := tx.Commit(ctx); err != nil {
-			return nil, internalError(err)
+	updatedRoom := room
+	changed := false
+	if hasLimit {
+		if desiredLimit < len(players) {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "玩家上限不能低于当前玩家数。"}
 		}
-		return openapi.RoomsUpdateSettings204Response{}, nil
-	}
-	if desiredLimit < int(room.PlayerLimit) {
-		sort.Slice(players, func(i, j int) bool {
-			leftSeat := multi.MemberSeat(players[i])
-			rightSeat := multi.MemberSeat(players[j])
-			if leftSeat == rightSeat {
-				return players[i].ID < players[j].ID
+		if desiredLimit < int(room.PlayerLimit) {
+			sort.Slice(players, func(i, j int) bool {
+				leftSeat := multi.MemberSeat(players[i])
+				rightSeat := multi.MemberSeat(players[j])
+				if leftSeat == rightSeat {
+					return players[i].ID < players[j].ID
+				}
+				return leftSeat < rightSeat
+			})
+			if len(players) == 0 || players[0].ID != member.ID || multi.MemberSeat(players[0]) != 1 {
+				return nil, internalError(errors.New("room host seat invariant violated"))
 			}
-			return leftSeat < rightSeat
-		})
-		if len(players) == 0 || players[0].ID != member.ID || multi.MemberSeat(players[0]) != 1 {
-			return nil, internalError(errors.New("room host seat invariant violated"))
+			for index := 1; index < len(players); index++ {
+				targetSeat := int32(index + 1)
+				if multi.MemberSeat(players[index]) == int(targetSeat) {
+					continue
+				}
+				updated, err := q.UpdateMemberSeat(ctx, repo.UpdateMemberSeatParams{
+					Seat:   targetSeat,
+					ID:     players[index].ID,
+					RoomID: request.RoomId,
+				})
+				if err != nil {
+					return nil, mapRoomWriteError(err)
+				}
+				players[index] = updated
+			}
 		}
-		for index := 1; index < len(players); index++ {
-			targetSeat := int32(index + 1)
-			if multi.MemberSeat(players[index]) == int(targetSeat) {
-				continue
+		if desiredLimit != int(room.PlayerLimit) {
+			updatedRoom, err = q.UpdateRoomPlayerLimit(ctx, repo.UpdateRoomPlayerLimitParams{ID: request.RoomId, PlayerLimit: int32(desiredLimit)})
+			if err != nil {
+				return nil, mapRoomWriteError(err)
 			}
-			updated, err := q.UpdateMemberSeat(ctx, repo.UpdateMemberSeatParams{
-				Seat:   targetSeat,
-				ID:     players[index].ID,
-				RoomID: request.RoomId,
+			changed = true
+		}
+	}
+	if hasToggle && *request.Body.RaceEliminationEnabled != room.RaceEliminationEnabled {
+			updatedRoom, err = q.UpdateRoomRaceEliminationEnabled(ctx, repo.UpdateRoomRaceEliminationEnabledParams{
+				ID:                     request.RoomId,
+				RaceEliminationEnabled: *request.Body.RaceEliminationEnabled,
 			})
 			if err != nil {
 				return nil, mapRoomWriteError(err)
 			}
-			players[index] = updated
-		}
+		changed = true
 	}
-	updatedRoom, err := q.UpdateRoomPlayerLimit(ctx, repo.UpdateRoomPlayerLimitParams{ID: request.RoomId, PlayerLimit: int32(desiredLimit)})
-	if err != nil {
-		return nil, mapRoomWriteError(err)
+	if !changed {
+		if err := tx.Commit(ctx); err != nil {
+			return nil, internalError(err)
+		}
+		return openapi.RoomsUpdateSettings204Response{}, nil
 	}
 	spectatorCount, err := q.CountSpectators(ctx, request.RoomId)
 	if err != nil {
@@ -405,19 +434,20 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	}
 	capacity := multi.RoomCapacity(len(memberViews), int(room.PlayerLimit))
 	return openapi.RoomsGetInfo200JSONResponse{
-		RoomCode:       room.Code,
-		Format:         openapi.RoomFormat(room.Format),
-		Mode:           openapi.MultiplayerMode(room.Mode),
-		TurnSeconds:    openapi.RoomInfoTurnSeconds(room.TurnSeconds),
-		Status:         openapi.RoomStatus(room.Status),
-		Members:        publicMembers,
-		PlayerCount:    capacity.PlayerCount,
-		SpectatorCount: int(spectatorCount),
-		JoinRole:       openapi.ParticipantRole(joinRole),
-		PlayerLimit:    capacity.PlayerLimit,
-		MinPlayers:     openapi.RoomInfoMinPlayers(capacity.MinPlayers),
-		AvailableSeats: capacity.AvailableSeats,
-		QuestionScope:  &openapiScope,
+		RoomCode:                room.Code,
+		Format:                  openapi.RoomFormat(room.Format),
+		Mode:                    openapi.MultiplayerMode(room.Mode),
+		TurnSeconds:             openapi.RoomInfoTurnSeconds(room.TurnSeconds),
+		Status:                  openapi.RoomStatus(room.Status),
+		Members:                 publicMembers,
+		PlayerCount:             capacity.PlayerCount,
+		SpectatorCount:          int(spectatorCount),
+		JoinRole:                openapi.ParticipantRole(joinRole),
+		PlayerLimit:             capacity.PlayerLimit,
+		RaceEliminationEnabled: room.RaceEliminationEnabled,
+		MinPlayers:              openapi.RoomInfoMinPlayers(capacity.MinPlayers),
+		AvailableSeats:          capacity.AvailableSeats,
+		QuestionScope:           &openapiScope,
 	}, nil
 }
 
