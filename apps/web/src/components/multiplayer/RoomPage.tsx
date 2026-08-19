@@ -438,6 +438,7 @@ export function RoomView({ code }: { code: string }) {
             members={state.members}
             mySlot={1}
             playerLimit={state.room.playerLimit}
+            minPlayers={state.room.minPlayers}
             playerCount={state.room.playerCount}
             availableSeats={state.room.availableSeats}
             spectatorCount={state.room.spectatorCount}
@@ -521,6 +522,7 @@ export function RoomView({ code }: { code: string }) {
             members={state.members}
             mySlot={playerSeat}
             playerLimit={state.room?.playerLimit ?? 2}
+            minPlayers={state.room?.minPlayers ?? 2}
             playerCount={state.room?.playerCount ?? state.members.length}
             availableSeats={state.room?.availableSeats ?? 0}
             spectatorCount={state.room?.spectatorCount ?? 0}

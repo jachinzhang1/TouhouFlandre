@@ -1,6 +1,6 @@
 "use client";
 
-// 房间大厅（08 §10.2）：房间号大字 + 复制、成员列表与就绪态、准备/离开按钮。
+// 房间大厅：邀请模块、成员台账、权威就绪投影与分级操作。
 import { Check, Copy, LogOut, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { components } from "../../generated/api";
@@ -21,7 +21,7 @@ import {
   PaperSegmentGroup,
   PaperSegmentSeparator,
 } from "@/components/paper";
-import { PageHeader, PageHeaderAction } from "../layout/PageHeader";
+import { PageHeader } from "../layout/PageHeader";
 import { SectionHeading } from "../layout/SectionHeading";
 
 const MEMBER_STATUS_LABEL: Record<string, string> = {
@@ -40,6 +40,7 @@ export function RoomLobby({
   onReady,
   onLeave,
   playerLimit,
+  minPlayers,
   playerCount,
   availableSeats,
   spectatorCount,
@@ -56,6 +57,7 @@ export function RoomLobby({
   members: MemberView[];
   mySlot: number;
   playerLimit: number;
+  minPlayers: number;
   playerCount: number;
   availableSeats: number;
   spectatorCount: number;
@@ -67,12 +69,39 @@ export function RoomLobby({
   viewerMemberId?: string | null;
   onLeave: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<
+    "idle" | "success" | "error"
+  >("idle");
   const mine =
     viewerRole === "player"
       ? members.find((member) => member.memberId === viewerMemberId)
       : undefined;
-  const allReady = members.length >= 2 && members.every((m) => m.ready);
+  const missingPlayers = Math.max(0, minPlayers - playerCount);
+  const disconnectedMembers = members.filter(
+    (member) => member.status !== "connected",
+  );
+  const unreadyConnectedMembers = members.filter(
+    (member) => member.status === "connected" && !member.ready,
+  );
+  const allReady =
+    members.length === playerCount &&
+    playerCount >= minPlayers &&
+    members.every((member) => member.status === "connected" && member.ready);
+  const blockerParts = [
+    members.length !== playerCount ? "正在同步房间成员。" : "",
+    missingPlayers > 0 ? `还需 ${missingPlayers} 名玩家达到开局人数。` : "",
+    disconnectedMembers.length > 0
+      ? `离线：${disconnectedMembers.map((member) => member.displayName).join("、")}。`
+      : "",
+    unreadyConnectedMembers.length > 0
+      ? `未准备：${unreadyConnectedMembers
+          .map((member) => member.displayName)
+          .join("、")}。`
+      : "",
+  ].filter(Boolean);
+  const blockerSummary = allReady
+    ? "所有玩家均在线且已准备，正在开始对局……"
+    : blockerParts.join(" ") || "等待其他玩家准备。";
   const [limitDraft, setLimitDraft] = useState(playerLimit);
   const [limitBusy, setLimitBusy] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
@@ -88,13 +117,18 @@ export function RoomLobby({
 
   useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
 
+  useEffect(() => {
+    if (copyFeedback !== "success") return;
+    const timeout = window.setTimeout(() => setCopyFeedback("idle"), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [copyFeedback]);
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(roomCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      setCopyFeedback("success");
     } catch {
-      // 剪贴板不可用（非 https）：提示手动复制
+      setCopyFeedback("error");
     }
   };
 
@@ -124,83 +158,188 @@ export function RoomLobby({
     }
   };
 
+  const progressionCopy = allReady
+    ? "所有玩家均在线且已准备，正在开始对局……"
+    : viewerRole === "spectator"
+      ? availableSeats > 0
+        ? "当前有可加入席位；认领后可参与准备。"
+        : "玩家准备完成后自动开始，你正在观战。"
+      : !mine
+        ? "正在同步你的房间身份……"
+        : mine.status !== "connected"
+          ? "连接恢复后才能准备。"
+          : mine.ready
+            ? "你已准备，仍可在开局前取消。"
+            : "你还未准备；确认房间设置与成员后即可准备。";
+  const leaveLabel = isHost
+    ? "关闭并离开"
+    : viewerRole === "spectator"
+      ? "离开观战"
+      : "离开房间";
+  const leaveHint = isHost ? "房主离开会关闭房间。" : "";
+
   return (
     <section className="room-lobby-page">
       <PageHeader
-        description={`${modeLabel}${mode === "relay" ? ` ${turnSeconds}s` : ""} · ${formatLabel} · 把房间号发给好友加入。`}
-        rightSlot={
-          <PageHeaderAction ariaLabel="复制房间号" onClick={copyCode}>
-            {copied ? (
-              <Check size={18} className="text-jade" aria-hidden="true" />
-            ) : (
-              <Copy size={18} aria-hidden="true" />
-            )}
-            {copied ? "已复制" : "复制房间号"}
-          </PageHeaderAction>
-        }
-        rightSlotInset="leading-icon-action"
-        title={<span className="room-lobby-code">{roomCode}</span>}
+        description={`${modeLabel}${mode === "relay" ? ` ${turnSeconds}s` : ""} · ${formatLabel}`}
+        title="等待开局"
       />
 
       <div className="room-lobby-content">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="room-lobby-share"
+          elevation="sm"
+          folded
+          pattern={false}
+          sticker={false}
+          unfoldOnHover={false}
+        >
+          <div className="room-lobby-share-heading">
+            <strong>邀请好友加入</strong>
+            <p>将这个 6 位房间号发给好友；好友可在「多人大厅」加入。</p>
+          </div>
+          <div className="room-lobby-share-row">
+            <div className="room-lobby-share-code-group">
+              <span>房间号</span>
+              <code className="room-lobby-share-code" tabIndex={0}>
+                {roomCode}
+              </code>
+            </div>
+            <PaperButton
+              className="room-lobby-copy-action"
+              folded={false}
+              onClick={copyCode}
+              tone="theme"
+            >
+              {copyFeedback === "success" ? (
+                <Check size={17} aria-hidden="true" />
+              ) : (
+                <Copy size={17} aria-hidden="true" />
+              )}
+              复制房间号
+            </PaperButton>
+          </div>
+          <p
+            aria-atomic="true"
+            aria-live={copyFeedback === "error" ? "assertive" : "polite"}
+            className={`room-lobby-copy-status${
+              copyFeedback === "error" ? " room-lobby-copy-status-error" : ""
+            }`}
+            role={copyFeedback === "error" ? "alert" : "status"}
+          >
+            {copyFeedback === "success"
+              ? "房间号已复制。"
+              : copyFeedback === "error"
+                ? "复制失败，请手动选择房间号。"
+                : "也可以手动选择房间号复制。"}
+          </p>
+          <p
+            aria-atomic="true"
+            aria-live="polite"
+            className="room-lobby-blocker-status"
+            role="status"
+          >
+            {blockerSummary}
+          </p>
+        </Paper>
+
         <section className="room-lobby-section">
           <SectionHeading
-            description={`当前玩家 ${playerCount}/${playerLimit} · 观战 ${spectatorCount} · ${
-              mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始。"
+            description={`观战 ${spectatorCount} · ${
+              availableSeats > 0
+                ? `还有 ${availableSeats} 个可加入席位`
+                : "当前没有可加入席位"
             }`}
-            title="房间成员"
+            title={
+              <span className="room-lobby-member-heading">
+                房间成员
+                <span>
+                  玩家 {playerCount}/{playerLimit}
+                </span>
+              </span>
+            }
           />
-          <ul className="room-lobby-member-list">
-            {sortMembersBySeat(members).map((member) => (
-              <li key={member.memberId}>
-                <div className="room-lobby-member-row">
-                  <span className="room-lobby-member-identity">
-                    <span
-                      className="room-lobby-seat"
-                      data-host={member.seat === 1 ? "true" : "false"}
-                    >
-                      {member.seat}
-                    </span>
-                    <span className="room-lobby-member-name">
-                      {member.displayName}
-                      {member.memberId === viewerMemberId ? "（我）" : ""}
-                    </span>
-                  </span>
-                  <span className="room-lobby-member-state">
-                    <span
-                      className="room-lobby-ready-state"
-                      data-ready={member.ready ? "true" : "false"}
-                    >
-                      {member.ready ? "已准备" : "未准备"}
-                    </span>
-                    <span>
-                      {MEMBER_STATUS_LABEL[member.status] ?? member.status}
-                    </span>
-                  </span>
-                </div>
-              </li>
-            ))}
-            {availableSeats > 0 ? (
-              <li>
-                <Paper
-                  animateOnMount={false}
-                  as="div"
-                  className="room-lobby-empty-seat"
-                  folded={false}
-                  sticker={false}
-                  unfoldOnHover={false}
-                >
-                  等待好友加入，剩余席位 {availableSeats}
-                </Paper>
-              </li>
-            ) : null}
-          </ul>
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="paper-data-table room-lobby-member-ledger"
+            elevation="sm"
+            folded={false}
+            pattern={false}
+            sticker={false}
+            unfoldOnHover={false}
+          >
+            <table>
+              <caption className="sr-only">
+                房间玩家 {playerCount}/{playerLimit}，观战 {spectatorCount}
+              </caption>
+              <thead className="paper-data-table-header">
+                <tr className="paper-data-table-row">
+                  <th scope="col">席位</th>
+                  <th scope="col">成员</th>
+                  <th scope="col">连接</th>
+                  <th scope="col">准备</th>
+                </tr>
+              </thead>
+              <tbody className="paper-data-table-body">
+                {members.length > 0 ? (
+                  sortMembersBySeat(members).map((member) => (
+                    <tr className="paper-data-table-row" key={member.memberId}>
+                      <td className="room-lobby-member-seat">P{member.seat}</td>
+                      <th scope="row" title={member.displayName}>
+                        <span className="room-lobby-member-name">
+                          {member.displayName}
+                        </span>
+                        <span className="room-lobby-member-badges">
+                          {member.seat === 1 ? <span>房主</span> : null}
+                          {member.memberId === viewerMemberId ? (
+                            <span>我</span>
+                          ) : null}
+                        </span>
+                      </th>
+                      <td>
+                        <span
+                          className="room-lobby-connection-state"
+                          data-status={member.status}
+                        >
+                          {MEMBER_STATUS_LABEL[member.status] ?? member.status}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className="room-lobby-ready-state"
+                          data-ready={member.ready ? "true" : "false"}
+                        >
+                          {member.ready ? "已准备" : "未准备"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="paper-data-table-row">
+                    <td colSpan={4}>正在同步房间成员……</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot className="paper-data-table-header">
+                <tr className="paper-data-table-row">
+                  <td colSpan={4}>
+                    {availableSeats > 0
+                      ? `还有 ${availableSeats} 个可加入席位`
+                      : "房间当前没有可加入席位"}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </Paper>
         </section>
 
         {isHost && mode === "race" ? (
           <section className="room-lobby-section">
             <SectionHeading
-              description="保持未准备可继续等人；全员准备后将立即开局。"
+              description="有人准备后将锁定设置；开局仍由服务器状态决定。"
               title="房间设置"
             />
             {nPlayerRaceEnabled ? (
@@ -252,50 +391,70 @@ export function RoomLobby({
           </section>
         ) : null}
 
-        {viewerRole === "spectator" && availableSeats > 0 ? (
-          <PaperButton
-            className="room-lobby-claim-action"
-            disabled={claimBusy}
-            filled
-            onClick={claimSeat}
-            tone="success"
+        <div className="room-lobby-ready-flow">
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="room-lobby-progression"
+            elevation="sm"
+            folded={false}
+            pattern={false}
+            sticker={false}
+            unfoldOnHover={false}
           >
-            认领席位
-          </PaperButton>
-        ) : null}
+            <div className="room-lobby-progression-copy">
+              <strong>准备开局</strong>
+              <p>至少 {minPlayers} 名玩家在线且全员准备后自动开始。</p>
+              <p aria-atomic="true" aria-live="polite" role="status">
+                {progressionCopy}
+              </p>
+            </div>
+            <div className="room-lobby-progression-action">
+              {viewerRole === "player" ? (
+                <PaperButton
+                  ariaPressed={Boolean(mine?.ready)}
+                  className="room-lobby-ready-action"
+                  disabled={!mine || mine.status !== "connected"}
+                  filled={!mine?.ready}
+                  folded={!mine?.ready}
+                  onClick={() => onReady(!mine?.ready)}
+                  tone="theme"
+                >
+                  <Play size={16} aria-hidden="true" />
+                  {mine?.ready ? "取消准备" : "我准备好了"}
+                </PaperButton>
+              ) : availableSeats > 0 ? (
+                <PaperButton
+                  className="room-lobby-claim-action"
+                  disabled={claimBusy}
+                  filled
+                  onClick={claimSeat}
+                  tone="theme"
+                >
+                  认领席位
+                </PaperButton>
+              ) : null}
+            </div>
+          </Paper>
 
-        {actionError ? (
-          <p role="alert" className="room-lobby-error">
-            {actionError}
-          </p>
-        ) : null}
-
-        <div className="room-lobby-actions">
-          {viewerRole === "player" ? (
-            <PaperButton
-              className="room-lobby-ready-action"
-              disabled={!mine}
-              filled
-              onClick={() => onReady(!mine?.ready)}
-              tone="theme"
-            >
-              <Play size={16} aria-hidden="true" />
-              {mine?.ready ? "取消准备" : "准备"}
-            </PaperButton>
-          ) : null}
-          {allReady ? (
-            <p className="room-lobby-ready-notice" aria-live="polite">
-              当前全员已就绪，对局即将开始……
+          {actionError ? (
+            <p role="alert" className="room-lobby-error">
+              {actionError}
             </p>
           ) : null}
-          <PaperButton
-            className="room-lobby-leave-action"
-            folded={false}
-            onClick={onLeave}
-          >
-            <LogOut size={16} aria-hidden="true" />
-            离开房间
-          </PaperButton>
+
+          <div className="room-lobby-exit">
+            {leaveHint ? <p>{leaveHint}</p> : null}
+            <PaperButton
+              className="room-lobby-leave-action"
+              folded={false}
+              onClick={onLeave}
+              tone="danger"
+            >
+              <LogOut size={16} aria-hidden="true" />
+              {leaveLabel}
+            </PaperButton>
+          </div>
         </div>
       </div>
     </section>

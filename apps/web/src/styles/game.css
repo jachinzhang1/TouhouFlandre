@@ -439,95 +439,212 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   padding: 40px 18px 24px;
 }
 
-.room-lobby-code {
-  letter-spacing: 0.1em;
-}
-
 .room-lobby-content {
   display: grid;
-  gap: 32px;
+  gap: 28px;
   margin-top: var(--page-header-content-gap);
 }
 
-.room-lobby-section > .section-heading {
-  margin-bottom: 20px;
-}
-
-.room-lobby-member-list {
+.paper-surface.room-lobby-share {
   display: grid;
-  gap: 8px;
+  gap: 14px;
+  padding: 20px;
+}
+
+.room-lobby-share-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.room-lobby-share-heading strong,
+.room-lobby-progression-copy > strong {
+  font-family: var(--font-brand);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.room-lobby-share-heading p,
+.room-lobby-progression-copy p,
+.room-lobby-exit p {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 
-.room-lobby-member-row {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-block: 6px;
+.room-lobby-share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 10px;
 }
 
-.room-lobby-member-identity,
-.room-lobby-member-state {
-  display: flex;
+.room-lobby-share-code-group {
+  display: grid;
   min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--paper-muted);
+}
+
+.room-lobby-share-code-group > span {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.room-lobby-share-code {
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: clamp(1.45rem, 6vw, 2rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.room-lobby-copy-action {
+  min-height: 48px;
+}
+
+.room-lobby-copy-status,
+.room-lobby-blocker-status {
+  min-height: 19px;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.room-lobby-copy-status-error {
+  color: var(--semantic-danger);
+}
+
+.room-lobby-blocker-status {
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+}
+
+.room-lobby-section > .section-heading {
+  margin-bottom: 16px;
+}
+
+.room-lobby-member-heading {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.room-lobby-member-heading > span {
+  padding: 3px 7px;
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.paper-surface.room-lobby-member-ledger {
+  overflow: hidden;
+}
+
+.room-lobby-member-ledger table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.room-lobby-member-ledger :is(th, td) {
+  padding: 10px 8px;
+  font-size: 0.76rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.room-lobby-member-ledger tr > :nth-child(1) {
+  width: 56px;
+  text-align: center;
+}
+
+.room-lobby-member-ledger tr > :nth-child(3) {
+  width: 72px;
+}
+
+.room-lobby-member-ledger tr > :nth-child(4) {
+  width: 88px;
+}
+
+.room-lobby-member-seat {
+  color: var(--theme-color);
+  font-weight: 900;
+}
+
+.room-lobby-member-ledger tbody th {
+  min-width: 0;
+  font-weight: 750;
 }
 
 .room-lobby-member-name {
+  display: block;
   overflow: hidden;
   color: var(--ink);
-  font-size: 0.85rem;
-  font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.room-lobby-seat {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  align-items: center;
-  justify-content: center;
-  color: var(--paper-tinted-ink);
-  background: var(--semantic-success);
-  font-size: 0.65rem;
-  font-weight: 900;
+.room-lobby-member-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
 }
 
-.room-lobby-seat[data-host="true"] {
-  background: var(--theme-color);
-}
-
-.room-lobby-member-state {
-  flex: 0 0 auto;
-  color: var(--ink-soft);
-  font-size: 0.72rem;
-}
-
+.room-lobby-member-badges > span,
+.room-lobby-connection-state,
 .room-lobby-ready-state {
-  padding: 2px 6px;
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  padding-inline: 5px;
+  font-size: 0.66rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.room-lobby-member-badges > span {
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+}
+
+.room-lobby-connection-state,
+.room-lobby-ready-state {
   color: var(--ink-soft);
   background: var(--paper-muted);
-  font-weight: 800;
 }
 
+.room-lobby-connection-state[data-status="connected"],
 .room-lobby-ready-state[data-ready="true"] {
   color: var(--semantic-success);
   background: var(--semantic-success-tint);
 }
 
-.paper-surface.room-lobby-empty-seat {
-  padding: 13px 14px;
-  font-size: 0.78rem;
-  text-align: center;
+.room-lobby-connection-state[data-status="disconnected"],
+.room-lobby-connection-state[data-status="left"] {
+  color: var(--semantic-danger);
+  background: var(--semantic-danger-tint);
 }
 
+.room-lobby-member-ledger tfoot td {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  text-align: center;
+}
 .room-lobby-limit-field {
   display: grid;
   gap: 7px;
@@ -552,29 +669,49 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   min-height: 48px;
 }
 
-.room-lobby-actions {
+.room-lobby-ready-flow {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.room-lobby-actions .paper-button,
-.room-lobby-claim-action {
-  width: 100%;
+.paper-surface.room-lobby-progression {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
 }
 
-.room-lobby-ready-notice,
+.room-lobby-progression-copy {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.room-lobby-progression-action .paper-button {
+  min-width: 160px;
+}
+
 .room-lobby-error {
   margin: 0;
+  color: var(--semantic-danger);
   font-size: 0.75rem;
+  font-weight: 750;
   text-align: center;
 }
 
-.room-lobby-ready-notice {
-  color: var(--semantic-success);
+.room-lobby-exit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
-.room-lobby-error {
-  color: var(--semantic-danger);
+.room-lobby-leave-action {
+  width: auto;
+  margin-left: auto;
 }
 
 .chat-dock-inline {
@@ -901,15 +1038,50 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   }
 
   .room-lobby-content {
-    gap: 28px;
+    gap: 24px;
   }
 
-  .room-lobby-member-row {
+  .room-lobby-share-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room-lobby-copy-action {
+    width: 100%;
+  }
+
+  .room-lobby-member-ledger :is(th, td) {
+    padding: 8px 4px;
+    font-size: 0.72rem;
+  }
+
+  .room-lobby-member-ledger tr > :nth-child(1) {
+    width: 40px;
+  }
+
+  .room-lobby-member-ledger tr > :nth-child(3) {
+    width: 58px;
+  }
+
+  .room-lobby-member-ledger tr > :nth-child(4) {
+    width: 72px;
+  }
+
+  .paper-surface.room-lobby-progression {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room-lobby-progression-action .paper-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .room-lobby-exit {
     align-items: flex-start;
+    flex-direction: column;
   }
 
-  .room-lobby-member-state {
-    padding-top: 2px;
+  .room-lobby-leave-action {
+    margin-left: 0;
   }
 
   .chat-dock-fixed {

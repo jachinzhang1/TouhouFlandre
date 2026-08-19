@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "../../lib/api";
 import { RoomLobby } from "./RoomLobby";
@@ -33,6 +39,7 @@ const renderLobby = (
     viewerMemberId: "guest",
     viewerRole: "player",
     playerLimit: 4,
+    minPlayers: 2,
     playerCount: 2,
     availableSeats: 2,
     spectatorCount: 1,
@@ -48,60 +55,56 @@ const renderLobby = (
 describe("RoomLobby", () => {
   beforeEach(() => {
     vi.unstubAllEnvs();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
   });
 
-  it("uses an unboxed narrow page with header and Paper sections", () => {
-    const { container } = render(
-      <RoomLobby
-        roomCode="ABC234"
-        format="bo3"
-        mode="race"
-        turnSeconds={60}
-        members={members}
-        mySlot={3}
-        viewerMemberId="guest"
-        viewerRole="player"
-        playerLimit={4}
-        playerCount={2}
-        availableSeats={2}
-        spectatorCount={1}
-        isHost={false}
-        onReady={vi.fn()}
-        onLeave={vi.fn()}
-      />,
-    );
+  it("groups invitation, member ledger, progression, and exit by hierarchy", () => {
+    renderLobby();
+    const container = document.body;
 
-    const page = container.querySelector(".room-lobby-page") as HTMLElement;
-    expect(page).toBeTruthy();
-    expect(page.classList.contains("paper-surface")).toBe(false);
-    expect(screen.getByRole("heading", { name: "ABC234" })).toBeTruthy();
-    const copy = screen.getByRole("button", { name: "复制房间号" });
+    expect(screen.getByRole("heading", { name: "等待开局" })).toBeTruthy();
+    const share = container.querySelector(
+      ".room-lobby-share.paper-surface",
+    ) as HTMLElement;
+    expect(share).toBeTruthy();
+    expect(within(share).getByText("邀请好友加入")).toBeTruthy();
     expect(
-      container.querySelector(".page-header-slot-right")?.contains(copy),
-    ).toBe(true);
-    expect(copy.querySelector(".lucide-copy")).toBeTruthy();
-    const memberRows = container.querySelectorAll(".room-lobby-member-row");
-    expect(memberRows).toHaveLength(2);
-    expect(
-      [...memberRows].every((row) => !row.classList.contains("paper-surface")),
-    ).toBe(true);
-    expect(
-      container.querySelector(".room-lobby-empty-seat.paper-surface"),
+      within(share).getByText("ABC234", { selector: "code" }),
     ).toBeTruthy();
+    const copy = within(share).getByRole("button", { name: "复制房间号" });
+    expect(copy.classList.contains("paper-button-theme")).toBe(true);
+    expect(container.querySelector(".page-header-slot-right")).toBeNull();
+
+    const ledger = screen.getByRole("table", { name: /房间玩家 2\/4/ });
+    expect(within(ledger).getAllByRole("columnheader")).toHaveLength(4);
+    expect(within(ledger).getByText("房主")).toBeTruthy();
+    expect(within(ledger).getByText("我")).toBeTruthy();
+    expect(within(ledger).getAllByText("在线")).toHaveLength(2);
+    expect(within(ledger).getAllByText("未准备")).toHaveLength(2);
+    expect(container.querySelector(".room-lobby-empty-seat")).toBeNull();
+
+    const progression = container.querySelector(
+      ".room-lobby-progression.paper-surface",
+    ) as HTMLElement;
+    expect(within(progression).getByText("准备开局")).toBeTruthy();
+    expect(within(progression).getByText(/至少 2 名玩家/)).toBeTruthy();
     const leave = screen.getByRole("button", { name: "离开房间" });
-    expect(leave.classList.contains("paper-button-plain")).toBe(true);
-    expect(leave.classList.contains("paper-button-danger")).toBe(false);
-    expect(leave.dataset.paperVariant).toBe("plain");
+    expect(leave.classList.contains("paper-button-danger")).toBe(true);
+    expect(progression.contains(leave)).toBe(false);
   });
 
-  it("uses memberId for self and allows ready/unready", () => {
+  it("uses memberId for self and exposes readiness as a toggle", () => {
     const props = renderLobby();
-    expect(screen.getByText("Guest（我）")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "准备" }));
+    const ready = screen.getByRole("button", { name: "我准备好了" });
+    expect(ready.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(ready);
     expect(props.onReady).toHaveBeenCalledWith(true);
   });
 
-  it("allows a ready player to cancel ready", () => {
+  it("allows a ready player to cancel with secondary treatment", () => {
     const onReady = vi.fn();
     renderLobby({
       members: members.map((member) =>
@@ -109,7 +112,10 @@ describe("RoomLobby", () => {
       ),
       onReady,
     });
-    fireEvent.click(screen.getByRole("button", { name: "取消准备" }));
+    const cancel = screen.getByRole("button", { name: "取消准备" });
+    expect(cancel.getAttribute("aria-pressed")).toBe("true");
+    expect(cancel.dataset.paperVariant).toBe("plain");
+    fireEvent.click(cancel);
     expect(onReady).toHaveBeenCalledWith(false);
   });
 
@@ -184,10 +190,59 @@ describe("RoomLobby", () => {
       viewerMemberId: "watcher",
       onClaimSeat: claim,
     });
-    expect(screen.queryByRole("button", { name: "准备" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "我准备好了" })).toBeNull();
+    expect(screen.getByRole("button", { name: "离开观战" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "认领席位" }));
     expect((await screen.findByRole("alert")).textContent).toContain(
       "席位刚被其他观战者认领",
     );
+  });
+
+  it("reports clipboard success and recoverable failure", async () => {
+    renderLobby();
+    const copy = screen.getByRole("button", { name: "复制房间号" });
+
+    fireEvent.click(copy);
+    await waitFor(() =>
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith("ABC234"),
+    );
+    expect(await screen.findByText("房间号已复制。")).toBeTruthy();
+
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
+      new Error("blocked"),
+    );
+    fireEvent.click(copy);
+    expect(
+      await screen.findByText("复制失败，请手动选择房间号。"),
+    ).toBeTruthy();
+  });
+
+  it("does not announce starting while a ready member is disconnected", () => {
+    renderLobby({
+      members: members.map((member) => ({
+        ...member,
+        ready: true,
+        status:
+          member.memberId === "guest"
+            ? ("disconnected" as const)
+            : ("connected" as const),
+      })),
+    });
+
+    expect(screen.queryByText(/正在开始对局/)).toBeNull();
+    expect(screen.getByText(/离线：Guest/)).toBeTruthy();
+    expect(screen.getByText("连接恢复后才能准备。")).toBeTruthy();
+  });
+
+  it("separates host exit with an explicit room-closing consequence", () => {
+    renderLobby({
+      isHost: true,
+      mySlot: 1,
+      viewerMemberId: "host",
+    });
+
+    const leave = screen.getByRole("button", { name: "关闭并离开" });
+    expect(leave.classList.contains("paper-button-danger")).toBe(true);
+    expect(screen.getByText("房主离开会关闭房间。")).toBeTruthy();
   });
 });
