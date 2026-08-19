@@ -157,14 +157,23 @@ export function GuessTable({
                       </th>
                       {cells.map((cell, index) => (
                         <td
-                          className={`paper-tinted-cell feedback-cell feedback-cell-${cell.status}`}
+                          className={[
+                            "paper-tinted-cell",
+                            "feedback-cell",
+                            `feedback-cell-${cell.status}`,
+                            isOpponent ? "multiplayer-icon-feedback-cell" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
                           key={fields[index]?.key ?? index}
                         >
                           <span
                             aria-label={
                               isOpponent ? STATUS_LABEL[cell.status] : undefined
                             }
-                            className={`feedback${isOpponent ? " match-feedback-compact" : ""}`}
+                            className={`feedback feedback-${cell.status}${
+                              isOpponent ? " match-feedback-compact" : ""
+                            }`}
                             role={isOpponent ? "img" : undefined}
                             title={STATUS_LABEL[cell.status]}
                           >

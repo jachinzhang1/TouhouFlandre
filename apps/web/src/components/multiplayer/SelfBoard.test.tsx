@@ -1,6 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { GuessResult } from "@touhouflandre/shared";
+import {
+  CHARACTER_GUESS_FIELDS,
+  type GuessResult,
+} from "@touhouflandre/shared";
 import { SelfBoard } from "./SelfBoard";
 
 describe("SelfBoard", () => {
@@ -22,5 +25,38 @@ describe("SelfBoard", () => {
     expect(row?.textContent).not.toContain("超超时空过");
     expect(status.closest(".multiplayer-board")).toBeTruthy();
     expect(status.closest(".multiplayer-board-paper")).toBeTruthy();
+  });
+
+  it("uses the single-player tinted feedback cell structure", () => {
+    const guess: GuessResult = {
+      kind: "guess",
+      guessId: "reimu_hakurei",
+      guessName: "博丽灵梦",
+      guessAvatarUrl: "/characters/0001-博丽灵梦.png",
+      isCorrect: false,
+      feedback: [
+        {
+          field: "firstAppearance",
+          label: "初登场作品",
+          status: "exact",
+          symbol: "O",
+          displayValue: ["东方红魔乡"],
+        },
+      ],
+    };
+
+    const { container } = render(
+      <SelfBoard
+        fields={[CHARACTER_GUESS_FIELDS[0]]}
+        guesses={[guess]}
+        maxGuesses={8}
+        playing
+      />,
+    );
+
+    const cell = container.querySelector(".feedback-cell-exact");
+    expect(cell?.classList.contains("paper-tinted-cell")).toBe(true);
+    expect(cell?.querySelector(".feedback-exact")).toBeTruthy();
+    expect(cell?.querySelector(".feedback-exact > b > svg")).toBeTruthy();
   });
 });

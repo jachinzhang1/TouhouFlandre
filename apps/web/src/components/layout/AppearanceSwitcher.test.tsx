@@ -7,7 +7,10 @@ import { APPEARANCE_STORAGE_KEY, COLOR_THEMES } from "../../lib/appearance";
 function mockSystemMode(isDark: boolean) {
   Object.defineProperty(window, "matchMedia", {
     value: vi.fn().mockImplementation((query: string) => ({
-      matches: isDark,
+      matches:
+        query === "(prefers-color-scheme: dark)"
+          ? isDark
+          : query === "(hover: hover) and (pointer: fine)",
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -67,7 +70,7 @@ describe("AppearanceSwitcher", () => {
     const paletteButton = screen.getByRole("button", {
       name: "打开主题颜色",
     });
-    await user.click(paletteButton);
+    await user.hover(paletteButton);
 
     expect(document.documentElement.dataset.themeMode).toBe("light");
     expect(paletteButton.getAttribute("aria-expanded")).toBe("true");
@@ -86,6 +89,23 @@ describe("AppearanceSwitcher", () => {
     });
   });
 
+  it("opens on desktop hover and collapses on dehover", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<AppearanceSwitcher />);
+    const switcher = container.querySelector(".appearance-switcher")!;
+    const toggle = screen.getByRole("button", { name: "打开主题颜色" });
+
+    await user.hover(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "切换到深色模式" })).toBe(toggle);
+    expect(switcher.getAttribute("data-hovered")).toBe("true");
+
+    await user.unhover(switcher);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.getAttribute("aria-label")).toBe("打开主题颜色");
+    expect(switcher.getAttribute("data-hovered")).toBe("false");
+  });
+
   it("keeps closed swatches out of navigation and returns focus on Escape", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
@@ -102,7 +122,8 @@ describe("AppearanceSwitcher", () => {
       ).every((swatch) => swatch.tabIndex === -1),
     ).toBe(true);
 
-    await user.click(toggle);
+    toggle.focus();
+    await user.keyboard("{Enter}");
     const firstSwatch = screen.getByRole("button", { name: "古明地觉主题色" });
     expect(firstSwatch.tabIndex).toBe(0);
     firstSwatch.focus();
@@ -117,7 +138,7 @@ describe("AppearanceSwitcher", () => {
     render(<AppearanceSwitcher />);
     const sakura = COLOR_THEMES.find((theme) => theme.id === "sakura");
 
-    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    await user.hover(screen.getByRole("button", { name: "打开主题颜色" }));
     await user.click(screen.getByRole("button", { name: "古明地觉主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
@@ -131,7 +152,7 @@ describe("AppearanceSwitcher", () => {
   it("moves only the stripes between the old and new selections", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
-    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    await user.hover(screen.getByRole("button", { name: "打开主题颜色" }));
     const slot = (name: string) =>
       screen.getByRole("button", { name }).dataset.slot;
 
@@ -160,7 +181,7 @@ describe("AppearanceSwitcher", () => {
   it("offers the five inactive character theme colors", async () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
-    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    await user.hover(screen.getByRole("button", { name: "打开主题颜色" }));
 
     expect(screen.queryByRole("button", { name: "博丽灵梦主题色" })).toBeNull();
     for (const name of [

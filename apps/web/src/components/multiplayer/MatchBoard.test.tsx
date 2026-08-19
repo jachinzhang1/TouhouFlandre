@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
 import { MatchBoard } from "./MatchBoard";
@@ -213,5 +213,61 @@ describe("MatchBoard", () => {
 
     expect(screen.getAllByText("淘汰").length).toBeGreaterThan(0);
     expect(screen.getAllByText("胜利").length).toBeGreaterThan(0);
+  });
+  it("toggles the mobile match details without hiding the round summary", () => {
+    render(
+      <MatchBoard
+        format="bo3"
+        match={{
+          matchIndex: 0,
+          targetWins: 2,
+          roundIndex: 2,
+          maxRounds: 6,
+          scoringMode: "wins",
+          rosterSize: 3,
+          scores: members.map((member, index) => ({
+            memberId: member.memberId,
+            seat: member.seat,
+            score: index,
+            status: "active" as const,
+            bestRoundScore: index,
+          })),
+          rematchReady: [],
+          catalogVersion: "v1",
+        }}
+        round={
+          {
+            status: "playing",
+            startsAt: "2026-08-15T00:00:00Z",
+            deadline: "2026-08-15T00:05:00Z",
+            maxGuesses: 8,
+            self: { guesses: [] },
+            opponents: [],
+          } as never
+        }
+        memberId="self"
+        members={members}
+        roundResult={null}
+        onGuess={vi.fn()}
+        fields={[]}
+      />,
+    );
+
+    expect(screen.getByText("第 2 局")).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: "展开对局信息" });
+    const details = document.getElementById(
+      toggle.getAttribute("aria-controls")!,
+    );
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(details?.dataset.open).toBe("false");
+
+    fireEvent.click(toggle);
+
+    expect(
+      screen
+        .getByRole("button", { name: "收起对局信息" })
+        .getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(details?.dataset.open).toBe("true");
   });
 });

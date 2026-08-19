@@ -23,6 +23,30 @@ async function prepareVisualPage(page: Page) {
   });
 }
 
+async function seedMultiplayer(page: Page, preset: string) {
+  await page.goto("/multi");
+  await page.waitForFunction(() =>
+    Boolean(
+      (
+        window as typeof window & {
+          __touhouflandreDev?: { game?: { seed: (name: string) => string } };
+        }
+      ).__touhouflandreDev?.game,
+    ),
+  );
+  await page.evaluate((name) => {
+    const game = (
+      window as typeof window & {
+        __touhouflandreDev?: { game?: { seed: (seed: string) => string } };
+      }
+    ).__touhouflandreDev?.game;
+    if (!game) throw new Error("Multiplayer development seeds unavailable");
+    game.seed(name);
+  }, preset);
+  await page.waitForURL(/\/multi\/room\/DEV222$/);
+  await expect(page.locator(".multiplayer-match-page")).toBeVisible();
+}
+
 test.describe("visual polish", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/catalog", (route) =>
@@ -96,7 +120,7 @@ test.describe("visual polish", () => {
     await expect(root).toHaveAttribute("data-theme-color", "scarlet");
     await expect(toggle).toBeVisible();
     await expect(toggle).toBeEnabled();
-    await toggle.click();
+    await toggle.hover();
     await expect(palette).toBeVisible();
     await expect(swatches.first()).toHaveCSS(
       "background-color",
@@ -205,5 +229,90 @@ test.describe("visual polish", () => {
         animations: "disabled",
       },
     );
+  });
+
+  test("multiplayer boards and command deck match the shared game layout", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 2738, height: 1607 });
+    await seedMultiplayer(page, "race-n-player");
+    await prepareVisualPage(page);
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+
+    const largeGeometry = await page.evaluate(() => {
+      const deck = document
+        .querySelector(".multiplayer-command-deck")!
+        .getBoundingClientRect();
+      const footer = document
+        .querySelector(".site-footer")!
+        .getBoundingClientRect();
+      return {
+        deckBottom: deck.bottom,
+        footerTop: footer.top,
+        overflow: document.documentElement.scrollWidth > window.innerWidth,
+      };
+    });
+    expect(largeGeometry.overflow).toBe(false);
+    expect(
+      Math.abs(largeGeometry.deckBottom - largeGeometry.footerTop),
+    ).toBeLessThanOrEqual(1);
+
+    const selfCell = page
+      .locator('.multiplayer-board[data-board-variant="self"] .feedback-cell')
+      .first();
+    const opponentCell = page
+      .locator(".multiplayer-icon-feedback-cell")
+      .first();
+    await expect(selfCell).toHaveClass(/paper-tinted-cell/);
+    await expect(selfCell.locator(".feedback")).toHaveClass(
+      /feedback-(exact|partial|miss|higher|lower|unknown)/,
+    );
+    await expect(opponentCell).toHaveClass(/paper-tinted-cell/);
+    const iconAlignment = await opponentCell.evaluate((cell) => {
+      const icon = cell.querySelector("b")!.getBoundingClientRect();
+      const bounds = cell.getBoundingClientRect();
+      return {
+        horizontal: Math.abs(
+          icon.left + icon.width / 2 - (bounds.left + bounds.width / 2),
+        ),
+        vertical: Math.abs(
+          icon.top + icon.height / 2 - (bounds.top + bounds.height / 2),
+        ),
+        background: getComputedStyle(cell).backgroundColor,
+      };
+    });
+    expect(iconAlignment.horizontal).toBeLessThanOrEqual(1);
+    expect(iconAlignment.vertical).toBeLessThanOrEqual(1);
+    expect(iconAlignment.background).not.toBe("rgba(0, 0, 0, 0)");
+
+    const toggle = page.getByRole("button", { name: "展开对局信息" });
+    await expect(toggle).toBeHidden();
+    await page.setViewportSize({ width: 440, height: 956 });
+    await expect(toggle).toBeVisible();
+    const details = page.locator(".multiplayer-match-summary-details");
+    await expect(details).toBeHidden();
+    await toggle.click();
+    await expect(details).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "收起对局信息" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight),
+    );
+    const mobileGeometry = await page.evaluate(() => {
+      const deck = document
+        .querySelector(".multiplayer-command-deck")!
+        .getBoundingClientRect();
+      const footer = document
+        .querySelector(".site-footer")!
+        .getBoundingClientRect();
+      return { deckBottom: deck.bottom, footerTop: footer.top };
+    });
+    expect(
+      Math.abs(mobileGeometry.deckBottom - mobileGeometry.footerTop),
+    ).toBeLessThanOrEqual(1);
   });
 });

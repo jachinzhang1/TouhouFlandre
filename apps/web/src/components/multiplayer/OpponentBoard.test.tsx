@@ -28,6 +28,21 @@ describe("OpponentBoard", () => {
       container.querySelectorAll(".match-feedback-compact"),
     );
     expect(compactCells).toHaveLength(6);
+    const tintedCells = Array.from(
+      container.querySelectorAll(".multiplayer-icon-feedback-cell"),
+    );
+    expect(tintedCells).toHaveLength(6);
+    expect(
+      tintedCells.every((cell) => cell.classList.contains("paper-tinted-cell")),
+    ).toBe(true);
+    expect(compactCells.map((cell) => cell.classList[1])).toEqual([
+      "feedback-exact",
+      "feedback-partial",
+      "feedback-miss",
+      "feedback-higher",
+      "feedback-lower",
+      "feedback-unknown",
+    ]);
     expect(
       compactCells.map((cell) =>
         cell.querySelector("svg")?.getAttribute("class"),

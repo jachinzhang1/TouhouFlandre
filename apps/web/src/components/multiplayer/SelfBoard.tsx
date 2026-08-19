@@ -45,8 +45,8 @@ export function SelfBoard({
     ? `${guesses.length}/${maxGuesses}`
     : `${guesses.length}`;
   const subtitle = isUnlimitedGuessLimit(maxGuesses)
-    ? `无次数限制${playing ? " · 竞速中" : ""}`
-    : `已猜 ${guessCountLabel} 手${playing ? " · 竞速中" : ""}`;
+    ? `无次数限制${playing ? " · 竞速中。" : ""}`
+    : `已猜 ${guessCountLabel} 手${playing ? " · 竞速中。" : ""}`;
 
   return (
     <GuessTable

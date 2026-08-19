@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Moon, Palette, Sun } from "lucide-react";
 import { Paper } from "@/components/paper";
@@ -189,7 +189,7 @@ export function AppearanceSwitcher({
     writeAppearanceSettings(nextSettings);
     applyAppearance(nextAppearance);
   };
-  const handleToggleClick = () => {
+  const handleToggleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const usesMobilePresentation =
       Boolean(onMobilePaletteOpenChange) &&
       window.matchMedia("(max-width: 680px)").matches;
@@ -198,7 +198,7 @@ export function AppearanceSwitcher({
       else onMobilePaletteOpenChange?.(true);
       return;
     }
-    if (!paletteOpen) {
+    if (event.detail === 0 && !paletteOpen) {
       setPaletteOpen(true);
       return;
     }
@@ -240,7 +240,7 @@ export function AppearanceSwitcher({
         type="button"
         className="appearance-toggle"
         aria-label={
-          mobilePaletteOpen || paletteOpen
+          paletteVisible
             ? appearance.mode === "dark"
               ? "切换到浅色模式"
               : "切换到深色模式"
@@ -248,13 +248,9 @@ export function AppearanceSwitcher({
         }
         aria-controls="appearance-palette"
         aria-expanded={paletteVisible}
-        aria-pressed={
-          mobilePaletteOpen || paletteOpen
-            ? appearance.mode === "dark"
-            : undefined
-        }
+        aria-pressed={paletteVisible ? appearance.mode === "dark" : undefined}
         title={
-          mobilePaletteOpen || paletteOpen
+          paletteVisible
             ? appearance.mode === "dark"
               ? "切换到浅色模式"
               : "切换到深色模式"
