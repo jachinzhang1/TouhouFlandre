@@ -1,5 +1,5 @@
-// OpponentBoard 安全断言（08 §4.5/§12 调整）：列标签出现一次于表头（布局重构后），
-// 行内永不含角色名/值；颜色统一 feedback 语义类（与自视角同色）。
+// OpponentBoard 安全断言：复用单人棋盘台账，列标签位于底部表尾；
+// 行内永不含角色名/值，匿名状态仍有可访问名称。
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { OpponentBoard } from "./OpponentBoard";
@@ -57,7 +57,7 @@ describe("OpponentBoard", () => {
     expect(slashLine?.getAttribute("stroke-linecap")).toBe("round");
     expect(screen.queryByText("图例")).toBeNull();
     for (const cell of compactCells) expect(cell.textContent).toBe("");
-    // 表头列标签各出现一次（布局重构：标签只在表最上方）
+    // 单人棋盘样式将列标签固定在表尾。
     for (const header of [
       "初登场作品",
       "初登场年份",
@@ -97,7 +97,7 @@ describe("OpponentBoard", () => {
       />,
     );
 
-    const headers = Array.from(container.querySelectorAll("thead th")).map(
+    const headers = Array.from(container.querySelectorAll("tfoot th")).map(
       (header) => header.textContent,
     );
     expect(headers).toEqual([
@@ -113,5 +113,9 @@ describe("OpponentBoard", () => {
       container.querySelectorAll('span[role="img"]'),
     ).map((el) => el.getAttribute("aria-label"));
     expect(labels).toEqual(["命中", "更低", "未中", "部分", "未中", "未知"]);
+    expect(screen.getByText("对手棋盘")).toBeTruthy();
+    expect(
+      screen.getByText("仅显示反馈状态，具体角色与属性值将在局末揭示。"),
+    ).toBeTruthy();
   });
 });

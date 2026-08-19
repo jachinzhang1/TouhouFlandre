@@ -178,6 +178,15 @@ body:has(.home-hero) .site-footer a:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
+body:has(.home-hero)
+  .site-footer
+  .site-footer-credit-link:is(:hover, :focus-visible) {
+  color: #fff;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .site-nav::before,
 .site-nav::after,
 .site-nav-paper-layer {
@@ -357,6 +366,10 @@ body:has(.home-hero) .site-footer a:hover {
 
 .nav-link:hover {
   color: var(--vermilion-dark);
+}
+
+html[data-theme-mode="dark"] .nav-link:hover {
+  color: var(--nav-text);
 }
 
 .nav-link.active {
@@ -764,6 +777,7 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
 
   .appearance-swatch[data-selected="true"] {
     opacity: 1;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92);
   }
 
   .appearance-swatch::after {

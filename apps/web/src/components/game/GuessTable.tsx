@@ -1,8 +1,7 @@
 "use client";
 
-// 联机对局棋盘表格（左右双栏：左自己 / 右对手，手机端上下堆叠）：
-// 列标签只出现一次（表头，复用单人模式字段序）；单元格统一 feedback feedback-{status}
-// 语义类（两边同色同高）；对手匿名行只渲染状态色块，永不含名称/标签/值（08 §4.5）。
+// 联机棋盘复用单人模式的全宽台账：字段标签固定在表尾，反馈单元格与行高一致。
+// 对手行保留相同几何，但只公开匿名状态，不携带角色名或属性值（08 §4.5）。
 import type { ReactNode } from "react";
 import type {
   FeedbackStatus,
@@ -13,6 +12,7 @@ import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { Paper } from "@/components/paper";
+import { SectionHeading } from "../layout/SectionHeading";
 
 export const STATUS_LABEL: Record<FeedbackStatus, string> = {
   exact: "命中",
@@ -54,7 +54,7 @@ export function GuessTable({
   highlight = false,
 }: {
   title?: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   headerExtra?: ReactNode;
   rows: GuessRow[];
   emptyLabel: string;
@@ -65,151 +65,135 @@ export function GuessTable({
   const isOpponent = variant === "opponent";
 
   return (
-    <Paper
-      animateOnMount={false}
-      as="div"
-      elevation="sm"
-      className="min-w-0 w-full p-3"
-      folded={false}
-      pattern={false}
-      tone={highlight ? "success" : "default"}
-      sticker={false}
-      unfoldOnHover={false}
-      variant="plain"
+    <section
+      className="multiplayer-board"
+      data-board-variant={variant}
+      data-highlight={highlight ? "true" : "false"}
     >
-      {(title || subtitle || headerExtra) && (
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            {title && (
-              <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">
-                {title}
-              </h3>
-            )}
-            {subtitle && (
-              <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>
-            )}
-          </div>
-          {headerExtra}
-        </div>
-      )}
-      <div className="overflow-x-auto">
-        <table
-          className={`w-full border-collapse text-[0.78rem] ${
-            isOpponent ? "min-w-[430px]" : "min-w-[560px]"
-          }`}
+      {title || subtitle || headerExtra ? (
+        <SectionHeading
+          action={headerExtra}
+          className="multiplayer-board-heading"
+          description={subtitle}
+          title={title ?? "棋盘"}
+          titleAs="div"
+        />
+      ) : null}
+      <div className="multiplayer-board-scroll">
+        <Paper
+          animateOnMount={false}
+          as="div"
+          elevation="sm"
+          className="paper-data-table multiplayer-board-paper"
+          folded={false}
+          pattern={false}
+          tone={highlight ? "success" : "default"}
+          sticker={false}
+          unfoldOnHover={false}
+          variant="plain"
         >
-          <thead className="paper-data-table-header">
-            <tr className="paper-data-table-row">
-              <th
-                className={`p-2 text-left text-[0.72rem] font-bold ${
-                  isOpponent ? "w-16" : "w-24"
-                }`}
-              >
-                角色
-              </th>
+          <table className="guess-table multiplayer-guess-table">
+            <colgroup>
+              <col className="guess-character-column" />
               {fields.map((field) => (
-                <th
-                  key={field.key}
-                  className="p-2 text-left text-[0.72rem] font-bold"
-                >
-                  {field.label}
-                </th>
+                <col className="guess-feedback-column" key={field.key} />
               ))}
-            </tr>
-          </thead>
-          <tbody className="paper-data-table-body">
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={fields.length + 1}
-                  className="py-4 text-center text-ink-soft"
-                >
-                  {emptyLabel}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                if (row.notice) {
+            </colgroup>
+            <tbody className="paper-data-table-body">
+              {rows.length === 0 ? (
+                <tr className="paper-data-table-row multiplayer-board-empty-row">
+                  <td colSpan={fields.length + 1}>{emptyLabel}</td>
+                </tr>
+              ) : (
+                rows.map((row, rowIndex) => {
+                  if (row.notice) {
+                    return (
+                      <tr
+                        className="paper-data-table-row guess-timeout-row"
+                        key={row.key}
+                      >
+                        <th scope="row" className="guess-timeout-cell">
+                          <span>{row.notice}</span>
+                        </th>
+                        {fields.map((field) => (
+                          <td
+                            aria-hidden="true"
+                            className="guess-timeout-placeholder-cell"
+                            key={field.key}
+                          />
+                        ))}
+                      </tr>
+                    );
+                  }
+
+                  const cells = cellsForFields(row.cells, fields);
                   return (
-                    <tr className="paper-data-table-row" key={row.key}>
-                      <td colSpan={fields.length + 1} className="p-2">
-                        <span
-                          className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
-                            row.tone === "danger"
-                              ? "bg-vermilion-soft text-vermilion"
-                              : "bg-paper-muted text-ink-soft"
-                          }`}
+                    <tr
+                      className={`paper-data-table-row${row.isCorrect ? " guess-correct-row" : ""}`}
+                      key={row.key}
+                      style={{
+                        animationDelay: `${Math.min(rowIndex, 7) * 45}ms`,
+                      }}
+                    >
+                      <th scope="row">
+                        {row.name ? (
+                          <span className="guess-character">
+                            <CharacterAvatar
+                              avatarUrl={row.avatarUrl}
+                              name={row.name}
+                              initials={row.name.slice(0, 2)}
+                              className="guess-avatar"
+                            />
+                            <span>{row.name}</span>
+                          </span>
+                        ) : (
+                          <span className="multiplayer-anonymous-guess">
+                            第 {row.key} 猜
+                          </span>
+                        )}
+                      </th>
+                      {cells.map((cell, index) => (
+                        <td
+                          className={`paper-tinted-cell feedback-cell feedback-cell-${cell.status}`}
+                          key={fields[index]?.key ?? index}
                         >
-                          {row.notice}
-                        </span>
-                      </td>
+                          <span
+                            aria-label={
+                              isOpponent ? STATUS_LABEL[cell.status] : undefined
+                            }
+                            className={`feedback${isOpponent ? " match-feedback-compact" : ""}`}
+                            role={isOpponent ? "img" : undefined}
+                            title={STATUS_LABEL[cell.status]}
+                          >
+                            <b>
+                              <FeedbackStatusIcon
+                                status={cell.status}
+                                decorative={isOpponent}
+                              />
+                            </b>
+                            {!isOpponent && cell.value ? (
+                              <span>{cell.value}</span>
+                            ) : null}
+                          </span>
+                        </td>
+                      ))}
                     </tr>
                   );
-                }
-
-                const cells = cellsForFields(row.cells, fields);
-                return (
-                  <tr className="paper-data-table-row" key={row.key}>
-                    <th
-                      scope="row"
-                      className="p-1.5 align-top text-left font-normal"
-                    >
-                      {row.name ? (
-                        <span className="flex items-center gap-1.5">
-                          <CharacterAvatar
-                            avatarUrl={row.avatarUrl}
-                            name={row.name}
-                            initials={row.name.slice(0, 1)}
-                            className="!size-5 shrink-0"
-                          />
-                          <span className="min-w-0 overflow-wrap-anywhere">
-                            {row.name}
-                            {row.isCorrect && (
-                              <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                                命中
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-ink-soft">第 {row.key} 猜</span>
-                      )}
-                    </th>
-                    {cells.map((cell, index) => (
-                      <td
-                        key={fields[index]?.key ?? index}
-                        className="p-1.5 align-top"
-                      >
-                        <span
-                          className={`feedback match-feedback ${
-                            isOpponent ? "match-feedback-compact" : ""
-                          } feedback-${cell.status}`}
-                          title={STATUS_LABEL[cell.status]}
-                          role={row.name ? undefined : "img"}
-                          aria-label={
-                            row.name ? undefined : STATUS_LABEL[cell.status]
-                          }
-                        >
-                          <b>
-                            <FeedbackStatusIcon
-                              status={cell.status}
-                              decorative={!row.name}
-                            />
-                          </b>
-                          {!isOpponent && cell.value && (
-                            <span>{cell.value}</span>
-                          )}
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                })
+              )}
+            </tbody>
+            <tfoot className="paper-data-table-header single-game-history-footer multiplayer-board-footer">
+              <tr className="paper-data-table-row">
+                <th>角色</th>
+                {fields.map((field) => (
+                  <th key={field.key}>{field.label}</th>
+                ))}
+              </tr>
+            </tfoot>
+          </table>
+        </Paper>
       </div>
-    </Paper>
+    </section>
   );
 }
 

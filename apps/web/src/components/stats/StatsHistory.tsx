@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { QUESTION_DIFFICULTY_LABELS } from "@touhouflandre/shared";
 import {
   MULTIPLAYER_MODE_LABELS,
@@ -16,15 +16,13 @@ import type {
   StatsRound,
 } from "../../stats/types";
 import {
-  Paper,
   PaperButton,
   PaperDataTable,
   PaperDataTableBody,
   PaperDataTableHeader,
   PaperDataTableDetail,
   PaperPicker,
-  PaperSegmentGroup,
-  PaperSegmentSeparator,
+  PaperPagination,
 } from "@/components/paper";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 
@@ -109,7 +107,9 @@ function HistoryHeading({
           pageSize={pageSize}
           onChange={onPageSizeChange}
         />
-        <HistoryPagination
+        <PaperPagination
+          className="stats-history-pagination"
+          label="记录翻页"
           onNext={onNext}
           onPrevious={onPrevious}
           page={page}
@@ -160,62 +160,6 @@ function HistoryTableHeader() {
       <span role="columnheader">所猜角色</span>
       <span role="columnheader">答案</span>
     </div>
-  );
-}
-
-function HistoryPagination({
-  onNext,
-  onPrevious,
-  page,
-  pageCount,
-}: {
-  onNext: () => void;
-  onPrevious: () => void;
-  page: number;
-  pageCount: number;
-}) {
-  return (
-    <PaperSegmentGroup className="stats-history-pagination" label="记录翻页">
-      <PaperButton
-        ariaLabel="上一页"
-        disabled={page <= 1}
-        filled={page > 1}
-        folded={page > 1}
-        iconOnly
-        onClick={onPrevious}
-        title="上一页"
-        tone="theme"
-      >
-        <ChevronLeft size={20} aria-hidden="true" />
-      </PaperButton>
-      <PaperSegmentSeparator />
-      <Paper
-        animateOnMount={false}
-        as="span"
-        className="stats-history-page-counter"
-        folded={false}
-        sticker={false}
-        unfoldOnHover={false}
-        variant="plain"
-      >
-        <span aria-live="polite">
-          {page} / {pageCount}
-        </span>
-      </Paper>
-      <PaperSegmentSeparator />
-      <PaperButton
-        ariaLabel="下一页"
-        disabled={page >= pageCount}
-        filled={page < pageCount}
-        folded={page < pageCount}
-        iconOnly
-        onClick={onNext}
-        title="下一页"
-        tone="theme"
-      >
-        <ChevronRight size={20} aria-hidden="true" />
-      </PaperButton>
-    </PaperSegmentGroup>
   );
 }
 

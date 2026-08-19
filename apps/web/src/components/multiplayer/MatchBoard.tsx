@@ -1,7 +1,7 @@
 "use client";
 
-// 对局视图（08 §10.2 布局调整）：比分条 + 双棋盘左右排布（左自己、右对手；
-// 窄屏 max-[680px] 堆叠为上下）。搜索输入在底部固定条（GuessInputBar）。
+// 对局视图：比分条后按单人模式的全宽台账依次展示自己与当前对手。
+// 聊天与猜测操作由 RoomPage 的固定 command deck 统一承载。
 import type { ReactNode } from "react";
 import type { components } from "../../generated/api";
 import type { GuessField, RoundEndedPayload } from "@touhouflandre/shared";
@@ -57,7 +57,7 @@ export function MatchBoard({
   ).length;
 
   return (
-    <section className="px-[18px] pt-5 pb-28">
+    <section className="multiplayer-match-page">
       <Paper
         animateOnMount={false}
         as="div"
@@ -96,11 +96,7 @@ export function MatchBoard({
         {!ended ? roundActions : null}
       </Paper>
 
-      <div
-        className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
-          ended ? "grid-cols-1" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
-        }`}
-      >
+      <div className="multiplayer-board-stack">
         {ended && roundResult ? (
           <EndedBoards
             roundResult={roundResult}
@@ -186,10 +182,10 @@ function EndedBoards({
     roundResult.boards.filter((board) => board.memberId !== memberId),
   );
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="multiplayer-board-stack">
       {selfBoard ? (
         <GuessTable
-          title="我"
+          title="我的棋盘"
           rows={toRows(selfBoard.memberId)}
           emptyLabel="本局未猜测。"
           fields={fields}
@@ -205,6 +201,7 @@ function EndedBoards({
               members.find((member) => member.memberId === board.memberId)
                 ?.displayName ?? `玩家 ${board.seat}`
             }
+            subtitle="局末已揭示完整猜测记录。"
             rows={toRows(board.memberId)}
             emptyLabel="该玩家本局未猜测。"
             fields={fields}

@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -69,21 +70,34 @@ describe("ChatDock", () => {
     window.localStorage.clear();
   });
 
-  it("uses one Paper button group for the inline page-bottom composer", () => {
-    const { container } = renderDock(baseChat, { inline: true });
-    const group = screen.getByRole("group", { name: "房间聊天" });
+  it("separates standalone chat controls from the message editor group", () => {
+    const { container } = renderDock(baseChat, { placement: "inline" });
+    const form = screen.getByRole("form", { name: "房间聊天" });
+    const group = screen.getByRole("group", { name: "消息编辑" });
+    expect(form.classList.contains("chat-dock-form")).toBe(true);
     expect(group.classList.contains("paper-segment-group")).toBe(true);
     expect(group.classList.contains("chat-dock-composer-group")).toBe(true);
     expect(group.querySelectorAll(".paper-segment-separator")).toHaveLength(2);
-    expect(
-      screen
-        .getByLabelText("展开聊天记录")
-        .classList.contains("paper-segment-button"),
-    ).toBe(true);
+
+    const history = screen.getByLabelText("展开聊天记录");
+    expect(history.classList.contains("paper-button")).toBe(true);
+    expect(group.contains(history)).toBe(false);
+
+    const emoji = screen.getByLabelText("选择表情");
+    expect(emoji.classList.contains("paper-button")).toBe(true);
+    expect(emoji.dataset.paperVariant).toBe("plain");
+    expect(group.contains(emoji)).toBe(true);
+
+    const send = screen.getByLabelText("发送消息");
+    expect(send.classList.contains("paper-button")).toBe(true);
+    expect(group.contains(send)).toBe(true);
+
     const chatToggle = screen.getByLabelText("关闭聊天");
-    expect(chatToggle.classList.contains("paper-segment-button")).toBe(true);
+    expect(chatToggle.classList.contains("paper-button")).toBe(true);
     expect(chatToggle.getAttribute("aria-pressed")).toBe("true");
-    expect(chatToggle.dataset.paperVariant).toBe("tinted");
+    expect(chatToggle.dataset.paperVariant).toBe("plain");
+    expect(chatToggle.dataset.paperFolded).toBe("false");
+    expect(group.contains(chatToggle)).toBe(false);
     expect(
       chatToggle.querySelector(".lucide-message-circle-check"),
     ).toBeTruthy();
@@ -134,7 +148,7 @@ describe("ChatDock", () => {
     ).toHaveLength(2);
   });
 
-  it("inserts a whitelisted emoji and sends on Enter", async () => {
+  it("inserts a whitelisted emoji and sends by button or Enter", async () => {
     const user = userEvent.setup();
     const onSend = vi.fn().mockResolvedValue(true);
     renderDock(baseChat, { onSend });
@@ -145,11 +159,17 @@ describe("ChatDock", () => {
     expect((input as HTMLInputElement).value).toBe("🌸");
     expect(document.activeElement).toBe(input);
     expect((input as HTMLInputElement).placeholder).toBe("请输入消息");
+    const send = screen.getByLabelText("发送消息");
+    expect(send.dataset.paperVariant).toBe("tinted");
+    expect(send.dataset.paperFolded).toBe("true");
 
-    await user.keyboard("{Enter}");
+    await user.click(send);
 
     expect(onSend).toHaveBeenCalledWith("🌸");
-    expect((input as HTMLInputElement).value).toBe("");
+    await waitFor(() => expect((input as HTMLInputElement).value).toBe(""));
+
+    await user.type(input, "再来一条{Enter}");
+    expect(onSend).toHaveBeenLastCalledWith("再来一条");
   });
 
   it("disables history, input, and emoji controls while muted", async () => {
@@ -174,10 +194,24 @@ describe("ChatDock", () => {
     expect(
       (screen.getByLabelText("选择表情") as HTMLButtonElement).disabled,
     ).toBe(true);
+    expect(
+      (screen.getByLabelText("发送消息") as HTMLButtonElement).disabled,
+    ).toBe(true);
     const enableChat = screen.getByLabelText("开启聊天");
     expect(enableChat.getAttribute("aria-pressed")).toBe("false");
     expect(enableChat.dataset.paperVariant).toBe("plain");
     expect(enableChat.querySelector(".lucide-message-circle-off")).toBeTruthy();
+
+    await user.click(enableChat);
+    const input = screen.getByLabelText("聊天输入") as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+    expect(
+      (screen.getByLabelText("选择表情") as HTMLButtonElement).disabled,
+    ).toBe(false);
+    await user.type(input, "恢复聊天");
+    expect(
+      (screen.getByLabelText("发送消息") as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 
   it("disables only sending controls when the viewer is not connected", () => {
@@ -193,6 +227,9 @@ describe("ChatDock", () => {
     ).toBe(true);
     expect(
       (screen.getByLabelText("选择表情") as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByLabelText("发送消息") as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 

@@ -44,7 +44,7 @@ describe("GuessInputBar", () => {
     vi.restoreAllMocks();
   });
 
-  it("默认高亮第一项，下键移动高亮，回车提交高亮项", async () => {
+  it("uses arrows and Enter to select, then submits explicitly", async () => {
     render(
       <GuessInputBar
         onGuess={onGuess}
@@ -56,26 +56,27 @@ describe("GuessInputBar", () => {
     fireEvent.change(input, { target: { value: "白" } });
 
     const options = await waitFor(() => screen.getAllByRole("option"));
-    expect(options.length).toBeGreaterThanOrEqual(2);
     const isHighlighted = (element: HTMLElement) =>
       element.getAttribute("aria-selected") === "true";
     expect(isHighlighted(options[0])).toBe(true);
     expect(isHighlighted(options[1])).toBe(false);
-    // 下键 → 高亮移到第二项
-    fireEvent.keyDown(input, { key: "ArrowDown" });
-    const fresh = screen.getAllByRole("option");
 
-    expect(isHighlighted(fresh[1])).toBe(true);
-    expect(isHighlighted(fresh[0])).toBe(false);
-    // 回车 → 提交第二项（圣白莲）并清空输入
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(isHighlighted(screen.getAllByRole("option")[1])).toBe(true);
     fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onGuess).not.toHaveBeenCalled();
+    expect((input as HTMLInputElement).value).toBe("圣白莲");
+    const submit = screen.getByRole("button", { name: "提交猜测" });
+    expect(submit.dataset.paperVariant).toBe("tinted");
+    expect(submit.dataset.paperFolded).toBe("true");
+    fireEvent.click(submit);
+
     expect(onGuess).toHaveBeenCalledWith("byakuren_hijiri");
-    expect((screen.getByLabelText("搜索角色") as HTMLInputElement).value).toBe(
-      "",
-    );
+    expect((input as HTMLInputElement).value).toBe("");
   });
 
-  it("直接回车提交默认第一项", async () => {
+  it("selects the default first result before submission", async () => {
     render(
       <GuessInputBar
         onGuess={onGuess}
@@ -87,6 +88,8 @@ describe("GuessInputBar", () => {
     fireEvent.change(input, { target: { value: "灵梦" } });
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(1));
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(onGuess).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "提交猜测" }));
     expect(onGuess).toHaveBeenCalledWith("reimu_hakurei");
   });
 
@@ -99,7 +102,7 @@ describe("GuessInputBar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "查看图例" }));
+    fireEvent.click(screen.getByRole("button", { name: "查看反馈图例" }));
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip.className).toContain("feedback-legend-tooltip-above");

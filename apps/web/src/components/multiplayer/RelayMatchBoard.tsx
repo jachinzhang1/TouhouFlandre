@@ -87,7 +87,7 @@ export function RelayMatchBoard({
     seatForMemberId(members, roundResult?.winnerMemberId) ?? null;
 
   return (
-    <section className="px-[18px] pt-5 pb-28">
+    <section className="multiplayer-match-page">
       <Paper
         animateOnMount={false}
         as="div"

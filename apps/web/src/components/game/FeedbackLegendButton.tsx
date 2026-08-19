@@ -77,11 +77,14 @@ export function FeedbackLegendButton({
       <PaperButton
         ariaControls={open ? legendId : undefined}
         ariaExpanded={open}
+        ariaLabel="查看反馈图例"
         className="legend-button"
+        folded={false}
+        iconOnly
         onClick={() => setOpen((value) => !value)}
+        title="查看反馈图例"
       >
         <Search size={18} aria-hidden="true" />
-        <span>查看图例</span>
       </PaperButton>
       {open && position
         ? createPortal(

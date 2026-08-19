@@ -1,13 +1,18 @@
 "use client";
 
-// 底部固定搜索条（对局中）：输入框 fixed 于页面底部、水平居中；
-// 建议下拉向上展开（不遮挡棋盘）；猜测随建议点击提交（与单人一致）。
-import { X } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+// 与单人模式一致的“先选择、再提交”猜测组件；定位由多人 command deck 负责。
+import { Loader2, Search, Send, X } from "lucide-react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
-import { Paper, PaperButton, PaperSearchInput } from "@/components/paper";
+import {
+  Paper,
+  PaperButton,
+  PaperSearchInput,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "@/components/paper";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
 
@@ -26,160 +31,225 @@ export function GuessInputBar({
 }) {
   const listboxId = useId();
   const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [highlightIndex, setHighlightIndex] = useState(0);
   const { results, loading, error } = useCharacterSearch(query, {
     enabled: Boolean(catalogVersion) && !disabled,
     limit: GAME_SEARCH_RESULT_LIMIT,
     version: catalogVersion,
   });
-  const filtered = results.filter((r) => !guessedIds.has(r.id));
-  const showSuggestions =
-    query.trim().length > 0 && !loading && filtered.length > 0;
+  const selectableResults = results.filter(
+    (result) => !guessedIds.has(result.id),
+  );
+  const hasQuery = query.trim().length > 0;
+  const showPopover = hasQuery && !selectedId && !disabled;
+  const submitDisabled = Boolean(disabled || !selectedId);
 
-  // 键盘指针：默认指向第一项；查询/结果变化时回到第一项
-  const [highlightIndex, setHighlightIndex] = useState(0);
   useEffect(() => {
     setHighlightIndex(0);
   }, [query, results]);
 
   useEffect(() => {
-    if (disabled) setQuery("");
+    if (!disabled) return;
+    setQuery("");
+    setSelectedId("");
   }, [disabled]);
 
-  const submit = (guessId: string) => {
-    onGuess(guessId);
-    setQuery("");
+  const selectResult = (result: (typeof selectableResults)[number]) => {
+    setQuery(result.name);
+    setSelectedId(result.id);
     setHighlightIndex(0);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showSuggestions || disabled) return;
+  const submitSelected = () => {
+    if (submitDisabled) return;
+    onGuess(selectedId);
+    setQuery("");
+    setSelectedId("");
+    setHighlightIndex(0);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!showPopover || loading || error || selectableResults.length === 0) {
+      return;
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setHighlightIndex((i) => (i + 1) % filtered.length);
+      setHighlightIndex((index) => (index + 1) % selectableResults.length);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
-      setHighlightIndex((i) => (i - 1 + filtered.length) % filtered.length);
+      setHighlightIndex(
+        (index) =>
+          (index - 1 + selectableResults.length) % selectableResults.length,
+      );
     } else if (event.key === "Enter") {
       event.preventDefault();
-      const item = filtered[highlightIndex];
-      if (item) submit(item.id);
+      const result = selectableResults[highlightIndex];
+      if (result) selectResult(result);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setQuery("");
+      setSelectedId("");
     }
   };
 
   return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-40 backdrop-blur"
-      data-guess-input-bar
-    >
-      <Paper
-        animateOnMount={false}
-        as="div"
-        className="game-action-bar-surface w-full px-4 py-3"
-        elevation="lg"
-        folded={false}
-        pattern={false}
-        sticker={false}
-        unfoldOnHover={false}
-      >
-        {statusMessage ? (
-          <p
-            className="mx-auto mb-2 w-full max-w-[720px] text-[0.78rem] font-bold text-vermilion"
-            role="status"
+    <div className="multiplayer-guess-bar" data-guess-input-bar>
+      <div className="multiplayer-guess-composer">
+        <FeedbackLegendButton
+          className="multiplayer-legend-control"
+          placement="above"
+        />
+        <form
+          className="multiplayer-guess-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitSelected();
+          }}
+        >
+          <PaperSegmentGroup
+            className="single-game-guess-group multiplayer-guess-group"
+            label="猜测操作"
           >
-            {statusMessage}
-          </p>
-        ) : null}
-        <div className="mx-auto flex w-full max-w-[720px] items-start gap-2">
-          <div className="relative min-w-0 flex-1">
-            <PaperSearchInput
-              aria-activedescendant={
-                showSuggestions
-                  ? `${listboxId}-option-${highlightIndex}`
-                  : undefined
-              }
-              aria-controls={listboxId}
-              aria-expanded={showSuggestions}
-              ariaLabel="搜索角色"
-              className="w-full"
-              disabled={disabled}
-              folded={false}
-              endAdornment={
-                query ? (
-                  <PaperButton
-                    ariaLabel="清空搜索"
-                    compact
-                    folded={false}
-                    iconOnly
-                    onClick={() => setQuery("")}
-                  >
-                    <X size={14} aria-hidden="true" />
-                  </PaperButton>
-                ) : null
-              }
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                disabled
-                  ? (statusMessage ?? "等待当前轮次……")
-                  : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
-              }
-              role="combobox"
-              value={query}
-            />
-            {error && (
-              <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>
-            )}
-            {showSuggestions && (
-              <Paper
-                animateOnMount={false}
-                as="div"
-                className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto"
-                elevation="lg"
+            <div className="search-combobox">
+              <PaperSearchInput
+                aria-activedescendant={
+                  showPopover && selectableResults[highlightIndex]
+                    ? `${listboxId}-${selectableResults[highlightIndex].id}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+                aria-expanded={showPopover}
+                ariaLabel="搜索角色"
+                className="single-game-search-control"
+                disabled={disabled}
                 folded={false}
-                sticker={false}
-                pattern={false}
-                unfoldOnHover={false}
-              >
-                <ul
-                  className="paper-data-table-body"
-                  id={listboxId}
-                  role="listbox"
+                endAdornment={
+                  query ? (
+                    <PaperButton
+                      ariaLabel="清空搜索"
+                      compact
+                      folded={false}
+                      iconOnly
+                      onClick={() => {
+                        setQuery("");
+                        setSelectedId("");
+                      }}
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </PaperButton>
+                  ) : null
+                }
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setSelectedId("");
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  disabled
+                    ? (statusMessage ?? "等待当前轮次……")
+                    : "输入角色名、别名或初登场作品"
+                }
+                role="combobox"
+                value={query}
+              />
+              {showPopover ? (
+                <Paper
+                  animateOnMount={false}
+                  as="div"
+                  className="multiplayer-guess-suggestions"
+                  elevation="lg"
+                  folded={false}
+                  pattern={false}
+                  sticker={false}
+                  unfoldOnHover={false}
                 >
-                  {filtered.map((result, index) => (
-                    <li className="paper-data-table-entry" key={result.id}>
-                      <button
-                        type="button"
-                        id={`${listboxId}-option-${index}`}
-                        disabled={disabled}
-                        aria-selected={highlightIndex === index}
-                        role="option"
-                        tabIndex={-1}
-                        onClick={() => submit(result.id)}
-                        onMouseEnter={() => setHighlightIndex(index)}
-                        className="paper-data-table-row text-[0.82rem]"
-                      >
-                        <span className="flex w-full items-center gap-2 text-left">
-                          <CharacterAvatar
-                            avatarUrl={result.avatarUrl}
-                            name={result.name}
-                            initials={result.name.slice(0, 1)}
-                            className="!size-[20px]"
-                          />
-                          <span className="font-medium">{result.name}</span>
-                          <span className="ml-auto text-[0.72rem] text-ink-soft">
-                            {result.firstAppearance.workTitle}
+                  {loading ? (
+                    <div className="suggestion-state" role="status">
+                      <Loader2 className="spin" size={17} aria-hidden="true" />
+                      <span>正在搜索</span>
+                    </div>
+                  ) : error ? (
+                    <div
+                      className="suggestion-state suggestion-error"
+                      role="alert"
+                    >
+                      <span>{error}</span>
+                    </div>
+                  ) : selectableResults.length > 0 ? (
+                    <div
+                      className="suggestion-list-body"
+                      id={listboxId}
+                      role="listbox"
+                    >
+                      {selectableResults.map((result, index) => (
+                        <button
+                          aria-selected={highlightIndex === index}
+                          className="suggestion paper-data-table-row"
+                          id={`${listboxId}-${result.id}`}
+                          key={result.id}
+                          onClick={() => selectResult(result)}
+                          onMouseEnter={() => setHighlightIndex(index)}
+                          type="button"
+                          role="option"
+                        >
+                          <span className="suggestion-avatar-cell">
+                            <CharacterAvatar
+                              avatarUrl={result.avatarUrl}
+                              className="suggestion-avatar"
+                              initials={result.name.slice(0, 2)}
+                              name={result.name}
+                            />
                           </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </Paper>
-            )}
-          </div>
-          <FeedbackLegendButton className="shrink-0" placement="above" />
-        </div>
-      </Paper>
+                          <span className="suggestion-main">
+                            <strong>{result.name}</strong>
+                            <small>{result.firstAppearance.workTitle}</small>
+                          </span>
+                          <span className="suggestion-meta">选择</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="suggestion-state" role="status">
+                      <Search size={17} aria-hidden="true" />
+                      <span>没有找到匹配角色</span>
+                    </div>
+                  )}
+                </Paper>
+              ) : null}
+            </div>
+            <PaperSegmentSeparator />
+            <PaperButton
+              ariaLabel="提交猜测"
+              className="single-game-submit multiplayer-guess-submit"
+              disabled={submitDisabled}
+              filled={!submitDisabled}
+              folded={!submitDisabled}
+              onClick={submitSelected}
+              tone="theme"
+            >
+              <Send size={18} aria-hidden="true" />
+              <span>提交猜测</span>
+            </PaperButton>
+          </PaperSegmentGroup>
+        </form>
+      </div>
+      {statusMessage ? (
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="multiplayer-guess-message"
+          folded={false}
+          pattern={false}
+          role="status"
+          sticker={false}
+          tone="danger"
+          unfoldOnHover={false}
+        >
+          {statusMessage}
+        </Paper>
+      ) : null}
     </div>
   );
 }

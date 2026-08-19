@@ -111,6 +111,23 @@ contracts/ws/              WebSocket 协议
 - 页面样式只能组合 Paper 组件的布局几何（宽度、网格、间距、定位），不得覆盖其颜色、背景、纹理、折角或交互状态；缺少能力时先扩展 Paper 包 API 和组件测试。
 - 游戏模式渐变卡、语义化结果单元格、公告/鸣谢签名卡和完成态透明棋盘属于明确视觉例外；站点导航、标签页、隐藏文件输入等非 Paper 语义控件不强制套用 Paper。
 
+#### 多人界面状态调试
+
+开发环境的多人大厅和房间会在浏览器控制台注册只读界面种子：
+
+```js
+// 查看全部可用状态
+__touhouflandreDev.game.presets;
+
+// 切换状态；在大厅调用时会进入 DEV222 调试房间
+__touhouflandreDev.game.seed("race-n-player");
+
+// 清除种子并恢复真实房间流程
+__touhouflandreDev.game.reset();
+```
+
+预设覆盖身份同步、断线、玩家与观战大厅、双人和多人竞速、接力轮次、局末/场末、淘汰、复盘以及聊天加载和发送状态。种子只修改当前标签页的开发状态与 `sessionStorage`，不写入 API 或数据库。
+
 ### API
 
 - 请求校验由 OpenAPI middleware 承担，不维护第二套 API schema。

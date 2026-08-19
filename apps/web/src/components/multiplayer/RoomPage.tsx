@@ -113,7 +113,8 @@ export function RoomView({ code }: { code: string }) {
 
   const applyDevelopmentSeed = useCallback(
     (preset: Parameters<typeof buildMultiplayerGameSeed>[0]) => {
-      setDevelopmentSeed(buildMultiplayerGameSeed(preset));
+      const seed = buildMultiplayerGameSeed(preset);
+      setDevelopmentSeed(seed);
       void api
         .catalogFull()
         .then((catalog) => {
@@ -127,6 +128,7 @@ export function RoomView({ code }: { code: string }) {
           );
         })
         .catch(() => undefined);
+      return seed;
     },
     [],
   );
@@ -146,13 +148,13 @@ export function RoomView({ code }: { code: string }) {
   useEffect(() => {
     const preset = loadMultiplayerGameSeed();
     if (preset) {
-      applyDevelopmentSeed(preset);
+      const seed = applyDevelopmentSeed(preset);
       setStored({
         roomId: "development-room",
         roomCode: normalized,
         guestToken: "development-token",
-        role: "player",
-        memberId: "development-self",
+        role: seed.role,
+        memberId: seed.memberId,
       });
       return;
     }
@@ -207,12 +209,11 @@ export function RoomView({ code }: { code: string }) {
   );
   const state = developmentSeed?.state ?? liveRoom.state;
   const mySlot = developmentSeed?.mySlot ?? liveRoom.mySlot;
-  const memberId = developmentSeed?.state.viewer?.memberId ?? liveRoom.memberId;
-  const role = developmentSeed?.state.viewer?.role ?? liveRoom.role;
+  const memberId = developmentSeed?.memberId ?? liveRoom.memberId;
+  const role = developmentSeed?.role ?? liveRoom.role;
   const actions = developmentSeed ? DEVELOPMENT_ROOM_ACTIONS : liveRoom.actions;
   const guessError = developmentSeed?.guessError ?? liveRoom.guessError;
   const roomUnavailable = developmentSeed ? false : liveRoom.roomUnavailable;
-
   useEffect(() => {
     return installGameSeedConsole({
       page: "multiplayer",
@@ -310,7 +311,7 @@ export function RoomView({ code }: { code: string }) {
   );
   const chatUiEnabled = isChatUiEnabled();
   const chatSendUiEnabled = isChatSendUiEnabled();
-  const chatDock =
+  const renderChatDock = (placement: "inline" | "fixed" | "deck") =>
     chatUiEnabled &&
     state.room &&
     state.viewer &&
@@ -321,7 +322,7 @@ export function RoomView({ code }: { code: string }) {
         viewer={state.viewer}
         chat={state.chat}
         disabled={roomUnavailable}
-        inline={status === "lobby" || status === "connecting"}
+        placement={placement}
         sendEnabled={chatSendUiEnabled}
         onSend={actions.sendChat}
         onRetry={actions.retryChat}
@@ -449,7 +450,7 @@ export function RoomView({ code }: { code: string }) {
             }}
             onLeave={handleLeave}
           />
-          {chatDock}
+          {renderChatDock("inline")}
         </div>
         <ConnectionNotice
           message={state.connectionIssue}
@@ -477,7 +478,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
+        {renderChatDock("fixed")}
       </>
     );
   }
@@ -500,7 +501,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
+        {renderChatDock("fixed")}
       </>
     );
   }
@@ -538,7 +539,7 @@ export function RoomView({ code }: { code: string }) {
             }}
             onLeave={handleLeave}
           />
-          {chatDock}
+          {renderChatDock("inline")}
         </div>
         <ConnectionNotice
           message={state.connectionIssue}
@@ -604,6 +605,8 @@ export function RoomView({ code }: { code: string }) {
               .map((row) => row.guess!.guessId) ?? [],
           )
         : new Set(state.round?.self.guesses.map((g) => g.guessId) ?? []);
+    const showCommandDeck =
+      state.round?.status === "playing" && !selectedPlayerArchive;
     return (
       <>
         <RoundHistoryBar
@@ -640,17 +643,6 @@ export function RoomView({ code }: { code: string }) {
             fields={visibleFields}
           />
         )}
-        {state.round?.status === "playing" && !selectedPlayerArchive && (
-          <GuessInputBar
-            onGuess={actions.submitGuess}
-            disabled={
-              mode === "relay" ? !relayCanGuess : !hasOpponent || raceReadOnly
-            }
-            catalogVersion={state.catalogVersion ?? undefined}
-            guessedIds={guessedIds}
-            statusMessage={mode === "race" ? participationMessage : null}
-          />
-        )}
         {inCountdown &&
           state.round &&
           !state.roundResult &&
@@ -674,7 +666,26 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
+        {showCommandDeck ? (
+          <div className="multiplayer-command-deck">
+            <div className="multiplayer-command-deck-inner">
+              {renderChatDock("deck")}
+              <GuessInputBar
+                onGuess={actions.submitGuess}
+                disabled={
+                  mode === "relay"
+                    ? !relayCanGuess
+                    : !hasOpponent || raceReadOnly
+                }
+                catalogVersion={state.catalogVersion ?? undefined}
+                guessedIds={guessedIds}
+                statusMessage={mode === "race" ? participationMessage : null}
+              />
+            </div>
+          </div>
+        ) : (
+          renderChatDock("fixed")
+        )}
       </>
     );
   }
@@ -703,7 +714,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
+        {renderChatDock("fixed")}
       </>
     );
   }
@@ -1111,8 +1122,10 @@ function RoundHistoryBar({
   selectedKey: string | null;
   onSelect: (key: string | null) => void;
 }) {
+  if (archives.length === 0) return null;
+
   return (
-    <div className="px-[18px] pt-3 pb-1">
+    <div className="round-history-bar px-[18px] pt-3 pb-1">
       <ul className="flex flex-wrap gap-1.5">
         <li>
           <PaperSegmentButton
@@ -1121,7 +1134,7 @@ function RoundHistoryBar({
             folded={false}
             onClick={() => onSelect(null)}
           >
-            返回当前局
+            当前局
           </PaperSegmentButton>
         </li>
         {archives.map((archive) => {
@@ -1171,7 +1184,7 @@ function RoundHistoryBar({
 function GuessErrorToast({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
+    <div className="guess-error-toast fixed inset-x-0 z-50 flex justify-center px-4">
       <Paper
         animateOnMount={false}
         as="div"

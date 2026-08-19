@@ -2,20 +2,82 @@
   --game-action-safe-inset: env(safe-area-inset-bottom, 0px);
 }
 
-.game-action-bar-surface {
-  padding-bottom: calc(12px + var(--game-action-safe-inset));
+.chat-dock-fixed {
+  position: fixed;
+  left: 16px;
+  bottom: calc(16px + var(--game-action-safe-inset));
+  z-index: 45;
+  isolation: isolate;
+  width: min(420px, calc(100vw - 32px));
 }
 
-.chat-dock-fixed {
-  bottom: calc(6rem + var(--game-action-safe-inset));
+.chat-dock-fixed::before {
+  position: absolute;
+  inset: -72px -16px -16px;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--page-background) 82%, transparent) 64px,
+    var(--page-background) 100%
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.chat-dock-deck {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+.multiplayer-command-deck {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 45;
+  isolation: isolate;
+  padding: 72px 16px calc(12px + var(--game-action-safe-inset));
+  pointer-events: none;
+}
+
+.multiplayer-command-deck::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--page-background) 82%, transparent) 64px,
+    var(--page-background) 100%
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.multiplayer-command-deck-inner {
+  display: grid;
+  width: min(720px, 100%);
+  margin-inline: auto;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.guess-error-toast {
+  bottom: 80px;
+}
+
+body:has(.multiplayer-command-deck) .guess-error-toast {
+  bottom: calc(210px + var(--game-action-safe-inset));
 }
 
 .game-mode-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
-  max-width: 680px;
+  max-width: 1240px;
   margin: var(--page-header-content-gap) auto 0;
 }
 
@@ -126,6 +188,7 @@
   }
 
   .single-lobby-page .game-mode-grid {
+    grid-template-columns: minmax(0, 1fr);
     min-height: 0;
     max-width: none;
     grid-template-rows: repeat(4, minmax(112px, 1fr));
@@ -341,9 +404,15 @@
   }
 }
 
+.site-main:has(> .room-lobby-view) {
+  display: flex;
+  flex-direction: column;
+}
+
 .room-lobby-view {
   display: flex;
-  min-height: calc(100svh - var(--site-nav-height) - var(--site-footer-height));
+  min-height: 0;
+  flex: 1 0 auto;
   flex-direction: column;
 }
 
@@ -495,8 +564,8 @@
 .chat-dock-inline {
   position: relative;
   z-index: 45;
-  width: min(620px, calc(100% - 36px));
-  margin: auto auto 48px;
+  width: min(584px, calc(100% - 36px));
+  margin: auto auto 0;
 }
 
 .paper-surface.chat-dock-history-paper {
@@ -537,16 +606,28 @@
 }
 
 .chat-dock-form {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: stretch;
+  gap: 8px;
   pointer-events: auto;
 }
 
 .paper-segment-group.chat-dock-composer-group {
   display: grid;
   width: 100%;
-  grid-template-columns: 48px 1px minmax(0, 1fr) 1px 48px;
+  grid-template-columns: minmax(0, 1fr) 1px 48px 1px 48px;
 }
 
 .chat-dock-composer-group .chat-dock-composer-button {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+}
+
+.chat-dock-standalone-button {
   width: 48px;
   min-width: 48px;
   height: 48px;
@@ -569,22 +650,12 @@
 
 .chat-dock-input {
   height: 100%;
-  padding-right: 44px;
   font-size: 0.86rem;
-}
-
-.chat-dock-emoji-button {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  width: 34px;
-  height: 34px;
-  transform: translateY(-50%);
 }
 
 .chat-dock-emoji-menu {
   position: absolute;
-  right: 0;
+  right: clamp(0px, calc(100% - 240px), 105px);
   bottom: calc(100% + 8px);
   z-index: 8;
   display: grid;
@@ -597,6 +668,119 @@
   width: 34px;
   height: 34px;
   font-size: 1.05rem;
+}
+
+.multiplayer-match-page {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
+  padding: 20px 18px 220px;
+}
+
+.multiplayer-board-stack {
+  display: grid;
+  min-width: 0;
+  gap: 36px;
+}
+
+.member-paginator-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.multiplayer-board {
+  min-width: 0;
+}
+
+.multiplayer-board-heading {
+  margin-bottom: 14px;
+}
+
+.multiplayer-board-heading .section-heading-action {
+  justify-content: center;
+}
+
+.multiplayer-board-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.paper-surface.multiplayer-board-paper {
+  --guess-character-column-width: 172px;
+  --guess-table-width: 832px;
+  min-width: var(--guess-table-width);
+  overflow: visible;
+}
+
+.multiplayer-guess-table {
+  min-width: var(--guess-table-width);
+  background: transparent;
+}
+
+.multiplayer-board[data-highlight="true"] .multiplayer-board-paper {
+  outline: 2px solid var(--semantic-success);
+  outline-offset: -2px;
+}
+
+.multiplayer-board-empty-row td {
+  height: 150px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.multiplayer-anonymous-guess {
+  color: var(--ink-soft);
+  font-family: var(--font-brand);
+  font-weight: 800;
+}
+
+.multiplayer-guess-bar,
+.multiplayer-guess-form {
+  min-width: 0;
+}
+
+.multiplayer-guess-composer {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.multiplayer-legend-control,
+.multiplayer-legend-control .paper-button {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+}
+
+.paper-segment-group.multiplayer-guess-group {
+  grid-template-columns: minmax(0, 1fr) 1px 148px;
+}
+
+.multiplayer-guess-suggestions {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  max-height: min(320px, 42svh);
+  overflow: hidden;
+}
+
+.multiplayer-guess-message {
+  margin-top: 8px;
+  padding: 10px 13px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.round-history-bar {
+  width: 100%;
+  max-width: 1240px;
+  margin-inline: auto;
 }
 
 @media (max-width: 680px) {
@@ -616,8 +800,56 @@
     padding-top: 2px;
   }
 
-  .chat-dock-inline {
-    margin-bottom: 32px;
+  .chat-dock-fixed {
+    left: 10px;
+    bottom: calc(10px + var(--game-action-safe-inset));
+    width: calc(100vw - 20px);
+  }
+
+  .multiplayer-command-deck {
+    padding: 64px 10px calc(10px + var(--game-action-safe-inset));
+  }
+
+  .multiplayer-match-page {
+    padding: 16px 10px 210px;
+  }
+
+  .multiplayer-board-stack {
+    gap: 28px;
+  }
+
+  .member-paginator-controls {
+    justify-content: center;
+  }
+
+  .multiplayer-board-heading {
+    margin-bottom: 12px;
+  }
+
+  .multiplayer-board-heading .section-heading-title {
+    font-size: 1.15rem;
+  }
+
+  .paper-segment-group.multiplayer-guess-group {
+    grid-template-columns: minmax(0, 1fr) 1px 48px;
+  }
+
+  .multiplayer-guess-submit {
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+  }
+
+  .multiplayer-guess-submit > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 

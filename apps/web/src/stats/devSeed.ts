@@ -96,7 +96,8 @@ export function installStatisticsDevelopmentTools(): () => void {
 
   return () => {
     if (tools.seedStatistics === seedStatistics) delete tools.seedStatistics;
-    if (Object.keys(tools).length === 0) delete window.__touhouflandreDev;
+    if (Object.keys(tools).length === 0 && window.__touhouflandreDev === tools)
+      delete window.__touhouflandreDev;
   };
 }
 

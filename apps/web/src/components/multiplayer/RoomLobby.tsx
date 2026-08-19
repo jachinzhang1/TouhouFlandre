@@ -127,7 +127,7 @@ export function RoomLobby({
   return (
     <section className="room-lobby-page">
       <PageHeader
-        description={`${modeLabel}${mode === "relay" ? ` ${turnSeconds}s` : ""} · ${formatLabel} · 把房间号发给好友加入`}
+        description={`${modeLabel}${mode === "relay" ? ` ${turnSeconds}s` : ""} · ${formatLabel} · 把房间号发给好友加入。`}
         rightSlot={
           <PageHeaderAction ariaLabel="复制房间号" onClick={copyCode}>
             {copied ? (
@@ -146,7 +146,7 @@ export function RoomLobby({
         <section className="room-lobby-section">
           <SectionHeading
             description={`当前玩家 ${playerCount}/${playerLimit} · 观战 ${spectatorCount} · ${
-              mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始"
+              mode === "relay" ? "固定 2 人" : "至少 2 人且全员准备后开始。"
             }`}
             title="房间成员"
           />
@@ -240,7 +240,8 @@ export function RoomLobby({
                       limitDraft === playerLimit ||
                       settingsLocked
                     }
-                    folded={false}
+                    filled
+                    folded
                     onClick={applyLimit}
                   >
                     应用

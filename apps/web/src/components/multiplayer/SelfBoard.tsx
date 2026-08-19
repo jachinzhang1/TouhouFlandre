@@ -1,7 +1,7 @@
 "use client";
 
-// 自视角棋盘（08 §10.2）：猜测表格（列标签一次于表头，复用单人 feedback 语义类）。
-// 搜索输入已移至底部固定条 GuessInputBar；反馈全部来自 API/事件，客户端不自行计算。
+// 自视角棋盘：把权威猜测结果转换为单人模式台账行；客户端不重新计算反馈。
+// 搜索与提交由页面底部的 multiplayer command deck 处理。
 import { useMemo } from "react";
 import { isUnlimitedGuessLimit } from "@touhouflandre/shared";
 import type { GuessField, GuessResult } from "@touhouflandre/shared";
@@ -50,7 +50,7 @@ export function SelfBoard({
 
   return (
     <GuessTable
-      title="我"
+      title="我的棋盘"
       subtitle={subtitle}
       rows={rows}
       emptyLabel={playing ? "搜索角色开始猜测。" : "本局尚未猜测。"}

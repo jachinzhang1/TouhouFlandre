@@ -468,27 +468,6 @@
   font-size: 0.8rem;
 }
 
-.paper-segment-group.stats-history-pagination {
-  display: inline-flex;
-  align-items: stretch;
-  gap: 0;
-  color: var(--ink-soft);
-  font-size: 0.78rem;
-}
-
-.stats-history-page-counter {
-  display: inline-flex;
-  min-width: 64px;
-  min-height: 48px;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink);
-  font-size: 0.78rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-}
-
 .stats-dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -751,7 +730,7 @@
   .stats-history-rounds {
     min-width: 0;
     margin-inline: 0;
-    padding: 12px 0;
+    padding: 12px 16px;
   }
 
   .stats-history-round {

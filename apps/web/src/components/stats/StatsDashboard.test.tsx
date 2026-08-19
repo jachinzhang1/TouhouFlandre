@@ -271,7 +271,7 @@ describe("StatsDashboard", () => {
     expect(nextIcon).toBeTruthy();
     expect(nextIcon?.getAttribute("width")).toBe("20");
     const pageCounter = pager.querySelector(
-      ".stats-history-page-counter",
+      ".paper-pagination-counter",
     ) as HTMLElement;
     expect(pageCounter.dataset.paperVariant).toBe("plain");
     expect(pageCounter.textContent).toContain("1 / 1");

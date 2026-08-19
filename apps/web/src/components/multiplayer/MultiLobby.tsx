@@ -85,7 +85,6 @@ export function MultiLobby() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
   const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
-
   useEffect(() => {
     return installGameSeedConsole({
       page: "multiplayer",

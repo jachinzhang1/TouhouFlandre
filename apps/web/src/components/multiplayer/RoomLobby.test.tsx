@@ -138,7 +138,10 @@ describe("RoomLobby", () => {
     fireEvent.change(limit, {
       target: { value: "6" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "应用" }));
+    const applyButton = screen.getByRole("button", { name: "应用" });
+    expect(applyButton.dataset.paperVariant).toBe("tinted");
+    expect(applyButton.dataset.paperFolded).toBe("true");
+    fireEvent.click(applyButton);
     await waitFor(() => expect(apply).toHaveBeenCalledWith(6));
     const limitGroup = screen.getByRole("group", { name: "玩家上限" });
     expect(limitGroup.classList.contains("paper-segment-group")).toBe(true);

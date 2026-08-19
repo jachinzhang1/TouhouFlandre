@@ -17,8 +17,10 @@ describe("SelfBoard", () => {
 
     const status = screen.getByText("超时跳过");
     const row = status.closest("tr");
-    expect(row?.querySelectorAll("td")).toHaveLength(1);
+    expect(row?.querySelectorAll("td")).toHaveLength(6);
     expect(row?.querySelector(".avatar")).toBeNull();
     expect(row?.textContent).not.toContain("超超时空过");
+    expect(status.closest(".multiplayer-board")).toBeTruthy();
+    expect(status.closest(".multiplayer-board-paper")).toBeTruthy();
   });
 });

@@ -19,7 +19,7 @@ describe("MemberPaginator", () => {
     });
   });
 
-  it("mounts only the current desktop page", () => {
+  it("uses shared Paper pagination and mounts only the current page", () => {
     render(
       <MemberPaginator
         items={items}
@@ -28,10 +28,18 @@ describe("MemberPaginator", () => {
       />,
     );
     expect(screen.getAllByText(/member-/)).toHaveLength(2);
+    const pager = screen.getByRole("group", { name: "boards翻页" });
+    expect(pager.classList.contains("paper-pagination")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "boards下一页" }));
+    expect(screen.getByText("2 / 3")).toBeTruthy();
     expect(
       screen.getAllByText(/member-/).map((node) => node.textContent),
     ).toEqual(["member-3", "member-4"]);
+    fireEvent.click(screen.getByRole("button", { name: "boards下一页" }));
+    expect(screen.getByText("3 / 3")).toBeTruthy();
+    expect(
+      screen.getAllByText(/member-/).map((node) => node.textContent),
+    ).toEqual(["member-5"]);
   });
 
   it("mounts one board on a mobile viewport", () => {

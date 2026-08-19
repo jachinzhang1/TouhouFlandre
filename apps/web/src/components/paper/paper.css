@@ -741,6 +741,28 @@ html[data-theme-mode="dark"] {
   );
 }
 
+.paper-segment-group.paper-pagination {
+  display: inline-grid;
+  grid-template-columns: 48px 1px minmax(64px, auto) 1px 48px;
+  align-items: stretch;
+  gap: 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+}
+
+.paper-pagination-counter {
+  display: inline-flex;
+  min-width: 64px;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .paper-segment-group
     > .paper-surface[data-paper-variant="plain"]:hover:not(:disabled):not(

@@ -59,7 +59,8 @@ export function installAnnouncementDevelopmentTools(): () => void {
     if (tools.resetAnnouncementReadStatus === resetAnnouncementReadStatus) {
       delete tools.resetAnnouncementReadStatus;
     }
-    if (Object.keys(tools).length === 0) delete window.__touhouflandreDev;
+    if (Object.keys(tools).length === 0 && window.__touhouflandreDev === tools)
+      delete window.__touhouflandreDev;
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { History, RefreshCw, Smile } from "lucide-react";
+import { History, RefreshCw, Send, Smile } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { components } from "../../generated/api";
 import {
@@ -25,7 +25,7 @@ interface ChatDockProps {
   viewer: ParticipantView | null;
   chat: RoomChatState;
   disabled?: boolean;
-  inline?: boolean;
+  placement?: "inline" | "fixed" | "deck";
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
   onRetry: (clientMessageId: string) => Promise<void>;
@@ -42,7 +42,7 @@ export function ChatDock({
   roomId,
   viewer,
   chat,
-  inline = false,
+  placement = "fixed",
   disabled = false,
   sendEnabled = true,
   onSend,
@@ -170,14 +170,18 @@ export function ChatDock({
     historyDisabled || viewer?.status !== "connected" || !sendEnabled;
   const canSend = !inputDisabled && draft.trim().length > 0;
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const sendDraft = async () => {
     if (!canSend) return;
     const queued = await onSend(draft);
     if (queued) {
       setDraft("");
       setEmojiOpen(false);
     }
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    await sendDraft();
   };
 
   const insertEmoji = (emoji: string) => {
@@ -187,21 +191,19 @@ export function ChatDock({
   };
 
   const toggleReceiveChat = () => {
-    setReceiveChatPreference((current) => ({
-      storageKey,
-      value: current.storageKey === storageKey ? !current.value : false,
-    }));
+    setReceiveChatPreference({ storageKey, value: !receiveChat });
     onClearError();
   };
 
+  const placementClass =
+    placement === "inline"
+      ? "chat-dock-inline"
+      : placement === "deck"
+        ? "chat-dock-deck"
+        : "chat-dock-fixed";
+
   return (
-    <div
-      className={
-        inline
-          ? "chat-dock chat-dock-inline"
-          : "chat-dock chat-dock-fixed fixed left-4 z-[45] w-[min(420px,calc(100vw-32px))]"
-      }
-    >
+    <div className={`chat-dock ${placementClass}`}>
       <div className="pointer-events-none absolute right-12 bottom-full left-10 mb-2 flex flex-col gap-2">
         {toasts.map((toast) => (
           <ChatToastCard
@@ -275,25 +277,28 @@ export function ChatDock({
         ) : null}
       </Paper>
 
-      <form onSubmit={handleSubmit} className="chat-dock-form">
+      <form
+        aria-label="房间聊天"
+        onSubmit={handleSubmit}
+        className="chat-dock-form"
+      >
+        <PaperButton
+          ariaLabel="展开聊天记录"
+          ariaPressed={historyOpen}
+          className="chat-dock-standalone-button"
+          disabled={historyDisabled}
+          folded={false}
+          iconOnly
+          onClick={() => setHistoryOpen((current) => !current)}
+          title="聊天记录"
+        >
+          <History size={18} aria-hidden="true" />
+        </PaperButton>
+
         <PaperSegmentGroup
           className="chat-dock-composer-group"
-          label="房间聊天"
+          label="消息编辑"
         >
-          <PaperSegmentButton
-            active={historyOpen}
-            ariaLabel="展开聊天记录"
-            className="chat-dock-composer-button"
-            disabled={historyDisabled}
-            folded={false}
-            onClick={() => setHistoryOpen((current) => !current)}
-            title="聊天记录"
-          >
-            <History size={18} aria-hidden="true" />
-          </PaperSegmentButton>
-
-          <PaperSegmentSeparator />
-
           <div className="chat-dock-input-shell">
             <PaperTextInput
               ariaLabel="聊天输入"
@@ -310,64 +315,82 @@ export function ChatDock({
               placeholder="请输入消息"
               value={draft}
             />
-            <PaperButton
-              ariaLabel="选择表情"
-              className="chat-dock-emoji-button"
-              compact
-              disabled={inputDisabled}
-              folded={false}
-              iconOnly
-              onClick={() => setEmojiOpen((current) => !current)}
-              title="表情"
-            >
-              <Smile size={17} aria-hidden="true" />
-            </PaperButton>
-            {emojiOpen && !inputDisabled ? (
-              <Paper
-                animateOnMount={false}
-                as="div"
-                className="chat-dock-emoji-menu"
-                elevation="lg"
-                folded={false}
-                sticker={false}
-                pattern={false}
-                unfoldOnHover={false}
-              >
-                {CHAT_EMOJI_WHITELIST.map((emoji) => (
-                  <PaperButton
-                    ariaLabel={`插入表情 ${emoji}`}
-                    className="chat-dock-emoji-option"
-                    compact
-                    folded={false}
-                    iconOnly
-                    key={emoji}
-                    onClick={() => insertEmoji(emoji)}
-                  >
-                    {emoji}
-                  </PaperButton>
-                ))}
-              </Paper>
-            ) : null}
           </div>
 
           <PaperSegmentSeparator />
 
-          <PaperSegmentButton
-            active={!muted}
-            ariaLabel={muted ? "开启聊天" : "关闭聊天"}
+          <PaperButton
+            ariaLabel="选择表情"
+            ariaPressed={emojiOpen}
             className="chat-dock-composer-button"
-            disabled={disabled || !viewer}
+            disabled={inputDisabled}
             folded={false}
-            onClick={toggleReceiveChat}
-            title={muted ? "开启聊天" : "关闭聊天"}
+            iconOnly
+            onClick={() => setEmojiOpen((current) => !current)}
+            title="表情"
           >
-            {muted ? <MessageCircleOffIcon /> : <MessageCircleCheckIcon />}
-          </PaperSegmentButton>
+            <Smile size={18} aria-hidden="true" />
+          </PaperButton>
+
+          <PaperSegmentSeparator />
+
+          <PaperButton
+            ariaLabel="发送消息"
+            className="chat-dock-composer-button"
+            disabled={!canSend}
+            filled
+            folded
+            iconOnly
+            onClick={() => void sendDraft()}
+            title="发送"
+          >
+            <Send size={18} aria-hidden="true" />
+          </PaperButton>
         </PaperSegmentGroup>
+
+        <PaperButton
+          ariaLabel={muted ? "开启聊天" : "关闭聊天"}
+          ariaPressed={!muted}
+          className="chat-dock-standalone-button"
+          disabled={disabled || !viewer}
+          folded={false}
+          iconOnly
+          onClick={toggleReceiveChat}
+          title={muted ? "开启聊天" : "关闭聊天"}
+        >
+          {muted ? <MessageCircleOffIcon /> : <MessageCircleCheckIcon />}
+        </PaperButton>
+
+        {emojiOpen && !inputDisabled ? (
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="chat-dock-emoji-menu"
+            elevation="lg"
+            folded={false}
+            sticker={false}
+            pattern={false}
+            unfoldOnHover={false}
+          >
+            {CHAT_EMOJI_WHITELIST.map((emoji) => (
+              <PaperButton
+                ariaLabel={`插入表情 ${emoji}`}
+                className="chat-dock-emoji-option"
+                compact
+                folded={false}
+                iconOnly
+                key={emoji}
+                onClick={() => insertEmoji(emoji)}
+              >
+                {emoji}
+              </PaperButton>
+            ))}
+          </Paper>
+        ) : null}
       </form>
 
       {chat.sendError ? (
-        <p className="mt-1 pl-12 text-[0.72rem] font-semibold text-vermilion">
+        <p className="mt-1 pl-14 text-[0.72rem] font-semibold text-vermilion">
           {chat.sendError}
         </p>
       ) : null}
