@@ -34,43 +34,6 @@ const platformStyles = {
 
 export const creditSections: CreditSectionDefinition[] = [
   {
-    title: "素材提供",
-    entries: [
-      {
-        title: "苗库里 - 东方像素肖像素材包",
-        avatarUrl:
-          "https://i1.hdslb.com/bfs/face/1672120a2cd546f9046f33abde0f5f388e810b5c.jpg@160w_160h_1c_1s.webp",
-        subtitle: "东方全角色像素肖像素材包原作者",
-        links: [
-          {
-            name: "Bilibili",
-            href: "https://space.bilibili.com/152309938",
-            Icon: SiBilibili,
-            className: platformStyles.bilibili,
-          },
-        ],
-      },
-      {
-        title: `${HOME_ARTWORK_CREDIT.artistName} - Pixiv 作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
-        subtitle: "首页背景视觉素材来源",
-        links: [
-          {
-            name: `作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
-            href: HOME_ARTWORK_CREDIT.artworkUrl,
-            Icon: SiPixiv,
-            className: platformStyles.pixiv,
-          },
-          {
-            name: `画师 ${HOME_ARTWORK_CREDIT.artistName}`,
-            href: HOME_ARTWORK_CREDIT.artistUrl,
-            Icon: SiPixiv,
-            className: platformStyles.pixiv,
-          },
-        ],
-      },
-    ],
-  },
-  {
     title: "开发者",
     entries: [
       {
@@ -182,6 +145,43 @@ export const creditSections: CreditSectionDefinition[] = [
             href: "https://space.bilibili.com/3546908777777221",
             Icon: SiBilibili,
             className: platformStyles.bilibili,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    title: "素材提供",
+    entries: [
+      {
+        title: "苗库里 - 东方像素肖像素材包",
+        avatarUrl:
+          "https://i1.hdslb.com/bfs/face/1672120a2cd546f9046f33abde0f5f388e810b5c.jpg@160w_160h_1c_1s.webp",
+        subtitle: "东方全角色像素肖像素材包原作者",
+        links: [
+          {
+            name: "Bilibili",
+            href: "https://space.bilibili.com/152309938",
+            Icon: SiBilibili,
+            className: platformStyles.bilibili,
+          },
+        ],
+      },
+      {
+        title: `${HOME_ARTWORK_CREDIT.artistName} - Pixiv 作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
+        subtitle: "首页背景视觉素材来源",
+        links: [
+          {
+            name: `作品 ${HOME_ARTWORK_CREDIT.artworkId}`,
+            href: HOME_ARTWORK_CREDIT.artworkUrl,
+            Icon: SiPixiv,
+            className: platformStyles.pixiv,
+          },
+          {
+            name: `画师 ${HOME_ARTWORK_CREDIT.artistName}`,
+            href: HOME_ARTWORK_CREDIT.artistUrl,
+            Icon: SiPixiv,
+            className: platformStyles.pixiv,
           },
         ],
       },

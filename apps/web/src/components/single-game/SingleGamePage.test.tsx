@@ -11,6 +11,26 @@ const playingSession = {
   status: "playing",
   puzzleKey: "2026-08-05",
   maxGuesses: 8,
+  questionScope: {
+    schemaVersion: 2,
+    catalogVersion: "v2",
+    mode: "preset",
+    difficulty: "normal",
+    selectedCharacterIds: [],
+    workStates: [],
+    rules: {
+      fields: {
+        firstAppearance: true,
+        releaseYear: "directional",
+        species: true,
+        affiliations: true,
+        locations: true,
+        hairColors: true,
+      },
+      turnLimit: { enabled: false, seconds: 30 },
+      guessLimit: { enabled: true, maxGuesses: 8 },
+    },
+  },
   startedAt: new Date(Date.now() - 65_000).toISOString(),
   guesses: [],
 } as unknown as PublicGameSession;
@@ -404,6 +424,7 @@ describe("SingleGamePage", () => {
   });
 
   it("forfeits the current session and reveals the answer", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     vi.mocked(api.catalog).mockResolvedValue({
       dailyDateKey: "2026-08-05",
       contents: [],
@@ -440,6 +461,8 @@ describe("SingleGamePage", () => {
     expect(
       screen.getByText("--:--", { selector: ".guess-duration" }),
     ).toBeTruthy();
+    expect(confirm).toHaveBeenCalledOnce();
+    confirm.mockRestore();
   });
 
   it("restores the same daily session and keeps its guesses", async () => {
@@ -483,6 +506,38 @@ describe("SingleGamePage", () => {
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-next-day",
     );
+    expect(api.forfeitSession).not.toHaveBeenCalled();
+  });
+
+  it("replaces a daily session stored under the wrong difficulty", async () => {
+    localStorage.setItem(
+      "touhouflandre:daily-session",
+      JSON.stringify({ id: "sess-hard", puzzleKey: "2026-08-05" }),
+    );
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...sessionWithGuess,
+      id: "sess-hard",
+      questionScope: {
+        ...sessionWithGuess.questionScope,
+        difficulty: "hard",
+      },
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: nextDailySession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+
+    render(<SingleGamePage mode="daily" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
+      "sess-next-day",
+    );
+    expect(api.forfeitSession).not.toHaveBeenCalled();
   });
 
   it("requires confirmation before discarding random progress", async () => {
@@ -633,5 +688,64 @@ describe("SingleGamePage", () => {
         expect.objectContaining({ sessionId: "sess-1" }),
       ),
     );
+  });
+  it("restores focus after Enter submits a selected daily guess", async () => {
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+    vi.mocked(api.submitGuess).mockImplementation(async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      return sessionWithGuess as never;
+    });
+
+    render(<SingleGamePage mode="daily" />);
+    const input = await screen.findByLabelText("搜索东方角色");
+    await userEvent.type(input, "帕秋莉");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
+
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(api.submitGuess).toHaveBeenCalledWith(
+        "sess-1",
+        "patchouli_knowledge",
+        undefined,
+      ),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("restores focus after Enter submits a selected random guess", async () => {
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "随机题",
+    } as never);
+    vi.mocked(api.submitGuess).mockImplementation(async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      return sessionWithGuess as never;
+    });
+
+    render(<SingleGamePage mode="random" />);
+    const input = await screen.findByLabelText("搜索东方角色");
+    await userEvent.type(input, "帕秋莉");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
+
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(api.submitGuess).toHaveBeenCalledWith(
+        "sess-1",
+        "patchouli_knowledge",
+        undefined,
+      ),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(input));
   });
 });

@@ -38,6 +38,7 @@ import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { api } from "../../lib/api";
 import { useForegroundTimer, useWallClockTimer } from "../../stats/timer";
 import {
+  deleteSingleStatsDraft,
   loadSingleStatsDraft,
   recordSingleSession,
   saveSingleStatsDraft,
@@ -228,6 +229,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [messageApi, messageContextHolder] = antdMessage.useMessage();
   const listboxId = useId();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const loadRequestIdRef = useRef(0);
   const developmentSeedActiveRef = useRef(false);
   const developmentResultReplayRef = useRef(0);
@@ -255,6 +257,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [timingOut, setTimingOut] = useState(false);
   const [message, setMessage] = useState("");
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
   const [initialElapsedMs, setInitialElapsedMs] = useState(0);
   const [guessCompletedElapsedMs, setGuessCompletedElapsedMs] = useState<
     number[]
@@ -321,6 +324,20 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   );
   const maxGuesses = session?.maxGuesses ?? CHARACTER_GAME.maxGuesses;
   const hasUnlimitedGuesses = isUnlimitedGuessLimit(maxGuesses);
+
+  useEffect(() => {
+    if (!restoreFocusRequested) return;
+    if (isFinished || !session) {
+      setRestoreFocusRequested(false);
+      return;
+    }
+    if (gameInputDisabled) return;
+    const timeout = window.setTimeout(() => {
+      inputRef.current?.focus();
+      setRestoreFocusRequested(false);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [gameInputDisabled, isFinished, restoreFocusRequested, session]);
 
   const persistSession = (
     nextMode: SinglePlayerGameMode,
@@ -415,7 +432,13 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           const storedSession = parseStoredSession(storedValue);
           const restored = await api.getSession(storedSession.id);
           if (!isCurrentRequest()) return;
-          if (nextMode === "daily" && restored.puzzleKey !== dailyDateKey) {
+          const restoredDifficulty = restored.questionScope?.difficulty;
+          const mismatchedSession =
+            restored.mode !== nextMode ||
+            (nextMode === "daily" &&
+              (restored.puzzleKey !== dailyDateKey ||
+                restoredDifficulty !== difficulty));
+          if (mismatchedSession) {
             const oldTimings = normalizeGuessTimings(
               storedSession.guessCompletedElapsedMs ??
                 storedSession.guessCompletedElapsedSeconds?.map(
@@ -427,25 +450,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               0,
               storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0,
             );
-            if (restored.status === "playing" && restored.guesses.length > 0) {
-              try {
-                const forfeited = await api.forfeitSession(restored.id);
-                writeStatsInBackground(
-                  recordSingleSession(
-                    forfeited,
-                    nextMode,
-                    oldElapsed,
-                    oldTimings,
-                    "abandoned",
-                  ),
-                );
-              } catch {
-                // 跨日旧会话可能已过期；不阻塞创建当天新题。
-              }
-            } else if (restored.status !== "playing") {
+            if (restored.status !== "playing") {
               writeStatsInBackground(
                 recordSingleSession(restored, nextMode, oldElapsed, oldTimings),
               );
+            } else {
+              writeStatsInBackground(deleteSingleStatsDraft(restored.id));
             }
             localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
           } else {
@@ -742,7 +752,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     dailyDifficulty,
   ]);
 
-  const submitGuess = async (guessId = selectedId) => {
+  const submitGuess = async (
+    guessId = selectedId,
+    options?: { restoreFocus?: boolean },
+  ) => {
     if (developmentSeedActiveRef.current) {
       setMessage(
         "调试种子为只读；请切换种子或运行 __touhouflandreDev.game.reset() 恢复真实题局。",
@@ -755,7 +768,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     const completedElapsedMs = checkpoint();
 
     try {
-      const payload = await api.submitGuess(session.id, guessId);
+      const payload = await api.submitGuess(
+        session.id,
+        guessId,
+        turnLimitEnabled ? session.guesses.length : undefined,
+      );
       const nextGuessCompletedElapsedMs = [
         ...guessCompletedElapsedMs,
         completedElapsedMs,
@@ -798,6 +815,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       setMessage(error instanceof Error ? error.message : "提交失败。");
     } finally {
       setSubmitting(false);
+      if (options?.restoreFocus) setRestoreFocusRequested(true);
     }
   };
 
@@ -822,7 +840,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       (guessCompletedElapsedMs.at(-1) ?? 0) + turnLimitSeconds * 1000;
 
     try {
-      const payload = await api.timeoutSession(session.id);
+      const payload = await api.timeoutSession(
+        session.id,
+        session.guesses.length,
+      );
       const nextGuessCompletedElapsedMs = [
         ...guessCompletedElapsedMs,
         completedElapsedMs,
@@ -920,6 +941,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       isFinished
     )
       return;
+    if (!window.confirm("放弃后本局会立即判负且无法恢复，确定继续吗？")) return;
     setEndingSession(true);
     setMessage("");
     const completedElapsedMs = checkpoint();
@@ -1054,8 +1076,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         <form
           className="guess-form"
           onSubmit={(event) => {
+            const restoreFocus = document.activeElement === inputRef.current;
             event.preventDefault();
-            void submitGuess();
+            void submitGuess(undefined, { restoreFocus });
           }}
         >
           <PaperSegmentGroup
@@ -1076,6 +1099,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 className="single-game-search-control"
                 containerRef={searchBoxRef}
                 disabled={gameInputDisabled}
+                inputRef={inputRef}
                 folded={false}
                 onBlur={() => setActiveSuggestionId("")}
                 onChange={(event) => {
@@ -1108,6 +1132,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     }
                   }
                 }}
+
                 placeholder="输入角色名、别名或初登场作品"
                 value={query}
               />

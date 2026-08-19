@@ -3,6 +3,7 @@ import type {
   MemberResultView,
   MemberScoreView,
   MultiMatchResult,
+  RoundEndedPayload,
 } from "@touhouflandre/shared";
 
 type MemberRef = { memberId: string; seat: number };
@@ -44,6 +45,24 @@ export function boardForMemberId(
   memberId: string | null | undefined,
 ): MemberBoardView["guesses"] {
   return memberForMemberId(boards, memberId)?.guesses ?? [];
+}
+
+export function isActiveMatchMember(
+  scores: readonly MemberScoreView[] | undefined,
+  memberId: string | null | undefined,
+): boolean {
+  if (!memberId) return false;
+  const score = memberForMemberId(scores, memberId);
+  return !score || score.status === undefined || score.status === "active";
+}
+
+export function isRoundArchiveParticipant(
+  archive: Pick<RoundEndedPayload, "placements">,
+  memberId: string | null | undefined,
+): boolean {
+  if (!memberId) return false;
+  if (!archive.placements?.length) return true;
+  return archive.placements.some((entry) => entry.memberId === memberId);
 }
 
 export function resultForMemberId(

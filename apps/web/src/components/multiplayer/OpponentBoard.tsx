@@ -13,10 +13,12 @@ import { GuessTable, type GuessRow } from "../game/GuessTable";
 type OpponentRow = components["schemas"]["OpponentRow"];
 
 export function OpponentBoard({
+  title = "对手棋盘",
   rows,
   fields,
   fieldOrder,
 }: {
+  title?: string;
   rows: OpponentRow[];
   fields?: readonly GuessField[];
   fieldOrder?: readonly GuessFieldKey[];
@@ -33,7 +35,7 @@ export function OpponentBoard({
 
   return (
     <GuessTable
-      title="对手棋盘"
+      title={title}
       subtitle="仅显示反馈状态，具体角色与属性值将在局末揭示。"
       variant="opponent"
       rows={tableRows}

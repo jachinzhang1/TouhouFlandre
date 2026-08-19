@@ -21,6 +21,8 @@ import {
 } from "../../domain/multiRoom";
 import type { StoredMultiRoom } from "../../domain/multiRoom";
 import {
+  isActiveMatchMember,
+  isRoundArchiveParticipant,
   resultForMemberId,
   seatForMemberId,
 } from "../../domain/memberCollections";
@@ -43,6 +45,7 @@ import { MatchBoard } from "./MatchBoard";
 import { MatchResultOverlay } from "./MatchResultOverlay";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
+import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import { ChatDock } from "./ChatDock";
 import { RelayMatchBoard } from "./RelayMatchBoard";
 import { RoomLobby } from "./RoomLobby";
@@ -930,6 +933,7 @@ function SpectatorRoom({
         ) : (
           <SpectatorRaceBoards
             boards={displayArchive?.boards ?? state.round?.boards ?? []}
+            scores={state.match?.scores}
             members={state.members}
             fields={fields}
             archive={displayArchive}
@@ -984,17 +988,24 @@ function SpectatorArchiveBar({
 
 function SpectatorRaceBoards({
   boards,
+  scores,
   members,
   fields,
   archive,
 }: {
   boards: SpectatorBoards;
+  scores?: NonNullable<RoomUiState["match"]>["scores"];
   members: components["schemas"]["MemberView"][];
   fields: readonly GuessField[];
   archive: RoundEndedPayload | null;
 }) {
   const forfeitedMemberId = archive?.forfeitedMemberId;
-  const ordered = [...boards].sort((a, b) => a.seat - b.seat);
+  const visibleBoards = archive
+    ? boards.filter((board) =>
+        isRoundArchiveParticipant(archive, board.memberId),
+      )
+    : boards.filter((board) => isActiveMatchMember(scores, board.memberId));
+  const ordered = [...visibleBoards].sort((a, b) => a.seat - b.seat);
   const toRows = (memberId: string): GuessRow[] => {
     const board =
       boards.find((entry) => entry.memberId === memberId)?.guesses ?? [];
@@ -1018,31 +1029,33 @@ function SpectatorRaceBoards({
     }
     return rows;
   };
-  const winnerBadge = (
-    <span className="rounded bg-jade-soft px-2 py-0.5 text-[0.68rem] font-black text-jade">
-      胜利
-    </span>
-  );
   const winnerMemberId = archive?.winnerMemberId;
   return (
     <MemberPaginator
       items={ordered}
       label="玩家棋盘"
-      renderItem={(board) => (
-        <GuessTable
-          key={board.memberId}
-          title={
-            members.find((member) => member.memberId === board.memberId)
-              ?.displayName ?? `玩家 ${board.seat}`
-          }
-          subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
-          headerExtra={winnerMemberId === board.memberId ? winnerBadge : null}
-          rows={toRows(board.memberId)}
-          emptyLabel="该玩家暂无猜测。"
-          fields={fields}
-          highlight={winnerMemberId === board.memberId}
-        />
-      )}
+      renderItem={(board) => {
+        const winner = winnerMemberId === board.memberId;
+        const eliminated = Boolean(
+          archive?.eliminatedMemberIds?.includes(board.memberId),
+        );
+        return (
+          <GuessTable
+            key={board.memberId}
+            title={formatBoardTitle(
+              members.find((member) => member.memberId === board.memberId),
+              board.seat,
+            )}
+            subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
+            headerExtra={boardResultBadges({ winner, eliminated })}
+            rows={toRows(board.memberId)}
+            emptyLabel="该玩家暂无猜测。"
+            fields={fields}
+            highlight={winner || eliminated}
+            highlightTone={eliminated ? "danger" : "success"}
+          />
+        );
+      }}
     />
   );
 }

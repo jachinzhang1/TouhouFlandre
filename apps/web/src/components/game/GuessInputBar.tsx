@@ -2,7 +2,7 @@
 
 // 与单人模式一致的“先选择、再提交”猜测组件；定位由多人 command deck 负责。
 import { Loader2, Search, Send, X } from "lucide-react";
-import { useEffect, useId, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
@@ -23,7 +23,7 @@ export function GuessInputBar({
   guessedIds,
   statusMessage,
 }: {
-  onGuess: (guessId: string) => void;
+  onGuess: (guessId: string) => void | Promise<void>;
   disabled?: boolean;
   catalogVersion?: string;
   guessedIds: ReadonlySet<string>;
@@ -33,6 +33,8 @@ export function GuessInputBar({
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { results, loading, error } = useCharacterSearch(query, {
     enabled: Boolean(catalogVersion) && !disabled,
     limit: GAME_SEARCH_RESULT_LIMIT,
@@ -55,18 +57,28 @@ export function GuessInputBar({
     setSelectedId("");
   }, [disabled]);
 
+  useEffect(() => {
+    if (!restoreFocusRequested || disabled) return;
+    const timeout = window.setTimeout(() => {
+      inputRef.current?.focus();
+      setRestoreFocusRequested(false);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [disabled, restoreFocusRequested]);
+
   const selectResult = (result: (typeof selectableResults)[number]) => {
     setQuery(result.name);
     setSelectedId(result.id);
     setHighlightIndex(0);
   };
 
-  const submitSelected = () => {
+  const submitSelected = (restoreFocus = false) => {
     if (submitDisabled) return;
-    onGuess(selectedId);
+    void onGuess(selectedId);
     setQuery("");
     setSelectedId("");
     setHighlightIndex(0);
+    if (restoreFocus) setRestoreFocusRequested(true);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -103,8 +115,9 @@ export function GuessInputBar({
         <form
           className="multiplayer-guess-form"
           onSubmit={(event) => {
+            const restoreFocus = document.activeElement === inputRef.current;
             event.preventDefault();
-            submitSelected();
+            submitSelected(restoreFocus);
           }}
         >
           <PaperSegmentGroup
@@ -124,6 +137,7 @@ export function GuessInputBar({
                 ariaLabel="搜索角色"
                 className="single-game-search-control"
                 disabled={disabled}
+                inputRef={inputRef}
                 folded={false}
                 endAdornment={
                   query ? (

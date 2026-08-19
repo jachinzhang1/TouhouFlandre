@@ -725,6 +725,10 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   outline-offset: -2px;
 }
 
+.multiplayer-board[data-highlight-tone="danger"] .multiplayer-board-paper {
+  outline-color: var(--semantic-danger);
+}
+
 .multiplayer-board-empty-row td {
   height: 150px;
   color: var(--ink-soft);

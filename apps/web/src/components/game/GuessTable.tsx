@@ -52,6 +52,7 @@ export function GuessTable({
   variant = "self",
   fields = CHARACTER_GUESS_FIELDS,
   highlight = false,
+  highlightTone = "success",
 }: {
   title?: string;
   subtitle?: ReactNode;
@@ -61,6 +62,7 @@ export function GuessTable({
   variant?: GuessTableVariant;
   fields?: readonly GuessField[];
   highlight?: boolean;
+  highlightTone?: "success" | "danger";
 }) {
   const isOpponent = variant === "opponent";
 
@@ -69,6 +71,7 @@ export function GuessTable({
       className="multiplayer-board"
       data-board-variant={variant}
       data-highlight={highlight ? "true" : "false"}
+      data-highlight-tone={highlight ? highlightTone : undefined}
     >
       {title || subtitle || headerExtra ? (
         <SectionHeading
@@ -76,7 +79,7 @@ export function GuessTable({
           className="multiplayer-board-heading"
           description={subtitle}
           title={title ?? "棋盘"}
-          titleAs="div"
+          titleAs="h2"
         />
       ) : null}
       <div className="multiplayer-board-scroll">
@@ -87,7 +90,7 @@ export function GuessTable({
           className="paper-data-table multiplayer-board-paper"
           folded={false}
           pattern={false}
-          tone={highlight ? "success" : "default"}
+          tone={highlight ? highlightTone : "default"}
           sticker={false}
           unfoldOnHover={false}
           variant="plain"

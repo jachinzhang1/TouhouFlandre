@@ -1,6 +1,7 @@
 // 底部搜索条键盘导航（↑↓ 移动指针、Enter 提交高亮项；默认指向第一项）。
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { GuessInputBar } from "./GuessInputBar";
 
 vi.mock("../../hooks/useCharacterSearch", () => {
@@ -91,6 +92,42 @@ describe("GuessInputBar", () => {
     expect(onGuess).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "提交猜测" }));
     expect(onGuess).toHaveBeenCalledWith("reimu_hakurei");
+  });
+
+  it("restores focus after Enter submits a suggestion that temporarily disables the bar", async () => {
+    const handleGuess = vi.fn();
+    function Harness() {
+      const [disabled, setDisabled] = useState(false);
+      return (
+        <GuessInputBar
+          onGuess={async (guessId) => {
+            handleGuess(guessId);
+            setDisabled(true);
+            (document.activeElement as HTMLElement | null)?.blur();
+            await Promise.resolve();
+            setDisabled(false);
+          }}
+          catalogVersion="v1"
+          guessedIds={new Set()}
+          disabled={disabled}
+        />
+      );
+    }
+
+    render(<Harness />);
+    const input = screen.getByRole("combobox");
+    input.focus();
+    fireEvent.change(input, { target: { value: "灵梦" } });
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: /博丽灵梦/ })).toBeTruthy(),
+    );
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect((input as HTMLInputElement).value).toBe("博丽灵梦");
+    fireEvent.submit(input.closest("form")!);
+
+    expect(handleGuess).toHaveBeenCalledWith("reimu_hakurei");
+    await waitFor(() => expect(document.activeElement).toBe(input));
   });
 
   it("在多人底部输入栏展示共用反馈图例", () => {

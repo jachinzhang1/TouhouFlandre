@@ -8,12 +8,14 @@ export function PaperSearchInput({
   containerRef,
   disabled = false,
   endAdornment,
+  inputRef,
   folded = true,
   ...inputProps
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "aria-label" | "className"> & {
   ariaLabel: string;
   className?: string;
   containerRef?: Ref<HTMLLabelElement>;
+  inputRef?: Ref<HTMLInputElement>;
   endAdornment?: ReactNode;
   folded?: boolean;
 }) {
@@ -35,6 +37,7 @@ export function PaperSearchInput({
           aria-hidden="true"
         />
         <input
+          ref={inputRef}
           {...inputProps}
           aria-label={ariaLabel}
           className="paper-search-control-input"
