@@ -238,25 +238,21 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .multi-lobby-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-  grid-auto-rows: 1fr;
-  column-gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
   align-items: stretch;
 }
 
-.multi-lobby-layout > .paper-segment-separator {
-  height: 100%;
-}
-
-.multi-lobby-pane {
+.paper-surface.multi-lobby-pane {
   display: flex;
   min-width: 0;
   height: 100%;
   flex-direction: column;
+  padding: 28px;
 }
 
 .multi-lobby-pane > .section-heading {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .multi-lobby-fieldset {
@@ -266,60 +262,49 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .multi-lobby-field-label {
   display: block;
-  min-height: 16px;
-  margin-bottom: 7px;
-  color: var(--ink-soft);
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 16px;
+  min-height: 19px;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 19px;
 }
 
-.paper-segment-group.multi-lobby-mode-group,
-.paper-segment-group.multi-lobby-format-group {
+.paper-segment-group.multi-lobby-mode-group {
   display: grid;
   width: 100%;
   grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
 }
 
-.multi-lobby-mode-group .paper-segment-button,
-.multi-lobby-format-group .paper-segment-button {
+.multi-lobby-mode-group .paper-segment-button {
   width: 100%;
   min-width: 0;
-  padding-block: 9px;
+  padding-block: 10px;
 }
 
 .multi-lobby-format-group {
-  grid-template-rows: minmax(48px, auto) 1px minmax(48px, auto);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.multi-lobby-format-group > :nth-child(1) {
-  grid-area: 1 / 1;
-}
-
-.multi-lobby-format-group > :nth-child(2) {
-  grid-area: 1 / 2;
-}
-
-.multi-lobby-format-group > :nth-child(3) {
-  grid-area: 1 / 3;
-}
-
-.multi-lobby-format-group > :nth-child(4) {
+.multi-lobby-format-option {
   width: 100%;
-  height: 1px;
-  grid-area: 2 / 1 / auto / 4;
+  min-height: 64px;
 }
 
-.multi-lobby-format-group > :nth-child(5) {
-  grid-area: 3 / 1;
+.multi-lobby-format-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-brand);
+  font-size: 0.9rem;
+  font-weight: 900;
 }
 
-.multi-lobby-format-group > :nth-child(6) {
-  grid-area: 3 / 2;
-}
-
-.multi-lobby-format-group > :nth-child(7) {
-  grid-area: 3 / 3;
+.multi-lobby-format-check {
+  flex: 0 0 auto;
 }
 
 .multi-lobby-segment-copy {
@@ -330,27 +315,43 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .multi-lobby-segment-description {
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1.35;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.multi-lobby-format-option[aria-checked="true"]
+  .multi-lobby-segment-description,
+.multi-lobby-mode-group
+  .paper-segment-button[aria-pressed="true"]
+  .multi-lobby-segment-description {
+  color: currentColor;
+  opacity: 0.88;
 }
 
 .multi-lobby-four-option-group {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.paper-segment-group.multi-lobby-capacity-control {
-  display: grid;
+.multi-lobby-capacity-control,
+.multi-lobby-capacity-control .paper-range-control {
   width: 100%;
-  grid-template-columns: minmax(0, 1fr) 1px 92px;
-}
-
-.multi-lobby-capacity-control :is(.paper-range-control, .paper-number-control) {
-  height: 48px;
 }
 
 .multi-lobby-capacity-control .paper-range-control {
-  min-width: 0;
+  min-height: 52px;
+  padding-inline: 14px;
+}
+
+.multi-lobby-capacity-control .paper-range-input::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+}
+
+.multi-lobby-capacity-control .paper-range-input::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
 }
 
 .multi-lobby-pane :is(.paper-radio-option, .paper-text-control) {
@@ -367,11 +368,13 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   margin-bottom: 20px;
 }
 
-.multi-lobby-status {
-  margin: -8px 0 12px;
+.multi-lobby-field-help {
+  min-height: 40px;
+  margin: -12px 0 14px;
   color: var(--ink-soft);
-  font-size: 0.72rem;
-  line-height: 1.55;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.6;
 }
 
 .multi-lobby-status-success {
@@ -382,25 +385,34 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   color: var(--semantic-danger);
 }
 
+.multi-lobby-page .page-header-description {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.multi-lobby-pane .section-heading-description {
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .multi-lobby-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .paper-surface.multi-lobby-pane {
+    height: auto;
+  }
+}
+
 @media (max-width: 680px) {
   .multi-lobby-page {
     padding: 28px 18px 80px;
   }
 
-  .multi-lobby-layout {
-    display: block;
-  }
-
-  .multi-lobby-layout > .paper-segment-separator {
-    display: none;
-  }
-
-  .multi-lobby-pane {
-    height: auto;
-  }
-
-  .multi-lobby-layout > .multi-lobby-pane:last-child {
-    margin-top: 48px;
+  .paper-surface.multi-lobby-pane {
+    padding: 22px 20px;
   }
 
   .multi-lobby-four-option-group {

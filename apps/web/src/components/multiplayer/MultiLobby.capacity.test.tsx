@@ -50,16 +50,18 @@ describe("MultiLobby", () => {
     expect(limit.getAttribute("type")).toBe("range");
     expect(limit.getAttribute("min")).toBe("2");
     expect(limit.getAttribute("max")).toBe("8");
-    const stepper = screen.getByLabelText("玩家上限数值");
-    expect(stepper.getAttribute("type")).toBe("number");
-    expect(stepper.getAttribute("min")).toBe("2");
-    expect(stepper.getAttribute("max")).toBe("8");
+    expect(screen.queryByLabelText("玩家上限数值")).toBeNull();
     expect(screen.getByRole("group", { name: "玩家上限" })).toBeTruthy();
+    expect(limit.getAttribute("aria-valuetext")).toBe("2 人");
+    expect(
+      screen.getByText("2 人").classList.contains("paper-range-value"),
+    ).toBe(true);
     expect(screen.getByText("双人赛制")).toBeTruthy();
     fireEvent.change(limit, {
       target: { value: "6" },
     });
-    expect((stepper as HTMLInputElement).value).toBe("6");
+    expect(limit.getAttribute("aria-valuetext")).toBe("6 人");
+    expect(screen.getByText("6 人")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     expect(vi.mocked(api.createRoom).mock.calls[0][0]).toMatchObject({

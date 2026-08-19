@@ -121,6 +121,26 @@ describe("paper numeric controls", () => {
     expect(onChange).toHaveBeenCalledWith(7);
   });
 
+  it("shows an integrated value label and accessible value text", () => {
+    render(
+      <PaperRange
+        ariaLabel="玩家上限"
+        min={2}
+        max={8}
+        value={4}
+        valueLabel="4 人"
+        valueText="4 人"
+        onChange={() => undefined}
+      />,
+    );
+
+    const slider = screen.getByRole("slider", { name: "玩家上限" });
+    expect(slider.getAttribute("aria-valuetext")).toBe("4 人");
+    expect(
+      screen.getByText("4 人").classList.contains("paper-range-value"),
+    ).toBe(true);
+  });
+
   it("renders a standard numeric input with suffix", () => {
     const onChange = vi.fn();
     render(

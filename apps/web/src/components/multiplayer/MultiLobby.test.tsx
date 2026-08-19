@@ -31,11 +31,12 @@ describe("MultiLobby settings navigation", () => {
     expect(
       screen.getByRole("link", { name: "返回" }).getAttribute("href"),
     ).toBe("/single");
-    expect(container.querySelectorAll(".multi-lobby-pane")).toHaveLength(2);
-    expect(
-      container.querySelector(".multi-lobby-pane.paper-surface"),
-    ).toBeNull();
-    expect(container.querySelectorAll(".section-heading")).toHaveLength(2);
+    const panes = container.querySelectorAll(".multi-lobby-pane.paper-surface");
+    expect(panes).toHaveLength(2);
+    for (const pane of panes) {
+      expect((pane as HTMLElement).dataset.paperVariant).toBe("plain");
+      expect((pane as HTMLElement).dataset.paperElevation).toBe("sm");
+    }
     expect(container.querySelector(".section-heading-icon")).toBeNull();
 
     const titleAction = screen.getByRole("button", { name: "题库设置" });
@@ -82,17 +83,20 @@ describe("MultiLobby settings navigation", () => {
     expect(
       screen.getByRole("button", { name: /竞速/ }).dataset.paperFolded,
     ).toBe("false");
-    const formatGroup = screen.getByRole("group", { name: "双人赛制" });
-    expect(formatGroup.classList.contains("paper-segment-group")).toBe(true);
-    expect(formatGroup.querySelectorAll(".paper-segment-button")).toHaveLength(
-      4,
+    const formatGroup = screen.getByRole("radiogroup", {
+      name: "双人赛制",
+    });
+    expect(formatGroup.classList.contains("paper-radio-group")).toBe(true);
+    expect(formatGroup.querySelectorAll('[role="radio"]')).toHaveLength(4);
+    expect(
+      screen.getByRole("radio", { name: /BO3/ }).getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByRole("radio", { name: /BO3/ }).dataset.paperFolded).toBe(
+      "true",
     );
     expect(
-      formatGroup.querySelectorAll(".paper-segment-separator"),
-    ).toHaveLength(3);
-    expect(
-      formatGroup.querySelectorAll(".multi-lobby-segment-copy"),
-    ).toHaveLength(4);
+      screen.getByRole("radio", { name: /BO3/ }).querySelector(".lucide-check"),
+    ).toBeTruthy();
 
     const create = screen.getByRole("button", { name: "创建房间" });
     expect(create.classList.contains("paper-button-filled")).toBe(true);
@@ -100,11 +104,17 @@ describe("MultiLobby settings navigation", () => {
     const join = screen.getByRole("button", { name: "加入房间" });
     expect((join as HTMLButtonElement).disabled).toBe(true);
     expect(join.dataset.paperDisabled).toBe("true");
-    expect(
-      screen.getByRole("button", { name: /BO3/ }).dataset.paperFolded,
-    ).toBe("false");
+    expect(screen.getByRole("radio", { name: /BO3/ }).dataset.paperFolded).toBe(
+      "true",
+    );
     expect(join.dataset.paperVariant).toBe("plain");
     expect(join.classList.contains("paper-button-filled")).toBe(false);
+    expect(
+      screen.getByLabelText("房间号").getAttribute("aria-describedby"),
+    ).toBe("multi-lobby-join-help");
+    expect(document.getElementById("multi-lobby-join-help")?.textContent).toBe(
+      "输入好友分享的 6 位房间号；检查通过后即可加入。",
+    );
     const scope = screen.getByRole("button", {
       name: "查看房主所设题库",
     });
@@ -135,6 +145,12 @@ describe("MultiLobby settings navigation", () => {
     await waitFor(() =>
       expect((view as HTMLButtonElement).disabled).toBe(false),
     );
+    expect(screen.getByText(/已找到房间/)).toBeTruthy();
+    expect(
+      document
+        .getElementById("multi-lobby-join-help")
+        ?.classList.contains("multi-lobby-status-success"),
+    ).toBe(true);
     await userEvent.click(view);
     expect(mocks.push).toHaveBeenCalledWith(
       "/settings?source=multi&room=ABC234",

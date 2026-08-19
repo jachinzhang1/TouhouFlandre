@@ -2,7 +2,7 @@
 
 // 多人大厅（08 §10.1）：创建房间（赛制单选 + 昵称）、加入房间（房间号 + 昵称 + 公开预检）。
 import { useRouter } from "next/navigation";
-import { DoorOpen, Eye, Settings, Users } from "lucide-react";
+import { Check, DoorOpen, Eye, Settings, Users } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -38,7 +38,6 @@ import {
 import {
   Paper,
   PaperButton,
-  PaperNumberInput,
   PaperRadioGroup,
   PaperRadioOption,
   PaperRange,
@@ -208,7 +207,16 @@ export function MultiLobby() {
         ) : null}
 
         <div className="multi-lobby-layout">
-          <section className="multi-lobby-pane">
+          <Paper
+            animateOnMount={false}
+            as="article"
+            className="multi-lobby-pane"
+            elevation="sm"
+            folded={false}
+            pattern={false}
+            sticker={false}
+            unfoldOnHover={false}
+          >
             <SectionHeading
               description="选择玩法和赛制，创建房间后邀请好友加入。"
               title="创建房间"
@@ -275,9 +283,10 @@ export function MultiLobby() {
             {mode === "race" && nPlayerRaceEnabled ? (
               <div className="multi-lobby-fieldset">
                 <span className="multi-lobby-field-label">玩家上限</span>
-                <PaperSegmentGroup
+                <div
+                  aria-label="玩家上限"
                   className="multi-lobby-capacity-control"
-                  label="玩家上限"
+                  role="group"
                 >
                   <PaperRange
                     ariaLabel="玩家上限（2-8）"
@@ -285,48 +294,47 @@ export function MultiLobby() {
                     min={2}
                     onChange={setPlayerLimit}
                     value={playerLimit}
+                    valueLabel={`${playerLimit} 人`}
+                    valueText={`${playerLimit} 人`}
                   />
-                  <PaperSegmentSeparator />
-                  <PaperNumberInput
-                    ariaLabel="玩家上限数值"
-                    max={8}
-                    min={2}
-                    onChange={setPlayerLimit}
-                    suffix="人"
-                    value={playerLimit}
-                  />
-                </PaperSegmentGroup>
+                </div>
               </div>
             ) : null}
 
             <div className="multi-lobby-fieldset">
               <span className="multi-lobby-field-label">双人赛制</span>
-              <PaperSegmentGroup
+              <PaperRadioGroup
                 className="multi-lobby-format-group"
                 label="双人赛制"
               >
-                {FORMATS.map((roomFormat, index) => (
-                  <Fragment key={roomFormat}>
-                    {index > 0 ? (
-                      <PaperSegmentSeparator
-                        orientation={index === 2 ? "horizontal" : "vertical"}
-                      />
-                    ) : null}
-                    <PaperSegmentButton
-                      active={format === roomFormat}
-                      folded={false}
-                      onClick={() => setFormat(roomFormat)}
+                {FORMATS.map((roomFormat) => {
+                  const selected = format === roomFormat;
+                  return (
+                    <PaperRadioOption
+                      checked={selected}
+                      className="multi-lobby-format-option"
+                      key={roomFormat}
+                      onSelect={() => setFormat(roomFormat)}
                     >
                       <span className="multi-lobby-segment-copy">
-                        <span>{ROOM_FORMAT_SHORT[roomFormat]}</span>
+                        <span className="multi-lobby-format-title">
+                          {ROOM_FORMAT_SHORT[roomFormat]}
+                          {selected ? (
+                            <Check
+                              aria-hidden="true"
+                              className="multi-lobby-format-check"
+                              size={15}
+                            />
+                          ) : null}
+                        </span>
                         <span className="multi-lobby-segment-description">
                           {ROOM_FORMAT_LABELS[roomFormat].split(" · ")[1]}
                         </span>
                       </span>
-                    </PaperSegmentButton>
-                  </Fragment>
-                ))}
-              </PaperSegmentGroup>
+                    </PaperRadioOption>
+                  );
+                })}
+              </PaperRadioGroup>
             </div>
 
             <div className="multi-lobby-fieldset">
@@ -352,10 +360,18 @@ export function MultiLobby() {
               <Users size={16} aria-hidden="true" />
               {busy === "create" ? "创建中……" : "创建房间"}
             </PaperButton>
-          </section>
-          <PaperSegmentSeparator />
+          </Paper>
 
-          <section className="multi-lobby-pane">
+          <Paper
+            animateOnMount={false}
+            as="article"
+            className="multi-lobby-pane"
+            elevation="sm"
+            folded={false}
+            pattern={false}
+            sticker={false}
+            unfoldOnHover={false}
+          >
             <SectionHeading
               description="输入好友分享的 6 位房间号。"
               title="加入房间"
@@ -365,6 +381,7 @@ export function MultiLobby() {
               <span className="multi-lobby-field-label">房间号</span>
               <PaperTextInput
                 ariaLabel="房间号"
+                aria-describedby="multi-lobby-join-help"
                 inputClassName="font-mono uppercase"
                 maxLength={12}
                 onBlur={precheck}
@@ -378,28 +395,36 @@ export function MultiLobby() {
               />
             </div>
 
-            {infoLoading ? (
-              <p className="multi-lobby-status">查询中……</p>
-            ) : null}
-            {info ? (
-              <p className="multi-lobby-status multi-lobby-status-success">
-                房间存在 ·{" "}
-                {MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ??
-                  info.mode}
-                {info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} ·{" "}
-                {ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]} · 玩家{" "}
-                {info.playerCount}/{info.playerLimit} · 最少 {info.minPlayers}{" "}
-                人开局
-                {info.spectatorCount > 0
-                  ? ` · 观战 ${info.spectatorCount}`
-                  : ""}
-              </p>
-            ) : null}
-            {codeValid && infoError && !infoLoading ? (
-              <p className="multi-lobby-status multi-lobby-status-error">
-                未找到该房间或查询过于频繁，请稍后再试。
-              </p>
-            ) : null}
+            <p
+              aria-live="polite"
+              className={`multi-lobby-field-help ${
+                info
+                  ? "multi-lobby-status-success"
+                  : codeValid && infoError && !infoLoading
+                    ? "multi-lobby-status-error"
+                    : ""
+              }`}
+              id="multi-lobby-join-help"
+            >
+              {infoLoading
+                ? "正在检查房间……"
+                : info
+                  ? `已找到房间 · ${
+                      MULTIPLAYER_MODE_LABELS[info.mode as MultiplayerMode] ??
+                      info.mode
+                    }${info.mode === "relay" ? ` ${info.turnSeconds}s` : ""} · ${
+                      ROOM_FORMAT_LABELS[info.format as MultiRoomFormat]
+                    } · 玩家 ${info.playerCount}/${info.playerLimit}${
+                      info.spectatorCount > 0
+                        ? ` · 观战 ${info.spectatorCount}`
+                        : ""
+                    }`
+                  : codeValid && infoError
+                    ? "未找到该房间，或查询过于频繁；请稍后重试。"
+                    : joinCode.trim()
+                      ? "房间号应为 6 位字母或数字；空格与连字符会自动忽略。"
+                      : "输入好友分享的 6 位房间号；检查通过后即可加入。"}
+            </p>
 
             <PaperButton
               className="multi-lobby-secondary-action"
@@ -433,7 +458,7 @@ export function MultiLobby() {
               disabled={busy !== null || !codeValid}
               filled
               onClick={handleJoin}
-              tone="success"
+              tone="theme"
             >
               <DoorOpen size={16} aria-hidden="true" />
               {busy === "join"
@@ -442,7 +467,7 @@ export function MultiLobby() {
                   ? "进入观战"
                   : "加入房间"}
             </PaperButton>
-          </section>
+          </Paper>
         </div>
       </div>
     </section>

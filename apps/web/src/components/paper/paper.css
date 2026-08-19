@@ -1093,6 +1093,7 @@ html[data-theme-mode="dark"] {
   height: 42px;
   align-items: center;
   padding-inline: 12px;
+  gap: 12px;
   background: var(--paper-plain-bg);
   outline: 1px solid transparent;
   outline-offset: -1px;
@@ -1124,7 +1125,8 @@ html[data-theme-mode="dark"] {
 }
 
 .paper-range-input {
-  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
   height: 18px;
   appearance: none;
   border: 0;
@@ -1170,6 +1172,21 @@ html[data-theme-mode="dark"] {
   );
 }
 
+.paper-range-value {
+  display: inline-flex;
+  min-width: 48px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 8px;
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 12%, transparent);
+  font-family: var(--font-brand);
+  font-size: 0.86rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
 .paper-range-input:disabled {
   cursor: not-allowed;
   opacity: 0.42;

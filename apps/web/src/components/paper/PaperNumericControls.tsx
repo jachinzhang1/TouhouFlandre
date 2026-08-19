@@ -52,6 +52,8 @@ export function PaperRange({
   preserveAppearanceWhenDisabled = false,
   step = 1,
   value,
+  valueLabel,
+  valueText,
 }: {
   ariaLabel: string;
   disabled?: boolean;
@@ -61,6 +63,8 @@ export function PaperRange({
   preserveAppearanceWhenDisabled?: boolean;
   step?: number;
   value: number;
+  valueLabel?: ReactNode;
+  valueText?: string;
 }) {
   const progress = max === min ? 0 : ((value - min) / (max - min)) * 100;
   const style = {
@@ -81,6 +85,7 @@ export function PaperRange({
     >
       <input
         aria-label={ariaLabel}
+        aria-valuetext={valueText}
         className="paper-range-input"
         disabled={disabled}
         max={max}
@@ -91,6 +96,11 @@ export function PaperRange({
         type="range"
         value={value}
       />
+      {valueLabel !== undefined ? (
+        <span className="paper-range-value" aria-hidden="true">
+          {valueLabel}
+        </span>
+      ) : null}
     </Paper>
   );
 }
