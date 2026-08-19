@@ -52,11 +52,12 @@ func settleRaceRoundRosterTx(
 	now time.Time,
 	timing TimingConfig,
 ) (RaceMatchAdvance, bool, error) {
+	rules := RaceRulesForMatch(match)
 	active, err := q.ListActiveRoundPlayers(ctx, round.ID)
 	if err != nil {
 		return RaceMatchAdvance{}, false, err
 	}
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+	if rules.UsesPlacementScoring() {
 		if len(active) > 0 {
 			return RaceMatchAdvance{}, false, nil
 		}
@@ -103,7 +104,7 @@ func EndRaceRoundWithoutScoreTx(
 	timing TimingConfig,
 ) error {
 	var placements []RoundPlacementView
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+	if RaceRulesForMatch(match).UsesPlacementScoring() {
 		if _, err := q.MarkRoundPlayerTimedOut(ctx, repo.MarkRoundPlayerTimedOutParams{
 			RoundID: round.ID, CompletedAt: pgtypeTimestamptz(now),
 		}); err != nil {
@@ -185,9 +186,18 @@ func EndRaceMatchTx(
 	scores := MemberScoresForRoster(players)
 	var ranking []MemberRankingView
 	var winnerView *string
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
-		winnerView = uniqueTop(raceStandingsForRoster(players))
+	rules := RaceRulesForMatch(match)
+	if rules.ScoringMode() == ScoringModePlacement {
 		ranking = raceRankingForRoster(players)
+		winnerView = uniqueTop(raceStandingsForRoster(players))
+	} else if rules.ScoringMode() == ScoringModePoints {
+		ranking = raceRankingForRoster(players)
+		if winnerMemberID != "" {
+			value := winnerMemberID
+			winnerView = &value
+		} else {
+			winnerView = uniqueTop(raceStandingsForRoster(players))
+		}
 	} else if winnerMemberID != "" {
 		value := winnerMemberID
 		winnerView = &value

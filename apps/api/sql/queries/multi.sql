@@ -2,7 +2,7 @@
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one
-INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, status, expires_at, question_scope)
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, race_elimination_enabled, status, expires_at, question_scope)
 VALUES (
     sqlc.arg(id),
     sqlc.arg(code),
@@ -10,6 +10,7 @@ VALUES (
     sqlc.arg(mode),
     sqlc.arg(turn_seconds),
     sqlc.arg(player_limit),
+    sqlc.arg(race_elimination_enabled),
     'lobby',
     sqlc.arg(expires_at),
     sqlc.arg(question_scope)
@@ -80,6 +81,9 @@ UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING *;
 
 -- name: UpdateRoomPlayerLimit :one
 UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateRoomRaceEliminationEnabled :one
+UPDATE multi_room SET race_elimination_enabled = $2 WHERE id = $1 RETURNING *;
 
 -- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING *;

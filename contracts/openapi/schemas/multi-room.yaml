@@ -87,6 +87,7 @@ RoomInfo:
     - spectatorCount
     - joinRole
     - playerLimit
+    - raceEliminationEnabled
     - minPlayers
     - availableSeats
   properties:
@@ -124,6 +125,10 @@ RoomInfo:
       minimum: 2
       maximum: 8
       description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    raceEliminationEnabled:
+      type: boolean
+      default: false
+      description: race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
     minPlayers:
       type: integer
       enum: [2]
@@ -195,6 +200,7 @@ RoomSnapshot:
     - playerCount
     - spectatorCount
     - playerLimit
+    - raceEliminationEnabled
     - minPlayers
     - availableSeats
     - gameSequence
@@ -238,6 +244,9 @@ RoomSnapshot:
       minimum: 2
       maximum: 8
       description: 允许同时入座的最大玩家数；不表示开局必须凑满。
+    raceEliminationEnabled:
+      type: boolean
+      description: race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
     minPlayers:
       type: integer
       enum: [2]

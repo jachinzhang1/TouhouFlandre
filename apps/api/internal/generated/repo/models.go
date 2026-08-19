@@ -146,20 +146,21 @@ type MultiMember struct {
 }
 
 type MultiRoom struct {
-	ID                 string             `json:"id"`
-	Code               string             `json:"code"`
-	Format             string             `json:"format"`
-	Status             string             `json:"status"`
-	EventSeq           int64              `json:"event_seq"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt          pgtype.Timestamptz `json:"expires_at"`
-	Mode               string             `json:"mode"`
-	TurnSeconds        int32              `json:"turn_seconds"`
-	QuestionScope      []byte             `json:"question_scope"`
-	PlayerLimit        int32              `json:"player_limit"`
-	ChatSeq            int64              `json:"chat_seq"`
-	ChatRateTokens     pgtype.Float8      `json:"chat_rate_tokens"`
-	ChatRateRefilledAt pgtype.Timestamptz `json:"chat_rate_refilled_at"`
+	ID                     string             `json:"id"`
+	Code                   string             `json:"code"`
+	Format                 string             `json:"format"`
+	Status                 string             `json:"status"`
+	EventSeq               int64              `json:"event_seq"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt              pgtype.Timestamptz `json:"expires_at"`
+	Mode                   string             `json:"mode"`
+	TurnSeconds            int32              `json:"turn_seconds"`
+	QuestionScope          []byte             `json:"question_scope"`
+	PlayerLimit            int32              `json:"player_limit"`
+	ChatSeq                int64              `json:"chat_seq"`
+	ChatRateTokens         pgtype.Float8      `json:"chat_rate_tokens"`
+	ChatRateRefilledAt     pgtype.Timestamptz `json:"chat_rate_refilled_at"`
+	RaceEliminationEnabled bool               `json:"race_elimination_enabled"`
 }
 
 type MultiRound struct {
