@@ -801,6 +801,80 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   pointer-events: auto;
 }
 
+.paper-surface.chat-dock-delivery-recovery {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-inline-start: 3px solid var(--vermilion);
+  pointer-events: auto;
+}
+
+.chat-dock-delivery-recovery > header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chat-dock-delivery-recovery > header strong {
+  color: var(--ink);
+  font-size: 0.75rem;
+}
+
+.chat-dock-delivery-recovery ul {
+  display: grid;
+  max-height: 180px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chat-dock-delivery-recovery li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.chat-dock-delivery-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.chat-dock-delivery-copy strong,
+.chat-dock-delivery-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-dock-delivery-copy strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+}
+
+.chat-dock-delivery-copy small {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.chat-dock-delivery-retry {
+  flex: 0 0 auto;
+}
+
+.chat-dock-send-error {
+  margin: 6px 0 0;
+  padding-left: 56px;
+  color: var(--vermilion-deep);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
 .paper-segment-group.chat-dock-composer-group {
   display: grid;
   width: 100%;

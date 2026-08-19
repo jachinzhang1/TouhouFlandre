@@ -29,6 +29,22 @@ const baseChat: RoomChatState = {
   historyStatus: "ready",
 };
 
+const failedMessage: RoomChatEntry = {
+  messageId: "pending:failed-message",
+  roomId: "room-1",
+  senderMemberId: viewer.memberId,
+  senderDisplayName: viewer.displayName,
+  senderRole: "player",
+  senderSeat: 1,
+  kind: "text",
+  content: "这条消息没有送达",
+  channel: "room",
+  createdAt: "2026-08-14T12:00:02Z",
+  deliveryStatus: "failed",
+  clientMessageId: "failed-client-message",
+  error: "网络连接中断",
+};
+
 const message = (
   overrides: Partial<Parameters<typeof chatEntryFromMessage>[0]> = {},
 ): RoomChatEntry =>
@@ -183,6 +199,34 @@ describe("ChatDock", () => {
 
     await user.type(input, "再来一条{Enter}");
     expect(onSend).toHaveBeenLastCalledWith("再来一条");
+  });
+
+  it("offers failed-message retry without opening chat history", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn().mockResolvedValue(undefined);
+    renderDock(
+      {
+        ...baseChat,
+        messages: [failedMessage],
+        sendError: "网络连接中断",
+      },
+      { onRetry },
+    );
+
+    const recovery = screen.getByRole("alert");
+    expect(recovery.textContent).toContain("消息未送达");
+    expect(recovery.textContent).toContain("这条消息没有送达");
+    expect(recovery.textContent).toContain("网络连接中断");
+    expect(screen.queryByRole("log")).toBeNull();
+
+    await user.click(
+      screen.getByRole("button", { name: "重试发送第 1 条失败消息" }),
+    );
+    expect(onRetry).toHaveBeenCalledWith("failed-client-message");
+
+    await user.click(screen.getByLabelText("展开聊天记录"));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByRole("button", { name: "重试" })).toBeTruthy();
   });
 
   it("disables history, input, and emoji controls while muted", async () => {

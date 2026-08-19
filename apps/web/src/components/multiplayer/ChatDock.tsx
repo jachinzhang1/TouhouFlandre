@@ -128,6 +128,17 @@ export function ChatDock({
     [chat.messages],
   );
 
+  const failedOwnMessages = useMemo(
+    () =>
+      visibleMessages.filter(
+        (entry) =>
+          entry.deliveryStatus === "failed" &&
+          Boolean(entry.clientMessageId) &&
+          isOwnChatEntry(entry, viewer?.memberId),
+      ),
+    [viewer?.memberId, visibleMessages],
+  );
+
   useEffect(() => {
     const notificationBaseline = receiveChat
       ? sentVisibleMessages
@@ -413,8 +424,52 @@ export function ChatDock({
         ) : null}
       </form>
 
-      {chat.sendError ? (
-        <p className="mt-1 pl-14 text-[0.72rem] font-semibold text-vermilion">
+      {!historyVisible && failedOwnMessages.length > 0 ? (
+        <Paper
+          animateOnMount={false}
+          as="div"
+          className="chat-dock-delivery-recovery"
+          elevation="sm"
+          folded={false}
+          pattern={false}
+          role="alert"
+          sticker={false}
+          tone="danger"
+          unfoldOnHover={false}
+        >
+          <header>
+            <strong>
+              {failedOwnMessages.length === 1
+                ? "消息未送达"
+                : `${failedOwnMessages.length} 条消息未送达`}
+            </strong>
+          </header>
+          <ul>
+            {failedOwnMessages.map((entry, index) => (
+              <li key={entry.messageId}>
+                <span className="chat-dock-delivery-copy">
+                  <strong>“{entry.content}”</strong>
+                  <small>{entry.error ?? chat.sendError ?? "发送失败"}</small>
+                </span>
+                <PaperButton
+                  ariaLabel={`重试发送第 ${index + 1} 条失败消息`}
+                  className="chat-dock-delivery-retry"
+                  compact
+                  filled
+                  disabled={inputDisabled}
+                  pattern={false}
+                  folded={false}
+                  onClick={() => void onRetry(entry.clientMessageId!)}
+                  tone="danger"
+                >
+                  重试发送
+                </PaperButton>
+              </li>
+            ))}
+          </ul>
+        </Paper>
+      ) : failedOwnMessages.length === 0 && chat.sendError ? (
+        <p className="chat-dock-send-error" role="alert">
           {chat.sendError}
         </p>
       ) : null}
