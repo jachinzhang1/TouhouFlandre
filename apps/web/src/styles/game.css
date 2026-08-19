@@ -1361,6 +1361,238 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
     border: 0;
   }
 }
+.relay-turn-state {
+  min-width: 0;
+}
+
+.relay-turn-state h2,
+.relay-turn-state p {
+  margin: 0;
+}
+
+.relay-turn-state h2 {
+  color: var(--ink);
+  font-family: var(--font-brand);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.relay-turn-state p {
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.relay-turn-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+}
+
+.relay-turn-action-row > span,
+.relay-skip-quota {
+  color: var(--ink-soft);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.relay-round-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.relay-round-clock {
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.relay-risk-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.relay-risk-actions > :last-child {
+  justify-self: end;
+}
+
+.relay-ledger-section {
+  min-width: 0;
+}
+
+.relay-ledger-heading {
+  margin-bottom: 14px;
+}
+
+.paper-surface.relay-turn-ledger {
+  overflow: hidden;
+}
+
+.relay-turn-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relay-turn-entry + .relay-turn-entry,
+.relay-current-handoff,
+.relay-turn-empty {
+  border-top: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
+.relay-turn-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 12px;
+}
+
+.relay-turn-index,
+.relay-turn-kind {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.relay-turn-owner {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relay-turn-detail {
+  margin: 0;
+  padding: 0 12px 12px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.relay-turn-character {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.relay-turn-character > span:last-child {
+  padding: 2px 6px;
+  color: var(--semantic-success);
+  background: var(--semantic-success-tint);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.relay-turn-feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.relay-turn-feedback-cell {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 8px;
+}
+
+.relay-turn-field-label {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.relay-turn-feedback-cell .feedback {
+  min-height: 0;
+  padding: 0;
+}
+
+.relay-current-handoff {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+}
+
+.relay-current-handoff > span {
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.relay-current-handoff strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.relay-turn-empty {
+  padding: 24px 12px;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .relay-turn-state h2 {
+    font-size: 0.92rem;
+  }
+
+  .relay-turn-state p {
+    font-size: 0.66rem;
+  }
+
+  .relay-turn-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .relay-turn-action-row .paper-button,
+  .relay-risk-actions .paper-button {
+    width: 100%;
+  }
+
+  .relay-risk-actions > :last-child {
+    justify-self: stretch;
+  }
+
+  .relay-turn-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px 10px;
+  }
+
+  .relay-turn-kind {
+    grid-column: 1 / -1;
+  }
+
+  .relay-turn-feedback-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .relay-current-handoff {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
 
 .mode-option {
   isolation: isolate;

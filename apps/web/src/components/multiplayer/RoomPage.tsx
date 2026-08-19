@@ -612,16 +612,19 @@ export function RoomView({ code }: { code: string }) {
               participationStatus === "timed_out"
             ? ("warning" as const)
             : ("neutral" as const);
-    const roundActions =
-      state.round?.status === "playing" && !raceReadOnly ? (
-        <RoundActionButtons
-          mode={mode}
-          forfeitConfirm={forfeitConfirm}
+    const canActOnRound = state.round?.status === "playing" && !raceReadOnly;
+    const forfeitAction = canActOnRound ? (
+      <ForfeitRoundButton
+        actionBusy={roundActionBusy}
+        forfeitConfirm={forfeitConfirm}
+        onForfeit={handleForfeitRound}
+      />
+    ) : null;
+    const relayTurnAction =
+      canActOnRound && mode === "relay" && relayCanGuess ? (
+        <RelayPassButton
           actionBusy={roundActionBusy}
-          relayCanPass={relayCanPass}
-          relaySkipsRemaining={relaySkipsRemaining}
-          relayMaxSkips={relayMaxSkips}
-          onForfeit={handleForfeitRound}
+          canPass={relayCanPass}
           onPass={handlePassRelayTurn}
         />
       ) : null;
@@ -653,7 +656,8 @@ export function RoomView({ code }: { code: string }) {
             members={state.members}
             mySlot={relaySlot}
             roundResult={selectedPlayerArchive ?? state.roundResult}
-            roundActions={selectedPlayerArchive ? null : roundActions}
+            turnAction={selectedPlayerArchive ? null : relayTurnAction}
+            riskAction={selectedPlayerArchive ? null : forfeitAction}
             fields={visibleFields}
           />
         ) : (
@@ -664,7 +668,7 @@ export function RoomView({ code }: { code: string }) {
             memberId={memberId}
             members={state.members}
             roundResult={selectedPlayerArchive ?? state.roundResult}
-            roundActions={selectedPlayerArchive ? null : roundActions}
+            roundActions={selectedPlayerArchive ? null : forfeitAction}
             fields={visibleFields}
           />
         )}
@@ -1092,67 +1096,58 @@ function SpectatorRaceBoards({
   );
 }
 
-function RoundActionButtons({
-  mode,
-  forfeitConfirm,
+function RelayPassButton({
   actionBusy,
-  relayCanPass,
-  relaySkipsRemaining,
-  relayMaxSkips,
-  onForfeit,
+  canPass,
   onPass,
 }: {
-  mode: string;
-  forfeitConfirm: boolean;
   actionBusy: "forfeit" | "pass" | null;
-  relayCanPass: boolean;
-  relaySkipsRemaining: number;
-  relayMaxSkips: number;
-  onForfeit: () => void;
+  canPass: boolean;
   onPass: () => void;
 }) {
-  const forfeitLabel =
+  return (
+    <PaperButton
+      className="relay-pass-action"
+      disabled={actionBusy !== null || !canPass}
+      folded={false}
+      onClick={onPass}
+      title={canPass ? "主动空过本手" : "本局空过次数已用完"}
+      tone="warning"
+    >
+      <FastForward size={16} aria-hidden="true" />
+      {actionBusy === "pass" ? "提交中……" : "空过本手"}
+    </PaperButton>
+  );
+}
+
+function ForfeitRoundButton({
+  actionBusy,
+  forfeitConfirm,
+  onForfeit,
+}: {
+  actionBusy: "forfeit" | "pass" | null;
+  forfeitConfirm: boolean;
+  onForfeit: () => void;
+}) {
+  const label =
     actionBusy === "forfeit"
       ? "提交中……"
       : forfeitConfirm
         ? "再次点击确认放弃"
         : "放弃本局";
-  const passDisabled = actionBusy !== null || !relayCanPass;
-  const passTitle =
-    relaySkipsRemaining <= 0 ? "本局空过次数已用完" : "主动空过本轮猜测";
-
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {mode === "relay" ? (
-        <PaperButton
-          className="min-h-8"
-          compact
-          disabled={passDisabled}
-          folded={false}
-          onClick={onPass}
-          title={passTitle}
-        >
-          <FastForward size={14} aria-hidden="true" />
-          本轮空过
-          <span className="tabular-nums">
-            余 {relaySkipsRemaining}/{relayMaxSkips}
-          </span>
-        </PaperButton>
-      ) : null}
-      <PaperButton
-        className="min-h-8"
-        compact
-        disabled={actionBusy !== null}
-        filled={forfeitConfirm}
-        folded={false}
-        onClick={onForfeit}
-        title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
-        tone="danger"
-      >
-        <Flag size={14} aria-hidden="true" />
-        {forfeitLabel}
-      </PaperButton>
-    </div>
+    <PaperButton
+      className="forfeit-round-action"
+      disabled={actionBusy !== null}
+      filled={forfeitConfirm}
+      folded={forfeitConfirm}
+      onClick={onForfeit}
+      title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
+      tone="danger"
+    >
+      <Flag size={16} aria-hidden="true" />
+      {label}
+    </PaperButton>
   );
 }
 
