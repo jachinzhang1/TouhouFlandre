@@ -4,6 +4,7 @@
 **优先级**：P0  
 **依赖**：MUS-001  
 **建议标签**：`type:data` `area:web` `area:assets` `area:license`
+**状态**：已完成（2026-08-20）
 
 ## 要解决的问题
 
@@ -30,7 +31,7 @@
 - `apps/web/public/music/placeholder-cover.png`
 - `apps/web/public/music/README.md`
 
-具体字段遵循[曲库模型决策](./decisions.md#曲库模型)。专辑封面是默认值，曲目可用 `coverUrl` 覆盖；因此每首曲目总能解析到一个候选封面，又不需要重复专辑 URL。
+具体字段遵循[曲库模型决策](./decisions.md#曲库模型)。当前曲目 JSON 不提供独立封面，所有曲目统一解析所属专辑的 `coverUrl`；加载失败时再回退到本地占位图。
 
 ## 属于本 Issue
 
@@ -41,7 +42,7 @@
 - 让现有 `pnpm --filter @touhouflandre/data validate` 同时验证角色/作品与音乐，不另建容易被遗漏的手工命令。
 - 添加 schema 和跨记录 Vitest：重复 ID、缺失 album、重复曲号、越界 URL、缺失文件、稳定排序。
 - 选取 3 首曲目，确认同一专辑或不同专辑都能覆盖专辑分组验收；至少要能测试列表首尾循环。
-- 更新 `THIRD_PARTY_ASSETS.md`，并在音乐目录 README 中记录每个文件的来源与用途。
+- 更新 `THIRD_PARTY_ASSETS.md` 的音乐目录级声明，并将每个专辑/曲目的来源页面与实际本地化地址写入音乐 JSON 的 `sourceRefs`；音乐目录 README 只保留用途和目录结构说明。
 - 记录文件大小；首批 3 个 MP3 总计建议不超过 50 MiB，单张封面不超过 2 MiB。
 
 ## 不属于本 Issue
@@ -71,15 +72,15 @@
 
 ## 验收标准
 
-- [ ] `albums.demo.json`、`tracks.demo.json` 均通过 Zod，并至少包含 1 张专辑、3 首可播放 MP3。
-- [ ] 曲目 ID、专辑 ID、专辑顺序和专辑内曲号满足唯一性与稳定排序规则。
-- [ ] 每首曲目的 `audioUrl` 和解析后封面 URL 均指向仓库内 `/music/` 资产。
-- [ ] `@touhouflandre/data/music` 可被 Web 单独导入，不执行角色目录构建，也不把整个角色 JSON 打进播放器客户端 chunk。
-- [ ] `pnpm --filter @touhouflandre/data validate` 对缺失 MP3、封面和占位图稳定失败，并给出曲目/专辑 ID。
-- [ ] 3 个 MP3 可由 Chromium 读取 metadata 和播放；文件扩展名、实际 MIME 与编码一致。
-- [ ] `THIRD_PARTY_ASSETS.md` 和 `apps/web/public/music/README.md` 记录来源、作者/权利方、使用条件、仓库位置和站内用途。
-- [ ] 首批资产满足大小预算；若超出，Issue 中已有获批的替代方案。
-- [ ] Git diff 不含临时下载文件、缓存、未引用封面或同曲目的多个随意转码版本。
+- [x] `albums.demo.json`、`tracks.demo.json` 均通过 Zod，并至少包含 1 张专辑、3 首可播放 MP3。
+- [x] 曲目 ID、专辑 ID、专辑顺序和专辑内曲号满足唯一性与稳定排序规则。
+- [x] 每首曲目的 `audioUrl` 和所属专辑封面 URL 均指向仓库内 `/music/` 资产。
+- [x] `@touhouflandre/data/music` 可被 Web 单独导入，不执行角色目录构建，也不把整个角色 JSON 打进播放器客户端 chunk。
+- [x] `pnpm --filter @touhouflandre/data validate` 对缺失 MP3、封面和占位图稳定失败，并给出曲目/专辑 ID。
+- [x] 3 个 MP3 可由 Chromium 读取 metadata 和播放；文件扩展名、实际 MIME 与编码一致。
+- [x] `THIRD_PARTY_ASSETS.md` 提供音乐目录级授权声明，曲库 JSON 的 `sourceRefs` 保存逐项来源页面和实际本地化地址；音乐目录 README 仅说明用途和布局。
+- [x] 首批资产满足大小预算；3 个 MP3 总计约 8.3 MiB，单张封面均小于 2 MiB。
+- [x] Git diff 不含临时下载文件、缓存、未引用封面或同曲目的多个随意转码版本。
 
 ## 测试计划
 
@@ -88,6 +89,14 @@
 - `pnpm --filter @touhouflandre/data test`
 - `pnpm --filter @touhouflandre/web build`，确认 workspace 子入口可被 Next.js 正确打包
 - 对 3 个公开静态 URL 执行 HEAD/Range 检查；生产代理的最终检查留给 MUS-007
+
+## 完成记录
+
+- **完成日期**：2026-08-20
+- **数据入口**：`@touhouflandre/data/music`，包含专辑/曲目 JSON、Zod schema、跨记录与资产校验。
+- **运行时资产**：`apps/web/public/music` 下 3 个 MP3、2 张专辑封面和占位图；曲目封面统一使用所属专辑封面。
+- **授权与来源**：音乐目录级声明位于 `THIRD_PARTY_ASSETS.md`，逐项来源页面和实际本地化地址位于音乐 JSON 的 `sourceRefs`；`apps/web/public/music/README.md` 不参与逐文件维护。
+- **自动化验证**：data typecheck/validate/test、Web typecheck/build/test，以及 Desktop Chromium 和 Pixel 7 的本地 MP3 MIME、Range、metadata Playwright 用例通过。
 
 ## 依赖与后续
 

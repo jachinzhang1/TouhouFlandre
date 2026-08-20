@@ -1,0 +1,30 @@
+[
+  {
+    "id": "gensoukyoku-bassui",
+    "title": "幻想曲拔萃",
+    "titleJa": "幻想曲抜萃",
+    "artist": "黄昏边境、上海爱丽丝幻乐团",
+    "releaseYear": 2005,
+    "order": 1,
+    "coverUrl": "/music/covers/gensoukyoku-bassui.png",
+    "sourceRefs": [
+      "https://thwiki.cc/幻想曲拔萃",
+      "https://thwiki.cc/文件:幻想曲拔萃封面.png",
+      "https://upload.thbwiki.cc/thumb/c/c8/%E5%B9%BB%E6%83%B3%E6%9B%B2%E6%8B%94%E8%90%83%E5%B0%81%E9%9D%A2.png/600px-%E5%B9%BB%E6%83%B3%E6%9B%B2%E6%8B%94%E8%90%83%E5%B0%81%E9%9D%A2.png"
+    ]
+  },
+  {
+    "id": "kakunetsuzoushin-hisoutensoku",
+    "title": "核热造神非想天则",
+    "titleJa": "核熱造神ヒソウテンソク",
+    "artist": "黄昏边境、上海爱丽丝幻乐团",
+    "releaseYear": 2009,
+    "order": 2,
+    "coverUrl": "/music/covers/kakunetsuzoushin-hisoutensoku.png",
+    "sourceRefs": [
+      "https://thwiki.cc/核热造神非想天则",
+      "https://thwiki.cc/文件:核热造神非想天则封面.png",
+      "https://upload.thbwiki.cc/thumb/5/58/%E6%A0%B8%E7%83%AD%E9%80%A0%E7%A5%9E%E9%9D%9E%E6%83%B3%E5%A4%A9%E5%88%99%E5%B0%81%E9%9D%A2.png/600px-%E6%A0%B8%E7%83%AD%E9%80%A0%E7%A5%9E%E9%9D%9E%E6%83%B3%E5%A4%A9%E5%88%99%E5%B0%81%E9%9D%A2.png"
+    ]
+  }
+]

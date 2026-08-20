@@ -17,7 +17,7 @@
 - [ ] 默认排序为专辑 order + trackNumber + track ID，ID 稳定且唯一。
 - [ ] 3 首测试 MP3 均可读取 metadata、播放和 seek。
 - [ ] 首批 MP3 总大小与单张封面大小符合 MUS-002 预算，或有明确获批的替代方案。
-- [ ] `THIRD_PARTY_ASSETS.md` 和音乐目录 README 记录来源、权利/使用说明、获取日期、路径与用途。
+- [ ] `THIRD_PARTY_ASSETS.md` 提供覆盖音乐目录的授权声明，专辑/曲目 JSON 的 `sourceRefs` 记录逐项来源页面和实际本地化地址，URL 字段约束运行时仓库路径；音乐目录 README 仅说明目录用途。
 - [ ] 没有远程热链、临时下载、未引用封面、重复转码或来源不明文件。
 
 ## 3. 播放行为

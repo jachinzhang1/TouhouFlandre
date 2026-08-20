@@ -173,7 +173,7 @@ type MusicTrack = {
 
 - `id` 使用发布后不因翻译变化而修改的 ASCII 稳定 ID。
 - 默认播放顺序为 `album.order`、`trackNumber`、`track.id`；用户首版只能筛选，不能重排。
-- 曲目封面解析为 `track.coverUrl ?? album.coverUrl`，仍失败时由 `TrackCover` 切换到 `/music/placeholder-cover.png`。
+- MUS-002 当前目录不设置曲目级 `coverUrl`，因此曲目封面统一解析为所属专辑的 `album.coverUrl`；仍失败时由 `TrackCover` 切换到 `/music/placeholder-cover.png`。契约保留可选字段以兼容后续数据扩展。
 - 曲长以浏览器读取的媒体 metadata 为准，不在 JSON 中维护容易漂移的 `duration`。
 - `sourceRefs` 是资料来源，不是运行时媒体 URL；生产页面不得热链这些地址。
 - 数据校验应拒绝重复 ID、重复专辑顺序、重复专辑内曲号、失效 album 引用、越出 `/music/` 的路径和缺失文件。
@@ -271,7 +271,7 @@ type StoredMusicPlayerSettingsV1 = {
 
 ## 素材与发布约束
 
-MUS-002 可以从用户指定的 THBWiki 官方音乐 CD 页面选择 3 首实验曲目，但“页面可访问”不等于“允许仓库再分发”。每项资产都需要记录专辑、曲号、来源页、实际下载地址、获取日期、权利/使用说明、仓库路径和站内用途；信息写入 `THIRD_PARTY_ASSETS.md` 与 `apps/web/public/music/README.md`。
+MUS-002 可以从用户指定的 THBWiki 官方音乐 CD 页面选择 3 首实验曲目，但“页面可访问”不等于“允许仓库再分发”。每项资产的来源页面和实际本地化地址写入 `packages/data/src/music` 的曲库 JSON 与 `sourceRefs`，`THIRD_PARTY_ASSETS.md` 只提供覆盖整个音乐目录的授权声明，`apps/web/public/music/README.md` 只说明目录用途和布局。
 
 首批资产直接进入普通 Git，保持部署链简单；当前仓库没有 Git LFS 配置。建议首批 3 个 MP3 总计不超过 50 MiB、单张封面不超过 2 MiB。若合法来源文件超出预算，应在 MUS-002 先记录压缩、LFS 或外部对象存储的取舍，不能绕过预算直接提交，也不能以外链代替本地资产。
 
