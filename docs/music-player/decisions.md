@@ -1,12 +1,12 @@
 # 音乐播放器架构与行为决策
 
-本文记录所有播放器 Issue 共用的默认决策。MUS-001 需要通过最小技术试验核实这些结论；若试验推翻某项决策，应先更新本文，再开始依赖它的实现。
+本文记录所有播放器 Issue 共用的冻结决策。MUS-001 已于 2026-08-20 通过最小技术试验核实本页结论；后续实现若发现可复现的反例，应先回到拥有该决策的 Issue 更新本文，不能在 UI 组件中建立另一套语义。
 
 ## 技术方案
 
-### 推荐基线
+### 冻结基线
 
-- **媒体内核**：浏览器原生 `HTMLAudioElement`，由根级 React Provider 持有唯一实例。
+- **媒体内核**：浏览器原生 `HTMLAudioElement`，由根级 React Provider 持有唯一实例；不新增音频依赖。
 - **界面**：项目内 React 组件；复用现有 `antd` 的 `Modal`、`Checkbox`、`Slider`、`Segmented`、`Tooltip` 和主题桥接，图标使用现有 `lucide-react`。
 - **状态**：feature-local Context + reducer；不为单一全局组件引入新的全局状态库。
 - **曲库**：`packages/data` 的独立 `@touhouflandre/data/music` 子入口，使用 JSON + Zod；音频和图片位于 `apps/web/public/music`。
@@ -14,14 +14,27 @@
 
 ### 候选方案与取舍
 
-| 方案                    | 优点                                                                         | 当前不作为默认方案的原因                                             | MUS-001 验证项                                    |
-| ----------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
-| `HTMLAudioElement`      | 无新依赖；原生支持 MP3、seek、volume、媒体事件和自动播放策略；最容易维持单例 | 需要自行实现状态同步和 UI                                            | Chromium/移动端事件顺序、Range seek、错误态       |
-| Howler.js               | 成熟的跨浏览器音频抽象，提供 preload/volume/event API                        | 需求只有单音轨 MP3；会增加状态双写，UI 仍需自建                      | 只有原生方案出现可复现兼容问题时才采用            |
-| `react-h5-audio-player` | 现成 React 控件和基础可访问性                                                | 固定布局与本项目的悬浮入口、环形进度和自定义对话框不匹配             | 记录许可证、React 19/Next 16 兼容性和样式覆盖成本 |
-| APlayer                 | 自带播放列表和完整播放器界面                                                 | DOM/CSS 所有权较强，难与当前主题变量、根 Provider 和题库式对话框解耦 | 仅作为交互参考，不直接嵌入生产模块                |
+以下数据于 2026-08-20 从 npm registry 的发布元数据、包内 manifest/LICENSE 和压缩后的发行文件核对。gzip 是入口发行文件的直接压缩估算，不等同于 Next.js 最终 chunk；候选包未安装，因此 `package.json` 和锁文件没有变化。
 
-技术试验不能只比较截图。必须比较许可证、最近维护状态、React 19 与 Next 16 兼容性、SSR 安全、压缩后体积、键盘语义以及在根布局中保持实例的能力。没有明确收益时保持原生方案。
+| 方案                    | 核对版本 / 许可证 / 最近发布                      |                                    gzip 估算 | React 19、Next 16 与 SSR                                                                                          | 样式、无障碍和状态所有权                                                                                       | 结论                                         |
+| ----------------------- | ------------------------------------------------- | -------------------------------------------: | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `HTMLAudioElement`      | 浏览器平台能力，无第三方许可证                    |                                        0 KiB | 根布局 Client Component 在 Desktop Chromium 与 Pixel 7 项目通过软导航/刷新 Spike；服务端只输出稳定 `<audio>` 宿主 | 完全使用现有 CSS 变量和自有中文 accessible name；Provider 可独占状态                                           | **采用**                                     |
+| Howler.js               | `howler@2.2.4`，MIT，2023-09-19                   |                              core 约 7.8 KiB | 框架无关，入口用 `typeof window` 防护导入；运行时仍必须留在客户端                                                 | 没有 UI/a11y 收益；内部 Howl 状态会与 Provider 形成第二层同步                                                  | 不采用；仅在原生媒体出现可复现兼容缺陷时重评 |
+| `react-h5-audio-player` | `3.10.2`，MIT，2026-07-29；peer 显式包含 React 19 | JS + CSS 约 12.9 KiB，另依赖 Iconify runtime | React 19 peer 满足；可作为 Client Component 放入根布局，但不为导航生命周期提供额外保障                            | 自带 `<audio>`、内部 `forceUpdate`、英文默认 aria 文案和固定 DOM/CSS；无法保持本项目 Provider 为唯一状态所有者 | 不采用                                       |
+| APlayer                 | `1.10.1`，MIT，2022-06-13                         |                         JS + CSS 约 15.9 KiB | UMD 入口顶层直接读取 `window`，SSR 必须 client-only 动态加载；没有 React 19 集成契约                              | 自带播放列表、图标、DOM 和主题样式，需再写 React adapter 且难由外部单例驱动                                    | 不采用，仅作交互参考                         |
+
+原生方案已覆盖首版所需的 MP3、seek、volume、mute、媒体事件和自动播放 Promise 语义。第三方方案没有解决 Spike 中的可复现失败，却会增加状态同步或样式所有权，因此冻结为原生实现。
+
+### MUS-001 技术试验记录
+
+- 环境：WSL Ubuntu，Node `v24.13.0`，Next `16.3.0`，React `19.2.8`，Playwright `1.62.1`。
+- 浏览器：Playwright `desktop-chromium` 与 `mobile-chromium`（Pixel 7）项目。
+- 媒体：测试在浏览器内存中生成 8 秒 PCM WAV Blob；没有远程 URL、下载文件或仓库媒体资产。
+- 软导航：首页播放后用站内 Link 进入 `/search` 并返回，`HTMLAudioElement` 引用、`currentSrc` 和播放状态不变，`currentTime` 单调前进，未增加 `loadstart` 或 `pause`。
+- 硬刷新：`page.reload()` 后元素引用改变，`src` 为空、`paused=true`、`currentTime=0`，没有自动播放请求。
+- 媒体事件：Chromium 中观测到 `loadstart` 先于 `loadedmetadata`，`loadedmetadata` 先于 `canplay`，`play` 先于后续 `timeupdate`；seek 与音量修改产生 `seeking`/`seeked` 和 `volumechange`。实现不依赖 `durationchange` 与 metadata 事件之间的绝对顺序。
+- Promise 与失败：adapter 单元测试覆盖 `play()` resolve/reject；rejection 会清除播放意图并继续向 Provider 抛出，由 Provider 转换为可恢复错误。
+- 注册与释放：adapter 使用具名闭包保存每种事件 handler，unsubscribe 精确移除同一引用；单元测试覆盖完整事件集合、换源重新绑定和释放后不再派发。
 
 ## 模块所有权
 
@@ -32,11 +45,16 @@ type MusicPlayerViewState = {
   queue: readonly MusicTrack[];
   currentTrack: MusicTrack | null;
   status: "idle" | "loading" | "playing" | "paused" | "error";
+  isSeeking: boolean;
   duration: number;
   currentTime: number;
   volume: number;
   muted: boolean;
   error: string | null;
+};
+
+type MusicPlayerRuntimeState = MusicPlayerViewState & {
+  playbackIntent: "paused" | "playing";
 };
 
 type MusicPlayerCommands = {
@@ -55,9 +73,70 @@ type MusicPlayerCommands = {
 最终类型可以调整命名，但必须保持以下边界：
 
 - 只有 Provider/adapter 读写 `audio.currentTime`、`audio.volume`、`audio.muted` 和 `audio.src`。
+- `playbackIntent` 是 reducer 内部状态，不通过公开 hook 暴露；UI 只显示真实媒体归一化后的 `status`。
 - 悬浮按钮、卡片和对话框不得分别订阅原生媒体事件。
 - 页面不得根据路由改变播放状态，也不得持有 Provider 的镜像状态。
 - 组件 UI 的打开/关闭状态可以留在 `MusicPlayerRoot`，不写入播放 reducer 或持久化设置。
+
+冻结文件边界：
+
+```text
+apps/web/src/features/music-player/
+  contracts.ts             # UI 可见状态、命令和目录结构类型
+  audioAdapter.ts          # 唯一允许读写 HTMLAudioElement 的边界
+  MusicPlayerRoot.tsx      # 根布局稳定宿主；MUS-003 在此接入 Provider
+  MusicPlayerProvider.tsx  # MUS-003 实现状态机和公开 hook
+  playerReducer.ts         # MUS-003 实现运行时状态转换
+  storage.ts               # MUS-006 实现版本化偏好
+  components/              # MUS-004 至 006，只消费公开 hook
+```
+
+`MusicAudioEvent` 必须携带 source generation。Provider 保存 `setSource()` 返回的 generation，只接受当前 generation 的事件；快速换歌产生的旧 metadata/error 不得回写。监听器只在 adapter 订阅时注册，在 unsubscribe 时用原 handler 引用逐一释放；React effect cleanup 必须调用 unsubscribe。
+
+## 媒体事件映射
+
+浏览器事件可能因缓存、解码器和 source 切换而交错，因此只冻结状态映射和必要偏序，不冻结完整全序：
+
+| 来源                                | Provider 行为                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| 设置新 source / `loadstart`         | 清空瞬时时间与错误，进入 `loading`；保留 reducer 内的播放意图                 |
+| `loadedmetadata` / `durationchange` | 仅接收有限且 `> 0` 的 duration；不自行开始播放                                |
+| `canplay`                           | 若播放意图为 `playing`，调用一次 `play()`；否则进入 `paused`                  |
+| `play`                              | 将实际状态置为 `playing`                                                      |
+| `pause`                             | 媒体未 ended 时置为 `paused`；用户 pause 命令同时清除播放意图                 |
+| `timeupdate`                        | clamp 后更新 `currentTime`；更新范围限制在播放器 feature                      |
+| `seeking` / `seeked`                | 切换 `isSeeking`；UI 拖动草稿仍由 MUS-005 局部持有                            |
+| `ended`                             | 走与 `next()` 相同的列表循环路径，并保留播放意图                              |
+| `volumechange`                      | 从 audio 回读并归一化 `volume`/`muted`，不让 UI 维护副本                      |
+| `error`                             | 当前曲目进入可恢复 `error`，清除继续播放意图，不自动跳过                      |
+| `play()` rejection                  | 捕获 Promise，清除播放意图，映射为暂停/错误反馈；不得留下 unhandled rejection |
+
+必要偏序只有：`loadstart` 在当前 source 的 metadata/canplay 前，成功的 `play()` 调用在 `play`/后续 `timeupdate` 前，`seeking` 在对应 `seeked` 前。reducer 必须允许重复的 metadata/duration/timeupdate，并忽略旧 generation。
+
+## 浏览器与测试基线
+
+- 发布阻断自动化基线为当前 Playwright 的 Desktop Chromium 与 Pixel 7 Chromium。
+- Chromium 对 MP3 解码、MIME 和 byte-range 的真实验证在 MUS-002 提供本地 MP3 后由 MUS-003/MUS-007 完成；MUS-001 的 WAV Blob 只验证媒体和文档生命周期。
+- Safari 与 Firefox 首版不列为自动化发布阻断环境；实现保持标准媒体 API，不承诺尚未执行的浏览器专项结果。
+- Vitest 使用可编程 `HTMLAudioElement` 替身，mock `play`/`pause`/`load` 并显式派发事件；MUS-001 已覆盖 Promise 失败、generation 和 listener cleanup，MUS-003 再用同一策略覆盖 reducer，不模拟真实解码或自动播放策略。
+- Playwright 不 mock 媒体方法，负责真实浏览器事件、播放推进、客户端导航和刷新边界。
+- 自动播放只允许由用户手势调用 `play()`；不得使用 `autoplay`、持久化 playing 或挂载时自动重试绕过浏览器策略。
+
+## 固定定位与层级基线
+
+2026-08-20 的代码盘点如下。播放器入口/卡片冻结为独立 `z-index: 30` stacking context；它高于普通导航内容，但低于移动导航、聊天和全屏交互层。曲库 Modal 使用 Ant Design portal 的统一层级，不复用播放器 stacking context。
+
+| 控件                                    |         当前层级 | 碰撞约束                                                  |
+| --------------------------------------- | ---------------: | --------------------------------------------------------- |
+| `SiteNav` 桌面内容                      |           `z-20` | 播放器右上定位需按实测导航高度下移，不能遮挡链接          |
+| 播放器入口 / 卡片                       |           `z-30` | feature 内唯一 stacking context；不得局部递增到全屏层以上 |
+| 移动底栏、`GuessInputBar`               |           `z-40` | 播放器保持右上并避开 safe area，不迁移到底部              |
+| `ChatDock`                              |           `z-45` | 位于左下/底部，播放器不得改变页面 padding 与其耦合        |
+| `QuestionScopeDialog`、倒计时、结果弹层 |           `z-50` | 全屏弹层覆盖播放器并阻止其接收指针                        |
+| `AppearanceSwitcher`                    |           `z-60` | 位于右下，与播放器使用不同角落                            |
+| 反馈 tooltip / 搜索建议                 | `z-80` / `z-100` | 瞬时 portal/提示保持可见，不作为播放器提层依据            |
+
+若后续 Ant Design token 的默认 modal 层级与站点全屏层冲突，只能在统一 modal 主题配置中调整，不能在 `PlaylistDialog` 内写零散高值。
 
 ## 曲库模型
 

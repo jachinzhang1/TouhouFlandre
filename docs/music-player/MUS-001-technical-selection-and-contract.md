@@ -68,14 +68,22 @@
 
 ## 验收标准
 
-- [ ] `decisions.md` 中的技术表已根据实际 spike 更新，不再保留影响实现的待定项。
-- [ ] 根布局常驻和硬刷新边界有 Playwright 证据，而不是只基于 React 文档推断。
-- [ ] 最终方案默认使用原生 `HTMLAudioElement`，或明确记录采用第三方库所解决的可复现问题。
-- [ ] 若新增依赖，许可证允许项目使用/分发，`apps/web/package.json` 声明直接依赖，锁文件同步更新。
-- [ ] Provider 的 state/commands 契约足以支持 MUS-004、005、006，且不暴露原生 audio 元素。
-- [ ] 已定义媒体事件监听的注册/释放规则；React Strict Mode 或 HMR 不会形成重复监听。
-- [ ] 已定义播放器层级和现有固定控件的碰撞清单。
-- [ ] 没有把 spike 的临时代码、远程音频 URL 或测试下载文件留在生产目录。
+- [x] `decisions.md` 中的技术表已根据实际 spike 更新，不再保留影响实现的待定项。
+- [x] 根布局常驻和硬刷新边界有 Playwright 证据，而不是只基于 React 文档推断。
+- [x] 最终方案默认使用原生 `HTMLAudioElement`，未发现需要第三方内核解决的可复现问题。
+- [x] 未新增依赖，`apps/web/package.json` 与锁文件无需变化；候选许可证和放弃原因已记录。
+- [x] Provider 的 state/commands 契约足以支持 MUS-004、005、006，且不暴露原生 audio 元素。
+- [x] 已定义媒体事件监听的注册/释放规则；adapter 测试覆盖重复换源与精确 cleanup。
+- [x] 已定义播放器层级和现有固定控件的碰撞清单。
+- [x] 没有把 spike 的临时代码、远程音频 URL 或测试下载文件留在生产目录。
+
+## 完成记录
+
+- **完成日期**：2026-08-20
+- **冻结方案**：根布局唯一原生 `HTMLAudioElement` + feature-local Context/reducer + 窄命令接口。
+- **代码契约**：`apps/web/src/features/music-player/contracts.ts`、`audioAdapter.ts`、`MusicPlayerRoot.tsx`。
+- **自动化证据**：adapter/契约 Vitest，以及 `apps/web/e2e/music-player-contract.spec.ts` 的 Desktop Chromium、Pixel 7 软导航和硬刷新验证。
+- **依赖结果**：未新增 npm 依赖，未修改锁文件。
 
 ## 依赖与后续
 
