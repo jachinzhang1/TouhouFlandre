@@ -39,6 +39,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@touhouflandre/data':
+        specifier: workspace:*
+        version: link:../../packages/data
       '@touhouflandre/shared':
         specifier: workspace:*
         version: link:../../packages/shared

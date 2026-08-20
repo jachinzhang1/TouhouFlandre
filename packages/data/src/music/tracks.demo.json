@@ -1,0 +1,50 @@
+[
+  {
+    "id": "gensoukyoku-bassui-day-06",
+    "albumId": "gensoukyoku-bassui",
+    "trackNumber": 6,
+    "title": "女仆与血之怀表",
+    "titleJa": "メイドと血の懐中時計",
+    "artists": ["NKZ"],
+    "composer": "ZUN",
+    "arranger": "NKZ",
+    "audioUrl": "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3",
+    "sourceRefs": [
+      "https://thwiki.cc/女仆与血之怀表",
+      "https://thwiki.cc/文件:TFM-001a_06.mp3",
+      "https://upload.thbwiki.cc/e/e3/TFM-001a_06.mp3"
+    ]
+  },
+  {
+    "id": "gensoukyoku-bassui-day-12",
+    "albumId": "gensoukyoku-bassui",
+    "trackNumber": 12,
+    "title": "广有射怪鸟事 ～ Till When?",
+    "titleJa": "広有射怪鳥事 ～ Till When?",
+    "artists": ["NKZ"],
+    "composer": "ZUN",
+    "arranger": "NKZ",
+    "audioUrl": "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-12.mp3",
+    "sourceRefs": [
+      "https://thwiki.cc/广有射怪鸟事_～_Till_When%3F",
+      "https://thwiki.cc/文件:TFM-001a_12.mp3",
+      "https://upload.thbwiki.cc/4/44/TFM-001a_12.mp3"
+    ]
+  },
+  {
+    "id": "kakunetsuzoushin-hisoutensoku-track-03",
+    "albumId": "kakunetsuzoushin-hisoutensoku",
+    "trackNumber": 3,
+    "title": "信仰是为了虚幻之人",
+    "titleJa": "信仰は儚き人間の為に",
+    "artists": ["あきやまうに"],
+    "composer": "ZUN",
+    "arranger": "あきやまうに",
+    "audioUrl": "/music/tracks/kakunetsuzoushin-hisoutensoku/kakunetsuzoushin-hisoutensoku-track-03.mp3",
+    "sourceRefs": [
+      "https://thwiki.cc/信仰是为了虚幻之人",
+      "https://thwiki.cc/文件:TFM-004_03.mp3",
+      "https://upload.thbwiki.cc/2/24/TFM-004_03.mp3"
+    ]
+  }
+]

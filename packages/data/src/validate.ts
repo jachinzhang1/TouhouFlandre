@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { demoCharacters, demoWorks } from ".";
 import { normalizeSearchText } from "@touhouflandre/shared";
+import { demoMusicAlbums, demoMusicTracks } from "./music";
+import { validateMusicCatalog } from "./music/validation";
 
 const characterIds = new Set(demoCharacters.map((character) => character.id));
 const characterAvatarUrls = new Set(
@@ -88,6 +90,14 @@ for (const character of demoCharacters) {
   }
 }
 
+validateMusicCatalog({
+  albums: demoMusicAlbums,
+  tracks: demoMusicTracks,
+  publicRoot: fileURLToPath(
+    new URL("../../../apps/web/public", import.meta.url),
+  ),
+});
+
 console.log(
-  `Validated ${demoCharacters.length} characters and ${demoWorks.length} works.`,
+  `Validated ${demoCharacters.length} characters, ${demoWorks.length} works, ${demoMusicAlbums.length} music albums and ${demoMusicTracks.length} tracks.`,
 );
