@@ -28,7 +28,7 @@
 - 静态 MP3 的 `Content-Type: audio/mpeg`、`Accept-Ranges`/206、seek 和缓存头检查。
 - 确认默认只 `preload="metadata"`，未在首屏并行下载全部歌曲主体。
 - 对封面 404/解码失败、音频 404/解码失败、`play()` rejection、storage exception 做完整恢复测试。
-- 检查 `THIRD_PARTY_ASSETS.md`、音乐目录 README、站点功能文档与发布说明。
+- 检查 `THIRD_PARTY_ASSETS.md` 的音乐目录级声明、音乐 JSON 的逐项 `sourceRefs`、音乐目录用途 README、站点功能文档与发布说明。
 - 执行并填写[发布验收闸门](./release-gate.md)。
 
 ## 不属于本 Issue
@@ -100,7 +100,7 @@
 - [ ] 封面、音频、storage 和 `play()` 失败均可恢复，没有无限循环或未处理 Promise rejection。
 - [ ] 全部交互可用键盘完成，焦点返回与 modal trap 正确，reduced motion 有覆盖。
 - [ ] 首页只预加载当前曲目 metadata，生产静态服务支持 MP3 MIME 和 byte-range seek。
-- [ ] 所有新增素材都有来源/授权记录，Git 中没有未引用或超预算文件。
+- [ ] 所有新增素材都有 JSON `sourceRefs` 和音乐目录级授权声明，Git 中没有未引用或超预算文件。
 - [ ] `docs/features.md` 已描述播放器的用户行为边界；需要的部署说明同步更新。
 
 ## 依赖与回修原则

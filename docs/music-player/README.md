@@ -22,7 +22,7 @@
 | 现有浮动控件              | `apps/web/src/components/AppearanceSwitcher.tsx`、`ChatDock.tsx`、移动端导航 | 需要定义播放器的固定定位、移动端安全区和层级，避免与导航、聊天、结果弹层重叠。                       |
 | 题库设置对话框            | `apps/web/src/components/QuestionScopeDialog.tsx`                            | 曲库对话框沿用其信息密度、复选卡片、Ant Design 主题桥接和响应式方向，但不复用题库领域状态。          |
 | 角色/作品数据维护         | `packages/data/src`、`docs/data-guidelines.md`                               | 音乐目录采用 JSON + Zod + 跨记录/资产校验；不为纯静态曲库新增 Postgres 表或 API。                    |
-| 静态素材与授权清单        | `apps/web/public`、`THIRD_PARTY_ASSETS.md`                                   | 音频、封面和占位图都使用本地 URL；禁止热链，新增素材必须记录来源、授权和用途。                       |
+| 静态素材与授权清单        | `apps/web/public`、`THIRD_PARTY_ASSETS.md`                                   | 音频、封面和占位图都使用本地 URL；禁止热链，逐项来源链接维护在音乐 JSON，目录 README 只说明用途。       |
 | 前端测试                  | `apps/web/src/**/*.test.ts(x)`、`apps/web/e2e`                               | 状态机用 Vitest 验证，路由连续播放、主题、响应式和真实媒体行为用 Playwright 验证。                   |
 
 ## 目标架构
@@ -113,7 +113,7 @@ flowchart TD
 | 阶段          | Issue                                                         | 可独立交付物                                                 | 依赖              |
 | ------------- | ------------------------------------------------------------- | ------------------------------------------------------------ | ----------------- |
 | M0 设计冻结   | [MUS-001](./MUS-001-technical-selection-and-contract.md)      | 技术选型记录、状态/事件接口、模块边界、浏览器兼容基线        | 无                |
-| M1 数据与素材 | [MUS-002](./MUS-002-catalog-and-assets.md)                    | 音乐数据子入口、校验器、占位图、3 首测试曲目及封面、授权记录 | MUS-001           |
+| M1 数据与素材 | [MUS-002](./MUS-002-catalog-and-assets.md)                    | 已完成：音乐数据子入口、校验器、占位图、3 首测试曲目及封面、目录授权声明与 JSON 来源元数据 | MUS-001           |
 | M2 播放基础   | [MUS-003](./MUS-003-persistent-playback-core.md)              | 唯一音频实例、播放状态机、循环切歌、音量/静音、根布局常驻    | MUS-001、002      |
 | M3A 悬浮入口  | [MUS-004](./MUS-004-floating-launcher.md)                     | 右上圆形按钮、12 点起始的环形进度、定位与动效                | MUS-003           |
 | M3B 播放卡片  | [MUS-005](./MUS-005-player-card.md)                           | 封面/标题/元信息、时间轴、传输控制、音量和展开过渡           | MUS-002、003      |
@@ -143,4 +143,4 @@ MUS-004、MUS-005、MUS-006 可以从同一个 MUS-003 基线并行，但三者�
 - 真实客户端路由切换时 `currentSrc`、当前曲目与播放时间连续
 - 六种主题色及深/浅模式的计算样式验证
 - 音频 Range 请求、`audio/mpeg` MIME 和部署缓存头验证
-- `THIRD_PARTY_ASSETS.md` 与 `apps/web/public/music/README.md` 的素材记录完成
+- `THIRD_PARTY_ASSETS.md` 的音乐目录级声明与音乐 JSON 的逐项来源记录完成；`apps/web/public/music/README.md` 只保留目录用途说明
