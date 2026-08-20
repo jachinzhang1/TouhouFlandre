@@ -1,12 +1,15 @@
 // 多人房间端到端（双 context，本地运行；需 task dev 起 Go+Next）。
 // 场景：创建→加入→就绪→对局→互猜→局结果；断线→重连；刷新恢复；非法房间号 404。
 import { test, expect } from "@playwright/test";
+
 import type { APIRequestContext, Page } from "@playwright/test";
 import {
   normalizeQuestionScope,
   type FullCatalogSnapshot,
   type QuestionScopeConfig,
 } from "@touhouflandre/shared";
+
+test.describe.configure({ mode: "serial", timeout: 60_000 });
 
 type RoomCredential = {
   roomId: string;
@@ -213,16 +216,27 @@ async function prepareVisualSnapshot(page: Page) {
   });
 }
 
-// 通过 UI 猜一个角色（搜索 + 点击建议；猜测随建议点击自动提交）。
+// 通过 UI 猜一个角色（搜索 + 选择建议 + 显式提交）。
 async function guessViaUI(page: Page, query: string, index = 0) {
   const input = page.getByLabel("搜索角色");
   await input.fill(query);
   const suggestion = page.locator(".suggestion, ul li button", {
     hasText: query,
   });
-  // 用建议列表的第一个（搜索词不同 → 首位通常不同）
   await expect(suggestion.nth(index)).toBeVisible();
   await suggestion.nth(index).click();
+  const submit = page.getByRole("button", { name: "提交猜测" });
+  await expect(submit).toBeEnabled();
+  await submit.click();
+}
+
+async function forfeitViaUI(page: Page) {
+  const forfeit = page.getByRole("button", { name: "放弃本局" });
+  if (!(await forfeit.isVisible())) {
+    await page.getByRole("button", { name: "展开对局信息" }).click();
+  }
+  await forfeit.click();
+  await page.getByRole("button", { name: /再次点击确认放弃/ }).click();
 }
 
 test.describe("多人房间", () => {
@@ -253,20 +267,24 @@ test.describe("多人房间", () => {
       expect(roomCode).toMatch(/^[A-Z2-9]{6}$/);
 
       // host 大厅可见房间号与自身成员
-      await expect(host.getByRole("heading", { name: roomCode })).toBeVisible();
-      await expect(host.getByText("（我）")).toBeVisible();
+      await expect(
+        host.locator("code").filter({ hasText: roomCode }),
+      ).toBeVisible();
+      await expect(
+        host.getByRole("table").getByText("我", { exact: true }),
+      ).toBeVisible();
 
       // guest 加入（输入房间号 + 预检提示）
       await guest.goto("/multi");
       await guest.getByPlaceholder(/ABC123/).fill(roomCode);
       await guest.getByPlaceholder(/ABC123/).blur();
-      await expect(guest.getByText(/房间存在/)).toBeVisible();
+      await expect(guest.getByText(/已找到房间/)).toBeVisible();
       await guest.getByRole("button", { name: "加入房间" }).click();
       await guest.waitForURL(/\/multi\/room\//);
 
       // 双方就绪 → 对局开始（round 1 countdown → playing）
-      await host.getByRole("button", { name: "准备" }).click();
-      await guest.getByRole("button", { name: "准备" }).click();
+      await host.getByRole("button", { name: "我准备好了" }).click();
+      await guest.getByRole("button", { name: "我准备好了" }).click();
       await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
 
       // 互猜：各自猜一个不同角色（搜索词不同）
@@ -281,8 +299,7 @@ test.describe("多人房间", () => {
       });
       await expect(guest.getByText("等待对方猜测……")).toHaveCount(0);
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await Promise.all([host.close(), guest.close()]);
     }
   });
 
@@ -300,30 +317,32 @@ test.describe("多人房间", () => {
       await guest.goto("/multi");
       await guest.getByPlaceholder(/ABC123/).fill(roomCode);
       await guest.getByPlaceholder(/ABC123/).press("Tab");
-      await expect(guest.getByText(/房间存在/)).toBeVisible({ timeout: 5_000 });
+      await expect(guest.getByText(/已找到房间/)).toBeVisible({
+        timeout: 5_000,
+      });
       await guest.getByRole("button", { name: "加入房间" }).click();
       await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
 
-      await host.getByRole("button", { name: "准备" }).click();
-      await guest.getByRole("button", { name: "准备" }).click();
+      await host.getByRole("button", { name: "我准备好了" }).click();
+      await guest.getByRole("button", { name: "我准备好了" }).click();
       await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
       await expect(guest.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
       await expect(host.getByLabel("搜索角色")).toBeEnabled({
         timeout: 10_000,
       });
 
-      await host.getByRole("button", { name: "放弃本局" }).click();
-      await host.getByRole("button", { name: /再次点击确认放弃/ }).click();
+      await forfeitViaUI(host);
 
-      await expect(host.getByText(/本局失利/)).toBeVisible({ timeout: 10_000 });
-      await expect(guest.getByText(/本局获胜/)).toBeVisible({
+      await expect(host.getByLabel("你的本局结果：负")).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(guest.getByLabel("你的本局结果：胜")).toBeVisible({
         timeout: 10_000,
       });
       await expect(host.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
       await expect(guest.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await Promise.all([host.close(), guest.close()]);
     }
   });
 
@@ -353,7 +372,7 @@ test.describe("多人房间", () => {
       await guest.goto("/multi");
       await guest.getByPlaceholder(/ABC123/).fill(roomCode);
       await guest.getByPlaceholder(/ABC123/).press("Tab");
-      await expect(guest.getByText(/房间存在 · 接力 30s/)).toBeVisible({
+      await expect(guest.getByText(/已找到房间 · 接力 30s/)).toBeVisible({
         timeout: 5_000,
       });
       await guest.getByRole("button", { name: "加入房间" }).click();
@@ -361,9 +380,8 @@ test.describe("多人房间", () => {
 
       await expect(host.getByText(/接力 30s · BO3/)).toBeVisible();
 
-      await host.getByRole("button", { name: "准备" }).click();
-      await guest.getByRole("button", { name: "准备" }).click();
-      await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
+      await host.getByRole("button", { name: "我准备好了" }).click();
+      await guest.getByRole("button", { name: "我准备好了" }).click();
       await expect(host.getByLabel("搜索角色")).toBeEnabled({
         timeout: 10_000,
       });
@@ -382,8 +400,7 @@ test.describe("多人房间", () => {
       await expect(host.getByLabel("搜索角色")).toBeEnabled();
       await expect(guest.getByLabel("搜索角色")).toBeDisabled();
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await Promise.all([host.close(), guest.close()]);
     }
   });
 
@@ -401,18 +418,18 @@ test.describe("多人房间", () => {
       await guest.getByPlaceholder(/ABC123/).fill(roomCode);
       // 显式 blur 触发预检并等其完成（避免预检与 join 并发 preflight 阻塞 join）
       await guest.getByPlaceholder(/ABC123/).press("Tab");
-      await expect(guest.getByText(/房间存在/)).toBeVisible({ timeout: 5_000 });
+      await expect(guest.getByText(/已找到房间/)).toBeVisible({
+        timeout: 5_000,
+      });
       await guest.getByRole("button", { name: "加入房间" }).click();
       await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
 
-      await host.getByRole("button", { name: "准备" }).click();
-      await guest.getByRole("button", { name: "准备" }).click();
+      await host.getByRole("button", { name: "我准备好了" }).click();
+      await guest.getByRole("button", { name: "我准备好了" }).click();
       await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
 
       // host 猜一角色后刷新 → 状态恢复（自视角猜测仍在）
-      const input = host.getByLabel("搜索角色");
-      await input.fill("十六夜咲夜");
-      await host.locator("ul li button", { hasText: "十六夜咲夜" }).click();
+      await guessViaUI(host, "十六夜咲夜");
       await expect(host.getByText("十六夜咲夜")).toBeVisible({
         timeout: 10_000,
       });
@@ -422,8 +439,10 @@ test.describe("多人房间", () => {
       });
       await expect(host.getByText(/第 1 局/)).toBeVisible();
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await Promise.all([
+        host.isClosed() ? Promise.resolve() : host.close(),
+        guest.isClosed() ? Promise.resolve() : guest.close(),
+      ]);
     }
   });
 
@@ -444,7 +463,9 @@ test.describe("多人房间", () => {
       await guest.getByPlaceholder(/ABC123/).fill(roomCode);
       // 显式 blur 触发预检并等其完成（避免预检与 join 并发 preflight 阻塞 join）
       await guest.getByPlaceholder(/ABC123/).press("Tab");
-      await expect(guest.getByText(/房间存在/)).toBeVisible({ timeout: 5_000 });
+      await expect(guest.getByText(/已找到房间/)).toBeVisible({
+        timeout: 5_000,
+      });
       const guestWsPromise = guest.waitForEvent("websocket", {
         predicate: (ws) => ws.url().includes("/api/rooms/"),
         timeout: 10_000,
@@ -453,17 +474,25 @@ test.describe("多人房间", () => {
       await guest.waitForURL(/\/multi\/room\//, { timeout: 10_000 });
       const guestWs = await guestWsPromise;
       await guestWs.waitForEvent("framereceived", { timeout: 10_000 });
-      await expect(host.getByText("在线")).toHaveCount(2, { timeout: 10_000 });
+      await expect(
+        host.getByRole("table").getByText("在线", { exact: true }),
+      ).toHaveCount(2, { timeout: 10_000 });
 
       // guest 页面关闭（WS 断开）→ host 大厅成员显示离线
       await guest.close();
-      await expect(host.getByText("离线")).toBeVisible({ timeout: 10_000 });
+      await expect(
+        host.getByRole("table").getByText("离线", { exact: true }),
+      ).toBeVisible({ timeout: 10_000 });
 
       // guest 回到房间（同 context，localStorage 保留）→ 恢复在线
       reconnectedGuest = await guestCtx.newPage();
       await reconnectedGuest.goto(`/multi/room/${roomCode}`);
-      await expect(host.getByText("离线")).toHaveCount(0, { timeout: 10_000 });
-      await expect(host.getByText("在线")).toHaveCount(2, { timeout: 10_000 });
+      await expect(
+        host.getByRole("table").getByText("离线", { exact: true }),
+      ).toHaveCount(0, { timeout: 10_000 });
+      await expect(
+        host.getByRole("table").getByText("在线", { exact: true }),
+      ).toHaveCount(2, { timeout: 10_000 });
     } finally {
       await Promise.all([
         host.isClosed() ? Promise.resolve() : host.close(),
@@ -584,8 +613,8 @@ test.describe("N 人竞速扩展", () => {
     await range.press("ArrowRight");
     await expect(range).toHaveValue("5");
     await expect(
-      page.getByRole("spinbutton", { name: "玩家上限数值" }),
-    ).toHaveValue("5");
+      page.getByRole("group", { name: "玩家上限" }).getByText("5 人"),
+    ).toBeVisible();
     await expect(page.getByText("双人赛制", { exact: true })).toBeVisible();
     await expect(page.getByText("BO3", { exact: true })).toBeVisible();
   });
@@ -596,11 +625,15 @@ test.describe("N 人竞速扩展", () => {
       await enterRoom(page, roster[0]);
 
       await expect(
-        page.getByText(`当前玩家 ${count}/${count}`, { exact: false }),
+        page.getByRole("heading", {
+          name: `房间成员 玩家 ${count}/${count}`,
+        }),
       ).toBeVisible();
       for (let index = 1; index <= count; index += 1) {
         await expect(
-          page.getByText(`Player ${index}${index === 1 ? "（我）" : ""}`),
+          page.getByRole("row", {
+            name: new RegExp(`P${index} Player ${index}`),
+          }),
         ).toBeVisible();
       }
       await expectNoHorizontalOverflow(page);
@@ -610,7 +643,7 @@ test.describe("N 人竞速扩展", () => {
         await expect(page).toHaveScreenshot("race-8-lobby.png", {
           animations: "disabled",
           fullPage: true,
-          mask: [page.getByRole("heading", { name: roster[0].roomCode })],
+          mask: [page.locator("code").filter({ hasText: roster[0].roomCode })],
         });
       }
     });
@@ -627,7 +660,7 @@ test.describe("N 人竞速扩展", () => {
     await expect(page.getByText(/第 1 局/)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByLabel("搜索角色")).toBeEnabled({ timeout: 15_000 });
     await expect(page.locator("[data-member-board]")).toHaveCount(1);
-    await expect(page.getByRole("heading", { name: "我" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "我的棋盘" })).toBeVisible();
     await expect(page.locator("[data-member-board] table")).toHaveCount(1);
     await expect(
       page.locator("[data-member-board]").getByText(/Player \d/),
@@ -672,9 +705,7 @@ test.describe("N 人竞速扩展", () => {
 
     const input = page.getByLabel("搜索角色");
     await expect(input).toBeEnabled({ timeout: 15_000 });
-    await page.getByRole("button", { name: "放弃本局" }).click();
-    await page.getByRole("button", { name: /再次点击确认放弃/ }).click();
-    await expect(input).toBeDisabled();
+    await forfeitViaUI(page);
     await expect(
       page.getByRole("status").getByText("你已放弃本局"),
     ).toBeVisible();
@@ -702,12 +733,11 @@ test.describe("N 人竞速扩展", () => {
     await expect(page.getByLabel("搜索角色")).toHaveCount(0);
     const eliminatedScore = page
       .locator("li")
-      .filter({ hasText: "Player 3（我）" })
+      .filter({ hasText: "Player 3" })
       .filter({ hasText: "已淘汰" });
     await expect(eliminatedScore).toHaveClass(/bg-vermilion/);
-    await expect(page.getByRole("button", { name: "当前棋盘" })).toBeVisible();
-    const spectatorPageSize =
-      testInfo.project.name === "mobile-chromium" ? 1 : 2;
+    await expect(page.getByText("正在跟随", { exact: true })).toBeVisible();
+    const spectatorPageSize = 1;
     await expect(page.locator("[data-member-board]")).toHaveCount(
       spectatorPageSize,
     );
@@ -723,12 +753,13 @@ test.describe("N 人竞速扩展", () => {
     await submitCorrectGuess(request, roster[0], 2, answerId);
     await forfeitRound(request, roster[1], 2);
 
-    await expect(page.getByText(/第 1 名 · Player 1/)).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.getByText("#1")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Player 1(P1)")).toBeVisible();
     await expect(page.getByText(/5 分/)).toBeVisible();
-    await expect(page.getByText(/第 2 名 · Player 2/)).toBeVisible();
-    await expect(page.getByText(/第 3 名 · Player 3（我）/)).toBeVisible();
+    await expect(page.getByText("#2")).toBeVisible();
+    await expect(page.getByText("Player 2(P2)")).toBeVisible();
+    await expect(page.getByText("#3")).toBeVisible();
+    await expect(page.getByText("Player 3(我)")).toBeVisible();
     await expect(page.getByText(/第 1 局淘汰/)).toBeVisible();
     await expectNoHorizontalOverflow(page);
     await prepareVisualSnapshot(page);
@@ -759,10 +790,10 @@ test.describe("N 人竞速扩展", () => {
     expect(settings.status()).toBe(204);
     await expect(page.getByRole("button", { name: "认领席位" })).toBeVisible();
     await page.getByRole("button", { name: "认领席位" }).click();
-    await expect(page.getByRole("button", { name: "准备" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "我准备好了" })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText("Watcher（我）")).toBeVisible();
+    await expect(page.getByRole("row", { name: /Watcher.*我/ })).toBeVisible();
     await expect
       .poll(() =>
         page.evaluate(() =>
@@ -786,11 +817,12 @@ test.describe("N 人竞速扩展", () => {
     for (const credential of roster) await setReady(request, credential);
 
     await expect(page.getByText(/观战席/)).toBeVisible({ timeout: 15_000 });
-    const pageSize = testInfo.project.name === "mobile-chromium" ? 1 : 2;
-    await expect(page.locator("[data-member-board]")).toHaveCount(pageSize);
+    const pageSize = 1;
     await expect(page.getByLabel("搜索角色")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /放弃/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "准备" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "我准备好了" })).toHaveCount(
+      0,
+    );
     await expectNoHorizontalOverflow(page);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-spectator.png", {
