@@ -66,6 +66,7 @@ function createCommands(): MusicPlayerCommands {
     play: vi.fn(async () => undefined),
     pause: vi.fn(),
     togglePlayback: vi.fn(async () => undefined),
+    playTrack: vi.fn(),
     previous: vi.fn(),
     next: vi.fn(),
     seek: vi.fn(),
@@ -131,7 +132,9 @@ describe("PlayerCard", () => {
     expect(
       screen.getByRole("heading", { name: "测试曲目" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("测试艺人")).toBeInTheDocument();
+    expect(
+      container.querySelector(".music-player-card-meta"),
+    ).toHaveTextContent("测试艺人");
     expect(screen.getByText("幻想曲拔萃")).toBeInTheDocument();
     expect(screen.getByAltText("《测试曲目》封面")).toBeInTheDocument();
     expect(screen.queryByText("音乐播放器")).not.toBeInTheDocument();
@@ -143,6 +146,9 @@ describe("PlayerCard", () => {
 
     const controls = container.querySelector(".music-player-controls");
     expect(controls).toContainElement(
+      screen.getByRole("button", { name: "曲目列表" }),
+    );
+    expect(controls).not.toContainElement(
       screen.getByRole("button", { name: "曲库设置" }),
     );
     expect(controls).toContainElement(
@@ -158,6 +164,7 @@ describe("PlayerCard", () => {
       screen.getByRole("slider", { name: "音量" }),
     );
     expect(controls?.querySelector(".bi-music-note-list")).toBeInTheDocument();
+    expect(container.querySelector(".bi-gear-fill")).toBeInTheDocument();
     expect(
       controls?.querySelector(".bi-skip-backward-fill"),
     ).toBeInTheDocument();
@@ -175,11 +182,18 @@ describe("PlayerCard", () => {
     await user.click(screen.getByRole("button", { name: "播放" }));
     await user.click(screen.getByRole("button", { name: "上一首" }));
     await user.click(screen.getByRole("button", { name: "下一首" }));
+    await user.click(screen.getByRole("button", { name: "曲目列表" }));
+    expect(screen.getByRole("button", { name: "曲目列表" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    await user.click(screen.getByRole("button", { name: "播放《测试曲目》" }));
     await user.click(screen.getByRole("button", { name: "曲库设置" }));
 
     expect(commands.togglePlayback).toHaveBeenCalledTimes(1);
     expect(commands.previous).toHaveBeenCalledTimes(1);
     expect(commands.next).toHaveBeenCalledTimes(1);
+    expect(commands.playTrack).toHaveBeenCalledWith(track.id);
     expect(onOpenPlaylist).toHaveBeenCalledTimes(1);
   });
 

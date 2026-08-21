@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export type MarqueeTitleProps = {
   children: string;
+  behavior?: "always" | "hover";
+  className?: string;
 };
 
 function readReducedMotionPreference(): boolean {
@@ -12,11 +14,17 @@ function readReducedMotionPreference(): boolean {
     : false;
 }
 
-export function MarqueeTitle({ children }: MarqueeTitleProps) {
+export function MarqueeTitle({
+  children,
+  behavior = "always",
+  className,
+}: MarqueeTitleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measurementRef = useRef<HTMLSpanElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(readReducedMotionPreference);
+  const [reducedMotion, setReducedMotion] = useState(
+    readReducedMotionPreference,
+  );
   const [duration, setDuration] = useState(8);
 
   useEffect(() => {
@@ -50,7 +58,8 @@ export function MarqueeTitle({ children }: MarqueeTitleProps) {
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(measure)
         : null;
-    if (observer && containerRef.current) observer.observe(containerRef.current);
+    if (observer && containerRef.current)
+      observer.observe(containerRef.current);
     return () => observer?.disconnect();
   }, [children, reducedMotion]);
 
@@ -59,21 +68,35 @@ export function MarqueeTitle({ children }: MarqueeTitleProps) {
   return (
     <div
       ref={containerRef}
-      className="music-player-marquee"
+      className={
+        className ? `music-player-marquee ${className}` : "music-player-marquee"
+      }
       role="text"
       aria-label={children}
       title={children}
       tabIndex={0}
     >
       <span
-        className={shouldScroll ? "music-player-marquee-track is-scrolling" : "music-player-marquee-track"}
+        className={
+          shouldScroll
+            ? `music-player-marquee-track ${
+                behavior === "hover" ? "is-hover-scrolling" : "is-scrolling"
+              }`
+            : "music-player-marquee-track"
+        }
         style={
           shouldScroll
-            ? ({ "--music-player-marquee-duration": `${duration}s` } as CSSProperties)
+            ? ({
+                "--music-player-marquee-duration": `${duration}s`,
+              } as CSSProperties)
             : undefined
         }
       >
-        <span ref={measurementRef} className="music-player-marquee-text" aria-hidden="true">
+        <span
+          ref={measurementRef}
+          className="music-player-marquee-text"
+          aria-hidden="true"
+        >
           {children}
         </span>
         {shouldScroll ? (

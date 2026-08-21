@@ -30,7 +30,7 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
-  const playlistButtonRef = useRef<HTMLButtonElement>(null);
+  const playlistSettingsButtonRef = useRef<HTMLButtonElement>(null);
   const toggleCard = useCallback(() => {
     setIsCardOpen((open) => !open);
   }, []);
@@ -46,7 +46,7 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
     setIsPlaylistOpen(false);
     window.requestAnimationFrame(() => {
       if (isCardOpen) {
-        playlistButtonRef.current?.focus();
+        playlistSettingsButtonRef.current?.focus();
       } else {
         launcherRef.current?.focus();
       }
@@ -95,7 +95,7 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
         open={isCardOpen}
         cardId={MUSIC_PLAYER_CARD_ID}
         onOpenPlaylist={openPlaylist}
-        playlistButtonRef={playlistButtonRef}
+        playlistSettingsButtonRef={playlistSettingsButtonRef}
       />
       <PlaylistDialog open={isPlaylistOpen} onClose={closePlaylist} />
       {children}
@@ -151,9 +151,8 @@ export function MusicPlayerRoot({
   children?: ReactNode;
   initialPreferences?: MusicPlayerInitialPreferences;
 }) {
-  const [loadedBoot, setLoadedBoot] = useState<MusicPlayerStorageLoadResult | null>(
-    null,
-  );
+  const [loadedBoot, setLoadedBoot] =
+    useState<MusicPlayerStorageLoadResult | null>(null);
   const persistenceErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -169,7 +168,15 @@ export function MusicPlayerRoot({
   }, [initialPreferences]);
 
   const handlePreferencesChange = useCallback(
-    (snapshot: Parameters<NonNullable<React.ComponentProps<typeof MusicPlayerProvider>["onPreferencesChange"]>>[0]) => {
+    (
+      snapshot: Parameters<
+        NonNullable<
+          React.ComponentProps<
+            typeof MusicPlayerProvider
+          >["onPreferencesChange"]
+        >
+      >[0],
+    ) => {
       const result = saveMusicPlayerSettings(snapshot);
       if (result.ok) {
         persistenceErrorRef.current = null;

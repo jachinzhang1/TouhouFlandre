@@ -76,6 +76,7 @@ function createPlayer(): {
     play: vi.fn(async () => undefined),
     pause: vi.fn(),
     togglePlayback: vi.fn(async () => undefined),
+    playTrack: vi.fn(),
     previous: vi.fn(),
     next: vi.fn(),
     seek: vi.fn(),

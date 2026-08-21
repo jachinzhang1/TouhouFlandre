@@ -272,6 +272,19 @@ export function MusicPlayerProvider({
           await requestPlay();
         }
       },
+      playTrack: (trackId) => {
+        const state = stateRef.current;
+        const targetTrack = state.queue.find((track) => track.id === trackId);
+        if (!targetTrack) return;
+
+        if (targetTrack.id === state.currentTrack?.id) {
+          if (state.status !== "playing") void requestPlay();
+          return;
+        }
+
+        changeTrack(targetTrack, "playing");
+        notifyPreferences();
+      },
       previous: () => moveTrack(-1),
       next: () => moveTrack(1),
       seek: (seconds) => {

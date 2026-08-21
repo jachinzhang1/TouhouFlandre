@@ -56,6 +56,7 @@ export type MusicPlayerCommands = {
   play(): Promise<void>;
   pause(): void;
   togglePlayback(): Promise<void>;
+  playTrack(trackId: string): void;
   previous(): void;
   next(): void;
   seek(seconds: number): void;

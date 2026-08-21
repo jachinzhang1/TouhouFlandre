@@ -198,6 +198,31 @@ describe("MusicPlayerProvider", () => {
     expect(adapter.setSource).toHaveBeenCalledTimes(2);
   });
 
+  it("plays an arbitrary track from the enabled queue through the same adapter", async () => {
+    render(
+      <MusicPlayerProvider>
+        <Probe />
+      </MusicPlayerProvider>,
+    );
+    await waitFor(() => expect(adapters).toHaveLength(1));
+    const adapter = adapters[0];
+
+    act(() => player.commands.playTrack(MUSIC_CATALOG[2].id));
+    expect(player.state.currentTrack).toBe(MUSIC_CATALOG[2]);
+    expect(adapter.setSource).toHaveBeenLastCalledWith(
+      MUSIC_CATALOG[2].audioUrl,
+    );
+    expect(adapter.setSource).toHaveBeenCalledTimes(2);
+
+    act(() => adapter.emit("canplay"));
+    await waitFor(() => expect(adapter.play).toHaveBeenCalledTimes(1));
+    expect(player.state.status).toBe("playing");
+
+    act(() => player.commands.playTrack("missing-track"));
+    expect(player.state.currentTrack).toBe(MUSIC_CATALOG[2]);
+    expect(adapter.setSource).toHaveBeenCalledTimes(2);
+  });
+
   it("wraps transport commands and keeps playback intent across source changes", async () => {
     render(
       <MusicPlayerProvider>

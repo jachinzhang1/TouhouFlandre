@@ -3,6 +3,7 @@
 import { Slider, Tooltip } from "antd";
 import {
   ArrowRepeat,
+  GearFill,
   MusicNoteList,
   PauseFill,
   PlayFill,
@@ -24,12 +25,13 @@ import { findMusicAlbum } from "../catalog";
 import { useMusicPlayer } from "../MusicPlayerProvider";
 import { MarqueeTitle } from "./MarqueeTitle";
 import { TrackCover } from "./TrackCover";
+import { TrackList } from "./TrackList";
 
 export type PlayerCardProps = {
   open: boolean;
   cardId: string;
   onOpenPlaylist: () => void;
-  playlistButtonRef?: RefObject<HTMLButtonElement | null>;
+  playlistSettingsButtonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 function formatTime(seconds: number, unknown = "--:--"): string {
@@ -40,7 +42,7 @@ function formatTime(seconds: number, unknown = "--:--"): string {
 }
 
 function sliderValue(value: number | number[]): number {
-  return Array.isArray(value) ? value[0] ?? 0 : value;
+  return Array.isArray(value) ? (value[0] ?? 0) : value;
 }
 
 function getStatusText(status: MusicPlayerStatus): string | null {
@@ -62,9 +64,10 @@ export function PlayerCard({
   open,
   cardId,
   onOpenPlaylist,
-  playlistButtonRef,
+  playlistSettingsButtonRef,
 }: PlayerCardProps) {
   const { state, commands } = useMusicPlayer();
+  const [isTrackListOpen, setIsTrackListOpen] = useState(false);
   const currentTrack = state.currentTrack;
   const album = useMemo(
     () => findMusicAlbum(currentTrack?.albumId),
@@ -111,6 +114,7 @@ export function PlayerCard({
   const hasTrack = Boolean(currentTrack);
   const statusText = getStatusText(state.status);
   const statusMessage = state.error ?? statusText;
+  const trackListId = `${cardId}-track-list`;
 
   const commitSeek = (value: number | number[]) => {
     const next = sliderValue(value);
@@ -132,6 +136,18 @@ export function PlayerCard({
       aria-describedby={statusMessage ? `${cardId}-status` : undefined}
       inert={!open ? true : undefined}
     >
+      <Tooltip title="曲库设置">
+        <button
+          type="button"
+          className="music-player-card-settings-button"
+          aria-label="曲库设置"
+          aria-haspopup="dialog"
+          onClick={onOpenPlaylist}
+          ref={playlistSettingsButtonRef}
+        >
+          <GearFill aria-hidden="true" />
+        </button>
+      </Tooltip>
       <div className="music-player-card-summary">
         <TrackCover src={currentTrack?.coverUrl} alt={`《${title}》封面`} />
         <div className="music-player-card-details">
@@ -139,10 +155,10 @@ export function PlayerCard({
             <MarqueeTitle>{title}</MarqueeTitle>
           </h2>
           <p className="music-player-card-meta">{artist}</p>
-          <p className="music-player-card-meta">
-            {album?.title ?? "未知专辑"}
-          </p>
-          {credits ? <p className="music-player-card-credits">{credits}</p> : null}
+          <p className="music-player-card-meta">{album?.title ?? "未知专辑"}</p>
+          {credits ? (
+            <p className="music-player-card-credits">{credits}</p>
+          ) : null}
         </div>
       </div>
 
@@ -171,13 +187,14 @@ export function PlayerCard({
       </div>
 
       <div className="music-player-controls" aria-label="播放控制">
-        <Tooltip title="曲库设置">
+        <Tooltip title={isTrackListOpen ? "收起曲目列表" : "曲目列表"}>
           <button
             type="button"
             className="music-player-icon-button music-player-playlist-button"
-            aria-label="曲库设置"
-            onClick={onOpenPlaylist}
-            ref={playlistButtonRef}
+            aria-label="曲目列表"
+            aria-expanded={isTrackListOpen}
+            aria-controls={trackListId}
+            onClick={() => setIsTrackListOpen((open) => !open)}
           >
             <MusicNoteList aria-hidden="true" />
           </button>
@@ -266,6 +283,23 @@ export function PlayerCard({
           {statusMessage}
         </p>
       ) : null}
+
+      <div
+        id={trackListId}
+        className="music-player-track-list-panel"
+        data-open={isTrackListOpen}
+        aria-hidden={!isTrackListOpen}
+        inert={!isTrackListOpen ? true : undefined}
+      >
+        <div className="music-player-track-list-clip">
+          <TrackList
+            tracks={state.queue}
+            currentTrackId={currentTrack?.id}
+            isPlaying={isPlaying}
+            onPlayTrack={commands.playTrack}
+          />
+        </div>
+      </div>
     </section>
   );
 }

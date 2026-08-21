@@ -8,7 +8,9 @@ const SECOND_TITLE = "广有射怪鸟事 ～ Till When?";
 
 async function openCard(page: Page) {
   await page.locator(LAUNCHER_SELECTOR).click();
-  await expect(page.locator(`${CARD_SELECTOR}[data-open="true"]`)).toBeVisible();
+  await expect(
+    page.locator(`${CARD_SELECTOR}[data-open="true"]`),
+  ).toBeVisible();
 }
 
 async function openPlaylist(page: Page) {
@@ -30,7 +32,8 @@ async function chooseTrackView(dialog: ReturnType<Page["locator"]>) {
 test.describe("MUS-006 playlist dialog and persistence", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      if (window.sessionStorage.getItem("music-player-settings-test-reset")) return;
+      if (window.sessionStorage.getItem("music-player-settings-test-reset"))
+        return;
       window.sessionStorage.setItem("music-player-settings-test-reset", "1");
       window.localStorage.removeItem("touhoufriberg:appearance");
       window.localStorage.removeItem("touhoufriberg:music-player");
@@ -47,12 +50,14 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
     await card.getByRole("button", { name: "播放", exact: true }).click();
-    await expect(card.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "暂停", exact: true }),
+    ).toBeVisible();
     await expect
       .poll(() =>
-        page.locator(AUDIO_SELECTOR).evaluate((element) =>
-          (element as HTMLAudioElement).currentTime,
-        ),
+        page
+          .locator(AUDIO_SELECTOR)
+          .evaluate((element) => (element as HTMLAudioElement).currentTime),
       )
       .toBeGreaterThan(0.05);
 
@@ -66,11 +71,15 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     });
     const dialog = await openPlaylist(page);
     await chooseTrackView(dialog);
-    await dialog.getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` }).uncheck();
+    await dialog
+      .getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` })
+      .uncheck();
     await dialog.getByRole("button", { name: /取消/ }).click();
 
     await expect(dialog).toBeHidden();
-    await expect(card.getByRole("button", { name: "曲库设置", exact: true })).toBeFocused();
+    await expect(
+      card.getByRole("button", { name: "曲库设置", exact: true }),
+    ).toBeFocused();
     const after = await page.locator(AUDIO_SELECTOR).evaluate((element) => {
       const audio = element as HTMLAudioElement;
       return {
@@ -82,7 +91,11 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     expect(after.currentSrc).toBe(before.currentSrc);
     expect(after.currentTime).toBeGreaterThanOrEqual(before.currentTime);
     expect(after.paused).toBe(false);
-    expect(await page.evaluate(() => localStorage.getItem("touhoufriberg:music-player"))).toBeNull();
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem("touhoufriberg:music-player"),
+      ),
+    ).toBeNull();
   });
 
   test("applies a selection, changes a removed current track and keeps playing intent", async ({
@@ -91,21 +104,58 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
     await card.getByRole("button", { name: "播放", exact: true }).click();
-    await expect(card.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "暂停", exact: true }),
+    ).toBeVisible();
 
     const dialog = await openPlaylist(page);
     await chooseTrackView(dialog);
-    await dialog.getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` }).uncheck();
+    await dialog
+      .getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` })
+      .uncheck();
     await dialog.getByRole("button", { name: /应用/ }).click();
 
     await expect(dialog).toBeHidden();
-    await expect(card.getByRole("button", { name: "曲库设置", exact: true })).toBeFocused();
+    await expect(
+      card.getByRole("button", { name: "曲库设置", exact: true }),
+    ).toBeFocused();
     await expect(card.getByRole("heading")).toContainText(SECOND_TITLE);
-    await expect(card.getByRole("button", { name: "暂停", exact: true })).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "暂停", exact: true }),
+    ).toBeVisible();
     await expect(page.locator(AUDIO_SELECTOR)).toHaveAttribute(
       "src",
       /gensoukyoku-bassui-day-12\.mp3/,
     );
+  });
+
+  test("refreshes an expanded inline list after applying enabled tracks", async ({
+    page,
+  }) => {
+    await openCard(page);
+    const card = page.locator(CARD_SELECTOR);
+    await card.getByRole("button", { name: "曲目列表", exact: true }).click();
+    const initialTrackCount = await card
+      .locator(".music-player-track-list-item")
+      .count();
+    expect(initialTrackCount).toBeGreaterThan(0);
+
+    const dialog = await openPlaylist(page);
+    await chooseTrackView(dialog);
+    await dialog
+      .getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` })
+      .uncheck();
+    await dialog.getByRole("button", { name: /应用/ }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(card.locator(".music-player-track-list-item")).toHaveCount(
+      initialTrackCount - 1,
+    );
+    await expect(
+      card.locator(".music-player-track-list-title").filter({
+        hasText: FIRST_TITLE,
+      }),
+    ).toHaveCount(0);
   });
 
   test("restores custom selection and volume preferences after refresh without autoplay", async ({
@@ -115,7 +165,9 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     const card = page.locator(CARD_SELECTOR);
     const dialog = await openPlaylist(page);
     await chooseTrackView(dialog);
-    await dialog.getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` }).uncheck();
+    await dialog
+      .getByRole("checkbox", { name: `选择《${FIRST_TITLE}》` })
+      .uncheck();
     await dialog.getByRole("button", { name: /应用/ }).click();
     await expect(card.getByRole("heading")).toContainText(SECOND_TITLE);
 
@@ -130,16 +182,19 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
       .toBe("gensoukyoku-bassui-day-12");
     await page.reload();
     await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty("paused", true);
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty("currentTime", 0);
+    await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty(
+      "currentTime",
+      0,
+    );
     await expect(page.locator(AUDIO_SELECTOR)).toHaveAttribute(
       "src",
       /gensoukyoku-bassui-day-12\.mp3/,
     );
 
     await openCard(page);
-    await expect(page.locator(CARD_SELECTOR).getByRole("heading")).toContainText(
-      SECOND_TITLE,
-    );
+    await expect(
+      page.locator(CARD_SELECTOR).getByRole("heading"),
+    ).toContainText(SECOND_TITLE);
     const restoredDialog = await openPlaylist(page);
     await expect(restoredDialog.getByText("已选择 2 / 3 首")).toBeVisible();
     await chooseTrackView(restoredDialog);
@@ -158,7 +213,9 @@ test.describe("MUS-006 playlist dialog and persistence", () => {
     const dialog = await openPlaylist(page);
     await expect(dialog.getByText("已选择 3 / 3 首")).toBeVisible();
     expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
     ).toBe(true);
   });
 });

@@ -13,7 +13,9 @@ const THEME_COLORS = ["scarlet", "sakura", "iris", "jade", "amber", "azure"];
 async function openCard(page: Page) {
   const launcher = page.locator(LAUNCHER_SELECTOR);
   await launcher.click();
-  await expect(page.locator(`${CARD_SELECTOR}[data-open="true"]`)).toBeVisible();
+  await expect(
+    page.locator(`${CARD_SELECTOR}[data-open="true"]`),
+  ).toBeVisible();
 }
 
 async function commitProgressSeek(
@@ -57,14 +59,19 @@ test.describe("MUS-005 player card", () => {
     await expect(card.getByRole("slider", { name: "播放进度" })).toBeEnabled({
       timeout: 10_000,
     });
-    await expect(page.locator('[data-music-player-audio="true"]')).toHaveCount(1);
+    await expect(page.locator('[data-music-player-audio="true"]')).toHaveCount(
+      1,
+    );
 
     await card.getByRole("button", { name: "播放", exact: true }).click();
     await expect(card.getByRole("button", { name: "暂停" })).toBeVisible();
 
-    const audioState = await page.locator('[data-music-player-audio="true"]').evaluate(
-      (audio) => ({ src: (audio as HTMLAudioElement).currentSrc, paused: (audio as HTMLAudioElement).paused }),
-    );
+    const audioState = await page
+      .locator('[data-music-player-audio="true"]')
+      .evaluate((audio) => ({
+        src: (audio as HTMLAudioElement).currentSrc,
+        paused: (audio as HTMLAudioElement).paused,
+      }));
     expect(audioState.src).toContain("/music/tracks/");
     expect(audioState.paused).toBe(false);
 
@@ -74,11 +81,53 @@ test.describe("MUS-005 player card", () => {
     await expect(card.getByRole("button", { name: "取消静音" })).toBeVisible();
   });
 
-  test("commits seek and restores focus after close", async ({ page }, testInfo) => {
+  test("opens the inline track list and plays a non-adjacent enabled track", async ({
+    page,
+  }) => {
+    await openCard(page);
+    const card = page.locator(CARD_SELECTOR);
+    const listToggle = card.getByRole("button", {
+      name: "曲目列表",
+      exact: true,
+    });
+    const listPanel = card.locator(".music-player-track-list-panel");
+
+    await expect(listToggle).toHaveAttribute("aria-expanded", "false");
+    await listToggle.click();
+    await expect(listToggle).toHaveAttribute("aria-expanded", "true");
+    await expect(listPanel).toHaveAttribute("data-open", "true");
+
+    const target = card.getByRole("button", {
+      name: "播放《广有射怪鸟事 ～ Till When?》",
+      exact: true,
+    });
+    await expect(target).toBeVisible();
+    await target.click();
+
+    await expect(card.getByRole("heading")).toContainText(
+      "广有射怪鸟事 ～ Till When?",
+    );
+    await expect(card.getByRole("button", { name: "暂停" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.locator('[data-music-player-audio="true"]'),
+    ).toHaveAttribute("src", /gensoukyoku-bassui-day-12\.mp3/);
+
+    await listToggle.click();
+    await expect(listToggle).toHaveAttribute("aria-expanded", "false");
+    await expect(listPanel).toHaveAttribute("data-open", "false");
+  });
+
+  test("commits seek and restores focus after close", async ({
+    page,
+  }, testInfo) => {
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
     const progress = card.getByRole("slider", { name: "播放进度" });
-    const progressRoot = card.locator(".music-player-card-progress .ant-slider");
+    const progressRoot = card.locator(
+      ".music-player-card-progress .ant-slider",
+    );
 
     await expect(progress).toBeEnabled({ timeout: 10_000 });
     await commitProgressSeek(page, progress, progressRoot, testInfo);
@@ -88,7 +137,9 @@ test.describe("MUS-005 player card", () => {
     await expect(page.locator(LAUNCHER_SELECTOR)).toBeFocused();
   });
 
-  test("closes on outside click and keeps the card inside the viewport", async ({ page }) => {
+  test("closes on outside click and keeps the card inside the viewport", async ({
+    page,
+  }) => {
     for (const viewport of [
       { width: 320, height: 800 },
       { width: 1024, height: 900 },
@@ -104,12 +155,15 @@ test.describe("MUS-005 player card", () => {
       expect(bounds).not.toBeNull();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width);
-      expect((await page.evaluate(() => document.documentElement.scrollWidth))).toBeLessThanOrEqual(
-        viewport.width,
-      );
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth),
+      ).toBeLessThanOrEqual(viewport.width);
 
       await page.mouse.click(8, viewport.height - 12);
-      await expect(page.locator(CARD_SELECTOR)).toHaveAttribute("aria-hidden", "true");
+      await expect(page.locator(CARD_SELECTOR)).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
     }
   });
 
@@ -138,10 +192,14 @@ test.describe("MUS-005 player card", () => {
         return {
           accent,
           progress: getComputedStyle(
-            document.querySelector(".music-player-card-progress .ant-slider-track")!,
+            document.querySelector(
+              ".music-player-card-progress .ant-slider-track",
+            )!,
           ).backgroundColor,
           volume: getComputedStyle(
-            document.querySelector(".music-player-volume-control .ant-slider-track")!,
+            document.querySelector(
+              ".music-player-volume-control .ant-slider-track",
+            )!,
           ).backgroundColor,
         };
       });
