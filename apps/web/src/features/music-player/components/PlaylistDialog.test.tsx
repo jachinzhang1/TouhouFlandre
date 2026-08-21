@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MUSIC_CATALOG, findMusicAlbum } from "../catalog";
@@ -38,15 +38,17 @@ vi.mock("antd", () => ({
     indeterminate,
     onChange,
     children,
+    className,
     ...props
   }: {
     checked?: boolean;
     indeterminate?: boolean;
     onChange?: (event: { target: { checked: boolean } }) => void;
     children?: ReactNode;
+    className?: string;
     "aria-label"?: string;
   }) => (
-    <label>
+    <label className={className}>
       <input
         type="checkbox"
         checked={Boolean(checked)}
@@ -151,5 +153,58 @@ describe("PlaylistDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /取消/ }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(player.applySelection).not.toHaveBeenCalled();
+  });
+
+  it("separates album categories and collapses category and album sections", () => {
+    const player = createPlayer();
+    useMusicPlayerMock.mockReturnValue(player.context);
+    render(<PlaylistDialog open onClose={vi.fn()} />);
+
+    const gameSection = document.querySelector(
+      '[data-music-playlist-category="game_ost"]',
+    );
+    expect(gameSection).not.toBeNull();
+    const gameToggle = within(gameSection as HTMLElement).getByRole("button", {
+      name: /游戏原声带/u,
+    });
+    expect(gameToggle).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(gameToggle);
+    expect(gameToggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(gameSection as HTMLElement).queryByRole("checkbox", {
+        name: "选择专辑《东方红魔乡》",
+      }),
+    ).toBeNull();
+
+    const view = screen.getByRole("combobox", { name: "曲库显示方式" });
+    fireEvent.change(view, { target: { value: "track" } });
+    const gameAlbum = document.querySelector(
+      '[data-music-playlist-album="th06"]',
+    );
+    expect(gameAlbum).not.toBeNull();
+    const albumToggle = within(gameAlbum as HTMLElement).getByRole("button", {
+      name: /东方红魔乡/u,
+    });
+    fireEvent.click(albumToggle);
+    expect(albumToggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(gameAlbum as HTMLElement).queryByRole("checkbox", {
+        name: `选择《${MUSIC_CATALOG[0].title}》`,
+      }),
+    ).toBeNull();
+  });
+
+  it("updates card emphasis immediately when a track is unchecked", () => {
+    const player = createPlayer();
+    useMusicPlayerMock.mockReturnValue(player.context);
+    render(<PlaylistDialog open onClose={vi.fn()} />);
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: `选择专辑《${findMusicAlbum(MUSIC_CATALOG[0].albumId)?.title}》`,
+    });
+    const card = checkbox.closest("label");
+    expect(card).toHaveClass("is-selected");
+    fireEvent.click(checkbox);
+    expect(card).not.toHaveClass("is-selected");
   });
 });

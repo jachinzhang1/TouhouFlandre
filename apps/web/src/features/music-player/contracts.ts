@@ -5,6 +5,7 @@
  */
 export type MusicAlbum = {
   id: string;
+  category: "game_ost" | "zun_music_cd" | "tasofro_game_ost";
   title: string;
   titleJa?: string;
   artist?: string;
