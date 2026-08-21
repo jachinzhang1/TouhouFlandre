@@ -118,7 +118,7 @@ flowchart TD
 | M3A 悬浮入口  | [MUS-004](./MUS-004-floating-launcher.md)                     | 已完成：56px 右上圆形入口、中央 `Music2` 音符、12 点起始环形进度、定位、主题和可访问性 | MUS-003           |
 | M3B 播放卡片  | [MUS-005](./MUS-005-player-card.md)                           | 已完成：封面/标题/元信息、时间轴、传输控制、音量和展开过渡   | MUS-002、003      |
 | M3C 曲库设置  | [MUS-006](./MUS-006-playlist-dialog-and-persistence.md)       | 已完成：专辑/曲目复选对话框、草稿提交、版本化本地设置         | MUS-002、003      |
-| M4 共同验收   | [MUS-007](./MUS-007-integration-accessibility-and-release.md) | 路由连续播放、故障态、键盘/移动端、视觉与发布回归            | MUS-004、005、006 |
+| M4 共同验收   | [MUS-007](./MUS-007-integration-accessibility-and-release.md) | 已完成：路由连续播放、故障态、键盘/移动端、视觉与发布回归            | MUS-004、005、006 |
 
 MUS-004、MUS-005、MUS-006 可以从同一个 MUS-003 基线并行，但三者不得各自创建音频实例或各自维护当前曲目。MUS-007 只做集成修复和质量收口，不在最后阶段重写曲库或状态模型。
 
