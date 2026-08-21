@@ -23,6 +23,7 @@ vi.mock("antd", () => ({
     onChange?: (value: number) => void;
     onChangeComplete?: (value: number) => void;
     ariaLabelForHandle?: string;
+    tooltip?: { open?: boolean };
   }) => (
     <input
       type="range"
@@ -32,6 +33,7 @@ vi.mock("antd", () => ({
       step={props.step}
       disabled={props.disabled}
       aria-label={props.ariaLabelForHandle}
+      data-tooltip-open={String(props.tooltip?.open)}
       onChange={(event) => props.onChange?.(Number(event.currentTarget.value))}
       onMouseUp={(event) =>
         props.onChangeComplete?.(Number(event.currentTarget.value))
@@ -73,9 +75,7 @@ function createCommands(): MusicPlayerCommands {
   };
 }
 
-function mockPlayer(
-  overrides: Partial<MusicPlayerContextValue["state"]> = {},
-) {
+function mockPlayer(overrides: Partial<MusicPlayerContextValue["state"]> = {}) {
   const state: MusicPlayerContextValue["state"] = {
     queue: [track],
     currentTrack: track,
@@ -120,19 +120,57 @@ describe("PlayerCard", () => {
     const commands = mockPlayer();
     const onOpenPlaylist = vi.fn();
 
-    render(
+    const { container } = render(
       <PlayerCard
         open
         cardId="music-player-card"
-        onClose={vi.fn()}
         onOpenPlaylist={onOpenPlaylist}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "测试曲目" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "测试曲目" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("测试艺人")).toBeInTheDocument();
     expect(screen.getByText("幻想曲拔萃")).toBeInTheDocument();
     expect(screen.getByAltText("《测试曲目》封面")).toBeInTheDocument();
+    expect(screen.queryByText("音乐播放器")).not.toBeInTheDocument();
+    expect(screen.queryByText("已暂停")).not.toBeInTheDocument();
+    expect(screen.queryByText("正在播放")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "关闭音乐播放器" }),
+    ).not.toBeInTheDocument();
+
+    const controls = container.querySelector(".music-player-controls");
+    expect(controls).toContainElement(
+      screen.getByRole("button", { name: "曲库设置" }),
+    );
+    expect(controls).toContainElement(
+      screen.getByRole("button", { name: "上一首" }),
+    );
+    expect(controls).toContainElement(
+      screen.getByRole("button", { name: "播放" }),
+    );
+    expect(controls).toContainElement(
+      screen.getByRole("button", { name: "下一首" }),
+    );
+    expect(controls).toContainElement(
+      screen.getByRole("slider", { name: "音量" }),
+    );
+    expect(controls?.querySelector(".bi-music-note-list")).toBeInTheDocument();
+    expect(
+      controls?.querySelector(".bi-skip-backward-fill"),
+    ).toBeInTheDocument();
+    expect(controls?.querySelector(".bi-play-fill")).toBeInTheDocument();
+    expect(
+      controls?.querySelector(".bi-skip-forward-fill"),
+    ).toBeInTheDocument();
+
+    const progress = container.querySelector(".music-player-card-progress");
+    expect(progress).toContainElement(
+      screen.getByRole("slider", { name: "播放进度" }),
+    );
+    expect(progress?.querySelectorAll(":scope > span")).toHaveLength(2);
 
     await user.click(screen.getByRole("button", { name: "播放" }));
     await user.click(screen.getByRole("button", { name: "上一首" }));
@@ -148,15 +186,11 @@ describe("PlayerCard", () => {
   it("keeps a seek draft until the slider commit", () => {
     const commands = mockPlayer();
     render(
-      <PlayerCard
-        open
-        cardId="music-player-card"
-        onClose={vi.fn()}
-        onOpenPlaylist={vi.fn()}
-      />,
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     const slider = screen.getByRole("slider", { name: "播放进度" });
+    expect(slider).toHaveAttribute("data-tooltip-open", "false");
     fireEvent.change(slider, { target: { value: "48" } });
     expect(commands.seek).not.toHaveBeenCalled();
     expect(slider).toHaveValue("48");
@@ -170,15 +204,11 @@ describe("PlayerCard", () => {
     const user = userEvent.setup();
     const commands = mockPlayer();
     render(
-      <PlayerCard
-        open
-        cardId="music-player-card"
-        onClose={vi.fn()}
-        onOpenPlaylist={vi.fn()}
-      />,
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     const volume = screen.getByRole("slider", { name: "音量" });
+    expect(volume).toHaveAttribute("data-tooltip-open", "false");
     fireEvent.change(volume, { target: { value: "0.34" } });
     await user.click(screen.getByRole("button", { name: "静音" }));
 
@@ -189,12 +219,7 @@ describe("PlayerCard", () => {
   it("keeps a stable playback target while media is loading", () => {
     mockPlayer({ status: "loading" });
     render(
-      <PlayerCard
-        open
-        cardId="music-player-card"
-        onClose={vi.fn()}
-        onOpenPlaylist={vi.fn()}
-      />,
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     expect(screen.getByRole("button", { name: "播放" })).toHaveAttribute(
@@ -202,18 +227,15 @@ describe("PlayerCard", () => {
       "true",
     );
     expect(screen.getByText("正在加载")).toBeInTheDocument();
-    expect(document.querySelector(".music-player-loading-icon")).toBeInTheDocument();
+    expect(
+      document.querySelector(".music-player-loading-icon"),
+    ).toBeInTheDocument();
   });
 
   it("falls back from a broken cover to the placeholder and then a stable icon", () => {
     mockPlayer();
     render(
-      <PlayerCard
-        open
-        cardId="music-player-card"
-        onClose={vi.fn()}
-        onOpenPlaylist={vi.fn()}
-      />,
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     const image = screen.getByAltText("《测试曲目》封面");
@@ -223,7 +245,9 @@ describe("PlayerCard", () => {
       "/music/placeholder-cover.png",
     );
     fireEvent.error(screen.getByAltText("《测试曲目》封面"));
-    expect(screen.getByRole("img", { name: "《测试曲目》封面" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "《测试曲目》封面" }),
+    ).toBeInTheDocument();
   });
 
   it("resets cover fallback state when the track changes", () => {
@@ -251,12 +275,7 @@ describe("PlayerCard", () => {
       error: "音频无法解码。",
     });
     const { container } = render(
-      <PlayerCard
-        open
-        cardId="music-player-card"
-        onClose={vi.fn()}
-        onOpenPlaylist={vi.fn()}
-      />,
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     expect(screen.getByRole("alert")).toHaveTextContent("音频无法解码。");
@@ -274,7 +293,6 @@ describe("PlayerCard", () => {
       <PlayerCard
         open={false}
         cardId="music-player-card"
-        onClose={vi.fn()}
         onOpenPlaylist={vi.fn()}
       />,
     );

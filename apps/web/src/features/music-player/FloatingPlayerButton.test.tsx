@@ -8,7 +8,10 @@ import {
   clampPlaybackProgress,
   FloatingPlayerButton,
   getPlaybackDashOffset,
+  MUSIC_PLAYER_LAUNCHER_SIZE,
   MUSIC_PLAYER_RING_CIRCUMFERENCE,
+  MUSIC_PLAYER_RING_RADIUS,
+  MUSIC_PLAYER_RING_STROKE,
 } from "./FloatingPlayerButton";
 
 vi.mock("./MusicPlayerProvider", () => ({
@@ -94,7 +97,17 @@ describe("FloatingPlayerButton", () => {
     expect(button).toHaveAttribute("aria-controls", "music-player-card");
     expect(button).toHaveAttribute("aria-describedby", "music-player-card-progress");
     expect(button).toHaveAttribute("data-status", "paused");
-    expect(button.querySelector(".music-player-launcher-icon")).toBeTruthy();
+    expect(button.querySelector(".bi-music-note-beamed")).toBeTruthy();
+    expect(
+      button.querySelector(".music-player-launcher-ring-track"),
+    ).toBeNull();
+    expect(button.querySelector(".music-player-launcher-ring")).toHaveAttribute(
+      "viewBox",
+      `0 0 ${MUSIC_PLAYER_LAUNCHER_SIZE} ${MUSIC_PLAYER_LAUNCHER_SIZE}`,
+    );
+    expect(MUSIC_PLAYER_RING_RADIUS + MUSIC_PLAYER_RING_STROKE / 2).toBe(
+      MUSIC_PLAYER_LAUNCHER_SIZE / 2,
+    );
     expect(button.querySelector(".music-player-launcher-ring-progress")).toHaveAttribute(
       "stroke-dashoffset",
       String(getPlaybackDashOffset(25, 100)),
@@ -142,7 +155,9 @@ describe("FloatingPlayerButton", () => {
     });
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toHaveAttribute("data-status", "loading");
-    expect(button.querySelector(".music-player-launcher-ring-progress")).toHaveAttribute(
+    expect(
+      button.querySelector(".music-player-launcher-ring-progress"),
+    ).toHaveAttribute(
       "stroke-dashoffset",
       String(MUSIC_PLAYER_RING_CIRCUMFERENCE),
     );

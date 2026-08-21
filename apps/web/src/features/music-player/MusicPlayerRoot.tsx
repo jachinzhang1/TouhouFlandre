@@ -94,7 +94,6 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
       <PlayerCard
         open={isCardOpen}
         cardId={MUSIC_PLAYER_CARD_ID}
-        onClose={closeCard}
         onOpenPlaylist={openPlaylist}
         playlistButtonRef={playlistButtonRef}
       />

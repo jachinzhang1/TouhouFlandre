@@ -1,15 +1,16 @@
 "use client";
 
 import { Tooltip } from "antd";
-import { Music2 } from "lucide-react";
+import { MusicNoteBeamed } from "react-bootstrap-icons";
 import type { Ref } from "react";
 import type { MusicPlayerStatus } from "./contracts";
 import { isUsableDuration } from "./contracts";
 import { useMusicPlayer } from "./MusicPlayerProvider";
 
-export const MUSIC_PLAYER_LAUNCHER_SIZE = 56;
-export const MUSIC_PLAYER_RING_RADIUS = 24;
+export const MUSIC_PLAYER_LAUNCHER_SIZE = 48;
 export const MUSIC_PLAYER_RING_STROKE = 3;
+export const MUSIC_PLAYER_RING_RADIUS =
+  (MUSIC_PLAYER_LAUNCHER_SIZE - MUSIC_PLAYER_RING_STROKE) / 2;
 export const MUSIC_PLAYER_RING_CIRCUMFERENCE =
   2 * Math.PI * MUSIC_PLAYER_RING_RADIUS;
 
@@ -80,7 +81,11 @@ export function FloatingPlayerButton({
   const progressDescriptionId = `${cardId}-progress`;
 
   return (
-    <Tooltip title={accessibleName} placement="bottomRight">
+    <Tooltip
+      title={accessibleName}
+      placement="bottomRight"
+      open={isOpen ? false : undefined}
+    >
       <span className="music-player-tooltip-target">
         <button
           type="button"
@@ -97,25 +102,16 @@ export function FloatingPlayerButton({
         >
           <svg
             className="music-player-launcher-ring"
-            viewBox="0 0 56 56"
+            viewBox={`0 0 ${MUSIC_PLAYER_LAUNCHER_SIZE} ${MUSIC_PLAYER_LAUNCHER_SIZE}`}
             width={MUSIC_PLAYER_LAUNCHER_SIZE}
             height={MUSIC_PLAYER_LAUNCHER_SIZE}
             aria-hidden="true"
             focusable="false"
           >
             <circle
-              className="music-player-launcher-ring-track"
-              cx="28"
-              cy="28"
-              r={MUSIC_PLAYER_RING_RADIUS}
-              fill="none"
-              stroke="var(--line-strong)"
-              strokeWidth={MUSIC_PLAYER_RING_STROKE}
-            />
-            <circle
               className="music-player-launcher-ring-progress"
-              cx="28"
-              cy="28"
+              cx={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
+              cy={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
               r={MUSIC_PLAYER_RING_RADIUS}
               fill="none"
               stroke="var(--accent)"
@@ -126,13 +122,12 @@ export function FloatingPlayerButton({
                 state.duration,
               )}
               strokeLinecap="round"
-              transform="rotate(-90 28 28)"
+              transform={`rotate(-90 ${MUSIC_PLAYER_LAUNCHER_SIZE / 2} ${MUSIC_PLAYER_LAUNCHER_SIZE / 2})`}
             />
           </svg>
-          <Music2
+          <MusicNoteBeamed
             className="music-player-launcher-icon"
-            size={24}
-            strokeWidth={2.1}
+            size={22}
             aria-hidden="true"
           />
           <span id={progressDescriptionId} className="sr-only">

@@ -2,18 +2,17 @@
 
 import { Slider, Tooltip } from "antd";
 import {
-  ListMusic,
-  LoaderCircle,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  Volume,
-  Volume1,
-  Volume2,
-  VolumeX,
-  X,
-} from "lucide-react";
+  ArrowRepeat,
+  MusicNoteList,
+  PauseFill,
+  PlayFill,
+  SkipBackwardFill,
+  SkipForwardFill,
+  VolumeDownFill,
+  VolumeMuteFill,
+  VolumeOffFill,
+  VolumeUpFill,
+} from "react-bootstrap-icons";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   clampMediaTime,
@@ -29,7 +28,6 @@ import { TrackCover } from "./TrackCover";
 export type PlayerCardProps = {
   open: boolean;
   cardId: string;
-  onClose: () => void;
   onOpenPlaylist: () => void;
   playlistButtonRef?: RefObject<HTMLButtonElement | null>;
 };
@@ -45,32 +43,24 @@ function sliderValue(value: number | number[]): number {
   return Array.isArray(value) ? value[0] ?? 0 : value;
 }
 
-function getStatusText(status: MusicPlayerStatus): string {
-  switch (status) {
-    case "loading":
-      return "正在加载";
-    case "playing":
-      return "正在播放";
-    case "error":
-      return "播放出错";
-    case "paused":
-      return "已暂停";
-    default:
-      return "暂无曲目";
-  }
+function getStatusText(status: MusicPlayerStatus): string | null {
+  return status === "loading" ? "正在加载" : null;
 }
 
-function VolumeIcon({ level }: { level: ReturnType<typeof getVolumeIconLevel> }) {
-  if (level === "muted") return <VolumeX aria-hidden="true" />;
-  if (level === "low") return <Volume aria-hidden="true" />;
-  if (level === "medium") return <Volume1 aria-hidden="true" />;
-  return <Volume2 aria-hidden="true" />;
+function VolumeIcon({
+  level,
+}: {
+  level: ReturnType<typeof getVolumeIconLevel>;
+}) {
+  if (level === "muted") return <VolumeMuteFill aria-hidden="true" />;
+  if (level === "low") return <VolumeOffFill aria-hidden="true" />;
+  if (level === "medium") return <VolumeDownFill aria-hidden="true" />;
+  return <VolumeUpFill aria-hidden="true" />;
 }
 
 export function PlayerCard({
   open,
   cardId,
-  onClose,
   onOpenPlaylist,
   playlistButtonRef,
 }: PlayerCardProps) {
@@ -116,10 +106,11 @@ export function PlayerCard({
   ]
     .filter(Boolean)
     .join(" · ");
-  const statusText = getStatusText(state.status);
   const volumeLevel = getVolumeIconLevel(state.volume, state.muted);
   const isPlaying = state.status === "playing";
   const hasTrack = Boolean(currentTrack);
+  const statusText = getStatusText(state.status);
+  const statusMessage = state.error ?? statusText;
 
   const commitSeek = (value: number | number[]) => {
     const next = sliderValue(value);
@@ -138,23 +129,9 @@ export function PlayerCard({
       data-open={open}
       aria-hidden={!open}
       aria-labelledby={`${cardId}-title`}
-      aria-describedby={`${cardId}-status`}
+      aria-describedby={statusMessage ? `${cardId}-status` : undefined}
       inert={!open ? true : undefined}
     >
-      <div className="music-player-card-header">
-        <span className="music-player-card-kicker">音乐播放器</span>
-        <Tooltip title="关闭音乐播放器">
-          <button
-            type="button"
-            className="music-player-icon-button"
-            aria-label="关闭音乐播放器"
-            onClick={onClose}
-          >
-            <X aria-hidden="true" />
-          </button>
-        </Tooltip>
-      </div>
-
       <div className="music-player-card-summary">
         <TrackCover src={currentTrack?.coverUrl} alt={`《${title}》封面`} />
         <div className="music-player-card-details">
@@ -169,7 +146,8 @@ export function PlayerCard({
         </div>
       </div>
 
-      <div className="music-player-card-progress">
+      <div className="music-player-card-progress" aria-live="off">
+        <span>{formatTime(displayedTime, "0:00")}</span>
         <Slider
           min={0}
           max={durationIsUsable ? state.duration : 1}
@@ -177,6 +155,7 @@ export function PlayerCard({
           value={durationIsUsable ? displayedTime : 0}
           disabled={!hasTrack || !durationIsUsable}
           ariaLabelForHandle="播放进度"
+          tooltip={{ open: false }}
           styles={{
             track: { backgroundColor: "var(--accent)" },
             rail: { backgroundColor: "var(--line-strong)" },
@@ -188,13 +167,21 @@ export function PlayerCard({
           }}
           onChangeComplete={commitSeek}
         />
-        <div className="music-player-time-row" aria-live="off">
-          <span>{formatTime(displayedTime, "0:00")}</span>
-          <span>{formatTime(state.duration)}</span>
-        </div>
+        <span>{formatTime(state.duration)}</span>
       </div>
 
-      <div className="music-player-transport" aria-label="播放控制">
+      <div className="music-player-controls" aria-label="播放控制">
+        <Tooltip title="曲库设置">
+          <button
+            type="button"
+            className="music-player-icon-button music-player-playlist-button"
+            aria-label="曲库设置"
+            onClick={onOpenPlaylist}
+            ref={playlistButtonRef}
+          >
+            <MusicNoteList aria-hidden="true" />
+          </button>
+        </Tooltip>
         <Tooltip title="上一首">
           <button
             type="button"
@@ -203,7 +190,7 @@ export function PlayerCard({
             disabled={!hasTrack}
             onClick={() => commands.previous()}
           >
-            <SkipBack aria-hidden="true" />
+            <SkipBackwardFill aria-hidden="true" />
           </button>
         </Tooltip>
         <Tooltip title={isPlaying ? "暂停" : "播放"}>
@@ -217,11 +204,14 @@ export function PlayerCard({
             onClick={() => void commands.togglePlayback()}
           >
             {state.status === "loading" ? (
-              <LoaderCircle className="music-player-loading-icon" aria-hidden="true" />
+              <ArrowRepeat
+                className="music-player-loading-icon"
+                aria-hidden="true"
+              />
             ) : isPlaying ? (
-              <Pause aria-hidden="true" />
+              <PauseFill aria-hidden="true" />
             ) : (
-              <Play aria-hidden="true" />
+              <PlayFill aria-hidden="true" />
             )}
           </button>
         </Tooltip>
@@ -233,25 +223,7 @@ export function PlayerCard({
             disabled={!hasTrack}
             onClick={() => commands.next()}
           >
-            <SkipForward aria-hidden="true" />
-          </button>
-        </Tooltip>
-      </div>
-
-      <p id={`${cardId}-status`} className="music-player-status" role={state.error ? "alert" : "status"}>
-        {state.error ?? statusText}
-      </p>
-
-      <div className="music-player-card-footer">
-        <Tooltip title="曲库设置">
-          <button
-            type="button"
-            className="music-player-icon-button"
-            aria-label="曲库设置"
-            onClick={onOpenPlaylist}
-            ref={playlistButtonRef}
-          >
-            <ListMusic aria-hidden="true" />
+            <SkipForwardFill aria-hidden="true" />
           </button>
         </Tooltip>
         <div className="music-player-volume-control">
@@ -271,6 +243,7 @@ export function PlayerCard({
             step={0.01}
             value={state.volume}
             ariaLabelForHandle="音量"
+            tooltip={{ open: false }}
             styles={{
               track: { backgroundColor: "var(--accent)" },
               rail: { backgroundColor: "var(--line-strong)" },
@@ -278,11 +251,18 @@ export function PlayerCard({
             }}
             onChange={(value) => commands.setVolume(sliderValue(value))}
           />
-          <span className="music-player-volume-value" aria-hidden="true">
-            {Math.round(state.volume * 100)}%
-          </span>
         </div>
       </div>
+
+      {statusMessage ? (
+        <p
+          id={`${cardId}-status`}
+          className="music-player-status"
+          role={state.error ? "alert" : "status"}
+        >
+          {statusMessage}
+        </p>
+      ) : null}
     </section>
   );
 }
