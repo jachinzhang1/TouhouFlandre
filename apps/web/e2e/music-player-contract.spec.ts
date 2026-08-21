@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 const AUDIO_SELECTOR = '[data-music-player-audio="true"]';
+const FIRST_TRACK =
+  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3";
 
 test.describe("MUS-001 root audio boundary", () => {
   test("keeps one audio host across soft navigation and replaces it on reload", async ({
@@ -9,6 +11,9 @@ test.describe("MUS-001 root audio boundary", () => {
     await page.goto("/");
 
     await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1);
+    await expect
+      .poll(() => page.locator(AUDIO_SELECTOR).getAttribute("src"))
+      .toBe(FIRST_TRACK);
     await page.evaluate((selector) => {
       const audio = document.querySelector<HTMLAudioElement>(selector);
       if (!audio) throw new Error("Music player audio host is missing.");
@@ -180,7 +185,9 @@ test.describe("MUS-001 root audio boundary", () => {
         return previous === document.querySelector(selector);
       }, AUDIO_SELECTOR),
     ).toBe(false);
-    expect(await page.locator(AUDIO_SELECTOR).getAttribute("src")).toBeNull();
+    await expect
+      .poll(() => page.locator(AUDIO_SELECTOR).getAttribute("src"))
+      .toBe(FIRST_TRACK);
     await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty("paused", true);
     await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty(
       "currentTime",

@@ -1,16 +1,20 @@
 "use client";
 
-/**
- * MUS-001 host boundary. MUS-003 will add the provider and UI around this
- * element; the host must remain mounted for the lifetime of the root layout.
- */
-export function MusicPlayerRoot() {
+import type { ReactNode } from "react";
+import type { MusicPlayerInitialPreferences } from "./contracts";
+import { MusicPlayerProvider } from "./MusicPlayerProvider";
+
+/** Stable root-layout host. It must not be keyed by a route or page state. */
+export function MusicPlayerRoot({
+  children,
+  initialPreferences,
+}: {
+  children?: ReactNode;
+  initialPreferences?: MusicPlayerInitialPreferences;
+}) {
   return (
-    <audio
-      aria-hidden="true"
-      data-music-player-audio="true"
-      preload="metadata"
-      suppressHydrationWarning
-    />
+    <MusicPlayerProvider initialPreferences={initialPreferences}>
+      {children}
+    </MusicPlayerProvider>
   );
 }

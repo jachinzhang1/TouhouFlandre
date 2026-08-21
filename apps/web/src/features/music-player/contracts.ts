@@ -68,6 +68,15 @@ export type MusicPlayerContextValue = {
   commands: MusicPlayerCommands;
 };
 
+/** Validated startup values. MUS-006 will populate these from localStorage. */
+export type MusicPlayerInitialPreferences = {
+  selectedTrackIds?: readonly string[];
+  currentTrackId?: string;
+  volume?: number;
+  muted?: boolean;
+  lastNonZeroVolume?: number;
+};
+
 export const MUSIC_PLAYER_STORAGE_KEY = "touhoufriberg:music-player";
 export const MUSIC_PLAYER_DEFAULT_VOLUME = 0.7;
 
