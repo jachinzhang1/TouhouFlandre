@@ -1,10 +1,13 @@
 import { expect, test } from "@playwright/test";
+import {
+  MUSIC_AUDIO_SELECTOR,
+  MUSIC_TRACK_SOURCE_PATTERN,
+  openTrackList,
+  readTrackList,
+} from "./music-player-test-helpers";
 
-const AUDIO_SELECTOR = '[data-music-player-audio="true"]';
-const FIRST_TRACK =
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3";
-const SECOND_TRACK =
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-12.mp3";
+const LAUNCHER_SELECTOR = '[data-music-player-launcher="true"]';
+const CARD_SELECTOR = '[data-music-player-card="true"]';
 
 type MusicLifecycleWindow = Window & {
   __musicLifecycleAudio?: HTMLAudioElement;
@@ -19,14 +22,26 @@ test.describe("MUS-003 persistent playback core", () => {
     page.on("pageerror", (error) => pageErrors.push(error));
     await page.goto("/");
 
-    const audio = page.locator(AUDIO_SELECTOR);
+    const launcher = page.locator(LAUNCHER_SELECTOR);
+    await launcher.click();
+    const card = page.locator(CARD_SELECTOR);
+    await expect(card).toHaveAttribute("data-open", "true");
+    await openTrackList(card);
+    const trackCount = (await readTrackList(card)).length;
+    await launcher.click();
+    await expect(card).toHaveAttribute("data-open", "false");
+
+    const audio = page.locator(MUSIC_AUDIO_SELECTOR);
     await expect(audio).toHaveCount(1, { timeout: 10_000 });
     await expect(audio).toHaveAttribute("preload", "metadata");
     await expect
       .poll(() =>
         audio.evaluate((element) => (element as HTMLAudioElement).currentSrc),
       )
-      .toContain(FIRST_TRACK);
+      .toMatch(MUSIC_TRACK_SOURCE_PATTERN);
+    const initialSource = await audio.evaluate(
+      (element) => (element as HTMLAudioElement).currentSrc,
+    );
     await expect
       .poll(() =>
         audio.evaluate((element) => (element as HTMLAudioElement).duration),
@@ -55,15 +70,21 @@ test.describe("MUS-003 persistent playback core", () => {
       const media = element as HTMLAudioElement;
       media.currentTime = Math.max(0, media.duration - 0.25);
     });
-    await expect
-      .poll(
-        () =>
-          audio.evaluate((element) => (element as HTMLAudioElement).currentSrc),
-        {
-          timeout: 10_000,
-        },
-      )
-      .toContain(SECOND_TRACK);
+    const nextSourceAssertion = expect.poll(
+      () =>
+        audio.evaluate((element) => (element as HTMLAudioElement).currentSrc),
+      { timeout: 10_000 },
+    );
+    if (trackCount > 1) {
+      await nextSourceAssertion.not.toBe(initialSource);
+    } else {
+      await nextSourceAssertion.toMatch(MUSIC_TRACK_SOURCE_PATTERN);
+    }
+    const nextSource = await audio.evaluate(
+      (element) => (element as HTMLAudioElement).currentSrc,
+    );
+    expect(nextSource).toMatch(MUSIC_TRACK_SOURCE_PATTERN);
+    expect(nextSource).not.toBe(initialSource);
     await expect
       .poll(() =>
         audio.evaluate((element) => (element as HTMLAudioElement).currentTime),
@@ -90,7 +111,7 @@ test.describe("MUS-003 persistent playback core", () => {
           currentTime: current?.currentTime ?? 0,
           paused: current?.paused,
         };
-      }, AUDIO_SELECTOR);
+      }, MUSIC_AUDIO_SELECTOR);
       expect(state.sameElement).toBe(true);
       expect(state.currentSrc).toBe(beforeNavigation.currentSrc);
       expect(state.currentTime).toBeGreaterThanOrEqual(
@@ -109,9 +130,10 @@ test.describe("MUS-003 persistent playback core", () => {
       beforeEvents.filter((type) => type === "pause").length,
     );
 
+    const persistedSource = await audio.getAttribute("src");
     await page.reload();
     await expect(audio).toHaveCount(1, { timeout: 10_000 });
-    await expect.poll(() => audio.getAttribute("src")).toBe(SECOND_TRACK);
+    await expect.poll(() => audio.getAttribute("src")).toBe(persistedSource);
     await expect(audio).toHaveJSProperty("paused", true);
     await expect(audio).toHaveJSProperty("currentTime", 0);
     expect(pageErrors).toEqual([]);

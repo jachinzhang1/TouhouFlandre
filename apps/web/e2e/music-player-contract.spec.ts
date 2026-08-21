@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-
-const AUDIO_SELECTOR = '[data-music-player-audio="true"]';
-const FIRST_TRACK =
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3";
+import {
+  MUSIC_AUDIO_SELECTOR,
+  MUSIC_TRACK_SOURCE_PATTERN,
+} from "./music-player-test-helpers";
 
 test.describe("MUS-001 root audio boundary", () => {
   test("keeps one audio host across soft navigation and replaces it on reload", async ({
@@ -10,12 +10,14 @@ test.describe("MUS-001 root audio boundary", () => {
   }) => {
     await page.goto("/");
 
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1, {
+    const audio = page.locator(MUSIC_AUDIO_SELECTOR);
+    await expect(audio).toHaveCount(1, {
       timeout: 10_000,
     });
     await expect
-      .poll(() => page.locator(AUDIO_SELECTOR).getAttribute("src"))
-      .toBe(FIRST_TRACK);
+      .poll(() => audio.getAttribute("src"))
+      .toMatch(MUSIC_TRACK_SOURCE_PATTERN);
+    const initialSource = await audio.getAttribute("src");
     await page.evaluate((selector) => {
       const audio = document.querySelector<HTMLAudioElement>(selector);
       if (!audio) throw new Error("Music player audio host is missing.");
@@ -73,18 +75,18 @@ test.describe("MUS-001 root audio boundary", () => {
       };
       probeWindow.__musicPlayerAudio = audio;
       probeWindow.__musicPlayerEvents = events;
-    }, AUDIO_SELECTOR);
-    await page.locator(AUDIO_SELECTOR).evaluate(async (audio) => {
+    }, MUSIC_AUDIO_SELECTOR);
+    await audio.evaluate(async (audio) => {
       await (audio as HTMLAudioElement).play();
     });
     await expect
       .poll(() =>
         page
-          .locator(AUDIO_SELECTOR)
+          .locator(MUSIC_AUDIO_SELECTOR)
           .evaluate((audio) => (audio as HTMLAudioElement).currentTime),
       )
       .toBeGreaterThan(0.1);
-    await page.locator(AUDIO_SELECTOR).evaluate((element) => {
+    await audio.evaluate((element) => {
       const audio = element as HTMLAudioElement;
       audio.volume = 0.4;
       audio.currentTime = 0.5;
@@ -101,7 +103,7 @@ test.describe("MUS-001 root audio boundary", () => {
       )
       .toBe(true);
     const beforeNavigation = await page
-      .locator(AUDIO_SELECTOR)
+      .locator(MUSIC_AUDIO_SELECTOR)
       .evaluate((element) => {
         const audio = element as HTMLAudioElement;
         return {
@@ -125,7 +127,7 @@ test.describe("MUS-001 root audio boundary", () => {
 
     await page.getByRole("link", { name: "搜索" }).click();
     await expect(page).toHaveURL((url) => url.pathname === "/search");
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1);
+    await expect(audio).toHaveCount(1);
     const afterSearchNavigation = await page.evaluate((selector) => {
       const expected = (
         window as Window & { __musicPlayerAudio?: HTMLAudioElement }
@@ -137,7 +139,7 @@ test.describe("MUS-001 root audio boundary", () => {
         currentTime: current?.currentTime,
         paused: current?.paused,
       };
-    }, AUDIO_SELECTOR);
+    }, MUSIC_AUDIO_SELECTOR);
     expect(afterSearchNavigation.sameElement).toBe(true);
     expect(afterSearchNavigation.currentSrc).toBe(beforeNavigation.currentSrc);
     expect(afterSearchNavigation.currentTime).toBeGreaterThanOrEqual(
@@ -159,9 +161,7 @@ test.describe("MUS-001 root audio boundary", () => {
     ).toHaveLength(
       beforeNavigationEvents.filter((type) => type === "pause").length,
     );
-    expect(await page.locator(AUDIO_SELECTOR).getAttribute("preload")).toBe(
-      "metadata",
-    );
+    expect(await audio.getAttribute("preload")).toBe("metadata");
 
     // Next's development indicator overlaps the first mobile nav item.
     await page
@@ -174,11 +174,11 @@ test.describe("MUS-001 root audio boundary", () => {
           window as Window & { __musicPlayerAudio?: HTMLAudioElement }
         ).__musicPlayerAudio;
         return expected === document.querySelector(selector);
-      }, AUDIO_SELECTOR),
+      }, MUSIC_AUDIO_SELECTOR),
     ).toBe(true);
 
     await page.reload();
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1, {
+    await expect(audio).toHaveCount(1, {
       timeout: 10_000,
     });
     expect(
@@ -187,15 +187,10 @@ test.describe("MUS-001 root audio boundary", () => {
           window as Window & { __musicPlayerAudio?: HTMLAudioElement }
         ).__musicPlayerAudio;
         return previous === document.querySelector(selector);
-      }, AUDIO_SELECTOR),
+      }, MUSIC_AUDIO_SELECTOR),
     ).toBe(false);
-    await expect
-      .poll(() => page.locator(AUDIO_SELECTOR).getAttribute("src"))
-      .toBe(FIRST_TRACK);
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty("paused", true);
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveJSProperty(
-      "currentTime",
-      0,
-    );
+    await expect.poll(() => audio.getAttribute("src")).toBe(initialSource);
+    await expect(audio).toHaveJSProperty("paused", true);
+    await expect(audio).toHaveJSProperty("currentTime", 0);
   });
 });

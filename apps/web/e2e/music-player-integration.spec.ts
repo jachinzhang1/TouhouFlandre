@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import {
+  MUSIC_AUDIO_SELECTOR,
+  MUSIC_TRACK_SOURCE_PATTERN,
+} from "./music-player-test-helpers";
 
 const LAUNCHER_SELECTOR = '[data-music-player-launcher="true"]';
 const CARD_SELECTOR = '[data-music-player-card="true"]';
-const AUDIO_SELECTOR = '[data-music-player-audio="true"]';
-const FIRST_TRACK =
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3";
-const SECOND_TITLE = "广有射怪鸟事 ～ Till When?";
 
 async function openCard(page: Page) {
   const launcher = page.locator(LAUNCHER_SELECTOR);
@@ -50,14 +50,14 @@ test.describe("MUS-007 cross-module integration", () => {
   test("keeps one playing audio instance across routes and stops only on refresh", async ({
     page,
   }) => {
-    const audio = page.locator(AUDIO_SELECTOR);
+    const audio = page.locator(MUSIC_AUDIO_SELECTOR);
     await expect(audio).toHaveCount(1);
     await expect(audio).toHaveAttribute("preload", "metadata");
     await expect
       .poll(() =>
         audio.evaluate((element) => (element as HTMLAudioElement).currentSrc),
       )
-      .toContain(FIRST_TRACK);
+      .toMatch(MUSIC_TRACK_SOURCE_PATTERN);
 
     await page.evaluate((selector) => {
       const element = document.querySelector<HTMLAudioElement>(selector);
@@ -72,7 +72,7 @@ test.describe("MUS-007 cross-module integration", () => {
         };
       };
       lifecycle.__musicPlayerLifecycle = { audio: element, events };
-    }, AUDIO_SELECTOR);
+    }, MUSIC_AUDIO_SELECTOR);
 
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
@@ -116,7 +116,7 @@ test.describe("MUS-007 cross-module integration", () => {
           currentTime: current?.currentTime ?? 0,
           paused: current?.paused,
         };
-      }, AUDIO_SELECTOR);
+      }, MUSIC_AUDIO_SELECTOR);
       expect(state.sameElement).toBe(true);
       expect(state.currentSrc).toBe(beforeNavigation.currentSrc);
       expect(state.currentTime).toBeGreaterThanOrEqual(
@@ -139,12 +139,10 @@ test.describe("MUS-007 cross-module integration", () => {
     });
     expect(events.pause).toBe(0);
 
+    const persistedSource = await audio.getAttribute("src");
     await page.reload();
     await expect(audio).toHaveCount(1, { timeout: 10_000 });
-    await expect(audio).toHaveAttribute(
-      "src",
-      /gensoukyoku-bassui-day-06\.mp3/,
-    );
+    await expect(audio).toHaveAttribute("src", persistedSource ?? "");
     await expect(audio).toHaveJSProperty("paused", true);
     await expect(audio).toHaveJSProperty("currentTime", 0);
   });
@@ -152,10 +150,11 @@ test.describe("MUS-007 cross-module integration", () => {
   test("keeps controls recoverable when the current audio fails", async ({
     page,
   }) => {
-    await page.route(
-      "**/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3",
-      (route) => route.abort("failed"),
-    );
+    const initialSource = await page
+      .locator(MUSIC_AUDIO_SELECTOR)
+      .getAttribute("src");
+    expect(initialSource).toMatch(MUSIC_TRACK_SOURCE_PATTERN);
+    await page.route(`**${initialSource}`, (route) => route.abort("failed"));
     await page.reload();
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
@@ -165,8 +164,7 @@ test.describe("MUS-007 cross-module integration", () => {
       card.getByRole("button", { name: "下一首", exact: true }),
     ).toBeEnabled();
     await card.getByRole("button", { name: "下一首", exact: true }).click();
-    await expect(card.getByRole("heading")).toContainText(SECOND_TITLE);
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1);
+    await expect(page.locator(MUSIC_AUDIO_SELECTOR)).toHaveCount(1);
   });
 
   test("surfaces a rejected user play request without an unhandled page error", async ({

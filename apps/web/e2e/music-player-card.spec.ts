@@ -5,6 +5,13 @@ import {
   type Page,
   type TestInfo,
 } from "@playwright/test";
+import {
+  MUSIC_AUDIO_SELECTOR,
+  MUSIC_TRACK_SOURCE_PATTERN,
+  openTrackList,
+  readCurrentTrackTitle,
+  readTrackList,
+} from "./music-player-test-helpers";
 
 const LAUNCHER_SELECTOR = '[data-music-player-launcher="true"]';
 const CARD_SELECTOR = '[data-music-player-card="true"]';
@@ -54,29 +61,37 @@ test.describe("MUS-005 player card", () => {
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
 
-    await expect(card.getByRole("heading")).toContainText("女仆与血之怀表");
-    await expect(card.getByAltText("《女仆与血之怀表》封面")).toBeVisible();
+    const initialTitle = await readCurrentTrackTitle(card);
+    expect(initialTitle).not.toBe("");
+    await expect(card.getByAltText(`《${initialTitle}》封面`)).toBeVisible();
     await expect(card.getByRole("slider", { name: "播放进度" })).toBeEnabled({
       timeout: 10_000,
     });
-    await expect(page.locator('[data-music-player-audio="true"]')).toHaveCount(
-      1,
-    );
+    const audio = page.locator(MUSIC_AUDIO_SELECTOR);
+    await expect(audio).toHaveCount(1);
+    const initialSource = await audio.getAttribute("src");
+    expect(initialSource).toMatch(MUSIC_TRACK_SOURCE_PATTERN);
 
     await card.getByRole("button", { name: "播放", exact: true }).click();
     await expect(card.getByRole("button", { name: "暂停" })).toBeVisible();
 
-    const audioState = await page
-      .locator('[data-music-player-audio="true"]')
-      .evaluate((audio) => ({
-        src: (audio as HTMLAudioElement).currentSrc,
-        paused: (audio as HTMLAudioElement).paused,
-      }));
+    const audioState = await audio.evaluate((audio) => ({
+      src: (audio as HTMLAudioElement).currentSrc,
+      paused: (audio as HTMLAudioElement).paused,
+    }));
     expect(audioState.src).toContain("/music/tracks/");
     expect(audioState.paused).toBe(false);
 
+    await openTrackList(card);
+    const trackCount = (await readTrackList(card)).length;
+    await card.getByRole("button", { name: "曲目列表", exact: true }).click();
     await card.getByRole("button", { name: "下一首" }).click();
-    await expect(card.getByRole("heading")).toContainText("广有射怪鸟事");
+    const nextTitle = await readCurrentTrackTitle(card);
+    expect(nextTitle).not.toBe("");
+    if (trackCount > 1) {
+      expect(nextTitle).not.toBe(initialTitle);
+      await expect(audio).not.toHaveAttribute("src", initialSource ?? "");
+    }
     await card.getByRole("button", { name: "静音" }).click();
     await expect(card.getByRole("button", { name: "取消静音" })).toBeVisible();
   });
@@ -86,6 +101,8 @@ test.describe("MUS-005 player card", () => {
   }) => {
     await openCard(page);
     const card = page.locator(CARD_SELECTOR);
+    const audio = page.locator(MUSIC_AUDIO_SELECTOR);
+    const initialSource = await audio.getAttribute("src");
     const listToggle = card.getByRole("button", {
       name: "曲目列表",
       exact: true,
@@ -93,26 +110,29 @@ test.describe("MUS-005 player card", () => {
     const listPanel = card.locator(".music-player-track-list-panel");
 
     await expect(listToggle).toHaveAttribute("aria-expanded", "false");
-    await listToggle.click();
-    await expect(listToggle).toHaveAttribute("aria-expanded", "true");
+    await openTrackList(card);
     await expect(listPanel).toHaveAttribute("data-open", "true");
-
-    const target = card.getByRole("button", {
-      name: "播放《广有射怪鸟事 ～ Till When?》",
-      exact: true,
-    });
-    await expect(target).toBeVisible();
-    await target.click();
-
-    await expect(card.getByRole("heading")).toContainText(
-      "广有射怪鸟事 ～ Till When?",
+    const tracks = await readTrackList(card);
+    if (tracks.length < 2) {
+      test.skip(true, "requires at least two enabled tracks");
+      return;
+    }
+    const currentIndex = tracks.findIndex((track) => track.isCurrent);
+    expect(currentIndex).toBeGreaterThanOrEqual(0);
+    const target = tracks[(currentIndex + 2) % tracks.length] ?? tracks[0];
+    expect(target.id).not.toBe(tracks[currentIndex]?.id);
+    const targetRow = card.locator(
+      `[data-music-player-track-id="${target.id}"]`,
     );
+    await targetRow
+      .getByRole("button", { name: `播放《${target.title}》`, exact: true })
+      .click();
+
+    await expect(card.getByRole("heading")).toContainText(target.title);
     await expect(card.getByRole("button", { name: "暂停" })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(
-      page.locator('[data-music-player-audio="true"]'),
-    ).toHaveAttribute("src", /gensoukyoku-bassui-day-12\.mp3/);
+    await expect(audio).not.toHaveAttribute("src", initialSource ?? "");
 
     await listToggle.click();
     await expect(listToggle).toHaveAttribute("aria-expanded", "false");

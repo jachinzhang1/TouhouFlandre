@@ -1,16 +1,14 @@
 import { expect, test } from "@playwright/test";
+import { demoMusicTracks } from "@touhouflandre/data/music";
 
-const tracks = [
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-06.mp3",
-  "/music/tracks/gensoukyoku-bassui/gensoukyoku-bassui-day-12.mp3",
-  "/music/tracks/kakunetsuzoushin-hisoutensoku/kakunetsuzoushin-hisoutensoku-track-03.mp3",
-] as const;
+const tracks = [...new Set(demoMusicTracks.map((track) => track.audioUrl))];
 
 test.describe("MUS-002 local music assets", () => {
   test("serves every demo MP3 with metadata and byte ranges", async ({
     page,
     request,
   }) => {
+    test.setTimeout(120_000);
     await page.goto("/");
 
     for (const track of tracks) {
