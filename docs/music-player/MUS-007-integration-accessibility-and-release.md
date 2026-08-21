@@ -4,6 +4,7 @@
 **优先级**：P0，发布前阻断  
 **依赖**：MUS-004、MUS-005、MUS-006  
 **建议标签**：`type:test` `area:web` `area:a11y` `area:performance` `area:release`
+**状态**：已完成（2026-08-21）
 
 ## 要解决的问题
 
@@ -93,15 +94,25 @@
 
 ## 验收标准
 
-- [ ] [发布验收闸门](./release-gate.md)全部通过并记录日期/环境。
-- [ ] 软导航期间音频对象、source 和时间连续；刷新后的暂停恢复行为符合约定。
-- [ ] 真实媒体首尾循环、seek、音量、mute、列表应用均通过 desktop/mobile Chromium。
-- [ ] 六种主题色与深浅模式都通过计算样式测试，关键视图截图无未解释差异。
-- [ ] 封面、音频、storage 和 `play()` 失败均可恢复，没有无限循环或未处理 Promise rejection。
-- [ ] 全部交互可用键盘完成，焦点返回与 modal trap 正确，reduced motion 有覆盖。
-- [ ] 首页只预加载当前曲目 metadata，生产静态服务支持 MP3 MIME 和 byte-range seek。
-- [ ] 所有新增素材都有 JSON `sourceRefs` 和音乐目录级授权声明，Git 中没有未引用或超预算文件。
-- [ ] `docs/features.md` 已描述播放器的用户行为边界；需要的部署说明同步更新。
+- [x] [发布验收闸门](./release-gate.md)全部通过并记录日期/环境。
+- [x] 软导航期间音频对象、source 和时间连续；刷新后的暂停恢复行为符合约定。
+- [x] 真实媒体首尾循环、seek、音量、mute、列表应用均通过 desktop/mobile Chromium。
+- [x] 六种主题色与深浅模式都通过计算样式测试，关键视图截图无未解释差异。
+- [x] 封面、音频、storage 和 `play()` 失败均可恢复，没有无限循环或未处理 Promise rejection。
+- [x] 全部交互可用键盘完成，焦点返回与 modal trap 正确，reduced motion 有覆盖。
+- [x] 首页只预加载当前曲目 metadata，生产静态服务支持 MP3 MIME 和 byte-range seek。
+- [x] 所有新增素材都有 JSON `sourceRefs` 和音乐目录级授权声明，Git 中没有未引用或超预算文件。
+- [x] `docs/features.md` 已描述播放器的用户行为边界；部署侧 MIME/Range 说明已同步。
+
+## 完成记录
+
+- **完成日期**：2026-08-21
+- **集成测试**：新增 `music-player-integration.spec.ts`，覆盖五个站内路由的单音频实例连续播放、刷新暂停边界、音频失败、`play()` rejection 和 localStorage 不可用；Desktop Chromium/Pixel 7 共 8/8 通过。
+- **无障碍测试**：新增 `music-player-accessibility.spec.ts`，覆盖键盘播放/seek/音量/设置流程、Modal accessible name/focus trap/focus return、reduced motion、320px overflow 与截图输出；Desktop Chromium/Pixel 7 共 4/4 通过。
+- **最小回修**：PlaylistDialog 使用 Ant Design Modal 的语义标题并将重复视觉标题隐藏，确保实际 `role="dialog"` 有可访问名称；未改变曲库或播放状态契约。
+- **文档与发布**：`docs/features.md` 增加播放器行为边界，`docs/deployment.md` 增加 MP3 MIME/Range/缓存检查，`release-gate.md` 已填写通过项。
+- **验证结果**：data typecheck/validate/test（33 tests）、Web typecheck/test（191 tests）和 production build 通过；播放器 Playwright 全量 42/42 通过；production standalone 本地 MP3 MIME/Range/metadata 2/2 通过。
+- **已知非阻断信息**：storage 不可用测试会触发 Ant Design static `message` 的 context warning，但无 page error、未处理 Promise rejection 或状态中断；该 warning 不影响用户设置的内存态生效。
 
 ## 依赖与回修原则
 
