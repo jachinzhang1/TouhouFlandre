@@ -251,6 +251,9 @@ export function PlayerCard({
             }}
             onChange={(value) => commands.setVolume(sliderValue(value))}
           />
+          <span className="music-player-volume-value" aria-hidden="true">
+            {Math.round(state.volume * 100)}%
+          </span>
         </div>
       </div>
 

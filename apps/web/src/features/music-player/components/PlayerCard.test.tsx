@@ -203,17 +203,24 @@ describe("PlayerCard", () => {
   it("maps volume changes and mute clicks to provider commands", async () => {
     const user = userEvent.setup();
     const commands = mockPlayer();
-    render(
+    const { rerender } = render(
       <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
     );
 
     const volume = screen.getByRole("slider", { name: "音量" });
     expect(volume).toHaveAttribute("data-tooltip-open", "false");
+    expect(screen.getByText("70%")).toBeInTheDocument();
     fireEvent.change(volume, { target: { value: "0.34" } });
     await user.click(screen.getByRole("button", { name: "静音" }));
 
+    mockPlayer({ volume: 0.34 });
+    rerender(
+      <PlayerCard open cardId="music-player-card" onOpenPlaylist={vi.fn()} />,
+    );
+
     expect(commands.setVolume).toHaveBeenCalledWith(0.34);
     expect(commands.toggleMute).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("34%")).toBeInTheDocument();
   });
 
   it("keeps a stable playback target while media is loading", () => {

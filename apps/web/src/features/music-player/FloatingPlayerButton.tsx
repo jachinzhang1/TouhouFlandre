@@ -1,6 +1,5 @@
 "use client";
 
-import { Tooltip } from "antd";
 import { MusicNoteBeamed } from "react-bootstrap-icons";
 import type { Ref } from "react";
 import type { MusicPlayerStatus } from "./contracts";
@@ -81,60 +80,54 @@ export function FloatingPlayerButton({
   const progressDescriptionId = `${cardId}-progress`;
 
   return (
-    <Tooltip
-      title={accessibleName}
-      placement="bottomRight"
-      open={isOpen ? false : undefined}
-    >
-      <span className="music-player-tooltip-target">
-        <button
-          type="button"
-          ref={buttonRef}
-          className="music-player-launcher"
-          data-music-player-launcher="true"
-          data-status={state.status}
-          aria-label={accessibleName}
-          aria-expanded={isOpen}
-          aria-controls={cardId}
-          aria-describedby={progressDescriptionId}
-          aria-busy={state.status === "loading"}
-          onClick={onToggle}
+    <span className="music-player-launcher-target">
+      <button
+        type="button"
+        ref={buttonRef}
+        className="music-player-launcher"
+        data-music-player-launcher="true"
+        data-status={state.status}
+        aria-label={accessibleName}
+        aria-expanded={isOpen}
+        aria-controls={cardId}
+        aria-describedby={progressDescriptionId}
+        aria-busy={state.status === "loading"}
+        onClick={onToggle}
+      >
+        <svg
+          className="music-player-launcher-ring"
+          viewBox={`0 0 ${MUSIC_PLAYER_LAUNCHER_SIZE} ${MUSIC_PLAYER_LAUNCHER_SIZE}`}
+          width={MUSIC_PLAYER_LAUNCHER_SIZE}
+          height={MUSIC_PLAYER_LAUNCHER_SIZE}
+          aria-hidden="true"
+          focusable="false"
         >
-          <svg
-            className="music-player-launcher-ring"
-            viewBox={`0 0 ${MUSIC_PLAYER_LAUNCHER_SIZE} ${MUSIC_PLAYER_LAUNCHER_SIZE}`}
-            width={MUSIC_PLAYER_LAUNCHER_SIZE}
-            height={MUSIC_PLAYER_LAUNCHER_SIZE}
-            aria-hidden="true"
-            focusable="false"
-          >
-            <circle
-              className="music-player-launcher-ring-progress"
-              cx={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
-              cy={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
-              r={MUSIC_PLAYER_RING_RADIUS}
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth={MUSIC_PLAYER_RING_STROKE}
-              strokeDasharray={MUSIC_PLAYER_RING_CIRCUMFERENCE}
-              strokeDashoffset={getPlaybackDashOffset(
-                state.currentTime,
-                state.duration,
-              )}
-              strokeLinecap="round"
-              transform={`rotate(-90 ${MUSIC_PLAYER_LAUNCHER_SIZE / 2} ${MUSIC_PLAYER_LAUNCHER_SIZE / 2})`}
-            />
-          </svg>
-          <MusicNoteBeamed
-            className="music-player-launcher-icon"
-            size={22}
-            aria-hidden="true"
+          <circle
+            className="music-player-launcher-ring-progress"
+            cx={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
+            cy={MUSIC_PLAYER_LAUNCHER_SIZE / 2}
+            r={MUSIC_PLAYER_RING_RADIUS}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={MUSIC_PLAYER_RING_STROKE}
+            strokeDasharray={MUSIC_PLAYER_RING_CIRCUMFERENCE}
+            strokeDashoffset={getPlaybackDashOffset(
+              state.currentTime,
+              state.duration,
+            )}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${MUSIC_PLAYER_LAUNCHER_SIZE / 2} ${MUSIC_PLAYER_LAUNCHER_SIZE / 2})`}
           />
-          <span id={progressDescriptionId} className="sr-only">
-            {progressDescription}
-          </span>
-        </button>
-      </span>
-    </Tooltip>
+        </svg>
+        <MusicNoteBeamed
+          className="music-player-launcher-icon"
+          size={22}
+          aria-hidden="true"
+        />
+        <span id={progressDescriptionId} className="sr-only">
+          {progressDescription}
+        </span>
+      </button>
+    </span>
   );
 }

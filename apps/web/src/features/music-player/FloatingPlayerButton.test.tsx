@@ -93,6 +93,7 @@ describe("FloatingPlayerButton", () => {
     const button = screen.getByRole("button", {
       name: "打开音乐播放器，测试曲目，已暂停",
     });
+    expect(button.closest(".music-player-launcher-target")).toBeInTheDocument();
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(button).toHaveAttribute("aria-controls", "music-player-card");
     expect(button).toHaveAttribute("aria-describedby", "music-player-card-progress");
