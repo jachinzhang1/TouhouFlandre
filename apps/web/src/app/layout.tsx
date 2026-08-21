@@ -37,7 +37,7 @@ export default function RootLayout({
         <Script id="appearance-bootstrap" strategy="beforeInteractive">
           {appearanceBootstrapScript}
         </Script>
-        <div className="mx-auto w-[min(1240px,calc(100%-40px))] min-h-screen max-[680px]:w-full">
+        <div className="site-shell">
           <SiteNav />
           <main
             className="site-main pb-11 pt-[22px] max-[680px]:pb-7 max-[680px]:pt-3"

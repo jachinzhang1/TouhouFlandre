@@ -1,6 +1,6 @@
 .stats-page {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--site-content-max);
   margin-inline: auto;
   padding: 40px 18px 80px;
 }

@@ -113,6 +113,23 @@ html[data-theme-mode="dark"] {
   position: relative;
 }
 
+.paper-surface[data-paper-shape="control"] {
+  clip-path: none;
+}
+
+.paper-surface[data-paper-shape="control"]::after {
+  display: none;
+}
+
+.paper-surface[data-paper-shape="corner"] {
+  --paper-corner-leg: 48px;
+  clip-path: polygon(
+    calc(100% - var(--paper-corner-leg)) 100%,
+    100% calc(100% - var(--paper-corner-leg)),
+    100% 100%
+  );
+}
+
 .paper-surface:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -2px;

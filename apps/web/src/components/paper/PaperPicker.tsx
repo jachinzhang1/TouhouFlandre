@@ -28,6 +28,7 @@ export function PaperPicker({
       folded={false}
       foldSize={10}
       sticker={false}
+      shape="control"
       unfoldOnHover={false}
       variant={variant}
     >

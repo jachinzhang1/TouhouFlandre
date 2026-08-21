@@ -155,7 +155,6 @@ export function RoundResultOverlay({
           <PaperButton
             className="round-result-review-action"
             filled={!nextRoundStartsAt}
-            folded={false}
             onClick={dismiss}
           >
             {nextRoundStartsAt ? "查看本局棋盘" : "查看整场结果"}

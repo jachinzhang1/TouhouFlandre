@@ -61,6 +61,7 @@ export function PaperSegmentButton({
       foldSize={12}
       onClick={onClick}
       pattern={pattern}
+      shape="control"
       sticker={false}
       title={title}
       unfoldOnHover={folded && active && !disabled}
@@ -125,8 +126,6 @@ export function PaperPagination({
         ariaControls={controlsId}
         ariaLabel={previousLabel}
         disabled={!hasPrevious}
-        filled={hasPrevious}
-        folded={hasPrevious}
         iconOnly
         onClick={onPrevious}
         title={previousLabel}
@@ -153,8 +152,6 @@ export function PaperPagination({
         ariaControls={controlsId}
         ariaLabel={nextLabel}
         disabled={!hasNext}
-        filled={hasNext}
-        folded={hasNext}
         iconOnly
         onClick={onNext}
         title={nextLabel}

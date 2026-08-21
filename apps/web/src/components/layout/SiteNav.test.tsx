@@ -36,13 +36,18 @@ describe("SiteNav", () => {
     expect(activeCopy?.getAttribute("aria-hidden")).toBe("true");
     expect(activeCopy?.querySelector("a")).toBeNull();
     expect(container.querySelector(".site-nav .paper-sticker")).toBeNull();
+    expect(container.querySelector(".site-nav-inner")).toBeTruthy();
     const contrastPapers = container.querySelectorAll(
       '[data-paper-tone="contrast"]',
     );
-    expect(contrastPapers).toHaveLength(2);
-    for (const paper of contrastPapers) {
-      expect(paper.getAttribute("data-paper-elevation")).toBe("accent");
-    }
+    expect(contrastPapers).toHaveLength(1);
+    expect(contrastPapers[0].getAttribute("data-paper-elevation")).toBe(
+      "accent",
+    );
+    expect(contrastPapers[0].getAttribute("data-paper-folded")).toBe("true");
+    const brandPaper = container.querySelector(".brand-paper-mark");
+    expect(brandPaper?.getAttribute("data-paper-variant")).toBe("tinted");
+    expect(brandPaper?.getAttribute("data-paper-folded")).toBe("true");
   });
 
   it("切换移动端导航并在导航后转移焦点", async () => {

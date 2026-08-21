@@ -48,6 +48,7 @@ export function PaperRadioOption({
       foldSize={10}
       onClick={onSelect}
       role="radio"
+      shape="control"
       sticker={false}
       unfoldOnHover={checked && !disabled}
       variant={checked ? "tinted" : "plain"}

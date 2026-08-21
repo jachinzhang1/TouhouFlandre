@@ -183,6 +183,7 @@ export function PaperDataTableBody({
       as="div"
       className={classNames("paper-data-table", className)}
       folded={false}
+      shape="control"
       sticker={false}
       unfoldOnHover={false}
     >

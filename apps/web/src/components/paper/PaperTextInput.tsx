@@ -24,6 +24,7 @@ export function PaperTextInput({
       className={["paper-text-control", className].filter(Boolean).join(" ")}
       disabled={disabled}
       foldSize={10}
+      shape="control"
       sticker={false}
       variant="plain"
     >

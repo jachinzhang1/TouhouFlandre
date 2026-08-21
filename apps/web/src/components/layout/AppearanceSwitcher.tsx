@@ -229,26 +229,32 @@ export function AppearanceSwitcher({
         animateOnMount={false}
         ariaHidden
         className="appearance-corner-surface"
+        shape="corner"
         elevation="sm"
         folded={false}
         sticker={false}
         unfoldOnHover={false}
         variant="tinted"
       />
-      <button
-        ref={toggleRef}
-        type="button"
-        className="appearance-toggle"
-        aria-label={
+      <Paper
+        animateOnMount={false}
+        ariaControls="appearance-palette"
+        ariaExpanded={paletteVisible}
+        ariaLabel={
           paletteVisible
             ? appearance.mode === "dark"
               ? "切换到浅色模式"
               : "切换到深色模式"
             : "打开主题颜色"
         }
-        aria-controls="appearance-palette"
-        aria-expanded={paletteVisible}
-        aria-pressed={paletteVisible ? appearance.mode === "dark" : undefined}
+        ariaPressed={paletteVisible ? appearance.mode === "dark" : undefined}
+        as="button"
+        buttonRef={toggleRef}
+        className="appearance-toggle"
+        folded={false}
+        onClick={handleToggleClick}
+        shape="control"
+        sticker={false}
         title={
           paletteVisible
             ? appearance.mode === "dark"
@@ -256,7 +262,7 @@ export function AppearanceSwitcher({
               : "切换到深色模式"
             : "打开主题颜色"
         }
-        onClick={handleToggleClick}
+        unfoldOnHover={false}
       >
         <Palette
           className="appearance-palette-icon"
@@ -268,7 +274,7 @@ export function AppearanceSwitcher({
         ) : (
           <Moon className="appearance-mode-icon" size={22} aria-hidden="true" />
         )}
-      </button>
+      </Paper>
       <div
         id="appearance-palette"
         className="appearance-palette"

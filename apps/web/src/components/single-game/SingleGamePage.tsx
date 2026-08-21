@@ -1228,7 +1228,6 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               className="single-game-submit"
               disabled={submitDisabled}
               filled={!submitDisabled}
-              folded={!submitDisabled}
               onClick={() => void submitGuess()}
               tone="theme"
             >

@@ -28,6 +28,7 @@ export function PaperSwitch({
       folded={false}
       onClick={() => onChange(!checked)}
       role="switch"
+      shape="control"
       sticker={false}
       unfoldOnHover={false}
       variant={
@@ -79,6 +80,7 @@ export function PaperRange({
       disabled={disabled}
       preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={false}
+      shape="control"
       sticker={false}
       unfoldOnHover={false}
       variant="plain"
@@ -132,6 +134,7 @@ export function PaperNumberInput({
       disabled={disabled}
       preserveAppearanceWhenDisabled={preserveAppearanceWhenDisabled}
       folded={false}
+      shape="control"
       sticker={false}
       unfoldOnHover={false}
       variant="plain"

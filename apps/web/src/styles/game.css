@@ -134,7 +134,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--site-content-max);
   margin: var(--page-header-content-gap) auto 0;
 }
 
@@ -284,7 +284,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .multi-lobby-page {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--site-content-max);
   margin-inline: auto;
   padding: 40px 18px 80px;
 }
@@ -957,7 +957,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .multiplayer-match-page {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--site-content-max);
   margin-inline: auto;
   padding: 12px 18px
     calc(var(--multiplayer-command-reserve) + var(--site-footer-height));
@@ -1336,7 +1336,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .round-history-bar {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--site-content-max);
   margin-inline: auto;
 }
 

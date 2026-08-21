@@ -9,23 +9,26 @@
 .site-nav,
 .site-footer {
   position: relative;
-  width: 100dvw;
-  margin-left: calc(50% - 50dvw);
-  padding-inline: max(20px, calc((100dvw - 1240px) / 2));
+  width: 100%;
 }
 
 .site-nav {
   position: sticky;
   top: 0;
   z-index: var(--layer-navigation);
-  display: flex;
-  width: 100dvw;
   height: var(--site-nav-height);
+  isolation: isolate;
+  background: var(--nav-shell-bg);
+}
+
+.site-nav-inner {
+  display: flex;
+  width: var(--site-content-width);
+  height: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 28px;
-  isolation: isolate;
-  background: var(--nav-shell-bg);
+  margin-inline: auto;
 }
 html[data-theme-mode="dark"] .site-nav {
   background: var(--nav-shell-bg);
@@ -33,13 +36,17 @@ html[data-theme-mode="dark"] .site-nav {
 
 .site-footer {
   z-index: 21;
-  color: var(--subtle-text);
-  background: transparent;
   min-height: var(--site-footer-height);
+  padding-left: max(
+    var(--site-content-gutter),
+    calc((100% - var(--site-content-max)) / 2)
+  );
   padding-right: max(
     var(--appearance-corner-safe-area),
-    calc((100dvw - 1240px) / 2)
+    calc((100% - var(--site-content-max)) / 2)
   );
+  color: var(--subtle-text);
+  background: transparent;
 }
 
 .site-footer-home {
@@ -415,50 +422,43 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
   pointer-events: none;
 }
 
-.appearance-corner-surface {
+.paper-surface.appearance-corner-surface {
+  --paper-corner-leg: var(--appearance-collapsed-leg);
   position: absolute;
   inset: 0;
   z-index: 0;
   display: block;
-  opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transform-origin: right bottom;
-  transition:
-    clip-path 180ms cubic-bezier(0.77, 0, 0.175, 1),
-    opacity 120ms ease;
+  transition: clip-path 180ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: clip-path;
 }
 
-.appearance-toggle {
+.paper-surface.appearance-toggle {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  right: 8px;
+  bottom: 8px;
   z-index: 5;
-  display: inline-flex;
   width: 48px;
+  min-width: 48px;
   height: 48px;
-  align-items: center;
-  justify-content: center;
   padding: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: 0;
-  color: var(--theme-color);
-  background: var(--paper-plain-bg);
-  box-shadow: var(--shadow-sm);
+  border: 0;
+  color: var(--paper-tinted-ink);
+  background: transparent;
+  box-shadow: none;
   pointer-events: auto;
-  transition:
-    color 180ms ease,
-    background-color 180ms ease;
+  transition: color 180ms ease;
 }
 
-.appearance-toggle:hover {
-  color: var(--theme-color);
-  background: var(--paper-plain-bg-hover);
+.paper-surface.appearance-toggle:hover {
+  color: var(--paper-tinted-ink-muted);
+  background: transparent;
 }
 
-.appearance-toggle:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
+.paper-surface.appearance-toggle:focus-visible {
+  outline: 3px solid var(--paper-tinted-ink-muted);
+  outline-offset: -5px;
 }
 
 .appearance-palette-icon,
@@ -621,11 +621,6 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])
-  .appearance-corner-surface {
-  opacity: 1;
-}
-
-.appearance-switcher:is([data-open="true"], [data-hovered="true"])
   .appearance-palette {
   clip-path: polygon(
     var(--appearance-base-start) 100%,
@@ -715,12 +710,12 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
       visibility 0s linear;
   }
 
-  .appearance-corner-surface,
+  .paper-surface.appearance-corner-surface,
   .appearance-mobile-palette-paper {
     display: none;
   }
 
-  .appearance-toggle {
+  .paper-surface.appearance-toggle {
     inset: 0;
     color: var(--ink);
     border-radius: 4px;
@@ -731,11 +726,12 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
     translate: none;
   }
 
-  .appearance-toggle:hover {
+  .paper-surface.appearance-toggle:hover {
     color: var(--ink);
+    background: transparent;
   }
 
-  .appearance-toggle:focus-visible {
+  .paper-surface.appearance-toggle:focus-visible {
     outline: 2px solid var(--theme-color);
     outline-offset: -3px;
   }

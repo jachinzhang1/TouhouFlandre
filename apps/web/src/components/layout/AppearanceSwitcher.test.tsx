@@ -57,6 +57,10 @@ describe("AppearanceSwitcher", () => {
     expect(cornerSurface?.getAttribute("data-paper-variant")).toBe("tinted");
     expect(cornerSurface?.getAttribute("data-paper-elevation")).toBe("sm");
     expect(cornerSurface?.getAttribute("data-paper-folded")).toBe("false");
+    expect(cornerSurface?.getAttribute("data-paper-shape")).toBe("corner");
+    expect(
+      screen.getByRole("button", { name: "打开主题颜色" }).dataset.paperShape,
+    ).toBe("control");
     const mobilePalettePaper = document.querySelector(
       ".appearance-mobile-palette-paper",
     );

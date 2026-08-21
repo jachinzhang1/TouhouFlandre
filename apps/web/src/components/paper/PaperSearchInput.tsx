@@ -27,6 +27,7 @@ export function PaperSearchInput({
       folded={folded}
       foldSize={12}
       pattern={false}
+      shape="control"
       sticker={false}
       variant="plain"
     >

@@ -255,7 +255,6 @@ export function GuessInputBar({
               className="single-game-submit multiplayer-guess-submit"
               disabled={submitDisabled}
               filled={!submitDisabled}
-              folded={!submitDisabled}
               onClick={submitSelected}
               tone="theme"
             >

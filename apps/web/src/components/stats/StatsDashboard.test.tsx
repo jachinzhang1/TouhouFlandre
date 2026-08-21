@@ -352,7 +352,7 @@ describe("StatsDashboard", () => {
     expect(
       screen.getByRole("button", { name: "上一页" }).dataset.paperVariant,
     ).toBe("plain");
-    expect(next.dataset.paperVariant).toBe("tinted");
+    expect(next.dataset.paperVariant).toBe("plain");
     expect(
       screen.getByRole("button", { name: "上一页" }).dataset.paperFolded,
     ).toBe("false");
@@ -372,7 +372,7 @@ describe("StatsDashboard", () => {
     ).toBe("plain");
     expect(
       screen.getByRole("button", { name: "上一页" }).dataset.paperVariant,
-    ).toBe("tinted");
+    ).toBe("plain");
     expect(
       screen.getByRole("button", { name: "下一页" }).dataset.paperFolded,
     ).toBe("false");

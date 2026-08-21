@@ -1302,7 +1302,6 @@ function ForfeitRoundButton({
       className="forfeit-round-action"
       disabled={actionBusy !== null}
       filled={forfeitConfirm}
-      folded={forfeitConfirm}
       onClick={onForfeit}
       title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
       tone="danger"

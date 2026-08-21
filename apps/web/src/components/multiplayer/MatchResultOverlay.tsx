@@ -115,7 +115,6 @@ export function MatchResultOverlay({
             className="match-result-action"
             disabled={mine}
             filled
-            folded={false}
             pattern={false}
             onClick={onRematch}
           >

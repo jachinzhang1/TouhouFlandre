@@ -146,7 +146,7 @@ describe("RoomLobby", () => {
     });
     const applyButton = screen.getByRole("button", { name: "应用" });
     expect(applyButton.dataset.paperVariant).toBe("tinted");
-    expect(applyButton.dataset.paperFolded).toBe("false");
+    expect(applyButton.dataset.paperFolded).toBe("true");
     fireEvent.click(applyButton);
     await waitFor(() => expect(apply).toHaveBeenCalledWith(6));
     const limitGroup = screen.getByRole("group", { name: "玩家上限" });

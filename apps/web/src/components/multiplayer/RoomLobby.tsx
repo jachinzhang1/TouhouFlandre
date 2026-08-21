@@ -380,7 +380,6 @@ export function RoomLobby({
                       settingsLocked
                     }
                     filled
-                    folded
                     onClick={applyLimit}
                   >
                     应用
@@ -416,7 +415,6 @@ export function RoomLobby({
                   className="room-lobby-ready-action"
                   disabled={!mine || mine.status !== "connected"}
                   filled={!mine?.ready}
-                  folded={!mine?.ready}
                   onClick={() => onReady(!mine?.ready)}
                   tone="theme"
                 >

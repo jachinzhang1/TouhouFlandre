@@ -25,6 +25,7 @@ export function PaperSelect({
       folded={false}
       foldSize={compact ? 8 : 10}
       sticker={false}
+      shape="control"
       unfoldOnHover={false}
       variant="plain"
     >

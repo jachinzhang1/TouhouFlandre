@@ -13,6 +13,7 @@ describe("Paper", () => {
     const paper = screen.getByRole("link", { name: "每日题" });
     expect(paper.dataset.paperVariant).toBe("tinted");
     expect(paper.dataset.paperFolded).toBe("true");
+    expect(paper.dataset.paperShape).toBe("note");
     expect(paper.dataset.paperUnfoldHover).toBe("true");
     expect(paper.dataset.paperAnimateMount).toBe("true");
     expect(paper.dataset.paperPattern).toBe("none");

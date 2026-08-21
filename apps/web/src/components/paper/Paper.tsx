@@ -4,6 +4,7 @@ import type {
   CSSProperties,
   MouseEventHandler,
   ReactNode,
+  Ref,
 } from "react";
 
 export type PaperVariant = "plain" | "tinted";
@@ -17,6 +18,7 @@ export type PaperTone =
   | "contrast";
 
 export type PaperElevation = "none" | "sm" | "lg" | "accent";
+export type PaperShape = "note" | "control" | "corner";
 
 export interface PaperProps {
   ariaLabel?: string;
@@ -27,6 +29,7 @@ export interface PaperProps {
   ariaExpanded?: boolean;
   ariaPressed?: boolean;
   animateOnMount?: boolean;
+  buttonRef?: Ref<HTMLButtonElement>;
   as?: "article" | "button" | "div" | "span";
   children?: ReactNode;
   className?: string;
@@ -39,6 +42,7 @@ export interface PaperProps {
   foldDelayMs?: number;
   pattern?: boolean;
   preserveAppearanceWhenDisabled?: boolean;
+  shape?: PaperShape;
   role?: AriaRole;
   stackOrder?: number;
   sticker?: boolean;
@@ -59,6 +63,7 @@ export function Paper({
   ariaExpanded,
   ariaPressed,
   animateOnMount = true,
+  buttonRef,
   as = "span",
   children,
   className = "",
@@ -71,6 +76,7 @@ export function Paper({
   foldDelayMs = 0,
   pattern = false,
   preserveAppearanceWhenDisabled = false,
+  shape,
   role,
   stackOrder,
   sticker = true,
@@ -84,9 +90,11 @@ export function Paper({
   const disabledAppearance = disabled === true || ariaDisabled === true;
   const muteDisabledAppearance =
     disabledAppearance && !preserveAppearanceWhenDisabled;
-  const effectiveFolded = as !== "button" && folded && !muteDisabledAppearance;
+  const effectiveShape = shape ?? (as === "button" ? "control" : "note");
+  const effectiveFolded =
+    effectiveShape === "note" && folded && !muteDisabledAppearance;
   const effectiveUnfoldOnHover =
-    as !== "button" && unfoldOnHover && !disabledAppearance;
+    effectiveShape === "note" && unfoldOnHover && !disabledAppearance;
   const effectiveVariant = muteDisabledAppearance ? "plain" : variant;
   const paperClassName = ["paper-surface", className].filter(Boolean).join(" ");
   const paperStyle = {
@@ -97,6 +105,7 @@ export function Paper({
     className: paperClassName,
     "data-paper-variant": effectiveVariant,
     "data-paper-pattern": pattern ? "default" : "none",
+    "data-paper-shape": effectiveShape,
     "data-paper-tone": tone,
     "data-paper-elevation": elevation,
     "data-paper-folded": effectiveFolded ? "true" : "false",
@@ -135,6 +144,7 @@ export function Paper({
   } else if (as === "button") {
     surface = (
       <button
+        ref={buttonRef}
         type="button"
         disabled={disabledAppearance}
         onClick={disabledAppearance ? undefined : onClick}

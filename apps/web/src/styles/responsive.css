@@ -62,6 +62,11 @@
 @media (max-width: 680px) {
   .site-nav {
     --site-nav-mobile-inset: 14px;
+  }
+
+  .site-nav-inner {
+    width: 100%;
+    gap: 0;
     padding-inline: var(--site-nav-mobile-inset);
   }
 
@@ -99,10 +104,6 @@
     white-space: nowrap;
     transform: scale(var(--site-footer-meta-scale, 1));
     transform-origin: left center;
-  }
-
-  .site-nav {
-    gap: 0;
   }
 
   .site-brand {

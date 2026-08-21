@@ -110,6 +110,13 @@
 html {
   scroll-behavior: smooth;
   overflow-x: clip;
+  scrollbar-gutter: stable;
+  --site-content-max: 1240px;
+  --site-content-gutter: 20px;
+  --site-content-width: min(
+    var(--site-content-max),
+    calc(100% - var(--site-content-gutter) - var(--site-content-gutter))
+  );
   --page-header-content-gap: 44px;
   --control-cluster-gap: 10px;
   --site-nav-height: 76px;
@@ -117,11 +124,21 @@ html {
   --sticky-stack-gap: 10px;
   --sticky-edge-rule-color: color-mix(in srgb, var(--ink) 28%, transparent);
   --sticky-edge-shadow-down: 0 12px 22px -10px var(--paper-lift-shadow-near);
-  --appearance-corner-leg: 64px;
-  --appearance-corner-safe-area: 78px;
+  --appearance-corner-leg: 90px;
+  --appearance-corner-safe-area: 104px;
   --site-footer-height: 66px;
   --layer-navigation: 1000;
   --layer-modal: 1100;
+}
+
+.site-shell {
+  min-height: 100vh;
+}
+
+.site-content-width,
+.site-main {
+  width: var(--site-content-width);
+  margin-inline: auto;
 }
 
 .site-main {
@@ -300,6 +317,7 @@ input:focus-visible {
     --page-header-content-gap: 36px;
     --control-cluster-gap: 8px;
     --mobile-content-inset: 18px;
+    --site-content-gutter: 0px;
     --site-nav-height: 62px;
     --site-footer-height: 104px;
   }

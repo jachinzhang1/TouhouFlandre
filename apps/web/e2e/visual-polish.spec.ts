@@ -76,6 +76,56 @@ test.describe("visual polish", () => {
     );
   });
 
+  test("wide-screen navigation stays anchored across page layouts", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
+    const measurements: Array<{
+      mainLeft: number;
+      mainWidth: number;
+      navLeft: number;
+      navLinksLeft: number;
+      navWidth: number;
+    }> = [];
+
+    for (const route of ["/", "/single", "/search", "/stats", "/links"]) {
+      await page.goto(route);
+      await expect(page.locator(".site-nav-inner")).toBeVisible();
+      measurements.push(
+        await page.evaluate(() => {
+          const main = document
+            .querySelector(".site-main")!
+            .getBoundingClientRect();
+          const nav = document
+            .querySelector(".site-nav-inner")!
+            .getBoundingClientRect();
+          const navLinks = document
+            .querySelector(".nav-links")!
+            .getBoundingClientRect();
+          return {
+            mainLeft: main.left,
+            mainWidth: main.width,
+            navLeft: nav.left,
+            navLinksLeft: navLinks.left,
+            navWidth: nav.width,
+          };
+        }),
+      );
+    }
+
+    for (const key of [
+      "mainLeft",
+      "mainWidth",
+      "navLeft",
+      "navLinksLeft",
+      "navWidth",
+    ] as const) {
+      const values = measurements.map((measurement) => measurement[key]);
+      expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1);
+    }
+    expect(measurements[0].mainWidth).toBe(measurements[0].navWidth);
+  });
+
   test("home keeps its hero and feature cards across breakpoints", async ({
     page,
   }) => {
@@ -202,12 +252,26 @@ test.describe("visual polish", () => {
     expect(await readThemeColor()).toBe("rgb(173, 51, 52)");
     await expect(toggle).toBeVisible();
     await expect(toggle).toBeEnabled();
-    if ((page.viewportSize()?.width ?? 0) <= 680) {
+    const mobileAppearance = (page.viewportSize()?.width ?? 0) <= 680;
+    const cornerSurface = page.locator(".appearance-corner-surface");
+    if (mobileAppearance) {
+      await expect(cornerSurface).toBeHidden();
+    } else {
+      await expect(cornerSurface).toBeVisible();
+      await expect(cornerSurface).toHaveCSS("clip-path", /polygon/);
+      await expect(cornerSurface).toHaveAttribute("data-paper-shape", "corner");
+    }
+    if (mobileAppearance) {
       await toggle.click();
     } else {
       await toggle.hover();
     }
     await expect(palette).toBeVisible();
+    if (mobileAppearance) {
+      const paletteBox = await palette.boundingBox();
+      expect(paletteBox?.y).toBeLessThanOrEqual(1);
+      expect(paletteBox?.height).toBeGreaterThan(40);
+    }
     await expect(swatches.first()).toHaveCSS(
       "background-color",
       "rgb(173, 51, 52)",
@@ -410,6 +474,38 @@ test.describe("visual polish", () => {
       "data-paper-variant",
       "tinted",
     );
+    await expect(page.getByLabel("发送消息")).toHaveAttribute(
+      "data-paper-folded",
+      "true",
+    );
+    await expect(page.getByLabel("发送消息")).toHaveAttribute(
+      "data-paper-shape",
+      "note",
+    );
+
+    await page.route("**/api/characters/search?**", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          results: [
+            {
+              ...searchResult,
+              id: "sakuya_izayoi",
+              name: "十六夜咲夜",
+              subtitle: "Sakuya Izayoi · 东方红魔乡",
+              initials: "十六",
+            },
+          ],
+          total: 1,
+        }),
+      }),
+    );
+    await page.getByLabel("搜索角色").fill("咲夜");
+    await page.getByRole("option", { name: /十六夜咲夜/ }).click();
+    const submitGuess = page.getByRole("button", { name: "提交猜测" });
+    await expect(submitGuess).toHaveAttribute("data-paper-variant", "tinted");
+    await expect(submitGuess).toHaveAttribute("data-paper-folded", "true");
+    await expect(submitGuess).toHaveAttribute("data-paper-shape", "note");
 
     const selfCell = page
       .locator('.multiplayer-board[data-board-variant="self"] .feedback-cell')

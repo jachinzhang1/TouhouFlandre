@@ -32,7 +32,7 @@ export function PaperButton({
   compact = false,
   disabled = false,
   filled = false,
-  folded = false,
+  folded,
   iconOnly = false,
   onClick,
   pattern,
@@ -41,7 +41,8 @@ export function PaperButton({
 }: PaperButtonProps) {
   const unavailable = disabled;
   const effectiveFilled = filled && !unavailable;
-  const effectiveFolded = folded && !unavailable;
+  const requestedFolded = folded ?? effectiveFilled;
+  const effectiveFolded = requestedFolded && !unavailable;
   const semanticTone = tone === "plain" || tone === "theme" ? "default" : tone;
   const surfaceTone = effectiveFilled ? semanticTone : "default";
   const effectivePattern = pattern ?? false;
@@ -70,6 +71,7 @@ export function PaperButton({
       foldSize={compact ? 8 : 10}
       onClick={onClick}
       pattern={effectivePattern}
+      shape={effectiveFolded ? "note" : "control"}
       sticker={false}
       unfoldOnHover={!unavailable}
       title={title}

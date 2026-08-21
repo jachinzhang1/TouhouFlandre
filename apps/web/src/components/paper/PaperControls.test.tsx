@@ -26,6 +26,7 @@ describe("Paper controls", () => {
     const paper = input.closest(".paper-surface") as HTMLElement;
     expect(input.getAttribute("placeholder")).toBe("例如 灵梦");
     expect(paper.dataset.paperFolded).toBe("false");
+    expect(paper.dataset.paperShape).toBe("control");
     expect(paper.closest(".paper-sticker")).toBeNull();
     expect(paper.dataset.paperPattern).toBe("none");
     expect(
@@ -104,7 +105,7 @@ describe("Paper controls", () => {
     expect(first.dataset.paperVariant).toBe("plain");
   });
 
-  it("renders pressable actions as regular Paper without sticker movement", () => {
+  it("renders filled actions as distinctive folded Paper", () => {
     render(
       <PaperButton ariaPressed filled onClick={() => undefined} tone="theme">
         应用
@@ -113,7 +114,8 @@ describe("Paper controls", () => {
 
     const button = screen.getByRole("button", { name: "应用" });
     expect(button.dataset.paperVariant).toBe("tinted");
-    expect(button.dataset.paperFolded).toBe("false");
+    expect(button.dataset.paperFolded).toBe("true");
+    expect(button.dataset.paperShape).toBe("note");
     expect(button.closest(".paper-sticker")).toBeNull();
     expect(button.className).toContain("paper-button-filled");
     expect(button.getAttribute("aria-pressed")).toBe("true");
@@ -130,6 +132,8 @@ describe("Paper controls", () => {
     const button = screen.getByRole("button", { name: "放弃游戏" });
     expect(button.dataset.paperVariant).toBe("tinted");
     expect(button.classList.contains("paper-button-filled")).toBe(true);
+    expect(button.dataset.paperFolded).toBe("true");
+    expect(button.dataset.paperShape).toBe("note");
   });
 
   it("uses the shared plain unfolded state for disabled Paper buttons", () => {

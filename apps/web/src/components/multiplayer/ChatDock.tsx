@@ -373,7 +373,6 @@ export function ChatDock({
             className="chat-dock-composer-button"
             disabled={!canSend}
             filled={canSend}
-            folded={canSend}
             tone="neutral"
             iconOnly
             onClick={() => void sendDraft()}

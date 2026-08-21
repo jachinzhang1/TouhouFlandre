@@ -176,140 +176,144 @@ export function SiteNav() {
       data-mobile-presentation={mobilePresentation ?? "none"}
     >
       <span className="site-nav-paper-layer" aria-hidden="true" />
-      <Link
-        aria-label="返回首页"
-        className="site-brand"
-        href="/"
-        onClick={() => setMobilePresentation(null)}
-      >
-        <Paper
-          className="brand-paper-mark"
-          elevation="accent"
-          foldSize={8}
-          folded={false}
-          sticker={false}
-          tone="contrast"
-          unfoldOnHover={false}
+      <div className="site-nav-inner">
+        <Link
+          aria-label="返回首页"
+          className="site-brand"
+          href="/"
+          onClick={() => setMobilePresentation(null)}
         >
-          <YinYangMark className="size-[23px]" />
-        </Paper>
-        <span className="site-brand-copy">
-          <strong className="site-brand-title">东方芙一把</strong>
-          <small className="site-brand-subtitle">TouhouFlandre</small>
-        </span>
-      </Link>
-      <div className="site-nav-actions">
-        <AppearanceSwitcher
-          mobilePaletteOpen={mobilePaletteOpen}
-          onMobilePaletteOpenChange={(open) =>
-            setMobilePresentation(open ? "palette" : null)
-          }
-        />
-        <button
-          aria-controls="site-navigation-links appearance-palette"
-          aria-expanded={mobilePresentationOpen}
-          aria-label={
-            mobilePresentation === "palette"
-              ? "关闭主题颜色"
-              : mobileMenuOpen
-                ? "关闭站点导航"
-                : "展开站点导航"
-          }
-          className="site-nav-toggle"
-          onClick={() =>
-            setMobilePresentation((current) =>
-              current === null ? "navigation" : null,
-            )
-          }
-          ref={toggleRef}
-          type="button"
-        >
-          <Menu
-            className="site-nav-toggle-icon site-nav-menu-icon"
-            aria-hidden="true"
-          />
-          <X
-            className="site-nav-toggle-icon site-nav-close-icon"
-            aria-hidden="true"
-          />
-        </button>
-      </div>
-      <div
-        className="nav-links"
-        data-site-nav-links
-        id="site-navigation-links"
-        ref={navLinksRef}
-      >
-        <span className="nav-active-indicator" aria-hidden="true">
           <Paper
-            animateOnMount={false}
-            className="nav-active-paper"
+            className="brand-paper-mark"
             elevation="accent"
-            foldSize={10}
-            folded={false}
+            foldSize={8}
+            shape="note"
             sticker={false}
-            tone="contrast"
+            variant="tinted"
             unfoldOnHover={false}
-            unfolded={indicatorMoving || activeIndicatorHovered}
+          >
+            <YinYangMark className="size-[23px]" />
+          </Paper>
+          <span className="site-brand-copy">
+            <strong className="site-brand-title">东方芙一把</strong>
+            <small className="site-brand-subtitle">TouhouFlandre</small>
+          </span>
+        </Link>
+        <div className="site-nav-actions">
+          <AppearanceSwitcher
+            mobilePaletteOpen={mobilePaletteOpen}
+            onMobilePaletteOpenChange={(open) =>
+              setMobilePresentation(open ? "palette" : null)
+            }
           />
-        </span>
-        {hasActiveNavItem ? (
-          <div className="nav-active-copy" aria-hidden="true">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const hasUnread =
-                item.href === "/announcement" && unreadAnnouncements > 0;
-              return (
-                <span className="nav-link nav-link-copy" key={item.label}>
-                  <Icon size={16} aria-hidden="true" />
-                  <span className="nav-link-label">{item.label}</span>
-                  {hasUnread ? (
-                    <span className="nav-unread-dot" aria-hidden="true" />
-                  ) : null}
-                </span>
-              );
-            })}
-          </div>
-        ) : null}
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const active = item.isActive(pathname);
-          const hasUnread =
-            item.href === "/announcement" && unreadAnnouncements > 0;
-          return (
-            <Link
-              aria-current={active ? "page" : undefined}
-              aria-label={hasUnread ? `${item.label}，有未读公告` : item.label}
-              className={active ? "nav-link active" : "nav-link"}
-              href={item.href}
-              key={item.label}
-              onClick={() => {
-                setMobilePresentation(null);
-                if (mobileMenuOpen) {
-                  document
-                    .querySelector<HTMLElement>(".site-main")
-                    ?.focus({ preventScroll: true });
+          <button
+            aria-controls="site-navigation-links appearance-palette"
+            aria-expanded={mobilePresentationOpen}
+            aria-label={
+              mobilePresentation === "palette"
+                ? "关闭主题颜色"
+                : mobileMenuOpen
+                  ? "关闭站点导航"
+                  : "展开站点导航"
+            }
+            className="site-nav-toggle"
+            onClick={() =>
+              setMobilePresentation((current) =>
+                current === null ? "navigation" : null,
+              )
+            }
+            ref={toggleRef}
+            type="button"
+          >
+            <Menu
+              className="site-nav-toggle-icon site-nav-menu-icon"
+              aria-hidden="true"
+            />
+            <X
+              className="site-nav-toggle-icon site-nav-close-icon"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+        <div
+          className="nav-links"
+          data-site-nav-links
+          id="site-navigation-links"
+          ref={navLinksRef}
+        >
+          <span className="nav-active-indicator" aria-hidden="true">
+            <Paper
+              animateOnMount={false}
+              className="nav-active-paper"
+              elevation="accent"
+              foldSize={10}
+              shape="note"
+              sticker={false}
+              tone="contrast"
+              unfoldOnHover={false}
+              unfolded={indicatorMoving || activeIndicatorHovered}
+            />
+          </span>
+          {hasActiveNavItem ? (
+            <div className="nav-active-copy" aria-hidden="true">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const hasUnread =
+                  item.href === "/announcement" && unreadAnnouncements > 0;
+                return (
+                  <span className="nav-link nav-link-copy" key={item.label}>
+                    <Icon size={16} aria-hidden="true" />
+                    <span className="nav-link-label">{item.label}</span>
+                    {hasUnread ? (
+                      <span className="nav-unread-dot" aria-hidden="true" />
+                    ) : null}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = item.isActive(pathname);
+            const hasUnread =
+              item.href === "/announcement" && unreadAnnouncements > 0;
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                aria-label={
+                  hasUnread ? `${item.label}，有未读公告` : item.label
                 }
-              }}
-              onPointerEnter={() => {
-                if (active) setActiveIndicatorHovered(true);
-              }}
-              onPointerLeave={() => {
-                if (active) setActiveIndicatorHovered(false);
-              }}
-            >
-              <Icon size={16} aria-hidden="true" />
-              <span className="nav-link-label">{item.label}</span>
-              {hasUnread ? (
-                <span
-                  className="nav-unread-dot"
-                  aria-hidden="true"
-                  title="有未读公告"
-                />
-              ) : null}
-            </Link>
-          );
-        })}
+                className={active ? "nav-link active" : "nav-link"}
+                href={item.href}
+                key={item.label}
+                onClick={() => {
+                  setMobilePresentation(null);
+                  if (mobileMenuOpen) {
+                    document
+                      .querySelector<HTMLElement>(".site-main")
+                      ?.focus({ preventScroll: true });
+                  }
+                }}
+                onPointerEnter={() => {
+                  if (active) setActiveIndicatorHovered(true);
+                }}
+                onPointerLeave={() => {
+                  if (active) setActiveIndicatorHovered(false);
+                }}
+              >
+                <Icon size={16} aria-hidden="true" />
+                <span className="nav-link-label">{item.label}</span>
+                {hasUnread ? (
+                  <span
+                    className="nav-unread-dot"
+                    aria-hidden="true"
+                    title="有未读公告"
+                  />
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

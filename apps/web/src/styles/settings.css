@@ -1,6 +1,6 @@
 .question-scope-page {
   width: 100%;
-  max-width: 1100px;
+  max-width: var(--site-content-max);
   margin-inline: auto;
   padding: 40px 18px 80px;
   --question-scope-toolbar-height: 70px;
