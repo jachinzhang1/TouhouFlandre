@@ -69,8 +69,8 @@ apps/web/src/features/music-player/
   audioAdapter.ts
   storage.ts
   catalog.ts
+  FloatingPlayerButton.tsx
   components/
-    FloatingPlayerButton.tsx
     PlayerCard.tsx
     PlaylistDialog.tsx
     TrackCover.tsx
@@ -115,7 +115,7 @@ flowchart TD
 | M0 设计冻结   | [MUS-001](./MUS-001-technical-selection-and-contract.md)      | 技术选型记录、状态/事件接口、模块边界、浏览器兼容基线        | 无                |
 | M1 数据与素材 | [MUS-002](./MUS-002-catalog-and-assets.md)                    | 已完成：音乐数据子入口、校验器、占位图、3 首测试曲目及封面、目录授权声明与 JSON 来源元数据 | MUS-001           |
 | M2 播放基础   | [MUS-003](./MUS-003-persistent-playback-core.md)              | 已完成：唯一音频实例、播放状态机、循环切歌、音量/静音、根布局常驻 | MUS-001、002      |
-| M3A 悬浮入口  | [MUS-004](./MUS-004-floating-launcher.md)                     | 右上圆形按钮、12 点起始的环形进度、定位与动效                | MUS-003           |
+| M3A 悬浮入口  | [MUS-004](./MUS-004-floating-launcher.md)                     | 已完成：56px 右上圆形入口、中央 `Music2` 音符、12 点起始环形进度、定位、主题和可访问性 | MUS-003           |
 | M3B 播放卡片  | [MUS-005](./MUS-005-player-card.md)                           | 封面/标题/元信息、时间轴、传输控制、音量和展开过渡           | MUS-002、003      |
 | M3C 曲库设置  | [MUS-006](./MUS-006-playlist-dialog-and-persistence.md)       | 专辑/曲目复选对话框、草稿提交、版本化本地设置                | MUS-002、003      |
 | M4 共同验收   | [MUS-007](./MUS-007-integration-accessibility-and-release.md) | 路由连续播放、故障态、键盘/移动端、视觉与发布回归            | MUS-004、005、006 |
