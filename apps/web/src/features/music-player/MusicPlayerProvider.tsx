@@ -16,6 +16,8 @@ import {
   type MusicPlayerCommands,
   type MusicPlayerContextValue,
   type MusicPlayerInitialPreferences,
+  type MusicPlayerPreferenceSnapshot,
+  type MusicPlayerSelectionMode,
   type MusicPlayerViewState,
 } from "./contracts";
 import { createHtmlAudioAdapter, type MusicAudioAdapter } from "./audioAdapter";
@@ -33,9 +35,10 @@ import {
 
 const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null);
 
-type MusicPlayerProviderProps = {
+export type MusicPlayerProviderProps = {
   children?: ReactNode;
   initialPreferences?: MusicPlayerInitialPreferences;
+  onPreferencesChange?: (snapshot: MusicPlayerPreferenceSnapshot) => void;
 };
 
 function createProviderInitialState({
@@ -89,6 +92,7 @@ function errorMessage(error: unknown): string {
 export function MusicPlayerProvider({
   children,
   initialPreferences,
+  onPreferencesChange,
 }: MusicPlayerProviderProps) {
   const [runtimeState, dispatch] = useReducer(
     musicPlayerReducer,
@@ -99,6 +103,10 @@ export function MusicPlayerProvider({
   stateRef.current = runtimeState;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const adapterRef = useRef<MusicAudioAdapter | null>(null);
+  const selectionModeRef = useRef<MusicPlayerSelectionMode>(
+    initialPreferences?.selectionMode ??
+      (initialPreferences?.selectedTrackIds ? "custom" : "default"),
+  );
   const sourceTokenRef = useRef(0);
   const playAttemptRef = useRef<{ id: number; sourceToken: number } | null>(
     null,
@@ -108,6 +116,19 @@ export function MusicPlayerProvider({
     stateRef.current = musicPlayerReducer(stateRef.current, action);
     dispatch(action);
   }, []);
+
+  const notifyPreferences = useCallback(() => {
+    if (!onPreferencesChange) return;
+    const state = stateRef.current;
+    onPreferencesChange({
+      selectionMode: selectionModeRef.current,
+      selectedTrackIds: state.queue.map((track) => track.id),
+      currentTrackId: state.currentTrack?.id,
+      volume: state.volume,
+      muted: state.muted,
+      lastNonZeroVolume: state.lastNonZeroVolume,
+    });
+  }, [onPreferencesChange]);
 
   const requestPlay = useCallback(async () => {
     const adapter = adapterRef.current;
@@ -182,8 +203,9 @@ export function MusicPlayerProvider({
         return;
       }
       changeTrack(nextTrack, shouldPlay ? "playing" : "paused");
+      notifyPreferences();
     },
-    [changeTrack, requestPlay, send],
+    [changeTrack, notifyPreferences, requestPlay, send],
   );
 
   useEffect(() => {
@@ -264,6 +286,7 @@ export function MusicPlayerProvider({
           volume: nextVolume,
           muted: nextVolume > 0 ? false : stateRef.current.muted,
         });
+        notifyPreferences();
       },
       toggleMute: () => {
         const state = stateRef.current;
@@ -277,6 +300,7 @@ export function MusicPlayerProvider({
           adapterRef.current?.setMuted(true);
           send({ type: "set-muted", muted: true, volume: state.volume });
         }
+        notifyPreferences();
       },
       applySelection: (trackIds) => {
         const queue = normalizeMusicSelection(trackIds);
@@ -285,6 +309,7 @@ export function MusicPlayerProvider({
           return;
         }
         const state = stateRef.current;
+        selectionModeRef.current = "custom";
         const retained = state.currentTrack
           ? (queue.find((track) => track.id === state.currentTrack?.id) ?? null)
           : null;
@@ -297,6 +322,7 @@ export function MusicPlayerProvider({
             playbackIntent: state.playbackIntent,
             preserveSource: true,
           });
+          notifyPreferences();
           return;
         }
         changeTrack(queue[0] ?? null, state.playbackIntent);
@@ -308,9 +334,10 @@ export function MusicPlayerProvider({
           playbackIntent: state.playbackIntent,
           preserveSource: false,
         });
+        notifyPreferences();
       },
     }),
-    [changeTrack, moveTrack, requestPlay, send],
+    [changeTrack, moveTrack, notifyPreferences, requestPlay, send],
   );
 
   const state: MusicPlayerViewState = useMemo(() => {

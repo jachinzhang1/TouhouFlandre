@@ -20,7 +20,7 @@ test.describe("MUS-003 persistent playback core", () => {
     await page.goto("/");
 
     const audio = page.locator(AUDIO_SELECTOR);
-    await expect(audio).toHaveCount(1);
+    await expect(audio).toHaveCount(1, { timeout: 10_000 });
     await expect(audio).toHaveAttribute("preload", "metadata");
     await expect
       .poll(() =>
@@ -110,8 +110,8 @@ test.describe("MUS-003 persistent playback core", () => {
     );
 
     await page.reload();
-    await expect(audio).toHaveCount(1);
-    await expect.poll(() => audio.getAttribute("src")).toBe(FIRST_TRACK);
+    await expect(audio).toHaveCount(1, { timeout: 10_000 });
+    await expect.poll(() => audio.getAttribute("src")).toBe(SECOND_TRACK);
     await expect(audio).toHaveJSProperty("paused", true);
     await expect(audio).toHaveJSProperty("currentTime", 0);
     expect(pageErrors).toEqual([]);

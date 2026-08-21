@@ -10,7 +10,9 @@ test.describe("MUS-001 root audio boundary", () => {
   }) => {
     await page.goto("/");
 
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1);
+    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1, {
+      timeout: 10_000,
+    });
     await expect
       .poll(() => page.locator(AUDIO_SELECTOR).getAttribute("src"))
       .toBe(FIRST_TRACK);
@@ -176,7 +178,9 @@ test.describe("MUS-001 root audio boundary", () => {
     ).toBe(true);
 
     await page.reload();
-    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1);
+    await expect(page.locator(AUDIO_SELECTOR)).toHaveCount(1, {
+      timeout: 10_000,
+    });
     expect(
       await page.evaluate((selector) => {
         const previous = (

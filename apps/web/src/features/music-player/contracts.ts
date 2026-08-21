@@ -68,8 +68,20 @@ export type MusicPlayerContextValue = {
   commands: MusicPlayerCommands;
 };
 
+export type MusicPlayerSelectionMode = "default" | "custom";
+
+export type MusicPlayerPreferenceSnapshot = {
+  selectionMode: MusicPlayerSelectionMode;
+  selectedTrackIds: readonly string[];
+  currentTrackId?: string;
+  volume: number;
+  muted: boolean;
+  lastNonZeroVolume: number;
+};
+
 /** Validated startup values. MUS-006 will populate these from localStorage. */
 export type MusicPlayerInitialPreferences = {
+  selectionMode?: MusicPlayerSelectionMode;
   selectedTrackIds?: readonly string[];
   currentTrackId?: string;
   volume?: number;

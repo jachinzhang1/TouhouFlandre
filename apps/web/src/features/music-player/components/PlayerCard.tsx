@@ -14,7 +14,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   clampMediaTime,
   getVolumeIconLevel,
@@ -31,6 +31,7 @@ export type PlayerCardProps = {
   cardId: string;
   onClose: () => void;
   onOpenPlaylist: () => void;
+  playlistButtonRef?: RefObject<HTMLButtonElement | null>;
 };
 
 function formatTime(seconds: number, unknown = "--:--"): string {
@@ -66,7 +67,13 @@ function VolumeIcon({ level }: { level: ReturnType<typeof getVolumeIconLevel> })
   return <Volume2 aria-hidden="true" />;
 }
 
-export function PlayerCard({ open, cardId, onClose, onOpenPlaylist }: PlayerCardProps) {
+export function PlayerCard({
+  open,
+  cardId,
+  onClose,
+  onOpenPlaylist,
+  playlistButtonRef,
+}: PlayerCardProps) {
   const { state, commands } = useMusicPlayer();
   const currentTrack = state.currentTrack;
   const album = useMemo(
@@ -242,6 +249,7 @@ export function PlayerCard({ open, cardId, onClose, onOpenPlaylist }: PlayerCard
             className="music-player-icon-button"
             aria-label="曲库设置"
             onClick={onOpenPlaylist}
+            ref={playlistButtonRef}
           >
             <ListMusic aria-hidden="true" />
           </button>
