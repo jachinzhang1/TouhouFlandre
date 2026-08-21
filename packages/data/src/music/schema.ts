@@ -39,8 +39,17 @@ const uniqueStringArraySchema = z
     message: "Music string arrays must contain unique values.",
   });
 
+export const musicAlbumCategorySchema = z.enum([
+  "game_ost",
+  "zun_music_cd",
+  "tasofro_game_ost",
+]);
+
+export type MusicAlbumCategory = z.infer<typeof musicAlbumCategorySchema>;
+
 export const musicAlbumSchema = z.object({
   id: stableIdSchema,
+  category: musicAlbumCategorySchema,
   title: z.string().trim().min(1),
   titleJa: z.string().trim().min(1).optional(),
   artist: z.string().trim().min(1).optional(),

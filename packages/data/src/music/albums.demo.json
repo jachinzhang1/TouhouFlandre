@@ -1,11 +1,147 @@
 [
   {
+    "id": "th06",
+    "category": "game_ost",
+    "title": "东方红魔乡",
+    "titleJa": "東方紅魔郷 ～ the Embodiment of Scarlet Devil",
+    "artist": "上海爱丽丝幻乐团",
+    "releaseYear": 2002,
+    "order": 1,
+    "coverUrl": "/music/covers/th06.png",
+    "sourceRefs": [
+      "https://thwiki.cc/东方红魔乡",
+      "https://thwiki.cc/文件:东方红魔乡封面.png",
+      "https://upload.thbwiki.cc/3/35/东方红魔乡封面.png"
+    ]
+  },
+  {
+    "id": "th07",
+    "category": "game_ost",
+    "title": "东方妖妖梦",
+    "titleJa": "東方妖々夢 ～ Perfect Cherry Blossom",
+    "artist": "上海爱丽丝幻乐团",
+    "releaseYear": 2003,
+    "order": 2,
+    "coverUrl": "/music/covers/th07.png",
+    "sourceRefs": [
+      "https://thwiki.cc/东方妖妖梦",
+      "https://thwiki.cc/文件:东方妖妖梦封面.png",
+      "https://upload.thbwiki.cc/1/12/东方妖妖梦封面.png"
+    ]
+  },
+  {
+    "id": "th08",
+    "category": "game_ost",
+    "title": "东方永夜抄",
+    "titleJa": "東方永夜抄 ～ Imperishable Night",
+    "artist": "上海爱丽丝幻乐团",
+    "releaseYear": 2004,
+    "order": 3,
+    "coverUrl": "/music/covers/th08.png",
+    "sourceRefs": [
+      "https://thwiki.cc/东方永夜抄",
+      "https://thwiki.cc/文件:东方永夜抄封面.png",
+      "https://upload.thbwiki.cc/9/9e/东方永夜抄封面.png"
+    ]
+  },
+  {
+    "id": "th09",
+    "category": "game_ost",
+    "title": "东方花映塚",
+    "titleJa": "東方花映塚 ～ Phantasmagoria of Flower View",
+    "artist": "上海爱丽丝幻乐团",
+    "releaseYear": 2005,
+    "order": 4,
+    "coverUrl": "/music/covers/th09.png",
+    "sourceRefs": [
+      "https://thwiki.cc/东方花映塚",
+      "https://thwiki.cc/文件:东方花映塚封面.png",
+      "https://upload.thbwiki.cc/1/17/东方花映塚封面.png"
+    ]
+  },
+  {
+    "id": "th10",
+    "category": "game_ost",
+    "title": "东方风神录",
+    "titleJa": "東方風神録 ～ Mountain of Faith",
+    "artist": "上海爱丽丝幻乐团",
+    "releaseYear": 2007,
+    "order": 5,
+    "coverUrl": "/music/covers/th10.png",
+    "sourceRefs": [
+      "https://thwiki.cc/东方风神录",
+      "https://thwiki.cc/文件:东方风神录封面.png",
+      "https://upload.thbwiki.cc/a/ae/东方风神录封面.png"
+    ]
+  },
+  {
+    "id": "penglaixing",
+    "category": "zun_music_cd",
+    "title": "蓬莱人形",
+    "titleJa": "蓬莱人形 ～ Dolls in Pseudo Paradise",
+    "artist": "ZUN",
+    "releaseYear": 2002,
+    "order": 6,
+    "coverUrl": "/music/covers/penglaixing.png",
+    "sourceRefs": [
+      "https://thwiki.cc/蓬莱人形",
+      "https://thwiki.cc/文件:蓬莱人形封面.png",
+      "https://upload.thbwiki.cc/1/15/蓬莱人形封面.png"
+    ]
+  },
+  {
+    "id": "liantaiye-xing",
+    "category": "zun_music_cd",
+    "title": "莲台野夜行",
+    "titleJa": "蓮台野夜行 ～ Ghostly Field Club",
+    "artist": "ZUN",
+    "releaseYear": 2003,
+    "order": 7,
+    "coverUrl": "/music/covers/liantaiye-xing.png",
+    "sourceRefs": [
+      "https://thwiki.cc/莲台野夜行",
+      "https://thwiki.cc/文件:莲台野夜行封面.png",
+      "https://upload.thbwiki.cc/0/00/莲台野夜行封面.png"
+    ]
+  },
+  {
+    "id": "mengwei-kexue-shiji",
+    "category": "zun_music_cd",
+    "title": "梦违科学世纪",
+    "titleJa": "夢違科学世紀 ～ Changeability of Strange Dream",
+    "artist": "ZUN",
+    "releaseYear": 2004,
+    "order": 8,
+    "coverUrl": "/music/covers/mengwei-kexue-shiji.png",
+    "sourceRefs": [
+      "https://thwiki.cc/梦违科学世纪",
+      "https://thwiki.cc/文件:梦违科学世纪封面.png",
+      "https://upload.thbwiki.cc/c/ce/梦违科学世纪封面.png"
+    ]
+  },
+  {
+    "id": "dakon-moshu",
+    "category": "zun_music_cd",
+    "title": "大空魔术",
+    "titleJa": "大空魔術 ～ Magical Astronomy",
+    "artist": "ZUN",
+    "releaseYear": 2006,
+    "order": 9,
+    "coverUrl": "/music/covers/dakon-moshu.png",
+    "sourceRefs": [
+      "https://thwiki.cc/大空魔术",
+      "https://thwiki.cc/文件:大空魔术封面.png",
+      "https://upload.thbwiki.cc/b/b9/大空魔术封面.png"
+    ]
+  },
+  {
     "id": "gensoukyoku-bassui",
+    "category": "tasofro_game_ost",
     "title": "幻想曲拔萃",
     "titleJa": "幻想曲抜萃",
     "artist": "黄昏边境、上海爱丽丝幻乐团",
     "releaseYear": 2005,
-    "order": 1,
+    "order": 10,
     "coverUrl": "/music/covers/gensoukyoku-bassui.png",
     "sourceRefs": [
       "https://thwiki.cc/幻想曲拔萃",
@@ -15,11 +151,12 @@
   },
   {
     "id": "kakunetsuzoushin-hisoutensoku",
+    "category": "tasofro_game_ost",
     "title": "核热造神非想天则",
     "titleJa": "核熱造神ヒソウテンソク",
     "artist": "黄昏边境、上海爱丽丝幻乐团",
     "releaseYear": 2009,
-    "order": 2,
+    "order": 11,
     "coverUrl": "/music/covers/kakunetsuzoushin-hisoutensoku.png",
     "sourceRefs": [
       "https://thwiki.cc/核热造神非想天则",

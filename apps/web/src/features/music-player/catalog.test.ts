@@ -6,15 +6,15 @@ import {
   normalizeMusicSelection,
 } from "./catalog";
 
-const expectedTrackIds = [
-  "gensoukyoku-bassui-day-06",
-  "gensoukyoku-bassui-day-12",
-  "kakunetsuzoushin-hisoutensoku-track-03",
-];
+const expectedTrackIds = MUSIC_CATALOG.map((track) => track.id);
 
 describe("music player catalog", () => {
   it("exposes the validated catalog in canonical playback order", () => {
-    expect(MUSIC_CATALOG.map((track) => track.id)).toEqual(expectedTrackIds);
+    expect(expectedTrackIds).toHaveLength(39);
+    expect(expectedTrackIds[0]).toBe("th06-06");
+    expect(expectedTrackIds.at(-1)).toBe(
+      "kakunetsuzoushin-hisoutensoku-track-03",
+    );
     expect(
       MUSIC_CATALOG.every((track) =>
         track.coverUrl?.startsWith("/music/covers/"),
@@ -39,9 +39,15 @@ describe("music player catalog", () => {
 
   it("wraps previous and next for multi-track and single-track queues", () => {
     expect(getNextMusicTrack(MUSIC_CATALOG, MUSIC_CATALOG[0], -1)?.id).toBe(
-      expectedTrackIds[2],
+      expectedTrackIds.at(-1),
     );
-    expect(getNextMusicTrack(MUSIC_CATALOG, MUSIC_CATALOG[2], 1)?.id).toBe(
+    expect(
+      getNextMusicTrack(
+        MUSIC_CATALOG,
+        MUSIC_CATALOG[MUSIC_CATALOG.length - 1],
+        1,
+      )?.id,
+    ).toBe(
       expectedTrackIds[0],
     );
     expect(getNextMusicTrack([MUSIC_CATALOG[0]], MUSIC_CATALOG[0], 1)?.id).toBe(

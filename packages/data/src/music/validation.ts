@@ -3,7 +3,7 @@ import { join, relative, resolve } from "node:path";
 import type { MusicAlbum, MusicTrack } from "./schema";
 
 export const MUSIC_ASSET_LIMITS = {
-  maxTotalAudioBytes: 50 * 1024 * 1024,
+  maxTotalAudioBytes: 200 * 1024 * 1024,
   maxCoverBytes: 2 * 1024 * 1024,
 } as const;
 

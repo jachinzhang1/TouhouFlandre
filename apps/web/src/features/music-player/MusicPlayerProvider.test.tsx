@@ -208,9 +208,11 @@ describe("MusicPlayerProvider", () => {
     const adapter = adapters[0];
 
     act(() => player.commands.previous());
-    expect(player.state.currentTrack).toBe(MUSIC_CATALOG[2]);
+    expect(player.state.currentTrack).toBe(
+      MUSIC_CATALOG[MUSIC_CATALOG.length - 1],
+    );
     expect(adapter.setSource).toHaveBeenLastCalledWith(
-      MUSIC_CATALOG[2].audioUrl,
+      MUSIC_CATALOG[MUSIC_CATALOG.length - 1].audioUrl,
     );
 
     await act(async () => player.commands.play());
@@ -307,7 +309,7 @@ describe("MusicPlayerProvider", () => {
       adapter.emit("canplay");
       player.commands.applySelection([]);
     });
-    expect(player.state.queue).toHaveLength(3);
+    expect(player.state.queue).toHaveLength(MUSIC_CATALOG.length);
     expect(player.state.error).toMatch(/至少选择一首/u);
 
     act(() => {

@@ -23,23 +23,15 @@ afterEach(() => {
 function createAssetRoot() {
   const root = mkdtempSync(join(tmpdir(), "touhouflandre-music-"));
   tempRoots.push(root);
-  mkdirSync(join(root, "music", "tracks", "gensoukyoku-bassui"), {
-    recursive: true,
-  });
-  mkdirSync(join(root, "music", "tracks", "kakunetsuzoushin-hisoutensoku"), {
-    recursive: true,
-  });
   mkdirSync(join(root, "music", "covers"), { recursive: true });
-  writeFileSync(
-    join(root, "music", "covers", "gensoukyoku-bassui.png"),
-    "cover",
-  );
-  writeFileSync(
-    join(root, "music", "covers", "kakunetsuzoushin-hisoutensoku.png"),
-    "cover",
-  );
   writeFileSync(join(root, "music", "placeholder-cover.png"), "placeholder");
+  for (const album of demoMusicAlbums) {
+    writeFileSync(join(root, album.coverUrl.slice(1)), "cover");
+  }
   for (const track of demoMusicTracks) {
+    mkdirSync(join(root, "music", "tracks", track.albumId), {
+      recursive: true,
+    });
     writeFileSync(join(root, track.audioUrl.slice(1)), "mp3");
   }
   return root;
@@ -47,8 +39,8 @@ function createAssetRoot() {
 
 describe("music schemas", () => {
   it("parses the demo catalog without importing the root catalog", () => {
-    expect(musicAlbumsSchema.parse(demoMusicAlbums)).toHaveLength(2);
-    expect(musicTracksSchema.parse(demoMusicTracks)).toHaveLength(3);
+    expect(musicAlbumsSchema.parse(demoMusicAlbums)).toHaveLength(11);
+    expect(musicTracksSchema.parse(demoMusicTracks)).toHaveLength(39);
     expect(demoMusicTracks.every((track) => track.coverUrl === undefined)).toBe(
       true,
     );
@@ -85,7 +77,7 @@ describe("music catalog validation", () => {
         demoMusicTracks[0],
         albumsById.get(demoMusicTracks[0].albumId)!,
       ),
-    ).toBe("/music/covers/gensoukyoku-bassui.png");
+    ).toBe(albumsById.get(demoMusicTracks[0].albumId)!.coverUrl);
     expect(
       sortMusicTracks(demoMusicAlbums, [...demoMusicTracks].reverse()).map(
         (track) => track.id,
