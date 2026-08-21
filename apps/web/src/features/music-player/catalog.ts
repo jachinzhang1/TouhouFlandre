@@ -3,9 +3,12 @@ import {
   demoMusicTracks,
   resolveMusicCoverUrl,
 } from "@touhouflandre/data/music";
-import type { MusicTrack } from "./contracts";
+import type { MusicAlbum as CatalogMusicAlbum } from "@touhouflandre/data/music";
+import type { MusicAlbum, MusicTrack } from "./contracts";
 
-const albumsById = new Map(demoMusicAlbums.map((album) => [album.id, album]));
+const albumsById = new Map<string, CatalogMusicAlbum>(
+  demoMusicAlbums.map((album) => [album.id, album]),
+);
 const orderedTracks = [...demoMusicTracks].sort(
   (left, right) =>
     (albumsById.get(left.albumId)?.order ?? Number.MAX_SAFE_INTEGER) -
@@ -27,6 +30,10 @@ export const MUSIC_CATALOG: readonly MusicTrack[] = orderedTracks.map(
 );
 
 const catalogById = new Map(MUSIC_CATALOG.map((track) => [track.id, track]));
+
+export function findMusicAlbum(albumId: string | undefined): MusicAlbum | null {
+  return albumId ? (albumsById.get(albumId) ?? null) : null;
+}
 
 export function normalizeMusicSelection(
   trackIds: readonly string[] | undefined,
