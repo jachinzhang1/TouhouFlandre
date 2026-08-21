@@ -93,7 +93,6 @@ export function MatchResultOverlay({
         elevation="lg"
         className="match-result-paper"
         folded
-        pattern
         sticker={false}
         unfoldOnHover={false}
       >

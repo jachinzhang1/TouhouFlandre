@@ -35,7 +35,9 @@ describe("HomePage", () => {
     vi.mocked(api.catalog).mockResolvedValue(catalogSummary as never);
     render(<HomePage />);
     expect(await screen.findByText("29")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /每日题/ })).toBeTruthy();
+    const daily = screen.getByRole("link", { name: /每日题/ });
+    expect(daily).toBeTruthy();
+    expect(daily.dataset.paperPattern).toBe("default");
     expect(screen.queryByText("开始每日题")).toBeNull();
   });
 

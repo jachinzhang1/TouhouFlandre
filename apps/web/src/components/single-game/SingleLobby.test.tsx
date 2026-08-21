@@ -24,6 +24,7 @@ describe("SingleLobby", () => {
     for (const entry of [daily, random, multiplayer, scope]) {
       expect(entry.dataset.paperVariant).toBe("plain");
       expect(entry.dataset.paperFolded).toBe("true");
+      expect(entry.dataset.paperPattern).toBe("default");
     }
 
     for (const obsoleteLabel of ["今日可玩", "不限次数", "已开放"]) {

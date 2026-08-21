@@ -69,7 +69,7 @@ export function Paper({
   href,
   onClick,
   foldDelayMs = 0,
-  pattern = true,
+  pattern = false,
   preserveAppearanceWhenDisabled = false,
   role,
   stackOrder,

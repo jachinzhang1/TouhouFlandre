@@ -25,6 +25,7 @@ describe("PaperDataTable", () => {
     const surface = body.closest(".paper-data-table") as HTMLElement;
     expect(surface.dataset.paperFolded).toBe("false");
     expect(surface.closest(".paper-sticker")).toBeNull();
+    expect(surface.dataset.paperPattern).toBe("none");
     expect(body.dataset.paperResponsiveStacked).toBe("true");
     expect(body.querySelector(".paper-data-table-detail")).toBeTruthy();
 

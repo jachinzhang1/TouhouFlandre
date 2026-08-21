@@ -76,7 +76,9 @@ test.describe("visual polish", () => {
     );
   });
 
-  test("home uses the completed animation and bold title", async ({ page }) => {
+  test("home keeps its hero and feature cards across breakpoints", async ({
+    page,
+  }) => {
     await page.goto("/");
     await prepareVisualPage(page);
     const title = page.getByRole("heading", { name: "东方芙一把" });
@@ -85,6 +87,76 @@ test.describe("visual polish", () => {
     await expect(page.locator("main")).toHaveScreenshot("home-main.png", {
       animations: "disabled",
     });
+
+    await page.setViewportSize({ width: 800, height: 900 });
+    await expect(page.locator(".home-hero-shortcuts")).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const hero = document
+        .querySelector(".home-hero")!
+        .getBoundingClientRect();
+      const footer = document
+        .querySelector(".site-footer")!
+        .getBoundingClientRect();
+      const cards = [...document.querySelectorAll(".paper-shortcut")];
+      const cardBottom = Math.max(
+        ...cards.map((card) => card.getBoundingClientRect().bottom),
+      );
+      return {
+        cardCount: cards.length,
+        cardPatterns: cards.map(
+          (card) => (card as HTMLElement).dataset.paperPattern,
+        ),
+        otherPatterns: [
+          ...document.querySelectorAll(".paper-surface:not(.paper-shortcut)"),
+        ].map((paper) => (paper as HTMLElement).dataset.paperPattern),
+        footerGap: footer.top - cardBottom,
+        heroBottom: hero.bottom,
+        heroLeft: hero.left,
+        heroRight: hero.right,
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    expect(geometry.cardCount).toBe(4);
+    expect(geometry.cardPatterns).toEqual(Array(4).fill("default"));
+    expect(geometry.otherPatterns.every((pattern) => pattern === "none")).toBe(
+      true,
+    );
+    expect(geometry.heroLeft).toBeLessThanOrEqual(1);
+    expect(geometry.heroRight).toBeGreaterThanOrEqual(
+      geometry.viewportWidth - 1,
+    );
+    expect(geometry.heroBottom).toBeGreaterThanOrEqual(geometry.viewportHeight);
+    expect(geometry.footerGap).toBeGreaterThanOrEqual(36);
+  });
+
+  test("game-mode feature cards keep a safe footer gap", async ({ page }) => {
+    await page.setViewportSize({ width: 680, height: 800 });
+    await page.goto("/single");
+    await prepareVisualPage(page);
+    const geometry = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll(".game-mode-entry")];
+      const footerTop = document
+        .querySelector(".site-footer")!
+        .getBoundingClientRect().top;
+      const cardBottom = Math.max(
+        ...cards.map((card) => card.getBoundingClientRect().bottom),
+      );
+      return {
+        footerGap: footerTop - cardBottom,
+        patterns: cards.map(
+          (card) => (card as HTMLElement).dataset.paperPattern,
+        ),
+        otherPatterns: [
+          ...document.querySelectorAll(".paper-surface:not(.game-mode-entry)"),
+        ].map((paper) => (paper as HTMLElement).dataset.paperPattern),
+      };
+    });
+    expect(geometry.footerGap).toBeGreaterThanOrEqual(36);
+    expect(geometry.patterns).toEqual(Array(4).fill("default"));
+    expect(geometry.otherPatterns.every((pattern) => pattern === "none")).toBe(
+      true,
+    );
   });
 
   test("search focus and segmented controls have stable states", async ({
@@ -116,11 +188,25 @@ test.describe("visual polish", () => {
     const toggle = page.locator(".appearance-toggle");
     const palette = page.locator(".appearance-palette");
     const swatches = page.locator(".appearance-swatch");
+    const readThemeColor = () =>
+      page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.style.color = "var(--theme-color)";
+        document.body.append(probe);
+        const color = getComputedStyle(probe).color;
+        probe.remove();
+        return color;
+      });
 
     await expect(root).toHaveAttribute("data-theme-color", "scarlet");
+    expect(await readThemeColor()).toBe("rgb(173, 51, 52)");
     await expect(toggle).toBeVisible();
     await expect(toggle).toBeEnabled();
-    await toggle.hover();
+    if ((page.viewportSize()?.width ?? 0) <= 680) {
+      await toggle.click();
+    } else {
+      await toggle.hover();
+    }
     await expect(palette).toBeVisible();
     await expect(swatches.first()).toHaveCSS(
       "background-color",
@@ -130,6 +216,7 @@ test.describe("visual polish", () => {
     await toggle.click();
     await expect(root).toHaveAttribute("data-theme-mode", "dark");
     await expect(root).toHaveCSS("color-scheme", "dark");
+    expect(await readThemeColor()).toBe("rgb(224, 112, 108)");
 
     const sakuraSwatch = page.locator(
       '.appearance-swatch[data-theme-color="sakura"]',
@@ -142,6 +229,7 @@ test.describe("visual polish", () => {
       await sakuraSwatch.click({ position: { x: 535, y: 210 } });
     }
     await expect(root).toHaveAttribute("data-theme-color", "sakura");
+    expect(await readThemeColor()).toBe("rgb(228, 127, 169)");
     await expect
       .poll(() =>
         page.evaluate(() =>
@@ -155,6 +243,27 @@ test.describe("visual polish", () => {
     await page.reload();
     await expect(root).toHaveAttribute("data-theme-mode", "dark");
     await expect(root).toHaveAttribute("data-theme-color", "sakura");
+    expect(await readThemeColor()).toBe("rgb(228, 127, 169)");
+
+    const themeVariants = [
+      ["scarlet", "rgb(173, 51, 52)", "rgb(224, 112, 108)"],
+      ["sakura", "rgb(185, 80, 127)", "rgb(228, 127, 169)"],
+      ["iris", "rgb(111, 99, 182)", "rgb(163, 152, 227)"],
+      ["jade", "rgb(36, 117, 104)", "rgb(89, 185, 167)"],
+      ["amber", "rgb(163, 103, 20)", "rgb(214, 154, 67)"],
+      ["azure", "rgb(52, 120, 180)", "rgb(108, 166, 217)"],
+    ] as const;
+    for (const [color, light, dark] of themeVariants) {
+      await root.evaluate((element, value) => {
+        (element as HTMLElement).dataset.themeColor = value;
+        (element as HTMLElement).dataset.themeMode = "light";
+      }, color);
+      expect(await readThemeColor()).toBe(light);
+      await root.evaluate((element) => {
+        (element as HTMLElement).dataset.themeMode = "dark";
+      });
+      expect(await readThemeColor()).toBe(dark);
+    }
   });
 
   test("daily result shows a neutral answer avatar and Paper actions", async ({

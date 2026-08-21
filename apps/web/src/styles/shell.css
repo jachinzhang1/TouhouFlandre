@@ -25,22 +25,10 @@
   justify-content: space-between;
   gap: 28px;
   isolation: isolate;
-  background:
-    repeating-linear-gradient(
-      12deg,
-      transparent 0,
-      transparent 7px,
-      color-mix(in srgb, var(--line) 14%, transparent) 7px,
-      color-mix(in srgb, var(--line) 14%, transparent) 8px,
-      transparent 8px,
-      transparent 18px
-    ),
-    var(--nav-shell-bg);
+  background: var(--nav-shell-bg);
 }
 html[data-theme-mode="dark"] .site-nav {
-  background-color: var(--paper-tinted-bg);
-  background-image: var(--paper-tinted-ornament);
-  background-size: var(--paper-tinted-ornament-size);
+  background: var(--paper-tinted-bg);
 }
 
 .site-footer {
@@ -201,17 +189,7 @@ body:has(.home-hero)
   top: 100%;
   z-index: -1;
   height: 6px;
-  background:
-    repeating-linear-gradient(
-      13deg,
-      transparent 0,
-      transparent 8px,
-      color-mix(in srgb, var(--line) 14%, transparent) 8px,
-      color-mix(in srgb, var(--line) 14%, transparent) 9px,
-      transparent 9px,
-      transparent 20px
-    ),
-    var(--nav-paper-layer-1);
+  background: var(--nav-paper-layer-1);
 }
 
 .site-nav::after {

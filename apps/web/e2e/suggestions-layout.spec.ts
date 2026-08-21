@@ -68,6 +68,33 @@ test.describe("single game suggestion layout", () => {
     await expect(suggestionList).toBeVisible();
     await expect(suggestionList.locator(".suggestion")).toHaveCount(12);
 
+    const alignedRow = await suggestionList
+      .locator(".suggestion")
+      .nth(1)
+      .evaluate((row) => {
+        const rowRect = row.getBoundingClientRect();
+        return {
+          backgroundImage: getComputedStyle(row).backgroundImage,
+          row: { top: rowRect.top, bottom: rowRect.bottom },
+          cells: [...row.children].map((cell) => {
+            const rect = cell.getBoundingClientRect();
+            return {
+              top: rect.top,
+              bottom: rect.bottom,
+              borderTopStyle: getComputedStyle(cell).borderTopStyle,
+            };
+          }),
+        };
+      });
+    expect(alignedRow.backgroundImage).toBe("none");
+    for (const cell of alignedRow.cells) {
+      expect(Math.abs(cell.top - alignedRow.row.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(cell.bottom - alignedRow.row.bottom)).toBeLessThanOrEqual(
+        1,
+      );
+      expect(cell.borderTopStyle).toBe("dashed");
+    }
+
     await expect(async () => {
       const layout = await page.evaluate(() => {
         const surface = document.querySelector("main");

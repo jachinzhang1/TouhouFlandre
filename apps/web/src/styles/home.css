@@ -31,7 +31,7 @@
 
 @media (min-width: 901px) {
   .home-hero {
-    min-height: max(786px, 100svh);
+    min-height: max(880px, 100svh);
   }
 
   .home-hero::after,
@@ -130,8 +130,8 @@
 
   .home-hero-shortcuts {
     position: absolute;
-    top: calc(50svh + 150px);
-    right: 0;
+    right: var(--appearance-corner-safe-area);
+    bottom: calc(var(--site-footer-height) + 40px);
     left: 0;
     margin: 0;
   }

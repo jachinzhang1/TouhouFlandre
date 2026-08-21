@@ -223,6 +223,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
     min-height: 600px;
     grid-template-rows: auto minmax(0, 1fr);
     padding: 24px 18px 18px;
+    margin-bottom: 24px;
   }
 
   .single-lobby-page .game-mode-grid {
@@ -2525,9 +2526,8 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .suggestion-avatar-cell {
   width: 48px;
-  height: 48px;
   min-height: 48px;
-  align-self: center;
+  align-self: stretch;
   justify-content: center;
   padding: 0 !important;
 }

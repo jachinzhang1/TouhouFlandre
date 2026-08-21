@@ -267,12 +267,7 @@ html[data-theme-mode="dark"] {
   --paper-data-table-row-height: 68px;
   --paper-data-table-header-padding: 11px 13px;
   --paper-data-table-cell-padding: 10px 13px;
-  --paper-data-row-pattern-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 28px,
-    var(--paper-plain-line) 29px
-  );
+  --paper-data-row-pattern-image: none;
   --paper-ornament-image: none;
   position: relative;
   z-index: 0;
@@ -597,8 +592,8 @@ html[data-theme-mode="dark"] {
 
 .paper-surface.paper-button.paper-button-filled,
 .paper-surface.paper-button.paper-button-filled:hover {
-  --paper-ornament-image: var(--paper-tinted-ornament);
-  --paper-ornament-size: var(--paper-tinted-ornament-size);
+  --paper-ornament-image: none;
+  --paper-ornament-size: auto;
   color: var(--paper-tinted-ink);
   background: var(--theme-color);
 }
@@ -633,12 +628,7 @@ html[data-theme-mode="dark"] {
 
 .paper-button:disabled {
   --paper-fold-shade: var(--paper-plain-fold);
-  --paper-ornament-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 28px,
-    var(--paper-plain-line) 29px
-  );
+  --paper-ornament-image: none;
   --paper-ornament-size: auto;
   color: color-mix(in srgb, var(--ink) 42%, transparent);
   background: var(--paper-plain-bg);
@@ -794,8 +784,8 @@ html[data-theme-mode="dark"] {
 }
 
 .paper-radio-option[data-paper-variant="tinted"] {
-  --paper-ornament-image: var(--paper-tinted-ornament);
-  --paper-ornament-size: var(--paper-tinted-ornament-size);
+  --paper-ornament-image: none;
+  --paper-ornament-size: auto;
   color: var(--paper-tinted-ink);
   background: var(--theme-color);
 }

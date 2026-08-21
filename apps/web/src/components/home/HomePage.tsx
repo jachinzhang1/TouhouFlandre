@@ -123,6 +123,7 @@ function PaperShortcut({
       variant={featured ? "tinted" : "plain"}
       foldDelayMs={foldDelayMs}
       foldSize={24}
+      pattern
     >
       <strong className="paper-shortcut-title font-brand text-[1.32rem] leading-tight">
         {title}

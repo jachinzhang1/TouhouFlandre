@@ -1,15 +1,53 @@
 @media (max-width: 900px) {
   .home-hero {
+    --home-feature-footer-gap: clamp(36px, 5vw, 48px);
+    --home-footer-overlay-height: 104px;
+    left: 50%;
+    width: 100dvw;
+    min-height: calc(100svh - var(--site-nav-height) - 22px);
+    align-items: stretch;
+    overflow: visible;
     background-image: url("/hero-touhou-collage.jpg");
     background-image: image-set(
       url("/hero-touhou-collage-tablet.webp") type("image/webp"),
       url("/hero-touhou-collage.jpg") type("image/jpeg")
     );
     background-position: center top;
+    transform: translateX(-50%);
   }
 
   .home-hero::before {
     background-image: var(--hero-overlay-tablet);
+  }
+
+  .home-hero-layout {
+    display: grid;
+    min-height: inherit;
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: stretch;
+    padding-bottom: calc(
+      var(--home-footer-overlay-height) + var(--home-feature-footer-gap)
+    );
+  }
+
+  .home-hero-copy {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .home-hero-shortcuts {
+    display: grid;
+    height: auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: minmax(150px, auto);
+    gap: 12px;
+    margin: 0 var(--appearance-corner-safe-area) 0 24px;
+  }
+
+  .home-hero-shortcuts > .paper-sticker {
+    height: 100%;
   }
 
   .nav-link {
@@ -173,10 +211,7 @@
     pointer-events: none;
   }
   .home-hero {
-    --home-footer-overlay-height: 104px;
     min-height: calc(100svh - var(--site-nav-height) - 12px);
-    align-items: stretch;
-    overflow: visible;
     background-image: url("/hero-touhou-collage.jpg");
     background-image: image-set(
       url("/hero-touhou-collage-mobile.webp") type("image/webp"),
@@ -189,32 +224,10 @@
     background-image: var(--hero-overlay-mobile);
   }
 
-  .home-hero-layout {
-    display: grid;
-    min-height: inherit;
-    grid-template-rows: minmax(0, 1fr) auto;
-    align-items: stretch;
-    padding-bottom: calc(var(--home-footer-overlay-height) + 18px);
-  }
-
-  .home-hero-copy {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-    justify-content: center;
-  }
-
   .home-hero-shortcuts {
-    display: grid;
-    height: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(150px, auto));
-    gap: 12px;
-    margin: 0 18px;
-  }
-
-  .home-hero-shortcuts > .paper-sticker {
-    height: 100%;
+    margin-inline: 18px;
   }
 
   .paper-shortcut {
@@ -415,7 +428,7 @@
   }
 
   .home-hero {
-    --home-footer-overlay-height: 128px;
+    --home-feature-footer-gap: 48px;
   }
   .home-hero-shortcuts {
     grid-template-columns: 1fr;

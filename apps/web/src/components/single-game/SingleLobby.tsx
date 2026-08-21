@@ -62,6 +62,7 @@ function GameModeEntry({
       className="game-mode-entry"
       foldSize={20}
       href={href}
+      pattern
       stackOrder={stackOrder}
       variant="plain"
     >

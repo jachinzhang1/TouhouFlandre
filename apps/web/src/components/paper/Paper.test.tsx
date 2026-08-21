@@ -15,6 +15,7 @@ describe("Paper", () => {
     expect(paper.dataset.paperFolded).toBe("true");
     expect(paper.dataset.paperUnfoldHover).toBe("true");
     expect(paper.dataset.paperAnimateMount).toBe("true");
+    expect(paper.dataset.paperPattern).toBe("none");
     expect(paper.style.getPropertyValue("--paper-fold-size")).toBe("24px");
     const sticker = paper.closest(".paper-sticker") as HTMLElement;
     expect(sticker.dataset.paperSticker).toBe("true");

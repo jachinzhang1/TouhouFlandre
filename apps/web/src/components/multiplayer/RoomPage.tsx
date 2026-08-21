@@ -939,7 +939,6 @@ function SpectatorRoom({
             className="spectator-match-result mb-3"
             elevation="lg"
             folded
-            pattern
             sticker={false}
             unfoldOnHover={false}
           >
@@ -1078,7 +1077,6 @@ export function SpectatorArchiveBar({
       className="spectator-archive-nav mb-3"
       elevation="sm"
       folded
-      pattern
       sticker={false}
       unfoldOnHover={false}
     >

@@ -55,7 +55,9 @@
   --paper-muted: #f2f5f3;
   --line: #d7dfdb;
   --line-strong: #bbc8c2;
-  --theme-color: #ad3334;
+  --theme-color-light: #ad3334;
+  --theme-color-dark: #e0706c;
+  --theme-color: var(--theme-color-light);
   --semantic-success: #247568;
   --semantic-info: #3478b4;
   --semantic-warning: #a76916;
@@ -214,9 +216,10 @@ html[data-theme-mode="dark"] {
   --paper-muted: #111312;
   --line: #343936;
   --line-strong: #4a514d;
+  --theme-color: var(--theme-color-dark);
   --accent-strong: var(--theme-color);
   --accent-soft: color-mix(in srgb, var(--theme-color) 22%, transparent);
-  --accent-contrast: #ffffff;
+  --accent-contrast: #111714;
   --accent-shadow: color-mix(in srgb, var(--theme-color) 28%, transparent);
   --accent-shadow-strong: color-mix(
     in srgb,
@@ -239,8 +242,8 @@ html[data-theme-mode="dark"] {
   --paper-plain-fold: color-mix(in srgb, #303431 84%, var(--dark-theme-blend));
   --paper-tinted-bg: var(--theme-color);
   --paper-tinted-fold: color-mix(in srgb, var(--theme-color) 68%, #0b0e0d);
-  --paper-tinted-ink: #ffffff;
-  --paper-tinted-ink-muted: rgba(255, 255, 255, 0.88);
+  --paper-tinted-ink: #111714;
+  --paper-tinted-ink-muted: rgba(17, 23, 20, 0.76);
   --paper-cast-hard: rgba(0, 0, 0, 0.42);
   --paper-cast-mid: rgba(0, 0, 0, 0.22);
   --paper-cast-soft: rgba(0, 0, 0, 0.08);
@@ -256,7 +259,7 @@ html[data-theme-mode="dark"] {
   --amber-soft: #42331e;
   --amber-strong: #f2c071;
   --amber-border: #6a5026;
-  --nav-text: rgba(255, 255, 255, 0.78);
+  --nav-text: rgba(17, 23, 20, 0.82);
   --nav-hover-bg: transparent;
   --nav-bg: var(--paper-tinted-bg);
   --nav-shell-bg: var(--paper-tinted-bg);
@@ -332,7 +335,8 @@ html[data-theme-mode="dark"] {
 }
 
 html[data-theme-color="scarlet"] {
-  --theme-color: #ad3334;
+  --theme-color-light: #ad3334;
+  --theme-color-dark: #e0706c;
   --paper-tinted-ornament: repeating-linear-gradient(
     14deg,
     transparent 0 8px,
@@ -343,19 +347,22 @@ html[data-theme-color="scarlet"] {
 }
 
 html[data-theme-color="sakura"] {
-  --theme-color: #b9507f;
+  --theme-color-light: #b9507f;
+  --theme-color-dark: #e47fa9;
   --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='156' height='96' viewBox='0 0 156 96'%3E%3Cg fill='none' stroke='white' stroke-opacity='.065' stroke-width='1'%3E%3Ccircle cx='10' cy='12' r='5'/%3E%3Ccircle cx='36' cy='23' r='2.5'/%3E%3Ccircle cx='64' cy='35' r='5'/%3E%3Ccircle cx='93' cy='47' r='2.5'/%3E%3Ccircle cx='122' cy='60' r='5'/%3E%3Ccircle cx='149' cy='71' r='2.5'/%3E%3Ccircle cx='13' cy='78' r='2.5'/%3E%3Ccircle cx='42' cy='89' r='5'/%3E%3C/g%3E%3C/svg%3E");
   --paper-tinted-ornament-size: 156px 96px;
 }
 
 html[data-theme-color="iris"] {
-  --theme-color: #6f63b6;
+  --theme-color-light: #6f63b6;
+  --theme-color-dark: #a398e3;
   --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='24' viewBox='0 0 36 24'%3E%3Cg fill='none' stroke='white' stroke-opacity='.065' stroke-width='1' stroke-linejoin='round'%3E%3Cpath d='M1 12 L18 1 L35 12 L18 23 Z'/%3E%3Cpath d='M7 12 L18 5 L29 12 L18 19 Z'/%3E%3C/g%3E%3C/svg%3E");
   --paper-tinted-ornament-size: 36px 24px;
 }
 
 html[data-theme-color="jade"] {
-  --theme-color: #247568;
+  --theme-color-light: #247568;
+  --theme-color-dark: #59b9a7;
   --paper-tinted-ornament:
     radial-gradient(
       circle at 4px 3px,
@@ -371,7 +378,8 @@ html[data-theme-color="jade"] {
 }
 
 html[data-theme-color="amber"] {
-  --theme-color: #a36714;
+  --theme-color-light: #a36714;
+  --theme-color-dark: #d69a43;
   --paper-tinted-ornament: repeating-linear-gradient(
     34deg,
     transparent 0 10px,
@@ -382,7 +390,8 @@ html[data-theme-color="amber"] {
 }
 
 html[data-theme-color="azure"] {
-  --theme-color: #3478b4;
+  --theme-color-light: #3478b4;
+  --theme-color-dark: #6ca6d9;
   --paper-tinted-ornament: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='20' viewBox='0 0 48 20'%3E%3Cpath d='M0 10 C6 2 18 2 24 10 S42 18 48 10' fill='none' stroke='white' stroke-opacity='.075' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
   --paper-tinted-ornament-size: 48px 20px;
 }

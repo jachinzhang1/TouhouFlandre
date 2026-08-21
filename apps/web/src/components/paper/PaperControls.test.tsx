@@ -27,6 +27,7 @@ describe("Paper controls", () => {
     expect(input.getAttribute("placeholder")).toBe("例如 灵梦");
     expect(paper.dataset.paperFolded).toBe("true");
     expect(paper.closest(".paper-sticker")).toBeNull();
+    expect(paper.dataset.paperPattern).toBe("none");
     expect(
       screen
         .getByRole("button", { name: "清除" })
@@ -76,6 +77,7 @@ describe("Paper controls", () => {
     expect(first.dataset.paperFolded).toBe("true");
     expect(screen.getByRole("group", { name: "显示方式" })).toBeTruthy();
     expect(first.dataset.paperTone).toBe("success");
+    expect(first.dataset.paperPattern).toBe("none");
 
     fireEvent.click(screen.getByRole("button", { name: "第二项" }));
     rerender(
@@ -115,6 +117,7 @@ describe("Paper controls", () => {
     expect(button.closest(".paper-sticker")).toBeNull();
     expect(button.className).toContain("paper-button-filled");
     expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(button.dataset.paperPattern).toBe("none");
   });
 
   it("marks filled danger actions as tinted Paper surfaces", () => {

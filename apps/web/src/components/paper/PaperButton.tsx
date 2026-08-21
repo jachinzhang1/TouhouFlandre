@@ -44,7 +44,7 @@ export function PaperButton({
   const effectiveFolded = folded && !unavailable;
   const semanticTone = tone === "plain" || tone === "theme" ? "default" : tone;
   const surfaceTone = effectiveFilled ? semanticTone : "default";
-  const effectivePattern = pattern ?? effectiveFilled;
+  const effectivePattern = pattern ?? false;
   const classes = [
     "paper-button",
     `paper-button-${tone}`,

@@ -106,7 +106,6 @@ export function RoundResultOverlay({
         className="round-result-paper"
         elevation="lg"
         folded
-        pattern
         sticker={false}
         unfoldOnHover={false}
       >

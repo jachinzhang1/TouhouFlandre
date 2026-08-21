@@ -31,7 +31,7 @@ export function PaperSegmentButton({
   className = "",
   disabled = false,
   folded = active,
-  pattern = true,
+  pattern = false,
   onClick,
   tone = "default",
   title,
