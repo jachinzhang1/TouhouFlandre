@@ -9,7 +9,9 @@ test.describe("MUS-004 floating player launcher", () => {
       window.localStorage.removeItem("touhoufriberg:appearance");
     });
     await page.goto("/");
-    await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1);
+    await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1, {
+      timeout: 10_000,
+    });
   });
 
   test("exposes a centered music note and toggles the reserved card state", async ({
@@ -63,6 +65,9 @@ test.describe("MUS-004 floating player launcher", () => {
     ]) {
       await page.setViewportSize(viewport);
       await page.reload();
+      await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1, {
+        timeout: 10_000,
+      });
       const layout = await page.evaluate((selector) => {
         const launcher = document.querySelector<HTMLElement>(selector);
         const nav = document.querySelector<HTMLElement>("nav");

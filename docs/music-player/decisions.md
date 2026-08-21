@@ -212,6 +212,7 @@ type MusicTrack = {
 ```ts
 type StoredMusicPlayerSettingsV1 = {
   schemaVersion: 1;
+  selectionMode: "default" | "custom";
   selectedTrackIds: string[];
   currentTrackId?: string;
   volume: number;
@@ -220,7 +221,7 @@ type StoredMusicPlayerSettingsV1 = {
 };
 ```
 
-加载时执行 schema 校验和目录归一化：删除未知/重复 ID，按目录顺序重排，校正音量，确认当前曲目仍在队列中。解析失败、版本未知或归一化后无曲目时使用安全默认值并覆盖坏数据。新加入目录的曲目不应无提示地进入一个已由用户自定义的列表；首次访问才默认全选。
+`selectionMode` 用于区分首次访问的默认全选和用户明确提交过的列表。`default` 模式加载当前完整曲库，`custom` 模式只保留已知 ID，因此新加入目录的曲目不会自动进入已自定义列表。加载时执行 schema 校验和目录归一化：删除未知/重复 ID，按目录顺序重排，校正音量，确认当前曲目仍在队列中。解析失败、旧格式或归一化后无曲目时使用安全默认值并覆盖坏数据；没有存储记录的首次访问不预写默认值。未知新版本不能由旧代码覆盖成 v1，运行时使用默认值并保留原记录。旧的 v1 记录若缺少 `selectionMode`，按 `custom` 迁移以避免扩大用户已有选择。
 
 不保存以下状态：
 

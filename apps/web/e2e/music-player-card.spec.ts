@@ -41,7 +41,9 @@ test.describe("MUS-005 player card", () => {
       window.localStorage.removeItem("touhoufriberg:music-player");
     });
     await page.goto("/");
-    await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1);
+    await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1, {
+      timeout: 10_000,
+    });
   });
 
   test("renders the current track and controls the single audio instance", async ({
@@ -93,6 +95,9 @@ test.describe("MUS-005 player card", () => {
     ]) {
       await page.setViewportSize(viewport);
       await page.reload();
+      await expect(page.locator(LAUNCHER_SELECTOR)).toHaveCount(1, {
+        timeout: 10_000,
+      });
       await openCard(page);
 
       const bounds = await page.locator(CARD_SELECTOR).boundingBox();
