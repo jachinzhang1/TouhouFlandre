@@ -1639,6 +1639,85 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   white-space: nowrap;
 }
 
+.music-player-shell {
+  position: fixed;
+  top: calc(76px + 12px + env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 30;
+  display: grid;
+  justify-items: end;
+  isolation: isolate;
+}
+
+.music-player-tooltip-target {
+  display: inline-flex;
+}
+
+.music-player-launcher {
+  position: relative;
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow:
+    0 10px 26px var(--accent-shadow),
+    0 0 0 4px color-mix(in srgb, var(--paper-muted) 72%, transparent);
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.music-player-launcher:hover {
+  border-color: var(--accent-hover-border);
+  box-shadow:
+    0 14px 32px var(--accent-shadow-strong),
+    0 0 0 4px color-mix(in srgb, var(--paper-muted) 72%, transparent);
+  transform: translateY(-1px);
+}
+
+.music-player-launcher:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.music-player-launcher[data-status="idle"] {
+  color: var(--ink-soft);
+}
+
+.music-player-launcher[data-status="loading"] .music-player-launcher-icon {
+  opacity: 0.68;
+}
+
+.music-player-launcher[data-status="error"] {
+  border-color: var(--error-border-strong);
+  color: var(--error-text);
+}
+
+.music-player-launcher-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.music-player-launcher-ring-progress {
+  transition: stroke-dashoffset 160ms ease;
+}
+
+.music-player-launcher-icon {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
 .message {
   margin: 0 24px 16px;
   padding: 11px 13px;
@@ -2085,6 +2164,11 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
 @media (max-width: 680px) {
   .home-hero {
     background-position: 46% top;
+  }
+
+  .music-player-shell {
+    top: calc(62px + 10px + env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
   }
 
   .home-hero::before {
