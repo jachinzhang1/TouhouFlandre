@@ -5,7 +5,7 @@
     url("/hero-touhou-collage-desktop.webp") type("image/webp"),
     url("/hero-touhou-collage.jpg") type("image/jpeg")
   );
-  background-position: 48% top;
+  background-position: 48% 12%;
   background-size: cover;
 }
 
@@ -51,7 +51,7 @@
     background-position:
       0 0,
       0 0,
-      48% top;
+      48% 12%;
     background-repeat: no-repeat;
     background-size:
       100% 100%,

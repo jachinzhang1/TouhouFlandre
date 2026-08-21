@@ -12,7 +12,7 @@
       url("/hero-touhou-collage-tablet.webp") type("image/webp"),
       url("/hero-touhou-collage.jpg") type("image/jpeg")
     );
-    background-position: center top;
+    background-position: center 12%;
     transform: translateX(-50%);
   }
 
@@ -217,7 +217,7 @@
       url("/hero-touhou-collage-mobile.webp") type("image/webp"),
       url("/hero-touhou-collage.jpg") type("image/jpeg")
     );
-    background-position: center top;
+    background-position: center 12%;
   }
 
   .home-hero::before {
