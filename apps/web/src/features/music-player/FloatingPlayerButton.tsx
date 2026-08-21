@@ -2,6 +2,7 @@
 
 import { Tooltip } from "antd";
 import { Music2 } from "lucide-react";
+import type { Ref } from "react";
 import type { MusicPlayerStatus } from "./contracts";
 import { isUsableDuration } from "./contracts";
 import { useMusicPlayer } from "./MusicPlayerProvider";
@@ -16,6 +17,7 @@ export type FloatingPlayerButtonProps = {
   isOpen: boolean;
   onToggle: () => void;
   cardId: string;
+  buttonRef?: Ref<HTMLButtonElement>;
 };
 
 export function clampPlaybackProgress(
@@ -62,6 +64,7 @@ export function FloatingPlayerButton({
   isOpen,
   onToggle,
   cardId,
+  buttonRef,
 }: FloatingPlayerButtonProps) {
   const { state } = useMusicPlayer();
   const progress = clampPlaybackProgress(state.currentTime, state.duration);
@@ -81,6 +84,7 @@ export function FloatingPlayerButton({
       <span className="music-player-tooltip-target">
         <button
           type="button"
+          ref={buttonRef}
           className="music-player-launcher"
           data-music-player-launcher="true"
           data-status={state.status}

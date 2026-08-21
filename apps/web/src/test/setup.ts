@@ -9,3 +9,16 @@ if (dom?.window?.localStorage) {
     configurable: true,
   });
 }
+
+if (typeof globalThis.ResizeObserver === "undefined") {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    value: ResizeObserverStub,
+    configurable: true,
+  });
+}
