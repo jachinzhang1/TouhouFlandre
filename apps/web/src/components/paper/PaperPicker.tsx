@@ -16,7 +16,7 @@ export type PaperPickerProps = Omit<
 export function PaperPicker({
   children,
   className = "",
-  variant = "tinted",
+  variant = "plain",
   ...selectProps
 }: PaperPickerProps) {
   return (
@@ -25,9 +25,10 @@ export function PaperPicker({
       as="span"
       className={`paper-picker-control ${className}`.trim()}
       disabled={selectProps.disabled}
+      folded={false}
       foldSize={10}
       sticker={false}
-      unfoldOnHover
+      unfoldOnHover={false}
       variant={variant}
     >
       <select className="paper-picker-select" {...selectProps}>

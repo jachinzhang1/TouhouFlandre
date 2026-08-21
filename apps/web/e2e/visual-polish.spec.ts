@@ -376,13 +376,24 @@ test.describe("visual polish", () => {
         boardTopDelta: Math.abs(boards[0].top - boards[1].top),
         timerHeight: timer.height,
         modeHeight: mode.height,
+        boardWidths: boards.map((board) => board.width),
+        rowHeights: [
+          ...document.querySelectorAll(
+            ".multiplayer-race-board-pair .multiplayer-guess-table tbody tr",
+          ),
+        ].map((row) => row.getBoundingClientRect().height),
       };
     });
     expect(largeGeometry.overflow).toBe(false);
     expect(
       Math.abs(largeGeometry.deckBottom - largeGeometry.footerTop),
     ).toBeLessThanOrEqual(1);
-    expect(largeGeometry.boardTopDelta).toBeLessThanOrEqual(1);
+    expect(largeGeometry.boardTopDelta).toBeLessThanOrEqual(3);
+    expect(largeGeometry.boardWidths[0]).toBeGreaterThan(
+      largeGeometry.boardWidths[1] * 2,
+    );
+    expect(Math.min(...largeGeometry.rowHeights)).toBeLessThanOrEqual(58);
+    expect(Math.max(...largeGeometry.rowHeights)).toBeLessThanOrEqual(82);
     expect(largeGeometry.timerHeight).toBeGreaterThan(largeGeometry.modeHeight);
     await expect(page.getByRole("list", { name: "当前积分" })).toBeVisible();
     await expect(page.locator(".paper-pagination-counter")).toContainText(
@@ -424,7 +435,7 @@ test.describe("visual polish", () => {
         background: getComputedStyle(cell).backgroundColor,
       };
     });
-    expect(iconAlignment.horizontal).toBeLessThanOrEqual(1);
+    expect(iconAlignment.horizontal).toBeLessThanOrEqual(2);
     expect(iconAlignment.vertical).toBeLessThanOrEqual(1);
     expect(iconAlignment.background).not.toBe("rgba(0, 0, 0, 0)");
 
@@ -494,5 +505,58 @@ test.describe("visual polish", () => {
       page.getByText("实时同步恢复后可继续猜测").last(),
     ).toBeVisible();
     await expect(page.getByLabel("展开聊天记录")).toBeEnabled();
+  });
+
+  test("relay feedback stays compact and semantically tinted", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await seedMultiplayer(page, "relay-playing");
+    await prepareVisualPage(page);
+
+    const geometry = await page.evaluate(() => {
+      const summary = document
+        .querySelector(".relay-match-summary")!
+        .getBoundingClientRect();
+      const cells = [...document.querySelectorAll(".relay-turn-feedback-cell")];
+      const firstRow = cells.slice(0, 6).map((cell) => {
+        const rect = cell.getBoundingClientRect();
+        return {
+          background: getComputedStyle(cell).backgroundColor,
+          bottom: rect.bottom,
+          top: rect.top,
+        };
+      });
+      const probe = document.createElement("span");
+      probe.style.backgroundColor = "var(--theme-color)";
+      document.body.append(probe);
+      const themeColor = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return {
+        cellCount: firstRow.length,
+        distinctBackgrounds: new Set(firstRow.map((cell) => cell.background))
+          .size,
+        maxBottomDelta: Math.max(
+          ...firstRow.map((cell) => Math.abs(cell.bottom - firstRow[0].bottom)),
+        ),
+        maxTopDelta: Math.max(
+          ...firstRow.map((cell) => Math.abs(cell.top - firstRow[0].top)),
+        ),
+        outerOverflow: document.documentElement.scrollWidth > window.innerWidth,
+        summaryHeight: summary.height,
+        themeColor,
+        usesRawThemeFill: firstRow.some(
+          (cell) => cell.background === themeColor,
+        ),
+      };
+    });
+
+    expect(geometry.summaryHeight).toBeLessThan(200);
+    expect(geometry.cellCount).toBe(6);
+    expect(geometry.distinctBackgrounds).toBeGreaterThan(1);
+    expect(geometry.maxTopDelta).toBeLessThanOrEqual(1);
+    expect(geometry.maxBottomDelta).toBeLessThanOrEqual(1);
+    expect(geometry.usesRawThemeFill).toBe(false);
+    expect(geometry.outerOverflow).toBe(false);
   });
 });

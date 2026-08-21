@@ -22,6 +22,7 @@ export function PaperSelect({
       as="span"
       className={`paper-select-control${compact ? " paper-select-control-compact" : ""} ${className}`.trim()}
       disabled={selectProps.disabled}
+      folded={false}
       foldSize={compact ? 8 : 10}
       sticker={false}
       unfoldOnHover={false}

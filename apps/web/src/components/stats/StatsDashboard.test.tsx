@@ -356,7 +356,7 @@ describe("StatsDashboard", () => {
     expect(
       screen.getByRole("button", { name: "上一页" }).dataset.paperFolded,
     ).toBe("false");
-    expect(next.dataset.paperFolded).toBe("true");
+    expect(next.dataset.paperFolded).toBe("false");
     await userEvent.click(next);
     expect(await screen.findByText("2 / 2")).toBeTruthy();
     expect(
@@ -378,7 +378,7 @@ describe("StatsDashboard", () => {
     ).toBe("false");
     expect(
       screen.getByRole("button", { name: "上一页" }).dataset.paperFolded,
-    ).toBe("true");
+    ).toBe("false");
   });
 
   it("作品猜测情况默认展示完整横轴范围", async () => {
@@ -451,7 +451,7 @@ describe("StatsDashboard", () => {
       formatPicker
         .closest(".paper-surface")
         ?.getAttribute("data-paper-variant"),
-    ).toBe("tinted");
+    ).toBe("plain");
     fireEvent.click(screen.getByRole("button", { name: "每日" }));
     expect((formatPicker as HTMLSelectElement).disabled).toBe(true);
     expect((modePicker as HTMLSelectElement).disabled).toBe(true);
@@ -478,9 +478,10 @@ describe("StatsDashboard", () => {
     fireEvent.change(to, { target: { value: "2026-08-07" } });
     expect((from as HTMLInputElement).value).toBe("2026-08-01");
     expect((to as HTMLInputElement).value).toBe("2026-08-07");
-    expect(fromPaper.dataset.paperVariant).toBe("tinted");
-    expect(fromPaper.dataset.paperFolded).toBe("true");
-    expect(toPaper.dataset.paperVariant).toBe("tinted");
+    expect(fromPaper.dataset.paperVariant).toBe("plain");
+    expect(fromPaper.dataset.paperFolded).toBe("false");
+    expect(toPaper.dataset.paperVariant).toBe("plain");
+    expect(toPaper.dataset.paperFolded).toBe("false");
     expect(clearDate.getAttribute("aria-disabled")).toBeNull();
     await userEvent.click(clearDate);
     expect((from as HTMLInputElement).value).toBe("");

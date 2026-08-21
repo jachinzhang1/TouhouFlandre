@@ -281,7 +281,7 @@ describe("QuestionScopePage", () => {
     await waitFor(() =>
       expect(selectedPreset.getAttribute("data-paper-variant")).toBe("tinted"),
     );
-    expect(selectedPreset.getAttribute("data-paper-folded")).toBe("true");
+    expect(selectedPreset.getAttribute("data-paper-folded")).toBe("false");
     expect(selectedPreset.getAttribute("data-paper-preserve-appearance")).toBe(
       "true",
     );

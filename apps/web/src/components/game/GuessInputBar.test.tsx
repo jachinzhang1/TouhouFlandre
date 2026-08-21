@@ -84,7 +84,7 @@ describe("GuessInputBar", () => {
     expect((input as HTMLInputElement).value).toBe("圣白莲");
     const submit = screen.getByRole("button", { name: "提交猜测" });
     expect(submit.dataset.paperVariant).toBe("tinted");
-    expect(submit.dataset.paperFolded).toBe("true");
+    expect(submit.dataset.paperFolded).toBe("false");
     fireEvent.click(submit);
 
     expect(onGuess).toHaveBeenCalledWith("byakuren_hijiri");

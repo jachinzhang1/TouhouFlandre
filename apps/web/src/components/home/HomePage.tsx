@@ -120,7 +120,7 @@ function PaperShortcut({
     <Paper
       className={`paper-shortcut${featured ? " paper-shortcut-featured" : ""}`}
       href={href}
-      variant={featured ? "tinted" : "plain"}
+      variant="plain"
       foldDelayMs={foldDelayMs}
       foldSize={24}
       pattern

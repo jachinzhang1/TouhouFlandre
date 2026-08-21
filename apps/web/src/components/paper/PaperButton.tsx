@@ -32,7 +32,7 @@ export function PaperButton({
   compact = false,
   disabled = false,
   filled = false,
-  folded = true,
+  folded = false,
   iconOnly = false,
   onClick,
   pattern,

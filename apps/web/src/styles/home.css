@@ -147,6 +147,12 @@
   overflow: hidden;
   text-decoration: none;
   height: 100%;
+  --paper-ornament-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 54px,
+    color-mix(in srgb, var(--ink) 7%, transparent) 55px
+  );
 }
 
 .paper-shortcut-action {
@@ -215,12 +221,21 @@
   transform: translateX(0);
 }
 
+.paper-shortcut-featured {
+  --paper-surface-background: color-mix(
+    in srgb,
+    var(--theme-color) 12%,
+    var(--paper-plain-bg)
+  );
+  box-shadow: inset 4px 0 0 var(--theme-color);
+}
+
 .paper-shortcut-featured .paper-shortcut-icon {
   opacity: 0.52;
 }
 
 .paper-shortcut-featured .paper-shortcut-description {
-  color: var(--paper-tinted-ink-muted);
+  color: var(--ink-soft);
 }
 
 @keyframes hero-enter {

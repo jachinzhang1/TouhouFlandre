@@ -697,8 +697,9 @@ html[data-theme-mode="dark"] {
 
 .paper-segment-button[data-paper-variant="tinted"] {
   z-index: 2;
-  color: var(--paper-tinted-ink);
-  background: var(--theme-color);
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 14%, var(--paper-plain-bg));
+  box-shadow: inset 0 -2px 0 var(--theme-color);
 }
 
 .paper-segment-separator {
@@ -713,22 +714,14 @@ html[data-theme-mode="dark"] {
 ) {
   width: 1px;
   align-self: stretch;
-  background: repeating-linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--ink) 28%, transparent) 0 5px,
-    transparent 5px 9px
-  );
+  background: transparent;
 }
 
 .paper-segment-separator[data-orientation="horizontal"] {
   width: 100%;
   height: 1px;
   align-self: auto;
-  background: repeating-linear-gradient(
-    to right,
-    color-mix(in srgb, var(--ink) 28%, transparent) 0 5px,
-    transparent 5px 9px
-  );
+  background: transparent;
 }
 
 .paper-segment-group.paper-pagination {
@@ -786,8 +779,9 @@ html[data-theme-mode="dark"] {
 .paper-radio-option[data-paper-variant="tinted"] {
   --paper-ornament-image: none;
   --paper-ornament-size: auto;
-  color: var(--paper-tinted-ink);
-  background: var(--theme-color);
+  color: var(--theme-color);
+  background: color-mix(in srgb, var(--theme-color) 14%, var(--paper-plain-bg));
+  box-shadow: inset 0 -2px 0 var(--theme-color);
 }
 
 .paper-radio-option[data-paper-variant="tinted"] .paper-radio-description {
@@ -1704,13 +1698,8 @@ html[data-theme-mode="dark"] {
     width: 100%;
     height: 1px;
     align-self: auto;
-    background: repeating-linear-gradient(
-      to right,
-      color-mix(in srgb, var(--ink) 28%, transparent) 0 5px,
-      transparent 5px 9px
-    );
+    background: transparent;
   }
-
   .paper-data-table-body-scroll[data-paper-responsive-stacked="true"]
     .paper-data-table-entry:nth-child(even)
     > .paper-data-table-row,

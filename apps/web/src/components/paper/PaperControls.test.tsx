@@ -11,7 +11,7 @@ import {
 } from "@/components/paper";
 
 describe("Paper controls", () => {
-  it("renders a textureless folded search Paper without sticker effects", () => {
+  it("renders a textureless regular search Paper without sticker effects", () => {
     render(
       <PaperSearchInput
         ariaLabel="搜索角色"
@@ -25,7 +25,7 @@ describe("Paper controls", () => {
     const input = screen.getByRole("textbox", { name: "搜索角色" });
     const paper = input.closest(".paper-surface") as HTMLElement;
     expect(input.getAttribute("placeholder")).toBe("例如 灵梦");
-    expect(paper.dataset.paperFolded).toBe("true");
+    expect(paper.dataset.paperFolded).toBe("false");
     expect(paper.closest(".paper-sticker")).toBeNull();
     expect(paper.dataset.paperPattern).toBe("none");
     expect(
@@ -51,7 +51,7 @@ describe("Paper controls", () => {
     expect(paper.dataset.paperDisabled).toBe("true");
   });
 
-  it("renders independently folded selected cells in a Paper group", () => {
+  it("renders regular selected cells in a Paper group", () => {
     let selected = "first";
     const { rerender } = render(
       <PaperSegmentGroup label="显示方式">
@@ -74,7 +74,7 @@ describe("Paper controls", () => {
 
     const first = screen.getByRole("button", { name: "第一项" });
     expect(first.dataset.paperVariant).toBe("tinted");
-    expect(first.dataset.paperFolded).toBe("true");
+    expect(first.dataset.paperFolded).toBe("false");
     expect(screen.getByRole("group", { name: "显示方式" })).toBeTruthy();
     expect(first.dataset.paperTone).toBe("success");
     expect(first.dataset.paperPattern).toBe("none");
@@ -100,11 +100,11 @@ describe("Paper controls", () => {
 
     const second = screen.getByRole("button", { name: "第二项" });
     expect(second.dataset.paperVariant).toBe("tinted");
-    expect(second.dataset.paperFolded).toBe("true");
+    expect(second.dataset.paperFolded).toBe("false");
     expect(first.dataset.paperVariant).toBe("plain");
   });
 
-  it("renders pressable actions as folded Paper without sticker movement", () => {
+  it("renders pressable actions as regular Paper without sticker movement", () => {
     render(
       <PaperButton ariaPressed filled onClick={() => undefined} tone="theme">
         应用
@@ -113,7 +113,7 @@ describe("Paper controls", () => {
 
     const button = screen.getByRole("button", { name: "应用" });
     expect(button.dataset.paperVariant).toBe("tinted");
-    expect(button.dataset.paperFolded).toBe("true");
+    expect(button.dataset.paperFolded).toBe("false");
     expect(button.closest(".paper-sticker")).toBeNull();
     expect(button.className).toContain("paper-button-filled");
     expect(button.getAttribute("aria-pressed")).toBe("true");
@@ -162,7 +162,7 @@ describe("Paper controls", () => {
     expect(clicks).toBe(0);
   });
 
-  it("wraps native selects in a focusable folded Paper surface", () => {
+  it("wraps native selects in a focusable regular Paper surface", () => {
     render(
       <PaperSelect aria-label="难度" defaultValue="normal">
         <option value="easy">Easy</option>
@@ -173,7 +173,7 @@ describe("Paper controls", () => {
     const select = screen.getByRole("combobox", { name: "难度" });
     const paper = select.closest(".paper-surface") as HTMLElement;
     expect((select as HTMLSelectElement).value).toBe("normal");
-    expect(paper.dataset.paperFolded).toBe("true");
+    expect(paper.dataset.paperFolded).toBe("false");
     expect(paper.closest(".paper-sticker")).toBeNull();
   });
 
@@ -198,7 +198,7 @@ describe("Paper controls", () => {
     }
   });
 
-  it("uses a native select inside prominent tinted Paper", () => {
+  it("uses a native select inside regular Paper", () => {
     render(
       <PaperPicker aria-label="多人玩法" defaultValue="race">
         <option value="race">竞速</option>
@@ -209,8 +209,8 @@ describe("Paper controls", () => {
     const picker = screen.getByRole("combobox", { name: "多人玩法" });
     const paper = picker.closest(".paper-surface") as HTMLElement;
     expect(picker.tagName).toBe("SELECT");
-    expect(paper.dataset.paperVariant).toBe("tinted");
-    expect(paper.dataset.paperFolded).toBe("true");
+    expect(paper.dataset.paperVariant).toBe("plain");
+    expect(paper.dataset.paperFolded).toBe("false");
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 

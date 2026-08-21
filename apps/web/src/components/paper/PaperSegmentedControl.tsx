@@ -30,7 +30,7 @@ export function PaperSegmentButton({
   children,
   className = "",
   disabled = false,
-  folded = active,
+  folded = false,
   pattern = false,
   onClick,
   tone = "default",

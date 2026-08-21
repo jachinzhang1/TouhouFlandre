@@ -21,7 +21,7 @@ import { seatForMemberId } from "../../domain/memberCollections";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { STATUS_LABEL } from "../game/GuessTable";
-import { Paper, PaperButton, PaperSegmentSeparator } from "@/components/paper";
+import { Paper, PaperButton } from "@/components/paper";
 import { SectionHeading } from "../layout/SectionHeading";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 
@@ -211,10 +211,7 @@ export function RelayMatchBoard({
               ) : null}
             </div>
             {riskAction ? (
-              <div className="relay-risk-actions">
-                <PaperSegmentSeparator orientation="horizontal" />
-                {riskAction}
-              </div>
+              <div className="relay-risk-actions">{riskAction}</div>
             ) : null}
           </div>
         ) : null}

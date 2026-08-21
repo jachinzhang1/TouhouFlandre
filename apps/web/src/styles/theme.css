@@ -259,21 +259,13 @@ html[data-theme-mode="dark"] {
   --amber-soft: #42331e;
   --amber-strong: #f2c071;
   --amber-border: #6a5026;
-  --nav-text: rgba(17, 23, 20, 0.82);
-  --nav-hover-bg: transparent;
-  --nav-bg: var(--paper-tinted-bg);
-  --nav-shell-bg: var(--paper-tinted-bg);
-  --nav-paper-layer-1: color-mix(in srgb, var(--paper-tinted-bg) 82%, #0d0f0e);
-  --nav-paper-layer-2: color-mix(
-    in srgb,
-    var(--paper-tinted-bg) 62%,
-    transparent
-  );
-  --nav-paper-layer-3: color-mix(
-    in srgb,
-    var(--paper-tinted-bg) 42%,
-    transparent
-  );
+  --nav-text: rgba(255, 255, 255, 0.78);
+  --nav-hover-bg: rgba(255, 255, 255, 0.08);
+  --nav-bg: color-mix(in srgb, var(--paper) 90%, var(--theme-color));
+  --nav-shell-bg: var(--nav-bg);
+  --nav-paper-layer-1: color-mix(in srgb, var(--nav-shell-bg) 84%, #0d0f0e);
+  --nav-paper-layer-2: color-mix(in srgb, var(--nav-shell-bg) 68%, transparent);
+  --nav-paper-layer-3: color-mix(in srgb, var(--nav-shell-bg) 46%, transparent);
   --surface: color-mix(in srgb, #1c201e 88%, var(--dark-theme-blend));
   --surface-hover: color-mix(in srgb, #272b28 84%, var(--dark-theme-blend));
   --surface-soft: color-mix(in srgb, #171a18 92%, var(--dark-theme-blend));

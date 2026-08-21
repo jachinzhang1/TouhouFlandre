@@ -81,7 +81,7 @@ describe("Paper", () => {
     const paper = screen.getByRole("button", { name: "已选条件" });
     expect((paper as HTMLButtonElement).disabled).toBe(true);
     expect(paper.dataset.paperVariant).toBe("tinted");
-    expect(paper.dataset.paperFolded).toBe("true");
+    expect(paper.dataset.paperFolded).toBe("false");
     expect(paper.dataset.paperPreserveAppearance).toBe("true");
   });
 

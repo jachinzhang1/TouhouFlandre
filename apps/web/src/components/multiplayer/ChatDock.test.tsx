@@ -190,7 +190,7 @@ describe("ChatDock", () => {
     expect((input as HTMLInputElement).placeholder).toBe("请输入消息");
     const send = screen.getByLabelText("发送消息");
     expect(send.dataset.paperVariant).toBe("tinted");
-    expect(send.dataset.paperFolded).toBe("true");
+    expect(send.dataset.paperFolded).toBe("false");
 
     await user.click(send);
 

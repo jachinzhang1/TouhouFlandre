@@ -9,7 +9,7 @@ export function PaperSearchInput({
   disabled = false,
   endAdornment,
   inputRef,
-  folded = true,
+  folded = false,
   ...inputProps
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "aria-label" | "className"> & {
   ariaLabel: string;

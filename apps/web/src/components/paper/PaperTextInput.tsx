@@ -5,7 +5,7 @@ export function PaperTextInput({
   ariaLabel,
   className = "",
   disabled = false,
-  folded = true,
+  folded = false,
   inputClassName = "",
   inputRef,
   ...inputProps

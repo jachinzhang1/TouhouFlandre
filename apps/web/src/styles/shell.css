@@ -28,7 +28,7 @@
   background: var(--nav-shell-bg);
 }
 html[data-theme-mode="dark"] .site-nav {
-  background: var(--paper-tinted-bg);
+  background: var(--nav-shell-bg);
 }
 
 .site-footer {
@@ -420,44 +420,45 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
   inset: 0;
   z-index: 0;
   display: block;
-  clip-path: polygon(
-    calc(100% - var(--appearance-collapsed-leg)) 100%,
-    100% calc(100% - var(--appearance-collapsed-leg)),
-    100% 100%
-  );
-  pointer-events: auto;
+  opacity: 0;
+  pointer-events: none;
   transform-origin: right bottom;
-  transition: clip-path 180ms cubic-bezier(0.77, 0, 0.175, 1);
+  transition:
+    clip-path 180ms cubic-bezier(0.77, 0, 0.175, 1),
+    opacity 120ms ease;
   will-change: clip-path;
 }
 
 .appearance-toggle {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 16px;
+  bottom: 16px;
   z-index: 5;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 48px;
   height: 48px;
+  align-items: center;
+  justify-content: center;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--line-strong);
   border-radius: 0;
-  color: var(--paper-tinted-ink);
-  background: transparent;
-  box-shadow: none;
+  color: var(--theme-color);
+  background: var(--paper-plain-bg);
+  box-shadow: var(--shadow-sm);
   pointer-events: auto;
-  transition: color 180ms ease;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
 }
 
 .appearance-toggle:hover {
-  color: var(--paper-tinted-ink-muted);
+  color: var(--theme-color);
+  background: var(--paper-plain-bg-hover);
 }
 
 .appearance-toggle:focus-visible {
-  outline: 3px solid var(--paper-tinted-ink-muted);
-  outline-offset: -5px;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .appearance-palette-icon,
@@ -617,6 +618,11 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
     100% var(--appearance-apex-y),
     100% 100%
   );
+}
+
+.appearance-switcher:is([data-open="true"], [data-hovered="true"])
+  .appearance-corner-surface {
+  opacity: 1;
 }
 
 .appearance-switcher:is([data-open="true"], [data-hovered="true"])

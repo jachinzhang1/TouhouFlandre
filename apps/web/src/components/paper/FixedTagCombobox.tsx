@@ -231,6 +231,7 @@ export function FixedTagCombobox({
         animateOnMount={false}
         as="div"
         className="fixed-tag-combobox-control"
+        folded={false}
         foldSize={12}
         sticker={false}
         variant="plain"
@@ -342,6 +343,7 @@ function SelectedTag({
         animateOnMount={false}
         as="div"
         className="fixed-tag-combobox-tag"
+        folded={false}
         foldSize={10}
         sticker={false}
         variant="tinted"

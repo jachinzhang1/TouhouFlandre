@@ -287,6 +287,7 @@ function SearchEmptyState() {
       animateOnMount={false}
       as="div"
       className="catalog-empty-result grid min-h-[180px] place-items-center"
+      folded={false}
       foldSize={16}
       unfoldOnHover={false}
     >
@@ -303,6 +304,7 @@ function SearchResultGrid({ results }: { results: CharacterSearchResult[] }) {
           animateOnMount={false}
           as="article"
           className="catalog-result-card"
+          folded={false}
           foldSize={14}
           key={result.id}
           stackOrder={results.length - index}

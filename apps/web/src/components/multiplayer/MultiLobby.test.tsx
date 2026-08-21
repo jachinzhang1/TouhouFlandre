@@ -92,7 +92,7 @@ describe("MultiLobby settings navigation", () => {
       screen.getByRole("radio", { name: /BO3/ }).getAttribute("aria-checked"),
     ).toBe("true");
     expect(screen.getByRole("radio", { name: /BO3/ }).dataset.paperFolded).toBe(
-      "true",
+      "false",
     );
     expect(
       screen.getByRole("radio", { name: /BO3/ }).querySelector(".lucide-check"),
@@ -105,7 +105,7 @@ describe("MultiLobby settings navigation", () => {
     expect((join as HTMLButtonElement).disabled).toBe(true);
     expect(join.dataset.paperDisabled).toBe("true");
     expect(screen.getByRole("radio", { name: /BO3/ }).dataset.paperFolded).toBe(
-      "true",
+      "false",
     );
     expect(join.dataset.paperVariant).toBe("plain");
     expect(join.classList.contains("paper-button-filled")).toBe(false);

@@ -21,7 +21,7 @@ import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 import type { RoomUiState } from "../../hooks/useRoom";
 import { boardResultBadges, formatBoardTitle } from "./boardMeta";
-import { Paper, PaperButton, PaperSegmentSeparator } from "@/components/paper";
+import { Paper, PaperButton } from "@/components/paper";
 import { SectionHeading } from "../layout/SectionHeading";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
@@ -155,7 +155,6 @@ export function MatchBoard({
             ) : null}
             {!ended && roundActions ? (
               <div className="multiplayer-match-summary-actions">
-                <PaperSegmentSeparator orientation="horizontal" />
                 {roundActions}
               </div>
             ) : null}

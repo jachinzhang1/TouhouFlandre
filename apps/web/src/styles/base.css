@@ -117,8 +117,8 @@ html {
   --sticky-stack-gap: 10px;
   --sticky-edge-rule-color: color-mix(in srgb, var(--ink) 28%, transparent);
   --sticky-edge-shadow-down: 0 12px 22px -10px var(--paper-lift-shadow-near);
-  --appearance-corner-leg: 90px;
-  --appearance-corner-safe-area: 104px;
+  --appearance-corner-leg: 64px;
+  --appearance-corner-safe-area: 78px;
   --site-footer-height: 66px;
   --layer-navigation: 1000;
   --layer-modal: 1100;

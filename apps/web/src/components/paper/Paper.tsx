@@ -84,8 +84,9 @@ export function Paper({
   const disabledAppearance = disabled === true || ariaDisabled === true;
   const muteDisabledAppearance =
     disabledAppearance && !preserveAppearanceWhenDisabled;
-  const effectiveFolded = folded && !muteDisabledAppearance;
-  const effectiveUnfoldOnHover = unfoldOnHover && !disabledAppearance;
+  const effectiveFolded = as !== "button" && folded && !muteDisabledAppearance;
+  const effectiveUnfoldOnHover =
+    as !== "button" && unfoldOnHover && !disabledAppearance;
   const effectiveVariant = muteDisabledAppearance ? "plain" : variant;
   const paperClassName = ["paper-surface", className].filter(Boolean).join(" ");
   const paperStyle = {

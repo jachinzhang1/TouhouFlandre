@@ -186,6 +186,7 @@ export function SiteNav() {
           className="brand-paper-mark"
           elevation="accent"
           foldSize={8}
+          folded={false}
           sticker={false}
           tone="contrast"
           unfoldOnHover={false}
@@ -245,6 +246,7 @@ export function SiteNav() {
             className="nav-active-paper"
             elevation="accent"
             foldSize={10}
+            folded={false}
             sticker={false}
             tone="contrast"
             unfoldOnHover={false}

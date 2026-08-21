@@ -223,13 +223,13 @@ function DateRangeFilter({
           <Paper
             animateOnMount={false}
             as="div"
-            className="stats-date-paper-button"
-            folded={Boolean(fromDate)}
+            className={`stats-date-paper-button${fromDate ? " is-active" : ""}`}
+            folded={false}
             foldSize={10}
             sticker={false}
-            unfoldOnHover={Boolean(fromDate)}
+            unfoldOnHover={false}
             unfolded={fromOpen}
-            variant={fromDate ? "tinted" : "plain"}
+            variant="plain"
           >
             <DatePicker
               className={PAPER_DATE_PICKER_CLASS_NAME}
@@ -253,13 +253,13 @@ function DateRangeFilter({
           <Paper
             animateOnMount={false}
             as="div"
-            className="stats-date-paper-button"
-            folded={Boolean(toDate)}
+            className={`stats-date-paper-button${toDate ? " is-active" : ""}`}
+            folded={false}
             foldSize={10}
             sticker={false}
-            unfoldOnHover={Boolean(toDate)}
+            unfoldOnHover={false}
             unfolded={toOpen}
-            variant={toDate ? "tinted" : "plain"}
+            variant="plain"
           >
             <DatePicker
               className={PAPER_DATE_PICKER_CLASS_NAME}

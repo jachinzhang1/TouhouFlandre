@@ -41,7 +41,7 @@
   left: 0;
   z-index: 45;
   isolation: isolate;
-  padding: 64px 16px calc(12px + var(--game-action-safe-inset));
+  padding: 40px 16px calc(12px + var(--game-action-safe-inset));
   pointer-events: none;
 }
 
@@ -72,6 +72,25 @@
   display: grid;
   min-width: 0;
   gap: 7px;
+}
+
+@media (min-width: 900px) {
+  :root {
+    --multiplayer-command-reserve: 170px;
+  }
+
+  .paper-surface.multiplayer-command-surface {
+    width: min(1100px, 100%);
+    grid-template-columns: minmax(0, 0.85fr) 1px minmax(0, 1.15fr);
+    align-items: end;
+    column-gap: 10px;
+  }
+
+  .multiplayer-command-surface > .paper-segment-separator {
+    width: 1px;
+    height: auto;
+    align-self: stretch;
+  }
 }
 
 .multiplayer-command-channel-heading {
@@ -124,6 +143,12 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .game-mode-entry {
+  --paper-ornament-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 54px,
+    color-mix(in srgb, var(--ink) 7%, transparent) 55px
+  );
   isolation: isolate;
   display: grid;
   width: 100%;
@@ -561,8 +586,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .room-lobby-blocker-status {
-  padding-top: 12px;
-  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+  padding-top: 6px;
 }
 
 .room-lobby-section > .section-heading {
@@ -740,8 +764,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 14px;
-  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+  padding-top: 6px;
 }
 
 .room-lobby-leave-action {
@@ -936,13 +959,13 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
-  padding: 20px 18px
+  padding: 12px 18px
     calc(var(--multiplayer-command-reserve) + var(--site-footer-height));
 }
 
 .paper-surface.multiplayer-match-summary {
-  margin-bottom: 24px;
-  padding: 14px 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
 }
 
 .multiplayer-match-summary-primary {
@@ -1020,10 +1043,9 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .multiplayer-match-score-row {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 8px;
+  padding-top: 6px;
   overflow-x: auto;
-  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
   scrollbar-width: none;
 }
 
@@ -1068,31 +1090,56 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .multiplayer-race-board-pair {
   display: grid;
   min-width: 0;
-  gap: 28px;
+  gap: 18px;
 }
 
 .member-paginator-controls {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .member-paginator-header {
   position: relative;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1080px) {
   .multiplayer-race-board-pair {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 18px;
     align-items: start;
   }
 
   .multiplayer-race-board-pair .paper-surface.multiplayer-board-paper {
-    --guess-character-column-width: 128px;
     --guess-table-width: 100%;
     min-width: 0;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="self"]
+    .multiplayer-board-paper {
+    --guess-character-column-width: 144px;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="opponent"]
+    .multiplayer-board-paper {
+    --guess-character-column-width: 0px;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="opponent"]
+    :is(
+      .guess-character-column,
+      .guess-table tbody th,
+      .guess-table tfoot th:first-child
+    ) {
+    width: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    font-size: 0;
   }
 
   .multiplayer-race-board-pair .multiplayer-guess-table {
@@ -1105,12 +1152,50 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
     width: auto;
   }
 
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="opponent"]
+    .guess-table
+    :is(th, td) {
+    padding-inline: 0;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="opponent"]
+    .match-feedback-compact {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="opponent"]
+    .match-feedback-compact
+    b {
+    width: 16px;
+    height: 16px;
+  }
+
   .multiplayer-race-board-pair .multiplayer-board-footer th {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 
   .multiplayer-race-board-pair .feedback {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="self"]
+    .feedback {
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .multiplayer-race-board-pair
+    .multiplayer-board[data-board-variant="self"]
+    .feedback
+    b {
+    width: 16px;
+    height: 16px;
   }
 
   .multiplayer-race-board-pair .feedback > span {
@@ -1121,31 +1206,26 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   }
 
   .multiplayer-race-board-pair .member-paginator-header {
-    display: grid;
-    grid-template-areas:
-      "title action"
-      "description action";
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 12px;
-    align-items: center;
+    min-height: 52px;
+    padding-top: 4px;
   }
 
   .multiplayer-race-board-pair
     .member-paginator-header
-    .section-heading-title-row {
-    grid-area: title;
-  }
-
-  .multiplayer-race-board-pair
-    .member-paginator-header
-    .section-heading-description {
-    grid-area: description;
+    :is(.section-heading-title-row, .section-heading-description) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
 
   .multiplayer-race-board-pair
     .member-paginator-header
     .section-heading-action {
-    grid-area: action;
+    justify-content: center;
     margin-top: 0;
   }
 }
@@ -1155,7 +1235,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .multiplayer-board-heading {
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .multiplayer-board-heading .section-heading-action {
@@ -1172,11 +1252,15 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .paper-surface.multiplayer-board-paper {
   --guess-character-column-width: 172px;
   --guess-table-width: 832px;
+  --paper-data-table-header-height: 36px;
+  --paper-data-table-header-padding: 8px;
+  --paper-data-table-cell-padding: 6px 8px;
   min-width: var(--guess-table-width);
   overflow: visible;
 }
 
-.multiplayer-guess-table {
+.guess-table.multiplayer-guess-table {
+  --single-game-guess-row-height: 58px;
   min-width: var(--guess-table-width);
   background: transparent;
 }
@@ -1199,7 +1283,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .multiplayer-board-empty-row td {
-  height: 150px;
+  height: 88px;
   color: var(--ink-soft);
   text-align: center;
 }
@@ -1777,7 +1861,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 @media (max-width: 680px) {
   :root {
-    --multiplayer-command-reserve: 280px;
+    --multiplayer-command-reserve: 250px;
   }
 
   .spectator-room {
@@ -1882,7 +1966,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   }
 
   .multiplayer-command-deck {
-    padding: 64px 10px calc(10px + var(--game-action-safe-inset));
+    padding: 40px 10px calc(10px + var(--game-action-safe-inset));
   }
 
   .multiplayer-match-page {
@@ -1956,7 +2040,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
   .multiplayer-board-stack,
   .multiplayer-race-board-pair {
-    gap: 28px;
+    gap: 16px;
   }
 
   .member-paginator-header .section-heading-action {
@@ -2025,9 +2109,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed color-mix(in srgb, var(--ink) 24%, transparent);
+  margin-top: 8px;
 }
 
 .relay-turn-action-row > span,
@@ -2066,8 +2148,46 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   min-width: 0;
 }
 
+@media (min-width: 681px) {
+  .paper-surface.relay-match-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 16px;
+    align-items: center;
+  }
+
+  .relay-turn-primary {
+    grid-column: 1 / -1;
+  }
+
+  .relay-match-summary > .multiplayer-match-score-row {
+    grid-column: 1;
+  }
+
+  .relay-turn-action-row {
+    grid-column: 2;
+  }
+
+  .relay-match-details {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .relay-risk-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .relay-turn-ledger .relay-current-handoff {
+    padding-right: calc(var(--appearance-corner-safe-area) + 10px);
+  }
+}
+
 .relay-ledger-heading {
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .paper-surface.relay-turn-ledger {
@@ -2083,16 +2203,16 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .relay-turn-entry + .relay-turn-entry,
 .relay-current-handoff,
 .relay-turn-empty {
-  border-top: 1px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
 }
 
 .relay-turn-row {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) auto;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 8px 12px;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 10px;
 }
 
 .relay-turn-index,
@@ -2114,17 +2234,17 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .relay-turn-detail {
   margin: 0;
-  padding: 0 12px 12px;
+  padding: 0 10px 8px;
   color: var(--ink-soft);
-  font-size: 0.78rem;
-  line-height: 1.55;
+  font-size: 0.76rem;
+  line-height: 1.4;
 }
 
 .relay-turn-character {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 7px;
+  margin-bottom: 6px;
 }
 
 .relay-turn-character > span:last-child {
@@ -2138,14 +2258,57 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .relay-turn-feedback-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .relay-turn-feedback-cell {
   display: grid;
   min-width: 0;
-  gap: 5px;
-  padding: 8px;
+  gap: 3px;
+  padding: 6px;
+}
+
+.relay-turn-feedback-cell.feedback-cell-exact {
+  --paper-tinted-cell-color: var(--semantic-success);
+  --paper-tinted-cell-background: var(--semantic-success-tint);
+}
+
+.relay-turn-feedback-cell.feedback-cell-partial {
+  --paper-tinted-cell-color: var(--semantic-warning);
+  --paper-tinted-cell-background: var(--semantic-warning-tint);
+}
+
+.relay-turn-feedback-cell.feedback-cell-higher {
+  --paper-tinted-cell-color: var(--semantic-danger);
+  --paper-tinted-cell-background: var(--semantic-danger-tint);
+}
+
+.relay-turn-feedback-cell.feedback-cell-lower {
+  --paper-tinted-cell-color: var(--semantic-info);
+  --paper-tinted-cell-background: var(--semantic-info-tint);
+}
+
+.relay-turn-feedback-cell.feedback-cell-miss,
+.relay-turn-feedback-cell.feedback-cell-unknown {
+  --paper-tinted-cell-color: var(--semantic-neutral);
+  --paper-tinted-cell-background: var(--semantic-neutral-tint);
+}
+
+@media (min-width: 900px) {
+  .relay-turn-detail:has(.relay-turn-feedback-grid) {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.8fr) minmax(0, 5fr);
+    align-items: center;
+    gap: 10px;
+  }
+
+  .relay-turn-detail:has(.relay-turn-feedback-grid) .relay-turn-character {
+    margin-bottom: 0;
+  }
+
+  .relay-turn-feedback-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 .relay-turn-field-label {
@@ -2165,10 +2328,11 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--theme-color);
   color: var(--theme-color);
-  background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+  background: transparent;
 }
 
 .relay-current-handoff > span {
@@ -2182,7 +2346,7 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 }
 
 .relay-turn-empty {
-  padding: 24px 12px;
+  padding: 16px 10px;
   color: var(--ink-soft);
   font-size: 0.78rem;
   text-align: center;

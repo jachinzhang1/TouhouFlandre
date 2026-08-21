@@ -38,6 +38,7 @@ describe("HomePage", () => {
     const daily = screen.getByRole("link", { name: /每日题/ });
     expect(daily).toBeTruthy();
     expect(daily.dataset.paperPattern).toBe("default");
+    expect(daily.dataset.paperVariant).toBe("plain");
     expect(screen.queryByText("开始每日题")).toBeNull();
   });
 
