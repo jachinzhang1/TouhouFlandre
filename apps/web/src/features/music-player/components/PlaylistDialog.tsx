@@ -126,7 +126,7 @@ export function PlaylistDialog({ open, onClose }: PlaylistDialogProps) {
         footer={null}
         closable={false}
         mask={{ closable: true }}
-        aria-labelledby="music-playlist-dialog-title"
+        title="调整曲目列表"
         className="music-playlist-modal"
         onCancel={onClose}
       >

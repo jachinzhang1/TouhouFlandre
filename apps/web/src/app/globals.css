@@ -1998,6 +1998,19 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   box-shadow: var(--shadow-lg);
 }
 
+.music-playlist-modal .ant-modal-header {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .music-playlist-modal .ant-modal-body {
   max-height: min(82vh, 720px);
   overflow: hidden;
