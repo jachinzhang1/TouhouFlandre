@@ -72,24 +72,25 @@ export function RoomLobby({
       : undefined;
   const allReady = members.length >= 2 && members.every((m) => m.ready);
   const [limitDraft, setLimitDraft] = useState(playerLimit);
-  const [eliminationDraft, setEliminationDraft] =
-    useState(raceEliminationEnabled);
+  const [eliminationDraft, setEliminationDraft] = useState(
+    raceEliminationEnabled,
+  );
   const [limitBusy, setLimitBusy] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const minimumLimit = Math.max(2, playerCount);
   const settingsLocked = members.some((member) => member.ready);
   const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
-  const effectiveEliminationDraft =
-    limitDraft >= 3 ? eliminationDraft : false;
+  const effectiveEliminationDraft = limitDraft >= 3 ? eliminationDraft : false;
   const settingsChanged =
     limitDraft !== playerLimit ||
     effectiveEliminationDraft !== raceEliminationEnabled;
 
   useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
-  useEffect(() => setEliminationDraft(raceEliminationEnabled), [
-    raceEliminationEnabled,
-  ]);
+  useEffect(
+    () => setEliminationDraft(raceEliminationEnabled),
+    [raceEliminationEnabled],
+  );
 
   const copyCode = async () => {
     try {
@@ -103,7 +104,10 @@ export function RoomLobby({
 
   return (
     <section className="px-[18px] pt-12 pb-8">
-      <div className="mx-auto max-w-[560px] rounded-[10px] border border-line bg-paper p-8 text-center shadow-sm">
+      <div
+        className="mx-auto max-w-[560px] rounded-[10px] border border-line bg-paper p-8 text-center shadow-sm"
+        data-room-lobby-card
+      >
         <p className="mt-0 mb-2 text-[0.72rem] font-black tracking-[0.14em] text-vermilion">
           ROOM LOBBY
         </p>
@@ -253,7 +257,8 @@ export function RoomLobby({
                       playerLimit?: number;
                       raceEliminationEnabled?: boolean;
                     } = {};
-                    if (limitDraft !== playerLimit) body.playerLimit = limitDraft;
+                    if (limitDraft !== playerLimit)
+                      body.playerLimit = limitDraft;
                     if (effectiveEliminationDraft !== raceEliminationEnabled) {
                       body.raceEliminationEnabled = effectiveEliminationDraft;
                     }

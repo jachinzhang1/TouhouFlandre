@@ -16,19 +16,28 @@ type RoomCredential = {
   role: "player" | "spectator";
 };
 
+type CreateRaceRosterOptions = {
+  playerLimit?: number;
+  questionScope?: QuestionScopeConfig;
+  raceEliminationEnabled?: boolean;
+};
+
 async function createRaceRoster(
   request: APIRequestContext,
   playerCount: number,
-  playerLimit = playerCount,
-  questionScope?: QuestionScopeConfig,
+  options: CreateRaceRosterOptions = {},
 ): Promise<RoomCredential[]> {
+  const playerLimit = options.playerLimit ?? playerCount;
   const createdResponse = await request.post("/api/rooms", {
     data: {
       format: "bo3",
       mode: "race",
       playerLimit,
       displayName: "Player 1",
-      ...(questionScope ? { questionScope } : {}),
+      raceEliminationEnabled: options.raceEliminationEnabled ?? false,
+      ...(options.questionScope
+        ? { questionScope: options.questionScope }
+        : {}),
     },
   });
   expect(createdResponse.status()).toBe(201);
@@ -86,6 +95,12 @@ async function enterRoom(page: Page, credential: RoomCredential) {
   await page.goto(`/multi/room/${credential.roomCode}`);
 }
 
+async function closePages(...pages: Page[]) {
+  await Promise.all(
+    pages.map((page) => (page.isClosed() ? Promise.resolve() : page.close())),
+  );
+}
+
 async function sendChatViaUI(page: Page, message: string) {
   const input = page.getByLabel("聊天输入");
   await expect(input).toBeEnabled({ timeout: 10_000 });
@@ -118,6 +133,10 @@ async function fixedAnswerScope(
       !excludedNames.includes(character.names.zhHans),
   );
   expect(answer).toBeTruthy();
+  const incorrectGuess = catalog.characters.find(
+    (character) => character.enabledAsGuess && character.id !== answer!.id,
+  );
+  expect(incorrectGuess).toBeTruthy();
   const questionScope = normalizeQuestionScope(
     {
       catalogVersion: catalog.version,
@@ -127,7 +146,27 @@ async function fixedAnswerScope(
     },
     catalog,
   ).config;
-  return { answerId: answer!.id, questionScope };
+  return {
+    answerId: answer!.id,
+    incorrectGuessId: incorrectGuess!.id,
+    questionScope,
+  };
+}
+
+async function submitGuess(
+  request: APIRequestContext,
+  credential: RoomCredential,
+  roundIndex: number,
+  guessId: string,
+) {
+  const response = await request.post(
+    `/api/rooms/${credential.roomId}/rounds/${roundIndex}/guess`,
+    {
+      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
+      data: { guessId, idempotencyKey: crypto.randomUUID() },
+    },
+  );
+  expect(response.status()).toBe(200);
 }
 
 async function submitCorrectGuess(
@@ -136,14 +175,7 @@ async function submitCorrectGuess(
   roundIndex: number,
   answerId: string,
 ) {
-  const response = await request.post(
-    `/api/rooms/${credential.roomId}/rounds/${roundIndex}/guess`,
-    {
-      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
-      data: { guessId: answerId, idempotencyKey: crypto.randomUUID() },
-    },
-  );
-  expect(response.status()).toBe(200);
+  await submitGuess(request, credential, roundIndex, answerId);
 }
 
 async function forfeitRound(
@@ -204,6 +236,7 @@ async function prepareVisualSnapshot(page: Page) {
   await page.addStyleTag({
     content: `
       .appearance-switcher { display: none !important; }
+      nextjs-portal { display: none !important; }
       @media (max-width: 680px) {
         [data-site-nav-links] { display: none !important; }
         [data-guess-input-bar] { bottom: 0 !important; }
@@ -233,10 +266,8 @@ test.describe("多人房间", () => {
       "博丽灵梦",
       "雾雨魔理沙",
     ]);
-    const hostCtx = await browser.newContext();
-    const guestCtx = await browser.newContext();
-    const host = await hostCtx.newPage();
-    const guest = await guestCtx.newPage();
+    const host = await browser.newPage();
+    const guest = await browser.newPage();
     try {
       await host.addInitScript((scope) => {
         localStorage.setItem(
@@ -278,16 +309,13 @@ test.describe("多人房间", () => {
       });
       await expect(guest.getByText("等待对方猜测……")).toHaveCount(0);
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await closePages(host, guest);
     }
   });
 
   test("弃权结束回合会同步给双方并推进下一局", async ({ browser }) => {
-    const hostCtx = await browser.newContext();
-    const guestCtx = await browser.newContext();
-    const host = await hostCtx.newPage();
-    const guest = await guestCtx.newPage();
+    const host = await browser.newPage();
+    const guest = await browser.newPage();
     try {
       await host.goto("/multi");
       await host.getByRole("button", { name: "创建房间" }).click();
@@ -319,8 +347,7 @@ test.describe("多人房间", () => {
       await expect(host.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
       await expect(guest.getByText(/第 2 局/)).toBeVisible({ timeout: 15_000 });
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await closePages(host, guest);
     }
   });
 
@@ -329,10 +356,8 @@ test.describe("多人房间", () => {
       "博丽灵梦",
       "雾雨魔理沙",
     ]);
-    const hostCtx = await browser.newContext();
-    const guestCtx = await browser.newContext();
-    const host = await hostCtx.newPage();
-    const guest = await guestCtx.newPage();
+    const host = await browser.newPage();
+    const guest = await browser.newPage();
     try {
       await host.addInitScript((scope) => {
         localStorage.setItem(
@@ -379,16 +404,13 @@ test.describe("多人房间", () => {
       await expect(host.getByLabel("搜索角色")).toBeEnabled();
       await expect(guest.getByLabel("搜索角色")).toBeDisabled();
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await closePages(host, guest);
     }
   });
 
   test("刷新恢复会话状态", async ({ browser }) => {
-    const hostCtx = await browser.newContext();
-    const guestCtx = await browser.newContext();
-    const host = await hostCtx.newPage();
-    const guest = await guestCtx.newPage();
+    const host = await browser.newPage();
+    const guest = await browser.newPage();
     try {
       await host.goto("/multi");
       await host.getByRole("button", { name: "创建房间" }).click();
@@ -419,8 +441,7 @@ test.describe("多人房间", () => {
       });
       await expect(host.getByText(/第 1 局/)).toBeVisible();
     } finally {
-      await hostCtx.close();
-      await guestCtx.close();
+      await closePages(host, guest);
     }
   });
 
@@ -490,7 +511,7 @@ test.describe("多人房间", () => {
 
 test.describe("多人聊天发布闸门", () => {
   test("玩家/观战聊天可见性与闭麦行为", async ({ browser, request }) => {
-    const roster = await createRaceRoster(request, 2, 2);
+    const roster = await createRaceRoster(request, 2);
     const watcherA = await joinCredential(
       request,
       roster[0].roomCode,
@@ -535,6 +556,9 @@ test.describe("多人聊天发布闸门", () => {
       await guest.getByLabel("闭麦").click();
       await expect(guest.getByLabel("聊天输入")).toBeDisabled();
       await sendChatViaUI(host, "muted hello");
+      await expect(
+        spectatorA.getByText("Player 1(P1): muted hello"),
+      ).toBeVisible({ timeout: 10_000 });
       await expect(guest.getByText("muted hello")).toHaveCount(0, {
         timeout: 1500,
       });
@@ -554,7 +578,7 @@ test.describe("多人聊天发布闸门", () => {
 });
 
 test.describe("N 人竞速扩展", () => {
-  test("创建页使用 2..8 滑动条并保留双人赛制", async ({ page }) => {
+  test("创建页使用 2..8 玩家上限并同步竞速配置摘要", async ({ page }) => {
     await page.goto("/multi");
     const range = page.getByRole("slider", { name: "玩家上限（2-8）" });
     await expect(range).toHaveAttribute("min", "2");
@@ -569,13 +593,15 @@ test.describe("N 人竞速扩展", () => {
     await expect(page.locator('output[for="create-player-limit"]')).toHaveText(
       "5 人",
     );
-    await expect(page.getByText("双人赛制", { exact: true })).toBeVisible();
-    await expect(page.getByText("BO3", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("5 人 · 积分赛 · 不淘汰", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("radio", { name: "BO3" })).toBeChecked();
   });
 
   for (const count of [2, 3, 4, 8]) {
     test(`${count} 人大厅按 seat 展示容量和成员`, async ({ page, request }) => {
-      const roster = await createRaceRoster(request, count, count);
+      const roster = await createRaceRoster(request, count);
       await enterRoom(page, roster[0]);
 
       await expect(
@@ -590,6 +616,17 @@ test.describe("N 人竞速扩展", () => {
 
       if (count === 8) {
         await prepareVisualSnapshot(page);
+        const lobbyBox = await page
+          .locator("[data-room-lobby-card]")
+          .boundingBox();
+        const chatBox = await page
+          .locator('[data-chat-dock="inline"]')
+          .boundingBox();
+        expect(lobbyBox).not.toBeNull();
+        expect(chatBox).not.toBeNull();
+        expect(chatBox!.y).toBeGreaterThanOrEqual(
+          lobbyBox!.y + lobbyBox!.height,
+        );
         await expect(page).toHaveScreenshot("race-8-lobby.png", {
           animations: "disabled",
           fullPage: true,
@@ -603,7 +640,8 @@ test.describe("N 人竞速扩展", () => {
     page,
     request,
   }, testInfo) => {
-    const roster = await createRaceRoster(request, 8, 8);
+    const { incorrectGuessId, questionScope } = await fixedAnswerScope(request);
+    const roster = await createRaceRoster(request, 8, { questionScope });
     await enterRoom(page, roster[0]);
     for (const credential of roster) await setReady(request, credential);
 
@@ -612,9 +650,18 @@ test.describe("N 人竞速扩展", () => {
     await expect(page.locator("[data-member-board]")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "我" })).toBeVisible();
     await expect(page.locator("[data-member-board] table")).toHaveCount(1);
-    await expect(
-      page.locator("[data-member-board]").getByText(/Player \d/),
-    ).toHaveCount(0);
+    await submitGuess(request, roster[1], 1, incorrectGuessId);
+    const opponentTable = page.locator("[data-member-board] table");
+    const projectedRow = opponentTable.locator("tbody tr");
+    await expect(projectedRow).toHaveCount(1);
+    await expect(projectedRow.locator("th")).toHaveText("第 1 猜");
+    const projectedCells = projectedRow.locator("td");
+    const projectedCellCount = await projectedCells.count();
+    expect(projectedCellCount).toBeGreaterThan(0);
+    for (let index = 0; index < projectedCellCount; index += 1) {
+      await expect(projectedCells.nth(index)).toHaveText("");
+      await expect(projectedCells.nth(index).getByRole("img")).toHaveCount(1);
+    }
     await expectNoHorizontalOverflow(page);
     if (testInfo.project.name === "mobile-chromium") {
       const inputBar = await page
@@ -636,7 +683,7 @@ test.describe("N 人竞速扩展", () => {
   });
 
   test("3 人玩家确认放弃后立即进入只读状态", async ({ page, request }) => {
-    const roster = await createRaceRoster(request, 3, 3);
+    const roster = await createRaceRoster(request, 3);
     await enterRoom(page, roster[0]);
     for (const credential of roster) await setReady(request, credential);
 
@@ -655,7 +702,10 @@ test.describe("N 人竞速扩展", () => {
     request,
   }, testInfo) => {
     const { answerId, questionScope } = await fixedAnswerScope(request);
-    const roster = await createRaceRoster(request, 3, 3, questionScope);
+    const roster = await createRaceRoster(request, 3, {
+      questionScope,
+      raceEliminationEnabled: true,
+    });
     await enterRoom(page, roster[2]);
     for (const credential of roster) await setReady(request, credential);
     await waitForRound(request, roster[0], 1);
@@ -693,13 +743,18 @@ test.describe("N 人竞速扩展", () => {
     await submitCorrectGuess(request, roster[0], 2, answerId);
     await forfeitRound(request, roster[1], 2);
 
-    await expect(page.getByText(/第 1 名 · Player 1/)).toBeVisible({
+    const resultDialog = page.getByRole("dialog", { name: /MATCH 0/ });
+    await expect(resultDialog).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/5 分/)).toBeVisible();
-    await expect(page.getByText(/第 2 名 · Player 2/)).toBeVisible();
-    await expect(page.getByText(/第 3 名 · Player 3（我）/)).toBeVisible();
-    await expect(page.getByText(/第 1 局淘汰/)).toBeVisible();
+    const ranking = resultDialog.getByRole("listitem");
+    await expect(ranking).toHaveCount(3);
+    await expect(ranking.nth(0)).toContainText("Player 1(P1)");
+    await expect(ranking.nth(0)).toContainText("5 分");
+    await expect(ranking.nth(1)).toContainText("Player 2(P2)");
+    await expect(ranking.nth(1)).toContainText("第 2 局淘汰");
+    await expect(ranking.nth(2)).toContainText("Player 3(我)");
+    await expect(ranking.nth(2)).toContainText("第 1 局淘汰");
     await expectNoHorizontalOverflow(page);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-ranking.png", {
@@ -709,7 +764,7 @@ test.describe("N 人竞速扩展", () => {
   });
 
   test("满员观战者可在扩容后沿用身份认领席位", async ({ page, request }) => {
-    const roster = await createRaceRoster(request, 2, 2);
+    const roster = await createRaceRoster(request, 2);
     const spectator = await joinCredential(
       request,
       roster[0].roomCode,
@@ -746,7 +801,7 @@ test.describe("N 人竞速扩展", () => {
     page,
     request,
   }, testInfo) => {
-    const roster = await createRaceRoster(request, 3, 3);
+    const roster = await createRaceRoster(request, 3);
     const spectator = await joinCredential(
       request,
       roster[0].roomCode,

@@ -114,6 +114,14 @@ describe("ChatDock", () => {
     expect((input as HTMLInputElement).value).toBe("");
   });
 
+  it("uses document flow when embedded below a lobby", () => {
+    renderDock(baseChat, { placement: "inline" });
+
+    const dock = document.querySelector('[data-chat-dock="inline"]');
+    expect(dock?.className).toContain("relative");
+    expect(dock?.className).not.toContain("fixed");
+  });
+
   it("disables history, input, and emoji controls while muted", async () => {
     const user = userEvent.setup();
     renderDock(baseChat);

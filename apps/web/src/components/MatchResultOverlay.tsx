@@ -72,7 +72,12 @@ export function MatchResultOverlay({
   const highlighted = resultLabel === "并列第一" || resultLabel === "对局获胜";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(18,26,23,0.55)] p-4 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="match-result-title"
+    >
       <div className="w-full max-w-[420px] rounded-[10px] border border-line bg-paper p-6 text-center shadow-lg">
         <Trophy
           size={30}
@@ -80,6 +85,7 @@ export function MatchResultOverlay({
           aria-hidden="true"
         />
         <p
+          id="match-result-title"
           className={`mt-0 mb-1 text-[0.72rem] font-black tracking-[0.14em] ${highlighted ? "text-vermilion" : "text-ink-soft"}`}
         >
           MATCH {result.matchIndex} · {resultLabel}

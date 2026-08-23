@@ -17,6 +17,7 @@ interface ChatDockProps {
   roomId: string;
   viewer: ParticipantView | null;
   chat: RoomChatState;
+  placement?: "floating" | "inline";
   disabled?: boolean;
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
@@ -34,6 +35,7 @@ export function ChatDock({
   roomId,
   viewer,
   chat,
+  placement = "floating",
   disabled = false,
   sendEnabled = true,
   onSend,
@@ -160,6 +162,10 @@ export function ChatDock({
   const inputDisabled =
     historyDisabled || viewer?.status !== "connected" || !sendEnabled;
   const canSend = !inputDisabled && draft.trim().length > 0;
+  const placementClass =
+    placement === "inline"
+      ? "relative z-[45] mx-auto mt-4 mb-6 w-[min(560px,calc(100vw-36px))] max-[680px]:mb-24"
+      : "fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]";
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -186,7 +192,7 @@ export function ChatDock({
   };
 
   return (
-    <div className="fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]">
+    <div className={placementClass} data-chat-dock={placement}>
       <div className="pointer-events-none absolute right-12 bottom-full left-10 mb-2 flex flex-col gap-2">
         {toasts.map((toast) => (
           <ChatToastCard

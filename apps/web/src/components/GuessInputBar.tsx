@@ -79,7 +79,7 @@ export function GuessInputBar({
   return (
     <div
       data-guess-input-bar
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur max-[680px]:bottom-[68px]"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur max-[680px]:bottom-[68px]"
     >
       {statusMessage ? (
         <p

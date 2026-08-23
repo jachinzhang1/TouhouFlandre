@@ -212,6 +212,7 @@ export function RoomView({ code }: { code: string }) {
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
+        placement={status === "lobby" ? "inline" : "floating"}
         disabled={roomUnavailable}
         sendEnabled={chatSendUiEnabled}
         onSend={actions.sendChat}
@@ -331,7 +332,11 @@ export function RoomView({ code }: { code: string }) {
           onApplySettings={async (settings) => {
             if (!stored?.roomId || !stored.guestToken) return;
             await runRoomMutation(() =>
-              api.updateRoomSettings(stored.roomId, stored.guestToken, settings),
+              api.updateRoomSettings(
+                stored.roomId,
+                stored.guestToken,
+                settings,
+              ),
             );
           }}
           onClaimSeat={async () => {
@@ -408,9 +413,7 @@ export function RoomView({ code }: { code: string }) {
           members={state.members}
           mySlot={playerSeat}
           playerLimit={state.room?.playerLimit ?? 2}
-          raceEliminationEnabled={
-            state.room?.raceEliminationEnabled ?? false
-          }
+          raceEliminationEnabled={state.room?.raceEliminationEnabled ?? false}
           playerCount={state.room?.playerCount ?? state.members.length}
           availableSeats={state.room?.availableSeats ?? 0}
           spectatorCount={state.room?.spectatorCount ?? 0}
@@ -421,7 +424,11 @@ export function RoomView({ code }: { code: string }) {
           onApplySettings={async (settings) => {
             if (!stored?.roomId || !stored.guestToken) return;
             await runRoomMutation(() =>
-              api.updateRoomSettings(stored.roomId, stored.guestToken, settings),
+              api.updateRoomSettings(
+                stored.roomId,
+                stored.guestToken,
+                settings,
+              ),
             );
           }}
           onClaimSeat={async () => {
@@ -849,7 +856,9 @@ function SpectatorRaceBoards({
 }) {
   const forfeitedMemberId = archive?.forfeitedMemberId;
   const visibleBoards = archive
-    ? boards.filter((board) => isRoundArchiveParticipant(archive, board.memberId))
+    ? boards.filter((board) =>
+        isRoundArchiveParticipant(archive, board.memberId),
+      )
     : boards.filter((board) => isActiveMatchMember(scores, board.memberId));
   const ordered = [...visibleBoards].sort((a, b) => a.seat - b.seat);
   const toRows = (memberId: string): GuessRow[] => {
@@ -888,12 +897,10 @@ function SpectatorRaceBoards({
         return (
           <GuessTable
             key={board.memberId}
-            title={
-              formatBoardTitle(
-                members.find((member) => member.memberId === board.memberId),
-                board.seat,
-              )
-            }
+            title={formatBoardTitle(
+              members.find((member) => member.memberId === board.memberId),
+              board.seat,
+            )}
             subtitle={archive ? `第 ${archive.roundIndex} 局记录` : "实时棋盘"}
             headerExtra={boardResultBadges({ winner, eliminated })}
             rows={toRows(board.memberId)}
