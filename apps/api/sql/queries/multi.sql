@@ -162,11 +162,12 @@ UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;
 -- 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 INSERT INTO multi_match (
     id, room_id, match_index, catalog_version, target_wins, status,
-    started_at, question_scope, scoring_mode, roster_size, max_rounds
+    started_at, question_scope, scoring_mode, roster_size, max_rounds,
+    rule_set_key, rule_set_version, rule_config_snapshot
 )
 SELECT
     $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing',
-    $5, $6, $7, $8, $9
+    $5, $6, $7, $8, $9, $10, $11, $12
 FROM multi_match WHERE room_id = $2
 RETURNING *;
 

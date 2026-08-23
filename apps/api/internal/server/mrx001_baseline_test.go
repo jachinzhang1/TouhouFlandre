@@ -221,6 +221,11 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 			}
 			keys := make([]string, 0, len(event.Payload))
 			for key := range event.Payload {
+				// MRX-003 v3 adds the frozen ruleset identity. The MRX-001 v2
+				// fixture remains the semantic baseline for every pre-v3 field.
+				if eventType == "match.started" && key == "ruleSetRef" {
+					continue
+				}
 				keys = append(keys, key)
 			}
 			sort.Strings(keys)
@@ -237,10 +242,23 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 			{"type": "round.started", "payloadKeys": eventPayloadKeys("round.started")},
 		},
 	})
+	var matchStartedRuleSet map[string]any
+	for _, event := range snapshot.Events {
+		if event.Type == "match.started" {
+			matchStartedRuleSet, _ = event.Payload["ruleSetRef"].(map[string]any)
+			break
+		}
+	}
+	if matchStartedRuleSet["mode"] != "race" || matchStartedRuleSet["key"] != string(snapshot.Match.ScoringMode) || matchStartedRuleSet["version"] != float64(1) {
+		t.Fatalf("v3 match.started ruleSetRef = %#v", matchStartedRuleSet)
+	}
 
 	var migrationTail int
 	if err := pool.QueryRow(ctx, `SELECT coalesce(max(version_id), 0)::int FROM goose_db_version WHERE is_applied`).Scan(&migrationTail); err != nil {
 		t.Fatal(err)
+	}
+	if migrationTail != 15 {
+		t.Fatalf("migration tail = %d, want MRX-003 migration 15", migrationTail)
 	}
 	tableNames := []string{"multi_room", "multi_match", "multi_round", "multi_turn", "multi_chat_message"}
 	tables := make([]map[string]any, 0, len(tableNames))
@@ -260,6 +278,9 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 				rows.Close()
 				t.Fatal(err)
 			}
+			if tableName == "multi_match" && (column == "rule_set_key" || column == "rule_set_version" || column == "rule_config_snapshot") {
+				continue
+			}
 			columns = append(columns, column)
 		}
 		if err := rows.Err(); err != nil {
@@ -270,7 +291,7 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 		tables = append(tables, map[string]any{"name": tableName, "columns": columns})
 	}
 	assertMRX001Fixture(t, "mrx-001-database.json", map[string]any{
-		"migrationTail": migrationTail,
+		"migrationTail": 14,
 		"tables":        tables,
 	})
 }

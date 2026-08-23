@@ -81,14 +81,15 @@ type MatchPlanInput struct {
 }
 
 type MatchPlan struct {
-	RuleSet       RuleSetRef
-	ScoringMode   string
-	TargetWins    int
-	MaxRounds     int
-	StartsAt      time.Time
-	Deadline      time.Time
-	FirstTurnSeat *int
-	TurnDeadline  *time.Time
+	RuleSet            RuleSetRef
+	ScoringMode        string
+	RuleConfigSnapshot []byte
+	TargetWins         int
+	MaxRounds          int
+	StartsAt           time.Time
+	Deadline           time.Time
+	FirstTurnSeat      *int
+	TurnDeadline       *time.Time
 }
 
 type MatchFactory interface {

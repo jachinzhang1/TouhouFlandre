@@ -86,6 +86,21 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err := s.modeRegistry.ValidateRuleSet(plan.RuleSet); err != nil {
 		return internalError(err)
 	}
+	if len(plan.RuleConfigSnapshot) == 0 {
+		plan.RuleConfigSnapshot, err = json.Marshal(map[string]any{
+			"mode":                   room.Mode,
+			"format":                 string(format),
+			"turnSeconds":            room.TurnSeconds,
+			"rosterSize":             rosterSize,
+			"targetWins":             plan.TargetWins,
+			"maxRounds":              plan.MaxRounds,
+			"questionScope":          scope,
+			"raceEliminationEnabled": room.RaceEliminationEnabled,
+		})
+		if err != nil {
+			return internalError(err)
+		}
+	}
 	answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
 	if err != nil {
 		return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
@@ -94,15 +109,18 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	scoringMode := multi.ScoringMode(plan.ScoringMode)
 	maxRounds := plan.MaxRounds
 	match, err := q.CreateMatch(ctx, repo.CreateMatchParams{
-		ID:             multi.NewID(),
-		RoomID:         room.ID,
-		CatalogVersion: state.CurrentVersion,
-		TargetWins:     int32(targetWins),
-		StartedAt:      timestamptz(now),
-		QuestionScope:  scopeJSON,
-		ScoringMode:    string(scoringMode),
-		RosterSize:     int32(rosterSize),
-		MaxRounds:      int32(maxRounds),
+		ID:                 multi.NewID(),
+		RoomID:             room.ID,
+		CatalogVersion:     state.CurrentVersion,
+		TargetWins:         int32(targetWins),
+		StartedAt:          timestamptz(now),
+		QuestionScope:      scopeJSON,
+		ScoringMode:        string(scoringMode),
+		RosterSize:         int32(rosterSize),
+		MaxRounds:          int32(maxRounds),
+		RuleSetKey:         plan.RuleSet.Key,
+		RuleSetVersion:     int32(plan.RuleSet.Version),
+		RuleConfigSnapshot: plan.RuleConfigSnapshot,
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
@@ -139,8 +157,11 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		MatchIndex:     int(match.MatchIndex),
 		QuestionScope:  scope,
 		ScoringMode:    scoringMode,
-		RosterSize:     rosterSize,
-		MaxRounds:      maxRounds,
+		RuleSetRef: multi.RuleSetRefView{
+			Mode: multi.MultiplayerMode(plan.RuleSet.Mode), Key: plan.RuleSet.Key, Version: plan.RuleSet.Version,
+		},
+		RosterSize: rosterSize,
+		MaxRounds:  maxRounds,
 	}); err != nil {
 		return internalError(err)
 	}

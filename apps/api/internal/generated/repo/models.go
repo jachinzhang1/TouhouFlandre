@@ -100,22 +100,25 @@ type MultiGuess struct {
 }
 
 type MultiMatch struct {
-	ID             string             `json:"id"`
-	RoomID         string             `json:"room_id"`
-	MatchIndex     int32              `json:"match_index"`
-	CatalogVersion string             `json:"catalog_version"`
-	TargetWins     int32              `json:"target_wins"`
-	ScoreSlot1     int32              `json:"score_slot1"`
-	ScoreSlot2     int32              `json:"score_slot2"`
-	RoundCount     int32              `json:"round_count"`
-	Status         string             `json:"status"`
-	StartedAt      pgtype.Timestamptz `json:"started_at"`
-	EndedAt        pgtype.Timestamptz `json:"ended_at"`
-	QuestionScope  []byte             `json:"question_scope"`
-	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
-	ScoringMode    string             `json:"scoring_mode"`
-	RosterSize     int32              `json:"roster_size"`
-	MaxRounds      int32              `json:"max_rounds"`
+	ID                 string             `json:"id"`
+	RoomID             string             `json:"room_id"`
+	MatchIndex         int32              `json:"match_index"`
+	CatalogVersion     string             `json:"catalog_version"`
+	TargetWins         int32              `json:"target_wins"`
+	ScoreSlot1         int32              `json:"score_slot1"`
+	ScoreSlot2         int32              `json:"score_slot2"`
+	RoundCount         int32              `json:"round_count"`
+	Status             string             `json:"status"`
+	StartedAt          pgtype.Timestamptz `json:"started_at"`
+	EndedAt            pgtype.Timestamptz `json:"ended_at"`
+	QuestionScope      []byte             `json:"question_scope"`
+	WinnerMemberID     pgtype.Text        `json:"winner_member_id"`
+	ScoringMode        string             `json:"scoring_mode"`
+	RosterSize         int32              `json:"roster_size"`
+	MaxRounds          int32              `json:"max_rounds"`
+	RuleSetKey         string             `json:"rule_set_key"`
+	RuleSetVersion     int32              `json:"rule_set_version"`
+	RuleConfigSnapshot []byte             `json:"rule_config_snapshot"`
 }
 
 type MultiMatchPlayer struct {
@@ -143,6 +146,83 @@ type MultiMember struct {
 	Role               string             `json:"role"`
 	ChatRateTokens     pgtype.Float8      `json:"chat_rate_tokens"`
 	ChatRateRefilledAt pgtype.Timestamptz `json:"chat_rate_refilled_at"`
+}
+
+type MultiRelayEncounter struct {
+	ID             string             `json:"id"`
+	MatchID        string             `json:"match_id"`
+	StageID        string             `json:"stage_id"`
+	EncounterIndex int32              `json:"encounter_index"`
+	Status         string             `json:"status"`
+	AnswerID       string             `json:"answer_id"`
+	StartsAt       pgtype.Timestamptz `json:"starts_at"`
+	Deadline       pgtype.Timestamptz `json:"deadline"`
+	TurnMemberID   pgtype.Text        `json:"turn_member_id"`
+	TurnDeadline   pgtype.Timestamptz `json:"turn_deadline"`
+	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
+	Outcome        pgtype.Text        `json:"outcome"`
+	EndedAt        pgtype.Timestamptz `json:"ended_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type MultiRelayEncounterMember struct {
+	MatchID     string `json:"match_id"`
+	StageID     string `json:"stage_id"`
+	EncounterID string `json:"encounter_id"`
+	MemberID    string `json:"member_id"`
+	Side        int32  `json:"side"`
+	Seat        int32  `json:"seat"`
+}
+
+type MultiRelayMatchPlayerState struct {
+	MatchID         string      `json:"match_id"`
+	MemberID        string      `json:"member_id"`
+	Score           int32       `json:"score"`
+	LifeState       string      `json:"life_state"`
+	EliminatedStage pgtype.Int4 `json:"eliminated_stage"`
+}
+
+type MultiRelayStage struct {
+	ID                    string             `json:"id"`
+	MatchID               string             `json:"match_id"`
+	StageIndex            int32              `json:"stage_index"`
+	Status                string             `json:"status"`
+	PlannedEncounterCount int32              `json:"planned_encounter_count"`
+	StartsAt              pgtype.Timestamptz `json:"starts_at"`
+	SettledAt             pgtype.Timestamptz `json:"settled_at"`
+	SettlementMarker      pgtype.Text        `json:"settlement_marker"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+}
+
+type MultiRelayStagePlayer struct {
+	MatchID         string             `json:"match_id"`
+	StageID         string             `json:"stage_id"`
+	MemberID        string             `json:"member_id"`
+	EncounterID     pgtype.Text        `json:"encounter_id"`
+	Assignment      string             `json:"assignment"`
+	Outcome         string             `json:"outcome"`
+	ScoreBefore     int32              `json:"score_before"`
+	ScoreDelta      int32              `json:"score_delta"`
+	ScoreAfter      int32              `json:"score_after"`
+	LifeBefore      string             `json:"life_before"`
+	LifeAfter       string             `json:"life_after"`
+	EliminatedStage pgtype.Int4        `json:"eliminated_stage"`
+	SettledAt       pgtype.Timestamptz `json:"settled_at"`
+}
+
+type MultiRelayTurn struct {
+	ID             string             `json:"id"`
+	MatchID        string             `json:"match_id"`
+	StageID        string             `json:"stage_id"`
+	EncounterID    string             `json:"encounter_id"`
+	MemberID       string             `json:"member_id"`
+	TurnIndex      int32              `json:"turn_index"`
+	Kind           string             `json:"kind"`
+	GuessID        pgtype.Text        `json:"guess_id"`
+	Statuses       []byte             `json:"statuses"`
+	IsCorrect      bool               `json:"is_correct"`
+	IdempotencyKey string             `json:"idempotency_key"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type MultiRoom struct {

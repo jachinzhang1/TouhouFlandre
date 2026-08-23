@@ -11,6 +11,7 @@ import (
 )
 
 type Querier interface {
+	AddRelayEncounterMember(ctx context.Context, arg AddRelayEncounterMemberParams) (MultiRelayEncounterMember, error)
 	AwardMatchPlayerPoints(ctx context.Context, arg AwardMatchPlayerPointsParams) (MultiMatchPlayer, error)
 	AwardRoundPlayerPoints(ctx context.Context, arg AwardRoundPlayerPointsParams) (MultiRoundPlayer, error)
 	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
@@ -21,6 +22,7 @@ type Querier interface {
 	CountGuessesForRoundMember(ctx context.Context, arg CountGuessesForRoundMemberParams) (int64, error)
 	// 指标采集（members{status}）。
 	CountMemberStatuses(ctx context.Context) ([]CountMemberStatusesRow, error)
+	CountRelayEncounterMembers(ctx context.Context, encounterID string) (int32, error)
 	// 指标采集（sweeper 定时聚合 rooms{status}）。
 	CountRoomStatuses(ctx context.Context) ([]CountRoomStatusesRow, error)
 	CountSkipsForRoundMember(ctx context.Context, arg CountSkipsForRoundMemberParams) (int64, error)
@@ -32,6 +34,9 @@ type Querier interface {
 	CreateMatch(ctx context.Context, arg CreateMatchParams) (MultiMatch, error)
 	CreateMatchPlayer(ctx context.Context, arg CreateMatchPlayerParams) (MultiMatchPlayer, error)
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
+	CreateRelayEncounter(ctx context.Context, arg CreateRelayEncounterParams) (MultiRelayEncounter, error)
+	CreateRelayMatchPlayerState(ctx context.Context, arg CreateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error)
+	CreateRelayStage(ctx context.Context, arg CreateRelayStageParams) (MultiRelayStage, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error)
@@ -78,6 +83,14 @@ type Querier interface {
 	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetMemberForUpdate(ctx context.Context, id string) (MultiMember, error)
+	GetRelayEncounter(ctx context.Context, id string) (MultiRelayEncounter, error)
+	GetRelayEncounterForUpdate(ctx context.Context, id string) (MultiRelayEncounter, error)
+	GetRelayEncounterMember(ctx context.Context, arg GetRelayEncounterMemberParams) (MultiRelayEncounterMember, error)
+	// MRX-003 relay-owned storage queries. These queries are intentionally kept
+	// separate from the shared/race query source; the core never interprets them.
+	GetRelayStage(ctx context.Context, id string) (MultiRelayStage, error)
+	GetRelayStageForUpdate(ctx context.Context, id string) (MultiRelayStage, error)
+	GetRelayTurnByIdempotencyKey(ctx context.Context, arg GetRelayTurnByIdempotencyKeyParams) (MultiRelayTurn, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
 	GetRoomByCode(ctx context.Context, code string) (MultiRoom, error)
 	// 加入路径：锁房间行（大厅命令只锁房间行，§9.2 锁序纪律）。
@@ -107,6 +120,8 @@ type Querier interface {
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
 	InsertGuess(ctx context.Context, arg InsertGuessParams) (MultiGuess, error)
+	InsertRelayStagePlayer(ctx context.Context, arg InsertRelayStagePlayerParams) (MultiRelayStagePlayer, error)
+	InsertRelayTurn(ctx context.Context, arg InsertRelayTurnParams) (MultiRelayTurn, error)
 	InsertRoomEvent(ctx context.Context, arg InsertRoomEventParams) (RoomEvent, error)
 	InsertTurn(ctx context.Context, arg InsertTurnParams) (MultiTurn, error)
 	ListActiveMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
@@ -129,6 +144,12 @@ type Querier interface {
 	ListMembers(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListMembersForRematch(ctx context.Context, roomID string) ([]MultiMember, error)
 	ListParticipants(ctx context.Context, roomID string) ([]MultiMember, error)
+	ListRelayEncounterMembers(ctx context.Context, encounterID string) ([]MultiRelayEncounterMember, error)
+	ListRelayEncountersForStage(ctx context.Context, stageID string) ([]MultiRelayEncounter, error)
+	ListRelayMatchPlayerStates(ctx context.Context, matchID string) ([]MultiRelayMatchPlayerState, error)
+	ListRelayStagePlayers(ctx context.Context, stageID string) ([]MultiRelayStagePlayer, error)
+	ListRelayStagesForMatch(ctx context.Context, matchID string) ([]MultiRelayStage, error)
+	ListRelayTurnsForEncounter(ctx context.Context, encounterID string) ([]MultiRelayTurn, error)
 	ListRoundPlayerGuessCounts(ctx context.Context, roundID string) ([]ListRoundPlayerGuessCountsRow, error)
 	ListRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	// 等待局间推进的局：场仍 playing、该局已 ended、无进行中的新局、间歇已过（intermission）。
@@ -140,6 +161,7 @@ type Querier interface {
 	ListWorks(ctx context.Context) ([]Work, error)
 	MarkMatchPlayerEliminated(ctx context.Context, arg MarkMatchPlayerEliminatedParams) (int64, error)
 	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
+	MarkRelayStageSettled(ctx context.Context, arg MarkRelayStageSettledParams) (MultiRelayStage, error)
 	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)
 	MarkRoundPlayerExhausted(ctx context.Context, arg MarkRoundPlayerExhaustedParams) (int64, error)
 	MarkRoundPlayerTimedOut(ctx context.Context, arg MarkRoundPlayerTimedOutParams) (int64, error)
