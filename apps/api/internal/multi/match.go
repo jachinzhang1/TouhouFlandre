@@ -4,7 +4,6 @@ package multi
 
 import (
 	"errors"
-	"math/rand/v2"
 )
 
 // ErrNoAnswerPool 可答池为空且无兜底。
@@ -143,7 +142,7 @@ func AdvanceMatch(score [2]int, targetWins, roundCount, maxRounds, roundWinnerSl
 
 // DrawAnswer 从可答池排除本场已用答案后随机选取（08 §6.1）；
 // 池空防御性兜底允许复用（正常对局不可能触达，113 角色 × 上限 21 局）。
-func DrawAnswer(pool []string, used map[string]bool, rng *rand.Rand) (string, error) {
+func DrawAnswer(pool []string, used map[string]bool, rng interface{ IntN(int) int }) (string, error) {
 	if len(pool) == 0 {
 		return "", ErrNoAnswerPool
 	}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +19,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // Server 实现 StrictServerInterface。
@@ -27,7 +28,8 @@ type Server struct {
 	pool             *pgxpool.Pool
 	q                *repo.Queries
 	now              func() time.Time
-	rng              *rand.Rand
+	rng              core.RandomSource
+	modeRegistry     *core.Registry
 	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
 	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
 	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
@@ -94,6 +96,22 @@ func WithHub(h *hub.Hub) Option {
 	}
 }
 
+// WithMultiplayerKernel injects one registry, clock, and random source for
+// deterministic assembly and rule tests. Nil ports keep production defaults.
+func WithMultiplayerKernel(registry *core.Registry, clock core.Clock, random core.RandomSource) Option {
+	return func(s *Server) {
+		if registry != nil {
+			s.modeRegistry = registry
+		}
+		if clock != nil {
+			s.now = clock.Now
+		}
+		if random != nil {
+			s.rng = random
+		}
+	}
+}
+
 // publish 事件事务提交后广播（先入库后广播，07 §7.2；hub 未注入时空转）。
 func (s *Server) publish(roomID string) {
 	if s.hub != nil {
@@ -108,11 +126,13 @@ func (s *Server) publishChat(message repo.MultiChatMessage) {
 }
 
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
+	clock := core.SystemClock{}
 	s := &Server{
 		pool:             pool,
 		q:                repo.New(pool),
-		now:              time.Now,
-		rng:              rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
+		now:              clock.Now,
+		rng:              core.NewRandomSource(),
+		modeRegistry:     assembly.MustProduction(),
 		lobbyTTL:         config.MultiLobbyTTL(),
 		eventRetention:   config.MultiEventRetention(),
 		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),

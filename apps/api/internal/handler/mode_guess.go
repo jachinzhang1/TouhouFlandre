@@ -13,6 +13,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 type submitGuessInput struct {
@@ -33,9 +34,9 @@ type guessModeModule interface {
 	SubmitGuess(context.Context, *Server, *repo.Queries, submitGuessInput) (submitGuessResult, error)
 }
 
-var guessModeModules = map[multi.MultiplayerMode]guessModeModule{
-	multi.MultiplayerModeRace:  raceGuessModule{},
-	multi.MultiplayerModeRelay: relayGuessModule{},
+var guessCommandRoutes = map[core.CommandRoute]guessModeModule{
+	core.CommandRouteRace:        raceGuessModule{},
+	core.CommandRouteLegacyRelay: relayGuessModule{},
 }
 
 type raceGuessModule struct{}

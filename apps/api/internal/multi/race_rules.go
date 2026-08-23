@@ -39,7 +39,11 @@ func FrozenRaceMaxRounds(scoringMode ScoringMode, rosterSize int, format RoomFor
 
 // RaceRulesForMatch snapshots the strategy for a match row.
 func RaceRulesForMatch(match repo.MultiMatch) RaceRules {
-	return RaceRules{scoringMode: ScoringMode(match.ScoringMode)}
+	return RaceRulesForScoringMode(ScoringMode(match.ScoringMode))
+}
+
+func RaceRulesForScoringMode(scoringMode ScoringMode) RaceRules {
+	return RaceRules{scoringMode: scoringMode}
 }
 
 func (r RaceRules) ScoringMode() ScoringMode { return r.scoringMode }

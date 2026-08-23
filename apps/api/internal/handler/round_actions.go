@@ -10,6 +10,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 func (s *Server) currentRoundCommandState(ctx context.Context, q *repo.Queries, roomID string, roundIndex int) (repo.MultiRoom, repo.MultiRound, repo.MultiMatch, *ApiError) {
@@ -74,18 +75,25 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace {
+	route, err := s.commandRoute(room, match, core.CommandForfeit, member.ID)
+	if err != nil {
+		return nil, err
+	}
+	switch route {
+	case core.CommandRouteRace:
 		if _, _, err := multi.ForfeitRaceRoundTx(ctx, q, room, round, match, member.ID, s.now(), s.timing); err != nil {
 			if errors.Is(err, multi.ErrRaceRoundPlayerInactive) {
 				return nil, roundNotActiveError("你已放弃本局。")
 			}
 			return nil, internalError(err)
 		}
-	} else {
+	case core.CommandRouteLegacyRelay:
 		winnerSlot := multi.OtherSlot(multi.MemberSeat(*member))
 		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSeat(*member)); err != nil {
 			return nil, internalError(err)
 		}
+	default:
+		return nil, internalError(errors.New("multiplayer forfeit route is not executable"))
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
@@ -113,8 +121,15 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	if multi.MultiplayerMode(room.Mode) != multi.MultiplayerModeRelay {
+	ref, err := s.ruleSetForState(room, match)
+	if err != nil {
+		return nil, err
+	}
+	if ref.Mode != core.ModeRelay {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeInvalidRequest, Message: "只有接力模式可以主动空过。"}
+	}
+	if _, err := s.commandRoute(room, match, core.CommandPass, member.ID); err != nil {
+		return nil, err
 	}
 	now := s.now()
 	expiredOwnTurn := false

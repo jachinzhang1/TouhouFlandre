@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"math/rand/v2"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -20,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // SweeperConfig sweeper 配置。
@@ -29,14 +29,18 @@ type SweeperConfig struct {
 	ChatRetention  time.Duration    // 聊天消息独立保留期（MULTI_CHAT_RETENTION）
 	Interval       time.Duration    // tick 间隔（默认 1s）
 	Broadcaster    EventBroadcaster // 事件入库后广播（先入库后广播，07 §7.2；nil 时空转）
+	Registry       *core.Registry
+	Clock          core.Clock
+	Random         core.RandomSource
 }
 
 // Sweeper 后台调度器（唯一）。
 type Sweeper struct {
-	pool *pgxpool.Pool
-	now  func() time.Time
-	rng  *rand.Rand
-	cfg  SweeperConfig
+	pool     *pgxpool.Pool
+	now      func() time.Time
+	rng      core.RandomSource
+	registry *core.Registry
+	cfg      SweeperConfig
 }
 
 // NewSweeper 构造 sweeper。Interval 非正数时使用 1s。
@@ -47,12 +51,30 @@ func NewSweeper(pool *pgxpool.Pool, cfg SweeperConfig) *Sweeper {
 	if cfg.ChatRetention <= 0 {
 		cfg.ChatRetention = 24 * time.Hour
 	}
-	return &Sweeper{
-		pool: pool,
-		now:  time.Now,
-		rng:  rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
-		cfg:  cfg,
+	clock := cfg.Clock
+	if clock == nil {
+		clock = core.SystemClock{}
 	}
+	random := cfg.Random
+	if random == nil {
+		random = core.NewRandomSource()
+	}
+	return &Sweeper{pool: pool, now: clock.Now, rng: random, registry: cfg.Registry, cfg: cfg}
+}
+
+func (s *Sweeper) completionRoute(room repo.MultiRoom, match repo.MultiMatch) (core.CompletionRoute, error) {
+	if s.registry == nil {
+		return "", &core.DomainError{Code: core.ErrorMissingCapability, Mode: core.Mode(room.Mode), Capability: "completion_driver"}
+	}
+	ref, err := s.registry.ResolveLegacy(core.Mode(room.Mode), match.ScoringMode)
+	if err != nil {
+		return "", err
+	}
+	driver, err := s.registry.CompletionDriver(ref.Mode)
+	if err != nil {
+		return "", err
+	}
+	return driver.Route(ref)
 }
 
 // Run 阻塞运行 tick 循环；ctx 取消即退出（跟随 server 生命周期）。
@@ -229,7 +251,11 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route != core.CompletionRouteLegacyRelay {
 		return tx.Commit(ctx)
 	}
 
@@ -294,7 +320,11 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route == core.CompletionRouteRace {
 		if _, err := CompleteRaceRoundTx(ctx, q, room, round, match, "", now, s.cfg.Timing); err != nil {
 			return err
 		}
@@ -392,18 +422,32 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	if err != nil {
 		return err
 	}
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
 	format := RoomFormat(room.Format)
 	maxRounds := int(match.MaxRounds)
 	if maxRounds <= 0 {
 		rules := RaceRulesForMatch(match)
-		if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+		if route == core.CompletionRouteRace {
 			maxRounds = rules.MatchMaxRounds(format, int(match.RosterSize), s.cfg.Timing.MaxRoundsFactor)
 		} else {
 			maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
 		}
 	}
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)
-	turnSlot, turnDeadline := InitialTurnParams(room, int(round.RoundIndex+1), startsAt)
+	var turnSlot pgtype.Int4
+	var turnDeadline pgtype.Timestamptz
+	if route == core.CompletionRouteLegacyRelay {
+		seat, deadline := InitialRelayTurn(int(round.RoundIndex+1), int(room.TurnSeconds), startsAt)
+		turnSlot = pgtype.Int4{Int32: int32(seat), Valid: true}
+		turnDeadline = pgtype.Timestamptz{Time: deadline, Valid: true}
+	}
+	roundDuration := s.cfg.Timing.RoundSeconds
+	if route == core.CompletionRouteRace && s.cfg.Timing.RaceRoundSeconds > 0 {
+		roundDuration = s.cfg.Timing.RaceRoundSeconds
+	}
 	newRound, err := q.CreateRound(ctx, repo.CreateRoundParams{
 		ID:           NewID(),
 		MatchID:      match.ID,
@@ -411,7 +455,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		RoundIndex:   round.RoundIndex + 1,
 		AnswerID:     answer,
 		StartsAt:     pgtypeTimestamptz(startsAt),
-		Deadline:     pgtypeTimestamptz(startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing))),
+		Deadline:     pgtypeTimestamptz(startsAt.Add(roundDuration)),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
@@ -439,7 +483,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
-		Deadline:   startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing)),
+		Deadline:   startsAt.Add(roundDuration),
 		MaxGuesses: MaxGuessesForMatch(match),
 	}
 	activeMatchPlayers, err := q.ListActiveMatchPlayers(ctx, match.ID)
@@ -464,7 +508,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 
 // endMatchByCap 3×N 上限判平：场次与房间 finished + match.ended(reason=round_cap, draw)。
 func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.MultiRoom, match repo.MultiMatch, now time.Time) error {
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route == core.CompletionRouteRace {
 		_, err := EndRaceMatchTx(ctx, q, room, match, "", MatchEndReasonRoundCap, now, s.cfg.Timing)
 		return err
 	}
@@ -515,11 +563,19 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		}
 		switch room.Status {
 		case string(RoomStatusPlaying):
-			if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+			match, err := repo.New(s.pool).GetActiveMatchForUpdate(ctx, room.ID)
+			if err != nil {
+				return err
+			}
+			route, err := s.completionRoute(room, match)
+			if err != nil {
+				return err
+			}
+			if route == core.CompletionRouteRace {
 				raceBatches[room.ID] = append(raceBatches[room.ID], member)
 				continue
 			}
-			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
+			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing, s.registry); err != nil {
 				return err
 			}
 			s.notify(room.ID)

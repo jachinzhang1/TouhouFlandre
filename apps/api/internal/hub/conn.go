@@ -297,6 +297,9 @@ func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 	if len(events) == 0 {
 		return c.lastGameSequence, nil
 	}
+	if err := c.hub.validateModeHistory(ctx, c.roomID); err != nil {
+		return c.lastGameSequence, err
+	}
 	members, err := c.hub.q.ListMembers(ctx, c.roomID)
 	if err != nil {
 		return c.lastGameSequence, err

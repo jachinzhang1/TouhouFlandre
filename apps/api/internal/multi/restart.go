@@ -12,18 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
-// TerminateActiveMatches 终止全部进行中场次（幂等：match 已 finished 的不再处理）。
-// 返回终止的场次数。锁序 局→场→房间。
-func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Time, timing TimingConfig) (int, error) {
+// TerminateActiveMatches resolves persisted rules before recovery.
+// Unknown mode/key/version returns without writing a guessed terminal state.
+func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Time, timing TimingConfig, registry *core.Registry) (int, error) {
+	if registry == nil {
+		return 0, &core.DomainError{Code: core.ErrorMissingCapability, Capability: "recovery_driver"}
+	}
 	matches, err := repo.New(pool).ListActiveMatches(ctx)
 	if err != nil {
 		return 0, err
 	}
 	terminated := 0
 	for _, match := range matches {
-		if err := terminateMatch(ctx, pool, match, now, timing); err != nil {
+		if err := terminateMatch(ctx, pool, match, now, timing, registry); err != nil {
 			return terminated, err
 		}
 		terminated++
@@ -31,7 +35,7 @@ func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Ti
 	return terminated, nil
 }
 
-func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMatch, now time.Time, timing TimingConfig) error {
+func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMatch, now time.Time, timing TimingConfig, registry *core.Registry) error {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -61,7 +65,19 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	ref, err := registry.ResolveLegacy(core.Mode(room.Mode), locked.ScoringMode)
+	if err != nil {
+		return err
+	}
+	driver, err := registry.RecoveryDriver(ref.Mode)
+	if err != nil {
+		return err
+	}
+	route, err := driver.Route(ref)
+	if err != nil {
+		return err
+	}
+	if route == core.RecoveryRouteRace {
 		if hasRound {
 			if err := EndRaceRoundWithoutScoreTx(ctx, q, room, round, locked, "", "", now, timing); err != nil {
 				return err

@@ -13,6 +13,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 )
 
 // fastRequest / fastRequestAuth：短时间常量 server 的请求辅助。
@@ -66,7 +67,7 @@ func fastRequestAuth(method, path, token string, body any) (*http.Response, []by
 
 // fastSweeper 与 fast server 同时间常量、同 hub 的 sweeper（测试手动驱动；事件入库即广播）。
 func fastSweeper() *multi.Sweeper {
-	return multi.NewSweeper(pool, multi.SweeperConfig{Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub})
+	return multi.NewSweeper(pool, multi.SweeperConfig{Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub, Registry: assembly.MustProduction()})
 }
 
 // advanceRounds 推进局间时序：间歇创建下一局（countdown）+ 倒计时到 playing。
@@ -1121,7 +1122,7 @@ func TestMultiRestartTermination(t *testing.T) {
 	fixture := createMatchFixture(t)
 	startMatch(t, fixture) // round 已进入 playing
 
-	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming)
+	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming, assembly.MustProduction())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1150,7 +1151,7 @@ func TestMultiRestartTermination(t *testing.T) {
 	}
 	// 幂等：再次终止不再产生新事件
 	before := len(eventsOf(t, fixture))
-	if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming); err != nil {
+	if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming, assembly.MustProduction()); err != nil {
 		t.Fatal(err)
 	}
 	if after := len(eventsOf(t, fixture)); after != before {

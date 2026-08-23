@@ -17,6 +17,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // startMatchTx 在调用方事务（已锁房间行）内开局：绑当前题库版本 → 抽题 → 建 round 1（countdown）
@@ -57,24 +58,41 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		}
 		room = updatedRoom
 	}
-	answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
-	if err != nil {
-		return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
-	}
-
 	now := s.now()
-	targetWins := multi.TargetWins(format)
 	members, err := q.ListMembers(ctx, room.ID)
 	if err != nil {
 		return internalError(err)
 	}
 	rosterSize := len(members)
-	scoringMode := multi.ScoringModeWins
-	maxRounds := multi.MaxRounds(format, s.timing.MaxRoundsFactor)
-	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace {
-		scoringMode = multi.FrozenRaceScoringMode(rosterSize, room.RaceEliminationEnabled)
-		maxRounds = multi.FrozenRaceMaxRounds(scoringMode, rosterSize, format, s.timing.MaxRoundsFactor)
+	factory, err := s.modeRegistry.MatchFactory(modeFromStored(room.Mode))
+	if err != nil {
+		return internalError(err)
 	}
+	plan, err := factory.Plan(core.MatchPlanInput{
+		Mode:                   modeFromStored(room.Mode),
+		Format:                 string(format),
+		RosterSize:             rosterSize,
+		RaceEliminationEnabled: room.RaceEliminationEnabled,
+		MaxRoundsFactor:        s.timing.MaxRoundsFactor,
+		Now:                    now,
+		RoundCountdown:         s.timing.RoundCountdown,
+		RoundSeconds:           s.timing.RoundSeconds,
+		RaceRoundSeconds:       s.timing.RaceRoundSeconds,
+		TurnSeconds:            int(room.TurnSeconds),
+	})
+	if err != nil {
+		return internalError(err)
+	}
+	if err := s.modeRegistry.ValidateRuleSet(plan.RuleSet); err != nil {
+		return internalError(err)
+	}
+	answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
+	if err != nil {
+		return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
+	}
+	targetWins := plan.TargetWins
+	scoringMode := multi.ScoringMode(plan.ScoringMode)
+	maxRounds := plan.MaxRounds
 	match, err := q.CreateMatch(ctx, repo.CreateMatchParams{
 		ID:             multi.NewID(),
 		RoomID:         room.ID,
@@ -89,8 +107,15 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return mapRoomWriteError(err)
 	}
-	startsAt := now.Add(s.timing.RoundCountdown)
-	turnSlot, turnDeadline := multi.InitialTurnParams(room, 1, startsAt)
+	startsAt := plan.StartsAt
+	var turnSlot pgtype.Int4
+	var turnDeadline pgtype.Timestamptz
+	if plan.FirstTurnSeat != nil {
+		turnSlot = pgtype.Int4{Int32: int32(*plan.FirstTurnSeat), Valid: true}
+	}
+	if plan.TurnDeadline != nil {
+		turnDeadline = pgtype.Timestamptz{Time: *plan.TurnDeadline, Valid: true}
+	}
 	round, err := q.CreateRound(ctx, repo.CreateRoundParams{
 		ID:           multi.NewID(),
 		MatchID:      match.ID,
@@ -98,7 +123,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		RoundIndex:   1,
 		AnswerID:     answerID,
 		StartsAt:     timestamptz(startsAt),
-		Deadline:     timestamptz(startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing))),
+		Deadline:     timestamptz(plan.Deadline),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
@@ -139,7 +164,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		MatchIndex:        int(match.MatchIndex),
 		RoundIndex:        int(round.RoundIndex),
 		StartsAt:          startsAt,
-		Deadline:          startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing)),
+		Deadline:          plan.Deadline,
 		MaxGuesses:        maxGuesses,
 		ActivePlayerCount: rosterSize,
 	}
@@ -212,9 +237,13 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if err != nil {
 		return nil, internalError(err)
 	}
-	module, ok := guessModeModules[multi.MultiplayerMode(room.Mode)]
+	route, routeErr := s.commandRoute(room, match, core.CommandGuess, member.ID)
+	if routeErr != nil {
+		return nil, routeErr
+	}
+	module, ok := guessCommandRoutes[route]
 	if !ok {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "未知多人玩法。"}
+		return nil, internalError(errors.New("multiplayer command route is not executable"))
 	}
 	result, err := module.SubmitGuess(ctx, s, q, submitGuessInput{
 		request: request,
@@ -370,7 +399,11 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 		return nil, internalError(err)
 	}
 	// 原冻结 player 集合全员 connected + confirmed → 按原阵容开新场。
-	if multi.RematchRosterReady(after, int(room.PlayerLimit)) {
+	policy, err := s.roomPolicyForState(room)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if policy.ReadyRoster(rematchRosterSummary(after), int(room.PlayerLimit)) {
 		format := multi.RoomFormat(room.Format)
 		if err := s.startMatchTx(ctx, q, room, format); err != nil {
 			return nil, err

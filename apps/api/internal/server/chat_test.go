@@ -14,6 +14,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 )
 
 var chatIDCounter atomic.Uint64
@@ -222,7 +223,7 @@ func TestChatCursorEmptyProjectionRetentionAndRoomBinding(t *testing.T) {
 	if err := json.Unmarshal(payload, &resync); err != nil || resync.Code != openapi.ChatResyncRequiredResponseCodeCHATRESYNCREQUIRED {
 		t.Fatalf("resync response: %v %s", err, payload)
 	}
-	if err := multi.NewSweeper(pool, multi.SweeperConfig{ChatRetention: 24 * time.Hour}).SweepOnce(ctx); err != nil {
+	if err := multi.NewSweeper(pool, multi.SweeperConfig{ChatRetention: 24 * time.Hour, Registry: assembly.MustProduction()}).SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
 	var remaining int

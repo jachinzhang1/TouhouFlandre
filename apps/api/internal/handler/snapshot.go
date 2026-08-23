@@ -14,6 +14,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // snapshotState GetRoomSnapshotState 的解析形态（键为 jsonb_build_object 的键名）。
@@ -31,18 +32,18 @@ type snapshotState struct {
 }
 
 type snapshotRoom struct {
-	ID                    string             `json:"id"`
-	Code                  string             `json:"code"`
-	Format                string             `json:"format"`
-	Status                string             `json:"status"`
-	EventSeq              int64              `json:"event_seq"`
-	CreatedAt             pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt             pgtype.Timestamptz `json:"expires_at"`
-	Mode                  string             `json:"mode"`
-	TurnSeconds           int32              `json:"turn_seconds"`
-	QuestionScope         json.RawMessage    `json:"question_scope"`
-	PlayerLimit           int32              `json:"player_limit"`
-	RaceEliminationEnabled bool              `json:"race_elimination_enabled"`
+	ID                     string             `json:"id"`
+	Code                   string             `json:"code"`
+	Format                 string             `json:"format"`
+	Status                 string             `json:"status"`
+	EventSeq               int64              `json:"event_seq"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt              pgtype.Timestamptz `json:"expires_at"`
+	Mode                   string             `json:"mode"`
+	TurnSeconds            int32              `json:"turn_seconds"`
+	QuestionScope          json.RawMessage    `json:"question_scope"`
+	PlayerLimit            int32              `json:"player_limit"`
+	RaceEliminationEnabled bool               `json:"race_elimination_enabled"`
 }
 
 type snapshotMatch struct {
@@ -65,17 +66,17 @@ type snapshotMatch struct {
 
 func (room snapshotRoom) toRepo() repo.MultiRoom {
 	return repo.MultiRoom{
-		ID:                    room.ID,
-		Code:                  room.Code,
-		Format:                room.Format,
-		Status:                room.Status,
-		EventSeq:              room.EventSeq,
-		CreatedAt:             room.CreatedAt,
-		ExpiresAt:             room.ExpiresAt,
-		Mode:                  room.Mode,
-		TurnSeconds:           room.TurnSeconds,
-		QuestionScope:         append([]byte{}, room.QuestionScope...),
-		PlayerLimit:           room.PlayerLimit,
+		ID:                     room.ID,
+		Code:                   room.Code,
+		Format:                 room.Format,
+		Status:                 room.Status,
+		EventSeq:               room.EventSeq,
+		CreatedAt:              room.CreatedAt,
+		ExpiresAt:              room.ExpiresAt,
+		Mode:                   room.Mode,
+		TurnSeconds:            room.TurnSeconds,
+		QuestionScope:          append([]byte{}, room.QuestionScope...),
+		PlayerLimit:            room.PlayerLimit,
 		RaceEliminationEnabled: room.RaceEliminationEnabled,
 	}
 }
@@ -184,28 +185,31 @@ func (s *Server) RoomsGetSnapshot(ctx context.Context, request openapi.RoomsGetS
 
 // buildSnapshot 组装逐观察者快照：room/members/match/round（水合）+ events（投影）。
 func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observer repo.MultiMember, events []repo.RoomEvent) (openapi.RoomsGetSnapshotResponseObject, error) {
+	if _, err := s.roomPolicyForState(state.Room); err != nil {
+		return nil, err
+	}
 	memberViews := make([]openapi.MemberView, 0, len(state.Members))
 	for _, view := range multi.MemberViews(state.Members) {
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
 	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
 	snapshot := openapi.RoomSnapshot{
-		RoomId:                  state.Room.ID,
-		RoomCode:                state.Room.Code,
-		Format:                  openapi.RoomFormat(state.Room.Format),
-		Mode:                    openapi.MultiplayerMode(state.Room.Mode),
-		TurnSeconds:             openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
-		Status:                  openapi.RoomStatus(state.Room.Status),
-		ExpiresAt:               state.Room.ExpiresAt.Time,
-		Viewer:                  toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
-		Members:                 memberViews,
-		PlayerCount:             capacity.PlayerCount,
-		SpectatorCount:          int(state.SpectatorCount),
-		PlayerLimit:             capacity.PlayerLimit,
-		RaceEliminationEnabled:  state.Room.RaceEliminationEnabled,
-		MinPlayers:              openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
-		AvailableSeats:          capacity.AvailableSeats,
-		GameSequence:            int(state.Room.EventSeq),
+		RoomId:                 state.Room.ID,
+		RoomCode:               state.Room.Code,
+		Format:                 openapi.RoomFormat(state.Room.Format),
+		Mode:                   openapi.MultiplayerMode(state.Room.Mode),
+		TurnSeconds:            openapi.RoomSnapshotTurnSeconds(state.Room.TurnSeconds),
+		Status:                 openapi.RoomStatus(state.Room.Status),
+		ExpiresAt:              state.Room.ExpiresAt.Time,
+		Viewer:                 toOpenAPIParticipantView(multi.ParticipantViewFor(observer)),
+		Members:                memberViews,
+		PlayerCount:            capacity.PlayerCount,
+		SpectatorCount:         int(state.SpectatorCount),
+		PlayerLimit:            capacity.PlayerLimit,
+		RaceEliminationEnabled: state.Room.RaceEliminationEnabled,
+		MinPlayers:             openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
+		AvailableSeats:         capacity.AvailableSeats,
+		GameSequence:           int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {
@@ -215,6 +219,18 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 	snapshot.QuestionScope = &openapiRoomScope
 
 	if state.Match != nil {
+		ref, err := s.ruleSetForState(state.Room, *state.Match)
+		if err != nil {
+			return nil, err
+		}
+		projector, err := s.modeRegistry.SnapshotProjector(ref.Mode)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		projectionStyle, err := projector.Style(ref)
+		if err != nil {
+			return nil, internalError(err)
+		}
 		roundIndex := 0
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
@@ -269,7 +285,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		snapshot.Match = &matchView
 
 		if state.Round != nil {
-			roundView, err := s.buildRoundView(ctx, state, observer)
+			roundView, err := s.buildRoundView(ctx, state, observer, projectionStyle)
 			if err != nil {
 				return nil, err
 			}
@@ -286,7 +302,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 }
 
 // buildRoundView 当前局视图：self（完整棋盘）+ opponent（匿名矩阵，列置换）。
-func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observer repo.MultiMember) (*openapi.RoundView, error) {
+func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observer repo.MultiMember, projectionStyle core.ProjectionStyle) (*openapi.RoundView, error) {
 	characters, err := multi.CharactersForVersion(ctx, s.q, state.Match.CatalogVersion)
 	if err != nil {
 		return nil, internalError(err)
@@ -390,7 +406,7 @@ func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observ
 			roundView.Self.FinishRank = &rank
 		}
 	}
-	if multi.MultiplayerMode(state.Room.Mode) == multi.MultiplayerModeRelay {
+	if projectionStyle == core.ProjectionRelayShared {
 		rows := make([]openapi.RelayTurnRow, 0, len(state.Turns))
 		for _, turn := range state.Turns {
 			row := openapi.RelayTurnRow{
@@ -447,6 +463,19 @@ func memberSlotForID(members []repo.MultiMember, memberID string) int {
 // round.opponent.guess 仅推对手（内部 slot 适配为 memberId + seat、按观察者列置换）；
 // round.ended/match.ended 按观察者补 viewerResult，并生成按 seat 排序的公开集合。
 func (s *Server) projectEvents(ctx context.Context, events []repo.RoomEvent, state snapshotState, observer repo.MultiMember) ([]openapi.RoomEventEnvelope, error) {
+	if state.Match != nil {
+		ref, err := s.ruleSetForState(state.Room, *state.Match)
+		if err != nil {
+			return nil, err
+		}
+		reader, err := s.modeRegistry.HistoryReader(ref.Mode)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		if _, err := reader.Style(ref); err != nil {
+			return nil, internalError(err)
+		}
+	}
 	out := make([]openapi.RoomEventEnvelope, 0, len(events))
 	charCache := map[string]map[string]game.Character{}
 	memberSlotByID := map[string]int32{}
