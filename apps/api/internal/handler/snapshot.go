@@ -47,21 +47,24 @@ type snapshotRoom struct {
 }
 
 type snapshotMatch struct {
-	ID             string             `json:"id"`
-	RoomID         string             `json:"room_id"`
-	MatchIndex     int32              `json:"match_index"`
-	CatalogVersion string             `json:"catalog_version"`
-	TargetWins     int32              `json:"target_wins"`
-	ScoreSlot1     int32              `json:"score_slot1"`
-	ScoreSlot2     int32              `json:"score_slot2"`
-	RoundCount     int32              `json:"round_count"`
-	Status         string             `json:"status"`
-	StartedAt      pgtype.Timestamptz `json:"started_at"`
-	EndedAt        pgtype.Timestamptz `json:"ended_at"`
-	QuestionScope  json.RawMessage    `json:"question_scope"`
-	ScoringMode    string             `json:"scoring_mode"`
-	RosterSize     int32              `json:"roster_size"`
-	MaxRounds      int32              `json:"max_rounds"`
+	ID                 string             `json:"id"`
+	RoomID             string             `json:"room_id"`
+	MatchIndex         int32              `json:"match_index"`
+	CatalogVersion     string             `json:"catalog_version"`
+	TargetWins         int32              `json:"target_wins"`
+	ScoreSlot1         int32              `json:"score_slot1"`
+	ScoreSlot2         int32              `json:"score_slot2"`
+	RoundCount         int32              `json:"round_count"`
+	Status             string             `json:"status"`
+	StartedAt          pgtype.Timestamptz `json:"started_at"`
+	EndedAt            pgtype.Timestamptz `json:"ended_at"`
+	QuestionScope      json.RawMessage    `json:"question_scope"`
+	ScoringMode        string             `json:"scoring_mode"`
+	RosterSize         int32              `json:"roster_size"`
+	MaxRounds          int32              `json:"max_rounds"`
+	RuleSetKey         string             `json:"rule_set_key"`
+	RuleSetVersion     int32              `json:"rule_set_version"`
+	RuleConfigSnapshot json.RawMessage    `json:"rule_config_snapshot"`
 }
 
 func (room snapshotRoom) toRepo() repo.MultiRoom {
@@ -83,21 +86,24 @@ func (room snapshotRoom) toRepo() repo.MultiRoom {
 
 func (match snapshotMatch) toRepo() repo.MultiMatch {
 	return repo.MultiMatch{
-		ID:             match.ID,
-		RoomID:         match.RoomID,
-		MatchIndex:     match.MatchIndex,
-		CatalogVersion: match.CatalogVersion,
-		TargetWins:     match.TargetWins,
-		ScoreSlot1:     match.ScoreSlot1,
-		ScoreSlot2:     match.ScoreSlot2,
-		RoundCount:     match.RoundCount,
-		Status:         match.Status,
-		StartedAt:      match.StartedAt,
-		EndedAt:        match.EndedAt,
-		QuestionScope:  append([]byte{}, match.QuestionScope...),
-		ScoringMode:    match.ScoringMode,
-		RosterSize:     match.RosterSize,
-		MaxRounds:      match.MaxRounds,
+		ID:                 match.ID,
+		RoomID:             match.RoomID,
+		MatchIndex:         match.MatchIndex,
+		CatalogVersion:     match.CatalogVersion,
+		TargetWins:         match.TargetWins,
+		ScoreSlot1:         match.ScoreSlot1,
+		ScoreSlot2:         match.ScoreSlot2,
+		RoundCount:         match.RoundCount,
+		Status:             match.Status,
+		StartedAt:          match.StartedAt,
+		EndedAt:            match.EndedAt,
+		QuestionScope:      append([]byte{}, match.QuestionScope...),
+		ScoringMode:        match.ScoringMode,
+		RosterSize:         match.RosterSize,
+		MaxRounds:          match.MaxRounds,
+		RuleSetKey:         match.RuleSetKey,
+		RuleSetVersion:     match.RuleSetVersion,
+		RuleConfigSnapshot: append([]byte{}, match.RuleConfigSnapshot...),
 	}
 }
 
@@ -281,6 +287,9 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			RematchReady:   rematchReady,
 			CatalogVersion: state.Match.CatalogVersion,
 			QuestionScope:  &openapiMatchScope,
+			RuleSetRef: openapi.RuleSetRef{
+				Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version,
+			},
 		}
 		snapshot.Match = &matchView
 

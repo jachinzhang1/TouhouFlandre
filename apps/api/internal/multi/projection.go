@@ -137,6 +137,16 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, bool, error) {
 
 	switch EventType(event.Type) {
+	case EventMatchStarted:
+		var payload MatchStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		if err := normalizeMatchStartedRuleSet(&payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventMatchStarted, Payload: payload}, false, nil
+
 	case EventRoundOpponentGuess:
 		var payload RoundGuessPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -282,6 +292,28 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		}
 		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
 	}
+}
+
+func normalizeMatchStartedRuleSet(payload *MatchStartedPayload) error {
+	ref := payload.RuleSetRef
+	if ref.Mode == "" && ref.Key == "" && ref.Version == 0 {
+		ref.Mode = payload.Mode
+		ref.Version = 1
+		switch {
+		case payload.Mode == MultiplayerModeRace && (payload.ScoringMode == ScoringModeWins || payload.ScoringMode == ScoringModePoints || payload.ScoringMode == ScoringModePlacement):
+			ref.Key = string(payload.ScoringMode)
+		case payload.Mode == MultiplayerModeRelay && payload.ScoringMode == ScoringModeWins:
+			ref.Key = "legacy_wins"
+		default:
+			return fmt.Errorf("match.started legacy rule-set mapping rejected: mode=%s scoring_mode=%s", payload.Mode, payload.ScoringMode)
+		}
+		payload.RuleSetRef = ref
+		return nil
+	}
+	if ref.Mode == "" || ref.Key == "" || ref.Version <= 0 || ref.Mode != payload.Mode {
+		return fmt.Errorf("match.started has invalid ruleSetRef: mode=%s key=%s version=%d", ref.Mode, ref.Key, ref.Version)
+	}
+	return nil
 }
 
 // AnswerViewForCharacter 从场绑定题库快照构造稳定的局末答案视图。

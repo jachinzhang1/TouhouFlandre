@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"net/http"
+
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
@@ -25,7 +27,7 @@ func (s *Server) roomPolicyForState(room repo.MultiRoom) (core.RoomPolicy, error
 }
 
 func (s *Server) ruleSetForState(room repo.MultiRoom, match repo.MultiMatch) (core.RuleSetRef, error) {
-	ref, err := s.modeRegistry.ResolveLegacy(modeFromStored(room.Mode), match.ScoringMode)
+	ref, err := multi.ResolveMatchRuleSet(s.modeRegistry, room, match)
 	if err != nil {
 		return core.RuleSetRef{}, internalError(err)
 	}
@@ -43,6 +45,9 @@ func (s *Server) commandRoute(room repo.MultiRoom, match repo.MultiMatch, comman
 	}
 	result, err := handler.Handle(core.CommandContext{RuleSet: ref, Command: command, ActorID: actorID, Now: s.now()})
 	if err != nil {
+		if core.HasErrorCode(err, core.ErrorFeatureDisabled) {
+			return "", &ApiError{Status: http.StatusNotImplemented, Code: codeFeatureDisabled, Message: err.Error()}
+		}
 		return "", internalError(err)
 	}
 	if !result.Accepted {

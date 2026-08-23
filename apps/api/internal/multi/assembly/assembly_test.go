@@ -46,7 +46,7 @@ func TestRelayOnlyAssemblyDoesNotResolveRace(t *testing.T) {
 	}
 }
 
-func TestProductionAssemblyRejectsIllegalPersistedCombination(t *testing.T) {
+func TestProductionAssemblyRegistersFutureRelayRulesWithoutExecutingThem(t *testing.T) {
 	registry, err := assembly.Production()
 	if err != nil {
 		t.Fatal(err)
@@ -54,8 +54,26 @@ func TestProductionAssemblyRejectsIllegalPersistedCombination(t *testing.T) {
 	if _, err := registry.ResolveLegacy(core.ModeRelay, "points"); !core.HasErrorCode(err, core.ErrorInvalidRuleSet) {
 		t.Fatalf("relay points error = %v", err)
 	}
-	if err := registry.ValidateRuleSet(core.RuleSetRef{Mode: core.ModeRelay, Key: "fixed_points", Version: 1}); !core.HasErrorCode(err, core.ErrorUnknownRuleSetKey) {
-		t.Fatalf("production future relay rule error = %v", err)
+	future := core.RuleSetRef{Mode: core.ModeRelay, Key: "fixed_points", Version: 1}
+	if err := registry.ValidateRuleSet(future); err != nil {
+		t.Fatalf("registered future relay rule error = %v", err)
+	}
+	if err := registry.ValidateRuleSet(core.RuleSetRef{Mode: core.ModeRelay, Key: "fixed_points", Version: 2}); !core.HasErrorCode(err, core.ErrorUnknownRuleSetVersion) {
+		t.Fatalf("unknown future relay version error = %v", err)
+	}
+	commandHandler, err := registry.CommandHandler(core.ModeRelay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commandHandler.Handle(core.CommandContext{RuleSet: future, Command: core.CommandGuess}); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
+		t.Fatalf("future relay command error = %v", err)
+	}
+	completionDriver, err := registry.CompletionDriver(core.ModeRelay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := completionDriver.Route(future); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
+		t.Fatalf("future relay completion error = %v", err)
 	}
 	if _, err := registry.ResolveLegacy(core.Mode("unknown"), "wins"); !core.HasErrorCode(err, core.ErrorUnknownMode) {
 		t.Fatalf("unknown mode error = %v", err)

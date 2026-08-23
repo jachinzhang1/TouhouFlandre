@@ -18,6 +18,7 @@ const (
 	ErrorDuplicateRegistration ErrorCode = "DUPLICATE_REGISTRATION"
 	ErrorInvalidConfiguration  ErrorCode = "INVALID_CONFIGURATION"
 	ErrorUnsupportedCommand    ErrorCode = "UNSUPPORTED_COMMAND"
+	ErrorFeatureDisabled       ErrorCode = "FEATURE_DISABLED"
 )
 
 // DomainError keeps mode failures independent from HTTP and OpenAPI types.

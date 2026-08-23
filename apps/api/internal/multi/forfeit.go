@@ -30,7 +30,7 @@ func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.Mul
 	if err != nil {
 		return err
 	}
-	ref, err := registry.ResolveLegacy(core.Mode(room.Mode), activeMatch.ScoringMode)
+	ref, err := ResolveMatchRuleSet(registry, room, activeMatch)
 	if err != nil {
 		return err
 	}

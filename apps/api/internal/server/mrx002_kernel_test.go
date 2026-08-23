@@ -5,19 +5,19 @@ import (
 	"testing"
 )
 
-func TestMRX002IllegalPersistedRuleSetFailsClosed(t *testing.T) {
+func TestMRX003UnknownPersistedRuleSetVersionFailsClosed(t *testing.T) {
 	fixture := createMatchFixtureMode(t, "bo3", "relay", 60)
 	snapshot := startMatch(t, fixture)
 	if snapshot.Match == nil || snapshot.Round == nil {
 		t.Fatal("expected active relay match and round")
 	}
 
-	if _, err := pool.Exec(ctx, `UPDATE multi_match SET scoring_mode = 'points' WHERE room_id = $1`, fixture.roomID); err != nil {
+	if _, err := pool.Exec(ctx, `UPDATE multi_match SET rule_set_version = 2 WHERE room_id = $1`, fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if _, err := pool.Exec(ctx, `UPDATE multi_match SET scoring_mode = 'wins' WHERE room_id = $1`, fixture.roomID); err != nil {
-			t.Errorf("restore compatibility scoring mode: %v", err)
+		if _, err := pool.Exec(ctx, `UPDATE multi_match SET rule_set_version = 1 WHERE room_id = $1`, fixture.roomID); err != nil {
+			t.Errorf("restore rule-set version: %v", err)
 		}
 	})
 	var eventsBefore, turnsBefore int

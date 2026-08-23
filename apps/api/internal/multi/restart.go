@@ -65,7 +65,7 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 	if err != nil {
 		return err
 	}
-	ref, err := registry.ResolveLegacy(core.Mode(room.Mode), locked.ScoringMode)
+	ref, err := ResolveMatchRuleSet(registry, room, locked)
 	if err != nil {
 		return err
 	}

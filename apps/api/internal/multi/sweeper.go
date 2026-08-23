@@ -66,7 +66,7 @@ func (s *Sweeper) completionRoute(room repo.MultiRoom, match repo.MultiMatch) (c
 	if s.registry == nil {
 		return "", &core.DomainError{Code: core.ErrorMissingCapability, Mode: core.Mode(room.Mode), Capability: "completion_driver"}
 	}
-	ref, err := s.registry.ResolveLegacy(core.Mode(room.Mode), match.ScoringMode)
+	ref, err := ResolveMatchRuleSet(s.registry, room, match)
 	if err != nil {
 		return "", err
 	}

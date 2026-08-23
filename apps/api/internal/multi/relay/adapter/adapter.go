@@ -2,6 +2,8 @@
 package adapter
 
 import (
+	"fmt"
+
 	legacy "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
@@ -68,7 +70,19 @@ func (Module) ParseLegacy(scoringMode string) (core.RuleSetRef, error) {
 	return relay.LegacyRuleSet(), nil
 }
 
+func futureRuleSetDisabled(ref core.RuleSetRef) error {
+	return &core.DomainError{
+		Code:    core.ErrorFeatureDisabled,
+		Mode:    core.ModeRelay,
+		RuleSet: ref,
+		Detail:  fmt.Sprintf("relay rule set %s is contract-only until its owning issue", ref.Key),
+	}
+}
+
 func (Module) Handle(ctx core.CommandContext) (core.CommandResult, error) {
+	if ctx.RuleSet == relay.FixedPointsRuleSet() || ctx.RuleSet == relay.EliminationRuleSet() {
+		return core.CommandResult{}, futureRuleSetDisabled(ctx.RuleSet)
+	}
 	if ctx.RuleSet != relay.LegacyRuleSet() {
 		return core.CommandResult{}, &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ctx.RuleSet.Mode, RuleSet: ctx.RuleSet}
 	}
@@ -81,6 +95,9 @@ func (Module) Handle(ctx core.CommandContext) (core.CommandResult, error) {
 }
 
 func (Module) Route(ref core.RuleSetRef) (core.CompletionRoute, error) {
+	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+		return "", futureRuleSetDisabled(ref)
+	}
 	if ref != relay.LegacyRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
@@ -88,6 +105,9 @@ func (Module) Route(ref core.RuleSetRef) (core.CompletionRoute, error) {
 }
 
 func (Module) Style(ref core.RuleSetRef) (core.ProjectionStyle, error) {
+	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+		return "", futureRuleSetDisabled(ref)
+	}
 	if ref != relay.LegacyRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
@@ -97,6 +117,9 @@ func (Module) Style(ref core.RuleSetRef) (core.ProjectionStyle, error) {
 type Recovery Module
 
 func (Recovery) Route(ref core.RuleSetRef) (core.RecoveryRoute, error) {
+	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+		return "", futureRuleSetDisabled(ref)
+	}
 	if ref != relay.LegacyRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
