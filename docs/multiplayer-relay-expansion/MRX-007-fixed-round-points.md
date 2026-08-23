@@ -9,16 +9,16 @@
 
 ## 要解决的问题
 
-N>2 且关闭淘汰时，现有 `wins/targetWins` 无法表达“每轮所有 pair 都完成后累计 2/1/0 分，并打满 BO 的总轮数”。该策略应只消费 encounter outcomes，不依赖 turn 或棋盘实现。
+N>2 且关闭接力淘汰时，现有 race `wins/points/placement` 和双人 `targetWins` 都不能作为规则调度依据。`(relay, fixed_points, 1)` 应只消费 relay encounter outcomes，不依赖 turn、棋盘实现或 race placement 计分。
 
 ## 要做到什么程度
 
-- 实现 `FixedPointsPolicy` 纯函数：win +2、loss +0、draw 双方 +1、bye +0。
+- 实现 relay-owned `FixedPointsPolicy` 纯函数：win +2、loss +0、draw 双方 +1、bye +0。
 - match 开始时初始积分为 0，无上限；`plannedStages=FormatNumber(format)`，不使用 `TargetWins`。
 - stage barrier 一次性批量写入 `scoreBefore/delta/scoreAfter`，发布所有 player 的结算明细。
 - 未达到 planned stages 时请求 coordinator 创建下一 stage；达到后结束 match。
 - 最终按总积分降序生成 competition ranking（`1,1,3`），不用 seat 或任何隐藏规则破同分。
-- scoring policy 对离场只接受统一 outcome/status；异常提前结束规则由 MRX-009 负责。
+- policy 对离场只接受 relay coordinator 定义的统一 outcome/status；异常提前结束规则由 MRX-009 负责。
 
 ## 属于本 Issue
 
@@ -40,8 +40,9 @@ N>2 且关闭淘汰时，现有 `wins/targetWins` 无法表达“每轮所有 pa
 - stage 未全部完成前公开积分不变；最后 encounter 完成后一个事务更新全员比分并发布一次 `stage.ended`。
 - 全部平分或部分平分生成稳定共享名次；没有隐式单一 winner。
 - 重连、snapshot 和事件 replay 得到相同 `scoreBefore/delta/scoreAfter` 与最终排名。
-- N=2 不会选择本 policy，仍由 `legacy_wins` 结算。
+- N=2 不会选择本 policy，仍由 `(relay, legacy_wins, 1)` 结算。
+- race `points` fixture 在启用本 policy 后结果完全不变，二者没有共享计分常量或 ranking 函数。
 
 ## 可能涉及的代码
 
-`apps/api/internal/multi/{relay_points.go,stage_coordinator.go,match.go}`（可新建/调整）、`apps/api/sql/queries/multi.sql`、`contracts/openapi/schemas/multi-match.yaml`、`contracts/ws/protocol.yaml`、`packages/shared/src/multi.ts`、server/domain tests。
+relay mode package 下的 `fixed_points`、stage settlement 与 match result、relay SQL queries、mode-owned contract payload、`packages/shared/src/multi.ts` 的 relay union、server/domain tests。

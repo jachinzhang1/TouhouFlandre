@@ -1,38 +1,42 @@
 # 多人接力扩展决策记录
 
-本文冻结 MRX-001 至 MRX-013 共用的规则和架构语义。标记为“首版固定”的值不开放房主设置；如需修改，先更新本文件、测试矩阵和拥有该决策的 Issue。
+本文冻结 MRX-001 至 MRX-013 共用的产品规则。模块所有权、依赖方向和兼容边界由[多人模式模块边界](./architecture.md)共同约束。标记为“首版固定”的值不开放房主设置；如需修改，先更新本文件、模块边界、测试矩阵和拥有该决策的 Issue。
 
 ## 1. 兼容优先的底层改造
 
 允许重构多人房间底层，但采用以下顺序：
 
-1. 用特征测试锁定现有 race 2/3/4/8 人、relay 2 人、spectator、chat、WS 重放和本地统计行为。
-2. 引入 `ModeDefinition` 注册表与小型策略接口，将现有实现接入兼容适配器；此步骤不改变 wire 或数据库语义。
-3. 增加 stage/encounter 能力和 WS v3；新能力由 relay adapter 消费，race adapter 不被迫理解接力配对或濒死。
+1. 用特征测试锁定现有 race 2 人 `wins`、N>2 `points/placement` 与 `raceEliminationEnabled`、relay 2 人、spectator、chat、WS 重放和 stats v5 行为。
+2. 引入 capability registry 与小型策略接口，将现有 `RaceRules` 和双人 relay 接入兼容适配器；此步骤不改变 wire 或数据库语义。
+3. 增加 relay-owned stage/encounter 能力和 WS v3；race adapter 不读取接力表，也不被迫理解配对、turn、濒死或完整标签投影。
 4. 通过灰度 flag 开放 N 人 relay；双人 relay 与 race 始终保留在回归矩阵中。
 
-共享不等于把所有规则塞入同一状态机。内核拥有生命周期、身份、事务、事件和恢复；模式模块拥有玩法配置、动作、计分和投影。
+共享不等于把所有规则塞入同一状态机。窄核心拥有 room lifecycle、身份、事务、事件信封和通用恢复入口；模式模块拥有玩法配置、match 状态机、动作、计分、排名、模式恢复和投影。只有 relay 使用的概念先留在 relay，出现第二个真实消费者后再抽象。
 
 ## 2. 模式内核边界
 
-首版形成以下可组合职责，具体 Go 接口名称可在 MRX-002 调整，但依赖方向不得反转：
+首版形成以下按需 capability，具体 Go 接口名称可在 MRX-002 调整，但依赖方向不得反转，也不得合并成要求每种模式全部实现的大接口：
 
-| 职责                   | 输入/输出                                                       | 不应负责               |
-| ---------------------- | --------------------------------------------------------------- | ---------------------- |
-| `RoomPolicy`           | 校验模式配置、容量、开局 roster                                 | 猜测、积分、棋盘投影   |
-| `MatchFactory`         | 根据冻结 roster 选择 scoring policy 并创建首个 stage plan       | HTTP、WebSocket 扇出   |
-| `StageCoordinator`     | 持久化 stage units、检测完成屏障、调用结算并推进                | 解释胜负分值           |
-| `PairingPolicy`        | active roster + 上轮轮空 + 随机源 -> 配对/轮空计划              | 写数据库、加减积分     |
-| `RelayEncounterEngine` | guess/pass/timeout/forfeit -> turn 与 encounter outcome         | 修改全场积分或排名     |
-| `ScoringPolicy`        | stage outcomes + match player state -> 新比分、状态、终止与排名 | 处理反馈字段或回合权限 |
-| `ProjectionPolicy`     | 权威状态 + viewer capability -> REST/WS 视图                    | 决定游戏结果           |
+| 职责                    | 输入/输出                                                     | 不应负责              |
+| ----------------------- | ------------------------------------------------------------- | --------------------- |
+| `RoomPolicy`            | 校验模式配置、容量、开局 roster                               | 猜测、积分、棋盘投影  |
+| `MatchFactory`          | 根据冻结 roster 选择 `RuleSetRef` 并创建模式初始状态          | HTTP、WebSocket 扇出  |
+| `CommandHandler`        | actor + namespaced command -> typed domain result             | HTTP 响应或直接广播   |
+| `CompletionDriver`      | timeout/离场/玩法单元终态 -> 后续领域变化                     | 猜测反馈水合          |
+| `RelayStageCoordinator` | 持久化 relay stage/encounter、检测屏障、调用结算并推进        | race round 或胜负分值 |
+| `PairingPolicy`         | active roster + 上轮轮空 + 随机源 -> 配对/轮空计划            | 写数据库、加减积分    |
+| `RelayEncounterEngine`  | guess/pass/timeout/forfeit -> turn 与 encounter outcome       | 修改全场积分或排名    |
+| relay `ScoringPolicy`   | stage outcomes + relay player state -> 比分、状态、终止与排名 | race 计分或回合权限   |
+| `SnapshotProjector`     | mode state + viewer capability -> REST/WS mode fragment       | 决定游戏结果          |
+| `HistoryReader`         | viewer + cursor -> 授权后的模式历史                           | 修改活动 match        |
 
-handler 只做鉴权、输入解析、事务编排和错误映射，不按人数复制规则。模式模块不得直接广播；它返回领域结果，由共享事件出口持久化后发布。
+handler 只做身份解析、输入归一化、事务入口和错误映射，不按人数复制规则。模式模块不得直接调用 hub 或构造 OpenAPI 类型；它返回领域结果，由共享事件出口持久化后发布。共享 core 不 import race/relay，race 与 relay 互不 import；组合根是唯一装配点。
 
 ## 3. 房间配置与开局
 
 - relay `playerLimit` 首版只允许 `2/4/6/8`，默认 2；slider 使用 `min=2,max=8,step=2`。
-- 新增 relay 专属布尔设置 `eliminationEnabled`，默认 `false`。公开契约使用明确字段，不复用 race 的自动 placement 语义。
+- 新增 relay 专属布尔设置 `relayEliminationEnabled`，默认 `false`。它与现有 `raceEliminationEnabled` 分离，不能引入裸 `eliminationEnabled` 或在两个模式间复制开关状态。
+- relay 设置持久化到 `multi_relay_room_config`，由 relay adapter 读写；现有 race 列和 `turn_seconds` 不在本 Issue 搬迁。
 - 两项设置只能由房主在 lobby 且无人 ready、尚未创建 match 时修改；修改与 join、claim-seat、ready/start 共用 room 行锁。
 - 降低上限不能低于当前 player 数；沿用现有 seat 压紧规则，房主保持 seat 1，`memberId` 和 token 不变。
 - 达到上限后的加入者仍进入 spectator；提高上限不自动提升 spectator，继续使用显式 claim-seat。
@@ -40,13 +44,13 @@ handler 只做鉴权、输入解析、事务编排和错误映射，不按人数
 - “2/4/6 人准备可开局”解释为当前入座人数可以少于房间上限，但当前入座玩家必须全员准备。4 人房间中 2 人 ready、2 人未 ready 不会只冻结其中 2 人。
 - 奇数个当前 player 即使全员 ready 也不开始；ready 请求成功但房间留在 lobby，并向所有人投影 `startBlockedReason=odd_player_count`。
 
-`eliminationEnabled` 是房间偏好；真正的 `scoringMode` 在开局事务中按实际 roster 冻结：
+`relayEliminationEnabled` 是房间偏好；权威玩法在开局事务中冻结为完整 `RuleSetRef`。`scoringMode` 仅保留为现有 race v2/数据库/stats v5 的兼容字段，不能单独用于跨模式调度：
 
-| 实际人数 | eliminationEnabled | scoringMode         |
-| -------: | -----------------: | ------------------- |
-|        2 |               任意 | `legacy_wins`       |
-|    4/6/8 |              false | `relay_points`      |
-|    4/6/8 |               true | `relay_elimination` |
+| 实际人数 | relayEliminationEnabled | RuleSetRef                 |
+| -------: | ----------------------: | -------------------------- |
+|        2 |                    任意 | `(relay, legacy_wins, 1)`  |
+|    4/6/8 |                   false | `(relay, fixed_points, 1)` |
+|    4/6/8 |                    true | `(relay, elimination, 1)`  |
 
 因此上限 8 的房间以 2 人开局仍完全沿用当前双人接力，不能因开关状态进入积分赛。
 
@@ -93,7 +97,7 @@ handler 只做鉴权、输入解析、事务编排和错误映射，不按人数
 
 ## 8. 非淘汰计分
 
-- 仅适用于冻结 roster 为 4/6/8 且 `eliminationEnabled=false` 的 match。
+- 仅适用于冻结 roster 为 4/6/8 且规则集为 `(relay, fixed_points, 1)` 的 match。
 - 每名玩家初始 0 分，无积分上限。
 - encounter 胜者 +2、败者 +0；平局双方各 +1；bye 或因奇数存留产生的系统轮空 +0。
 - BO 设置表示固定 stage 总数：BO1=1、BO3=3、BO5=5、BO7=7，不使用“先胜”目标。
@@ -101,7 +105,7 @@ handler 只做鉴权、输入解析、事务编排和错误映射，不按人数
 
 ## 9. 淘汰计分与濒死
 
-- 仅适用于冻结 roster 为 4/6/8 且 `eliminationEnabled=true` 的 match。
+- 仅适用于冻结 roster 为 4/6/8 且规则集为 `(relay, elimination, 1)` 的 match。
 - 每名玩家初始 10 分，积分上限 10。stage index `n` 从 1 开始。
 - encounter 胜者 `+1`，结算后不超过 10；败者 `-n`；平局双方各 `-floor(n/2)`；bye 为 0。
 - 普通 active 玩家计算后若积分恰好为 0，不触发濒死；只有原始结算结果 `< 0` 才首次触发濒死。
@@ -138,37 +142,40 @@ handler 只做鉴权、输入解析、事务编排和错误映射，不按人数
 
 - finished 后仍要求原冻结 roster 全员 connected 并确认；任何 `left` 成员都会使 rematch 不可用，沿用当前房间语义。
 - 淘汰玩家仍是原 roster player，可以确认再来一局。
-- 新 match 继承 room 的 `playerLimit`、`eliminationEnabled`、format、turnSeconds 和题库设置，重新冻结 scoring mode、积分、濒死状态、配对和答案。
+- 新 match 继承 room 的 `playerLimit`、`relayEliminationEnabled`、format、turnSeconds 和题库设置，重新冻结 `RuleSetRef`、规则配置快照、积分、濒死状态、配对和答案。
 - 历史 match 保持只读；新 match 的事件和统计使用新的 match index。
 
 ## 13. 持久化模型
 
-MRX-003 采用 expand-only 方案，目标关系如下：
+MRX-003 从 `0015` 开始采用 expand-only 方案。新 relay match 使用 relay-owned 表，不把现有 `multi_round` 和 `multi_turn` 改造成所有模式的通用 stage/turn：
 
 ```mermaid
 erDiagram
-    MULTI_MATCH ||--o{ MULTI_ROUND : stages
-    MULTI_ROUND ||--o{ MULTI_STAGE_UNIT : contains
-    MULTI_STAGE_UNIT ||--|| MULTI_RELAY_ENCOUNTER : specializes
-    MULTI_STAGE_UNIT ||--o{ MULTI_STAGE_UNIT_MEMBER : assigns
-    MULTI_RELAY_ENCOUNTER ||--o{ MULTI_TURN : records
+    MULTI_ROOM ||--o| MULTI_RELAY_ROOM_CONFIG : relay_settings
+    MULTI_ROOM ||--o{ MULTI_MATCH : creates
+    MULTI_MATCH ||--o{ MULTI_RELAY_STAGE : owns
+    MULTI_RELAY_STAGE ||--o{ MULTI_RELAY_ENCOUNTER : contains
+    MULTI_RELAY_ENCOUNTER ||--o{ MULTI_RELAY_ENCOUNTER_MEMBER : assigns
+    MULTI_RELAY_ENCOUNTER ||--o{ MULTI_RELAY_TURN : records
     MULTI_MATCH ||--o{ MULTI_MATCH_PLAYER : standings
     MULTI_MATCH_PLAYER ||--o| MULTI_RELAY_MATCH_PLAYER_STATE : relay_life
-    MULTI_ROUND ||--o{ MULTI_RELAY_STAGE_PLAYER : stage_settlement
+    MULTI_RELAY_STAGE ||--o{ MULTI_RELAY_STAGE_PLAYER : settlement
     MULTI_MEMBER ||--o{ MULTI_MATCH_PLAYER : freezes
-    MULTI_MEMBER ||--o{ MULTI_STAGE_UNIT_MEMBER : participates
+    MULTI_MEMBER ||--o{ MULTI_RELAY_ENCOUNTER_MEMBER : participates
 ```
 
-- `multi_round` 继续作为跨模式 stage 容器，保留 race 和旧数据所需字段。
-- `multi_stage_unit` 只保存 stage 内可独立完成的工作单元、顺序和终态；`kind` 是受约束枚举，不保存任意规则 JSON。
-- `multi_relay_encounter` 保存 relay 专属答案、turn、winner、deadline；未来其他玩法使用自己的扩展表，不向此表塞字段。
-- `multi_stage_unit_member` 以 `memberId` 关联 unit，保存 side/seat snapshot；seat 不是鉴权键。
+- `multi_match` 新增 opaque `rule_set_key`、`rule_set_version` 和必要的冻结配置快照；只有 `(room.mode, key, version)` 一起才能解析规则。现有 race `scoring_mode` 保留为兼容投影。
+- Up migration 按现有 mode/scoring_mode 无损回填：race -> `(race, wins|points|placement, 1)`，旧 relay -> `(relay, legacy_wins, 1)`；矛盾或未知旧值直接失败并报告，不猜测默认值。
+- `multi_round`、现有 finish order/race score 继续由 race adapter 使用；MRX 前创建的双人 relay 历史由 legacy relay adapter 读取。不得把 `answer_id` 改为所有玩法可空来迁就新 relay。
+- `multi_relay_stage` 保存接力同步结算边界、状态、序号和 completion marker；它不进入 core repository。
+- `multi_relay_encounter` 保存独立答案、turn、winner、deadline 和 outcome；未来其他玩法使用自己的扩展表，不向此表塞字段。
+- `multi_relay_encounter_member` 以 `memberId` 关联 encounter，保存 side/seat snapshot；seat 不是鉴权键。
 - bye 记录在 stage participant 结算数据中，不创建伪 encounter 或虚拟玩家。
-- `multi_turn` 增加 `encounter_id`；唯一猜测约束改为 encounter 范围，允许不同棋盘猜同一角色。
+- `multi_relay_turn` 使用 relay encounter 外键和 encounter 范围唯一约束，允许不同棋盘猜同一角色；旧 `multi_turn.round_id` 不做破坏性改写。
 - `multi_relay_stage_player` 保存本轮 paired/bye、outcome、score before/delta/after 和生命转换；不扩张 race 专用的 `multi_round_player.status`。
-- `multi_relay_match_player_state` 保存 `healthy/near_death` 生命维度；公共 `multi_match_player.status` 仍只表达 `active/eliminated/left`，near-death 玩家仍为 active。
-- `multi_match_player.score` 允许 relay 淘汰后为负；race 仍由自身规则保证非负。
-- `multi_round.answer_id` 对 stage 容器改为可空，但 race/旧单棋盘 adapter 在领域层继续要求非空；N 人 relay 的答案只存在 encounter。
+- `multi_relay_match_player_state` 保存 relay score、`healthy/near_death` 生命维度和淘汰 stage。near-death 玩家在公共 roster 中仍为 active。
+- 不为 relay 负分放宽 race 当前 score 约束；公共 `multi_match_player` 只提供身份/roster 锚点，relay 权威分数由 relay projector 读取专属状态。
+- 只有 relay 一个消费者时不建立 `multi_stage_unit` 通用表。未来出现第二种 stage/unit 玩法后，另开 Issue 从两个实际模型中提取接口或只读投影。
 - 旧 `answer_id`、`turn_slot`、`winner_slot` 等列在首版保留供回滚读取，不在同一发布删除。
 
 ## 14. 事务与锁序
@@ -176,25 +183,25 @@ erDiagram
 建议锁序固定为：
 
 ```text
-relay action: encounter -> stage (仅尝试完成时) -> match -> room/event sequence
+relay action: relay encounter -> relay stage (仅尝试完成时) -> match -> room/event sequence
 lobby command: room -> members
-sweeper: encounter -> stage -> match -> room/event sequence
+sweeper: relay encounter -> relay stage -> match -> room/event sequence
 ```
 
-普通 guess/pass 只锁自己的 encounter，避免 4 张棋盘互相阻塞；写 room event sequence 时只短暂串行。完成 encounter 的事务在 stage 锁下查询其他 unit 的已提交状态：若仍有 active unit 就提交 encounter 结果；最后一个完成者负责一次性 stage settlement。不得为了聚合而反向锁住其他 encounter 行，否则并发完成会形成死锁。
+普通 guess/pass 只锁自己的 encounter，避免 4 张棋盘互相阻塞；写 room event sequence 时只短暂串行。完成 encounter 的事务在 stage 锁下查询其他 encounter 的已提交状态：若仍有 active encounter 就提交当前结果；最后一个完成者负责一次性 stage settlement。不得为了聚合而反向锁住其他 encounter 行，否则并发完成会形成死锁。
 
 所有动作有 encounter 范围幂等键；stage 结算有唯一 completion marker；事件与状态同事务写入。
 
 ## 15. 契约与 WS v3
 
-并行 encounter 无法由 v2 的单一 `RoundView.shared` 安全表达，因此 MRX-003 升级子协议为 `touhouflandre-multi.v3`。不长期维护 v2/v3 双协议：房间短期保留，发布按排空策略切换。
+并行 encounter 无法由 v2 的单一 `RoundView.shared` 安全表达，因此 MRX-003 升级子协议为 `touhouflandre-multi.v3`。v3 从当前已包含 race 淘汰开关、`points` 和 `placement` 的 v2 契约扩展，不能用 MRX 前的旧 main 契约覆盖这些字段。不长期维护 v2/v3 双协议：房间短期保留，发布按排空策略切换。
 
 v3 的权威结构使用带 ID 的数组并稳定排序，不使用动态 JSON key：
 
-- match 投影包含冻结的 `scoringMode`、`rosterSize`、`plannedStages`/终止策略和 standings；
+- match core 投影包含冻结的 `ruleSetRef`、`rosterSize` 和 mode fragment；relay fragment 包含 `plannedStages`/终止策略和 standings；race 兼容投影继续返回 `scoringMode`；
 - current stage 包含 participant states 与 `encounters[]` 摘要；
 - encounter 详情包含参与者、状态、turn、deadline 和可见 rows；
-- `encounter.*` 事件只推进一张棋盘；`stage.ended` 承载原子积分变更、淘汰/濒死/轮空与下一阶段信息；
+- `relay.encounter.*` 事件只推进一张棋盘；`relay.stage.ended` 承载原子积分变更、淘汰/濒死/轮空与下一阶段信息；
 - action API 显式使用 `stageIndex + encounterId`，并返回稳定错误 `ENCOUNTER_NOT_FOUND`、`NOT_ENCOUNTER_PLAYER`、`NOT_YOUR_TURN`、`ENCOUNTER_ENDED`；
 - game sequence、cursor frame、`sync.complete` 和 snapshot 缺口修复沿用 v2 已验证语义。
 
@@ -232,4 +239,4 @@ Web 始终每页挂载一张棋盘。棋盘左上角固定显示 `{displayName}(
 - `MULTI_RELAY_ELIMINATION_ENABLED`：独立关闭新淘汰赛创建，不影响多人非淘汰或既有两人房间；
 - `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED`：Web 是否允许打开淘汰开关。
 
-指标至少区分 mode/scoring mode，记录 active encounters、stage duration、encounter duration、stage barrier wait、turn timeout、pairing failure、pool-too-small、settlement retry、WS payload size 和 history latency。日志允许记录 room/match/stage/encounter 的内部 ID，但不得记录 guest token、未揭示 answer 或聊天正文。
+指标至少区分 `mode + ruleSetKey + ruleSetVersion`，race 可额外保留 `scoringMode` 兼容标签；记录 active encounters、stage duration、encounter duration、stage barrier wait、turn timeout、pairing failure、pool-too-small、settlement retry、WS payload size 和 history latency。日志允许记录 room/match/stage/encounter 的内部 ID，但不得记录 guest token、未揭示 answer 或聊天正文。

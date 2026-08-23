@@ -9,11 +9,11 @@
 
 ## 要解决的问题
 
-淘汰赛不是现有 race placement 的变体：它从 10 分开始、负分触发一次濒死保护、扣分随 stage 增长，并可能在一次结算后留下奇数玩家或同时淘汰所有人。需要独立 scoring policy，不能把状态转换散落到 encounter 或 Web。
+淘汰赛不是现有 race `placement` 的变体：它从 10 分开始、负分触发一次濒死保护、扣分随 stage 增长，并可能在一次结算后留下奇数玩家或同时淘汰所有人。需要 `(relay, elimination, 1)` 独立 policy 和 relay-owned 状态，不能复用 `RaceRules` 或把转换散落到 encounter、共享 core 或 Web。
 
 ## 要做到什么程度
 
-- 实现 `EliminationPolicy` 纯函数，输入 stage index、旧积分/生命状态和 outcome，输出积分、状态、淘汰 stage 与 match 终止。
+- 实现 relay-owned `EliminationPolicy` 纯函数，输入 stage index、旧积分/生命状态和 outcome，输出积分、状态、淘汰 stage 与 match 终止。
 - 初始 10 分、上限 10；胜 +1、负 `-n`、平各 `-floor(n/2)`、bye 0。
 - 精确实现首次 `<0` 钳制为 0 并把 relay `lifeState` 改为 `near_death`；公共参与状态仍为 active。near-death 不再加分，下一次真实负分后淘汰。
 - 批量结算允许 0..N 人同时淘汰；结算后 active `<=1` 即结束，不创建空 stage。
@@ -25,13 +25,14 @@
 ## 属于本 Issue
 
 - 计分、濒死状态机、淘汰与终止纯函数。
-- match/stage player 持久化、约束调整、stage settlement 与排名。
+- relay match/stage player 持久化、约束、stage settlement 与排名。
 - round/stage event、snapshot standings 和服务端规则/并发测试。
 - 多人降为 2 人后继续淘汰 policy 的测试。
 
 ## 不属于本 Issue
 
 - 不改变 2 人 relay 的 BO 规则。
+- 不修改 race placement 的初始分、淘汰算法、3N 上限、排名或公开 `scoringMode`。
 - 不按积分或 seat 打破存留轮数并列。
 - 不增加多次复活、回血道具、轮空加分或房主可调常量。
 - 不处理主动离场/断线宽限；MRX-009 负责把异常转为统一 status/outcome。
@@ -46,7 +47,8 @@
 - 一轮淘汰多人、仅剩一人、全部淘汰和并列 survival ranking 均有表驱动测试。
 - 最终唯一 survivor 为 rank 1；全部同时淘汰时允许并列第一且 `winnerMemberId=null`。
 - settlement 重试不会重复濒死、重复扣分或修改已经冻结的 bye/pairing。
+- race placement 与 relay elimination 可在同一 binary 独立注册、独立测试，任一 policy 的常量变化不会改变另一方 fixture。
 
 ## 可能涉及的代码
 
-`apps/api/internal/multi/{relay_elimination.go,stage_coordinator.go,pairing.go}`（可新建/调整）、`apps/api/sql/queries/multi.sql`、相关 migration、`contracts/openapi/schemas/multi-match.yaml`、`contracts/ws/protocol.yaml`、`packages/shared/src/multi.ts`、server/domain tests。
+relay mode package 下的 `elimination`、stage settlement 与 pairing adapter、relay SQL queries、相关 `0015+` migration、mode-owned contract payload、`packages/shared/src/multi.ts` 的 relay union、server/domain tests。

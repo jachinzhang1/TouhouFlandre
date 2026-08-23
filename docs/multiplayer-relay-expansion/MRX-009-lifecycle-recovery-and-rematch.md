@@ -15,11 +15,12 @@
 
 - 短暂断线只更新 member connection state，计时器继续；宽限期内恢复相同 encounter/turn。
 - 主动 leave 或宽限逾期在锁定所属 encounter 后处理：未结束则该玩家负、对手胜；双方同时永久离场则 draw。
-- `left` 从后续配对移除。points 模式继续到 planned stages；奇数 active 使用 bye，不足 2 人提前结束。elimination 模式按当前 stage 记录存留终止但不触发濒死保护。
+- `left` 从后续配对移除。relay `fixed_points` 继续到 planned stages；奇数 active 使用 bye，不足 2 人提前结束。relay `elimination` 按当前 stage 记录存留终止但不触发濒死保护。
 - 批量处理同一 `now` 到期成员，结果不能依赖数据库遍历顺序。
-- 服务启动恢复/优雅排空扫描活动 encounter 和未完成 settlement；能恢复则继续，不能恢复则发布明确 `server_restart` 终态。
+- relay `RecoveryDriver` 扫描活动 encounter 和未完成 settlement；能恢复则继续，不能恢复则返回明确 `server_restart` 领域终态，由共享事件出口发布。
 - rematch 仍要求原 roster 完整、connected 且全员确认；淘汰者可确认，left 成员阻止；新 match 全量重置积分、生命状态、pairing 和答案。
 - finished retention、closed cleanup、chat role 和 spectator capability 沿用现有生命周期。
+- core sweeper 只调用已注册模式的 recovery capability，不读取 relay stage/turn 字段；race recovery 保持原实现。
 
 ## 属于本 Issue
 
@@ -44,7 +45,8 @@
 - 重启后 pairing、answer、turn、积分和事件 sequence 不重建、不重复；无法恢复时客户端收到明确终态。
 - 淘汰玩家可以 rematch，left 玩家使 rematch 稳定返回 `REMATCH_NOT_AVAILABLE`；新 match 状态完全重置。
 - race 与双人 relay 的 leave/disconnect/rematch 基线无回归。
+- registry 未注册 relay recovery 时不会扫描 relay 表；未知 rule set version 不得用当前默认规则恢复。
 
 ## 可能涉及的代码
 
-`apps/api/internal/multi/{member.go,sweeper.go,restart.go,forfeit.go,stage_coordinator.go}`、`apps/api/internal/handler/{rooms.go,matches.go}`、`apps/api/sql/queries/multi.sql`、`contracts/openapi/schemas/multi-*.yaml`、`contracts/ws/protocol.yaml`、server recovery/concurrency tests。
+共享 room/member lifecycle 与 mode recovery 调用点、relay recovery/forfeit/coordinator、relay SQL queries、mode-owned OpenAPI/WS payload、server recovery/concurrency tests；race recovery 仅做回归或必要的 adapter 调整。

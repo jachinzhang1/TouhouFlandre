@@ -15,17 +15,17 @@
 
 - 为每个 stage plan 的 encounter 从题库范围独立抽题，同 stage 无放回；答案池不足时原子失败，不留下半个 stage。
 - encounter 使用 `memberId`/side 做权威行动者，seat 只作展示；初始先手与后续换手由纯函数决定。
-- guess/pass/forfeit 端点显式定位 `stageIndex + encounterId`，校验成员属于该 encounter 且当前有 capability。
+- guess/pass/forfeit 端点显式定位 `stageIndex + encounterId`，transport 只负责路由，relay command handler 校验成员属于该 encounter 且当前有 capability。
 - turn、重复猜测、幂等、每人最大轮次、每人 2 次空过、turn timeout 和 encounter deadline 都在 encounter 范围结算。
 - 正确、违规空过、forfeit、双方耗尽和整局超时只产出 `EncounterOutcome`；由 MRX-005 屏障决定何时结算 stage。
-- 所有 relay 人数共用此 encounter 引擎；N=2 配合 `legacy_wins` policy 后，胜负、先手、空过、超时和 BO 结果与现有实现一致。
+- 所有新 relay match 共用此 encounter 引擎；N=2 配合 `(relay, legacy_wins, 1)` 后，胜负、先手、空过、超时和 BO 结果与现有实现一致。MRX 前历史仍由 legacy storage adapter 读取。
 - 每个增量事件只携带一张棋盘的变化，不广播整个 stage；进行中 payload 不包含 answer。
 
 ## 属于本 Issue
 
-- relay encounter domain、handler/action routing、repository queries、sweeper timeout 和事件源契约。
+- relay encounter domain、command routing、relay-owned repository queries、recovery timeout 和事件源契约。
 - 答案选择、题库版本/范围绑定、完整反馈水合与服务端 capability 校验。
-- `encounter.started/turn.guess/turn.pass/turn.timeout/ended` 事件与 snapshot 当前 encounter 数据。
+- `relay.encounter.started/turn.guess/turn.pass/turn.timeout/ended` 事件与 snapshot 当前 encounter 数据。
 - 双人 relay adapter 切到新 encounter engine 所需的兼容测试。
 - 1..4 张棋盘同时提交、同角色跨棋盘猜测和幂等竞争测试。
 
@@ -34,6 +34,7 @@
 - 不给多人 outcome 加减积分或生成最终排名。
 - 不实现轮空选择、离场恢复或历史分页。
 - 不修改 race 猜测端点、race answer 或匿名矩阵。
+- 不让共享 core 读取 `turnMemberId` 或 encounter outcome 来推进 match。
 - 不实现 Web 棋盘；测试可使用 API/WS client fixture。
 
 ## 验收标准
@@ -48,4 +49,4 @@
 
 ## 可能涉及的代码
 
-`apps/api/internal/multi/{relay_turns.go,relay_projection.go,match.go,characters.go,sweeper.go}`、`apps/api/internal/handler/{matches.go,round_actions.go,mode_guess.go,snapshot.go}`、`apps/api/sql/queries/multi.sql`、`contracts/openapi/paths/`、`contracts/ws/protocol.yaml`、server integration tests。
+relay mode package 下的 encounter/turn/question/recovery 实现、transport command adapter、relay SQL queries、`contracts/openapi/paths/`、`contracts/ws/protocol.yaml`、server integration tests；race 文件只允许必要的兼容调用点调整。
