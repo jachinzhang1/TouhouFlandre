@@ -3,6 +3,7 @@
 **类型**：重构/架构 Issue  
 **优先级**：P0  
 **依赖**：MRX-001  
+**状态**：已完成
 **建议标签**：`type:refactor` `area:api` `area:multi` `area:test`
 
 **决策依据**：[模式内核边界](./decisions.md#2-模式内核边界)、[兼容优先的底层改造](./decisions.md#1-兼容优先的底层改造)、[多人模式模块边界](./architecture.md)
@@ -50,3 +51,26 @@
 ## 可能涉及的代码
 
 `apps/api/internal/multi/{modes.go,match.go,round_completion.go,race_*.go,relay_turns.go,projection.go,sweeper.go}`、`apps/api/internal/handler/{mode_guess.go,matches.go,round_actions.go,snapshot.go}`、相关 server tests。
+
+## 实施与验收记录（2026-08-23）
+
+本 Issue 已建立按 capability 独立注册的多人模式内核，并把当前 race 与双人 relay 经兼容 adapter 接入。交付保持数据库 schema、迁移尾号 `0014`、REST/OpenAPI、WS v2、事件 payload、stats v5 与 UI 源码不变；production registry 只注册 `race/wins@1`、`race/points@1`、`race/placement@1` 和 `relay/legacy_wins@1`，没有提前实现 MRX-003 及后续规则。
+
+主要交付如下：
+
+- `apps/api/internal/multi/core` 提供 `RuleSetRef`、稳定 typed domain error、`Clock`、`RandomSource`、共享 command context/result，以及 `RoomPolicy`、`MatchFactory`、`CommandHandler`、`CompletionDriver`、`SnapshotProjector`、`HistoryReader`、`RecoveryDriver` 的独立 registry。生产随机源使用 `crypto/rand` 播种，测试可注入固定 clock/random。
+- `apps/api/internal/multi/{race,relay}` 拥有模式规则集标识，`race/adapter` 继续组合既有 `RaceRules`，`relay/adapter` 保持双人 turn/pass/timeout/BO 兼容；`multi/assembly` 是唯一同时注册两种具体模式的生产组合根，并提供 race-only、relay-only 与 full 装配。
+- room create/settings/ready/rematch、match/round 创建、guess/pass/forfeit、离场/timeout/sweeper、restart recovery、snapshot/history 和 WS replay/publish 均先解析完整模式能力。未知或矛盾的持久化 mode/scoring state fail closed；集成测试验证 `relay + points` 返回 `500 + INTERNAL` 且不写 event/turn。
+- `apps/api/cmd/check-multiplayer-boundaries` 使用 Go AST 阻止 core 导入具体模式、race/relay 相互导入，以及 core/mode/adapter 直接依赖 HTTP、OpenAPI 或 hub。根脚本 `pnpm check:multiplayer-boundaries`、CI 与 MRX-013 发布闸门使用同一入口。
+- 新增 partial fake mode、未来 relay capability probe、重复注册、缺失/未知 RuleSetRef、固定时钟/随机、race-only/relay-only/full assembly、非法持久化状态与随机端口测试。现有 MRX-001 fixture、race/relay sweeper、restart、snapshot、WS replay/broadcast 和 stats v1-v5 回归保持通过。
+
+WSL 实测结果：
+
+- `pnpm check:multiplayer-boundaries`、`pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol`、`pnpm typecheck` 全部通过；OpenAPI 检查仍为 39 个 YAML、38 个本地引用、无孤儿。
+- `pnpm test` 通过：shared 10、data 26、Web 152，共 188 项。`go vet ./...` 与 `task test:go` 全部通过；最终 server 集成套件 30.212s，migration 套件通过。
+- `task gen` 使用临时、与 CI 同版本的 `sqlc v1.31.1` 完整通过，临时工具随后移除；Windows Git 确认 `apps/api/internal/generated`、`apps/web/src/generated` 零漂移。`pnpm --filter @touhouflandre/web build` 通过。
+- 在连接一次性 `touhouflandre_test` 的当前 API（端口 `4011`、高 join 限流）上，以 `API_PROXY_TARGET=http://127.0.0.1:4011 pnpm --filter @touhouflandre/web test:e2e e2e/multiplayer.spec.ts --workers=4` 完成 desktop/Pixel 7 回归，最终 34/34 通过，58.5s。
+
+执行中发现 MRX-001 虽记录视觉基线已更新，但提交 `de66960` 删除了对应 10 张 Linux snapshot，导致原始 E2E 命令首次为 26 通过、8 个用例仅因 `snapshot doesn't exist` 失败。逐张检查本轮生成的 desktop/Pixel 7 图片，确认动态字段遮罩、匿名棋盘、淘汰排名、观战分页、聊天布局、无横向溢出和无答案泄露后，原始命令复跑为 34/34；这些图片只作为本地测试产物保留，由 `apps/web/.gitignore` 排除，不进入 Git 版本管理。没有修改 Web 组件或用户行为。
+
+本 Issue 没有新增迁移、执行 Down、修改开发/生产数据或改变 wire。可单独部署；应用回滚只需部署上一 binary，数据库保持向后可读。开发 PostgreSQL 保留运行，临时 `4011` API 和 Playwright Web 服务已停止。偏离原计划的唯一事项是本地生成并检查上述缺失视觉 snapshot；relay stage/encounter、持久化 RuleSetRef、WS v3、新计分、容量与 UI 仍明确留给 MRX-003 及后续 Issue。
