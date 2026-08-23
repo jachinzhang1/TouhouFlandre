@@ -8,6 +8,287 @@ ScoringMode:
     - points
     - placement
 
+RuleSetRef:
+  type: object
+  description: 冻结的模式规则集引用；mode、key、version 必须共同解析。
+  required:
+    - mode
+    - key
+    - version
+  properties:
+    mode:
+      $ref: "./multi-common.yaml#/MultiplayerMode"
+    key:
+      type: string
+      minLength: 1
+    version:
+      type: integer
+      minimum: 1
+
+RelayLifeState:
+  type: string
+  enum:
+    - healthy
+    - near_death
+
+RelayStandingView:
+  type: object
+  description: 接力专属比分；淘汰后的分数允许为负，不能与 race MemberScoreView 混用。
+  required:
+    - memberId
+    - seat
+    - score
+    - status
+    - lifeState
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    score:
+      type: integer
+    status:
+      $ref: "#/MatchPlayerStatus"
+    lifeState:
+      $ref: "#/RelayLifeState"
+    eliminatedStage:
+      type: integer
+      minimum: 1
+
+RelayEncounterSummary:
+  type: object
+  required:
+    - encounterId
+    - encounterIndex
+    - status
+    - members
+  properties:
+    encounterId:
+      type: string
+    encounterIndex:
+      type: integer
+      minimum: 1
+      maximum: 4
+    status:
+      type: string
+      enum: [planned, countdown, playing, ended]
+    members:
+      type: array
+      minItems: 2
+      maxItems: 2
+      items:
+        $ref: "#/RelayEncounterMemberView"
+
+RelayEncounterMemberView:
+  type: object
+  required:
+    - memberId
+    - seat
+    - side
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    side:
+      type: integer
+      enum: [1, 2]
+
+RelayEncounterView:
+  type: object
+  description: |
+    一张 relay 棋盘的可见状态。进行中结构没有 answer 字段；终态答案由后续
+    history/projector 契约以终态专用响应扩展，避免误泄露。
+  required:
+    - encounterId
+    - encounterIndex
+    - status
+    - members
+    - rows
+  properties:
+    encounterId:
+      type: string
+    encounterIndex:
+      type: integer
+      minimum: 1
+      maximum: 4
+    status:
+      type: string
+      enum: [planned, countdown, playing, ended]
+    members:
+      type: array
+      minItems: 2
+      maxItems: 2
+      items:
+        $ref: "#/RelayEncounterMemberView"
+    startsAt:
+      type: string
+      format: date-time
+    deadline:
+      type: string
+      format: date-time
+    turnMemberId:
+      type: string
+    turnSeat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    turnDeadline:
+      type: string
+      format: date-time
+    rows:
+      type: array
+      items:
+        $ref: "./multi-round.yaml#/RelayTurnRow"
+
+RelayEncounterHistoryView:
+  description: 终态 encounter 历史；只有该终态专用结构揭示答案。
+  allOf:
+    - $ref: "#/RelayEncounterView"
+    - type: object
+      required:
+        - outcome
+        - winnerMemberId
+        - answer
+      properties:
+        status:
+          type: string
+          enum: [ended]
+        outcome:
+          type: string
+          enum: [win, loss, draw, forfeit, timeout]
+        winnerMemberId:
+          type: string
+          nullable: true
+        answer:
+          $ref: "./character.yaml#/Character"
+
+RelayStageSettlementView:
+  type: object
+  required:
+    - memberId
+    - assignment
+    - outcome
+    - scoreBefore
+    - scoreDelta
+    - scoreAfter
+    - lifeBefore
+    - lifeAfter
+  properties:
+    memberId:
+      type: string
+    encounterId:
+      type: string
+    assignment:
+      type: string
+      enum: [paired, bye]
+    outcome:
+      type: string
+      enum: [win, loss, draw, bye]
+    scoreBefore:
+      type: integer
+    scoreDelta:
+      type: integer
+    scoreAfter:
+      type: integer
+    lifeBefore:
+      $ref: "#/RelayLifeState"
+    lifeAfter:
+      $ref: "#/RelayLifeState"
+    eliminatedStage:
+      type: integer
+      minimum: 1
+
+RelayStageView:
+  type: object
+  required:
+    - stageId
+    - stageIndex
+    - status
+    - encounters
+  properties:
+    stageId:
+      type: string
+    stageIndex:
+      type: integer
+      minimum: 1
+    status:
+      type: string
+      enum: [planned, playing, settling, ended]
+    encounters:
+      type: array
+      minItems: 1
+      maxItems: 4
+      items:
+        $ref: "#/RelayEncounterSummary"
+    byeMemberId:
+      type: string
+    settlement:
+      type: array
+      items:
+        $ref: "#/RelayStageSettlementView"
+    encounterDetails:
+      type: array
+      description: 当前 stage 可见棋盘；按 encounterIndex、成员 side/seat 稳定排序。
+      minItems: 1
+      maxItems: 4
+      items:
+        $ref: "#/RelayEncounterView"
+
+RelayStageHistoryView:
+  type: object
+  required:
+    - stageId
+    - stageIndex
+    - status
+    - encounters
+    - settlement
+  properties:
+    stageId:
+      type: string
+    stageIndex:
+      type: integer
+      minimum: 1
+    status:
+      type: string
+      enum: [ended]
+    encounters:
+      type: array
+      minItems: 1
+      maxItems: 4
+      items:
+        $ref: "#/RelayEncounterHistoryView"
+    byeMemberId:
+      type: string
+    settlement:
+      type: array
+      items:
+        $ref: "#/RelayStageSettlementView"
+
+RelayMatchFragment:
+  type: object
+  required:
+    - ruleSetRef
+    - standings
+  properties:
+    ruleSetRef:
+      $ref: "#/RuleSetRef"
+    standings:
+      type: array
+      items:
+        $ref: "#/RelayStandingView"
+    currentStage:
+      $ref: "#/RelayStageView"
+    historySummary:
+      type: array
+      description: 紧凑历史摘要；完整终态棋盘由 history API 按需加载。
+      items:
+        $ref: "#/RelayStageView"
+
 MatchPlayerStatus:
   type: string
   enum:
@@ -98,6 +379,7 @@ MatchView:
     - maxRounds
     - rematchReady
     - catalogVersion
+    - ruleSetRef
   properties:
     matchIndex:
       type: integer
@@ -136,3 +418,8 @@ MatchView:
       description: 本场绑定的题库版本。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
+    ruleSetRef:
+      $ref: "#/RuleSetRef"
+    relay:
+      description: mode=relay 时的 relay-owned fragment；race 不返回此字段。
+      $ref: "#/RelayMatchFragment"

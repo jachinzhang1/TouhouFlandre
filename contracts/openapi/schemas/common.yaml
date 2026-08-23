@@ -44,5 +44,10 @@ ErrorResponse:
         - CHAT_IDEMPOTENCY_CONFLICT
         - CHAT_CURSOR_AHEAD
         - CHAT_RESYNC_REQUIRED
+        - FEATURE_DISABLED
+        - ENCOUNTER_NOT_FOUND
+        - NOT_ENCOUNTER_PLAYER
+        - ENCOUNTER_ENDED
+        - IDEMPOTENCY_CONFLICT
     error:
       type: string

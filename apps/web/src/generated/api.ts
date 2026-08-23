@@ -414,7 +414,7 @@ export interface paths {
         };
         /**
          * WebSocket 事件通道
-         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v2；
+         * @description WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v3；
          *     建连后第一条消息必须是 hello{token, lastGameSequence}（鉴权前不收发房间事件）。
          *     事件协议与有效/无效示例见 contracts/ws/protocol.yaml。
          */
@@ -515,6 +515,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 接力 encounter 动作
+         * @description 成员令牌鉴权。目标显式携带 stageIndex 与 encounterId；MRX-003 阶段服务端返回
+         *     FEATURE_DISABLED，不创建 turn、不改变 stage，也不发布事件。
+         */
+        post: operations["rooms_relayEncounterAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rooms/{roomId}/matches/{matchIndex}/stages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 接力 stage 历史
+         * @description 成员令牌鉴权。响应形状预留 stage 摘要与终态 encounter 详情；MRX-003 阶段返回
+         *     FEATURE_DISABLED，不读取 relay 表。
+         */
+        get: operations["rooms_listRelayStageHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -522,7 +564,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -983,6 +1025,9 @@ export interface components {
             /** @description 本场绑定的题库版本。 */
             catalogVersion: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
+            ruleSetRef: components["schemas"]["RuleSetRef"];
+            /** @description mode=relay 时的 relay-owned fragment；race 不返回此字段。 */
+            relay?: components["schemas"]["RelayMatchFragment"];
         };
         /**
          * @description 逐观察者投影的单局视图：self 为完整棋盘（同单人，含角色名/标签/值），
@@ -1130,6 +1175,88 @@ export interface components {
             seat: number;
             ready: boolean;
         };
+        /** @description 冻结的模式规则集引用；mode、key、version 必须共同解析。 */
+        RuleSetRef: {
+            mode: components["schemas"]["MultiplayerMode"];
+            key: string;
+            version: number;
+        };
+        /** @enum {string} */
+        RelayLifeState: "healthy" | "near_death";
+        /** @description 接力专属比分；淘汰后的分数允许为负，不能与 race MemberScoreView 混用。 */
+        RelayStandingView: {
+            memberId: string;
+            seat: number;
+            score: number;
+            status: components["schemas"]["MatchPlayerStatus"];
+            lifeState: components["schemas"]["RelayLifeState"];
+            eliminatedStage?: number;
+        };
+        RelayEncounterMemberView: {
+            memberId: string;
+            seat: number;
+            /** @enum {integer} */
+            side: 1 | 2;
+        };
+        RelayEncounterSummary: {
+            encounterId: string;
+            encounterIndex: number;
+            /** @enum {string} */
+            status: "planned" | "countdown" | "playing" | "ended";
+            members: components["schemas"]["RelayEncounterMemberView"][];
+        };
+        RelayStageSettlementView: {
+            memberId: string;
+            encounterId?: string;
+            /** @enum {string} */
+            assignment: "paired" | "bye";
+            /** @enum {string} */
+            outcome: "win" | "loss" | "draw" | "bye";
+            scoreBefore: number;
+            scoreDelta: number;
+            scoreAfter: number;
+            lifeBefore: components["schemas"]["RelayLifeState"];
+            lifeAfter: components["schemas"]["RelayLifeState"];
+            eliminatedStage?: number;
+        };
+        /**
+         * @description 一张 relay 棋盘的可见状态。进行中结构没有 answer 字段；终态答案由后续
+         *     history/projector 契约以终态专用响应扩展，避免误泄露。
+         */
+        RelayEncounterView: {
+            encounterId: string;
+            encounterIndex: number;
+            /** @enum {string} */
+            status: "planned" | "countdown" | "playing" | "ended";
+            members: components["schemas"]["RelayEncounterMemberView"][];
+            /** Format: date-time */
+            startsAt?: string;
+            /** Format: date-time */
+            deadline?: string;
+            turnMemberId?: string;
+            turnSeat?: number;
+            /** Format: date-time */
+            turnDeadline?: string;
+            rows: components["schemas"]["RelayTurnRow"][];
+        };
+        RelayStageView: {
+            stageId: string;
+            stageIndex: number;
+            /** @enum {string} */
+            status: "planned" | "playing" | "settling" | "ended";
+            encounters: components["schemas"]["RelayEncounterSummary"][];
+            byeMemberId?: string;
+            settlement?: components["schemas"]["RelayStageSettlementView"][];
+            /** @description 当前 stage 可见棋盘；按 encounterIndex、成员 side/seat 稳定排序。 */
+            encounterDetails?: components["schemas"]["RelayEncounterView"][];
+        };
+        RelayMatchFragment: {
+            ruleSetRef: components["schemas"]["RuleSetRef"];
+            standings: components["schemas"]["RelayStandingView"][];
+            currentStage?: components["schemas"]["RelayStageView"];
+            /** @description 紧凑历史摘要；完整终态棋盘由 history API 按需加载。 */
+            historySummary?: components["schemas"]["RelayStageView"][];
+        };
         /** @enum {string} */
         RaceRoundParticipantStatus: "active" | "correct" | "forfeited" | "exhausted" | "timed_out";
         OpponentBoardView: {
@@ -1148,6 +1275,37 @@ export interface components {
         ChatKind: "text" | "emoji";
         /** @enum {string} */
         ChatChannel: "room" | "spectator";
+        RelayEncounterActionRequest: {
+            /** @enum {string} */
+            action: "guess" | "pass" | "forfeit";
+            /** @description action=guess 时必填；进行中 answer 不会出现在响应中。 */
+            guessId?: string;
+            idempotencyKey: string;
+        };
+        RelayEncounterActionResponse: {
+            stageIndex: number;
+            encounterId: string;
+            accepted: boolean;
+            featureDisabled?: boolean;
+        };
+        /** @description 终态 encounter 历史；只有该终态专用结构揭示答案。 */
+        RelayEncounterHistoryView: components["schemas"]["RelayEncounterView"] & {
+            /** @enum {string} */
+            status?: "ended";
+            /** @enum {string} */
+            outcome: "win" | "loss" | "draw" | "forfeit" | "timeout";
+            winnerMemberId: string | null;
+            answer: components["schemas"]["Character"];
+        };
+        RelayStageHistoryView: {
+            stageId: string;
+            stageIndex: number;
+            /** @enum {string} */
+            status: "ended";
+            encounters: components["schemas"]["RelayEncounterHistoryView"][];
+            byeMemberId?: string;
+            settlement: components["schemas"]["RelayStageSettlementView"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -2580,6 +2738,116 @@ export interface operations {
             };
             /** @description 房间/局/轮次状态不允许空过（ROOM_CLOSED / ROUND_NOT_ACTIVE / NOT_YOUR_TURN / TURN_EXPIRED） */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_relayEncounterAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: string;
+                stageIndex: number;
+                encounterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelayEncounterActionRequest"];
+            };
+        };
+        responses: {
+            /** @description 预留的动作响应 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelayEncounterActionResponse"];
+                };
+            };
+            /** @description 令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description encounter 不存在或不属于目标 stage */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 非 encounter 玩家、非当前 turn、encounter 已结束或幂等冲突 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description relay encounter 引擎尚未启用 */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rooms_listRelayStageHistory: {
+        parameters: {
+            query?: {
+                after?: string;
+            };
+            header?: never;
+            path: {
+                roomId: string;
+                matchIndex: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 预留的 stage 历史响应 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stages: components["schemas"]["RelayStageHistoryView"][];
+                        nextCursor?: string;
+                    };
+                };
+            };
+            /** @description 令牌缺失或无效 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description relay history 尚未启用 */
+            501: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -79,6 +79,10 @@ paths:
     $ref: ./paths/room-round-forfeit.yaml
   /api/rooms/{roomId}/rounds/{roundIndex}/pass:
     $ref: ./paths/room-round-pass.yaml
+  /api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions:
+    $ref: ./paths/room-relay-encounter-action.yaml
+  /api/rooms/{roomId}/matches/{matchIndex}/stages:
+    $ref: ./paths/room-relay-history.yaml
 components:
   schemas:
     ErrorResponse:

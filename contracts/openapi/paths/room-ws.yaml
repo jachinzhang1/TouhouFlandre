@@ -6,7 +6,7 @@ get:
     - rooms
   summary: WebSocket 事件通道
   description: |
-    WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v2；
+    WebSocket 升级：校验 Origin ∈ WEB_ORIGINS 与子协议 touhouflandre-multi.v3；
     建连后第一条消息必须是 hello{token, lastGameSequence}（鉴权前不收发房间事件）。
     事件协议与有效/无效示例见 contracts/ws/protocol.yaml。
   parameters:

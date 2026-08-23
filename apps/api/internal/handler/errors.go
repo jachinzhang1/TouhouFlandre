@@ -54,6 +54,7 @@ const (
 	codeChatIdemConflict    openapi.ErrorResponseCode = "CHAT_IDEMPOTENCY_CONFLICT"
 	codeChatCursorAhead     openapi.ErrorResponseCode = "CHAT_CURSOR_AHEAD"
 	codeChatResyncRequired  openapi.ErrorResponseCode = "CHAT_RESYNC_REQUIRED"
+	codeFeatureDisabled     openapi.ErrorResponseCode = "FEATURE_DISABLED"
 )
 
 func internalError(err error) *ApiError {

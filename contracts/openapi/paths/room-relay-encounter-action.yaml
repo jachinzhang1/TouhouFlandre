@@ -1,0 +1,66 @@
+# POST /api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions
+# MRX-003 只建立契约骨架；实际动作由 MRX-006 接管。
+post:
+  operationId: rooms_relayEncounterAction
+  tags:
+    - rooms
+  summary: 接力 encounter 动作
+  description: |
+    成员令牌鉴权。目标显式携带 stageIndex 与 encounterId；MRX-003 阶段服务端返回
+    FEATURE_DISABLED，不创建 turn、不改变 stage，也不发布事件。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: stageIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    - name: encounterId
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/multi-round.yaml#/RelayEncounterActionRequest"
+  responses:
+    "200":
+      description: 预留的动作响应
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-round.yaml#/RelayEncounterActionResponse"
+    "401":
+      description: 令牌缺失或无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: encounter 不存在或不属于目标 stage
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 非 encounter 玩家、非当前 turn、encounter 已结束或幂等冲突
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "501":
+      description: relay encounter 引擎尚未启用
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

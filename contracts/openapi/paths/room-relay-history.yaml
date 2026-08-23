@@ -1,0 +1,56 @@
+# GET /api/rooms/{roomId}/matches/{matchIndex}/stages
+# MRX-003 只建立 history 契约骨架；完整投影与分页由 MRX-011 接管。
+get:
+  operationId: rooms_listRelayStageHistory
+  tags:
+    - rooms
+  summary: 接力 stage 历史
+  description: |
+    成员令牌鉴权。响应形状预留 stage 摘要与终态 encounter 详情；MRX-003 阶段返回
+    FEATURE_DISABLED，不读取 relay 表。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: matchIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+    - name: after
+      in: query
+      required: false
+      schema:
+        type: string
+  responses:
+    "200":
+      description: 预留的 stage 历史响应
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [stages]
+            properties:
+              stages:
+                type: array
+                items:
+                  $ref: "../schemas/multi-match.yaml#/RelayStageHistoryView"
+              nextCursor:
+                type: string
+    "401":
+      description: 令牌缺失或无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "501":
+      description: relay history 尚未启用
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
