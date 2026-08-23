@@ -154,6 +154,7 @@ type Querier interface {
 	UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error
 	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)
+	UpdateRoomRaceEliminationEnabled(ctx context.Context, arg UpdateRoomRaceEliminationEnabledParams) (MultiRoom, error)
 	UpdateRoomStatus(ctx context.Context, arg UpdateRoomStatusParams) (MultiRoom, error)
 	UpdateRoundTurn(ctx context.Context, arg UpdateRoundTurnParams) (MultiRound, error)
 	UpdateSessionGuess(ctx context.Context, arg UpdateSessionGuessParams) (GameSession, error)

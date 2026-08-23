@@ -5,24 +5,54 @@ import (
 	"testing"
 )
 
-func TestTargetWinsAndMaxRounds(t *testing.T) {
+func TestTargetWinsAndRoundCaps(t *testing.T) {
 	cases := []struct {
-		format    RoomFormat
-		target    int
-		maxRounds int
+		format       RoomFormat
+		targetWins   int
+		totalRounds   int
+		placementCap int
 	}{
-		{RoomFormatBO1, 1, 3},
-		{RoomFormatBO3, 2, 9},
-		{RoomFormatBO5, 3, 15},
-		{RoomFormatBO7, 4, 21},
+		{RoomFormatBO1, 1, 1, 3},
+		{RoomFormatBO3, 2, 3, 9},
+		{RoomFormatBO5, 3, 5, 15},
+		{RoomFormatBO7, 4, 7, 21},
 	}
 	for _, c := range cases {
-		if got := TargetWins(c.format); got != c.target {
-			t.Errorf("TargetWins(%s) = %d, want %d", c.format, got, c.target)
+		if got := TargetWins(c.format); got != c.targetWins {
+			t.Errorf("TargetWins(%s) = %d, want %d", c.format, got, c.targetWins)
 		}
-		if got := MaxRounds(c.format, 3); got != c.maxRounds {
-			t.Errorf("MaxRounds(%s, 3) = %d, want %d", c.format, got, c.maxRounds)
+		if got := TotalRounds(c.format); got != c.totalRounds {
+			t.Errorf("TotalRounds(%s) = %d, want %d", c.format, got, c.totalRounds)
 		}
+		if got := MaxRounds(c.format, 3); got != c.placementCap {
+			t.Errorf("MaxRounds(%s, 3) = %d, want %d", c.format, got, c.placementCap)
+		}
+	}
+}
+
+func TestFrozenRaceScoringModeAndRoundCaps(t *testing.T) {
+	cases := []struct {
+		name            string
+		rosterSize      int
+		elimination     bool
+		format          RoomFormat
+		wantMode        ScoringMode
+		wantMaxRounds   int
+	}{
+		{name: "two player ignores toggle", rosterSize: 2, elimination: true, format: RoomFormatBO5, wantMode: ScoringModeWins, wantMaxRounds: 5},
+		{name: "three player points", rosterSize: 3, elimination: false, format: RoomFormatBO5, wantMode: ScoringModePoints, wantMaxRounds: 5},
+		{name: "three player placement", rosterSize: 3, elimination: true, format: RoomFormatBO5, wantMode: ScoringModePlacement, wantMaxRounds: 9},
+		{name: "four player placement", rosterSize: 4, elimination: true, format: RoomFormatBO3, wantMode: ScoringModePlacement, wantMaxRounds: 12},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := FrozenRaceScoringMode(test.rosterSize, test.elimination); got != test.wantMode {
+				t.Fatalf("FrozenRaceScoringMode(%d, %t) = %s, want %s", test.rosterSize, test.elimination, got, test.wantMode)
+			}
+			if got := FrozenRaceMaxRounds(test.wantMode, test.rosterSize, test.format, 3); got != test.wantMaxRounds {
+				t.Fatalf("FrozenRaceMaxRounds(%s, %d, %s, 3) = %d, want %d", test.wantMode, test.rosterSize, test.format, got, test.wantMaxRounds)
+			}
+		})
 	}
 }
 

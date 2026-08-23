@@ -3,15 +3,18 @@
 // 房间大厅（08 §10.2）：房间号大字 + 复制、成员列表与就绪态、准备/离开按钮。
 import { Check, Copy, LogOut, Play } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { MultiRoomFormat } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 import { isNPlayerRaceUiEnabled } from "../config/multiplayerRollout";
 import { ApiRequestError } from "../lib/api";
 import { sortMembersBySeat } from "../domain/memberCollections";
+import { RaceEliminationSwitch } from "./RaceEliminationSwitch";
 
 type MemberView = components["schemas"]["MemberView"];
 import {
   MULTIPLAYER_MODE_LABELS,
   ROOM_FORMAT_LABELS,
+  raceSettingsSummary,
 } from "../domain/multiRoom";
 
 const MEMBER_STATUS_LABEL: Record<string, string> = {
@@ -34,7 +37,8 @@ export function RoomLobby({
   availableSeats,
   spectatorCount,
   isHost,
-  onApplyLimit,
+  raceEliminationEnabled,
+  onApplySettings,
   onClaimSeat,
   viewerRole,
   viewerMemberId,
@@ -51,7 +55,11 @@ export function RoomLobby({
   spectatorCount: number;
   isHost: boolean;
   onReady: (ready?: boolean) => void;
-  onApplyLimit?: (limit: number) => Promise<void>;
+  raceEliminationEnabled: boolean;
+  onApplySettings?: (settings: {
+    playerLimit?: number;
+    raceEliminationEnabled?: boolean;
+  }) => Promise<void>;
   onClaimSeat?: () => Promise<void>;
   viewerRole?: "player" | "spectator";
   viewerMemberId?: string | null;
@@ -64,14 +72,24 @@ export function RoomLobby({
       : undefined;
   const allReady = members.length >= 2 && members.every((m) => m.ready);
   const [limitDraft, setLimitDraft] = useState(playerLimit);
+  const [eliminationDraft, setEliminationDraft] =
+    useState(raceEliminationEnabled);
   const [limitBusy, setLimitBusy] = useState(false);
   const [claimBusy, setClaimBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const minimumLimit = Math.max(2, playerCount);
   const settingsLocked = members.some((member) => member.ready);
   const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
+  const effectiveEliminationDraft =
+    limitDraft >= 3 ? eliminationDraft : false;
+  const settingsChanged =
+    limitDraft !== playerLimit ||
+    effectiveEliminationDraft !== raceEliminationEnabled;
 
   useEffect(() => setLimitDraft(playerLimit), [playerLimit]);
+  useEffect(() => setEliminationDraft(raceEliminationEnabled), [
+    raceEliminationEnabled,
+  ]);
 
   const copyCode = async () => {
     try {
@@ -164,66 +182,95 @@ export function RoomLobby({
             保持未准备可继续等人；准备后若当前全员已准备将立即开局。
           </p>
         ) : null}
-        {isHost && mode === "race" && nPlayerRaceEnabled && (
-          <div className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 text-left">
-            <label
-              className="min-w-0 text-[0.78rem] text-ink-soft"
-              htmlFor="player-limit"
-            >
-              <span className="mb-1 flex justify-between">
-                <span>玩家上限</span>
-                <output
+        {isHost && mode === "race" ? (
+          <div className="mb-4 grid gap-3 text-left">
+            {nPlayerRaceEnabled ? (
+              <div className="flex items-end gap-4">
+                <label
+                  className="min-w-0 flex-1 text-[0.78rem] text-ink-soft"
                   htmlFor="player-limit"
-                  className="font-bold tabular-nums text-ink"
                 >
-                  {limitDraft} 人
-                </output>
-              </span>
-              <input
-                id="player-limit"
-                aria-label="玩家上限"
-                type="range"
-                min={minimumLimit}
-                max={8}
-                step={1}
-                value={limitDraft}
-                onChange={(event) =>
-                  setLimitDraft(
-                    Math.min(
-                      8,
-                      Math.max(minimumLimit, Number(event.target.value)),
-                    ),
-                  )
+                  <span className="mb-1 flex justify-between">
+                    <span>玩家上限</span>
+                    <output
+                      htmlFor="player-limit"
+                      className="font-bold tabular-nums text-ink"
+                    >
+                      {limitDraft} 人
+                    </output>
+                  </span>
+                  <input
+                    id="player-limit"
+                    aria-label="玩家上限"
+                    type="range"
+                    min={minimumLimit}
+                    max={8}
+                    step={1}
+                    value={limitDraft}
+                    disabled={settingsLocked}
+                    onChange={(event) =>
+                      setLimitDraft(
+                        Math.min(
+                          8,
+                          Math.max(minimumLimit, Number(event.target.value)),
+                        ),
+                      )
+                    }
+                    className="block w-full accent-vermilion"
+                  />
+                </label>
+                <RaceEliminationSwitch
+                  checked={effectiveEliminationDraft}
+                  disabled={limitDraft < 3 || settingsLocked}
+                  onChange={(checked) => setEliminationDraft(checked)}
+                  className="shrink-0 pb-1"
+                />
+              </div>
+            ) : null}
+            <p className="m-0 text-[0.78rem] leading-6 text-ink-soft">
+              {raceSettingsSummary(
+                format as MultiRoomFormat,
+                limitDraft,
+                effectiveEliminationDraft,
+              )}
+            </p>
+            {nPlayerRaceEnabled ? (
+              <button
+                type="button"
+                disabled={
+                  limitBusy ||
+                  !settingsChanged ||
+                  limitDraft < minimumLimit ||
+                  settingsLocked ||
+                  !onApplySettings
                 }
-                className="block w-full accent-vermilion"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={
-                limitBusy ||
-                limitDraft < minimumLimit ||
-                limitDraft === playerLimit ||
-                settingsLocked
-              }
-              onClick={async () => {
-                if (!onApplyLimit) return;
-                setActionError("");
-                setLimitBusy(true);
-                try {
-                  await onApplyLimit(limitDraft);
-                } catch (error) {
-                  setActionError(lobbyActionError(error));
-                } finally {
-                  setLimitBusy(false);
-                }
-              }}
-              className="rounded border border-line px-2 py-1 text-xs font-bold disabled:opacity-50"
-            >
-              应用
-            </button>
+                onClick={async () => {
+                  if (!onApplySettings) return;
+                  setActionError("");
+                  setLimitBusy(true);
+                  try {
+                    const body: {
+                      playerLimit?: number;
+                      raceEliminationEnabled?: boolean;
+                    } = {};
+                    if (limitDraft !== playerLimit) body.playerLimit = limitDraft;
+                    if (effectiveEliminationDraft !== raceEliminationEnabled) {
+                      body.raceEliminationEnabled = effectiveEliminationDraft;
+                    }
+                    await onApplySettings(body);
+                  } catch (error) {
+                    setActionError(lobbyActionError(error));
+                  } finally {
+                    setLimitBusy(false);
+                  }
+                }}
+                className="w-fit rounded border border-line px-2 py-1 text-xs font-bold disabled:opacity-50"
+              >
+                {limitBusy ? "应用中…" : "应用"}
+              </button>
+            ) : null}
           </div>
-        )}
+        ) : null}
         {viewerRole === "spectator" && availableSeats > 0 && (
           <button
             type="button"

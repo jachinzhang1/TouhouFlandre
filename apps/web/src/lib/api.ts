@@ -139,6 +139,7 @@ export const api = {
     format: MultiRoomFormat;
     mode: MultiplayerMode;
     playerLimit?: number;
+    raceEliminationEnabled?: boolean;
     turnSeconds: RelayTurnSeconds;
     displayName?: string;
     questionScope?: QuestionScopeConfig;
@@ -169,12 +170,19 @@ export const api = {
         body: { ready },
       }),
     ),
-  updateRoomSettings: (roomId: string, token: string, playerLimit: number) =>
+  updateRoomSettings: (
+    roomId: string,
+    token: string,
+    body: {
+      playerLimit?: number;
+      raceEliminationEnabled?: boolean;
+    },
+  ) =>
     requestApi(
       client.PATCH("/api/rooms/{roomId}/settings", {
         params: { path: { roomId } },
         headers: guestAuthHeader(token),
-        body: { playerLimit },
+        body,
       }),
     ),
   claimSeat: (roomId: string, token: string) =>

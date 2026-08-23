@@ -314,8 +314,8 @@ export interface paths {
         head?: never;
         /**
          * 更新房间设置
-         * @description 仅 connected 的 lobby 房主可用。race 的 playerLimit 可设为 2..8，且不得低于当前玩家数；
-         *     relay 固定两人并拒绝该竞速设置。任一玩家 ready 或 match 已创建后配置锁定，
+         * @description 仅 connected 的 lobby 房主可用。可提交 playerLimit、raceEliminationEnabled 任一或二者；
+         *     race 的 playerLimit 可设为 2..8，且不得低于当前玩家数。任一玩家 ready 或 match 已创建后配置锁定，
          *     所有玩家取消准备后可再次修改。降容时按旧 seat、memberId 稳定压紧非房主 seat，
          *     memberId、token 和房主不变；修改设置本身不触发开局。
          */
@@ -889,6 +889,11 @@ export interface components {
             /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
             playerLimit: number;
             /**
+             * @description race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
+             * @default false
+             */
+            raceEliminationEnabled: boolean;
+            /**
              * @description 服务端固定的最少开局玩家数。
              * @enum {integer}
              */
@@ -940,6 +945,8 @@ export interface components {
             spectatorCount: number;
             /** @description 允许同时入座的最大玩家数；不表示开局必须凑满。 */
             playerLimit: number;
+            /** @description race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。 */
+            raceEliminationEnabled: boolean;
             /**
              * @description 服务端固定的最少开局玩家数。
              * @enum {integer}
@@ -1107,7 +1114,7 @@ export interface components {
             characters: components["schemas"]["CharacterSearchResult"][];
         };
         /** @enum {string} */
-        ScoringMode: "wins" | "placement";
+        ScoringMode: "wins" | "points" | "placement";
         /** @enum {string} */
         MatchPlayerStatus: "active" | "eliminated" | "left";
         MemberScoreView: {
@@ -1641,6 +1648,11 @@ export interface operations {
                      */
                     playerLimit?: number;
                     /**
+                     * @description race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
+                     * @default false
+                     */
+                    raceEliminationEnabled?: boolean;
+                    /**
                      * @description 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
                      * @default 60
                      * @enum {integer}
@@ -1904,7 +1916,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    playerLimit: number;
+                    playerLimit?: number;
+                    raceEliminationEnabled?: boolean;
                 };
             };
         };

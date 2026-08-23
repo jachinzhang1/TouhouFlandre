@@ -45,6 +45,11 @@ func MaxRounds(format RoomFormat, factor int) int {
 	return factor * FormatNumber(format)
 }
 
+// TotalRounds 冻结的总局数 = 赛制对应的 1/3/5/7。
+func TotalRounds(format RoomFormat) int {
+	return FormatNumber(format)
+}
+
 // RoundEnd 单局结算结果（winnerSlot 0 = 平局/未决）。
 type RoundEnd struct {
 	Ended      bool

@@ -31,8 +31,13 @@ func CompleteRaceRoundTx(
 	timing TimingConfig,
 	forfeitedMemberIDs ...string,
 ) (RaceMatchAdvance, error) {
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
-		return completePlacementRaceRoundTx(ctx, q, room, round, match, now, timing, forfeitedMemberIDs...)
+	rules := RaceRulesForMatch(match)
+	if rules.ScoringMode() != ScoringModeWins {
+		return completeScoredRaceRoundTx(ctx, q, room, round, match, now, timing, rules, forfeitedMemberIDs...)
+	}
+	maxRounds := int(match.MaxRounds)
+	if maxRounds <= 0 {
+		maxRounds = rules.MatchMaxRounds(RoomFormat(room.Format), int(match.RosterSize), timing.MaxRoundsFactor)
 	}
 	if round.Status == string(RoundStatusEnded) {
 		return RaceMatchAdvance{}, nil
@@ -89,7 +94,7 @@ func CompleteRaceRoundTx(
 		advance.MatchEnded = true
 		advance.Reason = MatchEndReasonNormal
 		advance.WinnerMemberID = winnerView
-	} else if int(match.RoundCount) >= MaxRounds(RoomFormat(room.Format), timing.MaxRoundsFactor) {
+	} else if int(match.RoundCount) >= maxRounds {
 		advance.MatchEnded = true
 		advance.Reason = MatchEndReasonRoundCap
 	}
@@ -143,7 +148,7 @@ func CompleteRaceRoundTx(
 	return advance, nil
 }
 
-func completePlacementRaceRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, round repo.MultiRound, match repo.MultiMatch, now time.Time, timing TimingConfig, forfeitedMemberIDs ...string) (RaceMatchAdvance, error) {
+func completeScoredRaceRoundTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, round repo.MultiRound, match repo.MultiMatch, now time.Time, timing TimingConfig, rules RaceRules, forfeitedMemberIDs ...string) (RaceMatchAdvance, error) {
 	if round.Status == string(RoundStatusEnded) {
 		return RaceMatchAdvance{}, nil
 	}
@@ -178,17 +183,19 @@ func completePlacementRaceRoundTx(ctx context.Context, q *repo.Queries, room rep
 			finishOrder = append(finishOrder, participant.MemberID)
 		}
 	}
+	roundWinnerMemberID := ""
 	var roundWinner pgtype.Text
 	var roundWinnerView *string
 	if len(finishOrder) > 0 {
+		roundWinnerMemberID = finishOrder[0]
 		roundWinner = pgtype.Text{String: finishOrder[0], Valid: true}
-		value := finishOrder[0]
+		value := roundWinnerMemberID
 		roundWinnerView = &value
 	}
 	if _, err := q.EndRaceRound(ctx, repo.EndRaceRoundParams{ID: round.ID, WinnerMemberID: roundWinner, EndedAt: pgtypeTimestamptz(now)}); err != nil {
 		return RaceMatchAdvance{}, err
 	}
-	points := RacePlacement(len(participants), finishOrder)
+	points := rules.ScoreRound(roundWinnerMemberID, len(participants), finishOrder)
 	for _, participant := range participants {
 		if _, err := q.AwardRoundPlayerPoints(ctx, repo.AwardRoundPlayerPointsParams{RoundID: round.ID, MemberID: participant.MemberID, Points: int32(points[participant.MemberID])}); err != nil {
 			return RaceMatchAdvance{}, err
@@ -204,7 +211,7 @@ func completePlacementRaceRoundTx(ctx context.Context, q *repo.Queries, room rep
 		return RaceMatchAdvance{}, err
 	}
 	standings := raceStandingsForRoster(players)
-	eliminated := RaceEliminationCandidates(standings, int(match.RosterSize), int(round.RoundIndex))
+	eliminated := rules.Eliminate(standings, int(match.RosterSize), int(round.RoundIndex))
 	for _, memberID := range eliminated {
 		if _, err := q.MarkMatchPlayerEliminated(ctx, repo.MarkMatchPlayerEliminatedParams{MatchID: match.ID, MemberID: memberID, RoundIndex: pgtype.Int4{Int32: round.RoundIndex, Valid: true}}); err != nil {
 			return RaceMatchAdvance{}, err
@@ -239,10 +246,11 @@ func completePlacementRaceRoundTx(ctx context.Context, q *repo.Queries, room rep
 		}
 		placementViews = append(placementViews, RoundPlacementView{MemberID: participant.MemberID, Seat: seatForMember(players, participant.MemberID), Status: participant.Status, FinishRank: rank, PointsAwarded: points[participant.MemberID]})
 	}
-	result := RaceMatchResultFor(standings, int(match.RosterSize), int(match.RoundCount), int(match.MaxRounds))
-	if match.MaxRounds == 0 {
-		result = RaceMatchResultFor(standings, int(match.RosterSize), int(match.RoundCount), int(match.RosterSize)*timing.MaxRoundsFactor)
+	fallbackMaxRounds := int(match.MaxRounds)
+	if fallbackMaxRounds <= 0 {
+		fallbackMaxRounds = rules.MatchMaxRounds(RoomFormat(room.Format), int(match.RosterSize), timing.MaxRoundsFactor)
 	}
+	result := rules.MatchResult(match, roundWinnerMemberID, standings, int(match.RoundCount), fallbackMaxRounds)
 	advance := RaceMatchAdvance{MatchEnded: result.Ended, Reason: result.Reason, WinnerMemberID: result.WinnerMemberID, Scores: scores}
 	nextStarts := now.Add(timing.Intermission)
 	if err := AppendEvent(ctx, q, room.ID, EventRoundEnded, RoundEndedEventPayload{RoundID: round.ID, MatchIndex: int(match.MatchIndex), RoundIndex: int(round.RoundIndex), WinnerMemberID: roundWinnerView, AnswerID: round.AnswerID, MemberScores: scores, Placements: placementViews, EliminatedMemberIDs: eliminated, NextStartsAt: &nextStarts}); err != nil {

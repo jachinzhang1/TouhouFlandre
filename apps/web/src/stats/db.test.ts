@@ -225,7 +225,7 @@ describe("stats IndexedDB", () => {
     expect(JSON.stringify(record)).not.toContain(selfId);
   });
 
-  it("归档积分制名次、淘汰局和逐局参与状态", async () => {
+  it("归档积分淘汰名次、淘汰局和逐局参与状态", async () => {
     const selfId = "placement-self";
     await recordMultiplayerEvent(
       event("match.started", 1, {
@@ -323,6 +323,88 @@ describe("stats IndexedDB", () => {
       rounds: [
         { pointsAwarded: 2, participationStatus: "correct" },
       ],
+    });
+    expect(JSON.stringify(stored)).not.toContain(selfId);
+  });
+
+  it("归档积分累计名次并保留逐局参与状态", async () => {
+    const selfId = "points-self";
+    await recordMultiplayerEvent(
+      event("match.started", 1, {
+        format: "bo5",
+        mode: "race",
+        targetWins: 3,
+        catalogVersion: "v1",
+        matchIndex: 0,
+        scoringMode: "points",
+        rosterSize: 4,
+        maxRounds: 5,
+      }),
+      selfId,
+      undefined,
+      { playerLimit: 6 },
+    );
+    await recordMultiplayerEvent(
+      event("round.started", 2, {
+        matchIndex: 0,
+        roundIndex: 1,
+        startsAt: "2026-08-07T12:00:02Z",
+        deadline: "2026-08-07T12:05:02Z",
+        maxGuesses: 8,
+        activePlayerCount: 4,
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("round.ended", 3, {
+        matchIndex: 0,
+        roundIndex: 1,
+        viewerResult: "win",
+        answer: {
+          id: "a",
+          name: "A",
+          workId: "w",
+          workTitle: "W",
+          workCode: "W",
+        },
+        boards: [{ memberId: selfId, seat: 1, guesses: [] }],
+        placements: [
+          {
+            memberId: selfId,
+            seat: 1,
+            status: "correct",
+            finishRank: 1,
+            pointsAwarded: 4,
+          },
+        ],
+        scores: [{ memberId: selfId, seat: 1, score: 4 }],
+        results: [{ memberId: selfId, seat: 1, result: "win" }],
+      }),
+      selfId,
+      { activeElapsedMs: 20_000, guessCompletedElapsedMs: [20_000] },
+    );
+    await recordMultiplayerEvent(
+      event("match.ended", 4, {
+        matchIndex: 0,
+        viewerResult: "win",
+        winnerMemberId: selfId,
+        scores: [{ memberId: selfId, seat: 1, score: 4 }],
+        results: [{ memberId: selfId, seat: 1, result: "win" }],
+        ranking: [
+          { memberId: selfId, seat: 1, rank: 1, score: 4, status: "active" },
+        ],
+        reason: "round_cap",
+      }),
+      selfId,
+    );
+
+    const stored = await statsDb.records.toCollection().first();
+    expect(stored).toMatchObject({
+      scoringMode: "points",
+      finalRank: 1,
+      tiedForFirst: false,
+      eliminatedRound: undefined,
+      rounds: [{ pointsAwarded: 4, participationStatus: "correct" }],
     });
     expect(JSON.stringify(stored)).not.toContain(selfId);
   });

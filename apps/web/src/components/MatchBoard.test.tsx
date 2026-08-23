@@ -210,4 +210,46 @@ describe("MatchBoard", () => {
     expect(screen.getAllByText("淘汰").length).toBeGreaterThan(0);
     expect(screen.getAllByText("胜利").length).toBeGreaterThan(0);
   });
+
+  it("shows points mode without elimination hints", () => {
+    render(
+      <MatchBoard
+        format="bo3"
+        match={{
+          matchIndex: 0,
+          targetWins: 2,
+          roundIndex: 1,
+          maxRounds: 5,
+          scoringMode: "points",
+          rosterSize: 4,
+          scores: members.map((member, index) => ({
+            memberId: member.memberId,
+            seat: member.seat,
+            score: 4 - index,
+            status: "active" as const,
+            bestRoundScore: 4 - index,
+          })),
+          rematchReady: [],
+          catalogVersion: "v1",
+        }}
+        round={{
+          status: "playing",
+          startsAt: "2026-08-15T00:00:00Z",
+          deadline: "2026-08-15T00:05:00Z",
+          maxGuesses: 8,
+          self: { guesses: [] },
+          opponents: [],
+        } as never}
+        memberId="self"
+        members={members}
+        roundResult={null}
+        onGuess={vi.fn()}
+        fields={[]}
+      />,
+    );
+
+    expect(screen.getByText("积分累计")).toBeTruthy();
+    expect(screen.getByText(/共\s*5\s*局/)).toBeTruthy();
+    expect(screen.queryByText("本局末位淘汰")).toBeNull();
+  });
 });

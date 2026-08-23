@@ -395,9 +395,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	format := RoomFormat(room.Format)
 	maxRounds := int(match.MaxRounds)
 	if maxRounds <= 0 {
-		maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
-		if ScoringMode(match.ScoringMode) == ScoringModePlacement {
-			maxRounds = int(match.RosterSize) * s.cfg.Timing.MaxRoundsFactor
+		rules := RaceRulesForMatch(match)
+		if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+			maxRounds = rules.MatchMaxRounds(format, int(match.RosterSize), s.cfg.Timing.MaxRoundsFactor)
+		} else {
+			maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
 		}
 	}
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)

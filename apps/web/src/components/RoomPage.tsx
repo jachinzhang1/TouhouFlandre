@@ -320,6 +320,7 @@ export function RoomView({ code }: { code: string }) {
           members={state.members}
           mySlot={1}
           playerLimit={state.room.playerLimit}
+          raceEliminationEnabled={state.room.raceEliminationEnabled}
           playerCount={state.room.playerCount}
           availableSeats={state.room.availableSeats}
           spectatorCount={state.room.spectatorCount}
@@ -327,6 +328,12 @@ export function RoomView({ code }: { code: string }) {
           viewerRole="spectator"
           viewerMemberId={memberId}
           onReady={actions.setReady}
+          onApplySettings={async (settings) => {
+            if (!stored?.roomId || !stored.guestToken) return;
+            await runRoomMutation(() =>
+              api.updateRoomSettings(stored.roomId, stored.guestToken, settings),
+            );
+          }}
           onClaimSeat={async () => {
             if (!stored?.roomId || !stored.guestToken) return;
             await runRoomMutation(() =>
@@ -401,6 +408,9 @@ export function RoomView({ code }: { code: string }) {
           members={state.members}
           mySlot={playerSeat}
           playerLimit={state.room?.playerLimit ?? 2}
+          raceEliminationEnabled={
+            state.room?.raceEliminationEnabled ?? false
+          }
           playerCount={state.room?.playerCount ?? state.members.length}
           availableSeats={state.room?.availableSeats ?? 0}
           spectatorCount={state.room?.spectatorCount ?? 0}
@@ -408,10 +418,10 @@ export function RoomView({ code }: { code: string }) {
           viewerRole={effectiveRole ?? "player"}
           viewerMemberId={memberId}
           onReady={actions.setReady}
-          onApplyLimit={async (limit) => {
+          onApplySettings={async (settings) => {
             if (!stored?.roomId || !stored.guestToken) return;
             await runRoomMutation(() =>
-              api.updateRoomSettings(stored.roomId, stored.guestToken, limit),
+              api.updateRoomSettings(stored.roomId, stored.guestToken, settings),
             );
           }}
           onClaimSeat={async () => {

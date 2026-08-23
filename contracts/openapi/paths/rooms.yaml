@@ -26,6 +26,10 @@ post:
               maximum: 8
               default: 2
               description: race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
+            raceEliminationEnabled:
+              type: boolean
+              default: false
+              description: race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
             turnSeconds:
               type: integer
               enum: [30, 60, 90, 120]

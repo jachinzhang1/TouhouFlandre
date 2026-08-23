@@ -139,6 +139,7 @@ events:
           mode,
           turnSeconds,
           playerLimit,
+          raceEliminationEnabled,
           minPlayers,
           playerCount,
           availableSeats,
@@ -159,6 +160,8 @@ events:
           type: integer
           minimum: 2
           maximum: 8
+        raceEliminationEnabled:
+          type: boolean
         minPlayers:
           type: integer
           enum: [2]
@@ -238,8 +241,8 @@ events:
           additionalProperties: true
         scoringMode:
           type: string
-          enum: [wins, placement]
-          description: placement 仅用于实际 roster 人数大于 2 的 race。
+          enum: [wins, points, placement]
+          description: wins 仅用于 2 人 race；points 为积分累计不淘汰；placement 为当前积分淘汰。
         rosterSize:
           type: integer
           minimum: 2
@@ -920,6 +923,7 @@ examples:
           mode: race
           turnSeconds: 60
           playerLimit: 2
+          raceEliminationEnabled: false
           minPlayers: 2
           playerCount: 2
           availableSeats: 0

@@ -78,15 +78,17 @@ func RaceEliminationCandidates(players []RaceParticipantScore, rosterSize, round
 	return candidates
 }
 
-// RaceMatchResult is the terminal condition and winner projection for a
-// placement match. A nil winner means a draw (including a tied first place).
+// RaceMatchResult is the terminal condition and winner projection for a race
+// match. A nil winner means a draw (including a tied first place).
 type RaceMatchResult struct {
 	Ended          bool
 	Reason         MatchEndReason
 	WinnerMemberID *string
 }
 
-func RaceMatchResultFor(players []RaceParticipantScore, rosterSize, roundCount, maxRounds int) RaceMatchResult {
+// PlacementRaceMatchResultFor keeps the current elimination-race result
+// semantics: early end on one survivor or a decisive 2-player lead.
+func PlacementRaceMatchResultFor(players []RaceParticipantScore, rosterSize, roundCount, maxRounds int) RaceMatchResult {
 	active := make([]RaceParticipantScore, 0, len(players))
 	for _, player := range players {
 		if player.Status == "active" {
@@ -109,6 +111,46 @@ func RaceMatchResultFor(players []RaceParticipantScore, rosterSize, roundCount, 
 		return RaceMatchResult{Ended: true, Reason: MatchEndReasonRoundCap, WinnerMemberID: uniqueTop(players)}
 	}
 	return RaceMatchResult{}
+}
+
+// PointsRaceMatchResultFor ends only when the roster collapses to one survivor
+// or the configured round cap is reached.
+func PointsRaceMatchResultFor(players []RaceParticipantScore, roundCount, maxRounds int) RaceMatchResult {
+	active := make([]RaceParticipantScore, 0, len(players))
+	for _, player := range players {
+		if player.Status == "active" {
+			active = append(active, player)
+		}
+	}
+	if len(active) <= 1 {
+		return RaceMatchResult{Ended: true, Reason: MatchEndReasonNormal, WinnerMemberID: uniqueTop(players)}
+	}
+	if maxRounds > 0 && roundCount >= maxRounds {
+		return RaceMatchResult{Ended: true, Reason: MatchEndReasonRoundCap, WinnerMemberID: uniqueTop(players)}
+	}
+	return RaceMatchResult{}
+}
+
+// WinsRaceMatchResultFor ends when the round winner reaches the frozen target
+// wins, otherwise the configured round cap still applies.
+func WinsRaceMatchResultFor(matchTargetWins int, winnerMemberID string, players []RaceParticipantScore, roundCount, maxRounds int) RaceMatchResult {
+	if winnerMemberID != "" {
+		for _, player := range players {
+			if player.MemberID == winnerMemberID && player.Score >= matchTargetWins {
+				value := winnerMemberID
+				return RaceMatchResult{Ended: true, Reason: MatchEndReasonNormal, WinnerMemberID: &value}
+			}
+		}
+	}
+	if maxRounds > 0 && roundCount >= maxRounds {
+		return RaceMatchResult{Ended: true, Reason: MatchEndReasonRoundCap}
+	}
+	return RaceMatchResult{}
+}
+
+// RaceMatchResultFor retains the historical placement-race helper signature.
+func RaceMatchResultFor(players []RaceParticipantScore, rosterSize, roundCount, maxRounds int) RaceMatchResult {
+	return PlacementRaceMatchResultFor(players, rosterSize, roundCount, maxRounds)
 }
 
 // RaceRanking computes shared competition ranks (1,1,3) across the complete

@@ -85,7 +85,10 @@ class StatsDatabase extends Dexie {
             record.schemaVersion = STATS_SCHEMA_VERSION;
             if (record.kind !== "multiplayer") return;
             record.scoringMode =
-              record.scoringMode === "placement" ? "placement" : "wins";
+              record.scoringMode === "points" ||
+              record.scoringMode === "placement"
+                ? record.scoringMode
+                : "wins";
             record.tiedForFirst = record.tiedForFirst === true;
           });
       });

@@ -49,6 +49,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	fields := multi.FieldsForMatch(match)
 	storageFields := multi.StorageFieldsForMatch(match)
 	maxGuesses := multi.MaxGuessesForMatch(match)
+	rules := multi.RaceRulesForMatch(match)
 	roundPlayer, err := q.GetRoundPlayer(ctx, repo.GetRoundPlayerParams{RoundID: round.ID, MemberID: member.ID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -153,11 +154,11 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, internalError(err)
 	}
 
-	placementRace := multi.ScoringMode(match.ScoringMode) == multi.ScoringModePlacement
+	scoredRace := rules.UsesPlacementScoring()
 	var participationStatus *openapi.RaceRoundParticipantStatus
 	var finishRank *int
 	roundEnded := false
-	if placementRace && isCorrect {
+	if scoredRace && isCorrect {
 		correctCount, err := q.CountCorrectRoundPlayers(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
@@ -170,14 +171,14 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		participationStatus = &status
 		rank := int(updated.FinishRank.Int32)
 		finishRank = &rank
-	} else if placementRace && int(count)+1 >= maxGuesses {
+	} else if scoredRace && int(count)+1 >= maxGuesses {
 		if _, err := q.MarkRoundPlayerExhausted(ctx, repo.MarkRoundPlayerExhaustedParams{RoundID: round.ID, MemberID: member.ID, CompletedAt: timestamptz(s.now())}); err != nil {
 			return submitGuessResult{}, internalError(err)
 		}
 		status := openapi.RaceRoundParticipantStatusExhausted
 		participationStatus = &status
 	}
-	if placementRace {
+	if scoredRace {
 		activePlayers, err := q.ListActiveRoundPlayers(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
@@ -186,7 +187,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	} else {
 		roundEnded = isCorrect
 	}
-	if !roundEnded && !placementRace {
+	if !roundEnded && !scoredRace {
 		counts, err := q.ListRoundPlayerGuessCounts(ctx, round.ID)
 		if err != nil {
 			return submitGuessResult{}, internalError(err)
@@ -208,7 +209,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, err
 	}
-	if placementRace {
+	if scoredRace {
 		accepted := response.(openapi.RoomsSubmitGuess200JSONResponse)
 		accepted.ParticipationStatus = participationStatus
 		accepted.FinishRank = finishRank
@@ -216,7 +217,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	}
 	if roundEnded {
 		winnerMemberID := ""
-		if isCorrect && !placementRace {
+		if isCorrect && !scoredRace {
 			winnerMemberID = member.ID
 		}
 		if _, err := multi.CompleteRaceRoundTx(ctx, q, room, round, match, winnerMemberID, s.now(), s.timing); err != nil {

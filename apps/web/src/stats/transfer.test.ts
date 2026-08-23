@@ -117,7 +117,7 @@ describe("stats import/export", () => {
     expect(parsed.records[0]).not.toHaveProperty("memberSlot");
   });
 
-  it("保留 v5 积分制字段且导出只生成 v5", async () => {
+  it("保留 v5 积分淘汰字段且导出只生成 v5", async () => {
     const raw = {
       schemaVersion: STATS_SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
@@ -171,6 +171,67 @@ describe("stats import/export", () => {
     const exported = await createStatsExport();
     expect(exported.schemaVersion).toBe(STATS_SCHEMA_VERSION);
     expect(exported.records.every((item) => item.schemaVersion === STATS_SCHEMA_VERSION)).toBe(true);
+  });
+
+  it("保留 v5 积分累计字段且导出只生成 v5", async () => {
+    const raw = {
+      schemaVersion: STATS_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      records: [
+        {
+          id: "points",
+          schemaVersion: STATS_SCHEMA_VERSION,
+          kind: "multiplayer",
+          mode: "multiplayer",
+          format: "bo5",
+          multiplayerMode: "race",
+          matchIndex: 2,
+          startedAt: "2026-08-07T10:00:00Z",
+          endedAt: "2026-08-07T10:06:00Z",
+          durationMs: 360_000,
+          outcome: "win",
+          reason: "normal",
+          scoreSelf: 7,
+          opponentScores: [5, 3, 1],
+          rosterSize: 4,
+          playerLimit: 6,
+          scoringMode: "points",
+          finalRank: 2,
+          tiedForFirst: false,
+          rounds: [
+            {
+              roundIndex: 1,
+              startedAt: "2026-08-07T10:00:00Z",
+              endedAt: "2026-08-07T10:01:00Z",
+              durationMs: 60_000,
+              result: "win",
+              answer: { id: "b", name: "B" },
+              guesses: [],
+              pointsAwarded: 4,
+              participationStatus: "correct",
+            },
+          ],
+        },
+      ],
+    };
+    const parsed = parseStatsImport(JSON.stringify(raw));
+    expect(parsed.records[0]).toMatchObject({
+      scoringMode: "points",
+      finalRank: 2,
+      tiedForFirst: false,
+      rounds: [{ pointsAwarded: 4, participationStatus: "correct" }],
+    });
+    await statsDb.records.put(parsed.records[0]);
+    const exported = await createStatsExport();
+    expect(exported.schemaVersion).toBe(STATS_SCHEMA_VERSION);
+    expect(
+      exported.records.every((item) => item.schemaVersion === STATS_SCHEMA_VERSION),
+    ).toBe(true);
+    expect(
+      exported.records.some(
+        (item) => item.kind === "multiplayer" && item.scoringMode === "points",
+      ),
+    ).toBe(true);
   });
 
   it("递归拒绝统计中的身份字段", () => {
