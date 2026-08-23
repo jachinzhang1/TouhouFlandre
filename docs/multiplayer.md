@@ -2,7 +2,7 @@
 
 本文说明 TouhouFlandre 多人房间的稳定规则、状态机、传输协议和维护约束。
 
-多人房间扩展的设计、任务边界和验收记录维护在[多人房间扩展开发计划](./multiplayer-expansion/README.md)及其 Issue 文档中；本文只描述当前实现的稳定规则。N 人竞速和房间聊天的默认暴露由 [MPX-010 发布闸门](./multiplayer-expansion/release-gate.md)控制：默认开启，回滚或灰度暂停时可通过环境变量分别关闭。
+多人房间扩展的设计、任务边界和验收记录维护在[多人房间扩展开发计划](./multiplayer-expansion/README.md)及其 Issue 文档中；规划中的 2/4/6/8 人接力改造另见[多人接力扩展开发计划](./multiplayer-relay-expansion/README.md)。本文只描述当前已经实现的稳定规则。N 人竞速和房间聊天的默认暴露由 [MPX-010 发布闸门](./multiplayer-expansion/release-gate.md)控制：默认开启，回滚或灰度暂停时可通过环境变量分别关闭。
 
 ## 模式范围
 
