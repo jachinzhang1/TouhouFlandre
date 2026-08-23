@@ -53,14 +53,14 @@ export const MULTI_ROOM_CLOSE_REASONS = [
 ] as const;
 export type MultiRoomCloseReason = (typeof MULTI_ROOM_CLOSE_REASONS)[number];
 
-// v2 游戏事件信封：每个 room_event.sequence 对观察者表现为业务事件或 room.cursor。
-export interface Envelope {
-  type: string;
+// v3 游戏事件信封：每个 room_event.sequence 对观察者表现为业务事件或 room.cursor。
+export interface Envelope<TType extends string = string, TPayload = unknown> {
+  type: TType;
   eventId: string;
   roomId: string;
   sequence: number;
   occurredAt: string;
-  payload: Record<string, unknown>;
+  payload: TPayload;
 }
 
 export interface RoomCursorEnvelope {
@@ -104,6 +104,7 @@ export interface MatchStartedPayload {
   catalogVersion: string;
   matchIndex: number;
   scoringMode?: RaceScoringMode;
+  ruleSetRef: RuleSetRef;
   rosterSize?: number;
   maxRounds?: number;
   questionScope?: QuestionScopeConfig;
@@ -275,6 +276,143 @@ export interface RoomClosedPayload {
   reason: MultiRoomCloseReason;
 }
 
+export interface RuleSetRef {
+  mode: MultiplayerMode;
+  key: string;
+  version: number;
+}
+
+export type RelayRuleSetRef = RuleSetRef & { mode: "relay" };
+
+export type RelayLifeState = "healthy" | "near_death";
+
+export interface RelayStandingView {
+  memberId: string;
+  seat: number;
+  score: number;
+  status: MatchPlayerStatus;
+  lifeState: RelayLifeState;
+  eliminatedStage?: number;
+}
+
+export interface RelayEncounterMemberView {
+  memberId: string;
+  seat: number;
+  side: 1 | 2;
+}
+
+export interface RelayEncounterSummary {
+  encounterId: string;
+  encounterIndex: number;
+  status: "planned" | "countdown" | "playing" | "ended";
+  members: RelayEncounterMemberView[];
+}
+
+export interface RelayStageSettlementView {
+  memberId: string;
+  encounterId?: string;
+  assignment: "paired" | "bye";
+  outcome: "win" | "loss" | "draw" | "bye";
+  scoreBefore: number;
+  scoreDelta: number;
+  scoreAfter: number;
+  lifeBefore: RelayLifeState;
+  lifeAfter: RelayLifeState;
+  eliminatedStage?: number;
+}
+
+export interface RelayAnswerView {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  workId: string;
+  workTitle: string;
+  workCode: string;
+}
+
+export interface RelayStageStartedPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  status: "planned" | "playing" | "settling" | "ended";
+  encounters: RelayEncounterSummary[];
+  byeMemberId?: string;
+}
+
+export interface RelayEncounterStartedPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  encounterId: string;
+  encounterIndex: number;
+  status: "planned" | "countdown" | "playing" | "ended";
+  members: RelayEncounterMemberView[];
+  startsAt?: string;
+  deadline?: string;
+  turnMemberId?: string;
+  turnSeat?: number;
+  turnDeadline?: string;
+}
+
+export interface RelayEncounterTurnGuessPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  encounterId: string;
+  memberId: string;
+  row: RelayTurnRow;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
+  nextTurnDeadline?: string;
+}
+
+export interface RelayEncounterTurnPassPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  encounterId: string;
+  memberId: string;
+  row: RelayTurnRow;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
+  nextTurnDeadline?: string;
+}
+
+export interface RelayEncounterTurnTimeoutPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  encounterId: string;
+  memberId: string;
+  row: RelayTurnRow;
+  nextTurnMemberId?: string;
+  nextTurnSeat?: number;
+  nextTurnDeadline?: string;
+}
+
+export interface RelayEncounterEndedPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  encounterId: string;
+  status: "ended";
+  outcome: "win" | "loss" | "draw" | "forfeit" | "timeout";
+  winnerMemberId: string | null;
+  answer: RelayAnswerView;
+  turns?: RelayTurnRow[];
+}
+
+export interface RelayStageEndedPayload {
+  matchIndex: number;
+  stageId: string;
+  stageIndex: number;
+  status: "ended";
+  settlement: RelayStageSettlementView[];
+  standings: RelayStandingView[];
+  nextStageIndex?: number;
+  byeMemberId?: string;
+}
+
 // ---------- 服务端控制帧（非事件，无 sequence） ----------
 
 export interface HelloOkMessage {
@@ -290,18 +428,22 @@ export interface SyncCompleteMessage {
   chatCursor?: string;
 }
 
-export interface ResyncRequiredMessage {
-  type: "resync.required";
+export interface ProtocolRefreshRequiredMessage {
+  type: "protocol.refresh_required";
   scope: "game" | "chat" | "all";
   reason:
     | "negative_sequence"
     | "invalid_cursor"
     | "ahead_of_server"
-    | "history_unavailable";
+    | "history_unavailable"
+    | "protocol_version_unsupported";
   gameSequence?: number;
   oldestAvailableChatCursor?: string;
   targetChatCursor?: string;
+  requiredSubprotocol?: string;
 }
+
+export type ResyncRequiredMessage = ProtocolRefreshRequiredMessage;
 
 export interface ReplacedMessage {
   type: "replaced";
@@ -337,6 +479,40 @@ export interface ChatMessageFrame {
   createdAt: string;
 }
 
+export type MultiWsServerFrame =
+  | GameSequenceFrame
+  | ChatMessageFrame
+  | HelloOkMessage
+  | SyncCompleteMessage
+  | ProtocolRefreshRequiredMessage
+  | ReplacedMessage;
+
+export type LegacyWsEvent =
+  | Envelope<"room.updated", RoomUpdatedPayload>
+  | Envelope<"match.started", MatchStartedPayload>
+  | Envelope<"match.rematch", MatchRematchPayload>
+  | Envelope<"round.started", RoundStartedPayload>
+  | Envelope<"round.playing", RoundPlayingPayload>
+  | Envelope<"round.opponent.guess", RoundOpponentGuessPayload>
+  | Envelope<"round.spectator.guess", RoundSpectatorGuessPayload>
+  | Envelope<"round.shared.guess", RoundSharedGuessPayload>
+  | Envelope<"round.turn.timeout", RoundTurnTimeoutPayload>
+  | Envelope<"round.turn.pass", RoundTurnPassPayload>
+  | Envelope<"round.ended", RoundEndedPayload>
+  | Envelope<"match.ended", MatchEndedPayload>
+  | Envelope<"room.closed", RoomClosedPayload>;
+
+export type RelayWsEvent =
+  | Envelope<"relay.stage.started", RelayStageStartedPayload>
+  | Envelope<"relay.encounter.started", RelayEncounterStartedPayload>
+  | Envelope<"relay.encounter.turn.guess", RelayEncounterTurnGuessPayload>
+  | Envelope<"relay.encounter.turn.pass", RelayEncounterTurnPassPayload>
+  | Envelope<"relay.encounter.turn.timeout", RelayEncounterTurnTimeoutPayload>
+  | Envelope<"relay.encounter.ended", RelayEncounterEndedPayload>
+  | Envelope<"relay.stage.ended", RelayStageEndedPayload>;
+
+export type MultiWsEvent = LegacyWsEvent | RelayWsEvent;
+
 // 事件类型集合（08 §8.3 全表；round.opponent.guess 是唯一逐观察者事件）。
 export const MULTI_WS_EVENT_TYPES = [
   "room.updated",
@@ -352,5 +528,12 @@ export const MULTI_WS_EVENT_TYPES = [
   "round.ended",
   "match.ended",
   "room.closed",
+  "relay.stage.started",
+  "relay.encounter.started",
+  "relay.encounter.turn.guess",
+  "relay.encounter.turn.pass",
+  "relay.encounter.turn.timeout",
+  "relay.encounter.ended",
+  "relay.stage.ended",
 ] as const;
 export type MultiWsEventType = (typeof MULTI_WS_EVENT_TYPES)[number];

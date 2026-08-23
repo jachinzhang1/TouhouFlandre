@@ -59,15 +59,18 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
-        round={{
-          status: "playing",
-          startsAt: "2026-08-15T00:00:00Z",
-          deadline: "2026-08-15T00:05:00Z",
-          maxGuesses: 8,
-          self: { guesses: [] },
-          opponents: [],
-        } as never}
+        round={
+          {
+            status: "playing",
+            startsAt: "2026-08-15T00:00:00Z",
+            deadline: "2026-08-15T00:05:00Z",
+            maxGuesses: 8,
+            self: { guesses: [] },
+            opponents: [],
+          } as never
+        }
         memberId="self"
         members={members}
         roundResult={null}
@@ -97,15 +100,18 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
-        round={{
-          status: "playing",
-          startsAt: "2026-08-15T00:00:00Z",
-          deadline: "2026-08-15T00:05:00Z",
-          maxGuesses: 8,
-          self: { guesses: [] },
-          opponents: [],
-        } as never}
+        round={
+          {
+            status: "playing",
+            startsAt: "2026-08-15T00:00:00Z",
+            deadline: "2026-08-15T00:05:00Z",
+            maxGuesses: 8,
+            self: { guesses: [] },
+            opponents: [],
+          } as never
+        }
         memberId="self"
         members={members}
         roundResult={null}
@@ -197,6 +203,7 @@ describe("MatchBoard", () => {
           scores: result.scores,
           rematchReady: [],
           catalogVersion: "v1",
+          ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
         round={null}
         memberId="self"
@@ -231,15 +238,18 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          ruleSetRef: { mode: "race", key: "points", version: 1 },
         }}
-        round={{
-          status: "playing",
-          startsAt: "2026-08-15T00:00:00Z",
-          deadline: "2026-08-15T00:05:00Z",
-          maxGuesses: 8,
-          self: { guesses: [] },
-          opponents: [],
-        } as never}
+        round={
+          {
+            status: "playing",
+            startsAt: "2026-08-15T00:00:00Z",
+            deadline: "2026-08-15T00:05:00Z",
+            maxGuesses: 8,
+            self: { guesses: [] },
+            opponents: [],
+          } as never
+        }
         memberId="self"
         members={members}
         roundResult={null}

@@ -24,7 +24,7 @@ import (
 )
 
 // wsSubprotocol 子协议版本协商（08 §8.1）。
-const wsSubprotocol = "touhouflandre-multi.v2"
+const wsSubprotocol = "touhouflandre-multi.v3"
 
 // helloTimeout 首帧 hello 等待上限（10s）。
 const helloTimeout = 10 * time.Second
@@ -59,6 +59,14 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 	if ws.Subprotocol() != wsSubprotocol {
 		// coder/websocket：客户端未请求子协议时 Accept 也会成功；协议版本协商要求必须匹配
 		slog.Warn("ws: subprotocol mismatch", "room_id", request.RoomId, "got", ws.Subprotocol())
+		requested := eCtx.Request().Header.Get("Sec-WebSocket-Protocol")
+		if strings.Contains(requested, "touhouflandre-multi.v2") {
+			required := wsSubprotocol
+			_ = writeWSControl(ws, multi.ProtocolRefreshRequiredMessage{
+				Type: "protocol.refresh_required", Scope: "all", Reason: "protocol_version_unsupported",
+				RequiredSubprotocol: &required,
+			})
+		}
 		_ = ws.Close(websocket.StatusPolicyViolation, "subprotocol required: "+wsSubprotocol)
 		return nil, nil
 	}
@@ -152,8 +160,8 @@ func (s *Server) RoomsConnectWs(ctx context.Context, request openapi.RoomsConnec
 			scope = "all"
 			reason = gameReason
 		}
-		if err := writeWSControl(ws, multi.ResyncRequiredMessage{
-			Type: "resync.required", Scope: scope, Reason: reason,
+		if err := writeWSControl(ws, multi.ProtocolRefreshRequiredMessage{
+			Type: "protocol.refresh_required", Scope: scope, Reason: reason,
 			GameSequence: gameSequence, OldestAvailableChatCursor: oldestChatCursor,
 			TargetChatCursor: targetChatCursor,
 		}); err != nil {

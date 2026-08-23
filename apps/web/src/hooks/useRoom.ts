@@ -204,6 +204,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
             ready: false,
           })),
           catalogVersion: payload.catalogVersion,
+          ruleSetRef: payload.ruleSetRef,
         },
         round: null,
         roundResult: null,
@@ -549,7 +550,7 @@ export interface UseRoomResult {
 }
 
 /**
- * useRoom：权威快照 → v2 hello{lastGameSequence} → 连续业务/cursor 游戏帧；
+ * useRoom：权威快照 → v3 hello{lastGameSequence} → 连续业务/cursor 游戏帧；
  * 真缺口由单个 snapshot 对齐，断线指数退避重连携带已应用游戏水位。
  */
 export function useRoom(roomId: string, token: string): UseRoomResult {
@@ -799,7 +800,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       }));
       let ws: WebSocket;
       try {
-        ws = new WebSocket(roomWsUrl(roomId), "touhouflandre-multi.v2");
+        ws = new WebSocket(roomWsUrl(roomId), "touhouflandre-multi.v3");
       } catch {
         scheduleReconnect();
         return;
@@ -876,7 +877,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           }));
           return;
         }
-        if (msg.type === "resync.required") {
+        if (msg.type === "protocol.refresh_required") {
           void (async () => {
             if (msg.scope === "chat") {
               await initializeChatHistory();

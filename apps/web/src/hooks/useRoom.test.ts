@@ -77,6 +77,7 @@ const matchFixture: NonNullable<RoomUiState["match"]> = {
     ready: false,
   })),
   catalogVersion: "v1",
+  ruleSetRef: { mode: "race", key: "wins", version: 1 },
 };
 
 const guessResult = {
@@ -217,6 +218,7 @@ describe("roomReducer", () => {
         targetWins: 2,
         catalogVersion: "v1",
         matchIndex: 1,
+        ruleSetRef: { mode: "race", key: "wins", version: 1 },
       }),
     );
 
@@ -687,6 +689,7 @@ describe("applySnapshot", () => {
           targetWins: 2,
           catalogVersion: "v1",
           matchIndex: 0,
+          ruleSetRef: { mode: "race", key: "wins", version: 1 },
         }),
       ],
     };

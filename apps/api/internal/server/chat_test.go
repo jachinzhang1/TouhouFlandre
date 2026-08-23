@@ -341,7 +341,7 @@ func TestChatWSRejectsInvalidCursorBeforeBusinessFrames(t *testing.T) {
 	fixture := createMatchFixture(t)
 	conn := wsDialWithChat(t, fixture.roomID, fixture.hostToken, 0, "tampered")
 	message := wsRead(t, conn)
-	if message["type"] != "resync.required" || message["scope"] != "chat" || message["reason"] != "invalid_cursor" {
+	if message["type"] != "protocol.refresh_required" || message["scope"] != "chat" || message["reason"] != "invalid_cursor" {
 		t.Fatalf("invalid chat cursor response: %v", message)
 	}
 }
