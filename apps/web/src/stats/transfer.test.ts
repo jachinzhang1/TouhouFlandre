@@ -117,6 +117,131 @@ describe("stats import/export", () => {
     expect(parsed.records[0]).not.toHaveProperty("memberSlot");
   });
 
+  it.each([
+    {
+      version: 1,
+      fields: { scoreOpponent: 0, memberSlot: 1 },
+      expected: {
+        multiplayerMode: "race",
+        difficulty: "unknown",
+        opponentScores: [0],
+        rosterSize: 2,
+        playerLimit: 2,
+        scoringMode: "wins",
+      },
+    },
+    {
+      version: 2,
+      fields: {
+        multiplayerMode: "relay",
+        difficulty: "hard",
+        scoreOpponent: 1,
+        memberSlot: 2,
+      },
+      expected: {
+        multiplayerMode: "relay",
+        difficulty: "hard",
+        opponentScores: [1],
+        rosterSize: 2,
+        playerLimit: 2,
+        scoringMode: "wins",
+      },
+    },
+    {
+      version: 3,
+      fields: {
+        opponentScores: [2, 1],
+        rosterSize: 3,
+        playerLimit: 4,
+        scoringMode: "wins",
+      },
+      expected: {
+        multiplayerMode: "race",
+        opponentScores: [2, 1],
+        rosterSize: 3,
+        playerLimit: 4,
+        scoringMode: "wins",
+      },
+    },
+    {
+      version: 4,
+      fields: {
+        opponentScores: [4, 2],
+        rosterSize: 3,
+        playerLimit: 4,
+        scoringMode: "placement",
+        finalRank: 1,
+        tiedForFirst: true,
+        eliminatedRound: 2,
+      },
+      expected: {
+        multiplayerMode: "race",
+        scoringMode: "placement",
+        finalRank: 1,
+        tiedForFirst: true,
+        eliminatedRound: 2,
+      },
+    },
+    {
+      version: 5,
+      fields: {
+        opponentScores: [5, 3, 1],
+        rosterSize: 4,
+        playerLimit: 8,
+        scoringMode: "points",
+        finalRank: 2,
+        tiedForFirst: false,
+      },
+      expected: {
+        multiplayerMode: "race",
+        scoringMode: "points",
+        finalRank: 2,
+        tiedForFirst: false,
+      },
+    },
+  ])(
+    "导入 v$version 记录并归一化为 v5 匿名形状",
+    ({ version, fields, expected }) => {
+      const raw = {
+        schemaVersion: version,
+        exportedAt: "2026-08-23T00:00:00Z",
+        records: [
+          {
+            id: `multi-v${version}`,
+            schemaVersion: version,
+            kind: "multiplayer",
+            mode: "multiplayer",
+            format: "bo3",
+            matchIndex: 0,
+            startedAt: "2026-08-23T00:00:00Z",
+            endedAt: "2026-08-23T00:01:00Z",
+            durationMs: 60_000,
+            outcome: "win",
+            reason: "normal",
+            scoreSelf: 2,
+            rounds: [],
+            guestToken: "must-not-survive",
+            memberId: "must-not-survive",
+            roomCode: "ABC123",
+            seat: 7,
+            ...fields,
+          },
+        ],
+      };
+      const parsed = parseStatsImport(JSON.stringify(raw));
+      expect(parsed.schemaVersion).toBe(STATS_SCHEMA_VERSION);
+      expect(parsed.records[0]).toMatchObject({
+        schemaVersion: STATS_SCHEMA_VERSION,
+        ...expected,
+      });
+      expect(parsed.records[0]).not.toHaveProperty("guestToken");
+      expect(parsed.records[0]).not.toHaveProperty("memberId");
+      expect(parsed.records[0]).not.toHaveProperty("roomCode");
+      expect(parsed.records[0]).not.toHaveProperty("seat");
+      expect(parsed.records[0]).not.toHaveProperty("memberSlot");
+    },
+  );
+
   it("保留 v5 积分淘汰字段且导出只生成 v5", async () => {
     const raw = {
       schemaVersion: STATS_SCHEMA_VERSION,
@@ -170,7 +295,11 @@ describe("stats import/export", () => {
     await statsDb.records.put(parsed.records[0]);
     const exported = await createStatsExport();
     expect(exported.schemaVersion).toBe(STATS_SCHEMA_VERSION);
-    expect(exported.records.every((item) => item.schemaVersion === STATS_SCHEMA_VERSION)).toBe(true);
+    expect(
+      exported.records.every(
+        (item) => item.schemaVersion === STATS_SCHEMA_VERSION,
+      ),
+    ).toBe(true);
   });
 
   it("保留 v5 积分累计字段且导出只生成 v5", async () => {
@@ -225,7 +354,9 @@ describe("stats import/export", () => {
     const exported = await createStatsExport();
     expect(exported.schemaVersion).toBe(STATS_SCHEMA_VERSION);
     expect(
-      exported.records.every((item) => item.schemaVersion === STATS_SCHEMA_VERSION),
+      exported.records.every(
+        (item) => item.schemaVersion === STATS_SCHEMA_VERSION,
+      ),
     ).toBe(true);
     expect(
       exported.records.some(

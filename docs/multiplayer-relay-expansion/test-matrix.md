@@ -25,6 +25,18 @@
 | A-06 | relay flag 关闭或 Web module 移除后 race 与 stats v1-v5 仍可运行 | R/UI/E2E  | MRX-010/013 |
 | A-07 | fake 新模式只修改组合根，不修改 race/relay/core 规则实现         | D/static  | MRX-002/013 |
 
+### MRX-002 装配输入
+
+MRX-001 只冻结下列预期，不实现 registry 或新增 wire error。MRX-002 的装配测试和 `check:multiplayer-boundaries` 必须逐项证明：
+
+| 装配形态      | 注册内容                                                                | 必须成功                                                                                 | 必须拒绝/隔离                                                                                                  |
+| ------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| race-only     | `race/wins@1`、`race/points@1`、`race/placement@1` 及 race capabilities | race create/play/snapshot/history/recovery、stats v1-v5；不构造 relay repository         | 新 relay 请求按未注册 mode 拒绝；core 不 import relay；已持久化 relay 不得被猜测为 race                        |
+| legacy-relay  | race 全集 + `relay/legacy_wins@1`，不注册 stage/encounter 能力          | 当前双人 race、N 人 race 和双人 relay guess/pass/timeout/forfeit/snapshot/recovery       | relay `playerLimit > 2`、`fixed_points`、`elimination` 拒绝；不查询或创建 relay stage/encounter 表             |
+| full registry | race 全集 + relay `legacy_wins@1`、`fixed_points@1`、`elimination@1`    | 根据完整 `RuleSetRef` 选择所属模块；关闭新建 flag 后仍可读取、恢复和完成已持久化规则版本 | 未知 mode/key/version、缺失 `RuleSetRef`、缺失 capability 均 fail closed；绝不回退 wins/points/legacy 默认规则 |
+
+未注册模式的稳定语义冻结如下：用户输入引用未注册 mode 时沿用当前 v2 `HTTP 400 + INVALID_REQUEST`，不得写 room/match/event；持久化 room/match 引用当前 binary 未注册的 mode 或未知/缺失 `RuleSetRef` 时视为不可解释的服务配置/数据错误，当前 v2 transport 返回 `HTTP 500 + INTERNAL`，事务不写状态或事件，recovery 不猜测推进。feature flag 关闭是“禁止新建”而不是“模式未注册”：已存在且可解释的 match 必须继续完成。MRX-002 可在领域层增加 typed error，但不得在没有独立契约 Issue 时改变这些 v2 transport 结果。
+
 ## 现有功能回归
 
 | ID   | Required case                                                | 层级     | Owner           |
@@ -37,6 +49,21 @@
 | B-06 | player/spectator chat channel、闭麦、history/replay          | DB/R/E2E | MRX-001/013     |
 | B-07 | join/claim-seat/ready/settings/rematch/leave 并发            | DB       | MRX-001/004/009 |
 | B-08 | stats v1-v5 导入、匿名导出及 race scoringMode 兼容语义       | R/UI     | MRX-001/012     |
+
+### MRX-001 基线证据
+
+| ID   | 已冻结的测试文件                                                                                                                                                                                              |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B-01 | `apps/api/internal/multi/{match,race_scoring}_test.go`；`apps/api/internal/server/{match,n_player_race,n_player_terminal}_test.go`；`apps/web/e2e/multiplayer.spec.ts`                                        |
+| B-02 | `apps/api/internal/multi/{match,race_scoring}_test.go`；`apps/api/internal/server/{n_player_race,n_player_terminal,player_limit_settings}_test.go`；`apps/web/src/domain/memberCollections.test.ts`；多人 E2E |
+| B-03 | `apps/api/internal/server/{mrx001_baseline,match,ws}_test.go`；`apps/api/internal/multi/match_test.go`；多人 E2E                                                                                              |
+| B-04 | `apps/api/internal/server/{n_player_race,n_player_terminal,ws,room_lifecycle}_test.go`；`apps/web/src/components/{OpponentBoard,MemberPaginator}.test.tsx`；多人 E2E                                          |
+| B-05 | `apps/api/internal/server/ws_test.go`；`apps/web/src/{hooks/useRoom.websocket.test.tsx,domain/gameSequence.test.ts}`；多人 E2E                                                                                |
+| B-06 | `apps/api/internal/server/chat_test.go`；`apps/web/src/{components/ChatDock.test.tsx,domain/multiChat.test.ts,hooks/useRoom.test.ts}`；多人 E2E                                                               |
+| B-07 | `apps/api/internal/server/{room_lifecycle,player_limit_settings,match,multi}_test.go`                                                                                                                         |
+| B-08 | `apps/web/src/stats/{transfer,db,aggregate}.test.ts`；其中 `transfer.test.ts` 表驱动覆盖 v1-v5、匿名归一化和 v5 导出                                                                                          |
+
+三份跨层 fixture 位于 `docs/multiplayer-relay-expansion/fixtures/`，由 `apps/api/internal/server/mrx001_baseline_test.go` 对真实 API、WS v2 payload key 和迁移 `0014` 数据库列顺序做归一化比对。E2E 失败归因和命令结果记录在 [MRX-001 实施与验收记录](./MRX-001-contract-and-regression-baseline.md#实施与验收记录2026-08-23)；当前 desktop/Pixel 7 基线为 34/34 通过，MRX-002 重构后不得引入未解释失败。
 
 ## 房间与开局
 

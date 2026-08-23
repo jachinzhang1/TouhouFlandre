@@ -1,0 +1,95 @@
+{
+  "migrationTail": 14,
+  "tables": [
+    {
+      "name": "multi_room",
+      "columns": [
+        "id",
+        "code",
+        "format",
+        "status",
+        "event_seq",
+        "created_at",
+        "expires_at",
+        "mode",
+        "turn_seconds",
+        "question_scope",
+        "player_limit",
+        "chat_seq",
+        "chat_rate_tokens",
+        "chat_rate_refilled_at",
+        "race_elimination_enabled"
+      ]
+    },
+    {
+      "name": "multi_match",
+      "columns": [
+        "id",
+        "room_id",
+        "match_index",
+        "catalog_version",
+        "target_wins",
+        "score_slot1",
+        "score_slot2",
+        "round_count",
+        "status",
+        "started_at",
+        "ended_at",
+        "question_scope",
+        "winner_member_id",
+        "scoring_mode",
+        "roster_size",
+        "max_rounds"
+      ]
+    },
+    {
+      "name": "multi_round",
+      "columns": [
+        "id",
+        "match_id",
+        "round_index",
+        "answer_id",
+        "status",
+        "winner_slot",
+        "starts_at",
+        "deadline",
+        "ended_at",
+        "turn_slot",
+        "turn_deadline",
+        "winner_member_id"
+      ]
+    },
+    {
+      "name": "multi_turn",
+      "columns": [
+        "id",
+        "round_id",
+        "member_id",
+        "turn_index",
+        "kind",
+        "guess_id",
+        "statuses",
+        "is_correct",
+        "idempotency_key",
+        "created_at"
+      ]
+    },
+    {
+      "name": "multi_chat_message",
+      "columns": [
+        "id",
+        "room_id",
+        "position",
+        "sender_member_id",
+        "sender_display_name",
+        "sender_role",
+        "sender_seat",
+        "client_message_id",
+        "kind",
+        "content",
+        "channel",
+        "created_at"
+      ]
+    }
+  ]
+}

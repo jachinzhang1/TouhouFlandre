@@ -1,0 +1,24 @@
+{
+  "contract": "openapi",
+  "room": {
+    "status": "playing",
+    "format": "bo3",
+    "mode": "race",
+    "playerLimit": 4,
+    "playerCount": 4,
+    "availableSeats": 0
+  },
+  "match": {
+    "targetWins": 2,
+    "scoringMode": "points",
+    "rosterSize": 4,
+    "maxRounds": 3
+  },
+  "memberSeats": [1, 2, 3, 4],
+  "scoreSeats": [1, 2, 3, 4],
+  "round": {
+    "status": "playing",
+    "selfSeat": 1,
+    "opponentSeats": [2, 3, 4]
+  }
+}

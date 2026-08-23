@@ -6,7 +6,7 @@
 
 | 项目                  | 状态   | 记录                             |
 | --------------------- | ------ | -------------------------------- |
-| MRX-001 基线          | 待执行 | 提交、日期、环境、已知失败       |
+| MRX-001 基线          | 已记录 | 2026-08-23；E2E 34/34            |
 | 模块边界/装配检查     | 待执行 | full/race-only/fake-mode、依赖图 |
 | expand migration 演练 | 待执行 | 旧版本、目标版本、耗时、数据校验 |
 | WS v2 排空 / v3 切换  | 待执行 | 停止新建时间、剩余房间、刷新验证 |
@@ -62,7 +62,7 @@ MULTI_N_PLAYER_RELAY_ENABLED=true \
 MULTI_RELAY_ELIMINATION_ENABLED=true \
 NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED=true \
 NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED=true \
-pnpm --filter @touhouflandre/web test:e2e -- e2e/multiplayer.spec.ts
+pnpm --filter @touhouflandre/web test:e2e e2e/multiplayer.spec.ts
 ```
 
 必须逐项对照[测试矩阵](./test-matrix.md)；不能仅以 workspace 总命令成功替代 Required case 覆盖。
