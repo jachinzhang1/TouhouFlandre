@@ -232,17 +232,18 @@ CI 会检查 OpenAPI、WebSocket 协议、类型、测试、Go 构建以及生�
 
 ## 文档导航
 
-| 文档                                                   | 内容                                           |
-| ------------------------------------------------------ | ---------------------------------------------- |
-| [游戏规则](./docs/gameplay.md)                         | 反馈字段、胜负、多人规则和公平性原则           |
-| [功能与页面](./docs/features.md)                       | 页面职责、功能范围、状态存储和 API 概览        |
-| [数据规范](./docs/data-guidelines.md)                  | 题库字段、资料来源、素材和贡献检查             |
-| [开发指南](./docs/development.md)                      | 本地启动、环境变量、开发约定和故障排查         |
-| [架构说明](./docs/architecture.md)                     | 技术边界、契约、数据流和系统不变量             |
-| [部署指南](./docs/deployment.md)                       | Docker Compose 生产部署与运维注意事项          |
-| [站点开发计划](./docs/site-development-plan.md)        | 开发边界、PR 对齐标准和维护重点                |
-| [多人房间文档](./docs/multiplayer.md)                  | 多人规则、状态机、REST 与 WebSocket 协议       |
-| [多人扩展文档](./docs/multiplayer-expansion/README.md) | 多人席位、竞速、聊天等扩展功能的设计和验收记录 |
+| 文档                                                             | 内容                                           |
+| ---------------------------------------------------------------- | ---------------------------------------------- |
+| [游戏规则](./docs/gameplay.md)                                   | 反馈字段、胜负、多人规则和公平性原则           |
+| [功能与页面](./docs/features.md)                                 | 页面职责、功能范围、状态存储和 API 概览        |
+| [数据规范](./docs/data-guidelines.md)                            | 题库字段、资料来源、素材和贡献检查             |
+| [开发指南](./docs/development.md)                                | 本地启动、环境变量、开发约定和故障排查         |
+| [架构说明](./docs/architecture.md)                               | 技术边界、契约、数据流和系统不变量             |
+| [部署指南](./docs/deployment.md)                                 | Docker Compose 生产部署与运维注意事项          |
+| [站点开发计划](./docs/site-development-plan.md)                  | 开发边界、PR 对齐标准和维护重点                |
+| [多人房间文档](./docs/multiplayer.md)                            | 多人规则、状态机、REST 与 WebSocket 协议       |
+| [多人扩展文档](./docs/multiplayer-expansion/README.md)           | 多人席位、竞速、聊天等扩展功能的设计和验收记录 |
+| [多人接力扩展计划](./docs/multiplayer-relay-expansion/README.md) | 2/4/6/8 人接力、并行棋盘和模块化规则架构计划   |
 
 ## 贡献方式
 

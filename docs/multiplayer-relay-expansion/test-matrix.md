@@ -1,0 +1,136 @@
+# 多人接力扩展测试矩阵
+
+本文是 MRX-001 的基线清单和 MRX-013 的发布覆盖表。`Required` 项不得仅靠人工试玩；每项至少落在纯规则、数据库/handler 集成、协议 reducer、组件或真实浏览器中的一层，并按风险叠加覆盖。
+
+## 测试层级
+
+| 层级            | 目的                                      | 典型位置                                                 |
+| --------------- | ----------------------------------------- | -------------------------------------------------------- |
+| D：domain       | 纯函数、确定性随机、计分与状态转换        | `apps/api/internal/multi/**/*_test.go`                   |
+| DB：transaction | 约束、锁序、并发、幂等、迁移与恢复        | `apps/api/internal/server/**/*_test.go`、migration tests |
+| C：contract     | OpenAPI/WS 源、Go/TS 类型、投影形状       | contract scripts、serialization tests                    |
+| R：reducer      | 乱序/重复/缺口、snapshot/replay、分页缓存 | `apps/web/src/hooks/useRoom*.test.*`、domain tests       |
+| UI：component   | capability、单棋盘 DOM、状态与可访问性    | React Testing Library                                    |
+| E2E：browser    | 真实 API/WS/Postgres 与桌面/移动流程      | `apps/web/e2e/multiplayer.spec.ts`                       |
+
+## 现有功能回归
+
+| ID   | Required case                                                | 层级     | Owner           |
+| ---- | ------------------------------------------------------------ | -------- | --------------- |
+| B-01 | race N=2 的 BO、并发正确猜测、forfeit、timeout               | D/DB/E2E | MRX-001/002/013 |
+| B-02 | race N=3/4/8 placement、唯一 finish rank、淘汰和共享排名     | D/DB/E2E | MRX-001/002/013 |
+| B-03 | relay N=2 的 BO1/3/5/7、交替先手、guess/pass/timeout/forfeit | D/DB/E2E | MRX-001/006/013 |
+| B-04 | player/spectator/淘汰者的权限与 race 匿名矩阵                | DB/C/E2E | MRX-001/002/013 |
+| B-05 | game sequence、cursor、snapshot 缺口和 `sync.complete`       | DB/R/E2E | MRX-001/011/013 |
+| B-06 | player/spectator chat channel、闭麦、history/replay          | DB/R/E2E | MRX-001/013     |
+| B-07 | join/claim-seat/ready/settings/rematch/leave 并发            | DB       | MRX-001/004/009 |
+| B-08 | stats v1-v5 导入、匿名导出和 race 记录                       | R/UI     | MRX-001/012     |
+
+## 房间与开局
+
+| ID   | Required case                                          | 层级      | Owner           |
+| ---- | ------------------------------------------------------ | --------- | --------------- |
+| L-01 | relay create/settings 只接受 2/4/6/8，默认 2           | D/DB/C/UI | MRX-004/010     |
+| L-02 | elimination 默认 false，原子修改并可刷新恢复           | DB/C/R/UI | MRX-004/010     |
+| L-03 | 上限 6 可由实际 2/4/6 人开局，不要求坐满               | DB/E2E    | MRX-004/013     |
+| L-04 | 3/5/7 人全员 ready 不开局并投影 odd reason             | D/DB/R/UI | MRX-004/010     |
+| L-05 | 偶数 roster 有一人未准备或断线时不开始                 | DB/E2E    | MRX-004/013     |
+| L-06 | 4 人中仅 2 人 ready 不会冻结 ready 子集                | DB        | MRX-004         |
+| L-07 | join/claim/settings/final-ready 竞争不超员、不奇数开局 | DB        | MRX-004         |
+| L-08 | 实际 N=2 时 elimination true/false 都是 legacy wins    | D/DB/E2E  | MRX-004/006     |
+| L-09 | feature flag 关闭时只允许双人 relay，race 不受影响     | DB/UI/E2E | MRX-004/010/013 |
+
+## 配对、题目与 encounter
+
+| ID   | Required case                                        | 层级     | Owner           |
+| ---- | ---------------------------------------------------- | -------- | --------------- |
+| E-01 | 2/4/6/8 active 分别生成 1/2/3/4 个完整 pair          | D/DB     | MRX-005         |
+| E-02 | 奇数 active 恰有一个 bye，无遗漏/重复 member         | D/DB     | MRX-005/008     |
+| E-03 | 同一玩家不能连续两个 stage bye                       | D/DB     | MRX-005/008     |
+| E-04 | 固定 seed 配对可复现；落库后重启不重抽               | D/DB     | MRX-005/009     |
+| E-05 | 同 stage 各 encounter 答案互异，答案池不足原子失败   | D/DB     | MRX-006         |
+| E-06 | 不同 encounter 可猜同一角色，同 encounter 禁止重复   | DB       | MRX-003/006     |
+| E-07 | 非本 encounter 玩家/非当前 turn/已结束动作稳定拒绝   | D/DB/C   | MRX-006         |
+| E-08 | 一张棋盘结束不关闭其他棋盘，最后一张触发一次 barrier | DB/R/E2E | MRX-005/006/013 |
+| E-09 | 4 张棋盘同时 guess/pass/timeout 无死锁和重复事件     | DB/load  | MRX-006/013     |
+| E-10 | 正确、双方耗尽、整局超时、空过超额、forfeit outcome  | D/DB     | MRX-006         |
+
+## 非淘汰积分
+
+| ID   | Required case                               | 层级    | Owner       |
+| ---- | ------------------------------------------- | ------- | ----------- |
+| P-01 | win/loss 为 +2/+0，draw 为 +1/+1，bye 为 +0 | D/DB    | MRX-007     |
+| P-02 | BO1/3/5/7 恰为 1/3/5/7 个 stage             | D/DB    | MRX-007     |
+| P-03 | stage 全部 encounter 结束前积分不变         | DB/R    | MRX-007/011 |
+| P-04 | stage delta 原子且幂等，重试不重复加分      | DB      | MRX-007     |
+| P-05 | 最终积分降序与 `1,1,3` 共享排名             | D/DB/UI | MRX-007/012 |
+| P-06 | 永不因领先提前结束，除非异常不足 2 active   | D/DB    | MRX-007/009 |
+
+## 淘汰、濒死与排名
+
+| ID   | Required case                                            | 层级     | Owner       |
+| ---- | -------------------------------------------------------- | -------- | ----------- |
+| X-01 | 初始/上限 10；胜 +1 capped，负 -n，平 -floor(n/2)        | D/DB     | MRX-008     |
+| X-02 | 扣到恰好 0 不濒死，首次原始结果小于 0 才濒死             | D        | MRX-008     |
+| X-03 | 首次负数钳制 0；near-death 正分无效、0 delta 不死        | D/DB     | MRX-008     |
+| X-04 | near-death 下一次负 delta 保留负分并淘汰                 | D/DB     | MRX-008     |
+| X-05 | 同 stage 0/1/多人/全员淘汰均正确                         | D/DB     | MRX-008     |
+| X-06 | 剩 2 人继续淘汰 policy，结算后 <=1 人结束                | D/DB/E2E | MRX-008/013 |
+| X-07 | bye 分数/生命状态不变，页面 capability 只读              | D/DB/UI  | MRX-008/012 |
+| X-08 | 淘汰于 n 的 survivedStages=n-1，survivor=completedStages | D/DB     | MRX-008     |
+| X-09 | 只按存留局数共享排名，积分不破同分                       | D/DB/UI  | MRX-008/012 |
+| X-10 | 全员同轮淘汰允许并列第一且无 winner                      | D/DB/E2E | MRX-008/013 |
+
+## 离场、恢复与再来一局
+
+| ID   | Required case                                           | 层级     | Owner       |
+| ---- | ------------------------------------------------------- | -------- | ----------- |
+| R-01 | 宽限内重连恢复原 encounter/turn，timer 不暂停           | DB/R/E2E | MRX-009/011 |
+| R-02 | 单人永久离场只让所属 encounter 判负                     | DB       | MRX-009     |
+| R-03 | 同 pair 双方同时过期为 draw，不依赖扫描顺序             | D/DB     | MRX-009     |
+| R-04 | points 离场后 odd active 复用 bye，不足 2 提前排名      | D/DB     | MRX-009     |
+| R-05 | elimination 离场不触发濒死，存留局数正确                | D/DB     | MRX-009     |
+| R-06 | 重启不重抽 pairing/answer，不重复 turn/settlement/event | DB/E2E   | MRX-009/013 |
+| R-07 | 无法恢复时产生明确 server_restart 终态                  | DB/R     | MRX-009/011 |
+| R-08 | 淘汰者可 rematch；left 阻止；新 match 全状态重置        | DB/E2E   | MRX-009/013 |
+
+## 投影、历史与安全
+
+| ID   | Required case                                             | 层级          | Owner           |
+| ---- | --------------------------------------------------------- | ------------- | --------------- |
+| S-01 | 所有 relay viewer 可见完整标签，不使用匿名矩阵            | C/R/UI/E2E    | MRX-011/012     |
+| S-02 | 进行中 answer 不出现在 REST/WS/snapshot/history/error/log | DB/C/security | MRX-006/011/013 |
+| S-03 | terminal encounter 才揭示自身 answer                      | DB/C/R        | MRX-011         |
+| S-04 | 伪造跨 encounter/跨 room ID 无动作或越权读取              | DB/security   | MRX-006/011/013 |
+| S-05 | 并发事件 sequence 唯一连续，cursor/snapshot 修复缺口      | DB/R/E2E      | MRX-011         |
+| S-06 | snapshot 大小不随完整历史 turn 无界增长                   | DB/load       | MRX-011/013     |
+| S-07 | 历史分页无重复/遗漏，刷新后可按需恢复                     | DB/R/E2E      | MRX-011/012     |
+| S-08 | v2 客户端明确刷新，v3 game/chat 双水位正确                | C/R/E2E       | MRX-003/011/013 |
+
+## Web 与本地统计
+
+| ID   | Required case                                          | 层级       | Owner       |
+| ---- | ------------------------------------------------------ | ---------- | ----------- |
+| W-01 | 当前/历史始终最多挂载一张棋盘                          | UI/E2E     | MRX-012     |
+| W-02 | 对阵标题包含双方昵称和 seat，重复昵称可区分            | UI/E2E     | MRX-012     |
+| W-03 | 浏览他人棋盘、bye、结束、淘汰、spectator 输入禁用      | UI/E2E     | MRX-012     |
+| W-04 | own active board + 本人 turn 才可 guess/pass/forfeit   | UI/E2E     | MRX-012     |
+| W-05 | own encounter 结束提示不阻塞翻页/历史                  | UI/E2E     | MRX-012     |
+| W-06 | 顶部积分实时展示 active/near-death/eliminated/left/bye | UI/E2E     | MRX-012     |
+| W-07 | desktop/Pixel 7 无横向页面溢出、遮挡和布局跳动         | E2E/visual | MRX-010/012 |
+| W-08 | stats v1-v6 导入和 v6 匿名导出                         | R/UI       | MRX-012     |
+
+## MRX-013 最小浏览器组合
+
+完整组合数量很大，E2E 至少覆盖以下高价值路径，其余组合由 domain/DB/component 测试覆盖：
+
+| viewport |        roster | scoring     | 关键路径                                 |
+| -------- | ------------: | ----------- | ---------------------------------------- |
+| desktop  |             2 | legacy wins | 完整 BO、pass/timeout、历史、rematch     |
+| desktop  |             4 | points      | 两棋盘并发、一方先结束等待、固定轮数排名 |
+| desktop  |             6 | elimination | 濒死、淘汰后 5 人 bye、禁止连续 bye      |
+| desktop  |             8 | elimination | 四棋盘并发、完整积分条、最终 survivor    |
+| Pixel 7  |             4 | points      | 创建/大厅、单棋盘分页、非阻塞提示        |
+| Pixel 7  |             6 | elimination | bye/淘汰只读、历史与返回当前轮           |
+| desktop  | 4 + spectator | 任一多人制  | 全标签观战、刷新/重连、chat channel      |
+| desktop  | 4 -> 3 active | points      | 永久离场、系统 bye、提前终止保护         |
