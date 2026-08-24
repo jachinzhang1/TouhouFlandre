@@ -613,6 +613,8 @@ events:
           description: 终局总积分排行榜；rank 可共享。
           items:
             $ref: "#/definitions/MemberRanking"
+        relay:
+          $ref: "#/definitions/RelayMatchEnded"
         reason:
           type: string
           enum: [normal, forfeit, disconnect, server_restart, round_cap]
@@ -815,6 +817,10 @@ events:
           type: array
           items:
             $ref: "#/definitions/RelayStanding"
+        eliminatedMemberIds:
+          type: array
+          items:
+            type: string
         nextStageIndex:
           type: integer
           minimum: 1
@@ -1141,6 +1147,47 @@ definitions:
       eliminatedStage:
         type: integer
         minimum: 1
+  RelayRanking:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, rank, score, status, lifeState]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      rank:
+        type: integer
+        minimum: 1
+      score:
+        type: integer
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      lifeState:
+        type: string
+        enum: [healthy, near_death]
+      eliminatedStage:
+        type: integer
+        minimum: 1
+      survivedStages:
+        type: integer
+        minimum: 0
+  RelayMatchEnded:
+    type: object
+    additionalProperties: false
+    required: [standings, ranking]
+    properties:
+      standings:
+        type: array
+        items:
+          $ref: "#/definitions/RelayStanding"
+      ranking:
+        type: array
+        items:
+          $ref: "#/definitions/RelayRanking"
   RelayEncounterMember:
     type: object
     additionalProperties: false
@@ -1188,6 +1235,7 @@ definitions:
         scoreAfter,
         lifeBefore,
         lifeAfter,
+        lifeTransition,
       ]
     properties:
       memberId:
@@ -1212,6 +1260,9 @@ definitions:
       lifeAfter:
         type: string
         enum: [healthy, near_death]
+      lifeTransition:
+        type: string
+        enum: [none, entered_near_death, eliminated]
       eliminatedStage:
         type: integer
         minimum: 1
@@ -1636,7 +1687,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           status: playing
           encounters:
             - encounterId: encounter-01
@@ -1660,7 +1711,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           encounterId: encounter-01
           encounterIndex: 1
           status: playing
@@ -1689,7 +1740,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           encounterId: encounter-01
           memberId: member-host
           row:
@@ -1716,7 +1767,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           encounterId: encounter-01
           memberId: member-guest
           row:
@@ -1738,7 +1789,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           encounterId: encounter-01
           memberId: member-host
           row:
@@ -1760,7 +1811,7 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           encounterId: encounter-01
           status: ended
           outcome: win
@@ -1784,36 +1835,38 @@ examples:
         payload:
           matchIndex: 0
           stageId: stage-01
-          stageIndex: 1
+          stageIndex: 3
           status: ended
           settlement:
             - memberId: member-host
               encounterId: encounter-01
               assignment: paired
               outcome: loss
-              scoreBefore: 0
-              scoreDelta: -1
-              scoreAfter: -1
+              scoreBefore: 2
+              scoreDelta: -2
+              scoreAfter: 0
               lifeBefore: healthy
               lifeAfter: near_death
+              lifeTransition: entered_near_death
             - memberId: member-guest
               encounterId: encounter-01
               assignment: paired
               outcome: win
-              scoreBefore: 0
+              scoreBefore: 9
               scoreDelta: 1
-              scoreAfter: 1
+              scoreAfter: 10
               lifeBefore: healthy
               lifeAfter: healthy
+              lifeTransition: none
           standings:
             - memberId: member-host
               seat: 1
-              score: -1
+              score: 0
               status: active
               lifeState: near_death
             - memberId: member-guest
               seat: 2
-              score: 1
+              score: 10
               status: active
               lifeState: healthy
 

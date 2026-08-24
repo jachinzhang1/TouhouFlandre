@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -306,6 +307,13 @@ func (t *stageTransaction) UpdatePlayerStates(ctx context.Context, matchID strin
 		}); err != nil {
 			return err
 		}
+		if player.LifeTransition == relaydomain.LifeTransitionEliminated {
+			if _, err := t.q.MarkRelayMatchPlayerEliminated(ctx, repo.MarkRelayMatchPlayerEliminatedParams{
+				MatchID: matchID, MemberID: player.Player.MemberID,
+			}); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -329,7 +337,7 @@ func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydo
 				return err
 			}
 		}
-	case relaydomain.FixedPointsRuleSet():
+	case relaydomain.FixedPointsRuleSet(), relaydomain.EliminationRuleSet():
 		// Relay-owned standings are authoritative; legacy wins/score columns stay untouched.
 	default:
 		return fmt.Errorf("relay match %s has unsupported rule set %s", match.MatchID, match.RuleSet)
@@ -353,6 +361,7 @@ func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydo
 		return err
 	}
 	scores := make([]legacy.MemberScoreView, 0, len(states))
+	relayStandings := make([]legacy.RelayStandingView, 0, len(states))
 	var winnerSeat *int
 	playerByMember := make(map[string]repo.MultiMatchPlayer, len(states))
 	for _, state := range states {
@@ -365,23 +374,46 @@ func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydo
 			seat := int(player.Seat)
 			winnerSeat = &seat
 		}
-		scores = append(scores, legacy.MemberScoreView{MemberID: state.MemberID, Seat: int(player.Seat), Score: int(state.Score), Status: player.Status})
+		publicScore := int(state.Score)
+		if match.RuleSet == relaydomain.EliminationRuleSet() {
+			publicScore = int(player.Score)
+		}
+		scores = append(scores, legacy.MemberScoreView{MemberID: state.MemberID, Seat: int(player.Seat), Score: publicScore, Status: player.Status})
+		var eliminatedStage *int
+		if state.EliminatedStage.Valid {
+			value := int(state.EliminatedStage.Int32)
+			eliminatedStage = &value
+		}
+		relayStandings = append(relayStandings, legacy.RelayStandingView{
+			MemberID: state.MemberID, Seat: int(player.Seat), Score: int(state.Score), Status: player.Status,
+			LifeState: legacy.RelayLifeState(state.LifeState), EliminatedStage: eliminatedStage,
+		})
 	}
+	sort.Slice(relayStandings, func(i, j int) bool { return relayStandings[i].Seat < relayStandings[j].Seat })
 	ranking := make([]legacy.MemberRankingView, 0, len(decision.Ranking))
+	relayRanking := make([]legacy.RelayRankingView, 0, len(decision.Ranking))
 	for _, entry := range decision.Ranking {
 		player, ok := playerByMember[entry.Player.MemberID]
 		if !ok || int(player.Seat) != entry.Player.Seat {
 			return fmt.Errorf("relay match %s ranking contains an unknown player", match.MatchID)
 		}
-		ranking = append(ranking, legacy.MemberRankingView{
-			MemberID: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
-			Score: entry.Score, Status: entry.Status,
+		if match.RuleSet != relaydomain.EliminationRuleSet() {
+			ranking = append(ranking, legacy.MemberRankingView{
+				MemberID: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
+				Score: entry.Score, Status: entry.Status,
+			})
+		}
+		relayRanking = append(relayRanking, legacy.RelayRankingView{
+			MemberID: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank, Score: entry.Score,
+			Status: entry.Status, LifeState: legacy.RelayLifeState(entry.LifeState),
+			EliminatedStage: entry.EliminatedStage, SurvivedStages: entry.SurvivedStages,
 		})
 	}
 	return legacy.AppendEvent(ctx, t.q, match.RoomID, legacy.EventMatchEnded, legacy.MatchEndedEventPayload{
 		MatchIndex: match.MatchIndex, WinnerMemberID: decision.WinnerMemberID, WinnerSlot: winnerSeat,
 		MemberScores: scores, Scores: legacy.ScoresView{Slot1: decision.ScoresBySeat[0], Slot2: decision.ScoresBySeat[1]},
 		Reason: legacy.MatchEndReason(decision.Reason), RetentionEndsAt: retentionEndsAt, Ranking: ranking,
+		Relay: &legacy.RelayMatchEndedView{Standings: relayStandings, Ranking: relayRanking},
 	})
 }
 
@@ -426,6 +458,7 @@ func (t *stageTransaction) AppendStageEnded(ctx context.Context, roomID string, 
 			MemberID: player.Player.MemberID, EncounterID: player.EncounterID, Assignment: string(player.Assignment), Outcome: string(player.Outcome),
 			ScoreBefore: player.ScoreBefore, ScoreDelta: player.ScoreDelta, ScoreAfter: player.ScoreAfter,
 			LifeBefore: legacy.RelayLifeState(player.LifeBefore), LifeAfter: legacy.RelayLifeState(player.LifeAfter),
+			LifeTransition:  legacy.RelayLifeTransition(player.LifeTransition),
 			EliminatedStage: player.EliminatedStage,
 		})
 	}
@@ -438,7 +471,8 @@ func (t *stageTransaction) AppendStageEnded(ctx context.Context, roomID string, 
 	}
 	return legacy.AppendEvent(ctx, t.q, roomID, legacy.EventRelayStageEnded, legacy.RelayStageEndedPayload{
 		MatchIndex: event.MatchIndex, StageID: event.StageID, StageIndex: event.StageIndex, Status: string(relaydomain.StageStatusEnded),
-		Settlement: settlement, Standings: standings, NextStageIndex: event.NextStageIndex, ByeMemberID: event.ByeMemberID,
+		Settlement: settlement, Standings: standings, EliminatedMemberIDs: event.EliminatedMemberIDs,
+		NextStageIndex: event.NextStageIndex, ByeMemberID: event.ByeMemberID,
 	})
 }
 

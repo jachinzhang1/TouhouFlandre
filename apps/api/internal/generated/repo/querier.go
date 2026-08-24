@@ -180,6 +180,7 @@ type Querier interface {
 	ListWorks(ctx context.Context) ([]Work, error)
 	MarkMatchPlayerEliminated(ctx context.Context, arg MarkMatchPlayerEliminatedParams) (int64, error)
 	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
+	MarkRelayMatchPlayerEliminated(ctx context.Context, arg MarkRelayMatchPlayerEliminatedParams) (MultiMatchPlayer, error)
 	MarkRelayStagePlaying(ctx context.Context, id string) (MultiRelayStage, error)
 	MarkRelayStageSettled(ctx context.Context, arg MarkRelayStageSettledParams) (MultiRelayStage, error)
 	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)

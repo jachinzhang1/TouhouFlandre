@@ -31,6 +31,13 @@ RelayLifeState:
     - healthy
     - near_death
 
+RelayLifeTransition:
+  type: string
+  enum:
+    - none
+    - entered_near_death
+    - eliminated
+
 RelayStandingView:
   type: object
   description: 接力专属比分；淘汰后的分数允许为负，不能与 race MemberScoreView 混用。
@@ -86,6 +93,9 @@ RelayRankingView:
     eliminatedStage:
       type: integer
       minimum: 1
+    survivedStages:
+      type: integer
+      minimum: 0
 
 RelayEncounterSummary:
   type: object
@@ -223,6 +233,7 @@ RelayStageSettlementView:
     - scoreAfter
     - lifeBefore
     - lifeAfter
+    - lifeTransition
   properties:
     memberId:
       type: string
@@ -244,6 +255,8 @@ RelayStageSettlementView:
       $ref: "#/RelayLifeState"
     lifeAfter:
       $ref: "#/RelayLifeState"
+    lifeTransition:
+      $ref: "#/RelayLifeTransition"
     eliminatedStage:
       type: integer
       minimum: 1

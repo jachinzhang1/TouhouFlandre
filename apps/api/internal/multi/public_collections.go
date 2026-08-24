@@ -119,6 +119,22 @@ func MemberResultsForRanking(winnerMemberID *string, ranking []MemberRankingView
 	return views
 }
 
+func MemberResultsForRelayRanking(winnerMemberID *string, ranking []RelayRankingView, memberSeatByID map[string]int32) []MemberResultView {
+	if winnerMemberID != nil || len(ranking) == 0 {
+		return MemberResults(winnerMemberID, memberSeatByID)
+	}
+	views := make([]MemberResultView, 0, len(ranking))
+	for _, entry := range ranking {
+		result := MatchResultLoss
+		if entry.Rank == 1 {
+			result = MatchResultDraw
+		}
+		views = append(views, MemberResultView{MemberID: entry.MemberID, Seat: entry.Seat, Result: result})
+	}
+	sort.Slice(views, func(i, j int) bool { return views[i].Seat < views[j].Seat })
+	return views
+}
+
 func ViewerResultForMember(memberID string, results []MemberResultView) *MatchResult {
 	for _, result := range results {
 		if result.MemberID == memberID {

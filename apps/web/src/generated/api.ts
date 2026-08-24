@@ -1201,6 +1201,7 @@ export interface components {
             status: components["schemas"]["MatchPlayerStatus"];
             lifeState: components["schemas"]["RelayLifeState"];
             eliminatedStage?: number;
+            survivedStages?: number;
         };
         RelayEncounterMemberView: {
             memberId: string;
@@ -1215,6 +1216,8 @@ export interface components {
             status: "planned" | "countdown" | "playing" | "ended";
             members: components["schemas"]["RelayEncounterMemberView"][];
         };
+        /** @enum {string} */
+        RelayLifeTransition: "none" | "entered_near_death" | "eliminated";
         RelayStageSettlementView: {
             memberId: string;
             encounterId?: string;
@@ -1227,6 +1230,7 @@ export interface components {
             scoreAfter: number;
             lifeBefore: components["schemas"]["RelayLifeState"];
             lifeAfter: components["schemas"]["RelayLifeState"];
+            lifeTransition: components["schemas"]["RelayLifeTransition"];
             eliminatedStage?: number;
         };
         /**

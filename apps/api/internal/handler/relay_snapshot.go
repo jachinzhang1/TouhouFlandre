@@ -41,16 +41,27 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 			value := int(state.EliminatedStage.Int32)
 			eliminatedStage = &value
 		}
+		status := player.Status
+		if eliminatedStage != nil {
+			status = "eliminated"
+		}
 		standings = append(standings, openapi.RelayStandingView{
 			MemberId: player.MemberID, Seat: int(player.Seat), Score: int(state.Score),
-			Status: openapi.MatchPlayerStatus(player.Status), LifeState: openapi.RelayLifeState(state.LifeState),
+			Status: openapi.MatchPlayerStatus(status), LifeState: openapi.RelayLifeState(state.LifeState),
 			EliminatedStage: eliminatedStage,
 		})
 		domainStates = append(domainStates, relaydomain.PlayerState{
 			Player: relaydomain.PlayerSnapshot{MemberID: player.MemberID, Seat: int(player.Seat)},
-			Score:  int(state.Score), Status: player.Status, LifeState: relaydomain.LifeState(state.LifeState),
+			Score:  int(state.Score), Status: status, LifeState: relaydomain.LifeState(state.LifeState),
 			EliminatedStage: eliminatedStage,
 		})
+	}
+	stages, err := s.q.ListRelayStagesForMatch(ctx, match.ID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	if len(stages) == 0 {
+		return nil, nil, 0, errors.New("relay snapshot: active relay match has no stage")
 	}
 	fragment := &openapi.RelayMatchFragment{
 		RuleSetRef: openapi.RuleSetRef{Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version},
@@ -61,24 +72,22 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 		fragment.PlannedStages = &plannedStages
 		if match.Status == string(multi.MatchStatusFinished) {
 			ranking, _ := relaydomain.FixedPointsRanking(domainStates)
-			views := make([]openapi.RelayRankingView, 0, len(ranking))
-			for _, entry := range ranking {
-				views = append(views, openapi.RelayRankingView{
-					MemberId: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
-					Score: entry.Score, Status: openapi.MatchPlayerStatus(entry.Status),
-					LifeState: openapi.RelayLifeState(entry.LifeState), EliminatedStage: entry.EliminatedStage,
-				})
-			}
+			views := relayRankingViews(ranking)
 			fragment.Ranking = &views
 		}
-	}
-
-	stages, err := s.q.ListRelayStagesForMatch(ctx, match.ID)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	if len(stages) == 0 {
-		return nil, nil, 0, errors.New("relay snapshot: active relay match has no stage")
+	} else if ref == relaydomain.EliminationRuleSet() && match.Status == string(multi.MatchStatusFinished) {
+		completedStages := 0
+		for _, stage := range stages {
+			if stage.Status == string(relaydomain.StageStatusEnded) && int(stage.StageIndex) > completedStages {
+				completedStages = int(stage.StageIndex)
+			}
+		}
+		ranking, _, err := relaydomain.EliminationRanking(domainStates, completedStages)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		views := relayRankingViews(ranking)
+		fragment.Ranking = &views
 	}
 	stage := stages[len(stages)-1]
 	encounters, err := s.q.ListRelayEncountersForStage(ctx, stage.ID)
@@ -185,6 +194,7 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 				Outcome:     openapi.RelayStageSettlementViewOutcome(player.Outcome),
 				ScoreBefore: int(player.ScoreBefore), ScoreDelta: int(player.ScoreDelta), ScoreAfter: int(player.ScoreAfter),
 				LifeBefore: openapi.RelayLifeState(player.LifeBefore), LifeAfter: openapi.RelayLifeState(player.LifeAfter),
+				LifeTransition:  openapi.RelayLifeTransition(relayLifeTransition(player.LifeBefore, player.LifeAfter, player.EliminatedStage.Valid)),
 				EliminatedStage: eliminatedStage,
 			})
 		}
@@ -197,6 +207,29 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 		legacyRound = legacyRoundViewFromRelay(match, encounters[0], details[0], observer)
 	}
 	return fragment, legacyRound, int(stage.StageIndex), nil
+}
+
+func relayRankingViews(ranking []relaydomain.RankingEntry) []openapi.RelayRankingView {
+	views := make([]openapi.RelayRankingView, 0, len(ranking))
+	for _, entry := range ranking {
+		views = append(views, openapi.RelayRankingView{
+			MemberId: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
+			Score: entry.Score, Status: openapi.MatchPlayerStatus(entry.Status),
+			LifeState: openapi.RelayLifeState(entry.LifeState), EliminatedStage: entry.EliminatedStage,
+			SurvivedStages: entry.SurvivedStages,
+		})
+	}
+	return views
+}
+
+func relayLifeTransition(before, after string, eliminated bool) relaydomain.LifeTransition {
+	if eliminated {
+		return relaydomain.LifeTransitionEliminated
+	}
+	if relaydomain.LifeState(before) == relaydomain.LifeStateHealthy && relaydomain.LifeState(after) == relaydomain.LifeStateNearDeath {
+		return relaydomain.LifeTransitionEnteredNearDeath
+	}
+	return relaydomain.LifeTransitionNone
 }
 
 func relayEncounterMemberViews(members []repo.MultiRelayEncounterMember) []openapi.RelayEncounterMemberView {

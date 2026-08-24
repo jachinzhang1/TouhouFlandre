@@ -297,6 +297,14 @@ SET score = sqlc.arg(score),
 WHERE match_id = sqlc.arg(match_id) AND member_id = sqlc.arg(member_id)
 RETURNING *;
 
+-- name: MarkRelayMatchPlayerEliminated :one
+UPDATE multi_match_player
+SET status = 'eliminated'
+WHERE match_id = sqlc.arg(match_id)
+  AND member_id = sqlc.arg(member_id)
+  AND status = 'active'
+RETURNING *;
+
 -- name: ListRelayStagePlayers :many
 SELECT *
 FROM multi_relay_stage_player

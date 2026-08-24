@@ -157,16 +157,20 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		}
 	}
 	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRelay {
+		initialScore, err := relaydomain.InitialScoreForRuleSet(plan.RuleSet)
+		if err != nil {
+			return internalError(err)
+		}
 		players := make([]relaydomain.PlayerSnapshot, 0, len(members))
 		for _, member := range members {
 			if _, err := q.CreateRelayMatchPlayerState(ctx, repo.CreateRelayMatchPlayerStateParams{
-				MatchID: match.ID, MemberID: member.ID, Score: 0, LifeState: string(relaydomain.LifeStateHealthy),
+				MatchID: match.ID, MemberID: member.ID, Score: int32(initialScore), LifeState: string(relaydomain.LifeStateHealthy),
 			}); err != nil {
 				return mapRoomWriteError(err)
 			}
 			players = append(players, relaydomain.PlayerSnapshot{MemberID: member.ID, Seat: multi.MemberSeat(member)})
 		}
-		_, err := s.relayCoordinator.CreateStageInTransaction(ctx, relayadapter.NewStageTransactionFromQueries(q, s.timing.FinishedRetention), relaydomain.CreateStageRequest{
+		_, err = s.relayCoordinator.CreateStageInTransaction(ctx, relayadapter.NewStageTransactionFromQueries(q, s.timing.FinishedRetention), relaydomain.CreateStageRequest{
 			Match: relaydomain.MatchContext{
 				MatchID: match.ID, RoomID: room.ID, MatchIndex: int(match.MatchIndex),
 				RuleSet:    plan.RuleSet,
