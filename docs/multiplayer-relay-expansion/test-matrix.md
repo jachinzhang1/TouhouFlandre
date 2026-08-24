@@ -112,8 +112,8 @@ MRX-001 只冻结下列预期，不实现 registry 或新增 wire error。MRX-00
 | ID   | Required case                                            | 层级     | Owner       |
 | ---- | -------------------------------------------------------- | -------- | ----------- |
 | X-01 | 初始/上限 10；胜 +1 capped，负 -n，平 -floor(n/2)        | D/DB     | MRX-008     |
-| X-02 | 扣到恰好 0 不濒死，首次原始结果小于 0 才濒死             | D        | MRX-008     |
-| X-03 | 首次负数钳制 0；near-death 正分无效、0 delta 不死        | D/DB     | MRX-008     |
+| X-02 | 首次原始结果小于等于 0 均进入濒死并钳制为 0              | D        | MRX-008     |
+| X-03 | near-death 正分无效、0 delta 不死；负 delta 保留负分      | D/DB     | MRX-008     |
 | X-04 | near-death 下一次负 delta 保留负分并淘汰                 | D/DB     | MRX-008     |
 | X-05 | 同 stage 0/1/多人/全员淘汰均正确                         | D/DB     | MRX-008     |
 | X-06 | 剩 2 人继续淘汰 policy，结算后 <=1 人结束                | D/DB/E2E | MRX-008/013 |

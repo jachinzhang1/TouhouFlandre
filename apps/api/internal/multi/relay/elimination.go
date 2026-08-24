@@ -137,7 +137,7 @@ func settleEliminationPlayer(state PlayerState, participant ParticipantOutcome, 
 			stage := stageIndex
 			eliminatedStage = &stage
 		}
-	} else if after < 0 {
+	} else if after <= 0 {
 		after = 0
 		lifeAfter = LifeStateNearDeath
 		transition = LifeTransitionEnteredNearDeath

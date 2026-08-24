@@ -21,7 +21,7 @@ func TestEliminationPlayerTransitions(t *testing.T) {
 		wantEliminated bool
 	}{
 		{name: "win is capped at ten", state: eliminationState(1, 10, LifeStateHealthy, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeWin), stage: 1, wantScore: 10, wantLife: LifeStateHealthy, wantTransition: LifeTransitionNone},
-		{name: "loss to exactly zero stays healthy", state: eliminationState(1, 3, LifeStateHealthy, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeLoss), stage: 3, wantScore: 0, wantDelta: -3, wantLife: LifeStateHealthy, wantTransition: LifeTransitionNone},
+		{name: "loss to exactly zero enters near death", state: eliminationState(1, 3, LifeStateHealthy, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeLoss), stage: 3, wantScore: 0, wantDelta: -3, wantLife: LifeStateNearDeath, wantTransition: LifeTransitionEnteredNearDeath},
 		{name: "first negative enters near death and clamps", state: eliminationState(1, 2, LifeStateHealthy, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeLoss), stage: 3, wantScore: 0, wantDelta: -2, wantLife: LifeStateNearDeath, wantTransition: LifeTransitionEnteredNearDeath},
 		{name: "near death win has no effect", state: eliminationState(1, 0, LifeStateNearDeath, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeWin), stage: 4, wantScore: 0, wantLife: LifeStateNearDeath, wantTransition: LifeTransitionNone},
 		{name: "stage one draw does not eliminate near death", state: eliminationState(1, 0, LifeStateNearDeath, "active", nil), participant: pairedOutcome(1, &encounterID, OutcomeDraw), stage: 1, wantScore: 0, wantLife: LifeStateNearDeath, wantTransition: LifeTransitionNone},

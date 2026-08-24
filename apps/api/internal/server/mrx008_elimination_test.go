@@ -69,7 +69,7 @@ func TestMRX008ProductionRuntimePersistsEliminationAndCreatesOddBye(t *testing.T
 		Scan(&exactZeroScore, &exactZeroLife, &exactZeroStatus); err != nil {
 		t.Fatal(err)
 	}
-	if exactZeroScore != 0 || exactZeroLife != string(relay.LifeStateHealthy) || exactZeroStatus != "active" {
+	if exactZeroScore != 0 || exactZeroLife != string(relay.LifeStateNearDeath) || exactZeroStatus != "active" {
 		t.Fatalf("exact-zero state score=%d life=%s status=%s", exactZeroScore, exactZeroLife, exactZeroStatus)
 	}
 
@@ -78,7 +78,7 @@ func TestMRX008ProductionRuntimePersistsEliminationAndCreatesOddBye(t *testing.T
 		t.Fatalf("stage event = %+v", stageEvent)
 	}
 	byMember := mrx008SettlementByMember(stageEvent.Settlement)
-	if byMember[firstLoser.MemberID].LifeTransition != multi.RelayLifeTransitionEliminated || byMember[secondLoser.MemberID].LifeTransition != multi.RelayLifeTransitionNone {
+	if byMember[firstLoser.MemberID].LifeTransition != multi.RelayLifeTransitionEliminated || byMember[secondLoser.MemberID].LifeTransition != multi.RelayLifeTransitionEnteredNearDeath {
 		t.Fatalf("settlement = %+v", stageEvent.Settlement)
 	}
 

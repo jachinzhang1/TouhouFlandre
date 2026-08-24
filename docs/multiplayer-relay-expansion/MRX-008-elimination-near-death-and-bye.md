@@ -16,7 +16,7 @@
 
 - 实现 relay-owned `EliminationPolicy` 纯函数，输入 stage index、旧积分/生命状态和 outcome，输出积分、状态、淘汰 stage 与 match 终止。
 - 初始 10 分、上限 10；胜 +1、负 `-n`、平各 `-floor(n/2)`、bye 0。
-- 精确实现首次 `<0` 钳制为 0 并把 relay `lifeState` 改为 `near_death`；公共参与状态仍为 active。near-death 不再加分，下一次真实负分后淘汰。
+- 精确实现首次 `<=0` 钳制为 0 并把 relay `lifeState` 改为 `near_death`；公共参与状态仍为 active。near-death 不再加分，下一次真实负分后淘汰。
 - 批量结算允许 0..N 人同时淘汰；结算后 active `<=1` 即结束，不创建空 stage。
 - 新 stage active 为奇数时使用 MRX-005 bye 计划，bye 分数/状态不变且不能连续。
 - 最终只按 `survivedStages` 排名，唯一 survivor 优先；积分不破同分。
@@ -41,7 +41,7 @@
 
 ## 验收标准
 
-- 普通玩家从正分扣到恰好 0 时仍为 active；首次扣到负数时变为 near-death 且公开分为 0。
+- 普通玩家从正分结算到恰好 0 时变为 near-death 且公开分为 0；首次结算到负数时同样进入 near-death 并钳制为 0。
 - near-death 获胜时仍为 0；平局在 `floor(n/2)=0` 时不淘汰；下一次负分后保留负分并淘汰。
 - 胜者在 10 分时不会超过上限；同一 stage 多人状态在一个事务中一致可见。
 - 3/5/7 名 active 时恰有一名 bye，连续至少 20 个确定性计划中无人连续 bye；bye 的积分和状态完全不变。
@@ -56,7 +56,7 @@ relay mode package 下的 `elimination`、stage settlement 与 pairing adapter�
 
 ## 实施与验收记录（2026-08-24）
 
-本 Issue 已交付 `(relay, elimination, 1)` 的完整多人核心链路。relay-owned `EliminationPolicy` 从 10 分开始并封顶 10 分，按 stage index 处理胜 `+1`、负 `-n`、平双方 `-floor(n/2)` 和 bye `0`；普通玩家扣到恰好 0 仍保持 healthy，首次原始结果小于 0 时钳制为 0 并进入 near-death。near-death 的正分不生效、零变化不淘汰，下一次真实负分保留负数并淘汰。`scoreDelta` 始终记录封顶或钳制后的实际变化，所有转换显式投影为 `none`、`entered_near_death` 或 `eliminated`。
+本 Issue 已交付 `(relay, elimination, 1)` 的完整多人核心链路。relay-owned `EliminationPolicy` 从 10 分开始并封顶 10 分，按 stage index 处理胜 `+1`、负 `-n`、平双方 `-floor(n/2)` 和 bye `0`；普通玩家第一次真实结算的原始结果小于等于 0 时钳制为 0 并进入 near-death，因此恰好归零也会触发濒死。near-death 的正分不生效、零变化不淘汰，下一次真实负分保留负数并淘汰。`scoreDelta` 始终记录封顶或钳制后的实际变化，所有转换显式投影为 `none`、`entered_near_death` 或 `eliminated`。
 
 stage barrier 在同一事务内更新 relay player score/life/eliminated stage 和公共 `multi_match_player.status=eliminated`，一次结算支持 0..N 人同时淘汰；结算后 active 多于 1 人才创建下一 stage，降至 2 人仍继续 elimination，active 小于等于 1 时直接按存留局数结束且没有任意 BO/轮数上限。奇数 active 继续复用 MRX-005 已冻结的 pairing/bye 计划，`relay.stage.ended.byeMemberId` 表示当前结算 stage 的 bye，下一 stage 的 bye 只随 `relay.stage.started` 发布。3/5/7 人连续 20 个确定性计划的测试确认每轮恰有一名 bye 且无人连续 bye。
 
@@ -74,3 +74,7 @@ WSL 验证结果：
 - `task gen:openapi`、固定 `sqlc v1.31.1 generate` 与 `task gen:web` 二次生成前后目标文件 SHA-256 完全一致；Windows Git `diff --check` 通过。
 
 本次没有数据库 migration 或破坏性数据操作。应用回滚只需在不存在进行中的 elimination match 时回到前一 binary；当前公开入口仍限制双人，因此不会由产品流量创建此类 match，未来 MRX-004 开放入口时需沿用发布闸门的停止新建与排空规则。没有实现 MRX-004 多人房间策略、MRX-009 离场/断线统一终态、MRX-011 history projector 或 MRX-012 Web 样式与本地统计。
+
+### 规则调整记录（2026-08-24）
+
+根据规则修订，健康玩家首次真实结算的原始积分结果由“小于 0”改为“小于等于 0”时进入 `near_death`；恰好归零仍将积分公开为 0，本次不淘汰。轮空和已经处于 `near_death` 的玩家分支保持不变。领域单测、真实 PostgreSQL stage settlement 测试及上述决策/矩阵文档已同步更新。
