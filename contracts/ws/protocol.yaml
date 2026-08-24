@@ -231,6 +231,11 @@ events:
         targetWins:
           type: integer
           minimum: 1
+        plannedStages:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: relay fixed_points 规则冻结的 stage 总数；其他规则省略。
         catalogVersion:
           type: string
           description: 本场绑定的题库版本（07 §2 快照不变量按每场对局界定）。

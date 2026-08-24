@@ -57,6 +57,36 @@ RelayStandingView:
       type: integer
       minimum: 1
 
+RelayRankingView:
+  type: object
+  description: 接力规则生成的最终共享名次；score 允许为负以保持 relay 规则边界。
+  required:
+    - memberId
+    - seat
+    - rank
+    - score
+    - status
+    - lifeState
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    rank:
+      type: integer
+      minimum: 1
+    score:
+      type: integer
+    status:
+      $ref: "#/MatchPlayerStatus"
+    lifeState:
+      $ref: "#/RelayLifeState"
+    eliminatedStage:
+      type: integer
+      minimum: 1
+
 RelayEncounterSummary:
   type: object
   required:
@@ -296,6 +326,16 @@ RelayMatchFragment:
       type: array
       items:
         $ref: "#/RelayStandingView"
+    plannedStages:
+      type: integer
+      minimum: 1
+      maximum: 7
+      description: fixed_points 规则冻结的 stage 总数；其他 relay 规则省略。
+    ranking:
+      type: array
+      description: match 结束后的 relay 权威共享名次。
+      items:
+        $ref: "#/RelayRankingView"
     currentStage:
       $ref: "#/RelayStageView"
     historySummary:

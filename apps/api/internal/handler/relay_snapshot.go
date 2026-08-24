@@ -30,6 +30,7 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 		stateByMember[state.MemberID] = state
 	}
 	standings := make([]openapi.RelayStandingView, 0, len(roster))
+	domainStates := make([]relaydomain.PlayerState, 0, len(roster))
 	for _, player := range roster {
 		state, ok := stateByMember[player.MemberID]
 		if !ok {
@@ -45,10 +46,31 @@ func (s *Server) buildRelaySnapshot(ctx context.Context, match repo.MultiMatch, 
 			Status: openapi.MatchPlayerStatus(player.Status), LifeState: openapi.RelayLifeState(state.LifeState),
 			EliminatedStage: eliminatedStage,
 		})
+		domainStates = append(domainStates, relaydomain.PlayerState{
+			Player: relaydomain.PlayerSnapshot{MemberID: player.MemberID, Seat: int(player.Seat)},
+			Score:  int(state.Score), Status: player.Status, LifeState: relaydomain.LifeState(state.LifeState),
+			EliminatedStage: eliminatedStage,
+		})
 	}
 	fragment := &openapi.RelayMatchFragment{
 		RuleSetRef: openapi.RuleSetRef{Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version},
 		Standings:  standings,
+	}
+	if ref == relaydomain.FixedPointsRuleSet() {
+		plannedStages := int(match.MaxRounds)
+		fragment.PlannedStages = &plannedStages
+		if match.Status == string(multi.MatchStatusFinished) {
+			ranking, _ := relaydomain.FixedPointsRanking(domainStates)
+			views := make([]openapi.RelayRankingView, 0, len(ranking))
+			for _, entry := range ranking {
+				views = append(views, openapi.RelayRankingView{
+					MemberId: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
+					Score: entry.Score, Status: openapi.MatchPlayerStatus(entry.Status),
+					LifeState: openapi.RelayLifeState(entry.LifeState), EliminatedStage: entry.EliminatedStage,
+				})
+			}
+			fragment.Ranking = &views
+		}
 	}
 
 	stages, err := s.q.ListRelayStagesForMatch(ctx, match.ID)

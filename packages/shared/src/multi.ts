@@ -101,6 +101,7 @@ export interface MatchStartedPayload {
   mode: MultiplayerMode;
   turnSeconds: number;
   targetWins: number;
+  plannedStages?: number;
   catalogVersion: string;
   matchIndex: number;
   scoringMode?: RaceScoringMode;

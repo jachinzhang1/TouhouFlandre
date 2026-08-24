@@ -8,6 +8,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	raceadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/race/adapter"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 )
 
 func TestRaceOnlyAssemblyDoesNotResolveRelay(t *testing.T) {
@@ -46,7 +47,7 @@ func TestRelayOnlyAssemblyDoesNotResolveRace(t *testing.T) {
 	}
 }
 
-func TestProductionAssemblyRegistersFutureRelayRulesWithoutExecutingThem(t *testing.T) {
+func TestProductionAssemblyExecutesFixedPointsButKeepsEliminationDisabled(t *testing.T) {
 	registry, err := assembly.Production()
 	if err != nil {
 		t.Fatal(err)
@@ -54,9 +55,9 @@ func TestProductionAssemblyRegistersFutureRelayRulesWithoutExecutingThem(t *test
 	if _, err := registry.ResolveLegacy(core.ModeRelay, "points"); !core.HasErrorCode(err, core.ErrorInvalidRuleSet) {
 		t.Fatalf("relay points error = %v", err)
 	}
-	future := core.RuleSetRef{Mode: core.ModeRelay, Key: "fixed_points", Version: 1}
-	if err := registry.ValidateRuleSet(future); err != nil {
-		t.Fatalf("registered future relay rule error = %v", err)
+	fixed := relay.FixedPointsRuleSet()
+	if err := registry.ValidateRuleSet(fixed); err != nil {
+		t.Fatalf("registered fixed-points rule error = %v", err)
 	}
 	if err := registry.ValidateRuleSet(core.RuleSetRef{Mode: core.ModeRelay, Key: "fixed_points", Version: 2}); !core.HasErrorCode(err, core.ErrorUnknownRuleSetVersion) {
 		t.Fatalf("unknown future relay version error = %v", err)
@@ -65,18 +66,69 @@ func TestProductionAssemblyRegistersFutureRelayRulesWithoutExecutingThem(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := commandHandler.Handle(core.CommandContext{RuleSet: future, Command: core.CommandGuess}); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
-		t.Fatalf("future relay command error = %v", err)
+	if result, err := commandHandler.Handle(core.CommandContext{RuleSet: fixed, Command: core.CommandGuess}); err != nil || !result.Accepted {
+		t.Fatalf("fixed-points relay command result=%+v error=%v", result, err)
 	}
 	completionDriver, err := registry.CompletionDriver(core.ModeRelay)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := completionDriver.Route(future); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
-		t.Fatalf("future relay completion error = %v", err)
+	if _, err := completionDriver.Route(fixed); err != nil {
+		t.Fatalf("fixed-points relay completion error = %v", err)
+	}
+	projector, err := registry.SnapshotProjector(core.ModeRelay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if style, err := projector.Style(fixed); err != nil || style != core.ProjectionRelayShared {
+		t.Fatalf("fixed-points projection style=%s error=%v", style, err)
+	}
+	if _, err := completionDriver.Route(relay.EliminationRuleSet()); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
+		t.Fatalf("elimination completion error = %v", err)
 	}
 	if _, err := registry.ResolveLegacy(core.Mode("unknown"), "wins"); !core.HasErrorCode(err, core.ErrorUnknownMode) {
 		t.Fatalf("unknown mode error = %v", err)
+	}
+}
+
+func TestRelayMatchFactoryPlansLegacyAndFixedPointsByFrozenRoster(t *testing.T) {
+	registry, err := assembly.Production()
+	if err != nil {
+		t.Fatal(err)
+	}
+	factory, err := registry.MatchFactory(core.ModeRelay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	formats := []struct {
+		value  string
+		stages int
+	}{{"bo1", 1}, {"bo3", 3}, {"bo5", 5}, {"bo7", 7}}
+	for _, format := range formats {
+		for _, rosterSize := range []int{2, 4, 6, 8} {
+			plan, err := factory.Plan(core.MatchPlanInput{
+				Mode: core.ModeRelay, Format: format.value, RosterSize: rosterSize,
+				MaxRoundsFactor: 3, Now: time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC),
+				RoundCountdown: 5 * time.Second, RoundSeconds: 15 * time.Minute, TurnSeconds: 60,
+			})
+			if err != nil {
+				t.Fatalf("%s roster %d: %v", format.value, rosterSize, err)
+			}
+			if rosterSize == 2 {
+				if plan.RuleSet != relay.LegacyRuleSet() || plan.FirstTurnSeat == nil || plan.MaxRounds != format.stages*3 {
+					t.Fatalf("legacy %s plan = %+v", format.value, plan)
+				}
+				continue
+			}
+			if plan.RuleSet != relay.FixedPointsRuleSet() || plan.FirstTurnSeat != nil || plan.TurnDeadline != nil || plan.MaxRounds != format.stages {
+				t.Fatalf("fixed %s roster %d plan = %+v", format.value, rosterSize, plan)
+			}
+		}
+	}
+	for _, rosterSize := range []int{0, 1, 3, 5, 7} {
+		if _, err := factory.Plan(core.MatchPlanInput{Mode: core.ModeRelay, Format: "bo3", RosterSize: rosterSize}); !core.HasErrorCode(err, core.ErrorInvalidConfiguration) {
+			t.Fatalf("roster %d error = %v", rosterSize, err)
+		}
 	}
 }
 

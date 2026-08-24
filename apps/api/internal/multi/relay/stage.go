@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 const SettlementMarkerVersion = 1
@@ -53,6 +55,7 @@ type MatchContext struct {
 	MatchID    string
 	RoomID     string
 	MatchIndex int
+	RuleSet    core.RuleSetRef
 	TargetWins int
 	MaxStages  int
 }
@@ -208,9 +211,19 @@ type SettlementDecision struct {
 
 type MatchDecision struct {
 	ScoresBySeat   [2]int
+	Ranking        []RankingEntry
 	Ended          bool
 	WinnerMemberID *string
 	Reason         string
+}
+
+type RankingEntry struct {
+	Player          PlayerSnapshot
+	Rank            int
+	Score           int
+	Status          string
+	LifeState       LifeState
+	EliminatedStage *int
 }
 
 type ScoringPolicy interface {

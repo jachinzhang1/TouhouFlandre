@@ -5,7 +5,7 @@ import "fmt"
 type LegacyWinsPolicy struct{}
 
 func (p LegacyWinsPolicy) Settle(input SettlementInput) (SettlementDecision, error) {
-	if input.Match.TargetWins < 1 || input.Match.MaxStages < 1 || len(input.Participants) != 2 || len(input.States) != 2 {
+	if input.Match.RuleSet != LegacyRuleSet() || input.Match.TargetWins < 1 || input.Match.MaxStages < 1 || len(input.Participants) != 2 || len(input.States) != 2 {
 		return SettlementDecision{}, fmt.Errorf("%w: invalid legacy wins input", ErrInvalidStagePlan)
 	}
 	stateByMember := make(map[string]PlayerState, len(input.States))

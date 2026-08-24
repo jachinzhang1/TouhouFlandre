@@ -16,11 +16,18 @@ func NewRuntime(pool *pgxpool.Pool, clock core.Clock, random core.RandomSource, 
 		random = core.NewRandomSource()
 	}
 	repository := NewStageRepository(pool, timing.FinishedRetention)
+	scoring, err := relaydomain.NewScoringPolicyRouter(map[core.RuleSetRef]relaydomain.ScoringPolicy{
+		relaydomain.LegacyRuleSet():      relaydomain.LegacyWinsPolicy{},
+		relaydomain.FixedPointsRuleSet(): relaydomain.FixedPointsPolicy{},
+	})
+	if err != nil {
+		return nil, nil, err
+	}
 	coordinator, err := relaydomain.NewStageCoordinator(
 		repository,
 		relaydomain.RandomPairingPolicy{},
 		NewEncounterProvisioner(pool, random, timing.RoundSeconds),
-		relaydomain.LegacyWinsPolicy{},
+		scoring,
 		clock,
 		random,
 		relaydomain.IDSourceFunc(legacy.NewID),
