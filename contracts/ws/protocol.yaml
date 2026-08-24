@@ -671,6 +671,8 @@ events:
           encounterIndex,
           status,
           members,
+          maxTurnsPerPlayer,
+          maxSkipsPerPlayer,
         ]
       properties:
         matchIndex:
@@ -711,6 +713,12 @@ events:
         turnDeadline:
           type: string
           format: date-time
+        maxTurnsPerPlayer:
+          type: integer
+          minimum: 1
+        maxSkipsPerPlayer:
+          type: integer
+          minimum: 0
 
   - type: relay.encounter.turn.guess
     observer: all
@@ -1663,6 +1671,8 @@ examples:
           turnMemberId: member-host
           turnSeat: 1
           turnDeadline: "2026-08-06T12:41:01Z"
+          maxTurnsPerPlayer: 8
+          maxSkipsPerPlayer: 2
 
     - label: relay.encounter.turn.guess（棋盘猜测）
       message:

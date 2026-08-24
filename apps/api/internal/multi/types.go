@@ -478,18 +478,20 @@ type RelayStageStartedPayload struct {
 }
 
 type RelayEncounterStartedPayload struct {
-	MatchIndex     int                        `json:"matchIndex"`
-	StageID        string                     `json:"stageId"`
-	StageIndex     int                        `json:"stageIndex"`
-	EncounterID    string                     `json:"encounterId"`
-	EncounterIndex int                        `json:"encounterIndex"`
-	Status         string                     `json:"status"`
-	Members        []RelayEncounterMemberView `json:"members"`
-	StartsAt       *time.Time                 `json:"startsAt,omitempty"`
-	Deadline       *time.Time                 `json:"deadline,omitempty"`
-	TurnMemberID   *string                    `json:"turnMemberId,omitempty"`
-	TurnSeat       *int                       `json:"turnSeat,omitempty"`
-	TurnDeadline   *time.Time                 `json:"turnDeadline,omitempty"`
+	MatchIndex        int                        `json:"matchIndex"`
+	StageID           string                     `json:"stageId"`
+	StageIndex        int                        `json:"stageIndex"`
+	EncounterID       string                     `json:"encounterId"`
+	EncounterIndex    int                        `json:"encounterIndex"`
+	Status            string                     `json:"status"`
+	Members           []RelayEncounterMemberView `json:"members"`
+	StartsAt          *time.Time                 `json:"startsAt,omitempty"`
+	Deadline          *time.Time                 `json:"deadline,omitempty"`
+	TurnMemberID      *string                    `json:"turnMemberId,omitempty"`
+	TurnSeat          *int                       `json:"turnSeat,omitempty"`
+	TurnDeadline      *time.Time                 `json:"turnDeadline,omitempty"`
+	MaxTurnsPerPlayer int                        `json:"maxTurnsPerPlayer"`
+	MaxSkipsPerPlayer int                        `json:"maxSkipsPerPlayer"`
 }
 
 type RelayEncounterTurnPayload struct {

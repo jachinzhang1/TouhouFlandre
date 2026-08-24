@@ -352,6 +352,8 @@ export interface RelayEncounterStartedPayload {
   turnMemberId?: string;
   turnSeat?: number;
   turnDeadline?: string;
+  maxTurnsPerPlayer: number;
+  maxSkipsPerPlayer: number;
 }
 
 export interface RelayEncounterTurnGuessPayload {
