@@ -90,10 +90,11 @@ func TestMRX001LegacyRelayActions(t *testing.T) {
 		t.Fatalf("relay pass = %d %s", resp.StatusCode, payload)
 	}
 	if _, err := pool.Exec(ctx, `
-		UPDATE multi_round AS round
+		UPDATE multi_relay_encounter AS encounter
 		SET turn_deadline = now() - interval '1 second'
-		FROM multi_match AS match
-		WHERE round.match_id = match.id AND match.room_id = $1 AND round.round_index = 1`, fixture.roomID); err != nil {
+		FROM multi_relay_stage AS stage, multi_match AS match
+		WHERE encounter.stage_id = stage.id AND encounter.match_id = match.id
+		  AND match.room_id = $1 AND stage.stage_index = 1`, fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,11 +110,11 @@ func TestMRX001LegacyRelayActions(t *testing.T) {
 	}
 	rows, err := pool.Query(ctx, `
 		SELECT turn.kind, member.seat
-		FROM multi_turn AS turn
-		JOIN multi_round AS round ON round.id = turn.round_id
-		JOIN multi_match AS match ON match.id = round.match_id
+		FROM multi_relay_turn AS turn
+		JOIN multi_relay_stage AS stage ON stage.id = turn.stage_id
+		JOIN multi_match AS match ON match.id = turn.match_id
 		JOIN multi_member AS member ON member.id = turn.member_id
-		WHERE match.room_id = $1 AND round.round_index = 1
+		WHERE match.room_id = $1 AND stage.stage_index = 1
 		ORDER BY turn.turn_index`, fixture.roomID)
 	if err != nil {
 		t.Fatal(err)
@@ -156,9 +157,12 @@ func TestMRX001LegacyRelayActions(t *testing.T) {
 	var matchStatus, roundStatus string
 	var scoreSlot1, scoreSlot2, winnerSlot int
 	if err := pool.QueryRow(ctx, `
-		SELECT match.status, match.score_slot1, match.score_slot2, round.status, round.winner_slot
+		SELECT match.status, match.score_slot1, match.score_slot2, encounter.status, member.seat
 		FROM multi_match AS match
-		JOIN multi_round AS round ON round.match_id = match.id AND round.round_index = 2
+		JOIN multi_relay_stage AS stage ON stage.match_id = match.id AND stage.stage_index = 2
+		JOIN multi_relay_encounter AS encounter ON encounter.stage_id = stage.id
+		JOIN multi_relay_encounter_member AS member
+		  ON member.encounter_id = encounter.id AND member.member_id = encounter.winner_member_id
 		WHERE match.room_id = $1`, fixture.roomID).
 		Scan(&matchStatus, &scoreSlot1, &scoreSlot2, &roundStatus, &winnerSlot); err != nil {
 		t.Fatal(err)
@@ -257,8 +261,8 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT coalesce(max(version_id), 0)::int FROM goose_db_version WHERE is_applied`).Scan(&migrationTail); err != nil {
 		t.Fatal(err)
 	}
-	if migrationTail != 16 {
-		t.Fatalf("migration tail = %d, want MRX-005 migration 16", migrationTail)
+	if migrationTail != 17 {
+		t.Fatalf("migration tail = %d, want MRX-006 migration 17", migrationTail)
 	}
 	tableNames := []string{"multi_room", "multi_match", "multi_round", "multi_turn", "multi_chat_message"}
 	tables := make([]map[string]any, 0, len(tableNames))

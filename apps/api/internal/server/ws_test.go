@@ -636,8 +636,8 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
-	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
+	hostPlaying := readUntilType(t, hostConn, "relay.encounter.started", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "relay.encounter.started", 12)
 
 	answer := currentAnswer(t, fixture.roomID)
 	wrong := guessableIDs(t, answer, 1)[0]
@@ -647,7 +647,7 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	}
 	hostFirst := wsRead(t, hostConn)
 	joinerFirst := wsRead(t, joinerConn)
-	if hostFirst["type"] != "round.shared.guess" || joinerFirst["type"] != "round.shared.guess" ||
+	if hostFirst["type"] != "relay.encounter.turn.guess" || joinerFirst["type"] != "relay.encounter.turn.guess" ||
 		hostFirst["eventId"] != joinerFirst["eventId"] ||
 		hostFirst["sequence"] != hostPlaying["sequence"].(float64)+1 ||
 		joinerFirst["sequence"] != joinerPlaying["sequence"].(float64)+1 {
@@ -660,12 +660,14 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	}
 	for name, conn := range map[string]*websocket.Conn{"host": hostConn, "joiner": joinerConn} {
 		shared := wsRead(t, conn)
-		roundEnded := wsRead(t, conn)
+		encounterEnded := wsRead(t, conn)
 		matchEnded := wsRead(t, conn)
-		if shared["type"] != "round.shared.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
-			roundEnded["type"] != "round.ended" || roundEnded["sequence"] != shared["sequence"].(float64)+1 ||
-			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != roundEnded["sequence"].(float64)+1 {
-			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v round=%v match=%v", name, shared, roundEnded, matchEnded)
+		stageEnded := wsRead(t, conn)
+		if shared["type"] != "relay.encounter.turn.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
+			encounterEnded["type"] != "relay.encounter.ended" || encounterEnded["sequence"] != shared["sequence"].(float64)+1 ||
+			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != encounterEnded["sequence"].(float64)+1 ||
+			stageEnded["type"] != "relay.stage.ended" || stageEnded["sequence"] != matchEnded["sequence"].(float64)+1 {
+			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v encounter=%v stage=%v match=%v", name, shared, encounterEnded, stageEnded, matchEnded)
 		}
 		p, _ := matchEnded["payload"].(map[string]any)
 		wantResult := "loss"
