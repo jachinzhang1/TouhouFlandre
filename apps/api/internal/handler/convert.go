@@ -7,6 +7,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 // characterFromRow 将行表记录还原为 game.Character（jsonb 字段解码）。
@@ -189,6 +190,25 @@ func toOpenAPIGuessResult(result game.GuessResult) openapi.GuessResult {
 		GuessAvatarUrl: avatarURL,
 		IsCorrect:      result.IsCorrect,
 		Feedback:       feedback,
+	}
+}
+
+func toOpenAPIGuessResultView(result multi.GuessResultView) openapi.GuessResult {
+	feedback := make([]openapi.FieldFeedback, 0, len(result.Feedback))
+	for _, field := range result.Feedback {
+		feedback = append(feedback, openapi.FieldFeedback{
+			Field: openapi.GuessFieldKey(field.Field), Label: field.Label,
+			Status: openapi.FeedbackStatus(field.Status), Symbol: openapi.FeedbackSymbol(field.Symbol),
+			DisplayValue: field.DisplayValue,
+		})
+	}
+	var avatarURL *string
+	if result.GuessAvatarURL != "" {
+		avatarURL = &result.GuessAvatarURL
+	}
+	return openapi.GuessResult{
+		Kind: openapi.GuessResultKindGuess, GuessId: result.GuessID, GuessName: result.GuessName,
+		GuessAvatarUrl: avatarURL, IsCorrect: result.IsCorrect, Feedback: feedback,
 	}
 }
 

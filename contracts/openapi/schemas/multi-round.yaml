@@ -253,6 +253,7 @@ RelayEncounterActionResponse:
     - stageIndex
     - encounterId
     - accepted
+    - ended
   properties:
     stageIndex:
       type: integer
@@ -261,5 +262,7 @@ RelayEncounterActionResponse:
       type: string
     accepted:
       type: boolean
-    featureDisabled:
+    ended:
       type: boolean
+    turn:
+      $ref: "#/RelayTurnRow"

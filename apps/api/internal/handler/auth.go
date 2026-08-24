@@ -77,7 +77,7 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
-			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn":
+			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn", "RoomsRelayEncounterAction":
 				member, apiErr := s.authenticateGuest(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
@@ -171,6 +171,8 @@ func roomIDFromRequest(request any) (string, bool) {
 	case openapi.RoomsForfeitRoundRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsPassRelayTurnRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsRelayEncounterActionRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsListMessagesRequestObject:
 		return r.RoomId, true

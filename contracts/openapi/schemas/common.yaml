@@ -49,5 +49,6 @@ ErrorResponse:
         - NOT_ENCOUNTER_PLAYER
         - ENCOUNTER_ENDED
         - IDEMPOTENCY_CONFLICT
+        - QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS
     error:
       type: string

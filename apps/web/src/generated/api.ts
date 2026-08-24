@@ -526,8 +526,8 @@ export interface paths {
         put?: never;
         /**
          * 接力 encounter 动作
-         * @description 成员令牌鉴权。目标显式携带 stageIndex 与 encounterId；MRX-003 阶段服务端返回
-         *     FEATURE_DISABLED，不创建 turn、不改变 stage，也不发布事件。
+         * @description 成员令牌鉴权。目标显式携带 stageIndex 与 encounterId。服务端校验 encounter
+         *     归属、行动者、当前 turn 与幂等键；guess 成功时响应携带该手完整反馈，进行中不返回答案。
          */
         post: operations["rooms_relayEncounterAction"];
         delete?: never;
@@ -564,7 +564,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT" | "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -1237,6 +1237,13 @@ export interface components {
             turnSeat?: number;
             /** Format: date-time */
             turnDeadline?: string;
+            maxTurnsPerPlayer?: number;
+            maxSkipsPerPlayer?: number;
+            /** @enum {string} */
+            outcome?: "win" | "loss" | "draw" | "forfeit" | "timeout";
+            winnerMemberId?: string | null;
+            /** @description 仅 status=ended 时出现；进行中 encounter 不投影该字段。 */
+            answer?: components["schemas"]["Character"];
             rows: components["schemas"]["RelayTurnRow"][];
         };
         RelayStageView: {
@@ -1286,7 +1293,8 @@ export interface components {
             stageIndex: number;
             encounterId: string;
             accepted: boolean;
-            featureDisabled?: boolean;
+            ended: boolean;
+            turn?: components["schemas"]["RelayTurnRow"];
         };
         /** @description 终态 encounter 历史；只有该终态专用结构揭示答案。 */
         RelayEncounterHistoryView: components["schemas"]["RelayEncounterView"] & {
@@ -2764,7 +2772,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 预留的动作响应 */
+            /** @description 动作已接受，重复提交相同幂等请求返回首次结果 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2773,8 +2781,26 @@ export interface operations {
                     "application/json": components["schemas"]["RelayEncounterActionResponse"];
                 };
             };
+            /** @description 请求格式或 guessId 无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 令牌缺失或无效 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description spectator 只读 */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2793,15 +2819,6 @@ export interface operations {
             };
             /** @description 非 encounter 玩家、非当前 turn、encounter 已结束或幂等冲突 */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description relay encounter 引擎尚未启用 */
-            501: {
                 headers: {
                     [name: string]: unknown;
                 };

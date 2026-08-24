@@ -140,6 +140,21 @@ RelayEncounterView:
     turnDeadline:
       type: string
       format: date-time
+    maxTurnsPerPlayer:
+      type: integer
+      minimum: 1
+    maxSkipsPerPlayer:
+      type: integer
+      minimum: 0
+    outcome:
+      type: string
+      enum: [win, loss, draw, forfeit, timeout]
+    winnerMemberId:
+      type: string
+      nullable: true
+    answer:
+      description: 仅 status=ended 时出现；进行中 encounter 不投影该字段。
+      $ref: "./character.yaml#/Character"
     rows:
       type: array
       items:

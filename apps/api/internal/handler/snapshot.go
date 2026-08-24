@@ -238,8 +238,16 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			return nil, internalError(err)
 		}
 		roundIndex := 0
+		var relayFragment *openapi.RelayMatchFragment
+		var relayRound *openapi.RoundView
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
+		} else if ref.Mode == core.ModeRelay {
+			var err error
+			relayFragment, relayRound, roundIndex, err = s.buildRelaySnapshot(ctx, *state.Match, state.Members, observer, ref)
+			if err != nil {
+				return nil, internalError(err)
+			}
 		}
 		roster, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
 		if err != nil {
@@ -291,6 +299,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 				Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version,
 			},
 		}
+		matchView.Relay = relayFragment
 		snapshot.Match = &matchView
 
 		if state.Round != nil {
@@ -299,6 +308,8 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 				return nil, err
 			}
 			snapshot.Round = roundView
+		} else if relayRound != nil {
+			snapshot.Round = relayRound
 		}
 	}
 
