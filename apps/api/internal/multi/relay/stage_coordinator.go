@@ -45,57 +45,63 @@ func NewStageCoordinator(
 func (c *StageCoordinator) CreateStage(ctx context.Context, request CreateStageRequest) (CreateStageResult, error) {
 	var result CreateStageResult
 	err := c.repository.Transact(ctx, func(tx StageTransaction) error {
-		current, exists, err := tx.FindStage(ctx, request.Match.MatchID, request.StageIndex, true)
-		if err != nil {
-			return err
-		}
-		if exists {
-			match, err := tx.LockMatch(ctx, current.MatchID)
-			if err != nil {
-				return err
-			}
-			if err := validateMatchContext(request.Match, match); err != nil {
-				return err
-			}
-			plan, err := tx.LoadStagePlan(ctx, current.StageID)
-			if err != nil {
-				return err
-			}
-			result = CreateStageResult{Plan: plan, Created: false}
-			return nil
-		}
-		if request.StageIndex > 1 {
-			previous, found, err := tx.FindStage(ctx, request.Match.MatchID, request.StageIndex-1, true)
-			if err != nil {
-				return err
-			}
-			if !found || previous.Status != StageStatusEnded || previous.SettlementMarker == nil {
-				return fmt.Errorf("%w: previous stage is not settled", ErrInvalidStagePlan)
-			}
-		}
-		match, err := tx.LockMatch(ctx, request.Match.MatchID)
-		if err != nil {
-			return err
-		}
-		if err := validateMatchContext(request.Match, match); err != nil {
-			return err
-		}
-		request.Match = match
-
-		plan, err := c.buildStagePlan(ctx, request)
-		if err != nil {
-			return err
-		}
-		if err := tx.CreateStage(ctx, plan); err != nil {
-			return err
-		}
-		if err := tx.AppendStageStarted(ctx, plan.Match.RoomID, startedEvent(plan)); err != nil {
-			return err
-		}
-		result = CreateStageResult{Plan: plan, Created: true}
-		return nil
+		var err error
+		result, err = c.CreateStageInTransaction(ctx, tx, request)
+		return err
 	})
 	return result, err
+}
+
+// CreateStageInTransaction lets match creation persist the first relay stage
+// atomically with the frozen roster and match record.
+func (c *StageCoordinator) CreateStageInTransaction(ctx context.Context, tx StageTransaction, request CreateStageRequest) (CreateStageResult, error) {
+	current, exists, err := tx.FindStage(ctx, request.Match.MatchID, request.StageIndex, true)
+	if err != nil {
+		return CreateStageResult{}, err
+	}
+	if exists {
+		match, err := tx.LockMatch(ctx, current.MatchID)
+		if err != nil {
+			return CreateStageResult{}, err
+		}
+		if err := validateMatchContext(request.Match, match); err != nil {
+			return CreateStageResult{}, err
+		}
+		plan, err := tx.LoadStagePlan(ctx, current.StageID)
+		if err != nil {
+			return CreateStageResult{}, err
+		}
+		return CreateStageResult{Plan: plan, Created: false}, nil
+	}
+	if request.StageIndex > 1 {
+		previous, found, err := tx.FindStage(ctx, request.Match.MatchID, request.StageIndex-1, true)
+		if err != nil {
+			return CreateStageResult{}, err
+		}
+		if !found || previous.Status != StageStatusEnded || previous.SettlementMarker == nil {
+			return CreateStageResult{}, fmt.Errorf("%w: previous stage is not settled", ErrInvalidStagePlan)
+		}
+	}
+	match, err := tx.LockMatch(ctx, request.Match.MatchID)
+	if err != nil {
+		return CreateStageResult{}, err
+	}
+	if err := validateMatchContext(request.Match, match); err != nil {
+		return CreateStageResult{}, err
+	}
+	request.Match = match
+
+	plan, err := c.buildStagePlan(ctx, request)
+	if err != nil {
+		return CreateStageResult{}, err
+	}
+	if err := tx.CreateStage(ctx, plan); err != nil {
+		return CreateStageResult{}, err
+	}
+	if err := tx.AppendStageStarted(ctx, plan.Match.RoomID, startedEvent(plan)); err != nil {
+		return CreateStageResult{}, err
+	}
+	return CreateStageResult{Plan: plan, Created: true}, nil
 }
 
 func (c *StageCoordinator) TrySettle(ctx context.Context, stageID string) (SettlementResult, error) {
@@ -111,6 +117,20 @@ func (c *StageCoordinator) TrySettle(ctx context.Context, stageID string) (Settl
 // TrySettleInTransaction is called after an encounter engine has locked and
 // ended only its own encounter. It never locks sibling encounter rows.
 func (c *StageCoordinator) TrySettleInTransaction(ctx context.Context, tx StageTransaction, stageID string) (SettlementResult, error) {
+	return c.trySettleInTransaction(ctx, tx, stageID, nil)
+}
+
+// TrySettleForMatchEndInTransaction is the narrow N=2 compatibility path for
+// a permanent leave or disconnect. Ordinary encounter forfeits use the normal
+// stage policy and do not terminate the match.
+func (c *StageCoordinator) TrySettleForMatchEndInTransaction(ctx context.Context, tx StageTransaction, stageID string, forced ForcedMatchEnd) (SettlementResult, error) {
+	if forced.WinnerMemberID == "" || forced.Reason == "" {
+		return SettlementResult{}, fmt.Errorf("%w: forced match end is incomplete", ErrInvalidStagePlan)
+	}
+	return c.trySettleInTransaction(ctx, tx, stageID, &forced)
+}
+
+func (c *StageCoordinator) trySettleInTransaction(ctx context.Context, tx StageTransaction, stageID string, forced *ForcedMatchEnd) (SettlementResult, error) {
 	stage, found, err := tx.GetStage(ctx, stageID, true)
 	if err != nil {
 		return SettlementResult{}, err
@@ -166,7 +186,7 @@ func (c *StageCoordinator) TrySettleInTransaction(ctx context.Context, tx StageT
 	}
 	decision, err := c.scoring.Settle(SettlementInput{
 		Match: match, StageID: stageID, StageIndex: stage.StageIndex,
-		Participants: participants, States: states,
+		Participants: participants, States: states, ForcedMatchEnd: forced,
 	})
 	if err != nil {
 		return SettlementResult{}, err
@@ -197,6 +217,15 @@ func (c *StageCoordinator) TrySettleInTransaction(ctx context.Context, tx StageT
 	}
 	if err := tx.UpdatePlayerStates(ctx, stage.MatchID, decision.Players); err != nil {
 		return SettlementResult{}, err
+	}
+	if decision.Match != nil {
+		applier, ok := tx.(MatchDecisionTransaction)
+		if !ok {
+			return SettlementResult{}, fmt.Errorf("%w: repository cannot apply match decision", ErrInvalidStagePlan)
+		}
+		if err := applier.ApplyMatchDecision(ctx, match, *decision.Match, now); err != nil {
+			return SettlementResult{}, err
+		}
 	}
 	marker := settlementMarker(stageID)
 	owned, err := tx.MarkStageSettled(ctx, stageID, marker, now)
@@ -255,6 +284,8 @@ func (c *StageCoordinator) buildStagePlan(ctx context.Context, request CreateSta
 	}
 	seeds, err := c.provisioner.Provision(ctx, StageProvisionInput{
 		Match: request.Match, StageIndex: request.StageIndex, StartsAt: request.StartsAt, Pairing: pairing,
+		CandidateAnswerIDs: request.CandidateAnswerIDs, UsedAnswerIDs: request.UsedAnswerIDs,
+		TurnSeconds: request.TurnSeconds, EncounterDuration: request.EncounterDuration,
 	})
 	if err != nil {
 		return StagePlan{}, err
@@ -281,7 +312,8 @@ func (c *StageCoordinator) buildStagePlan(ctx context.Context, request CreateSta
 		seed := byIndex[pair.EncounterIndex]
 		plan.Encounters = append(plan.Encounters, EncounterPlan{
 			EncounterID: c.ids.NewID(), EncounterIndex: pair.EncounterIndex, AnswerID: seed.AnswerID,
-			StartsAt: request.StartsAt, Deadline: seed.Deadline, Members: pair.Members,
+			StartsAt: request.StartsAt, Deadline: seed.Deadline, TurnMemberID: seed.TurnMemberID,
+			TurnDeadline: seed.TurnDeadline, Members: pair.Members,
 		})
 	}
 	if err := plan.Validate(); err != nil {
@@ -386,7 +418,7 @@ func sameOptionalString(left, right *string) bool {
 }
 
 func validateMatchContext(requested, persisted MatchContext) error {
-	if requested != persisted {
+	if requested.MatchID != persisted.MatchID || requested.RoomID != persisted.RoomID || requested.MatchIndex != persisted.MatchIndex {
 		return fmt.Errorf("%w: match context does not match persisted identity", ErrInvalidStagePlan)
 	}
 	return nil

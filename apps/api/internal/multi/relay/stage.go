@@ -20,8 +20,10 @@ const (
 type EncounterStatus string
 
 const (
-	EncounterStatusPlanned EncounterStatus = "planned"
-	EncounterStatusEnded   EncounterStatus = "ended"
+	EncounterStatusPlanned   EncounterStatus = "planned"
+	EncounterStatusCountdown EncounterStatus = "countdown"
+	EncounterStatusPlaying   EncounterStatus = "playing"
+	EncounterStatusEnded     EncounterStatus = "ended"
 )
 
 type Assignment string
@@ -51,12 +53,16 @@ type MatchContext struct {
 	MatchID    string
 	RoomID     string
 	MatchIndex int
+	TargetWins int
+	MaxStages  int
 }
 
 type EncounterSeed struct {
 	EncounterIndex int
 	AnswerID       string
 	Deadline       time.Time
+	TurnMemberID   string
+	TurnDeadline   time.Time
 }
 
 type EncounterPlan struct {
@@ -65,6 +71,8 @@ type EncounterPlan struct {
 	AnswerID       string
 	StartsAt       time.Time
 	Deadline       time.Time
+	TurnMemberID   string
+	TurnDeadline   time.Time
 	Members        [2]PlayerSnapshot
 }
 
@@ -94,6 +102,16 @@ func (p StagePlan) Validate() error {
 		if !encounter.StartsAt.Equal(p.StartsAt) || !encounter.Deadline.After(encounter.StartsAt) {
 			return fmt.Errorf("%w: encounters must share startsAt and have a later deadline", ErrInvalidStagePlan)
 		}
+		if encounter.TurnMemberID != "" {
+			if encounter.TurnMemberID != encounter.Members[0].MemberID && encounter.TurnMemberID != encounter.Members[1].MemberID {
+				return fmt.Errorf("%w: initial turn member is not assigned", ErrInvalidStagePlan)
+			}
+			if !encounter.TurnDeadline.After(encounter.StartsAt) || encounter.TurnDeadline.After(encounter.Deadline) {
+				return fmt.Errorf("%w: invalid initial turn deadline", ErrInvalidStagePlan)
+			}
+		} else if !encounter.TurnDeadline.IsZero() {
+			return fmt.Errorf("%w: turn deadline requires a turn member", ErrInvalidStagePlan)
+		}
 		if _, exists := encounterIDs[encounter.EncounterID]; exists {
 			return fmt.Errorf("%w: duplicate encounter id", ErrInvalidStagePlan)
 		}
@@ -104,10 +122,14 @@ func (p StagePlan) Validate() error {
 }
 
 type StageProvisionInput struct {
-	Match      MatchContext
-	StageIndex int
-	StartsAt   time.Time
-	Pairing    PairingPlan
+	Match              MatchContext
+	StageIndex         int
+	StartsAt           time.Time
+	Pairing            PairingPlan
+	CandidateAnswerIDs []string
+	UsedAnswerIDs      []string
+	TurnSeconds        int
+	EncounterDuration  time.Duration
 }
 
 // EncounterProvisioner is the relay-owned extension point that MRX-006 will
@@ -148,11 +170,19 @@ type PlayerState struct {
 }
 
 type SettlementInput struct {
-	Match        MatchContext
-	StageID      string
-	StageIndex   int
-	Participants []ParticipantOutcome
-	States       []PlayerState
+	Match          MatchContext
+	StageID        string
+	StageIndex     int
+	Participants   []ParticipantOutcome
+	States         []PlayerState
+	ForcedMatchEnd *ForcedMatchEnd
+}
+
+// ForcedMatchEnd preserves the legacy two-player leave/disconnect terminal
+// behavior without making normal encounter forfeits end the whole match.
+type ForcedMatchEnd struct {
+	WinnerMemberID string
+	Reason         string
 }
 
 type PlayerSettlement struct {
@@ -173,6 +203,14 @@ type SettlementDecision struct {
 	Standings       []PlayerState
 	CreateNextStage bool
 	NextPlayers     []PlayerSnapshot
+	Match           *MatchDecision
+}
+
+type MatchDecision struct {
+	ScoresBySeat   [2]int
+	Ended          bool
+	WinnerMemberID *string
+	Reason         string
 }
 
 type ScoringPolicy interface {
@@ -224,6 +262,10 @@ type StageTransaction interface {
 	AppendStageEnded(context.Context, string, StageEndedEvent) error
 }
 
+type MatchDecisionTransaction interface {
+	ApplyMatchDecision(context.Context, MatchContext, MatchDecision, time.Time) error
+}
+
 type StageRepository interface {
 	Transact(context.Context, func(StageTransaction) error) error
 	ListSettlementCandidates(context.Context, int) ([]string, error)
@@ -235,6 +277,10 @@ type CreateStageRequest struct {
 	ActivePlayers       []PlayerSnapshot
 	PreviousByeMemberID *string
 	StartsAt            time.Time
+	CandidateAnswerIDs  []string
+	UsedAnswerIDs       []string
+	TurnSeconds         int
+	EncounterDuration   time.Duration
 }
 
 type CreateStageResult struct {
