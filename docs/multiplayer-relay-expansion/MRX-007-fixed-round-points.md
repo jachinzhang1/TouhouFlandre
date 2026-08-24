@@ -3,6 +3,7 @@
 **类型**：功能/规则 Issue  
 **优先级**：P1  
 **依赖**：MRX-006  
+**状态**：已完成
 **建议标签**：`type:feature` `area:api` `area:multi` `area:test`
 
 **决策依据**：[非淘汰计分](./decisions.md#8-非淘汰计分)、[淘汰排名](./decisions.md#10-淘汰排名)
@@ -46,3 +47,25 @@ N>2 且关闭接力淘汰时，现有 race `wins/points/placement` 和双人 `ta
 ## 可能涉及的代码
 
 relay mode package 下的 `fixed_points`、stage settlement 与 match result、relay SQL queries、mode-owned contract payload、`packages/shared/src/multi.ts` 的 relay union、server/domain tests。
+
+## 实施与验收记录（2026-08-24）
+
+本 Issue 已交付 `(relay, fixed_points, 1)` 的完整 4/6/8 人核心链路。relay MatchFactory 继续让 N=2 使用 `legacy_wins`，并为 N=4/6/8 按 BO1/3/5/7 冻结 1/3/5/7 个 planned stages；fixed-points 不设置 match 级先手，不读取 `TargetWins`，每张 encounter 的先手仍由 relay provisioner 独立决定。公开 `PrepareRoom`、`ReadyRoster` 和房间设置仍保持双人限制，MRX-004 所属的多人创建权限没有在本 Issue 中开放。
+
+领域层新增 relay-owned `FixedPointsPolicy`、完整 `RuleSetRef` 计分分派和 competition ranking。每个 stage 在 barrier 后按胜 2、平 1、负/bye 0 一次性生成全员 settlement；未达到 planned stages 时保持稳定 roster 并创建下一 stage，最后一轮按总分降序生成共享名次，唯一第一才设置 winner。fixed-points 不 import race，也不复用 race points 常量或 ranking 函数；未知规则版本、N=2 误用、异常 player/life 状态均 fail closed。legacy wins policy 继续只接受 `(relay, legacy_wins, 1)`。
+
+持久化复用 MRX-003/005/006 已有的 relay player state、stage player settlement 和 completion marker，无新增 migration。repository 从 `multi_match.rule_set_key/version` 恢复规则集并按完整三元组调度；fixed-points 只更新 relay-owned score，不同步 `multi_match_player.wins/score` 或 race ranking。终局在 stage 事务内结束 match/room并发布带完整 `memberScores` 和共享 ranking 的 `match.ended`；重试由 stage marker、事务锁和既有唯一约束保证不重复加分、事件或下一 stage。
+
+契约源为 fixed-points 增加 optional `match.started.plannedStages`，relay snapshot 增加 `plannedStages` 和 relay-owned terminal `ranking`；REST snapshot、`relay.stage.ended` replay 与 `match.ended` replay 共用权威 settlement/ranking。OpenAPI Go/Web 生成物已从源重新生成，二次生成前后 SHA-256 一致。没有实现 elimination/near-death、离场后的奇数 active/提前终止、history 分页、Web 排行榜或统计落盘。
+
+WSL 验证结果：
+
+- 基线 `go test ./internal/multi/relay/... -count=1`、`go test ./internal/server -run "MRX005|MRX006" -count=1`、`pnpm check:ws-protocol`、`pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:multiplayer-boundaries` 全部通过。
+- `go test ./internal/multi/relay/... ./internal/multi/assembly -count=1` 与 `go test ./internal/server -run 'MRX005|MRX006|MRX007' -count=1` 通过。MRX-007 DB 测试覆盖 4/6/8 × BO1/3/5/7、barrier 可见性、生产 runtime 恢复、并发重试、全平、部分并列、snapshot/replay/DB 一致性和 legacy score 隔离。
+- `go test -race ./internal/multi/relay/... -count=1` 与 `go test -race ./internal/server -run MRX007 -count=1` 通过。
+- `go test ./... -count=1` 全部通过，其中 server `33.869s`、migrations `6.778s`；`go vet ./...` 通过。
+- `pnpm check:ws-protocol`、`pnpm lint:openapi`、`pnpm check:openapi-refs` 和 `pnpm check:multiplayer-boundaries` 通过；OpenAPI 检查为 41 个 YAML、40 个本地引用、无孤儿文件。
+- `pnpm typecheck` 通过；`pnpm test` 通过 shared 10、data 26、Web 152，共 188 项；`pnpm --filter @touhouflandre/web build` 通过。
+- `task gen:openapi` 与 `task gen:web` 二次生成后目标文件哈希不变；Windows Git `diff --check` 通过。
+
+本次不需要数据库 rollout；应用回滚只需回到前一 binary，既有 expand schema 和 fixed-points fixture 数据保持可读，不执行破坏性 Down。相对原始依赖图的执行调整是按当前分支事实仅依赖已完成的 MRX-006：MRX-004 位于另一开发主干且只负责多人房间入口，本实现通过直接冻结的 4/6/8 人 service/DB fixture 验证完整核心功能，未吸收 MRX-004 的权限与配置范围。
