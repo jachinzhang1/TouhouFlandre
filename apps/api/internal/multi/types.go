@@ -222,11 +222,12 @@ const (
 type MatchEndReason string
 
 const (
-	MatchEndReasonNormal        MatchEndReason = "normal"
-	MatchEndReasonForfeit       MatchEndReason = "forfeit"
-	MatchEndReasonDisconnect    MatchEndReason = "disconnect"
-	MatchEndReasonServerRestart MatchEndReason = "server_restart"
-	MatchEndReasonRoundCap      MatchEndReason = "round_cap"
+	MatchEndReasonNormal                    MatchEndReason = "normal"
+	MatchEndReasonForfeit                   MatchEndReason = "forfeit"
+	MatchEndReasonDisconnect                MatchEndReason = "disconnect"
+	MatchEndReasonServerRestart             MatchEndReason = "server_restart"
+	MatchEndReasonRoundCap                  MatchEndReason = "round_cap"
+	MatchEndReasonInsufficientActivePlayers MatchEndReason = "insufficient_active_players"
 )
 
 // RoomCloseReason 房间关闭原因。

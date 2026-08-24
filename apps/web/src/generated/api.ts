@@ -852,7 +852,7 @@ export interface components {
          * @description 对局结束原因。
          * @enum {string}
          */
-        MatchEndReason: "normal" | "forfeit" | "disconnect" | "server_restart" | "round_cap";
+        MatchEndReason: "normal" | "forfeit" | "disconnect" | "server_restart" | "round_cap" | "insufficient_active_players";
         /**
          * @description 房间关闭原因。
          * @enum {string}

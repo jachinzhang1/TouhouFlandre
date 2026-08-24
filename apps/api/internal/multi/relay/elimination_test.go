@@ -179,6 +179,49 @@ func TestEliminationPolicyKeepsOddRosterByeUnchanged(t *testing.T) {
 	}
 }
 
+func TestEliminationPolicyKeepsDepartedPlayerOutOfNearDeathTransitions(t *testing.T) {
+	encounterID := "encounter-1"
+	secondEncounterID := "encounter-2"
+	states := []PlayerState{
+		eliminationState(1, 10, LifeStateHealthy, "active", nil),
+		eliminationState(2, 0, LifeStateNearDeath, "left", intPointer(2)),
+		eliminationState(3, 10, LifeStateHealthy, "active", nil),
+		eliminationState(4, 10, LifeStateHealthy, "active", nil),
+	}
+	input := SettlementInput{
+		Match:   MatchContext{MatchID: "match-1", RoomID: "room-1", RuleSet: EliminationRuleSet(), MaxStages: 1},
+		StageID: "stage-1", StageIndex: 2,
+		States: states,
+		Participants: []ParticipantOutcome{
+			pairedOutcome(1, &encounterID, OutcomeWin),
+			pairedOutcome(2, &encounterID, OutcomeLoss),
+			pairedOutcome(3, &secondEncounterID, OutcomeWin),
+			pairedOutcome(4, &secondEncounterID, OutcomeLoss),
+		},
+	}
+
+	decision, err := (EliminationPolicy{}).Settle(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byMember := map[string]PlayerSettlement{}
+	for _, settlement := range decision.Players {
+		byMember[settlement.Player.MemberID] = settlement
+	}
+	departed := byMember["member-2"]
+	if departed.LifeTransition != LifeTransitionNone || departed.LifeAfter != LifeStateNearDeath || departed.EliminatedStage == nil || *departed.EliminatedStage != 2 {
+		t.Fatalf("departed settlement = %+v", departed)
+	}
+	if len(decision.EliminatedMemberIDs) != 0 {
+		t.Fatalf("eliminated members = %+v", decision.EliminatedMemberIDs)
+	}
+	for _, next := range decision.NextPlayers {
+		if next.MemberID == "member-2" {
+			t.Fatalf("left player was paired again: %+v", decision.NextPlayers)
+		}
+	}
+}
+
 func TestEliminationRankingUsesOnlySurvivedStages(t *testing.T) {
 	states := []PlayerState{
 		eliminationState(1, 0, LifeStateNearDeath, "active", nil),
@@ -199,6 +242,32 @@ func TestEliminationRankingUsesOnlySurvivedStages(t *testing.T) {
 	}
 	if winner == nil || *winner != "member-1" {
 		t.Fatalf("winner = %v", winner)
+	}
+}
+
+func TestEliminationRankingUsesCurrentStageForLeftPlayers(t *testing.T) {
+	states := []PlayerState{
+		eliminationState(1, 10, LifeStateHealthy, "active", nil),
+		eliminationState(2, 0, LifeStateNearDeath, "left", intPointer(3)),
+		eliminationState(3, -1, LifeStateNearDeath, "eliminated", intPointer(2)),
+		eliminationState(4, -1, LifeStateNearDeath, "eliminated", intPointer(1)),
+	}
+	ranking, winner, err := EliminationRanking(states, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if winner == nil || *winner != "member-1" {
+		t.Fatalf("winner = %v", winner)
+	}
+	var left RankingEntry
+	for _, entry := range ranking {
+		if entry.Player.MemberID == "member-2" {
+			left = entry
+			break
+		}
+	}
+	if left.SurvivedStages == nil || *left.SurvivedStages != 3 {
+		t.Fatalf("left ranking = %+v", ranking)
 	}
 }
 

@@ -277,7 +277,9 @@ func (t *stageTransaction) ListPlayerStates(ctx context.Context, matchID string)
 		if state.EliminatedStage.Valid {
 			stage := int(state.EliminatedStage.Int32)
 			view.EliminatedStage = &stage
-			view.Status = "eliminated"
+			if player.Status != "left" {
+				view.Status = "eliminated"
+			}
 		}
 		states = append(states, view)
 	}

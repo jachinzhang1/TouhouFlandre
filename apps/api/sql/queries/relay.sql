@@ -123,6 +123,18 @@ ORDER BY stage.stage_index DESC, encounter.encounter_index
 LIMIT 1
 FOR UPDATE OF encounter;
 
+-- name: ListActiveRelayEncountersForRoomForUpdate :many
+SELECT encounter.*
+FROM multi_relay_encounter AS encounter
+JOIN multi_relay_stage AS stage ON stage.id = encounter.stage_id
+JOIN multi_match AS match ON match.id = encounter.match_id
+WHERE match.room_id = sqlc.arg(room_id)
+  AND match.status = 'playing'
+  AND stage.status <> 'ended'
+  AND encounter.status <> 'ended'
+ORDER BY stage.stage_index, encounter.encounter_index, encounter.id
+FOR UPDATE OF encounter;
+
 -- name: ListRelayEncountersForStage :many
 SELECT *
 FROM multi_relay_encounter
@@ -303,6 +315,13 @@ SET status = 'eliminated'
 WHERE match_id = sqlc.arg(match_id)
   AND member_id = sqlc.arg(member_id)
   AND status = 'active'
+RETURNING *;
+
+-- name: MarkRelayMatchPlayerTerminalStage :one
+UPDATE multi_relay_match_player_state
+SET eliminated_stage = COALESCE(eliminated_stage, sqlc.arg(stage_index))
+WHERE match_id = sqlc.arg(match_id)
+  AND member_id = sqlc.arg(member_id)
 RETURNING *;
 
 -- name: ListRelayStagePlayers :many

@@ -124,7 +124,7 @@ func (c *StageCoordinator) TrySettleInTransaction(ctx context.Context, tx StageT
 // a permanent leave or disconnect. Ordinary encounter forfeits use the normal
 // stage policy and do not terminate the match.
 func (c *StageCoordinator) TrySettleForMatchEndInTransaction(ctx context.Context, tx StageTransaction, stageID string, forced ForcedMatchEnd) (SettlementResult, error) {
-	if forced.WinnerMemberID == "" || forced.Reason == "" {
+	if forced.Reason == "" {
 		return SettlementResult{}, fmt.Errorf("%w: forced match end is incomplete", ErrInvalidStagePlan)
 	}
 	return c.trySettleInTransaction(ctx, tx, stageID, &forced)

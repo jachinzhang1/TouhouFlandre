@@ -431,29 +431,41 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if room.Status != string(multi.RoomStatusFinished) {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "对局未结束，无法再来一局。"}
 	}
-	alreadyConfirmed := false
+	finishedMatch, err := q.GetLatestFinishedMatchForRoomForUpdate(ctx, request.RoomId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "没有可再来的已结束对局。"}
+		}
+		return nil, internalError(err)
+	}
+	frozenRoster, err := q.ListMatchPlayers(ctx, finishedMatch.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
 	members, err := q.ListMembers(ctx, request.RoomId)
 	if err != nil {
 		return nil, internalError(err)
 	}
-	requesterConnected := false
+	memberByID := make(map[string]repo.MultiMember, len(members))
 	for _, rosterMember := range members {
-		if rosterMember.Status == string(multi.MemberStatusLeft) {
+		memberByID[rosterMember.ID] = rosterMember
+	}
+	requesterConnected := false
+	requesterInFrozenRoster := false
+	for _, frozen := range frozenRoster {
+		rosterMember, ok := memberByID[frozen.MemberID]
+		if !ok || rosterMember.Status == string(multi.MemberStatusLeft) {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "原对局阵容已有成员离开，无法再来一局。"}
 		}
-		if rosterMember.ID == member.ID && rosterMember.Status == string(multi.MemberStatusConnected) {
-			requesterConnected = true
+		if rosterMember.ID == member.ID {
+			requesterInFrozenRoster = true
+			requesterConnected = rosterMember.Status == string(multi.MemberStatusConnected)
 		}
 	}
-	if !requesterConnected {
+	if !requesterInFrozenRoster || !requesterConnected {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "请先重新连接房间后再确认。"}
 	}
-	for _, m := range members {
-		if m.ID == member.ID && m.RematchReady {
-			alreadyConfirmed = true
-			break
-		}
-	}
+	alreadyConfirmed := memberByID[member.ID].RematchReady
 	if !alreadyConfirmed {
 		if _, err := q.SetMemberRematchReady(ctx, repo.SetMemberRematchReadyParams{ID: member.ID, RematchReady: true}); err != nil {
 			return nil, internalError(err)
@@ -469,12 +481,20 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if err != nil {
 		return nil, internalError(err)
 	}
-	// 原冻结 player 集合全员 connected + confirmed → 按原阵容开新场。
-	policy, err := s.roomPolicyForState(room)
-	if err != nil {
-		return nil, internalError(err)
+	afterByID := make(map[string]repo.MultiMember, len(after))
+	for _, rosterMember := range after {
+		afterByID[rosterMember.ID] = rosterMember
 	}
-	if policy.ReadyRoster(rematchRosterSummary(after), int(room.PlayerLimit)) {
+	allConfirmed := true
+	for _, frozen := range frozenRoster {
+		rosterMember, ok := afterByID[frozen.MemberID]
+		if !ok || rosterMember.Status != string(multi.MemberStatusConnected) || !rosterMember.RematchReady {
+			allConfirmed = false
+			break
+		}
+	}
+	// 原冻结 player 集合全员 connected + confirmed → 按原阵容开新场。
+	if allConfirmed {
 		format := multi.RoomFormat(room.Format)
 		if err := s.startMatchTx(ctx, q, room, format); err != nil {
 			return nil, err

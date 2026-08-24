@@ -82,6 +82,7 @@ type Querier interface {
 	// 每日题
 	GetDailyPuzzle(ctx context.Context, arg GetDailyPuzzleParams) (DailyPuzzle, error)
 	GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessByIdempotencyKeyParams) (MultiGuess, error)
+	GetLatestFinishedMatchForRoomForUpdate(ctx context.Context, roomID string) (MultiMatch, error)
 	// 按 (room, match_index) 取场（快照事件水合用）。
 	GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams) (MultiMatch, error)
 	GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error)
@@ -141,6 +142,7 @@ type Querier interface {
 	ListActiveMatchPlayers(ctx context.Context, matchID string) ([]MultiMatchPlayer, error)
 	// 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
 	ListActiveMatches(ctx context.Context) ([]MultiMatch, error)
+	ListActiveRelayEncountersForRoomForUpdate(ctx context.Context, roomID string) ([]MultiRelayEncounter, error)
 	ListActiveRoundPlayers(ctx context.Context, roundID string) ([]MultiRoundPlayer, error)
 	ListChatMessagesAfter(ctx context.Context, arg ListChatMessagesAfterParams) ([]MultiChatMessage, error)
 	ListChatMessagesBefore(ctx context.Context, arg ListChatMessagesBeforeParams) ([]MultiChatMessage, error)
@@ -181,6 +183,7 @@ type Querier interface {
 	MarkMatchPlayerEliminated(ctx context.Context, arg MarkMatchPlayerEliminatedParams) (int64, error)
 	MarkMatchPlayerLeft(ctx context.Context, arg MarkMatchPlayerLeftParams) (int64, error)
 	MarkRelayMatchPlayerEliminated(ctx context.Context, arg MarkRelayMatchPlayerEliminatedParams) (MultiMatchPlayer, error)
+	MarkRelayMatchPlayerTerminalStage(ctx context.Context, arg MarkRelayMatchPlayerTerminalStageParams) (MultiRelayMatchPlayerState, error)
 	MarkRelayStagePlaying(ctx context.Context, id string) (MultiRelayStage, error)
 	MarkRelayStageSettled(ctx context.Context, arg MarkRelayStageSettledParams) (MultiRelayStage, error)
 	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)

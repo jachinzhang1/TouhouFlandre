@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -275,12 +276,28 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 	return result, nil
 }
 
-// ForfeitMatchMember preserves the pre-MRX two-player leave/disconnect
-// contract for new relay-owned matches. It deliberately declines legacy
-// multi_round matches and any future N-player relay lifecycle.
 func (s *EncounterService) ForfeitMatchMember(ctx context.Context, member repo.MultiMember, reason legacy.MatchEndReason) (bool, error) {
+	return s.ForfeitMatchMembers(ctx, []repo.MultiMember{member}, reason)
+}
+
+// ForfeitMatchMembers handles relay-owned permanent departure in one
+// transaction. Batching gives every member that expired at the same sweeper
+// time the same view of the stage, so two players in one encounter become a
+// draw instead of whichever row happens to be visited first.
+func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []repo.MultiMember, reason legacy.MatchEndReason) (bool, error) {
 	if reason != legacy.MatchEndReasonForfeit && reason != legacy.MatchEndReasonDisconnect {
 		return false, fmt.Errorf("%w: unsupported forced match-end reason", relaydomain.ErrInvalidStagePlan)
+	}
+	if len(departed) == 0 {
+		return false, nil
+	}
+	departed = append([]repo.MultiMember(nil), departed...)
+	sort.Slice(departed, func(i, j int) bool { return departed[i].ID < departed[j].ID })
+	roomID := departed[0].RoomID
+	for _, member := range departed {
+		if member.RoomID != roomID {
+			return false, fmt.Errorf("%w: relay departure batch spans rooms", relaydomain.ErrInvalidStagePlan)
+		}
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -288,42 +305,142 @@ func (s *EncounterService) ForfeitMatchMember(ctx context.Context, member repo.M
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
-	encounter, err := q.GetActiveRelayEncounterForMemberForUpdate(ctx, repo.GetActiveRelayEncounterForMemberForUpdateParams{
-		RoomID: member.RoomID, MemberID: member.ID,
-	})
+
+	activeEncounters, err := q.ListActiveRelayEncountersForRoomForUpdate(ctx, roomID)
+	if err != nil {
+		return false, err
+	}
+	match, err := q.GetActiveMatchForUpdate(ctx, roomID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	match, members, turns, err := loadEncounterContext(ctx, q, encounter)
+	room, err := q.GetRoom(ctx, roomID)
 	if err != nil {
 		return false, err
 	}
-	if !memberAssigned(members, member.ID) {
-		return false, relaydomain.ErrNotEncounterPlayer
+	if room.Mode != string(legacy.MultiplayerModeRelay) {
+		return false, tx.Commit(ctx)
 	}
-	transition, err := relaydomain.ForfeitAssigned(encounterState(match, encounter, members, turns), member.ID)
+	if err := validateEncounterRuleSet(match); err != nil {
+		return false, err
+	}
+	ref := core.RuleSetRef{Mode: core.ModeRelay, Key: match.RuleSetKey, Version: int(match.RuleSetVersion)}
+
+	departedByID := make(map[string]repo.MultiMember, len(departed))
+	for _, member := range departed {
+		departedByID[member.ID] = member
+	}
+	openStages, err := q.ListRelayStagesForMatch(ctx, match.ID)
 	if err != nil {
 		return false, err
 	}
+	openStageIDs := make([]string, 0, len(openStages))
+	departureStage := make(map[string]int, len(departed))
+	for _, stage := range openStages {
+		if stage.Status == string(relaydomain.StageStatusEnded) {
+			continue
+		}
+		openStageIDs = append(openStageIDs, stage.ID)
+		if err := collectDepartureStage(ctx, q, stage, departedByID, departureStage); err != nil {
+			return false, err
+		}
+	}
+
 	now := s.clock.Now()
-	key := "match-end/" + string(reason) + "/" + member.ID + "/" + encounter.ID
-	forced := &relaydomain.ForcedMatchEnd{WinnerMemberID: *transition.WinnerMemberID, Reason: string(reason)}
-	if err := s.endEncounterWithMatchEnd(ctx, tx, q, match, encounter, members, turns, transition, member.ID, key, now, forced); err != nil {
-		return false, err
+	roomUpdated := false
+	changedPlayers := make([]string, 0, len(departed))
+	for _, member := range departed {
+		affected, err := q.MarkMatchPlayerLeft(ctx, repo.MarkMatchPlayerLeftParams{MatchID: match.ID, MemberID: member.ID})
+		if err != nil {
+			return false, err
+		}
+		if affected > 0 {
+			changedPlayers = append(changedPlayers, member.ID)
+			if ref == relaydomain.EliminationRuleSet() {
+				stageIndex := departureStage[member.ID]
+				if stageIndex < 1 {
+					return false, fmt.Errorf("%w: departed elimination player has no current stage", relaydomain.ErrInvalidStagePlan)
+				}
+				if _, err := q.MarkRelayMatchPlayerTerminalStage(ctx, repo.MarkRelayMatchPlayerTerminalStageParams{
+					MatchID: match.ID, MemberID: member.ID, StageIndex: pgtype.Int4{Int32: int32(stageIndex), Valid: true},
+				}); err != nil {
+					return false, err
+				}
+			}
+		}
+		if member.Status != string(legacy.MemberStatusLeft) || member.GraceUntil.Valid {
+			roomUpdated = true
+		}
+		if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
+			ID: member.ID, Status: string(legacy.MemberStatusLeft), GraceUntil: pgtype.Timestamptz{},
+		}); err != nil {
+			return false, err
+		}
 	}
-	if _, err := q.UpdateMemberStatus(ctx, repo.UpdateMemberStatusParams{
-		ID: member.ID, Status: string(legacy.MemberStatusLeft), GraceUntil: pgtype.Timestamptz{},
-	}); err != nil {
-		return false, err
+	if roomUpdated {
+		membersAfter, err := q.ListMembers(ctx, roomID)
+		if err != nil {
+			return false, err
+		}
+		spectators, err := q.CountSpectators(ctx, roomID)
+		if err != nil {
+			return false, err
+		}
+		if err := legacy.AppendEvent(ctx, q, roomID, legacy.EventRoomUpdated, legacy.NewRoomUpdatedPayload(room, membersAfter, int(spectators))); err != nil {
+			return false, err
+		}
+	}
+
+	for _, encounter := range activeEncounters {
+		loadedMatch, members, turns, err := loadEncounterContext(ctx, q, encounter)
+		if err != nil {
+			return false, err
+		}
+		if loadedMatch.ID != match.ID {
+			return false, fmt.Errorf("%w: relay departure locked encounter from another match", relaydomain.ErrInvalidStagePlan)
+		}
+		departedMembers := departedEncounterMembers(members, departedByID)
+		if len(departedMembers) == 0 {
+			continue
+		}
+		transition := relaydomain.Transition{Ended: true, Reason: relaydomain.TerminalDraw}
+		endedBy := ""
+		key := ""
+		if len(departedMembers) == 1 {
+			var err error
+			endedBy = departedMembers[0]
+			key = "match-end/" + string(reason) + "/" + endedBy + "/" + encounter.ID
+			transition, err = relaydomain.ForfeitAssigned(encounterState(match, encounter, members, turns), endedBy)
+			if err != nil {
+				return false, err
+			}
+		}
+		var forced *relaydomain.ForcedMatchEnd
+		if ref == relaydomain.LegacyRuleSet() {
+			forced = &relaydomain.ForcedMatchEnd{WinnerMemberID: transition.WinnerMemberID, Reason: string(reason)}
+		}
+		if err := s.endEncounterWithMatchEnd(ctx, tx, q, match, encounter, members, turns, transition, endedBy, key, now, forced); err != nil {
+			return false, err
+		}
+	}
+	if s.coordinator != nil {
+		stageTx := NewStageTransaction(tx, s.finishedRetention)
+		for _, stageID := range openStageIDs {
+			if _, err := s.coordinator.TrySettleInTransaction(ctx, stageTx, stageID); err != nil {
+				return false, err
+			}
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return false, err
 	}
-	legacy.DefaultMetrics.IncForfeits(string(reason))
-	slog.Info("relay match forfeited", "room_id", member.RoomID, "member_id", member.ID, "reason", string(reason))
+	for _, memberID := range changedPlayers {
+		legacy.DefaultMetrics.IncForfeits(string(reason))
+		slog.Info("relay roster member left", "room_id", roomID, "member_id", memberID, "reason", string(reason))
+	}
 	return true, nil
 }
 
@@ -361,20 +478,12 @@ func (s *EncounterService) Sweep(ctx context.Context, limit int) ([]string, erro
 		}
 	}
 	if s.coordinator != nil {
-		settlements, err := s.coordinator.RecoverSettlements(ctx, limit)
+		settlementRooms, err := s.recoverSettlements(ctx, q, limit)
 		if err != nil {
 			return nil, err
 		}
-		for _, settlement := range settlements {
-			stage, err := q.GetRelayStage(ctx, settlement.StageID)
-			if err != nil {
-				return nil, err
-			}
-			match, err := q.GetRelayMatch(ctx, stage.MatchID)
-			if err != nil {
-				return nil, err
-			}
-			rooms[match.RoomID] = struct{}{}
+		for _, roomID := range settlementRooms {
+			rooms[roomID] = struct{}{}
 		}
 	}
 	result := make([]string, 0, len(rooms))
@@ -405,6 +514,9 @@ func (s *EncounterService) startCandidate(ctx context.Context, encounterID strin
 	if err != nil {
 		return "", err
 	}
+	if err := validateEncounterRuleSet(match); err != nil {
+		return s.terminateUnrecoverableMatchInTransaction(ctx, tx, q, match, s.clock.Now())
+	}
 	if _, err := startEncounter(ctx, q, match, encounter, members); err != nil {
 		return "", err
 	}
@@ -433,6 +545,9 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 		return "", err
 	}
 	now := s.clock.Now()
+	if err := validateEncounterRuleSet(match); err != nil {
+		return s.terminateUnrecoverableMatchInTransaction(ctx, tx, q, match, now)
+	}
 	if !now.Before(encounter.Deadline.Time) {
 		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now); err != nil {
 			return "", err
@@ -468,6 +583,140 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 		encounter.TurnDeadline = timestamptz(*transition.NextTurnDeadline)
 	}
 	return match.RoomID, tx.Commit(ctx)
+}
+
+func (s *EncounterService) recoverSettlements(ctx context.Context, q *repo.Queries, limit int) ([]string, error) {
+	stageIDs, err := q.ListRelaySettlementCandidates(ctx, int32(limit))
+	if err != nil {
+		return nil, err
+	}
+	roomIDs := make([]string, 0, len(stageIDs))
+	for _, stageID := range stageIDs {
+		stage, err := q.GetRelayStage(ctx, stageID)
+		if err != nil {
+			return roomIDs, err
+		}
+		match, err := q.GetRelayMatch(ctx, stage.MatchID)
+		if err != nil {
+			return roomIDs, err
+		}
+		if err := validateEncounterRuleSet(match); err != nil {
+			roomID, err := s.terminateUnrecoverableMatch(ctx, match.ID, s.clock.Now())
+			if err != nil {
+				return roomIDs, err
+			}
+			if roomID != "" {
+				roomIDs = append(roomIDs, roomID)
+			}
+			continue
+		}
+		settlement, err := s.coordinator.TrySettle(ctx, stageID)
+		if err != nil {
+			return roomIDs, err
+		}
+		stage, err = q.GetRelayStage(ctx, settlement.StageID)
+		if err != nil {
+			return roomIDs, err
+		}
+		match, err = q.GetRelayMatch(ctx, stage.MatchID)
+		if err != nil {
+			return roomIDs, err
+		}
+		roomIDs = append(roomIDs, match.RoomID)
+	}
+	return roomIDs, nil
+}
+
+func (s *EncounterService) terminateUnrecoverableMatch(ctx context.Context, matchID string, now time.Time) (string, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := repo.New(tx)
+	match, err := q.GetMatchForUpdate(ctx, matchID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", tx.Commit(ctx)
+	}
+	if err != nil {
+		return "", err
+	}
+	return s.terminateUnrecoverableMatchInTransaction(ctx, tx, q, match, now)
+}
+
+func (s *EncounterService) terminateUnrecoverableMatchInTransaction(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, now time.Time) (string, error) {
+	locked, err := q.GetMatchForUpdate(ctx, match.ID)
+	if err != nil {
+		return "", err
+	}
+	if locked.Status != string(legacy.MatchStatusPlaying) {
+		return locked.RoomID, tx.Commit(ctx)
+	}
+	activeEncounters, err := q.ListActiveRelayEncountersForRoomForUpdate(ctx, locked.RoomID)
+	if err != nil {
+		return "", err
+	}
+	for _, encounter := range activeEncounters {
+		if encounter.MatchID != locked.ID {
+			continue
+		}
+		if _, err := q.EndRelayEncounter(ctx, repo.EndRelayEncounterParams{
+			ID: encounter.ID, WinnerMemberID: pgtype.Text{},
+			Outcome: pgtype.Text{String: string(relaydomain.TerminalServerRestart), Valid: true},
+			EndedAt: timestamptz(now),
+		}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return "", err
+		}
+	}
+	if _, err := q.EndRaceMatch(ctx, repo.EndRaceMatchParams{
+		ID: locked.ID, EndedAt: timestamptz(now), WinnerMemberID: pgtype.Text{},
+	}); err != nil {
+		return "", err
+	}
+	retentionEndsAt := now.Add(s.finishedRetention)
+	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
+		ID: locked.RoomID, Status: string(legacy.RoomStatusFinished), ExpiresAt: timestamptz(retentionEndsAt),
+	}); err != nil {
+		return "", err
+	}
+	scores, err := relayMemberScores(ctx, q, locked.ID)
+	if err != nil {
+		return "", err
+	}
+	if err := legacy.AppendEvent(ctx, q, locked.RoomID, legacy.EventMatchEnded, legacy.MatchEndedEventPayload{
+		MatchIndex: int(locked.MatchIndex), WinnerMemberID: nil, MemberScores: scores,
+		Scores: legacy.ScoresView{Slot1: int(locked.ScoreSlot1), Slot2: int(locked.ScoreSlot2)},
+		Reason: legacy.MatchEndReasonServerRestart, RetentionEndsAt: retentionEndsAt,
+	}); err != nil {
+		return "", err
+	}
+	return locked.RoomID, tx.Commit(ctx)
+}
+
+func relayMemberScores(ctx context.Context, q *repo.Queries, matchID string) ([]legacy.MemberScoreView, error) {
+	players, err := q.ListMatchPlayers(ctx, matchID)
+	if err != nil {
+		return nil, err
+	}
+	states, err := q.ListRelayMatchPlayerStates(ctx, matchID)
+	if err != nil {
+		return nil, err
+	}
+	relayScores := make(map[string]int, len(states))
+	for _, state := range states {
+		relayScores[state.MemberID] = int(state.Score)
+	}
+	scores := make([]legacy.MemberScoreView, 0, len(players))
+	for _, player := range players {
+		score := int(player.Score)
+		if relayScore, ok := relayScores[player.MemberID]; ok {
+			score = relayScore
+		}
+		scores = append(scores, legacy.MemberScoreView{
+			MemberID: player.MemberID, Seat: int(player.Seat), Score: score, Status: player.Status,
+		})
+	}
+	return scores, nil
 }
 
 func (s *EncounterService) endEncounter(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, turns []repo.MultiRelayTurn, transition relaydomain.Transition, endedBy, idempotencyKey string, now time.Time) error {
@@ -711,6 +960,46 @@ func hydrateTurns(ctx context.Context, q *repo.Queries, match repo.MultiMatch, m
 
 func memberAssigned(members []repo.MultiRelayEncounterMember, memberID string) bool {
 	return len(members) == 2 && (members[0].MemberID == memberID || members[1].MemberID == memberID)
+}
+
+func departedEncounterMembers(members []repo.MultiRelayEncounterMember, departed map[string]repo.MultiMember) []string {
+	result := make([]string, 0, len(members))
+	for _, member := range members {
+		if _, ok := departed[member.MemberID]; ok {
+			result = append(result, member.MemberID)
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
+func collectDepartureStage(ctx context.Context, q *repo.Queries, stage repo.MultiRelayStage, departed map[string]repo.MultiMember, target map[string]int) error {
+	encounters, err := q.ListRelayEncountersForStage(ctx, stage.ID)
+	if err != nil {
+		return err
+	}
+	for _, encounter := range encounters {
+		members, err := q.ListRelayEncounterMembers(ctx, encounter.ID)
+		if err != nil {
+			return err
+		}
+		for _, member := range members {
+			if _, ok := departed[member.MemberID]; ok {
+				target[member.MemberID] = int(stage.StageIndex)
+			}
+		}
+	}
+	bye, err := q.GetRelayStageBye(ctx, stage.ID)
+	if err == nil {
+		if _, ok := departed[bye.MemberID]; ok {
+			target[bye.MemberID] = int(stage.StageIndex)
+		}
+		return nil
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	return err
 }
 
 func memberSnapshots(members []repo.MultiRelayEncounterMember) [2]relaydomain.PlayerSnapshot {

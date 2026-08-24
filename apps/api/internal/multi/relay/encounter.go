@@ -47,11 +47,12 @@ type Turn struct {
 type TerminalReason string
 
 const (
-	TerminalWin     TerminalReason = "win"
-	TerminalLoss    TerminalReason = "loss"
-	TerminalDraw    TerminalReason = "draw"
-	TerminalForfeit TerminalReason = "forfeit"
-	TerminalTimeout TerminalReason = "timeout"
+	TerminalWin           TerminalReason = "win"
+	TerminalLoss          TerminalReason = "loss"
+	TerminalDraw          TerminalReason = "draw"
+	TerminalForfeit       TerminalReason = "forfeit"
+	TerminalTimeout       TerminalReason = "timeout"
+	TerminalServerRestart TerminalReason = "server_restart"
 )
 
 type EncounterState struct {

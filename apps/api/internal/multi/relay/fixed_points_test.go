@@ -62,6 +62,47 @@ func TestFixedPointsPolicyUsesPlannedStagesNotTargetWins(t *testing.T) {
 	}
 }
 
+func TestFixedPointsPolicyRemovesLeftPlayersAndContinuesWithOddBye(t *testing.T) {
+	input := fixedPointsInput(4, 1, 3)
+	input.States[2].Status = "left"
+	bye := ParticipantOutcome{Player: input.States[3].Player, Assignment: AssignmentBye, Outcome: OutcomeBye}
+	input.Participants = append(input.Participants[:2], bye)
+
+	decision, err := (FixedPointsPolicy{}).Settle(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decision.CreateNextStage || decision.Match != nil || len(decision.NextPlayers) != 3 {
+		t.Fatalf("decision = %+v", decision)
+	}
+	for _, next := range decision.NextPlayers {
+		if next.MemberID == input.States[2].Player.MemberID {
+			t.Fatalf("left player was paired again: %+v", decision.NextPlayers)
+		}
+	}
+	if decision.Players[2].Assignment != AssignmentBye || decision.Players[2].ScoreDelta != FixedPointsBye {
+		t.Fatalf("bye settlement = %+v", decision.Players[2])
+	}
+}
+
+func TestFixedPointsPolicyEndsWhenDeparturesLeaveOneActivePlayer(t *testing.T) {
+	input := fixedPointsInput(4, 1, 3)
+	for index := 1; index < len(input.States); index++ {
+		input.States[index].Status = "left"
+	}
+
+	decision, err := (FixedPointsPolicy{}).Settle(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decision.CreateNextStage || decision.Match == nil || !decision.Match.Ended || decision.Match.Reason != "insufficient_active_players" {
+		t.Fatalf("decision = %+v", decision)
+	}
+	if len(decision.Match.Ranking) != 4 {
+		t.Fatalf("ranking = %+v", decision.Match.Ranking)
+	}
+}
+
 func TestFixedPointsRankingUsesCompetitionRanksWithoutTieBreak(t *testing.T) {
 	tests := []struct {
 		name       string

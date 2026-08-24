@@ -46,6 +46,10 @@ type ModeMemberForfeiter interface {
 	ForfeitMatchMember(context.Context, repo.MultiMember, MatchEndReason) (bool, error)
 }
 
+type ModeMemberBatchForfeiter interface {
+	ForfeitMatchMembers(context.Context, []repo.MultiMember, MatchEndReason) (bool, error)
+}
+
 // Sweeper 后台调度器（唯一）。
 type Sweeper struct {
 	pool     *pgxpool.Pool
@@ -584,6 +588,38 @@ func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.
 	})
 }
 
+func (s *Sweeper) forfeitModeMemberBatch(ctx context.Context, members []repo.MultiMember, reason MatchEndReason, now time.Time) error {
+	if len(members) == 0 {
+		return nil
+	}
+	roomID := members[0].RoomID
+	handled := false
+	for _, forfeiter := range s.cfg.ModeForfeiters {
+		if forfeiter == nil {
+			continue
+		}
+		if batch, ok := forfeiter.(ModeMemberBatchForfeiter); ok {
+			var err error
+			handled, err = batch.ForfeitMatchMembers(ctx, members, reason)
+			if err != nil {
+				return err
+			}
+			if handled {
+				break
+			}
+		}
+	}
+	if !handled {
+		for _, member := range members {
+			if err := ForfeitMemberMatch(ctx, s.pool, member, reason, now, s.cfg.Timing, s.registry); err != nil {
+				return err
+			}
+		}
+	}
+	s.notify(roomID)
+	return nil
+}
+
 // expireDisconnectedMembers 断线宽限逾期（08 §4.6/§6.2）：
 // lobby：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot；
 // 对局中：race 按房间批量标记 roster left 并套用 N 人终态表，relay 判对方胜；
@@ -595,6 +631,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		return err
 	}
 	raceBatches := map[string][]repo.MultiMember{}
+	modeBatches := map[string][]repo.MultiMember{}
 	for _, member := range members {
 		room, err := repo.New(s.pool).GetRoom(ctx, member.RoomID)
 		if err != nil {
@@ -623,27 +660,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 				raceBatches[room.ID] = append(raceBatches[room.ID], member)
 				continue
 			}
-			handled := false
-			for _, forfeiter := range s.cfg.ModeForfeiters {
-				if forfeiter == nil {
-					continue
-				}
-				handled, err = forfeiter.ForfeitMatchMember(ctx, member, MatchEndReasonDisconnect)
-				if err != nil {
-					return err
-				}
-				if handled {
-					break
-				}
-			}
-			if handled {
-				s.notify(room.ID)
-				continue
-			}
-			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing, s.registry); err != nil {
-				return err
-			}
-			s.notify(room.ID)
+			modeBatches[room.ID] = append(modeBatches[room.ID], member)
 		case string(RoomStatusLobby):
 			if err := s.expireLobbyMember(ctx, member); err != nil {
 				return err
@@ -659,6 +676,11 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 			return err
 		}
 		s.notify(roomID)
+	}
+	for _, batch := range modeBatches {
+		if err := s.forfeitModeMemberBatch(ctx, batch, MatchEndReasonDisconnect, now); err != nil {
+			return err
+		}
 	}
 	return nil
 }

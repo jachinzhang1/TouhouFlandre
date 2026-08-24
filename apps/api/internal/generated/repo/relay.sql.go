@@ -911,6 +911,56 @@ func (q *Queries) InsertRelayTurn(ctx context.Context, arg InsertRelayTurnParams
 	return i, err
 }
 
+const listActiveRelayEncountersForRoomForUpdate = `-- name: ListActiveRelayEncountersForRoomForUpdate :many
+SELECT encounter.id, encounter.match_id, encounter.stage_id, encounter.encounter_index, encounter.status, encounter.answer_id, encounter.starts_at, encounter.deadline, encounter.turn_member_id, encounter.turn_deadline, encounter.winner_member_id, encounter.outcome, encounter.ended_at, encounter.created_at, encounter.ended_by_member_id, encounter.end_idempotency_key
+FROM multi_relay_encounter AS encounter
+JOIN multi_relay_stage AS stage ON stage.id = encounter.stage_id
+JOIN multi_match AS match ON match.id = encounter.match_id
+WHERE match.room_id = $1
+  AND match.status = 'playing'
+  AND stage.status <> 'ended'
+  AND encounter.status <> 'ended'
+ORDER BY stage.stage_index, encounter.encounter_index, encounter.id
+FOR UPDATE OF encounter
+`
+
+func (q *Queries) ListActiveRelayEncountersForRoomForUpdate(ctx context.Context, roomID string) ([]MultiRelayEncounter, error) {
+	rows, err := q.db.Query(ctx, listActiveRelayEncountersForRoomForUpdate, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayEncounter{}
+	for rows.Next() {
+		var i MultiRelayEncounter
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.StageID,
+			&i.EncounterIndex,
+			&i.Status,
+			&i.AnswerID,
+			&i.StartsAt,
+			&i.Deadline,
+			&i.TurnMemberID,
+			&i.TurnDeadline,
+			&i.WinnerMemberID,
+			&i.Outcome,
+			&i.EndedAt,
+			&i.CreatedAt,
+			&i.EndedByMemberID,
+			&i.EndIdempotencyKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRelayEncounterMembers = `-- name: ListRelayEncounterMembers :many
 SELECT match_id, stage_id, encounter_id, member_id, side, seat
 FROM multi_relay_encounter_member
@@ -1352,6 +1402,33 @@ func (q *Queries) MarkRelayMatchPlayerEliminated(ctx context.Context, arg MarkRe
 		&i.Score,
 		&i.BestRoundScore,
 		&i.EliminatedRound,
+	)
+	return i, err
+}
+
+const markRelayMatchPlayerTerminalStage = `-- name: MarkRelayMatchPlayerTerminalStage :one
+UPDATE multi_relay_match_player_state
+SET eliminated_stage = COALESCE(eliminated_stage, $1)
+WHERE match_id = $2
+  AND member_id = $3
+RETURNING match_id, member_id, score, life_state, eliminated_stage
+`
+
+type MarkRelayMatchPlayerTerminalStageParams struct {
+	StageIndex pgtype.Int4 `json:"stage_index"`
+	MatchID    string      `json:"match_id"`
+	MemberID   string      `json:"member_id"`
+}
+
+func (q *Queries) MarkRelayMatchPlayerTerminalStage(ctx context.Context, arg MarkRelayMatchPlayerTerminalStageParams) (MultiRelayMatchPlayerState, error) {
+	row := q.db.QueryRow(ctx, markRelayMatchPlayerTerminalStage, arg.StageIndex, arg.MatchID, arg.MemberID)
+	var i MultiRelayMatchPlayerState
+	err := row.Scan(
+		&i.MatchID,
+		&i.MemberID,
+		&i.Score,
+		&i.LifeState,
+		&i.EliminatedStage,
 	)
 	return i, err
 }

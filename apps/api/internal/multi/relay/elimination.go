@@ -33,8 +33,8 @@ func (EliminationPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 			activeCount++
 		}
 	}
-	if activeCount < 2 || len(input.Participants) != activeCount {
-		return SettlementDecision{}, fmt.Errorf("%w: elimination participants do not match active players", ErrInvalidStagePlan)
+	if activeCount < 1 {
+		return SettlementDecision{}, fmt.Errorf("%w: elimination has no active players", ErrInvalidStagePlan)
 	}
 
 	decision := SettlementDecision{
@@ -44,7 +44,7 @@ func (EliminationPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 	settled := make(map[string]struct{}, len(input.Participants))
 	for _, participant := range input.Participants {
 		state, ok := stateByMember[participant.Player.MemberID]
-		if !ok || state.Player != participant.Player || state.Status != "active" {
+		if !ok || state.Player != participant.Player || state.Status == "eliminated" {
 			return SettlementDecision{}, fmt.Errorf("%w: invalid elimination participant", ErrInvalidStagePlan)
 		}
 		if _, duplicate := settled[participant.Player.MemberID]; duplicate {
@@ -55,6 +55,9 @@ func (EliminationPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 			return SettlementDecision{}, err
 		}
 		settlement := settleEliminationPlayer(state, participant, input.StageIndex, ruleDelta)
+		if state.Status == "left" {
+			settlement = settleDepartedEliminationPlayer(state, participant, ruleDelta)
+		}
 		decision.Players = append(decision.Players, settlement)
 		state.Score = settlement.ScoreAfter
 		state.LifeState = settlement.LifeAfter
@@ -66,11 +69,13 @@ func (EliminationPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 		stateByMember[state.Player.MemberID] = state
 		settled[state.Player.MemberID] = struct{}{}
 	}
-	if len(settled) != activeCount {
-		return SettlementDecision{}, fmt.Errorf("%w: elimination settlement omitted an active player", ErrInvalidStagePlan)
-	}
 
 	for _, state := range stateByMember {
+		if state.Status == "active" {
+			if _, ok := settled[state.Player.MemberID]; !ok {
+				return SettlementDecision{}, fmt.Errorf("%w: elimination settlement omitted an active player", ErrInvalidStagePlan)
+			}
+		}
 		decision.Standings = append(decision.Standings, state)
 	}
 	sort.Slice(decision.Players, func(i, j int) bool { return playerLess(decision.Players[i].Player, decision.Players[j].Player) })
@@ -154,6 +159,27 @@ func settleEliminationPlayer(state PlayerState, participant ParticipantOutcome, 
 	}
 }
 
+func settleDepartedEliminationPlayer(state PlayerState, participant ParticipantOutcome, ruleDelta int) PlayerSettlement {
+	after := state.Score
+	if participant.Assignment != AssignmentBye {
+		if state.LifeState == LifeStateNearDeath && ruleDelta > 0 {
+			after = state.Score
+		} else {
+			after = state.Score + ruleDelta
+			if ruleDelta > 0 && after > EliminationMaximumScore {
+				after = EliminationMaximumScore
+			}
+		}
+	}
+	return PlayerSettlement{
+		Player: participant.Player, EncounterID: participant.EncounterID,
+		Assignment: participant.Assignment, Outcome: participant.Outcome,
+		ScoreBefore: state.Score, ScoreDelta: after - state.Score, ScoreAfter: after,
+		LifeBefore: state.LifeState, LifeAfter: state.LifeState, LifeTransition: LifeTransitionNone,
+		EliminatedStage: state.EliminatedStage,
+	}
+}
+
 func EliminationRanking(states []PlayerState, completedStages int) ([]RankingEntry, *string, error) {
 	if completedStages < 1 || len(states) == 0 {
 		return nil, nil, fmt.Errorf("%w: invalid elimination ranking input", ErrInvalidStagePlan)
@@ -180,6 +206,11 @@ func EliminationRanking(states []PlayerState, completedStages int) ([]RankingEnt
 				return nil, nil, fmt.Errorf("%w: invalid eliminated stage in ranking", ErrInvalidStagePlan)
 			}
 			survived = *state.EliminatedStage - 1
+		case "left":
+			if state.EliminatedStage == nil || *state.EliminatedStage < 1 || *state.EliminatedStage > completedStages {
+				return nil, nil, fmt.Errorf("%w: invalid left stage in ranking", ErrInvalidStagePlan)
+			}
+			survived = *state.EliminatedStage
 		default:
 			return nil, nil, fmt.Errorf("%w: unsupported elimination ranking status", ErrInvalidStagePlan)
 		}
@@ -228,6 +259,10 @@ func validateEliminationState(state PlayerState, stageIndex int) error {
 		if state.LifeState != LifeStateNearDeath || state.Score >= 0 || state.EliminatedStage == nil ||
 			*state.EliminatedStage < 1 || *state.EliminatedStage >= stageIndex {
 			return fmt.Errorf("%w: invalid eliminated player state", ErrInvalidStagePlan)
+		}
+	case "left":
+		if state.EliminatedStage == nil || *state.EliminatedStage < 1 || *state.EliminatedStage > stageIndex {
+			return fmt.Errorf("%w: invalid left elimination state", ErrInvalidStagePlan)
 		}
 	default:
 		return fmt.Errorf("%w: unsupported elimination player status", ErrInvalidStagePlan)

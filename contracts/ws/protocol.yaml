@@ -617,7 +617,7 @@ events:
           $ref: "#/definitions/RelayMatchEnded"
         reason:
           type: string
-          enum: [normal, forfeit, disconnect, server_restart, round_cap]
+          enum: [normal, forfeit, disconnect, server_restart, round_cap, insufficient_active_players]
         retentionEndsAt:
           type: string
           format: date-time

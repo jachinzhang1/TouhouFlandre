@@ -16,16 +16,30 @@ type FixedPointsPolicy struct{}
 
 func (FixedPointsPolicy) Settle(input SettlementInput) (SettlementDecision, error) {
 	if input.Match.RuleSet != FixedPointsRuleSet() || !fixedPointsRosterSize(len(input.States)) ||
-		len(input.Participants) != len(input.States) || input.Match.MaxStages < 1 ||
 		input.StageIndex < 1 || input.StageIndex > input.Match.MaxStages || input.ForcedMatchEnd != nil {
 		return SettlementDecision{}, fmt.Errorf("%w: invalid fixed-points input", ErrInvalidStagePlan)
 	}
 
 	stateByMember := make(map[string]PlayerState, len(input.States))
+	participantByMember := make(map[string]struct{}, len(input.Participants))
+	for _, participant := range input.Participants {
+		if _, exists := participantByMember[participant.Player.MemberID]; exists {
+			return SettlementDecision{}, fmt.Errorf("%w: duplicate fixed-points participant", ErrInvalidStagePlan)
+		}
+		participantByMember[participant.Player.MemberID] = struct{}{}
+	}
 	for _, state := range input.States {
-		if state.Player.MemberID == "" || state.Player.Seat < 1 || state.Status != "active" ||
+		if state.Player.MemberID == "" || state.Player.Seat < 1 ||
 			state.LifeState != LifeStateHealthy || state.EliminatedStage != nil {
 			return SettlementDecision{}, fmt.Errorf("%w: invalid fixed-points player state", ErrInvalidStagePlan)
+		}
+		if state.Status != "active" && state.Status != "left" {
+			return SettlementDecision{}, fmt.Errorf("%w: unsupported fixed-points player status", ErrInvalidStagePlan)
+		}
+		if state.Status == "active" {
+			if _, participates := participantByMember[state.Player.MemberID]; !participates {
+				return SettlementDecision{}, fmt.Errorf("%w: active fixed-points player omitted from stage", ErrInvalidStagePlan)
+			}
 		}
 		if _, exists := stateByMember[state.Player.MemberID]; exists {
 			return SettlementDecision{}, fmt.Errorf("%w: duplicate fixed-points player state", ErrInvalidStagePlan)
@@ -57,17 +71,33 @@ func (FixedPointsPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 		decision.Standings = append(decision.Standings, state)
 		delete(stateByMember, participant.Player.MemberID)
 	}
-	if len(stateByMember) != 0 {
-		return SettlementDecision{}, fmt.Errorf("%w: fixed-points settlement omitted player state", ErrInvalidStagePlan)
+	for _, state := range stateByMember {
+		if state.Status == "active" {
+			return SettlementDecision{}, fmt.Errorf("%w: fixed-points settlement omitted active player", ErrInvalidStagePlan)
+		}
+		decision.Standings = append(decision.Standings, state)
 	}
 	sort.Slice(decision.Players, func(i, j int) bool { return playerLess(decision.Players[i].Player, decision.Players[j].Player) })
 	sort.Slice(decision.Standings, func(i, j int) bool { return playerLess(decision.Standings[i].Player, decision.Standings[j].Player) })
 
+	active := make([]PlayerSnapshot, 0, len(decision.Standings))
+	for _, standing := range decision.Standings {
+		if standing.Status == "active" {
+			active = append(active, standing.Player)
+		}
+	}
+	if len(active) < 2 {
+		ranking, winner := FixedPointsRanking(decision.Standings)
+		decision.Match = &MatchDecision{Ended: true, WinnerMemberID: winner, Reason: "insufficient_active_players", Ranking: ranking}
+		return decision, nil
+	}
 	if input.StageIndex < input.Match.MaxStages {
 		decision.CreateNextStage = true
-		decision.NextPlayers = make([]PlayerSnapshot, 0, len(decision.Standings))
+		decision.NextPlayers = make([]PlayerSnapshot, 0, len(active))
 		for _, standing := range decision.Standings {
-			decision.NextPlayers = append(decision.NextPlayers, standing.Player)
+			if standing.Status == "active" {
+				decision.NextPlayers = append(decision.NextPlayers, standing.Player)
+			}
 		}
 		return decision, nil
 	}

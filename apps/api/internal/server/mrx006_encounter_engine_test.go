@@ -52,10 +52,11 @@ func createMRX006Fixture(t *testing.T, playerCount int, scoring relay.ScoringPol
 		if _, err := pool.Exec(ctx, `
 			UPDATE multi_match
 			SET rule_set_key = $2,
+			    rule_set_version = $3,
 			    rule_config_snapshot = jsonb_build_object(
-			        'mode', 'relay', 'ruleSetKey', $2::text, 'ruleSetVersion', 1
+			        'mode', 'relay', 'ruleSetKey', $2::text, 'ruleSetVersion', $3::int
 			    )
-			WHERE id = $1`, base.match.MatchID, ruleSet); err != nil {
+			WHERE id = $1`, base.match.MatchID, ruleSet, relay.RuleVersion); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -626,15 +627,11 @@ func TestMRX006LegacyRelayLeaveAndDisconnectUseEncounterStorage(t *testing.T) {
 	}
 }
 
-func TestMRX006RestartedMatchRejectsActionsAndRecoveryWrites(t *testing.T) {
+func TestMRX006RestartedMatchUsesModeOwnedRecovery(t *testing.T) {
 	fixture := createMRX006Fixture(t, 2, relay.LegacyWinsPolicy{}, relay.RuleLegacyWins)
 	encounter := fixture.plan.Encounters[0]
-	terminated, err := multi.TerminateActiveMatches(ctx, pool, fixture.clock.Now(), fastTiming, assembly.MustProduction())
-	if err != nil {
+	if _, err := multi.TerminateActiveMatches(ctx, pool, fixture.clock.Now(), fastTiming, assembly.MustProduction()); err != nil {
 		t.Fatal(err)
-	}
-	if terminated < 1 {
-		t.Fatalf("terminated matches=%d", terminated)
 	}
 	var eventsBefore int
 	if err := pool.QueryRow(ctx, `SELECT count(*)::int FROM room_event WHERE room_id = $1`, fixture.base.roomID).Scan(&eventsBefore); err != nil {
@@ -645,8 +642,12 @@ func TestMRX006RestartedMatchRejectsActionsAndRecoveryWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rooms) != 0 {
-		t.Fatalf("recovery touched finished rooms=%v", rooms)
+	foundRoom := false
+	for _, roomID := range rooms {
+		foundRoom = foundRoom || roomID == fixture.base.roomID
+	}
+	if !foundRoom {
+		t.Fatalf("recovery rooms=%v", rooms)
 	}
 	_, err = fixture.service.Act(ctx, relayadapter.EncounterActionInput{
 		RoomID: fixture.base.roomID, StageIndex: 1, EncounterID: encounter.EncounterID,
@@ -656,19 +657,24 @@ func TestMRX006RestartedMatchRejectsActionsAndRecoveryWrites(t *testing.T) {
 	if !errors.Is(err, relay.ErrEncounterEnded) {
 		t.Fatalf("post-restart action error=%v", err)
 	}
-	var eventsAfter, turns int
-	var reason string
+	var eventsAfter, turns, matchEndedEvents, stages int
+	var matchStatus, encounterStatus string
 	if err := pool.QueryRow(ctx, `
 		SELECT
 			(SELECT count(*)::int FROM room_event WHERE room_id = $1),
 			(SELECT count(*)::int FROM multi_relay_turn WHERE encounter_id = $2),
-			(SELECT payload ->> 'reason' FROM room_event
-			 WHERE room_id = $1 AND type = 'match.ended' ORDER BY sequence DESC LIMIT 1)
-		`, fixture.base.roomID, encounter.EncounterID).Scan(&eventsAfter, &turns, &reason); err != nil {
+			(SELECT count(*)::int FROM room_event WHERE room_id = $1 AND type = 'match.ended'),
+			(SELECT count(*)::int FROM multi_relay_stage WHERE match_id = $3),
+			(SELECT status FROM multi_match WHERE id = $3),
+			(SELECT status FROM multi_relay_encounter WHERE id = $2)
+		`, fixture.base.roomID, encounter.EncounterID, fixture.base.match.MatchID).
+		Scan(&eventsAfter, &turns, &matchEndedEvents, &stages, &matchStatus, &encounterStatus); err != nil {
 		t.Fatal(err)
 	}
-	if eventsAfter != eventsBefore || turns != 0 || reason != "server_restart" {
-		t.Fatalf("events=%d->%d turns=%d reason=%s", eventsBefore, eventsAfter, turns, reason)
+	if eventsAfter <= eventsBefore || turns != 0 || matchEndedEvents != 0 || stages != 2 ||
+		matchStatus != "playing" || encounterStatus != "ended" {
+		t.Fatalf("events=%d->%d turns=%d matchEnded=%d stages=%d match=%s encounter=%s",
+			eventsBefore, eventsAfter, turns, matchEndedEvents, stages, matchStatus, encounterStatus)
 	}
 }
 

@@ -192,7 +192,7 @@ type SettlementInput struct {
 // ForcedMatchEnd preserves the legacy two-player leave/disconnect terminal
 // behavior without making normal encounter forfeits end the whole match.
 type ForcedMatchEnd struct {
-	WinnerMemberID string
+	WinnerMemberID *string
 	Reason         string
 }
 

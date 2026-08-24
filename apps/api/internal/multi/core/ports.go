@@ -162,6 +162,7 @@ type RecoveryRoute string
 const (
 	RecoveryRouteRace        RecoveryRoute = "race"
 	RecoveryRouteLegacyRelay RecoveryRoute = "legacy_relay"
+	RecoveryRouteModeOwned   RecoveryRoute = "mode_owned"
 )
 
 type RecoveryDriver interface {

@@ -40,12 +40,19 @@ func (p LegacyWinsPolicy) Settle(input SettlementInput) (SettlementDecision, err
 		}
 	}
 	if input.ForcedMatchEnd != nil {
-		if _, ok := stateByMember[input.ForcedMatchEnd.WinnerMemberID]; !ok || input.ForcedMatchEnd.Reason == "" {
+		if input.ForcedMatchEnd.Reason == "" {
 			return SettlementDecision{}, fmt.Errorf("%w: invalid forced legacy match end", ErrInvalidStagePlan)
 		}
-		winner := input.ForcedMatchEnd.WinnerMemberID
+		var winner *string
+		if input.ForcedMatchEnd.WinnerMemberID != nil {
+			if _, ok := stateByMember[*input.ForcedMatchEnd.WinnerMemberID]; !ok {
+				return SettlementDecision{}, fmt.Errorf("%w: invalid forced legacy match winner", ErrInvalidStagePlan)
+			}
+			value := *input.ForcedMatchEnd.WinnerMemberID
+			winner = &value
+		}
 		decision.Match = &MatchDecision{
-			ScoresBySeat: scores, Ended: true, WinnerMemberID: &winner, Reason: input.ForcedMatchEnd.Reason,
+			ScoresBySeat: scores, Ended: true, WinnerMemberID: winner, Reason: input.ForcedMatchEnd.Reason,
 		}
 		return decision, nil
 	}

@@ -113,5 +113,5 @@ func (Recovery) Route(ref core.RuleSetRef) (core.RecoveryRoute, error) {
 	if ref != relay.LegacyRuleSet() && ref != relay.FixedPointsRuleSet() && ref != relay.EliminationRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
-	return core.RecoveryRouteLegacyRelay, nil
+	return core.RecoveryRouteModeOwned, nil
 }
