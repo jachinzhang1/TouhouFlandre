@@ -51,7 +51,7 @@
 | bye / 轮空                 | stage 中未分配 encounter 的一名 active 玩家    | 只读、积分不变，不是 spectator 身份转换                              |
 | rule set / 规则集          | `(mode, ruleSetKey, ruleSetVersion)`           | match 开始时冻结；完整三元组才可选择规则                             |
 | scoring policy / 计分策略  | relay 规则集内部的积分与排名函数               | 不是跨模式枚举，不被 race/relay 共同实现                             |
-| survival rounds / 存留局数 | 某玩家在 stage 结算后仍存留的次数              | 淘汰于第 n 轮者为 `n-1`；终局后仍存留者为已完成 stage 数             |
+| survival rounds / 存留局数 | 某玩家在 stage 结算后仍存留的次数              | 淘汰于第 n 轮者为 `n-1`；离场于第 n 轮者为 `n`；终局后仍存留者为已完成 stage 数 |
 
 ## 目标架构
 
