@@ -19,6 +19,7 @@ func NewRuntime(pool *pgxpool.Pool, clock core.Clock, random core.RandomSource, 
 	scoring, err := relaydomain.NewScoringPolicyRouter(map[core.RuleSetRef]relaydomain.ScoringPolicy{
 		relaydomain.LegacyRuleSet():      relaydomain.LegacyWinsPolicy{},
 		relaydomain.FixedPointsRuleSet(): relaydomain.FixedPointsPolicy{},
+		relaydomain.EliminationRuleSet(): relaydomain.EliminationPolicy{},
 	})
 	if err != nil {
 		return nil, nil, err

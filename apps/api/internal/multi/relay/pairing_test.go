@@ -38,15 +38,20 @@ func TestRandomPairingPolicyCoversEvenRosters(t *testing.T) {
 func TestRandomPairingPolicyChoosesOneNonConsecutiveBye(t *testing.T) {
 	for _, playerCount := range []int{3, 5, 7} {
 		active := playerSnapshots(playerCount)
-		previousBye := active[0].MemberID
-		plan, err := (relay.RandomPairingPolicy{}).Plan(active, &previousBye, &sequenceRandom{values: []int{0, 2, 1}})
-		if err != nil {
-			t.Fatal(err)
+		random := &sequenceRandom{values: []int{0, 2, 1, 4, 3, 5}}
+		var previousBye *string
+		for stage := 1; stage <= 20; stage++ {
+			plan, err := (relay.RandomPairingPolicy{}).Plan(active, previousBye, random)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if plan.Bye == nil || (previousBye != nil && plan.Bye.MemberID == *previousBye) {
+				t.Fatalf("playerCount=%d stage=%d bye=%v previous=%v", playerCount, stage, plan.Bye, previousBye)
+			}
+			assertPairingCoverage(t, plan, active)
+			value := plan.Bye.MemberID
+			previousBye = &value
 		}
-		if plan.Bye == nil || plan.Bye.MemberID == previousBye {
-			t.Fatalf("playerCount=%d bye=%v previous=%s", playerCount, plan.Bye, previousBye)
-		}
-		assertPairingCoverage(t, plan, active)
 	}
 }
 

@@ -51,6 +51,14 @@ const (
 	LifeStateNearDeath LifeState = "near_death"
 )
 
+type LifeTransition string
+
+const (
+	LifeTransitionNone             LifeTransition = "none"
+	LifeTransitionEnteredNearDeath LifeTransition = "entered_near_death"
+	LifeTransitionEliminated       LifeTransition = "eliminated"
+)
+
 type MatchContext struct {
 	MatchID    string
 	RoomID     string
@@ -198,15 +206,17 @@ type PlayerSettlement struct {
 	ScoreAfter      int
 	LifeBefore      LifeState
 	LifeAfter       LifeState
+	LifeTransition  LifeTransition
 	EliminatedStage *int
 }
 
 type SettlementDecision struct {
-	Players         []PlayerSettlement
-	Standings       []PlayerState
-	CreateNextStage bool
-	NextPlayers     []PlayerSnapshot
-	Match           *MatchDecision
+	Players             []PlayerSettlement
+	Standings           []PlayerState
+	EliminatedMemberIDs []string
+	CreateNextStage     bool
+	NextPlayers         []PlayerSnapshot
+	Match               *MatchDecision
 }
 
 type MatchDecision struct {
@@ -224,6 +234,7 @@ type RankingEntry struct {
 	Status          string
 	LifeState       LifeState
 	EliminatedStage *int
+	SurvivedStages  *int
 }
 
 type ScoringPolicy interface {
@@ -251,13 +262,14 @@ type StageStartedEvent struct {
 }
 
 type StageEndedEvent struct {
-	MatchIndex     int
-	StageID        string
-	StageIndex     int
-	Settlement     []PlayerSettlement
-	Standings      []PlayerState
-	NextStageIndex *int
-	ByeMemberID    *string
+	MatchIndex          int
+	StageID             string
+	StageIndex          int
+	Settlement          []PlayerSettlement
+	Standings           []PlayerState
+	EliminatedMemberIDs []string
+	NextStageIndex      *int
+	ByeMemberID         *string
 }
 
 type StageTransaction interface {

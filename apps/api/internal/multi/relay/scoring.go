@@ -34,3 +34,14 @@ func (r *ScoringPolicyRouter) Settle(input SettlementInput) (SettlementDecision,
 	}
 	return policy.Settle(input)
 }
+
+func InitialScoreForRuleSet(ref core.RuleSetRef) (int, error) {
+	switch ref {
+	case LegacyRuleSet(), FixedPointsRuleSet():
+		return 0, nil
+	case EliminationRuleSet():
+		return EliminationInitialScore, nil
+	default:
+		return 0, fmt.Errorf("%w: unsupported relay rule set %s", ErrInvalidStagePlan, ref)
+	}
+}

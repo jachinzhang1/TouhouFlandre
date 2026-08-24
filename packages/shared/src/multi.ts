@@ -226,6 +226,7 @@ export interface MatchEndedPayload {
   scores: MemberScoreView[];
   results: MemberResultView[];
   ranking?: MemberRankingView[];
+  relay?: RelayMatchEndedView;
   reason: MultiMatchEndReason;
   retentionEndsAt: string;
 }
@@ -286,6 +287,10 @@ export interface RuleSetRef {
 export type RelayRuleSetRef = RuleSetRef & { mode: "relay" };
 
 export type RelayLifeState = "healthy" | "near_death";
+export type RelayLifeTransition =
+  | "none"
+  | "entered_near_death"
+  | "eliminated";
 
 export interface RelayStandingView {
   memberId: string;
@@ -294,6 +299,22 @@ export interface RelayStandingView {
   status: MatchPlayerStatus;
   lifeState: RelayLifeState;
   eliminatedStage?: number;
+}
+
+export interface RelayRankingView {
+  memberId: string;
+  seat: number;
+  rank: number;
+  score: number;
+  status: MatchPlayerStatus;
+  lifeState: RelayLifeState;
+  eliminatedStage?: number;
+  survivedStages?: number;
+}
+
+export interface RelayMatchEndedView {
+  standings: RelayStandingView[];
+  ranking: RelayRankingView[];
 }
 
 export interface RelayEncounterMemberView {
@@ -319,6 +340,7 @@ export interface RelayStageSettlementView {
   scoreAfter: number;
   lifeBefore: RelayLifeState;
   lifeAfter: RelayLifeState;
+  lifeTransition: RelayLifeTransition;
   eliminatedStage?: number;
 }
 
@@ -412,6 +434,7 @@ export interface RelayStageEndedPayload {
   status: "ended";
   settlement: RelayStageSettlementView[];
   standings: RelayStandingView[];
+  eliminatedMemberIds?: string[];
   nextStageIndex?: number;
   byeMemberId?: string;
 }

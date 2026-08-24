@@ -267,6 +267,9 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 			scores = MemberScoresForLegacy(payload.Scores, memberSlotByID)
 		}
 		results := MemberResultsForRanking(winnerMemberID, payload.Ranking, memberSlotByID)
+		if payload.Relay != nil {
+			results = MemberResultsForRelayRanking(winnerMemberID, payload.Relay.Ranking, memberSlotByID)
+		}
 		var viewerResult *MatchResult
 		if IsPlayer(observer) {
 			viewerResult = ViewerResultForMember(observer.ID, results)
@@ -282,6 +285,7 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 				Reason:          payload.Reason,
 				RetentionEndsAt: payload.RetentionEndsAt,
 				Ranking:         payload.Ranking,
+				Relay:           payload.Relay,
 			},
 		}, false, nil
 

@@ -44,7 +44,7 @@ func (s *captureScoring) Settle(input relay.SettlementInput) (relay.SettlementDe
 			Player: participant.Player, EncounterID: participant.EncounterID,
 			Assignment: participant.Assignment, Outcome: participant.Outcome,
 			ScoreBefore: state.Score, ScoreAfter: state.Score,
-			LifeBefore: state.LifeState, LifeAfter: state.LifeState,
+			LifeBefore: state.LifeState, LifeAfter: state.LifeState, LifeTransition: relay.LifeTransitionNone,
 		})
 	}
 	return relay.SettlementDecision{Players: players, Standings: input.States}, nil

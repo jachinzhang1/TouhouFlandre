@@ -239,13 +239,14 @@ func (c *StageCoordinator) trySettleInTransaction(ctx context.Context, tx StageT
 	ended := StageEndedEvent{
 		MatchIndex: match.MatchIndex, StageID: stageID, StageIndex: stage.StageIndex,
 		Settlement: decision.Players, Standings: decision.Standings,
+		EliminatedMemberIDs: decision.EliminatedMemberIDs,
+	}
+	if plan.Bye != nil {
+		ended.ByeMemberID = &plan.Bye.MemberID
 	}
 	if nextPlan != nil {
 		nextIndex := nextPlan.StageIndex
 		ended.NextStageIndex = &nextIndex
-		if nextPlan.Bye != nil {
-			ended.ByeMemberID = &nextPlan.Bye.MemberID
-		}
 	}
 	if err := tx.AppendStageEnded(ctx, match.RoomID, ended); err != nil {
 		return SettlementResult{}, err
@@ -373,6 +374,20 @@ func validateSettlementDecision(participants []ParticipantOutcome, states []Play
 		stateByID[state.Player.MemberID] = state
 	}
 	seen := make(map[string]struct{}, len(decision.Players))
+	eliminated := make(map[string]struct{}, len(decision.EliminatedMemberIDs))
+	for _, memberID := range decision.EliminatedMemberIDs {
+		if memberID == "" {
+			return fmt.Errorf("%w: eliminated member id is empty", ErrInvalidStagePlan)
+		}
+		if _, duplicate := eliminated[memberID]; duplicate {
+			return fmt.Errorf("%w: duplicate eliminated member id", ErrInvalidStagePlan)
+		}
+		eliminated[memberID] = struct{}{}
+	}
+	standingByID := make(map[string]PlayerState, len(decision.Standings))
+	for _, standing := range decision.Standings {
+		standingByID[standing.Player.MemberID] = standing
+	}
 	for _, settlement := range decision.Players {
 		participant, ok := participantByID[settlement.Player.MemberID]
 		state, stateOK := stateByID[settlement.Player.MemberID]
@@ -385,10 +400,48 @@ func validateSettlementDecision(participants []ParticipantOutcome, states []Play
 		if settlement.ScoreAfter != settlement.ScoreBefore+settlement.ScoreDelta {
 			return fmt.Errorf("%w: inconsistent score delta", ErrInvalidStagePlan)
 		}
+		standing, ok := standingByID[settlement.Player.MemberID]
+		if !ok || standing.Score != settlement.ScoreAfter || standing.LifeState != settlement.LifeAfter ||
+			!sameOptionalInt(standing.EliminatedStage, settlement.EliminatedStage) {
+			return fmt.Errorf("%w: settlement does not match resulting standing", ErrInvalidStagePlan)
+		}
+		switch settlement.LifeTransition {
+		case LifeTransitionNone:
+			if settlement.LifeBefore != settlement.LifeAfter || !sameOptionalInt(settlement.EliminatedStage, state.EliminatedStage) {
+				return fmt.Errorf("%w: invalid unchanged life transition", ErrInvalidStagePlan)
+			}
+		case LifeTransitionEnteredNearDeath:
+			if settlement.LifeBefore != LifeStateHealthy || settlement.LifeAfter != LifeStateNearDeath ||
+				settlement.ScoreAfter != 0 || settlement.EliminatedStage != nil {
+				return fmt.Errorf("%w: invalid near-death transition", ErrInvalidStagePlan)
+			}
+		case LifeTransitionEliminated:
+			if settlement.LifeBefore != LifeStateNearDeath || settlement.LifeAfter != LifeStateNearDeath ||
+				settlement.ScoreAfter >= 0 || settlement.EliminatedStage == nil || standing.Status != "eliminated" {
+				return fmt.Errorf("%w: invalid elimination transition", ErrInvalidStagePlan)
+			}
+			if _, ok := eliminated[settlement.Player.MemberID]; !ok {
+				return fmt.Errorf("%w: elimination transition is absent from eliminated ids", ErrInvalidStagePlan)
+			}
+		default:
+			return fmt.Errorf("%w: unknown life transition", ErrInvalidStagePlan)
+		}
 		if _, duplicate := seen[settlement.Player.MemberID]; duplicate {
 			return fmt.Errorf("%w: duplicate settlement player", ErrInvalidStagePlan)
 		}
 		seen[settlement.Player.MemberID] = struct{}{}
+	}
+	for memberID := range eliminated {
+		found := false
+		for _, settlement := range decision.Players {
+			if settlement.Player.MemberID == memberID && settlement.LifeTransition == LifeTransitionEliminated {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("%w: eliminated id has no elimination transition", ErrInvalidStagePlan)
+		}
 	}
 	standingSeen := make(map[string]struct{}, len(decision.Standings))
 	for _, standing := range decision.Standings {
@@ -411,6 +464,13 @@ func validateSettlementDecision(participants []ParticipantOutcome, states []Play
 }
 
 func sameOptionalString(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == nil && right == nil
+	}
+	return *left == *right
+}
+
+func sameOptionalInt(left, right *int) bool {
 	if left == nil || right == nil {
 		return left == nil && right == nil
 	}

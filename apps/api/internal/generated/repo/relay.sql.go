@@ -1326,6 +1326,36 @@ func (q *Queries) ListRelayUsedAnswerIDs(ctx context.Context, matchID string) ([
 	return items, nil
 }
 
+const markRelayMatchPlayerEliminated = `-- name: MarkRelayMatchPlayerEliminated :one
+UPDATE multi_match_player
+SET status = 'eliminated'
+WHERE match_id = $1
+  AND member_id = $2
+  AND status = 'active'
+RETURNING match_id, member_id, seat, wins, status, score, best_round_score, eliminated_round
+`
+
+type MarkRelayMatchPlayerEliminatedParams struct {
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+}
+
+func (q *Queries) MarkRelayMatchPlayerEliminated(ctx context.Context, arg MarkRelayMatchPlayerEliminatedParams) (MultiMatchPlayer, error) {
+	row := q.db.QueryRow(ctx, markRelayMatchPlayerEliminated, arg.MatchID, arg.MemberID)
+	var i MultiMatchPlayer
+	err := row.Scan(
+		&i.MatchID,
+		&i.MemberID,
+		&i.Seat,
+		&i.Wins,
+		&i.Status,
+		&i.Score,
+		&i.BestRoundScore,
+		&i.EliminatedRound,
+	)
+	return i, err
+}
+
 const markRelayStagePlaying = `-- name: MarkRelayStagePlaying :one
 UPDATE multi_relay_stage
 SET status = 'playing'
