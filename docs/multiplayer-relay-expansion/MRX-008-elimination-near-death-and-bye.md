@@ -3,6 +3,7 @@
 **类型**：功能/规则 Issue  
 **优先级**：P0  
 **依赖**：MRX-006  
+**状态**：已完成
 **建议标签**：`type:feature` `area:api` `area:multi` `area:test`
 
 **决策依据**：[淘汰计分与濒死](./decisions.md#9-淘汰计分与濒死)、[配对与轮空](./decisions.md#5-配对与轮空)、[淘汰排名](./decisions.md#10-淘汰排名)
@@ -52,3 +53,24 @@
 ## 可能涉及的代码
 
 relay mode package 下的 `elimination`、stage settlement 与 pairing adapter、relay SQL queries、相关 `0015+` migration、mode-owned contract payload、`packages/shared/src/multi.ts` 的 relay union、server/domain tests。
+
+## 实施与验收记录（2026-08-24）
+
+本 Issue 已交付 `(relay, elimination, 1)` 的完整多人核心链路。relay-owned `EliminationPolicy` 从 10 分开始并封顶 10 分，按 stage index 处理胜 `+1`、负 `-n`、平双方 `-floor(n/2)` 和 bye `0`；普通玩家扣到恰好 0 仍保持 healthy，首次原始结果小于 0 时钳制为 0 并进入 near-death。near-death 的正分不生效、零变化不淘汰，下一次真实负分保留负数并淘汰。`scoreDelta` 始终记录封顶或钳制后的实际变化，所有转换显式投影为 `none`、`entered_near_death` 或 `eliminated`。
+
+stage barrier 在同一事务内更新 relay player score/life/eliminated stage 和公共 `multi_match_player.status=eliminated`，一次结算支持 0..N 人同时淘汰；结算后 active 多于 1 人才创建下一 stage，降至 2 人仍继续 elimination，active 小于等于 1 时直接按存留局数结束且没有任意 BO/轮数上限。奇数 active 继续复用 MRX-005 已冻结的 pairing/bye 计划，`relay.stage.ended.byeMemberId` 表示当前结算 stage 的 bye，下一 stage 的 bye 只随 `relay.stage.started` 发布。3/5/7 人连续 20 个确定性计划的测试确认每轮恰有一名 bye 且无人连续 bye。
+
+终局排名只使用 `survivedStages`，积分和 seat 不破同分；唯一 survivor 为唯一第一并设置 winner，全部同时淘汰允许并列第一且 `winnerMemberId=null`。为避免 elimination 负分进入非负的通用 race DTO，`match.ended` 增加 optional relay-owned standings/ranking fragment；OpenAPI、WS v3、共享 TypeScript 类型、snapshot 和 replay 同步增加 `lifeTransition`、`eliminatedMemberIds` 与 `survivedStages`。开局按完整 `RuleSetRef` 初始化分数，legacy/fixed-points 保持 0，elimination 为 10；production runtime/capability 已能解释 elimination，未知 key/version 继续 fail closed。
+
+持久化复用既有 expand schema，无新增 migration；仅增加 sqlc 源查询，以便在 stage 结算事务内同步公共淘汰状态。SQL、OpenAPI Go 和 Web TypeScript 生成物均由 WSL 固定工具链重新生成，二次生成前后四个目标文件 SHA-256 完全一致。公开 relay `PrepareRoom`、`ReadyRoster`、创建/设置和 MatchFactory 仍保持 2 人 legacy 规则，不会选择 elimination；MRX-004 位于另一开发主干且未在本分支吸收。4/6/8 人规则由表驱动 domain 测试覆盖，4 人到淘汰后 3 人 bye、再降至 2 人和终局的完整链路由直接 service/真实 PostgreSQL fixture 验证，后续开放多人前端和房间策略时可按冻结 `RuleSetRef` 直接接入。
+
+WSL 验证结果：
+
+- 聚焦验证 `go test ./internal/multi/relay/... -count=1`、`go test ./internal/multi/... -count=1`、`go test ./internal/server -run MRX008 -count=1` 和 `go test ./internal/server -run "MRX005|MRX006|MRX007|MRX008" -count=1` 通过。MRX-008 真实 PostgreSQL 测试覆盖生产 runtime、3 人 bye、事务可见性、精确重试、降至 2 人、唯一 survivor、并发最终全灭、snapshot/replay 和公共状态同步。
+- `go test -race ./internal/multi/relay/... -count=1` 与 `go test -race ./internal/server -run MRX008 -count=1` 通过。
+- `go test ./... -count=1` 全部通过，其中 server `36.217s`、migrations `6.883s`；`go vet ./...` 通过。
+- `pnpm test` 通过 shared 10、data 26、Web 152，共 188 项；`pnpm typecheck` 与 `pnpm --filter @touhouflandre/web build` 通过。
+- `pnpm check:ws-protocol`、`pnpm lint:openapi`、`pnpm check:openapi-refs` 和 `pnpm check:multiplayer-boundaries` 通过；OpenAPI 检查为 41 个 YAML、40 个本地引用、无孤儿文件。
+- `task gen:openapi`、固定 `sqlc v1.31.1 generate` 与 `task gen:web` 二次生成前后目标文件 SHA-256 完全一致；Windows Git `diff --check` 通过。
+
+本次没有数据库 migration 或破坏性数据操作。应用回滚只需在不存在进行中的 elimination match 时回到前一 binary；当前公开入口仍限制双人，因此不会由产品流量创建此类 match，未来 MRX-004 开放入口时需沿用发布闸门的停止新建与排空规则。没有实现 MRX-004 多人房间策略、MRX-009 离场/断线统一终态、MRX-011 history projector 或 MRX-012 Web 样式与本地统计。
