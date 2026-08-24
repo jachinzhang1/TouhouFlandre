@@ -47,7 +47,7 @@ func TestRelayOnlyAssemblyDoesNotResolveRace(t *testing.T) {
 	}
 }
 
-func TestProductionAssemblyExecutesFixedPointsButKeepsEliminationDisabled(t *testing.T) {
+func TestProductionAssemblyExecutesRelayScoringPolicies(t *testing.T) {
 	registry, err := assembly.Production()
 	if err != nil {
 		t.Fatal(err)
@@ -83,8 +83,15 @@ func TestProductionAssemblyExecutesFixedPointsButKeepsEliminationDisabled(t *tes
 	if style, err := projector.Style(fixed); err != nil || style != core.ProjectionRelayShared {
 		t.Fatalf("fixed-points projection style=%s error=%v", style, err)
 	}
-	if _, err := completionDriver.Route(relay.EliminationRuleSet()); !core.HasErrorCode(err, core.ErrorFeatureDisabled) {
+	elimination := relay.EliminationRuleSet()
+	if result, err := commandHandler.Handle(core.CommandContext{RuleSet: elimination, Command: core.CommandGuess}); err != nil || !result.Accepted {
+		t.Fatalf("elimination relay command result=%+v error=%v", result, err)
+	}
+	if _, err := completionDriver.Route(elimination); err != nil {
 		t.Fatalf("elimination completion error = %v", err)
+	}
+	if style, err := projector.Style(elimination); err != nil || style != core.ProjectionRelayShared {
+		t.Fatalf("elimination projection style=%s error=%v", style, err)
 	}
 	if _, err := registry.ResolveLegacy(core.Mode("unknown"), "wins"); !core.HasErrorCode(err, core.ErrorUnknownMode) {
 		t.Fatalf("unknown mode error = %v", err)

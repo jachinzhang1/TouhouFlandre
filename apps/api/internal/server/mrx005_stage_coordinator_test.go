@@ -71,7 +71,7 @@ func (s *mrx005Scoring) Settle(input relay.SettlementInput) (relay.SettlementDec
 			Player: participant.Player, EncounterID: participant.EncounterID,
 			Assignment: participant.Assignment, Outcome: participant.Outcome,
 			ScoreBefore: state.Score, ScoreAfter: state.Score,
-			LifeBefore: state.LifeState, LifeAfter: state.LifeState,
+			LifeBefore: state.LifeState, LifeAfter: state.LifeState, LifeTransition: relay.LifeTransitionNone,
 			EliminatedStage: state.EliminatedStage,
 		})
 	}

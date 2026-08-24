@@ -51,7 +51,7 @@ func (FixedPointsPolicy) Settle(input SettlementInput) (SettlementDecision, erro
 			Player: participant.Player, EncounterID: participant.EncounterID,
 			Assignment: participant.Assignment, Outcome: participant.Outcome,
 			ScoreBefore: state.Score, ScoreDelta: delta, ScoreAfter: after,
-			LifeBefore: state.LifeState, LifeAfter: state.LifeState,
+			LifeBefore: state.LifeState, LifeAfter: state.LifeState, LifeTransition: LifeTransitionNone,
 		})
 		state.Score = after
 		decision.Standings = append(decision.Standings, state)
