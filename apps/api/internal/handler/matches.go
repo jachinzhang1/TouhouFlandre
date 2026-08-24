@@ -123,11 +123,17 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return mapRoomWriteError(err)
 	}
+	var plannedStages *int
+	if plan.RuleSet == relaydomain.FixedPointsRuleSet() {
+		value := maxRounds
+		plannedStages = &value
+	}
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventMatchStarted, multi.MatchStartedPayload{
 		Format:         format,
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
 		TargetWins:     targetWins,
+		PlannedStages:  plannedStages,
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
 		QuestionScope:  scope,
@@ -163,6 +169,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		_, err := s.relayCoordinator.CreateStageInTransaction(ctx, relayadapter.NewStageTransactionFromQueries(q, s.timing.FinishedRetention), relaydomain.CreateStageRequest{
 			Match: relaydomain.MatchContext{
 				MatchID: match.ID, RoomID: room.ID, MatchIndex: int(match.MatchIndex),
+				RuleSet:    plan.RuleSet,
 				TargetWins: targetWins, MaxStages: maxRounds,
 			},
 			StageIndex: 1, ActivePlayers: players, StartsAt: plan.StartsAt,

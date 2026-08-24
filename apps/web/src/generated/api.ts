@@ -1192,6 +1192,16 @@ export interface components {
             lifeState: components["schemas"]["RelayLifeState"];
             eliminatedStage?: number;
         };
+        /** @description 接力规则生成的最终共享名次；score 允许为负以保持 relay 规则边界。 */
+        RelayRankingView: {
+            memberId: string;
+            seat: number;
+            rank: number;
+            score: number;
+            status: components["schemas"]["MatchPlayerStatus"];
+            lifeState: components["schemas"]["RelayLifeState"];
+            eliminatedStage?: number;
+        };
         RelayEncounterMemberView: {
             memberId: string;
             seat: number;
@@ -1260,6 +1270,10 @@ export interface components {
         RelayMatchFragment: {
             ruleSetRef: components["schemas"]["RuleSetRef"];
             standings: components["schemas"]["RelayStandingView"][];
+            /** @description fixed_points 规则冻结的 stage 总数；其他 relay 规则省略。 */
+            plannedStages?: number;
+            /** @description match 结束后的 relay 权威共享名次。 */
+            ranking?: components["schemas"]["RelayRankingView"][];
             currentStage?: components["schemas"]["RelayStageView"];
             /** @description 紧凑历史摘要；完整终态棋盘由 history API 按需加载。 */
             historySummary?: components["schemas"]["RelayStageView"][];

@@ -344,6 +344,7 @@ type MatchStartedPayload struct {
 	Mode           MultiplayerMode          `json:"mode"`
 	TurnSeconds    int                      `json:"turnSeconds"`
 	TargetWins     int                      `json:"targetWins"`
+	PlannedStages  *int                     `json:"plannedStages,omitempty"`
 	CatalogVersion string                   `json:"catalogVersion"`
 	MatchIndex     int                      `json:"matchIndex"`
 	QuestionScope  game.QuestionScopeConfig `json:"questionScope"`

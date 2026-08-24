@@ -464,7 +464,12 @@ func createMRX005Fixture(t *testing.T, playerCount int) mrx005Fixture {
 		t.Fatal(err)
 	}
 	return mrx005Fixture{
-		roomID: room.ID, match: relay.MatchContext{MatchID: match.ID, RoomID: room.ID, MatchIndex: int(match.MatchIndex)}, players: players,
+		roomID: room.ID,
+		match: relay.MatchContext{
+			MatchID: match.ID, RoomID: room.ID, MatchIndex: int(match.MatchIndex),
+			RuleSet: relay.FixedPointsRuleSet(), TargetWins: int(match.TargetWins), MaxStages: int(match.MaxRounds),
+		},
+		players: players,
 	}
 }
 
