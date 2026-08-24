@@ -194,6 +194,13 @@ type MultiRelayStage struct {
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 }
 
+type MultiRelayStageBye struct {
+	StageID  string `json:"stage_id"`
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+	Seat     int32  `json:"seat"`
+}
+
 type MultiRelayStagePlayer struct {
 	MatchID         string             `json:"match_id"`
 	StageID         string             `json:"stage_id"`

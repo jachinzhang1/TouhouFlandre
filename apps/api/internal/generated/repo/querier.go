@@ -37,6 +37,7 @@ type Querier interface {
 	CreateRelayEncounter(ctx context.Context, arg CreateRelayEncounterParams) (MultiRelayEncounter, error)
 	CreateRelayMatchPlayerState(ctx context.Context, arg CreateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error)
 	CreateRelayStage(ctx context.Context, arg CreateRelayStageParams) (MultiRelayStage, error)
+	CreateRelayStageBye(ctx context.Context, arg CreateRelayStageByeParams) (MultiRelayStageBye, error)
 	// 多人模式查询（docs/multiplayer.md）。
 	// 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 	CreateRoom(ctx context.Context, arg CreateRoomParams) (MultiRoom, error)
@@ -89,6 +90,9 @@ type Querier interface {
 	// MRX-003 relay-owned storage queries. These queries are intentionally kept
 	// separate from the shared/race query source; the core never interprets them.
 	GetRelayStage(ctx context.Context, id string) (MultiRelayStage, error)
+	GetRelayStageByMatchIndex(ctx context.Context, arg GetRelayStageByMatchIndexParams) (MultiRelayStage, error)
+	GetRelayStageByMatchIndexForUpdate(ctx context.Context, arg GetRelayStageByMatchIndexForUpdateParams) (MultiRelayStage, error)
+	GetRelayStageBye(ctx context.Context, stageID string) (MultiRelayStageBye, error)
 	GetRelayStageForUpdate(ctx context.Context, id string) (MultiRelayStage, error)
 	GetRelayTurnByIdempotencyKey(ctx context.Context, arg GetRelayTurnByIdempotencyKeyParams) (MultiRelayTurn, error)
 	GetRoom(ctx context.Context, id string) (MultiRoom, error)
@@ -147,6 +151,7 @@ type Querier interface {
 	ListRelayEncounterMembers(ctx context.Context, encounterID string) ([]MultiRelayEncounterMember, error)
 	ListRelayEncountersForStage(ctx context.Context, stageID string) ([]MultiRelayEncounter, error)
 	ListRelayMatchPlayerStates(ctx context.Context, matchID string) ([]MultiRelayMatchPlayerState, error)
+	ListRelaySettlementCandidates(ctx context.Context, candidateLimit int32) ([]string, error)
 	ListRelayStagePlayers(ctx context.Context, stageID string) ([]MultiRelayStagePlayer, error)
 	ListRelayStagesForMatch(ctx context.Context, matchID string) ([]MultiRelayStage, error)
 	ListRelayTurnsForEncounter(ctx context.Context, encounterID string) ([]MultiRelayTurn, error)
@@ -173,6 +178,7 @@ type Querier interface {
 	UpdateMemberChatRate(ctx context.Context, arg UpdateMemberChatRateParams) error
 	UpdateMemberSeat(ctx context.Context, arg UpdateMemberSeatParams) (MultiMember, error)
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
+	UpdateRelayMatchPlayerState(ctx context.Context, arg UpdateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error)
 	UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error
 	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)

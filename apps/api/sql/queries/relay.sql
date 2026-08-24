@@ -7,11 +7,40 @@ SELECT * FROM multi_relay_stage WHERE id = $1;
 -- name: GetRelayStageForUpdate :one
 SELECT * FROM multi_relay_stage WHERE id = $1 FOR UPDATE;
 
+-- name: GetRelayStageByMatchIndex :one
+SELECT *
+FROM multi_relay_stage
+WHERE match_id = $1 AND stage_index = $2;
+
+-- name: GetRelayStageByMatchIndexForUpdate :one
+SELECT *
+FROM multi_relay_stage
+WHERE match_id = $1 AND stage_index = $2
+FOR UPDATE;
+
 -- name: ListRelayStagesForMatch :many
 SELECT *
 FROM multi_relay_stage
 WHERE match_id = $1
 ORDER BY stage_index;
+
+-- name: ListRelaySettlementCandidates :many
+SELECT stage.id
+FROM multi_relay_stage AS stage
+WHERE stage.status <> 'ended'
+  AND stage.settlement_marker IS NULL
+  AND (
+      SELECT count(*)
+      FROM multi_relay_encounter AS encounter
+      WHERE encounter.stage_id = stage.id
+  ) = stage.planned_encounter_count
+  AND NOT EXISTS (
+      SELECT 1
+      FROM multi_relay_encounter AS encounter
+      WHERE encounter.stage_id = stage.id AND encounter.status <> 'ended'
+  )
+ORDER BY stage.created_at, stage.id
+LIMIT sqlc.arg(candidate_limit);
 
 -- name: CreateRelayStage :one
 INSERT INTO multi_relay_stage (
@@ -28,6 +57,16 @@ SET status = 'ended',
 WHERE id = $1
   AND status <> 'ended'
 RETURNING *;
+
+-- name: CreateRelayStageBye :one
+INSERT INTO multi_relay_stage_bye (stage_id, match_id, member_id, seat)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
+
+-- name: GetRelayStageBye :one
+SELECT *
+FROM multi_relay_stage_bye
+WHERE stage_id = $1;
 
 -- name: GetRelayEncounter :one
 SELECT * FROM multi_relay_encounter WHERE id = $1;
@@ -105,6 +144,14 @@ SELECT *
 FROM multi_relay_match_player_state
 WHERE match_id = $1
 ORDER BY member_id;
+
+-- name: UpdateRelayMatchPlayerState :one
+UPDATE multi_relay_match_player_state
+SET score = sqlc.arg(score),
+    life_state = sqlc.arg(life_state),
+    eliminated_stage = sqlc.narg(eliminated_stage)
+WHERE match_id = sqlc.arg(match_id) AND member_id = sqlc.arg(member_id)
+RETURNING *;
 
 -- name: ListRelayStagePlayers :many
 SELECT *

@@ -190,6 +190,36 @@ func (q *Queries) CreateRelayStage(ctx context.Context, arg CreateRelayStagePara
 	return i, err
 }
 
+const createRelayStageBye = `-- name: CreateRelayStageBye :one
+INSERT INTO multi_relay_stage_bye (stage_id, match_id, member_id, seat)
+VALUES ($1, $2, $3, $4)
+RETURNING stage_id, match_id, member_id, seat
+`
+
+type CreateRelayStageByeParams struct {
+	StageID  string `json:"stage_id"`
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+	Seat     int32  `json:"seat"`
+}
+
+func (q *Queries) CreateRelayStageBye(ctx context.Context, arg CreateRelayStageByeParams) (MultiRelayStageBye, error) {
+	row := q.db.QueryRow(ctx, createRelayStageBye,
+		arg.StageID,
+		arg.MatchID,
+		arg.MemberID,
+		arg.Seat,
+	)
+	var i MultiRelayStageBye
+	err := row.Scan(
+		&i.StageID,
+		&i.MatchID,
+		&i.MemberID,
+		&i.Seat,
+	)
+	return i, err
+}
+
 const getRelayEncounter = `-- name: GetRelayEncounter :one
 SELECT id, match_id, stage_id, encounter_index, status, answer_id, starts_at, deadline, turn_member_id, turn_deadline, winner_member_id, outcome, ended_at, created_at FROM multi_relay_encounter WHERE id = $1
 `
@@ -287,6 +317,81 @@ func (q *Queries) GetRelayStage(ctx context.Context, id string) (MultiRelayStage
 		&i.SettledAt,
 		&i.SettlementMarker,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRelayStageByMatchIndex = `-- name: GetRelayStageByMatchIndex :one
+SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at, settlement_marker, created_at
+FROM multi_relay_stage
+WHERE match_id = $1 AND stage_index = $2
+`
+
+type GetRelayStageByMatchIndexParams struct {
+	MatchID    string `json:"match_id"`
+	StageIndex int32  `json:"stage_index"`
+}
+
+func (q *Queries) GetRelayStageByMatchIndex(ctx context.Context, arg GetRelayStageByMatchIndexParams) (MultiRelayStage, error) {
+	row := q.db.QueryRow(ctx, getRelayStageByMatchIndex, arg.MatchID, arg.StageIndex)
+	var i MultiRelayStage
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.StageIndex,
+		&i.Status,
+		&i.PlannedEncounterCount,
+		&i.StartsAt,
+		&i.SettledAt,
+		&i.SettlementMarker,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRelayStageByMatchIndexForUpdate = `-- name: GetRelayStageByMatchIndexForUpdate :one
+SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at, settlement_marker, created_at
+FROM multi_relay_stage
+WHERE match_id = $1 AND stage_index = $2
+FOR UPDATE
+`
+
+type GetRelayStageByMatchIndexForUpdateParams struct {
+	MatchID    string `json:"match_id"`
+	StageIndex int32  `json:"stage_index"`
+}
+
+func (q *Queries) GetRelayStageByMatchIndexForUpdate(ctx context.Context, arg GetRelayStageByMatchIndexForUpdateParams) (MultiRelayStage, error) {
+	row := q.db.QueryRow(ctx, getRelayStageByMatchIndexForUpdate, arg.MatchID, arg.StageIndex)
+	var i MultiRelayStage
+	err := row.Scan(
+		&i.ID,
+		&i.MatchID,
+		&i.StageIndex,
+		&i.Status,
+		&i.PlannedEncounterCount,
+		&i.StartsAt,
+		&i.SettledAt,
+		&i.SettlementMarker,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getRelayStageBye = `-- name: GetRelayStageBye :one
+SELECT stage_id, match_id, member_id, seat
+FROM multi_relay_stage_bye
+WHERE stage_id = $1
+`
+
+func (q *Queries) GetRelayStageBye(ctx context.Context, stageID string) (MultiRelayStageBye, error) {
+	row := q.db.QueryRow(ctx, getRelayStageBye, stageID)
+	var i MultiRelayStageBye
+	err := row.Scan(
+		&i.StageID,
+		&i.MatchID,
+		&i.MemberID,
+		&i.Seat,
 	)
 	return i, err
 }
@@ -570,6 +675,45 @@ func (q *Queries) ListRelayMatchPlayerStates(ctx context.Context, matchID string
 	return items, nil
 }
 
+const listRelaySettlementCandidates = `-- name: ListRelaySettlementCandidates :many
+SELECT stage.id
+FROM multi_relay_stage AS stage
+WHERE stage.status <> 'ended'
+  AND stage.settlement_marker IS NULL
+  AND (
+      SELECT count(*)
+      FROM multi_relay_encounter AS encounter
+      WHERE encounter.stage_id = stage.id
+  ) = stage.planned_encounter_count
+  AND NOT EXISTS (
+      SELECT 1
+      FROM multi_relay_encounter AS encounter
+      WHERE encounter.stage_id = stage.id AND encounter.status <> 'ended'
+  )
+ORDER BY stage.created_at, stage.id
+LIMIT $1
+`
+
+func (q *Queries) ListRelaySettlementCandidates(ctx context.Context, candidateLimit int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listRelaySettlementCandidates, candidateLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRelayStagePlayers = `-- name: ListRelayStagePlayers :many
 SELECT match_id, stage_id, member_id, encounter_id, assignment, outcome, score_before, score_delta, score_after, life_before, life_after, eliminated_stage, settled_at
 FROM multi_relay_stage_player
@@ -717,6 +861,42 @@ func (q *Queries) MarkRelayStageSettled(ctx context.Context, arg MarkRelayStageS
 		&i.SettledAt,
 		&i.SettlementMarker,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateRelayMatchPlayerState = `-- name: UpdateRelayMatchPlayerState :one
+UPDATE multi_relay_match_player_state
+SET score = $1,
+    life_state = $2,
+    eliminated_stage = $3
+WHERE match_id = $4 AND member_id = $5
+RETURNING match_id, member_id, score, life_state, eliminated_stage
+`
+
+type UpdateRelayMatchPlayerStateParams struct {
+	Score           int32       `json:"score"`
+	LifeState       string      `json:"life_state"`
+	EliminatedStage pgtype.Int4 `json:"eliminated_stage"`
+	MatchID         string      `json:"match_id"`
+	MemberID        string      `json:"member_id"`
+}
+
+func (q *Queries) UpdateRelayMatchPlayerState(ctx context.Context, arg UpdateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error) {
+	row := q.db.QueryRow(ctx, updateRelayMatchPlayerState,
+		arg.Score,
+		arg.LifeState,
+		arg.EliminatedStage,
+		arg.MatchID,
+		arg.MemberID,
+	)
+	var i MultiRelayMatchPlayerState
+	err := row.Scan(
+		&i.MatchID,
+		&i.MemberID,
+		&i.Score,
+		&i.LifeState,
+		&i.EliminatedStage,
 	)
 	return i, err
 }
