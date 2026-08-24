@@ -16,11 +16,12 @@ import (
 )
 
 type StageRepository struct {
-	pool *pgxpool.Pool
+	pool              *pgxpool.Pool
+	finishedRetention time.Duration
 }
 
-func NewStageRepository(pool *pgxpool.Pool) *StageRepository {
-	return &StageRepository{pool: pool}
+func NewStageRepository(pool *pgxpool.Pool, finishedRetention ...time.Duration) *StageRepository {
+	return &StageRepository{pool: pool, finishedRetention: normalizeFinishedRetention(finishedRetention)}
 }
 
 func (r *StageRepository) Transact(ctx context.Context, run func(relaydomain.StageTransaction) error) error {
@@ -29,7 +30,7 @@ func (r *StageRepository) Transact(ctx context.Context, run func(relaydomain.Sta
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := run(NewStageTransaction(tx)); err != nil {
+	if err := run(NewStageTransaction(tx, r.finishedRetention)); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -42,12 +43,17 @@ func (r *StageRepository) ListSettlementCandidates(ctx context.Context, limit in
 	return repo.New(r.pool).ListRelaySettlementCandidates(ctx, int32(limit))
 }
 
-func NewStageTransaction(tx pgx.Tx) relaydomain.StageTransaction {
-	return &stageTransaction{q: repo.New(tx)}
+func NewStageTransaction(tx pgx.Tx, finishedRetention ...time.Duration) relaydomain.StageTransaction {
+	return NewStageTransactionFromQueries(repo.New(tx), finishedRetention...)
+}
+
+func NewStageTransactionFromQueries(q *repo.Queries, finishedRetention ...time.Duration) relaydomain.StageTransaction {
+	return &stageTransaction{q: q, finishedRetention: normalizeFinishedRetention(finishedRetention)}
 }
 
 type stageTransaction struct {
-	q *repo.Queries
+	q                 *repo.Queries
+	finishedRetention time.Duration
 }
 
 func (t *stageTransaction) FindStage(ctx context.Context, matchID string, stageIndex int, lock bool) (relaydomain.StageRecord, bool, error) {
@@ -124,6 +130,12 @@ func (t *stageTransaction) LoadStagePlan(ctx context.Context, stageID string) (r
 				{MemberID: members[1].MemberID, Seat: int(members[1].Seat)},
 			},
 		})
+		if encounter.TurnMemberID.Valid {
+			plan.Encounters[len(plan.Encounters)-1].TurnMemberID = encounter.TurnMemberID.String
+		}
+		if encounter.TurnDeadline.Valid {
+			plan.Encounters[len(plan.Encounters)-1].TurnDeadline = encounter.TurnDeadline.Time
+		}
 	}
 	bye, err := t.q.GetRelayStageBye(ctx, stageID)
 	if err == nil {
@@ -145,10 +157,19 @@ func (t *stageTransaction) CreateStage(ctx context.Context, plan relaydomain.Sta
 		return err
 	}
 	for _, encounter := range plan.Encounters {
+		status := relaydomain.EncounterStatusPlanned
+		turnMember := pgtype.Text{}
+		turnDeadline := pgtype.Timestamptz{}
+		if encounter.TurnMemberID != "" {
+			status = relaydomain.EncounterStatusCountdown
+			turnMember = pgtype.Text{String: encounter.TurnMemberID, Valid: true}
+			turnDeadline = timestamptz(encounter.TurnDeadline)
+		}
 		if _, err := t.q.CreateRelayEncounter(ctx, repo.CreateRelayEncounterParams{
 			ID: encounter.EncounterID, MatchID: plan.Match.MatchID, StageID: plan.StageID,
-			EncounterIndex: int32(encounter.EncounterIndex), Status: string(relaydomain.EncounterStatusPlanned),
+			EncounterIndex: int32(encounter.EncounterIndex), Status: string(status),
 			AnswerID: encounter.AnswerID, StartsAt: timestamptz(encounter.StartsAt), Deadline: timestamptz(encounter.Deadline),
+			TurnMemberID: turnMember, TurnDeadline: turnDeadline,
 		}); err != nil {
 			return err
 		}
@@ -160,6 +181,11 @@ func (t *stageTransaction) CreateStage(ctx context.Context, plan relaydomain.Sta
 				return err
 			}
 		}
+	}
+	if _, err := t.q.IncrementRelayMatchStageCount(ctx, repo.IncrementRelayMatchStageCountParams{
+		MatchID: plan.Match.MatchID, StageIndex: int32(plan.StageIndex),
+	}); err != nil {
+		return err
 	}
 	if plan.Bye != nil {
 		_, err := t.q.CreateRelayStageBye(ctx, repo.CreateRelayStageByeParams{
@@ -182,7 +208,10 @@ func (t *stageTransaction) LockMatch(ctx context.Context, matchID string) (relay
 	if room.Mode != string(legacy.MultiplayerModeRelay) {
 		return relaydomain.MatchContext{}, fmt.Errorf("relay stage match %s belongs to mode %s", matchID, room.Mode)
 	}
-	return relaydomain.MatchContext{MatchID: match.ID, RoomID: match.RoomID, MatchIndex: int(match.MatchIndex)}, nil
+	return relaydomain.MatchContext{
+		MatchID: match.ID, RoomID: match.RoomID, MatchIndex: int(match.MatchIndex),
+		TargetWins: int(match.TargetWins), MaxStages: int(match.MaxRounds),
+	}, nil
 }
 
 func (t *stageTransaction) ListEncounterOutcomes(ctx context.Context, stageID string) ([]relaydomain.EncounterOutcome, error) {
@@ -273,6 +302,64 @@ func (t *stageTransaction) UpdatePlayerStates(ctx context.Context, matchID strin
 		}
 	}
 	return nil
+}
+
+func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydomain.MatchContext, decision relaydomain.MatchDecision, now time.Time) error {
+	if _, err := t.q.UpdateMatchScore(ctx, repo.UpdateMatchScoreParams{
+		ID: match.MatchID, ScoreSlot1: int32(decision.ScoresBySeat[0]), ScoreSlot2: int32(decision.ScoresBySeat[1]),
+	}); err != nil {
+		return err
+	}
+	states, err := t.q.ListRelayMatchPlayerStates(ctx, match.MatchID)
+	if err != nil {
+		return err
+	}
+	for _, state := range states {
+		if _, err := t.q.SyncLegacyRelayPlayerScore(ctx, repo.SyncLegacyRelayPlayerScoreParams{
+			MatchID: match.MatchID, MemberID: state.MemberID, Score: state.Score,
+		}); err != nil {
+			return err
+		}
+	}
+	if !decision.Ended {
+		return nil
+	}
+	if _, err := t.q.EndRaceMatch(ctx, repo.EndRaceMatchParams{
+		ID: match.MatchID, EndedAt: timestamptz(now), WinnerMemberID: optionalText(decision.WinnerMemberID),
+	}); err != nil {
+		return err
+	}
+	retentionEndsAt := now.Add(t.finishedRetention)
+	if _, err := t.q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
+		ID: match.RoomID, Status: string(legacy.RoomStatusFinished), ExpiresAt: timestamptz(retentionEndsAt),
+	}); err != nil {
+		return err
+	}
+	scores := make([]legacy.MemberScoreView, 0, len(states))
+	var winnerSeat *int
+	for _, state := range states {
+		player, err := t.q.GetMatchPlayer(ctx, repo.GetMatchPlayerParams{MatchID: match.MatchID, MemberID: state.MemberID})
+		if err != nil {
+			return err
+		}
+		if decision.WinnerMemberID != nil && state.MemberID == *decision.WinnerMemberID {
+			seat := int(player.Seat)
+			winnerSeat = &seat
+		}
+		scores = append(scores, legacy.MemberScoreView{MemberID: state.MemberID, Seat: int(player.Seat), Score: int(state.Score), Status: player.Status})
+	}
+	return legacy.AppendEvent(ctx, t.q, match.RoomID, legacy.EventMatchEnded, legacy.MatchEndedEventPayload{
+		MatchIndex: match.MatchIndex, WinnerMemberID: decision.WinnerMemberID, WinnerSlot: winnerSeat,
+		MemberScores: scores, Scores: legacy.ScoresView{Slot1: decision.ScoresBySeat[0], Slot2: decision.ScoresBySeat[1]},
+		Reason: legacy.MatchEndReason(decision.Reason), RetentionEndsAt: retentionEndsAt,
+	})
+}
+
+func normalizeFinishedRetention(values []time.Duration) time.Duration {
+	if len(values) > 0 && values[0] > 0 {
+		return values[0]
+	}
+	return legacy.DefaultTimingConfig().FinishedRetention
 }
 
 func (t *stageTransaction) MarkStageSettled(ctx context.Context, stageID, marker string, settledAt time.Time) (bool, error) {
