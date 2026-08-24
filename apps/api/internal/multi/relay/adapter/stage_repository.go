@@ -12,6 +12,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	legacy "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 )
 
@@ -109,8 +110,12 @@ func (t *stageTransaction) LoadStagePlan(ctx context.Context, stageID string) (r
 		return relaydomain.StagePlan{}, err
 	}
 	plan := relaydomain.StagePlan{
-		StageID:    stage.ID,
-		Match:      relaydomain.MatchContext{MatchID: match.ID, RoomID: match.RoomID, MatchIndex: int(match.MatchIndex)},
+		StageID: stage.ID,
+		Match: relaydomain.MatchContext{
+			MatchID: match.ID, RoomID: match.RoomID, MatchIndex: int(match.MatchIndex),
+			RuleSet:    core.RuleSetRef{Mode: core.ModeRelay, Key: match.RuleSetKey, Version: int(match.RuleSetVersion)},
+			TargetWins: int(match.TargetWins), MaxStages: int(match.MaxRounds),
+		},
 		StageIndex: int(stage.StageIndex), Status: relaydomain.StageStatus(stage.Status), StartsAt: stage.StartsAt.Time,
 		Encounters: make([]relaydomain.EncounterPlan, 0, len(encounters)),
 	}
@@ -210,6 +215,7 @@ func (t *stageTransaction) LockMatch(ctx context.Context, matchID string) (relay
 	}
 	return relaydomain.MatchContext{
 		MatchID: match.ID, RoomID: match.RoomID, MatchIndex: int(match.MatchIndex),
+		RuleSet:    core.RuleSetRef{Mode: core.ModeRelay, Key: match.RuleSetKey, Version: int(match.RuleSetVersion)},
 		TargetWins: int(match.TargetWins), MaxStages: int(match.MaxRounds),
 	}, nil
 }
@@ -305,24 +311,35 @@ func (t *stageTransaction) UpdatePlayerStates(ctx context.Context, matchID strin
 }
 
 func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydomain.MatchContext, decision relaydomain.MatchDecision, now time.Time) error {
-	if _, err := t.q.UpdateMatchScore(ctx, repo.UpdateMatchScoreParams{
-		ID: match.MatchID, ScoreSlot1: int32(decision.ScoresBySeat[0]), ScoreSlot2: int32(decision.ScoresBySeat[1]),
-	}); err != nil {
-		return err
+	switch match.RuleSet {
+	case relaydomain.LegacyRuleSet():
+		if _, err := t.q.UpdateMatchScore(ctx, repo.UpdateMatchScoreParams{
+			ID: match.MatchID, ScoreSlot1: int32(decision.ScoresBySeat[0]), ScoreSlot2: int32(decision.ScoresBySeat[1]),
+		}); err != nil {
+			return err
+		}
+		states, err := t.q.ListRelayMatchPlayerStates(ctx, match.MatchID)
+		if err != nil {
+			return err
+		}
+		for _, state := range states {
+			if _, err := t.q.SyncLegacyRelayPlayerScore(ctx, repo.SyncLegacyRelayPlayerScoreParams{
+				MatchID: match.MatchID, MemberID: state.MemberID, Score: state.Score,
+			}); err != nil {
+				return err
+			}
+		}
+	case relaydomain.FixedPointsRuleSet():
+		// Relay-owned standings are authoritative; legacy wins/score columns stay untouched.
+	default:
+		return fmt.Errorf("relay match %s has unsupported rule set %s", match.MatchID, match.RuleSet)
+	}
+	if !decision.Ended {
+		return nil
 	}
 	states, err := t.q.ListRelayMatchPlayerStates(ctx, match.MatchID)
 	if err != nil {
 		return err
-	}
-	for _, state := range states {
-		if _, err := t.q.SyncLegacyRelayPlayerScore(ctx, repo.SyncLegacyRelayPlayerScoreParams{
-			MatchID: match.MatchID, MemberID: state.MemberID, Score: state.Score,
-		}); err != nil {
-			return err
-		}
-	}
-	if !decision.Ended {
-		return nil
 	}
 	if _, err := t.q.EndRaceMatch(ctx, repo.EndRaceMatchParams{
 		ID: match.MatchID, EndedAt: timestamptz(now), WinnerMemberID: optionalText(decision.WinnerMemberID),
@@ -337,21 +354,34 @@ func (t *stageTransaction) ApplyMatchDecision(ctx context.Context, match relaydo
 	}
 	scores := make([]legacy.MemberScoreView, 0, len(states))
 	var winnerSeat *int
+	playerByMember := make(map[string]repo.MultiMatchPlayer, len(states))
 	for _, state := range states {
 		player, err := t.q.GetMatchPlayer(ctx, repo.GetMatchPlayerParams{MatchID: match.MatchID, MemberID: state.MemberID})
 		if err != nil {
 			return err
 		}
+		playerByMember[state.MemberID] = player
 		if decision.WinnerMemberID != nil && state.MemberID == *decision.WinnerMemberID {
 			seat := int(player.Seat)
 			winnerSeat = &seat
 		}
 		scores = append(scores, legacy.MemberScoreView{MemberID: state.MemberID, Seat: int(player.Seat), Score: int(state.Score), Status: player.Status})
 	}
+	ranking := make([]legacy.MemberRankingView, 0, len(decision.Ranking))
+	for _, entry := range decision.Ranking {
+		player, ok := playerByMember[entry.Player.MemberID]
+		if !ok || int(player.Seat) != entry.Player.Seat {
+			return fmt.Errorf("relay match %s ranking contains an unknown player", match.MatchID)
+		}
+		ranking = append(ranking, legacy.MemberRankingView{
+			MemberID: entry.Player.MemberID, Seat: entry.Player.Seat, Rank: entry.Rank,
+			Score: entry.Score, Status: entry.Status,
+		})
+	}
 	return legacy.AppendEvent(ctx, t.q, match.RoomID, legacy.EventMatchEnded, legacy.MatchEndedEventPayload{
 		MatchIndex: match.MatchIndex, WinnerMemberID: decision.WinnerMemberID, WinnerSlot: winnerSeat,
 		MemberScores: scores, Scores: legacy.ScoresView{Slot1: decision.ScoresBySeat[0], Slot2: decision.ScoresBySeat[1]},
-		Reason: legacy.MatchEndReason(decision.Reason), RetentionEndsAt: retentionEndsAt,
+		Reason: legacy.MatchEndReason(decision.Reason), RetentionEndsAt: retentionEndsAt, Ranking: ranking,
 	})
 }
 

@@ -44,23 +44,36 @@ func (Module) ReadyRoster(roster []core.RosterMember, playerLimit int) bool {
 }
 
 func (Module) Plan(input core.MatchPlanInput) (core.MatchPlan, error) {
-	if input.Mode != core.ModeRelay || input.RosterSize != legacy.RelayPlayerLimit {
-		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "legacy relay requires exactly two players"}
+	if input.Mode != core.ModeRelay {
+		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "relay mode is required"}
 	}
 	format := legacy.RoomFormat(input.Format)
+	formatNumber := legacy.FormatNumber(format)
+	if formatNumber < 1 {
+		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "relay format is invalid"}
+	}
 	startsAt := input.Now.Add(input.RoundCountdown)
-	firstTurn, turnDeadline := legacy.InitialRelayTurn(1, input.TurnSeconds, startsAt)
 	timing := legacy.TimingConfig{RoundSeconds: input.RoundSeconds, RaceRoundSeconds: input.RaceRoundSeconds}
-	return core.MatchPlan{
-		RuleSet:       relay.LegacyRuleSet(),
-		ScoringMode:   string(legacy.ScoringModeWins),
-		TargetWins:    legacy.TargetWins(format),
-		MaxRounds:     legacy.MaxRounds(format, input.MaxRoundsFactor),
-		StartsAt:      startsAt,
-		Deadline:      startsAt.Add(legacy.RoundDurationForMode(legacy.MultiplayerModeRelay, timing)),
-		FirstTurnSeat: &firstTurn,
-		TurnDeadline:  &turnDeadline,
-	}, nil
+	plan := core.MatchPlan{
+		ScoringMode: string(legacy.ScoringModeWins),
+		TargetWins:  legacy.TargetWins(format),
+		StartsAt:    startsAt,
+		Deadline:    startsAt.Add(legacy.RoundDurationForMode(legacy.MultiplayerModeRelay, timing)),
+	}
+	switch input.RosterSize {
+	case legacy.RelayPlayerLimit:
+		firstTurn, turnDeadline := legacy.InitialRelayTurn(1, input.TurnSeconds, startsAt)
+		plan.RuleSet = relay.LegacyRuleSet()
+		plan.MaxRounds = legacy.MaxRounds(format, input.MaxRoundsFactor)
+		plan.FirstTurnSeat = &firstTurn
+		plan.TurnDeadline = &turnDeadline
+	case 4, 6, 8:
+		plan.RuleSet = relay.FixedPointsRuleSet()
+		plan.MaxRounds = formatNumber
+	default:
+		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "relay roster must contain 2, 4, 6, or 8 players"}
+	}
+	return plan, nil
 }
 
 func (Module) ParseLegacy(scoringMode string) (core.RuleSetRef, error) {
@@ -80,10 +93,10 @@ func futureRuleSetDisabled(ref core.RuleSetRef) error {
 }
 
 func (Module) Handle(ctx core.CommandContext) (core.CommandResult, error) {
-	if ctx.RuleSet == relay.FixedPointsRuleSet() || ctx.RuleSet == relay.EliminationRuleSet() {
+	if ctx.RuleSet == relay.EliminationRuleSet() {
 		return core.CommandResult{}, futureRuleSetDisabled(ctx.RuleSet)
 	}
-	if ctx.RuleSet != relay.LegacyRuleSet() {
+	if ctx.RuleSet != relay.LegacyRuleSet() && ctx.RuleSet != relay.FixedPointsRuleSet() {
 		return core.CommandResult{}, &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ctx.RuleSet.Mode, RuleSet: ctx.RuleSet}
 	}
 	switch ctx.Command {
@@ -95,20 +108,20 @@ func (Module) Handle(ctx core.CommandContext) (core.CommandResult, error) {
 }
 
 func (Module) Route(ref core.RuleSetRef) (core.CompletionRoute, error) {
-	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+	if ref == relay.EliminationRuleSet() {
 		return "", futureRuleSetDisabled(ref)
 	}
-	if ref != relay.LegacyRuleSet() {
+	if ref != relay.LegacyRuleSet() && ref != relay.FixedPointsRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
 	return core.CompletionRouteLegacyRelay, nil
 }
 
 func (Module) Style(ref core.RuleSetRef) (core.ProjectionStyle, error) {
-	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+	if ref == relay.EliminationRuleSet() {
 		return "", futureRuleSetDisabled(ref)
 	}
-	if ref != relay.LegacyRuleSet() {
+	if ref != relay.LegacyRuleSet() && ref != relay.FixedPointsRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
 	return core.ProjectionRelayShared, nil
@@ -117,10 +130,10 @@ func (Module) Style(ref core.RuleSetRef) (core.ProjectionStyle, error) {
 type Recovery Module
 
 func (Recovery) Route(ref core.RuleSetRef) (core.RecoveryRoute, error) {
-	if ref == relay.FixedPointsRuleSet() || ref == relay.EliminationRuleSet() {
+	if ref == relay.EliminationRuleSet() {
 		return "", futureRuleSetDisabled(ref)
 	}
-	if ref != relay.LegacyRuleSet() {
+	if ref != relay.LegacyRuleSet() && ref != relay.FixedPointsRuleSet() {
 		return "", &core.DomainError{Code: core.ErrorInvalidRuleSet, Mode: ref.Mode, RuleSet: ref}
 	}
 	return core.RecoveryRouteLegacyRelay, nil
