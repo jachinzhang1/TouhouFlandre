@@ -73,6 +73,23 @@ SELECT jsonb_build_object(
                 FROM multi_turn t WHERE t.round_id = (SELECT ar.id FROM active_round ar))
 )::jsonb AS snapshot;
 
+-- name: CreateRelayRoomConfig :exec
+INSERT INTO multi_relay_room_config (room_id, elimination_enabled)
+VALUES (sqlc.arg(room_id), sqlc.arg(elimination_enabled))
+ON CONFLICT (room_id) DO NOTHING;
+
+-- name: GetRelayRoomConfig :one
+SELECT * FROM multi_relay_room_config WHERE room_id = $1;
+
+-- name: GetRelayRoomConfigForUpdate :one
+SELECT * FROM multi_relay_room_config WHERE room_id = $1 FOR UPDATE;
+
+-- name: UpdateRelayRoomConfig :one
+UPDATE multi_relay_room_config
+SET elimination_enabled = sqlc.arg(elimination_enabled)
+WHERE room_id = sqlc.arg(room_id)
+RETURNING *;
+
 -- name: UpdateRoomStatus :one
 UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING *;
 

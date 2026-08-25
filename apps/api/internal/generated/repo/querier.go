@@ -39,6 +39,7 @@ type Querier interface {
 	CreateMember(ctx context.Context, arg CreateMemberParams) (MultiMember, error)
 	CreateRelayEncounter(ctx context.Context, arg CreateRelayEncounterParams) (MultiRelayEncounter, error)
 	CreateRelayMatchPlayerState(ctx context.Context, arg CreateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error)
+	CreateRelayRoomConfig(ctx context.Context, arg CreateRelayRoomConfigParams) error
 	CreateRelayStage(ctx context.Context, arg CreateRelayStageParams) (MultiRelayStage, error)
 	CreateRelayStageBye(ctx context.Context, arg CreateRelayStageByeParams) (MultiRelayStageBye, error)
 	// 多人模式查询（docs/multiplayer.md）。
@@ -97,6 +98,8 @@ type Querier interface {
 	GetRelayEncounterTargetForUpdate(ctx context.Context, arg GetRelayEncounterTargetForUpdateParams) (MultiRelayEncounter, error)
 	GetRelayGuessForEncounter(ctx context.Context, arg GetRelayGuessForEncounterParams) (MultiRelayTurn, error)
 	GetRelayMatch(ctx context.Context, id string) (MultiMatch, error)
+	GetRelayRoomConfig(ctx context.Context, roomID string) (MultiRelayRoomConfig, error)
+	GetRelayRoomConfigForUpdate(ctx context.Context, roomID string) (MultiRelayRoomConfig, error)
 	// MRX-003 relay-owned storage queries. These queries are intentionally kept
 	// separate from the shared/race query source; the core never interprets them.
 	GetRelayStage(ctx context.Context, id string) (MultiRelayStage, error)
@@ -207,6 +210,7 @@ type Querier interface {
 	UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatusParams) (MultiMember, error)
 	UpdateRelayEncounterTurn(ctx context.Context, arg UpdateRelayEncounterTurnParams) (MultiRelayEncounter, error)
 	UpdateRelayMatchPlayerState(ctx context.Context, arg UpdateRelayMatchPlayerStateParams) (MultiRelayMatchPlayerState, error)
+	UpdateRelayRoomConfig(ctx context.Context, arg UpdateRelayRoomConfigParams) (MultiRelayRoomConfig, error)
 	UpdateRoomChatRate(ctx context.Context, arg UpdateRoomChatRateParams) error
 	UpdateRoomPlayerLimit(ctx context.Context, arg UpdateRoomPlayerLimitParams) (MultiRoom, error)
 	UpdateRoomQuestionScope(ctx context.Context, arg UpdateRoomQuestionScopeParams) (MultiRoom, error)

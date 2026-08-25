@@ -436,6 +436,22 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 	return i, err
 }
 
+const createRelayRoomConfig = `-- name: CreateRelayRoomConfig :exec
+INSERT INTO multi_relay_room_config (room_id, elimination_enabled)
+VALUES ($1, $2)
+ON CONFLICT (room_id) DO NOTHING
+`
+
+type CreateRelayRoomConfigParams struct {
+	RoomID             string `json:"room_id"`
+	EliminationEnabled bool   `json:"elimination_enabled"`
+}
+
+func (q *Queries) CreateRelayRoomConfig(ctx context.Context, arg CreateRelayRoomConfigParams) error {
+	_, err := q.db.Exec(ctx, createRelayRoomConfig, arg.RoomID, arg.EliminationEnabled)
+	return err
+}
+
 const createRoom = `-- name: CreateRoom :one
 
 INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, race_elimination_enabled, status, expires_at, question_scope)
@@ -1239,6 +1255,28 @@ func (q *Queries) GetMemberForUpdate(ctx context.Context, id string) (MultiMembe
 		&i.ChatRateTokens,
 		&i.ChatRateRefilledAt,
 	)
+	return i, err
+}
+
+const getRelayRoomConfig = `-- name: GetRelayRoomConfig :one
+SELECT room_id, elimination_enabled FROM multi_relay_room_config WHERE room_id = $1
+`
+
+func (q *Queries) GetRelayRoomConfig(ctx context.Context, roomID string) (MultiRelayRoomConfig, error) {
+	row := q.db.QueryRow(ctx, getRelayRoomConfig, roomID)
+	var i MultiRelayRoomConfig
+	err := row.Scan(&i.RoomID, &i.EliminationEnabled)
+	return i, err
+}
+
+const getRelayRoomConfigForUpdate = `-- name: GetRelayRoomConfigForUpdate :one
+SELECT room_id, elimination_enabled FROM multi_relay_room_config WHERE room_id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetRelayRoomConfigForUpdate(ctx context.Context, roomID string) (MultiRelayRoomConfig, error) {
+	row := q.db.QueryRow(ctx, getRelayRoomConfigForUpdate, roomID)
+	var i MultiRelayRoomConfig
+	err := row.Scan(&i.RoomID, &i.EliminationEnabled)
 	return i, err
 }
 
@@ -3041,6 +3079,25 @@ func (q *Queries) UpdateMemberStatus(ctx context.Context, arg UpdateMemberStatus
 		&i.ChatRateTokens,
 		&i.ChatRateRefilledAt,
 	)
+	return i, err
+}
+
+const updateRelayRoomConfig = `-- name: UpdateRelayRoomConfig :one
+UPDATE multi_relay_room_config
+SET elimination_enabled = $1
+WHERE room_id = $2
+RETURNING room_id, elimination_enabled
+`
+
+type UpdateRelayRoomConfigParams struct {
+	EliminationEnabled bool   `json:"elimination_enabled"`
+	RoomID             string `json:"room_id"`
+}
+
+func (q *Queries) UpdateRelayRoomConfig(ctx context.Context, arg UpdateRelayRoomConfigParams) (MultiRelayRoomConfig, error) {
+	row := q.db.QueryRow(ctx, updateRelayRoomConfig, arg.EliminationEnabled, arg.RoomID)
+	var i MultiRelayRoomConfig
+	err := row.Scan(&i.RoomID, &i.EliminationEnabled)
 	return i, err
 }
 

@@ -184,6 +184,11 @@ type MultiRelayMatchPlayerState struct {
 	EliminatedStage pgtype.Int4 `json:"eliminated_stage"`
 }
 
+type MultiRelayRoomConfig struct {
+	RoomID             string `json:"room_id"`
+	EliminationEnabled bool   `json:"elimination_enabled"`
+}
+
 type MultiRelayStage struct {
 	ID                    string             `json:"id"`
 	MatchID               string             `json:"match_id"`

@@ -89,6 +89,14 @@ export interface RoomUpdatedPayload {
   turnSeconds: number;
   playerLimit: number;
   raceEliminationEnabled: boolean;
+  relayEliminationEnabled?: boolean;
+  startBlockedReason?:
+    | "not_enough_players"
+    | "odd_player_count"
+    | "player_not_ready"
+    | "player_disconnected"
+    | "host_missing"
+    | "invalid_player_count";
   minPlayers: number;
   playerCount: number;
   availableSeats: number;
