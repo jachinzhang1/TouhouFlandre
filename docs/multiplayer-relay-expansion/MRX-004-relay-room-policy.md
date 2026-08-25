@@ -2,7 +2,8 @@
 
 **类型**：功能/API Issue  
 **优先级**：P0  
-**依赖**：MRX-003  
+**依赖**：MRX-003
+**状态**：已完成
 **建议标签**：`type:feature` `area:api` `area:multi` `area:contracts`
 
 **决策依据**：[房间配置与开局](./decisions.md#3-房间配置与开局)、[配置模型与兼容边界](./architecture.md#配置模型与兼容边界)、[规则集标识](./architecture.md#规则集标识)
@@ -50,3 +51,24 @@
 ## 可能涉及的代码
 
 `apps/api/internal/multi/{member.go,modes.go,types.go}`、`apps/api/internal/handler/rooms.go`、`apps/api/migrations/`、`apps/api/sql/queries/multi.sql`、`contracts/openapi/{paths/rooms.yaml,paths/room-settings.yaml,schemas/multi-room.yaml}`、`contracts/ws/protocol.yaml`、server integration tests。
+
+## 实施与验收记录（2026-08-25）
+
+本 Issue 已完成。relay 房间现支持 2/4/6/8 上限、独立 `relayEliminationEnabled` 配置、偶数且全员 connected + ready 的开局策略，以及按实际 roster 冻结的 `legacy_wins`、`fixed_points`、`elimination` RuleSetRef。奇数 roster 会保持 lobby 并稳定公开 `odd_player_count`；2 人 relay 始终冻结 `legacy_wins@1`。创建、settings、ready、start、room info、snapshot、WS/OpenAPI/共享类型和 rollout flags 已同步。
+
+主要交付面：
+
+- `multi_relay_room_config` 与 `0019_relay_room_policy.sql` expand-only migration；relay adapter 独占配置语义，共享 core 负责原子保存和 typed mode config。
+- player limit、claim-seat、settings、ready/start 共用房间行锁；未准备或断线玩家不会被静默排除，spectator/seat 压紧/聊天/race 语义保持兼容。
+- `MULTI_N_PLAYER_RELAY_ENABLED` 与 `MULTI_RELAY_ELIMINATION_ENABLED` 仅阻止新入口或新配置；已冻结的 lobby/match/rematch 继续按 RuleSetRef 完成。
+- 新增 MRX-004 API/并发覆盖，且修正 relay settlement recovery 只处理 playing match、WS chat replay 在队列超过 64 时等待写循环排空的边界。
+
+验收与验证：
+
+- `go test ./internal/server ./internal/... ./migrations`（WSL）：通过。
+- MRX-004 专项测试、player-limit/race/relay/chat/reconnect 回归及两次 `TestChatWSReplayCanDrainMoreThanSendQueue`：通过。
+- `pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol`、`pnpm check:multiplayer-boundaries`：通过。
+- `task gen:openapi`、固定版本 `go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate`、`task gen:web`、`pnpm typecheck`、`pnpm --filter @touhouflandre/web build`：通过；生成物无 diff-check 问题。
+- migration 演练已升级至 version 19；`git diff --check`：通过。
+
+`task gen` 原命令因环境未安装裸 `sqlc` 可执行文件而在 `gen:repo` 失败，已按仓库固定命令完成同一生成步骤。未实现 MRX-005/006 之后的配对、棋盘、计分或 Web 设置控件；这些仍按原计划留给后续 Issue。迁移保持 expand-only，两个 rollout flag 可按“先关 Web、再关 API、保留已冻结 match”顺序回滚。
