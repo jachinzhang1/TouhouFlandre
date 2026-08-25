@@ -218,6 +218,10 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
 	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
+	relayConfig, err := multi.LoadRelayRoomConfig(ctx, s.q, state.Room.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
 	snapshot := openapi.RoomSnapshot{
 		RoomId:                 state.Room.ID,
 		RoomCode:               state.Room.Code,
@@ -232,9 +236,24 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		SpectatorCount:         int(state.SpectatorCount),
 		PlayerLimit:            capacity.PlayerLimit,
 		RaceEliminationEnabled: state.Room.RaceEliminationEnabled,
-		MinPlayers:             openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
-		AvailableSeats:         capacity.AvailableSeats,
-		GameSequence:           int(state.Room.EventSeq),
+		RelayEliminationEnabled: func() *bool {
+			if multi.MultiplayerMode(state.Room.Mode) != multi.MultiplayerModeRelay {
+				return nil
+			}
+			v := relayConfig.EliminationEnabled
+			return &v
+		}(),
+		StartBlockedReason: func() *openapi.StartBlockedReason {
+			reason := multi.RelayStartBlockedReason(state.Room, state.Members)
+			if reason == nil {
+				return nil
+			}
+			value := openapi.StartBlockedReason(*reason)
+			return &value
+		}(),
+		MinPlayers:     openapi.RoomSnapshotMinPlayers(capacity.MinPlayers),
+		AvailableSeats: capacity.AvailableSeats,
+		GameSequence:   int(state.Room.EventSeq),
 	}
 	roomScope, err := storedQuestionScopeFromJSON(state.Room.QuestionScope)
 	if err != nil {

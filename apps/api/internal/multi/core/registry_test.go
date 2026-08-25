@@ -17,6 +17,10 @@ func (fakeRoomPolicy) ReadyRoster(roster []core.RosterMember, _ int) bool {
 	return len(roster) == 1 && roster[0].Connected && roster[0].Ready
 }
 
+func (fakeRoomPolicy) ReadyDecision(roster []core.RosterMember, _ int) core.RoomStartDecision {
+	return core.RoomStartDecision{Allowed: len(roster) == 1 && roster[0].Connected && roster[0].Ready}
+}
+
 func TestRegistrySupportsPartialFakeMode(t *testing.T) {
 	registry := core.NewRegistry()
 	mode := core.Mode("fake")

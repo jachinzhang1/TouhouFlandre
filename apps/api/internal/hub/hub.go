@@ -253,7 +253,12 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectatorCount))); err != nil {
+	relayConfig, err := multi.LoadRelayRoomConfig(ctx, q, roomID)
+	if err != nil {
+		slog.Error("hub: load relay room config", "member_id", memberID, "room_id", roomID, "error", err)
+		return
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectatorCount), multi.RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}

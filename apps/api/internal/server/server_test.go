@@ -138,7 +138,7 @@ func TestMain(m *testing.M) {
 	}
 	fmt.Printf("integration: seeded catalog %s\n", version)
 
-	enabledRollout := handler.RolloutConfig{NPlayerRaceEnabled: true, ChatSendEnabled: true}
+	enabledRollout := handler.RolloutConfig{NPlayerRaceEnabled: true, NPlayerRelayEnabled: true, RelayEliminationEnabled: true, ChatSendEnabled: true}
 	ts := httptest.NewServer(server.NewWithOptions(pool,
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithRolloutConfig(enabledRollout)))

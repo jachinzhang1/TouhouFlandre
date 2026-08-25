@@ -60,6 +60,13 @@ func roomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectat
 	return multi.NewRoomUpdatedPayload(room, members, spectatorCount)
 }
 
+func roomUpdatedPayloadWithRelayConfig(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int, config multi.RelayRoomConfigView) multi.RoomUpdatedPayload {
+	if multi.MultiplayerMode(room.Mode) != multi.MultiplayerModeRelay {
+		return multi.NewRoomUpdatedPayload(room, members, spectatorCount)
+	}
+	return multi.NewRoomUpdatedPayload(room, members, spectatorCount, multi.RelayRoomProjectionConfig(config.EliminationEnabled))
+}
+
 func toOpenAPIMemberView(m multi.MemberView) openapi.MemberView {
 	return openapi.MemberView{
 		MemberId:    m.MemberID,
@@ -142,8 +149,21 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 		playerLimit = *request.Body.PlayerLimit
 	}
 	raceEliminationEnabled := false
+	relayEliminationEnabled := false
+	if request.Body.RaceEliminationEnabled != nil && request.Body.RelayEliminationEnabled != nil {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "不能同时提交竞速和接力淘汰设置。"}
+	}
 	if request.Body.RaceEliminationEnabled != nil {
 		raceEliminationEnabled = *request.Body.RaceEliminationEnabled
+	}
+	if request.Body.RelayEliminationEnabled != nil {
+		relayEliminationEnabled = *request.Body.RelayEliminationEnabled
+	}
+	if mode == multi.MultiplayerModeRace && request.Body.RelayEliminationEnabled != nil {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "竞速房间不能提交接力淘汰设置。"}
+	}
+	if mode == multi.MultiplayerModeRelay && request.Body.RaceEliminationEnabled != nil {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "接力房间不能提交竞速淘汰设置。"}
 	}
 	turnSeconds := int(s.timing.TurnSeconds / time.Second)
 	if !multi.ValidTurnSeconds(turnSeconds) {
@@ -156,11 +176,12 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "非法接力回合时限。"}
 	}
 	prepared, err := policy.PrepareRoom(core.RoomConfig{
-		Mode:                   core.Mode(mode),
-		PlayerLimit:            playerLimit,
-		PlayerLimitSpecified:   request.Body.PlayerLimit != nil,
-		RaceEliminationEnabled: raceEliminationEnabled,
-		TurnSeconds:            turnSeconds,
+		Mode:                    core.Mode(mode),
+		PlayerLimit:             playerLimit,
+		PlayerLimitSpecified:    request.Body.PlayerLimit != nil,
+		RaceEliminationEnabled:  raceEliminationEnabled,
+		RelayEliminationEnabled: relayEliminationEnabled,
+		TurnSeconds:             turnSeconds,
 	})
 	if err != nil {
 		if core.Mode(mode) == core.ModeRelay && request.Body.PlayerLimit != nil {
@@ -171,6 +192,14 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	playerLimit = prepared.PlayerLimit
 	if prepared.Mode == core.ModeRace && playerLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能创建双人房间。"}
+	}
+	if prepared.Mode == core.ModeRelay {
+		if playerLimit > multi.RelayPlayerLimit && !s.rollout.NPlayerRelayEnabled {
+			return nil, &ApiError{Status: http.StatusForbidden, Code: codeFeatureDisabled, Message: "多人接力仍在灰度中。"}
+		}
+		if relayEliminationEnabled && !s.rollout.RelayEliminationEnabled {
+			return nil, &ApiError{Status: http.StatusForbidden, Code: codeFeatureDisabled, Message: "接力淘汰仍在灰度中。"}
+		}
 	}
 	displayName := ""
 	if request.Body.DisplayName != nil {
@@ -190,7 +219,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	scope := correction.Config
 
 	for attempt := 0; attempt < 5; attempt++ {
-		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, playerLimit, raceEliminationEnabled, displayName, scope)
+		response, err := s.createRoomTx(ctx, format, mode, turnSeconds, playerLimit, raceEliminationEnabled, relayEliminationEnabled, displayName, scope)
 		if err == nil {
 			return response, nil
 		}
@@ -204,7 +233,7 @@ func (s *Server) RoomsCreate(ctx context.Context, request openapi.RoomsCreateReq
 	return nil, internalError(errors.New("room code collision after retries"))
 }
 
-func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds, playerLimit int, raceEliminationEnabled bool, displayName string, scope game.QuestionScopeConfig) (openapi.RoomsCreateResponseObject, error) {
+func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode multi.MultiplayerMode, turnSeconds, playerLimit int, raceEliminationEnabled, relayEliminationEnabled bool, displayName string, scope game.QuestionScopeConfig) (openapi.RoomsCreateResponseObject, error) {
 	roomID := newSessionID()
 	token, err := multi.GenerateGuestToken()
 	if err != nil {
@@ -235,6 +264,11 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 	if err != nil {
 		return nil, mapRoomWriteError(err)
 	}
+	if mode == multi.MultiplayerModeRelay {
+		if err := q.CreateRelayRoomConfig(ctx, repo.CreateRelayRoomConfigParams{RoomID: roomID, EliminationEnabled: relayEliminationEnabled}); err != nil {
+			return nil, mapRoomWriteError(err)
+		}
+	}
 	member, err := q.CreateMember(ctx, repo.CreateMemberParams{
 		ID:          newSessionID(),
 		RoomID:      roomID,
@@ -245,7 +279,11 @@ func (s *Server) createRoomTx(ctx context.Context, format multi.RoomFormat, mode
 	if err != nil {
 		return nil, mapRoomWriteError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, roomUpdatedPayload(room, []repo.MultiMember{member}, 0)); err != nil {
+	projectionConfig := multi.RoomProjectionConfig{}
+	if mode == multi.MultiplayerModeRelay {
+		projectionConfig = multi.RelayRoomProjectionConfig(relayEliminationEnabled)
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, []repo.MultiMember{member}, 0, projectionConfig)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -280,21 +318,19 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 	if member.Status != string(multi.MemberStatusConnected) {
 		return nil, guestUnauthorized("成员未连接，请先重新连接房间。")
 	}
-	if request.Body == nil || (request.Body.PlayerLimit == nil && request.Body.RaceEliminationEnabled == nil) {
+	if request.Body == nil || (request.Body.PlayerLimit == nil && request.Body.RaceEliminationEnabled == nil && request.Body.RelayEliminationEnabled == nil) {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
 	}
 	desiredLimit := 0
 	hasLimit := request.Body.PlayerLimit != nil
+	hasRaceToggle := request.Body.RaceEliminationEnabled != nil
+	hasRelayToggle := request.Body.RelayEliminationEnabled != nil
 	if hasLimit {
 		desiredLimit = *request.Body.PlayerLimit
 		if desiredLimit < multi.DefaultPlayerLimit || desiredLimit > multi.ServerMaxRacePlayers {
 			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
 		}
-		if desiredLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
-			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能使用双人上限。"}
-		}
 	}
-	hasToggle := request.Body.RaceEliminationEnabled != nil
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -310,20 +346,50 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 		}
 		return nil, internalError(err)
 	}
+	mode := modeFromStored(room.Mode)
+	relayConfig, err := multi.LoadRelayRoomConfig(ctx, q, request.RoomId)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if hasRaceToggle && hasRelayToggle {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "不能同时提交竞速和接力淘汰设置。"}
+	}
+	if mode == core.ModeRace && hasRelayToggle {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "竞速房间不能提交接力淘汰设置。"}
+	}
+	if mode == core.ModeRelay && hasRaceToggle {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "接力房间不能提交竞速淘汰设置。"}
+	}
+	if mode == core.ModeRace {
+		if hasLimit && desiredLimit > multi.DefaultPlayerLimit && !s.rollout.NPlayerRaceEnabled {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "多人竞速仍在灰度中，当前只能使用双人上限。"}
+		}
+	} else if mode == core.ModeRelay {
+		if hasLimit && !multi.ValidPlayerLimit(multi.MultiplayerModeRelay, desiredLimit) {
+			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "接力玩家上限必须为 2、4、6 或 8。"}
+		}
+		if hasLimit && desiredLimit > multi.RelayPlayerLimit && !s.rollout.NPlayerRelayEnabled {
+			return nil, &ApiError{Status: http.StatusForbidden, Code: codeFeatureDisabled, Message: "多人接力仍在灰度中。"}
+		}
+		if hasRelayToggle && *request.Body.RelayEliminationEnabled && !s.rollout.RelayEliminationEnabled {
+			return nil, &ApiError{Status: http.StatusForbidden, Code: codeFeatureDisabled, Message: "接力淘汰仍在灰度中。"}
+		}
+	}
 	policy, err := s.roomPolicyForState(room)
 	if err != nil {
 		return nil, internalError(err)
 	}
 	if hasLimit {
 		if _, err := policy.PrepareRoom(core.RoomConfig{
-			Mode:                   modeFromStored(room.Mode),
-			PlayerLimit:            desiredLimit,
-			PlayerLimitSpecified:   true,
-			RaceEliminationEnabled: room.RaceEliminationEnabled,
-			TurnSeconds:            int(room.TurnSeconds),
+			Mode:                    modeFromStored(room.Mode),
+			PlayerLimit:             desiredLimit,
+			PlayerLimitSpecified:    true,
+			RaceEliminationEnabled:  room.RaceEliminationEnabled,
+			RelayEliminationEnabled: relayConfig.EliminationEnabled,
+			TurnSeconds:             int(room.TurnSeconds),
 		}); err != nil {
-			if modeFromStored(room.Mode) == core.ModeRelay {
-				return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "接力房间固定为两名玩家，不能设置竞速玩家上限。"}
+			if mode == core.ModeRelay {
+				return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "接力玩家上限必须为 2、4、6 或 8。"}
 			}
 			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidPlayerLimit, Message: "竞速玩家上限必须在 2 到 8 之间。"}
 		}
@@ -389,7 +455,7 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 			changed = true
 		}
 	}
-	if hasToggle && *request.Body.RaceEliminationEnabled != room.RaceEliminationEnabled {
+	if hasRaceToggle && *request.Body.RaceEliminationEnabled != room.RaceEliminationEnabled {
 		updatedRoom, err = q.UpdateRoomRaceEliminationEnabled(ctx, repo.UpdateRoomRaceEliminationEnabledParams{
 			ID:                     request.RoomId,
 			RaceEliminationEnabled: *request.Body.RaceEliminationEnabled,
@@ -397,6 +463,15 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 		if err != nil {
 			return nil, mapRoomWriteError(err)
 		}
+		changed = true
+	}
+	if hasRelayToggle && *request.Body.RelayEliminationEnabled != relayConfig.EliminationEnabled {
+		if _, err := q.UpdateRelayRoomConfig(ctx, repo.UpdateRelayRoomConfigParams{
+			RoomID: request.RoomId, EliminationEnabled: *request.Body.RelayEliminationEnabled,
+		}); err != nil {
+			return nil, mapRoomWriteError(err)
+		}
+		relayConfig.EliminationEnabled = *request.Body.RelayEliminationEnabled
 		changed = true
 	}
 	if !changed {
@@ -409,7 +484,7 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 	if err != nil {
 		return nil, internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(updatedRoom, players, int(spectatorCount))); err != nil {
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayloadWithRelayConfig(updatedRoom, players, int(spectatorCount), relayConfig)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -445,6 +520,10 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	if err != nil {
 		return nil, internalError(err)
 	}
+	relayConfig, err := multi.LoadRelayRoomConfig(ctx, s.q, room.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
 	joinRole := joinRoleFor(room, len(members), s.now())
 	scope, err := storedQuestionScopeFromJSON(room.QuestionScope)
 	if err != nil {
@@ -469,9 +548,24 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 		JoinRole:               openapi.ParticipantRole(joinRole),
 		PlayerLimit:            capacity.PlayerLimit,
 		RaceEliminationEnabled: room.RaceEliminationEnabled,
-		MinPlayers:             openapi.RoomInfoMinPlayers(capacity.MinPlayers),
-		AvailableSeats:         capacity.AvailableSeats,
-		QuestionScope:          &openapiScope,
+		RelayEliminationEnabled: func() *bool {
+			if multi.MultiplayerMode(room.Mode) != multi.MultiplayerModeRelay {
+				return nil
+			}
+			v := relayConfig.EliminationEnabled
+			return &v
+		}(),
+		StartBlockedReason: func() *openapi.StartBlockedReason {
+			reason := multi.RelayStartBlockedReason(room, members)
+			if reason == nil {
+				return nil
+			}
+			value := openapi.StartBlockedReason(*reason)
+			return &value
+		}(),
+		MinPlayers:     openapi.RoomInfoMinPlayers(capacity.MinPlayers),
+		AvailableSeats: capacity.AvailableSeats,
+		QuestionScope:  &openapiScope,
 	}, nil
 }
 
@@ -734,7 +828,8 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	if err != nil {
 		return nil, internalError(err)
 	}
-	if desiredReady && policy.ReadyRoster(rosterSummary(after), int(room.PlayerLimit)) {
+	decision := policy.ReadyDecision(rosterSummary(after), int(room.PlayerLimit))
+	if desiredReady && decision.Allowed {
 		if err := s.startMatchTx(ctx, q, room, multi.RoomFormat(room.Format)); err != nil {
 			return nil, err
 		}
@@ -743,7 +838,11 @@ func (s *Server) RoomsSetReady(ctx context.Context, request openapi.RoomsSetRead
 	if err != nil {
 		return nil, internalError(err)
 	}
-	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayload(room, after, int(spectatorCount))); err != nil {
+	relayConfig, err := s.relayRoomConfigForState(ctx, room, q)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if err := multi.AppendEvent(ctx, q, request.RoomId, multi.EventRoomUpdated, roomUpdatedPayloadWithRelayConfig(room, after, int(spectatorCount), relayConfig)); err != nil {
 		return nil, internalError(err)
 	}
 	if err := tx.Commit(ctx); err != nil {

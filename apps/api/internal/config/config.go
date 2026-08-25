@@ -107,6 +107,14 @@ func MultiNPlayerRaceEnabled() bool {
 	return boolFromEnv("MULTI_N_PLAYER_RACE_ENABLED", true)
 }
 
+func MultiNPlayerRelayEnabled() bool {
+	return boolFromEnv("MULTI_N_PLAYER_RELAY_ENABLED", false)
+}
+
+func MultiRelayEliminationEnabled() bool {
+	return boolFromEnv("MULTI_RELAY_ELIMINATION_ENABLED", false)
+}
+
 // MultiChatSendEnabled 控制是否允许写入新聊天消息。历史读取和已授权实时投影不受影响。
 func MultiChatSendEnabled() bool {
 	return boolFromEnv("MULTI_CHAT_SEND_ENABLED", true)

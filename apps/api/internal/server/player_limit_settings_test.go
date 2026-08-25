@@ -97,7 +97,9 @@ func TestMultiRacePlayerLimitCreateValidation(t *testing.T) {
 		t.Fatalf("relay playerLimit = %d, want 2", got)
 	}
 	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{"format": "bo1", "mode": "relay", "playerLimit": 2})
-	requirePlayerLimitError(t, http.StatusBadRequest, "INVALID_PLAYER_LIMIT", resp, payload)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("explicit relay playerLimit=2: %d %s", resp.StatusCode, payload)
+	}
 }
 
 func TestMultiRacePlayerLimitToggleAndSnapshot(t *testing.T) {
@@ -108,7 +110,7 @@ func TestMultiRacePlayerLimitToggleAndSnapshot(t *testing.T) {
 
 	settingsPath := "/api/rooms/" + room.roomID + "/settings"
 	resp, payload := fastRequestAuth(http.MethodPatch, settingsPath, room.hostToken, map[string]any{
-		"playerLimit":           5,
+		"playerLimit":            5,
 		"raceEliminationEnabled": true,
 	})
 	if resp.StatusCode != http.StatusNoContent {
@@ -249,7 +251,20 @@ func TestMultiRacePlayerLimitHostAuthorizationAndLocking(t *testing.T) {
 func TestMultiRelayRejectsPlayerLimitSettings(t *testing.T) {
 	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "relay"})
 	resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
-	requirePlayerLimitError(t, http.StatusBadRequest, "INVALID_PLAYER_LIMIT", resp, payload)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("relay playerLimit=2: %d %s", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequest(http.MethodGet, "/api/rooms/"+room.roomCode, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("relay room info: %d %s", resp.StatusCode, payload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(payload, &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.PlayerLimit != 2 {
+		t.Fatalf("relay playerLimit = %d, want 2", info.PlayerLimit)
+	}
 }
 
 func playerLimitEventPayload(t *testing.T, conn *websocket.Conn, wantLimit int) (map[string]any, int64) {
