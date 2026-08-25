@@ -49,7 +49,12 @@ export function RelayEncounterBoard({
           答案：{encounter.answer.name} · {encounter.answer.workCode}
         </p>
       ) : null}
-      <div className="max-w-full overflow-x-auto">
+      <div
+        className="max-w-full overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="接力回合记录"
+      >
         <table className="w-full min-w-[640px] border-collapse text-[0.78rem]">
           <thead>
             <tr>

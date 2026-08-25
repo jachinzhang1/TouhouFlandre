@@ -71,7 +71,21 @@ describe("MultiLobby", () => {
     });
   });
 
+  it("shows relay controls with the legacy two-player defaults", () => {
+    render(<MultiLobby />);
+    fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    const limit = screen.getByRole("slider", {
+      name: "接力玩家上限（2/4/6/8）",
+    });
+    expect(limit).toBeTruthy();
+    expect((limit as HTMLInputElement).value).toBe("2");
+    const elimination = screen.getByRole("switch", { name: "淘汰" });
+    expect((elimination as HTMLButtonElement).disabled).toBe(true);
+    expect(elimination.getAttribute("aria-checked")).toBe("false");
+  });
+
   it("hides and omits relay settings while its rollout is closed", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED", "false");
     render(<MultiLobby />);
     fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
     expect(
@@ -102,6 +116,7 @@ describe("MultiLobby", () => {
     expect((elimination as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(limit, { target: { value: "6" } });
+    expect((elimination as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(elimination);
     expect(screen.getByText("6 人 · 接力 · 淘汰赛")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));

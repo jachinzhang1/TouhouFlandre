@@ -82,6 +82,7 @@ describe("RoomLobby", () => {
   });
 
   it("keeps the relay lobby on the two-player flow while rollout is closed", () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED", "false");
     const props = renderLobby({
       mode: "relay",
       isHost: true,

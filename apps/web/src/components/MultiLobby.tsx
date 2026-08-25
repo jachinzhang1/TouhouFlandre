@@ -66,6 +66,8 @@ export function MultiLobby() {
   const [mode, setMode] = useState<MultiplayerMode>("race");
   const [turnSeconds, setTurnSeconds] = useState<RelayTurnSeconds>(60);
   const [racePlayerLimit, setRacePlayerLimit] = useState(2);
+  // Keep the legacy two-player setup as the initial draft while exposing the
+  // N-player controls whenever the relay rollout is enabled.
   const [relayPlayerLimit, setRelayPlayerLimit] = useState(2);
   const [raceEliminationEnabled, setRaceEliminationEnabled] = useState(false);
   const [relayEliminationEnabled, setRelayEliminationEnabled] = useState(false);

@@ -1,11 +1,14 @@
 // 多人房间端到端（双 context，本地运行；需 task dev 起 Go+Next）。
 // 场景：创建→加入→就绪→对局→互猜→局结果；断线→重连；刷新恢复；非法房间号 404。
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import type { APIRequestContext, Page } from "@playwright/test";
 import {
   normalizeQuestionScope,
   type FullCatalogSnapshot,
   type QuestionScopeConfig,
+  type RelayEncounterView,
+  type RelayMatchFragment,
 } from "@touhouflandre/shared";
 
 type RoomCredential = {
@@ -25,6 +28,20 @@ type CreateRaceRosterOptions = {
 type CreateRelayRosterOptions = {
   playerLimit?: 2 | 4 | 6 | 8;
   relayEliminationEnabled?: boolean;
+  format?: "bo1" | "bo3" | "bo5" | "bo7";
+};
+
+type RelayRoomSnapshot = {
+  status: "lobby" | "playing" | "finished" | "closed";
+  match?: {
+    matchIndex: number;
+    ruleSetRef: {
+      mode: string;
+      key: string;
+      version: number;
+    };
+    relay?: RelayMatchFragment;
+  };
 };
 
 async function createRaceRoster(
@@ -82,7 +99,7 @@ async function createRelayRoster(
   const playerLimit = options.playerLimit ?? (playerCount as 2 | 4 | 6 | 8);
   const createdResponse = await request.post("/api/rooms", {
     data: {
-      format: "bo3",
+      format: options.format ?? "bo3",
       mode: "relay",
       playerLimit,
       turnSeconds: 60,
@@ -161,6 +178,149 @@ async function setReady(
     data: { ready: true },
   });
   expect(response.status()).toBe(204);
+}
+
+async function relaySnapshot(
+  request: APIRequestContext,
+  credential: RoomCredential,
+): Promise<RelayRoomSnapshot> {
+  const response = await request.get(
+    `/api/rooms/${credential.roomId}/snapshot`,
+    {
+      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
+    },
+  );
+  expect(response.status()).toBe(200);
+  return (await response.json()) as RelayRoomSnapshot;
+}
+
+async function relayAction(
+  request: APIRequestContext,
+  credential: RoomCredential,
+  stageIndex: number,
+  encounterId: string,
+  action: "pass" | "forfeit",
+) {
+  const response = await request.post(
+    `/api/rooms/${credential.roomId}/stages/${stageIndex}/encounters/${encounterId}/actions`,
+    {
+      headers: { Authorization: `Bearer guest:${credential.guestToken}` },
+      data: { action, idempotencyKey: crypto.randomUUID() },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
+async function forfeitRelayEncounterAs(
+  request: APIRequestContext,
+  credentialsByMember: Map<string, RoomCredential>,
+  stageIndex: number,
+  encounter: RelayEncounterView,
+  loserMemberId: string,
+) {
+  if (encounter.turnMemberId !== loserMemberId) {
+    const turnCredential = credentialsByMember.get(encounter.turnMemberId!);
+    expect(turnCredential).toBeTruthy();
+    await relayAction(
+      request,
+      turnCredential!,
+      stageIndex,
+      encounter.encounterId,
+      "pass",
+    );
+  }
+  const loserCredential = credentialsByMember.get(loserMemberId);
+  expect(loserCredential).toBeTruthy();
+  await relayAction(
+    request,
+    loserCredential!,
+    stageIndex,
+    encounter.encounterId,
+    "forfeit",
+  );
+}
+
+async function completeRelayStage(
+  request: APIRequestContext,
+  roster: RoomCredential[],
+  options: {
+    preferredLoser?: string;
+    protectMember?: string;
+    balanceOtherLosses?: boolean;
+    concentrateOtherLosses?: boolean;
+  } = {},
+): Promise<RelayRoomSnapshot> {
+  let before = await relaySnapshot(request, roster[0]);
+  await expect
+    .poll(
+      async () => {
+        before = await relaySnapshot(request, roster[0]);
+        return before.match?.relay?.currentStage?.status;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe("playing");
+  const stage = before.match?.relay?.currentStage;
+  expect(stage?.status).toBe("playing");
+  expect(stage?.encounterDetails?.length).toBeGreaterThan(0);
+  const standings = new Map(
+    before.match!.relay!.standings.map((standing) => [
+      standing.memberId,
+      standing.score,
+    ]),
+  );
+  const credentialsByMember = new Map(
+    roster.map((credential) => [credential.memberId, credential]),
+  );
+
+  for (const encounter of stage!.encounterDetails!) {
+    if (encounter.status === "ended") continue;
+    const members = encounter.members.map((member) => member.memberId);
+    let loser = members.includes(options.preferredLoser ?? "")
+      ? options.preferredLoser!
+      : (members.find((memberId) => memberId !== options.protectMember) ??
+        members[0]);
+    if (options.balanceOtherLosses && loser !== options.preferredLoser) {
+      loser = [...members]
+        .filter((memberId) => memberId !== options.protectMember)
+        .sort(
+          (left, right) =>
+            (standings.get(right) ?? 0) - (standings.get(left) ?? 0),
+        )[0];
+    } else if (
+      options.concentrateOtherLosses &&
+      loser !== options.preferredLoser
+    ) {
+      loser = [...members]
+        .filter((memberId) => memberId !== options.protectMember)
+        .sort(
+          (left, right) =>
+            (standings.get(left) ?? 0) - (standings.get(right) ?? 0),
+        )[0];
+    }
+    await forfeitRelayEncounterAs(
+      request,
+      credentialsByMember,
+      stage!.stageIndex,
+      encounter,
+      loser,
+    );
+  }
+
+  let after = before;
+  await expect
+    .poll(
+      async () => {
+        after = await relaySnapshot(request, roster[0]);
+        return after.status === "finished" ||
+          after.match?.relay?.currentStage?.stageIndex !== stage!.stageIndex
+          ? "advanced"
+          : "waiting";
+      },
+      { timeout: 20_000 },
+    )
+    .toBe("advanced");
+  return after;
 }
 
 async function fixedAnswerScope(
@@ -299,6 +459,15 @@ async function guessViaUI(page: Page, query: string, index = 0) {
   // 用建议列表的第一个（搜索词不同 → 首位通常不同）
   await expect(suggestion.nth(index)).toBeVisible();
   await suggestion.nth(index).click();
+}
+
+async function expectReleaseGateAccessibility(page: Page) {
+  const result = await new AxeBuilder({ page }).analyze();
+  const blocking = result.violations.filter(
+    (violation) =>
+      violation.impact === "critical" || violation.impact === "serious",
+  );
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 }
 
 test.describe("多人房间", () => {
@@ -721,6 +890,218 @@ test.describe("多人接力单棋盘体验", () => {
   });
 });
 
+test.describe("MRX-013 接力结算流程", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test("2 人 legacy BO 终局、历史和 rematch 保持可用", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 2, {
+      playerLimit: 2,
+      format: "bo1",
+    });
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await completeRelayStage(request, roster);
+    await expect(page.getByRole("heading", { name: "最终排名" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await page.getByLabel("选择轮次").selectOption("1");
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "第 1 轮历史",
+      { timeout: 20_000 },
+    );
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+
+    await page.getByRole("button", { name: "再来一局" }).click();
+    const guestRematch = await request.post(
+      `/api/rooms/${roster[1].roomId}/rematch`,
+      {
+        headers: {
+          Authorization: `Bearer guest:${roster[1].guestToken}`,
+        },
+      },
+    );
+    expect(guestRematch.status()).toBe(204);
+    await expect(page.getByRole("heading", { name: "最终排名" })).toHaveCount(
+      0,
+      { timeout: 20_000 },
+    );
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible();
+  });
+
+  test("4 人 fixed-points 在最后一张棋盘后统一排名并可读历史", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 4, {
+      playerLimit: 4,
+      format: "bo1",
+    });
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.getByLabel("选择对局").locator("option")).toHaveCount(2, {
+      timeout: 20_000,
+    });
+
+    await completeRelayStage(request, roster);
+    await expect(page.getByRole("heading", { name: "最终排名" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(
+      page
+        .getByRole("heading", { name: "最终排名" })
+        .locator("xpath=ancestor::section[1]"),
+    ).toContainText("第 1 名");
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await page.getByLabel("选择轮次").selectOption("1");
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "第 1 轮历史",
+      { timeout: 20_000 },
+    );
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("6 人 elimination 展示濒死、淘汰和五人轮空", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000);
+    const roster = await createRelayRoster(request, 6, {
+      playerLimit: 6,
+      relayEliminationEnabled: true,
+    });
+    const target = roster[0];
+    await enterRoom(page, target);
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+    expect((await relaySnapshot(request, target)).match?.ruleSetRef).toEqual({
+      mode: "relay",
+      key: "elimination",
+      version: 1,
+    });
+
+    for (let stageIndex = 1; stageIndex <= 4; stageIndex += 1) {
+      await completeRelayStage(request, roster, {
+        preferredLoser: target.memberId,
+        balanceOtherLosses: true,
+      });
+    }
+    const nearDeath = await relaySnapshot(request, target);
+    expect(
+      nearDeath.match?.relay?.standings.find(
+        (standing) => standing.memberId === target.memberId,
+      )?.lifeState,
+    ).toBe("near_death");
+    await expect(page.getByRole("list", { name: "玩家积分" })).toContainText(
+      "濒死",
+      { timeout: 20_000 },
+    );
+
+    const withBye = await completeRelayStage(request, roster, {
+      preferredLoser: target.memberId,
+      balanceOtherLosses: true,
+    });
+    const targetStanding = withBye.match?.relay?.standings.find(
+      (standing) => standing.memberId === target.memberId,
+    );
+    expect(targetStanding?.status).toBe("eliminated");
+    expect(withBye.match?.relay?.currentStage?.byeMemberId).toBeTruthy();
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "你已淘汰，可以继续浏览所有棋盘",
+      { timeout: 20_000 },
+    );
+    await expect(page.getByText("本轮有轮空")).toBeVisible();
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+
+  test("4 人 fixed-points 永久离场后以三人和 bye 继续", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 4, {
+      playerLimit: 4,
+      format: "bo3",
+    });
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const leaving = roster[3];
+    const response = await request.post(`/api/rooms/${leaving.roomId}/leave`, {
+      headers: {
+        Authorization: `Bearer guest:${leaving.guestToken}`,
+      },
+    });
+    expect(response.status()).toBe(204);
+    const next = await completeRelayStage(request, roster);
+    expect(next.status).toBe("playing");
+    expect(next.match?.relay?.currentStage?.byeMemberId).toBeTruthy();
+    await expect(page.getByText("本轮有轮空")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+  });
+
+  test("8 人 elimination 以唯一 survivor 结束", async ({
+    page,
+    request,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    test.skip(testInfo.project.name !== "desktop-chromium");
+    const roster = await createRelayRoster(request, 8, {
+      playerLimit: 8,
+      relayEliminationEnabled: true,
+    });
+    const survivor = roster[0];
+    await enterRoom(page, survivor);
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+    expect((await relaySnapshot(request, survivor)).match?.ruleSetRef).toEqual({
+      mode: "relay",
+      key: "elimination",
+      version: 1,
+    });
+
+    let snapshot = await relaySnapshot(request, survivor);
+    for (
+      let stage = 0;
+      stage < 24 && snapshot.status !== "finished";
+      stage += 1
+    ) {
+      snapshot = await completeRelayStage(request, roster, {
+        protectMember: survivor.memberId,
+        concentrateOtherLosses: true,
+      });
+    }
+    expect(snapshot.status).toBe("finished");
+    expect(snapshot.match?.relay?.ranking?.[0]?.memberId).toBe(
+      survivor.memberId,
+    );
+    expect(snapshot.match?.relay?.ranking?.[0]?.rank).toBe(1);
+    await expect(page.getByRole("heading", { name: "最终排名" })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+  });
+});
+
 test.describe("多人聊天发布闸门", () => {
   test("玩家/观战聊天可见性与闭麦行为", async ({ browser, request }) => {
     const roster = await createRaceRoster(request, 2);
@@ -786,6 +1167,85 @@ test.describe("多人聊天发布闸门", () => {
         spectatorB.close(),
       ]);
     }
+  });
+
+  test("聊天 payload 在浏览器中保持纯文本", async ({ page, request }) => {
+    const roster = await createRaceRoster(request, 2);
+    await enterRoom(page, roster[0]);
+    const payload = '<img src=x onerror="window.__mrx013Xss=1">纯文本';
+    const sendResponse = await request.post(
+      `/api/rooms/${roster[0].roomId}/messages`,
+      {
+        headers: { Authorization: `Bearer guest:${roster[0].guestToken}` },
+        data: {
+          clientMessageId: crypto.randomUUID(),
+          kind: "text",
+          content: payload,
+        },
+      },
+    );
+    expect(sendResponse.status()).toBe(200);
+    await page.reload();
+    await page.getByLabel("展开聊天记录").click();
+    await expect
+      .poll(() => page.locator("[data-chat-dock] p").allTextContents())
+      .toContainEqual(expect.stringContaining(payload));
+    await expect(page.locator("img[src='x']")).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __mrx013Xss?: number }).__mrx013Xss ?? 0,
+        ),
+      )
+      .toBe(0);
+  });
+});
+
+test.describe("MRX-013 浏览器发布门禁", () => {
+  test("relay lobby/stage 通过 axe、键盘、缩放和 reduced-motion 检查", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 4, { playerLimit: 4 });
+    await enterRoom(page, roster[0]);
+    await expect(page.getByRole("slider", { name: "玩家上限" })).toHaveValue(
+      "4",
+    );
+    const slider = page.getByRole("slider", { name: "玩家上限" });
+    await slider.focus();
+    await slider.press("ArrowRight");
+    await expect(slider).toHaveValue("6");
+    await slider.press("ArrowLeft");
+    await expect(slider).toHaveValue("4");
+    await expectReleaseGateAccessibility(page);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.addStyleTag({ content: "html { font-size: 200%; }" });
+    await expectNoHorizontalOverflow(page);
+    await expect(page.getByRole("button", { name: "准备" })).toBeEnabled();
+
+    for (const credential of roster) await setReady(request, credential);
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await expect(page.locator("[data-relay-board] table")).toHaveCount(1);
+    const encounterSelect = page.getByLabel("选择对局");
+    await expect(encounterSelect).toBeVisible();
+    const encounterValues = await encounterSelect
+      .locator("option")
+      .evaluateAll((options) =>
+        options.map((option) => (option as HTMLOptionElement).value),
+      );
+    expect(encounterValues).toHaveLength(2);
+    await encounterSelect.focus();
+    await expect(encounterSelect).toBeFocused();
+    await encounterSelect.press("End");
+    await expect(encounterSelect).toHaveValue(encounterValues[1]);
+    await encounterSelect.press("Home");
+    await expect(encounterSelect).toHaveValue(encounterValues[0]);
+    await expectReleaseGateAccessibility(page);
+    await expectNoHorizontalOverflow(page);
   });
 });
 
