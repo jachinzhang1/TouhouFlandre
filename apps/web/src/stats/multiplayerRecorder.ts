@@ -197,7 +197,7 @@ export async function recordMultiplayerEvent(
         : undefined;
     draft.activeRelayStage = {
       stageIndex: payload.stageIndex,
-      startedAt: existing?.startedAt ?? event.occurredAt,
+      startedAt: existing?.startedAt ?? payload.startsAt ?? event.occurredAt,
       assignment: ownEncounter ? "paired" : "bye",
       encounterKey,
       activeElapsedMs: existing?.activeElapsedMs ?? 0,

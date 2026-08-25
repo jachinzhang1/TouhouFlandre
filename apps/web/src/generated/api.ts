@@ -1285,6 +1285,11 @@ export interface components {
         RelayStageView: {
             stageId: string;
             stageIndex: number;
+            /**
+             * Format: date-time
+             * @description stage 的服务端计划开始时间；用于局间倒计时。
+             */
+            startsAt?: string;
             /** @enum {string} */
             status: "planned" | "playing" | "settling" | "ended";
             encounters: components["schemas"]["RelayEncounterSummary"][];

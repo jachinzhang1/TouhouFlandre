@@ -386,6 +386,7 @@ export interface RelayStageStartedPayload {
   matchIndex: number;
   stageId: string;
   stageIndex: number;
+  startsAt?: string;
   status: "planned" | "playing" | "settling" | "ended";
   encounters: RelayEncounterSummary[];
   byeMemberId?: string;
@@ -471,6 +472,7 @@ export interface RelayStageEndedPayload {
 export interface RelayStageView {
   stageId: string;
   stageIndex: number;
+  startsAt?: string;
   status: "planned" | "playing" | "settling" | "ended";
   encounters: RelayEncounterSummary[];
   byeMemberId?: string;

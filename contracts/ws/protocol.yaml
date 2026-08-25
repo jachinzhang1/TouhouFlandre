@@ -656,6 +656,10 @@ events:
         stageIndex:
           type: integer
           minimum: 1
+        startsAt:
+          type: string
+          format: date-time
+          description: stage 的服务端计划开始时间；旧事件可缺失。
         status:
           type: string
           enum: [planned, playing, settling, ended]
@@ -1693,6 +1697,7 @@ examples:
           matchIndex: 0
           stageId: stage-01
           stageIndex: 3
+          startsAt: "2026-08-06T12:40:01Z"
           status: playing
           encounters:
             - encounterId: encounter-01

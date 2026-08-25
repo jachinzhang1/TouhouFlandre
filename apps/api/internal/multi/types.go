@@ -530,6 +530,7 @@ type RelayStageStartedPayload struct {
 	MatchIndex  int                     `json:"matchIndex"`
 	StageID     string                  `json:"stageId"`
 	StageIndex  int                     `json:"stageIndex"`
+	StartsAt    *time.Time              `json:"startsAt,omitempty"`
 	Status      string                  `json:"status"`
 	Encounters  []RelayEncounterSummary `json:"encounters"`
 	ByeMemberID *string                 `json:"byeMemberId,omitempty"`

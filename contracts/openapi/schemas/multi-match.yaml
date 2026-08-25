@@ -294,6 +294,10 @@ RelayStageView:
     stageIndex:
       type: integer
       minimum: 1
+    startsAt:
+      type: string
+      format: date-time
+      description: stage 的服务端计划开始时间；用于局间倒计时。
     status:
       type: string
       enum: [planned, playing, settling, ended]

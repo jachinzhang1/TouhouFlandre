@@ -437,6 +437,7 @@ func (t *stageTransaction) MarkStageSettled(ctx context.Context, stageID, marker
 }
 
 func (t *stageTransaction) AppendStageStarted(ctx context.Context, roomID string, event relaydomain.StageStartedEvent) error {
+	startsAt := event.StartsAt
 	encounters := make([]legacy.RelayEncounterSummary, 0, len(event.Encounters))
 	for _, encounter := range event.Encounters {
 		encounters = append(encounters, legacy.RelayEncounterSummary{
@@ -449,7 +450,7 @@ func (t *stageTransaction) AppendStageStarted(ctx context.Context, roomID string
 	}
 	return legacy.AppendEvent(ctx, t.q, roomID, legacy.EventRelayStageStarted, legacy.RelayStageStartedPayload{
 		MatchIndex: event.MatchIndex, StageID: event.StageID, StageIndex: event.StageIndex,
-		Status: string(event.Status), Encounters: encounters, ByeMemberID: event.ByeMemberID,
+		StartsAt: &startsAt, Status: string(event.Status), Encounters: encounters, ByeMemberID: event.ByeMemberID,
 	})
 }
 

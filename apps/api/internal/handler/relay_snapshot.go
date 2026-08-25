@@ -174,7 +174,8 @@ func (s *Server) buildRelayStageViews(ctx context.Context, match repo.MultiMatch
 			}
 		}
 		stageView := openapi.RelayStageView{
-			StageId: stage.ID, StageIndex: int(stage.StageIndex), Status: openapi.RelayStageViewStatus(stage.Status),
+			StageId: stage.ID, StageIndex: int(stage.StageIndex), StartsAt: &stage.StartsAt.Time,
+			Status:     openapi.RelayStageViewStatus(stage.Status),
 			Encounters: summaries,
 		}
 		if byeMemberID, ok := batch.byeMemberIDByStageID[stage.ID]; ok {

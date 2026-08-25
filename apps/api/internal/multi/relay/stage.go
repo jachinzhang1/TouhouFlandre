@@ -256,6 +256,7 @@ type StageStartedEvent struct {
 	MatchIndex  int
 	StageID     string
 	StageIndex  int
+	StartsAt    time.Time
 	Status      StageStatus
 	Encounters  []EncounterPlan
 	ByeMemberID *string

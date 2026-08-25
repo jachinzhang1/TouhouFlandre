@@ -487,7 +487,7 @@ func validateMatchContext(requested, persisted MatchContext) error {
 func startedEvent(plan StagePlan) StageStartedEvent {
 	event := StageStartedEvent{
 		MatchIndex: plan.Match.MatchIndex, StageID: plan.StageID, StageIndex: plan.StageIndex,
-		Status: plan.Status, Encounters: plan.Encounters,
+		StartsAt: plan.StartsAt, Status: plan.Status, Encounters: plan.Encounters,
 	}
 	if plan.Bye != nil {
 		event.ByeMemberID = &plan.Bye.MemberID

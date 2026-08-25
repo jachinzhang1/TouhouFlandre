@@ -110,6 +110,7 @@ export function reduceRelayProjection(
       return applyStage(state, event.sequence, {
         stageId: event.payload.stageId,
         stageIndex: event.payload.stageIndex,
+        startsAt: event.payload.startsAt,
         status: event.payload.status,
         encounters: event.payload.encounters,
         byeMemberId: event.payload.byeMemberId,

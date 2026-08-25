@@ -20,6 +20,10 @@ func TestMRX011RelayProjectionCapabilitiesAndHistory(t *testing.T) {
 		t.Fatalf("initial relay projection=%+v", initial.Match)
 	}
 	active := (*initial.Match.Relay.CurrentStage.EncounterDetails)[0]
+	if initial.Match.Relay.CurrentStage.StartsAt == nil || active.StartsAt == nil ||
+		!initial.Match.Relay.CurrentStage.StartsAt.Equal(*active.StartsAt) {
+		t.Fatalf("relay stage startsAt=%v encounter startsAt=%v", initial.Match.Relay.CurrentStage.StartsAt, active.StartsAt)
+	}
 	if active.Answer != nil {
 		t.Fatalf("active relay snapshot leaked answer=%+v", active.Answer)
 	}

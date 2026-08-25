@@ -122,6 +122,22 @@ func TestMRX005StagePlansPersistAndReloadForSupportedRosters(t *testing.T) {
 			if encounterCount != playerCount/2 || memberCount != playerCount {
 				t.Fatalf("encounters=%d members=%d", encounterCount, memberCount)
 			}
+			var eventStartsAtRaw string
+			if err := pool.QueryRow(ctx, `
+				SELECT payload->>'startsAt'
+				FROM room_event
+				WHERE room_id = $1 AND type = 'relay.stage.started'
+				ORDER BY sequence DESC
+				LIMIT 1`, fixture.roomID).Scan(&eventStartsAtRaw); err != nil {
+				t.Fatal(err)
+			}
+			eventStartsAt, err := time.Parse(time.RFC3339Nano, eventStartsAtRaw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !eventStartsAt.Equal(created.Plan.StartsAt) {
+				t.Fatalf("stage event startsAt=%s want=%s", eventStartsAt, created.Plan.StartsAt)
+			}
 		})
 	}
 }
