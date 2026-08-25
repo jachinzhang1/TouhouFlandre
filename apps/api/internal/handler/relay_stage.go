@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -9,8 +11,14 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
+)
+
+const (
+	relayHistoryDefaultLimit = 10
+	relayHistoryMaxLimit     = 20
 )
 
 func (s *Server) RoomsRelayEncounterAction(ctx context.Context, request openapi.RoomsRelayEncounterActionRequestObject) (openapi.RoomsRelayEncounterActionResponseObject, error) {
@@ -97,11 +105,156 @@ func optionalString(value *string) string {
 	return *value
 }
 
-// RoomsListRelayStageHistory exposes the history contract while the relay
-// projector and pagination implementation remain owned by MRX-011.
-func (s *Server) RoomsListRelayStageHistory(_ context.Context, _ openapi.RoomsListRelayStageHistoryRequestObject) (openapi.RoomsListRelayStageHistoryResponseObject, error) {
-	return openapi.RoomsListRelayStageHistory501JSONResponse{
-		Code:  codeFeatureDisabled,
-		Error: "relay stage history is not enabled",
+func (s *Server) RoomsListRelayStageHistory(ctx context.Context, request openapi.RoomsListRelayStageHistoryRequestObject) (openapi.RoomsListRelayStageHistoryResponseObject, error) {
+	member, ok := GuestMemberFromContext(ctx)
+	if !ok {
+		return nil, guestUnauthorized("缺少鉴权上下文。")
+	}
+	room, err := s.q.GetRoom(ctx, request.RoomId)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, roomNotFound()
+	}
+	if err != nil {
+		return nil, internalError(err)
+	}
+	match, err := s.q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{RoomID: request.RoomId, MatchIndex: int32(request.MatchIndex)})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, roomNotFound()
+	}
+	if err != nil {
+		return nil, internalError(err)
+	}
+	ref, apiErr := s.ruleSetForState(room, match)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+	if ref.Mode != core.ModeRelay {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "只有接力场次支持 stage 历史。"}
+	}
+	reader, err := s.modeRegistry.HistoryReader(ref.Mode)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if _, err := reader.Style(ref); err != nil {
+		return nil, internalError(err)
+	}
+
+	limit := relayHistoryDefaultLimit
+	if request.Params.Limit != nil {
+		limit = *request.Params.Limit
+	}
+	if limit < 1 || limit > relayHistoryMaxLimit {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "limit 超出允许范围。"}
+	}
+	afterStageIndex, cursorErr := decodeRelayStageHistoryCursor(request.Params.After, request.MatchIndex)
+	if cursorErr != nil {
+		return nil, cursorErr
+	}
+	stages, err := s.q.ListEndedRelayStagesPage(ctx, repo.ListEndedRelayStagesPageParams{
+		MatchID: match.ID, AfterStageIndex: int32(afterStageIndex), LimitCount: int32(limit + 1),
+	})
+	if err != nil {
+		return nil, internalError(err)
+	}
+	var nextCursor *string
+	if len(stages) > limit {
+		stages = stages[:limit]
+		cursor, err := encodeRelayStageHistoryCursor(request.MatchIndex, int(stages[len(stages)-1].StageIndex))
+		if err != nil {
+			return nil, internalError(err)
+		}
+		nextCursor = &cursor
+	}
+	roster, err := s.q.ListMatchPlayers(ctx, match.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	rosterStatusByMember := make(map[string]string, len(roster))
+	for _, player := range roster {
+		rosterStatusByMember[player.MemberID] = player.Status
+	}
+	stageViews, err := s.buildRelayStageViews(ctx, match, stages, *member, rosterStatusByMember, relayStageViewOptions{IncludeDetails: true})
+	if err != nil {
+		return nil, internalError(err)
+	}
+	history := make([]openapi.RelayStageHistoryView, 0, len(stageViews))
+	for _, stageView := range stageViews {
+		view, err := relayStageHistoryView(stageView)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		history = append(history, view)
+	}
+	return openapi.RoomsListRelayStageHistory200JSONResponse{
+		Stages: history, NextCursor: nextCursor,
+	}, nil
+}
+
+type relayStageHistoryCursor struct {
+	Version         int `json:"v"`
+	MatchIndex      int `json:"matchIndex"`
+	AfterStageIndex int `json:"afterStageIndex"`
+}
+
+func encodeRelayStageHistoryCursor(matchIndex, afterStageIndex int) (string, error) {
+	payload, err := json.Marshal(relayStageHistoryCursor{Version: 1, MatchIndex: matchIndex, AfterStageIndex: afterStageIndex})
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(payload), nil
+}
+
+func decodeRelayStageHistoryCursor(value *string, matchIndex int) (int, *ApiError) {
+	if value == nil || *value == "" {
+		return 0, nil
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(*value)
+	if err != nil {
+		return 0, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "history cursor 无效。"}
+	}
+	var cursor relayStageHistoryCursor
+	if err := json.Unmarshal(payload, &cursor); err != nil {
+		return 0, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "history cursor 无效。"}
+	}
+	if cursor.Version != 1 || cursor.MatchIndex != matchIndex || cursor.AfterStageIndex < 0 {
+		return 0, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "history cursor 无效。"}
+	}
+	return cursor.AfterStageIndex, nil
+}
+
+func relayStageHistoryView(stage openapi.RelayStageView) (openapi.RelayStageHistoryView, error) {
+	if stage.Status != openapi.RelayStageViewStatusEnded || stage.EncounterDetails == nil {
+		return openapi.RelayStageHistoryView{}, errors.New("relay history stage is not terminal")
+	}
+	encounters := make([]openapi.RelayEncounterHistoryView, 0, len(*stage.EncounterDetails))
+	for _, detail := range *stage.EncounterDetails {
+		encounter, err := relayEncounterHistoryView(detail)
+		if err != nil {
+			return openapi.RelayStageHistoryView{}, err
+		}
+		encounters = append(encounters, encounter)
+	}
+	settlement := []openapi.RelayStageSettlementView{}
+	if stage.Settlement != nil {
+		settlement = *stage.Settlement
+	}
+	return openapi.RelayStageHistoryView{
+		StageId: stage.StageId, StageIndex: stage.StageIndex, Status: openapi.RelayStageHistoryViewStatusEnded,
+		Encounters: encounters, ByeMemberId: stage.ByeMemberId, Settlement: settlement,
+	}, nil
+}
+
+func relayEncounterHistoryView(detail openapi.RelayEncounterView) (openapi.RelayEncounterHistoryView, error) {
+	if detail.Status != openapi.RelayEncounterViewStatusEnded || detail.Answer == nil || detail.Outcome == nil {
+		return openapi.RelayEncounterHistoryView{}, errors.New("relay history encounter is not terminal")
+	}
+	return openapi.RelayEncounterHistoryView{
+		Answer: *detail.Answer, Capabilities: detail.Capabilities, Deadline: detail.Deadline,
+		EncounterId: detail.EncounterId, EncounterIndex: detail.EncounterIndex,
+		MaxSkipsPerPlayer: detail.MaxSkipsPerPlayer, MaxTurnsPerPlayer: detail.MaxTurnsPerPlayer,
+		Members: detail.Members, Outcome: openapi.RelayEncounterHistoryViewOutcome(*detail.Outcome), Rows: detail.Rows,
+		StartsAt: detail.StartsAt, Status: openapi.RelayEncounterHistoryViewStatusEnded,
+		TurnDeadline: detail.TurnDeadline, TurnMemberId: detail.TurnMemberId, TurnSeat: detail.TurnSeat,
+		WinnerMemberId: detail.WinnerMemberId,
 	}, nil
 }

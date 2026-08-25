@@ -545,8 +545,9 @@ export interface paths {
         };
         /**
          * 接力 stage 历史
-         * @description 成员令牌鉴权。响应形状预留 stage 摘要与终态 encounter 详情；MRX-003 阶段返回
-         *     FEATURE_DISABLED，不读取 relay 表。
+         * @description 成员令牌鉴权。按稳定 stageIndex 分页返回已结束 stage，并在每次请求重新校验
+         *     room、match 与 viewer 身份。cursor 为不透明字符串；响应中的 encounter 均为终态
+         *     详情，因此允许揭示对应答案。进行中的 encounter 不会出现在历史响应中。
          */
         get: operations["rooms_listRelayStageHistory"];
         put?: never;
@@ -1234,8 +1235,17 @@ export interface components {
             eliminatedStage?: number;
         };
         /**
-         * @description 一张 relay 棋盘的可见状态。进行中结构没有 answer 字段；终态答案由后续
-         *     history/projector 契约以终态专用响应扩展，避免误泄露。
+         * @description 服务端按 viewer、encounter membership、当前 turn 与终态状态投影的动作能力。
+         *     非本人活动 encounter、bye、ended、eliminated、left 与 spectator 均为 false。
+         */
+        RelayEncounterCapabilities: {
+            canGuess: boolean;
+            canPass: boolean;
+            canForfeit: boolean;
+        };
+        /**
+         * @description 一张 relay 棋盘的可见状态。所有 relay viewer 可见完整标签；进行中结构没有
+         *     answer 字段，终态结构才揭示 answer/outcome。
          */
         RelayEncounterView: {
             encounterId: string;
@@ -1243,6 +1253,7 @@ export interface components {
             /** @enum {string} */
             status: "planned" | "countdown" | "playing" | "ended";
             members: components["schemas"]["RelayEncounterMemberView"][];
+            capabilities: components["schemas"]["RelayEncounterCapabilities"];
             /** Format: date-time */
             startsAt?: string;
             /** Format: date-time */
@@ -2850,6 +2861,7 @@ export interface operations {
         parameters: {
             query?: {
                 after?: string;
+                limit?: number;
             };
             header?: never;
             path: {
@@ -2860,7 +2872,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 预留的 stage 历史响应 */
+            /** @description relay stage 历史响应 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2872,6 +2884,15 @@ export interface operations {
                     };
                 };
             };
+            /** @description cursor 或分页参数无效 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 令牌缺失或无效 */
             401: {
                 headers: {
@@ -2881,8 +2902,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description relay history 尚未启用 */
-            501: {
+            /** @description room 或 match 不存在 */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

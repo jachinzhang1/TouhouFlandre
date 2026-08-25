@@ -9,7 +9,8 @@ import (
 )
 
 func TestMRX003RelayContractBoundariesRejectWithoutWrites(t *testing.T) {
-	fixture := createMatchFixture(t)
+	fixture := createMatchFixtureMode(t, "bo3", "relay", 60)
+	startMatch(t, fixture)
 	before := mrx003WriteState(t, fixture.roomID)
 
 	responses := []struct {
@@ -25,7 +26,7 @@ func TestMRX003RelayContractBoundariesRejectWithoutWrites(t *testing.T) {
 			body: map[string]any{"action": "guess", "guessId": "reimu_hakurei", "idempotencyKey": "idem-1"},
 		},
 		{
-			method: http.MethodGet, wantStatus: http.StatusNotImplemented, wantCode: "FEATURE_DISABLED",
+			method: http.MethodGet, wantStatus: http.StatusOK,
 			path: "/api/rooms/" + fixture.roomID + "/matches/0/stages",
 		},
 	}
@@ -34,14 +35,26 @@ func TestMRX003RelayContractBoundariesRejectWithoutWrites(t *testing.T) {
 		if response.StatusCode != request.wantStatus {
 			t.Fatalf("%s %s = %d %s", request.method, request.path, response.StatusCode, payload)
 		}
-		var apiError struct {
-			Code string `json:"code"`
-		}
-		if err := json.Unmarshal(payload, &apiError); err != nil {
-			t.Fatal(err)
-		}
-		if apiError.Code != request.wantCode {
-			t.Fatalf("%s %s error = %s", request.method, request.path, apiError.Code)
+		if request.wantCode != "" {
+			var apiError struct {
+				Code string `json:"code"`
+			}
+			if err := json.Unmarshal(payload, &apiError); err != nil {
+				t.Fatal(err)
+			}
+			if apiError.Code != request.wantCode {
+				t.Fatalf("%s %s error = %s", request.method, request.path, apiError.Code)
+			}
+		} else {
+			var history struct {
+				Stages []json.RawMessage `json:"stages"`
+			}
+			if err := json.Unmarshal(payload, &history); err != nil {
+				t.Fatal(err)
+			}
+			if history.Stages == nil {
+				t.Fatalf("%s %s returned null stages: %s", request.method, request.path, payload)
+			}
 		}
 	}
 

@@ -289,6 +289,46 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 			},
 		}, false, nil
 
+	case EventRelayStageStarted:
+		var payload RelayStageStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventRelayStageStarted, Payload: payload}, false, nil
+
+	case EventRelayEncounterStarted:
+		var payload RelayEncounterStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		// Decode into the active shape and re-encode it so an accidentally
+		// persisted answer field cannot cross the realtime/replay boundary.
+		return ProjectedEvent{Type: EventRelayEncounterStarted, Payload: payload}, false, nil
+
+	case EventRelayEncounterTurnGuess, EventRelayEncounterTurnPass, EventRelayEncounterTurnTimeout:
+		var payload RelayEncounterTurnPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
+
+	case EventRelayEncounterEnded:
+		var payload RelayEncounterEndedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		if payload.Status != string(relayEncounterEndedStatus) || payload.Answer.ID == "" {
+			return ProjectedEvent{}, false, fmt.Errorf("relay.encounter.ended has incomplete terminal payload")
+		}
+		return ProjectedEvent{Type: EventRelayEncounterEnded, Payload: payload}, false, nil
+
+	case EventRelayStageEnded:
+		var payload RelayStageEndedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventRelayStageEnded, Payload: payload}, false, nil
+
 	default:
 		var payload map[string]any
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -297,6 +337,8 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
 	}
 }
+
+const relayEncounterEndedStatus = "ended"
 
 func normalizeMatchStartedRuleSet(payload *MatchStartedPayload) error {
 	ref := payload.RuleSetRef

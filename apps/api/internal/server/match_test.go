@@ -624,34 +624,41 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("joiner relay win status %d: %s", resp.StatusCode, payload)
 	}
-	var encounterEnded, stageEnded, matchEnded map[string]any
+	var stageEnded, matchEnded map[string]any
 	for _, event := range eventsOf(t, fixture) {
 		switch event.Type {
-		case "relay.encounter.ended":
-			encounterEnded = event.Payload
 		case "relay.stage.ended":
 			stageEnded = event.Payload
 		case "match.ended":
 			matchEnded = event.Payload
 		}
 	}
-	if encounterEnded == nil || stageEnded == nil || matchEnded == nil {
-		t.Fatalf("relay terminal events missing: encounter=%v stage=%v match=%v", encounterEnded, stageEnded, matchEnded)
+	terminal := startMatchSnapshot(t, fixture)
+	if terminal.Match == nil || terminal.Match.Relay == nil || terminal.Match.Relay.CurrentStage == nil ||
+		terminal.Match.Relay.CurrentStage.EncounterDetails == nil ||
+		len(*terminal.Match.Relay.CurrentStage.EncounterDetails) != 1 {
+		t.Fatalf("relay terminal encounter detail missing: match=%+v", terminal.Match)
+	}
+	encounterEnded := (*terminal.Match.Relay.CurrentStage.EncounterDetails)[0]
+	if stageEnded == nil || matchEnded == nil {
+		t.Fatalf("relay terminal events missing: stage=%v match=%v", stageEnded, matchEnded)
 	}
 	seat2MemberID := snap.Members[1].MemberId
-	if encounterEnded["outcome"] != "win" || encounterEnded["winnerMemberId"] != seat2MemberID {
-		t.Fatalf("relay encounter result = %v, want seat 2 winner", encounterEnded)
+	if encounterEnded.Status != openapi.RelayEncounterViewStatusEnded ||
+		encounterEnded.Outcome == nil || *encounterEnded.Outcome != openapi.RelayEncounterViewOutcomeWin ||
+		encounterEnded.WinnerMemberId == nil || *encounterEnded.WinnerMemberId != seat2MemberID ||
+		encounterEnded.Answer == nil {
+		t.Fatalf("relay encounter result = %+v, want terminal seat 2 winner", encounterEnded)
 	}
 	if collectionEntryAtSeat(t, stageEnded, "standings", 1)["score"] != float64(0) ||
 		collectionEntryAtSeat(t, stageEnded, "standings", 2)["score"] != float64(1) {
 		t.Fatalf("relay stage standings = %v, want 0-1", stageEnded["standings"])
 	}
-	turns, ok := encounterEnded["turns"].([]any)
-	if !ok || len(turns) != 4 {
-		t.Fatalf("relay turns = %#v, want four preserved rows", encounterEnded["turns"])
+	if len(encounterEnded.Rows) != 4 {
+		t.Fatalf("relay turns = %#v, want four preserved rows", encounterEnded.Rows)
 	}
-	lastTurn, _ := turns[3].(map[string]any)
-	if lastTurn["memberId"] != seat2MemberID || lastTurn["seat"] != float64(2) || lastTurn["kind"] != "guess" {
+	lastTurn := encounterEnded.Rows[3]
+	if lastTurn.MemberId != seat2MemberID || lastTurn.Seat != 2 || lastTurn.Kind != openapi.RelayTurnRowKindGuess {
 		t.Fatalf("relay winning turn = %#v, want seat 2 member guess", lastTurn)
 	}
 	if matchEnded["viewerResult"] != "loss" || matchEnded["winnerMemberId"] != seat2MemberID || matchEnded["reason"] != "normal" {

@@ -57,7 +57,7 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				if !s.joinLimiter.allow(clientIP(ctx), s.now()) {
 					return nil, &ApiError{Status: http.StatusTooManyRequests, Code: codeRateLimited, Message: "尝试过于频繁，请稍后再试。"}
 				}
-			case "RoomsGetSnapshot":
+			case "RoomsGetSnapshot", "RoomsListRelayStageHistory":
 				member, apiErr := s.authenticateGuestForSnapshot(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
@@ -173,6 +173,8 @@ func roomIDFromRequest(request any) (string, bool) {
 	case openapi.RoomsPassRelayTurnRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsRelayEncounterActionRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsListRelayStageHistoryRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsListMessagesRequestObject:
 		return r.RoomId, true

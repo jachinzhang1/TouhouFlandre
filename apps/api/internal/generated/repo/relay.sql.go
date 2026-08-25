@@ -961,6 +961,52 @@ func (q *Queries) ListActiveRelayEncountersForRoomForUpdate(ctx context.Context,
 	return items, nil
 }
 
+const listEndedRelayStagesPage = `-- name: ListEndedRelayStagesPage :many
+SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at, settlement_marker, created_at
+FROM multi_relay_stage
+WHERE match_id = $1
+  AND status = 'ended'
+  AND stage_index > $2
+ORDER BY stage_index
+LIMIT $3
+`
+
+type ListEndedRelayStagesPageParams struct {
+	MatchID         string `json:"match_id"`
+	AfterStageIndex int32  `json:"after_stage_index"`
+	LimitCount      int32  `json:"limit_count"`
+}
+
+func (q *Queries) ListEndedRelayStagesPage(ctx context.Context, arg ListEndedRelayStagesPageParams) ([]MultiRelayStage, error) {
+	rows, err := q.db.Query(ctx, listEndedRelayStagesPage, arg.MatchID, arg.AfterStageIndex, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayStage{}
+	for rows.Next() {
+		var i MultiRelayStage
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.StageIndex,
+			&i.Status,
+			&i.PlannedEncounterCount,
+			&i.StartsAt,
+			&i.SettledAt,
+			&i.SettlementMarker,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRelayEncounterMembers = `-- name: ListRelayEncounterMembers :many
 SELECT match_id, stage_id, encounter_id, member_id, side, seat
 FROM multi_relay_encounter_member
@@ -970,6 +1016,48 @@ ORDER BY side, seat, member_id
 
 func (q *Queries) ListRelayEncounterMembers(ctx context.Context, encounterID string) ([]MultiRelayEncounterMember, error) {
 	rows, err := q.db.Query(ctx, listRelayEncounterMembers, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayEncounterMember{}
+	for rows.Next() {
+		var i MultiRelayEncounterMember
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.StageID,
+			&i.EncounterID,
+			&i.MemberID,
+			&i.Side,
+			&i.Seat,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRelayEncounterMembersForStages = `-- name: ListRelayEncounterMembersForStages :many
+SELECT member.match_id, member.stage_id, member.encounter_id, member.member_id, member.side, member.seat
+FROM multi_relay_encounter_member AS member
+JOIN multi_relay_stage AS stage ON stage.id = member.stage_id
+JOIN multi_relay_encounter AS encounter ON encounter.id = member.encounter_id
+WHERE member.match_id = $1
+  AND member.stage_id = ANY($2::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, member.side, member.seat, member.member_id
+`
+
+type ListRelayEncounterMembersForStagesParams struct {
+	MatchID  string   `json:"match_id"`
+	StageIds []string `json:"stage_ids"`
+}
+
+func (q *Queries) ListRelayEncounterMembersForStages(ctx context.Context, arg ListRelayEncounterMembersForStagesParams) ([]MultiRelayEncounterMember, error) {
+	rows, err := q.db.Query(ctx, listRelayEncounterMembersForStages, arg.MatchID, arg.StageIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1159,6 +1247,57 @@ func (q *Queries) ListRelayEncountersForStage(ctx context.Context, stageID strin
 	return items, nil
 }
 
+const listRelayEncountersForStages = `-- name: ListRelayEncountersForStages :many
+SELECT encounter.id, encounter.match_id, encounter.stage_id, encounter.encounter_index, encounter.status, encounter.answer_id, encounter.starts_at, encounter.deadline, encounter.turn_member_id, encounter.turn_deadline, encounter.winner_member_id, encounter.outcome, encounter.ended_at, encounter.created_at, encounter.ended_by_member_id, encounter.end_idempotency_key
+FROM multi_relay_encounter AS encounter
+JOIN multi_relay_stage AS stage ON stage.id = encounter.stage_id
+WHERE encounter.match_id = $1
+  AND encounter.stage_id = ANY($2::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, encounter.id
+`
+
+type ListRelayEncountersForStagesParams struct {
+	MatchID  string   `json:"match_id"`
+	StageIds []string `json:"stage_ids"`
+}
+
+func (q *Queries) ListRelayEncountersForStages(ctx context.Context, arg ListRelayEncountersForStagesParams) ([]MultiRelayEncounter, error) {
+	rows, err := q.db.Query(ctx, listRelayEncountersForStages, arg.MatchID, arg.StageIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayEncounter{}
+	for rows.Next() {
+		var i MultiRelayEncounter
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.StageID,
+			&i.EncounterIndex,
+			&i.Status,
+			&i.AnswerID,
+			&i.StartsAt,
+			&i.Deadline,
+			&i.TurnMemberID,
+			&i.TurnDeadline,
+			&i.WinnerMemberID,
+			&i.Outcome,
+			&i.EndedAt,
+			&i.CreatedAt,
+			&i.EndedByMemberID,
+			&i.EndIdempotencyKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRelayMatchPlayerStates = `-- name: ListRelayMatchPlayerStates :many
 SELECT match_id, member_id, score, life_state, eliminated_stage
 FROM multi_relay_match_player_state
@@ -1231,6 +1370,45 @@ func (q *Queries) ListRelaySettlementCandidates(ctx context.Context, candidateLi
 	return items, nil
 }
 
+const listRelayStageByesForStages = `-- name: ListRelayStageByesForStages :many
+SELECT bye.stage_id, bye.match_id, bye.member_id, bye.seat
+FROM multi_relay_stage_bye AS bye
+JOIN multi_relay_stage AS stage ON stage.id = bye.stage_id
+WHERE bye.match_id = $1
+  AND bye.stage_id = ANY($2::text[])
+ORDER BY stage.stage_index, bye.member_id
+`
+
+type ListRelayStageByesForStagesParams struct {
+	MatchID  string   `json:"match_id"`
+	StageIds []string `json:"stage_ids"`
+}
+
+func (q *Queries) ListRelayStageByesForStages(ctx context.Context, arg ListRelayStageByesForStagesParams) ([]MultiRelayStageBye, error) {
+	rows, err := q.db.Query(ctx, listRelayStageByesForStages, arg.MatchID, arg.StageIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayStageBye{}
+	for rows.Next() {
+		var i MultiRelayStageBye
+		if err := rows.Scan(
+			&i.StageID,
+			&i.MatchID,
+			&i.MemberID,
+			&i.Seat,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRelayStagePlayers = `-- name: ListRelayStagePlayers :many
 SELECT match_id, stage_id, member_id, encounter_id, assignment, outcome, score_before, score_delta, score_after, life_before, life_after, eliminated_stage, settled_at
 FROM multi_relay_stage_player
@@ -1240,6 +1418,54 @@ ORDER BY member_id
 
 func (q *Queries) ListRelayStagePlayers(ctx context.Context, stageID string) ([]MultiRelayStagePlayer, error) {
 	rows, err := q.db.Query(ctx, listRelayStagePlayers, stageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayStagePlayer{}
+	for rows.Next() {
+		var i MultiRelayStagePlayer
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.StageID,
+			&i.MemberID,
+			&i.EncounterID,
+			&i.Assignment,
+			&i.Outcome,
+			&i.ScoreBefore,
+			&i.ScoreDelta,
+			&i.ScoreAfter,
+			&i.LifeBefore,
+			&i.LifeAfter,
+			&i.EliminatedStage,
+			&i.SettledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRelayStagePlayersForStages = `-- name: ListRelayStagePlayersForStages :many
+SELECT player.match_id, player.stage_id, player.member_id, player.encounter_id, player.assignment, player.outcome, player.score_before, player.score_delta, player.score_after, player.life_before, player.life_after, player.eliminated_stage, player.settled_at
+FROM multi_relay_stage_player AS player
+JOIN multi_relay_stage AS stage ON stage.id = player.stage_id
+WHERE player.match_id = $1
+  AND player.stage_id = ANY($2::text[])
+ORDER BY stage.stage_index, player.member_id
+`
+
+type ListRelayStagePlayersForStagesParams struct {
+	MatchID  string   `json:"match_id"`
+	StageIds []string `json:"stage_ids"`
+}
+
+func (q *Queries) ListRelayStagePlayersForStages(ctx context.Context, arg ListRelayStagePlayersForStagesParams) ([]MultiRelayStagePlayer, error) {
+	rows, err := q.db.Query(ctx, listRelayStagePlayersForStages, arg.MatchID, arg.StageIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1318,6 +1544,54 @@ ORDER BY turn_index
 
 func (q *Queries) ListRelayTurnsForEncounter(ctx context.Context, encounterID string) ([]MultiRelayTurn, error) {
 	rows, err := q.db.Query(ctx, listRelayTurnsForEncounter, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MultiRelayTurn{}
+	for rows.Next() {
+		var i MultiRelayTurn
+		if err := rows.Scan(
+			&i.ID,
+			&i.MatchID,
+			&i.StageID,
+			&i.EncounterID,
+			&i.MemberID,
+			&i.TurnIndex,
+			&i.Kind,
+			&i.GuessID,
+			&i.Statuses,
+			&i.IsCorrect,
+			&i.IdempotencyKey,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRelayTurnsForStages = `-- name: ListRelayTurnsForStages :many
+SELECT turn_row.id, turn_row.match_id, turn_row.stage_id, turn_row.encounter_id, turn_row.member_id, turn_row.turn_index, turn_row.kind, turn_row.guess_id, turn_row.statuses, turn_row.is_correct, turn_row.idempotency_key, turn_row.created_at
+FROM multi_relay_turn AS turn_row
+JOIN multi_relay_stage AS stage ON stage.id = turn_row.stage_id
+JOIN multi_relay_encounter AS encounter ON encounter.id = turn_row.encounter_id
+WHERE turn_row.match_id = $1
+  AND turn_row.stage_id = ANY($2::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, turn_row.turn_index
+`
+
+type ListRelayTurnsForStagesParams struct {
+	MatchID  string   `json:"match_id"`
+	StageIds []string `json:"stage_ids"`
+}
+
+func (q *Queries) ListRelayTurnsForStages(ctx context.Context, arg ListRelayTurnsForStagesParams) ([]MultiRelayTurn, error) {
+	rows, err := q.db.Query(ctx, listRelayTurnsForStages, arg.MatchID, arg.StageIds)
 	if err != nil {
 		return nil, err
 	}

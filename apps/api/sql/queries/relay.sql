@@ -27,6 +27,15 @@ FROM multi_relay_stage
 WHERE match_id = $1
 ORDER BY stage_index;
 
+-- name: ListEndedRelayStagesPage :many
+SELECT *
+FROM multi_relay_stage
+WHERE match_id = sqlc.arg(match_id)
+  AND status = 'ended'
+  AND stage_index > sqlc.arg(after_stage_index)
+ORDER BY stage_index
+LIMIT sqlc.arg(limit_count);
+
 -- name: ListRelaySettlementCandidates :many
 SELECT stage.id
 FROM multi_relay_stage AS stage
@@ -148,6 +157,14 @@ JOIN multi_relay_stage AS stage ON stage.id = encounter.stage_id
 WHERE encounter.match_id = $1
 ORDER BY stage.stage_index, encounter.encounter_index, encounter.id;
 
+-- name: ListRelayEncountersForStages :many
+SELECT encounter.*
+FROM multi_relay_encounter AS encounter
+JOIN multi_relay_stage AS stage ON stage.id = encounter.stage_id
+WHERE encounter.match_id = sqlc.arg(match_id)
+  AND encounter.stage_id = ANY(sqlc.arg(stage_ids)::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, encounter.id;
+
 -- name: ListRelayUsedAnswerIDs :many
 SELECT answer_id
 FROM multi_relay_encounter
@@ -197,6 +214,15 @@ SELECT *
 FROM multi_relay_encounter_member
 WHERE encounter_id = $1
 ORDER BY side, seat, member_id;
+
+-- name: ListRelayEncounterMembersForStages :many
+SELECT member.*
+FROM multi_relay_encounter_member AS member
+JOIN multi_relay_stage AS stage ON stage.id = member.stage_id
+JOIN multi_relay_encounter AS encounter ON encounter.id = member.encounter_id
+WHERE member.match_id = sqlc.arg(match_id)
+  AND member.stage_id = ANY(sqlc.arg(stage_ids)::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, member.side, member.seat, member.member_id;
 
 -- name: StartRelayEncounter :one
 UPDATE multi_relay_encounter
@@ -254,6 +280,15 @@ SELECT *
 FROM multi_relay_turn
 WHERE encounter_id = $1
 ORDER BY turn_index;
+
+-- name: ListRelayTurnsForStages :many
+SELECT turn_row.*
+FROM multi_relay_turn AS turn_row
+JOIN multi_relay_stage AS stage ON stage.id = turn_row.stage_id
+JOIN multi_relay_encounter AS encounter ON encounter.id = turn_row.encounter_id
+WHERE turn_row.match_id = sqlc.arg(match_id)
+  AND turn_row.stage_id = ANY(sqlc.arg(stage_ids)::text[])
+ORDER BY stage.stage_index, encounter.encounter_index, turn_row.turn_index;
 
 -- name: CountRelayTurnsForEncounterMember :one
 SELECT count(*)::int
@@ -329,6 +364,22 @@ SELECT *
 FROM multi_relay_stage_player
 WHERE stage_id = $1
 ORDER BY member_id;
+
+-- name: ListRelayStagePlayersForStages :many
+SELECT player.*
+FROM multi_relay_stage_player AS player
+JOIN multi_relay_stage AS stage ON stage.id = player.stage_id
+WHERE player.match_id = sqlc.arg(match_id)
+  AND player.stage_id = ANY(sqlc.arg(stage_ids)::text[])
+ORDER BY stage.stage_index, player.member_id;
+
+-- name: ListRelayStageByesForStages :many
+SELECT bye.*
+FROM multi_relay_stage_bye AS bye
+JOIN multi_relay_stage AS stage ON stage.id = bye.stage_id
+WHERE bye.match_id = sqlc.arg(match_id)
+  AND bye.stage_id = ANY(sqlc.arg(stage_ids)::text[])
+ORDER BY stage.stage_index, bye.member_id;
 
 -- name: InsertRelayStagePlayer :one
 INSERT INTO multi_relay_stage_player (

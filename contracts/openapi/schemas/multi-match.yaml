@@ -138,16 +138,34 @@ RelayEncounterMemberView:
       type: integer
       enum: [1, 2]
 
+RelayEncounterCapabilities:
+  type: object
+  description: |
+    服务端按 viewer、encounter membership、当前 turn 与终态状态投影的动作能力。
+    非本人活动 encounter、bye、ended、eliminated、left 与 spectator 均为 false。
+  required:
+    - canGuess
+    - canPass
+    - canForfeit
+  properties:
+    canGuess:
+      type: boolean
+    canPass:
+      type: boolean
+    canForfeit:
+      type: boolean
+
 RelayEncounterView:
   type: object
   description: |
-    一张 relay 棋盘的可见状态。进行中结构没有 answer 字段；终态答案由后续
-    history/projector 契约以终态专用响应扩展，避免误泄露。
+    一张 relay 棋盘的可见状态。所有 relay viewer 可见完整标签；进行中结构没有
+    answer 字段，终态结构才揭示 answer/outcome。
   required:
     - encounterId
     - encounterIndex
     - status
     - members
+    - capabilities
     - rows
   properties:
     encounterId:
@@ -165,6 +183,8 @@ RelayEncounterView:
       maxItems: 2
       items:
         $ref: "#/RelayEncounterMemberView"
+    capabilities:
+      $ref: "#/RelayEncounterCapabilities"
     startsAt:
       type: string
       format: date-time
