@@ -1,10 +1,13 @@
 const PRIVATE_KEYS = new Set([
   "memberId",
+  "memberSlot",
   "displayName",
   "roomId",
   "roomCode",
   "guestToken",
   "token",
+  "encounterId",
+  "seat",
 ]);
 
 export function assertStatsPrivacy(value: unknown): void {

@@ -323,9 +323,7 @@ describe("stats IndexedDB", () => {
       finalRank: 2,
       tiedForFirst: false,
       eliminatedRound: 1,
-      rounds: [
-        { pointsAwarded: 2, participationStatus: "correct" },
-      ],
+      rounds: [{ pointsAwarded: 2, participationStatus: "correct" }],
     });
     expect(JSON.stringify(stored)).not.toContain(selfId);
   });
@@ -458,6 +456,259 @@ describe("stats IndexedDB", () => {
         { index: 2, actor: "other", kind: "timeout" },
       ],
     );
+  });
+
+  it("归档本人 relay stage、负分与淘汰名次且不保存对局身份", async () => {
+    const selfId = "relay-self";
+    const otherId = "relay-other";
+    const encounterId = "encounter-private";
+    await recordMultiplayerEvent(
+      event("match.started", 1, {
+        format: "bo3",
+        mode: "relay",
+        turnSeconds: 60,
+        targetWins: 2,
+        catalogVersion: "v1",
+        matchIndex: 0,
+        rosterSize: 4,
+        ruleSetRef: { mode: "relay", key: "elimination", version: 1 },
+      }),
+      selfId,
+      undefined,
+      { playerLimit: 8 },
+    );
+    await recordMultiplayerEvent(
+      event("relay.stage.started", 2, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        status: "playing",
+        encounters: [
+          {
+            encounterId,
+            encounterIndex: 1,
+            status: "playing",
+            members: [
+              { memberId: selfId, seat: 2, side: 1 },
+              { memberId: otherId, seat: 4, side: 2 },
+            ],
+          },
+          {
+            encounterId: "other-board",
+            encounterIndex: 2,
+            status: "playing",
+            members: [
+              { memberId: "third", seat: 1, side: 1 },
+              { memberId: "fourth", seat: 3, side: 2 },
+            ],
+          },
+        ],
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("relay.encounter.started", 3, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        encounterId,
+        encounterIndex: 1,
+        status: "playing",
+        members: [
+          { memberId: selfId, seat: 2, side: 1 },
+          { memberId: otherId, seat: 4, side: 2 },
+        ],
+        startsAt: "2026-08-07T12:00:03Z",
+        maxTurnsPerPlayer: 8,
+        maxSkipsPerPlayer: 2,
+      }),
+      selfId,
+    );
+    const turns = [
+      {
+        index: 1,
+        memberId: selfId,
+        seat: 2,
+        kind: "guess",
+        guess: {
+          guessId: "marisa",
+          guessName: "雾雨魔理沙",
+          guessAvatarUrl: "/marisa.png",
+          isCorrect: false,
+          feedback: [],
+        },
+      },
+      { index: 2, memberId: otherId, seat: 4, kind: "pass" },
+    ];
+    await recordMultiplayerEvent(
+      event("relay.encounter.turn.guess", 4, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        encounterId,
+        memberId: selfId,
+        row: turns[0],
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("relay.encounter.turn.pass", 5, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        encounterId,
+        memberId: otherId,
+        row: turns[1],
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("relay.encounter.ended", 6, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        encounterId,
+        status: "ended",
+        outcome: "timeout",
+        winnerMemberId: otherId,
+        answer: {
+          id: "reimu",
+          name: "博丽灵梦",
+          avatarUrl: "/reimu.png",
+          workId: "th01",
+          workTitle: "东方灵异传",
+          workCode: "TH01",
+        },
+        turns,
+      }),
+      selfId,
+      { activeElapsedMs: 12_000, guessCompletedElapsedMs: [5_000] },
+    );
+    await recordMultiplayerEvent(
+      event("relay.stage.ended", 7, {
+        matchIndex: 0,
+        stageId: "stage-private",
+        stageIndex: 1,
+        status: "ended",
+        settlement: [
+          {
+            memberId: selfId,
+            encounterId,
+            assignment: "paired",
+            outcome: "loss",
+            scoreBefore: 0,
+            scoreDelta: -2,
+            scoreAfter: -2,
+            lifeBefore: "near_death",
+            lifeAfter: "near_death",
+            lifeTransition: "eliminated",
+            eliminatedStage: 1,
+          },
+        ],
+        standings: [
+          {
+            memberId: selfId,
+            seat: 2,
+            score: -2,
+            status: "eliminated",
+            lifeState: "near_death",
+            eliminatedStage: 1,
+          },
+        ],
+      }),
+      selfId,
+    );
+    await recordMultiplayerEvent(
+      event("match.ended", 8, {
+        matchIndex: 0,
+        viewerResult: "loss",
+        winnerMemberId: otherId,
+        scores: [
+          { memberId: selfId, seat: 2, score: 0 },
+          { memberId: otherId, seat: 4, score: 1 },
+        ],
+        results: [
+          { memberId: selfId, seat: 2, result: "loss" },
+          { memberId: otherId, seat: 4, result: "win" },
+        ],
+        relay: {
+          standings: [
+            {
+              memberId: selfId,
+              seat: 2,
+              score: -2,
+              status: "eliminated",
+              lifeState: "near_death",
+              eliminatedStage: 1,
+            },
+            {
+              memberId: otherId,
+              seat: 4,
+              score: 3,
+              status: "active",
+              lifeState: "healthy",
+            },
+          ],
+          ranking: [
+            {
+              memberId: otherId,
+              seat: 4,
+              rank: 1,
+              score: 3,
+              status: "active",
+              lifeState: "healthy",
+              survivedStages: 1,
+            },
+            {
+              memberId: selfId,
+              seat: 2,
+              rank: 2,
+              score: -2,
+              status: "eliminated",
+              lifeState: "near_death",
+              eliminatedStage: 1,
+              survivedStages: 0,
+            },
+          ],
+        },
+        reason: "normal",
+      }),
+      selfId,
+    );
+
+    const stored = await statsDb.records.toCollection().first();
+    expect(stored).toMatchObject({
+      multiplayerMode: "relay",
+      ruleSetKey: "elimination",
+      ruleSetVersion: 1,
+      scoreSelf: -2,
+      opponentScores: [3],
+      finalRank: 2,
+      eliminatedStage: 1,
+      survivedStages: 0,
+      relayStages: [
+        {
+          stageIndex: 1,
+          outcome: "loss",
+          encounterEndReason: "timeout",
+          scoreDelta: -2,
+          lifeTransition: "eliminated",
+          encounter: {
+            durationMs: 12_000,
+            result: "loss",
+            turns: [
+              { index: 1, actor: "self", kind: "guess" },
+              { index: 2, actor: "other", kind: "pass" },
+            ],
+          },
+        },
+      ],
+    });
+    expect(stored).not.toHaveProperty("scoringMode");
+    expect(JSON.stringify(stored)).not.toContain(selfId);
+    expect(JSON.stringify(stored)).not.toContain(otherId);
+    expect(JSON.stringify(stored)).not.toContain(encounterId);
+    expect(JSON.stringify(stored)).not.toContain("stage-private");
   });
 
   it("merges a legacy seat draft into a snapshot-created member draft", async () => {

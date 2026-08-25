@@ -105,6 +105,8 @@ describe("stats import/export", () => {
     expect(parsed.records[0]).toMatchObject({
       schemaVersion: STATS_SCHEMA_VERSION,
       multiplayerMode: "race",
+      ruleSetKey: "wins",
+      ruleSetVersion: 1,
     });
     expect(parsed.records[0]).toMatchObject({
       opponentScores: [0],
@@ -128,6 +130,8 @@ describe("stats import/export", () => {
         rosterSize: 2,
         playerLimit: 2,
         scoringMode: "wins",
+        ruleSetKey: "wins",
+        ruleSetVersion: 1,
       },
     },
     {
@@ -144,7 +148,8 @@ describe("stats import/export", () => {
         opponentScores: [1],
         rosterSize: 2,
         playerLimit: 2,
-        scoringMode: "wins",
+        ruleSetKey: "legacy_wins",
+        ruleSetVersion: 1,
       },
     },
     {
@@ -161,6 +166,8 @@ describe("stats import/export", () => {
         rosterSize: 3,
         playerLimit: 4,
         scoringMode: "wins",
+        ruleSetKey: "wins",
+        ruleSetVersion: 1,
       },
     },
     {
@@ -177,6 +184,8 @@ describe("stats import/export", () => {
       expected: {
         multiplayerMode: "race",
         scoringMode: "placement",
+        ruleSetKey: "placement",
+        ruleSetVersion: 1,
         finalRank: 1,
         tiedForFirst: true,
         eliminatedRound: 2,
@@ -195,12 +204,14 @@ describe("stats import/export", () => {
       expected: {
         multiplayerMode: "race",
         scoringMode: "points",
+        ruleSetKey: "points",
+        ruleSetVersion: 1,
         finalRank: 2,
         tiedForFirst: false,
       },
     },
   ])(
-    "导入 v$version 记录并归一化为 v5 匿名形状",
+    "导入 v$version 记录并归一化为 v6 匿名形状",
     ({ version, fields, expected }) => {
       const raw = {
         schemaVersion: version,
@@ -242,14 +253,14 @@ describe("stats import/export", () => {
     },
   );
 
-  it("保留 v5 积分淘汰字段且导出只生成 v5", async () => {
+  it("保留 v5 积分淘汰字段且导出只生成 v6", async () => {
     const raw = {
-      schemaVersion: STATS_SCHEMA_VERSION,
+      schemaVersion: 5,
       exportedAt: new Date().toISOString(),
       records: [
         {
           id: "placement",
-          schemaVersion: STATS_SCHEMA_VERSION,
+          schemaVersion: 5,
           kind: "multiplayer",
           mode: "multiplayer",
           format: "bo3",
@@ -302,14 +313,14 @@ describe("stats import/export", () => {
     ).toBe(true);
   });
 
-  it("保留 v5 积分累计字段且导出只生成 v5", async () => {
+  it("保留 v5 积分累计字段且导出只生成 v6", async () => {
     const raw = {
-      schemaVersion: STATS_SCHEMA_VERSION,
+      schemaVersion: 5,
       exportedAt: new Date().toISOString(),
       records: [
         {
           id: "points",
-          schemaVersion: STATS_SCHEMA_VERSION,
+          schemaVersion: 5,
           kind: "multiplayer",
           mode: "multiplayer",
           format: "bo5",
@@ -363,6 +374,123 @@ describe("stats import/export", () => {
         (item) => item.kind === "multiplayer" && item.scoringMode === "points",
       ),
     ).toBe(true);
+  });
+
+  it("接受带完整规则集的 v6 relay 负分记录并保留 stage 明细", () => {
+    const raw = {
+      schemaVersion: STATS_SCHEMA_VERSION,
+      exportedAt: "2026-08-25T00:00:00Z",
+      records: [
+        {
+          id: "relay-negative",
+          schemaVersion: STATS_SCHEMA_VERSION,
+          kind: "multiplayer",
+          mode: "multiplayer",
+          format: "bo3",
+          multiplayerMode: "relay",
+          ruleSetKey: "elimination",
+          ruleSetVersion: 1,
+          matchIndex: 3,
+          startedAt: "2026-08-25T00:00:00Z",
+          endedAt: "2026-08-25T00:03:00Z",
+          durationMs: 180_000,
+          outcome: "loss",
+          reason: "normal",
+          scoreSelf: -2,
+          opponentScores: [4, 1, 0],
+          rosterSize: 4,
+          playerLimit: 8,
+          finalRank: 4,
+          eliminatedStage: 2,
+          survivedStages: 1,
+          rounds: [],
+          relayStages: [
+            {
+              stageIndex: 2,
+              assignment: "paired",
+              outcome: "loss",
+              encounterEndReason: "timeout",
+              scoreBefore: 0,
+              scoreDelta: -2,
+              scoreAfter: -2,
+              lifeBefore: "near_death",
+              lifeAfter: "near_death",
+              lifeTransition: "eliminated",
+              encounterId: "must-not-survive",
+              seat: 8,
+            },
+          ],
+        },
+      ],
+    };
+
+    const parsed = parseStatsImport(JSON.stringify(raw));
+    expect(parsed.records[0]).toMatchObject({
+      schemaVersion: STATS_SCHEMA_VERSION,
+      multiplayerMode: "relay",
+      ruleSetKey: "elimination",
+      ruleSetVersion: 1,
+      scoreSelf: -2,
+      eliminatedStage: 2,
+      survivedStages: 1,
+      relayStages: [
+        {
+          stageIndex: 2,
+          scoreDelta: -2,
+          lifeTransition: "eliminated",
+        },
+      ],
+    });
+    expect(parsed.records[0]).not.toHaveProperty("scoringMode");
+    expect(JSON.stringify(parsed)).not.toContain("must-not-survive");
+  });
+
+  it("拒绝缺少规则集的 v6 多人记录和 race 负分", () => {
+    const base = {
+      id: "invalid-v6",
+      schemaVersion: STATS_SCHEMA_VERSION,
+      kind: "multiplayer",
+      mode: "multiplayer",
+      format: "bo1",
+      multiplayerMode: "race",
+      matchIndex: 0,
+      startedAt: "2026-08-25T00:00:00Z",
+      endedAt: "2026-08-25T00:01:00Z",
+      durationMs: 60_000,
+      outcome: "loss",
+      reason: "normal",
+      scoreSelf: 0,
+      opponentScores: [1],
+      rosterSize: 2,
+      playerLimit: 2,
+      scoringMode: "wins",
+      rounds: [],
+    };
+    expect(() =>
+      parseStatsImport(
+        JSON.stringify({
+          schemaVersion: STATS_SCHEMA_VERSION,
+          exportedAt: "2026-08-25T00:00:00Z",
+          records: [base],
+        }),
+      ),
+    ).toThrow(/rule-set discriminator/);
+    expect(() =>
+      parseStatsImport(
+        JSON.stringify({
+          schemaVersion: STATS_SCHEMA_VERSION,
+          exportedAt: "2026-08-25T00:00:00Z",
+          records: [
+            {
+              ...base,
+              ruleSetKey: "wins",
+              ruleSetVersion: 1,
+              scoreSelf: -1,
+            },
+          ],
+        }),
+      ),
+    ).toThrow(/race 比分不能为负数/);
   });
 
   it("递归拒绝统计中的身份字段", () => {

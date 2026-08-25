@@ -5,7 +5,7 @@ import type {
   QuestionDifficulty,
 } from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 5 as const;
+export const STATS_SCHEMA_VERSION = 6 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
 export type StatsDifficulty = QuestionDifficulty | "unknown";
@@ -58,6 +58,20 @@ export interface StatsRound {
   participationStatus?: "correct" | "forfeited" | "exhausted" | "timed_out";
 }
 
+export interface StatsRelayStage {
+  stageIndex: number;
+  assignment: "paired" | "bye";
+  outcome: "win" | "loss" | "draw" | "bye";
+  encounterEndReason?: "win" | "loss" | "draw" | "forfeit" | "timeout";
+  scoreBefore?: number;
+  scoreDelta?: number;
+  scoreAfter?: number;
+  lifeBefore?: "healthy" | "near_death";
+  lifeAfter?: "healthy" | "near_death";
+  lifeTransition?: "none" | "entered_near_death" | "eliminated";
+  encounter?: StatsRound;
+}
+
 interface StatsRecordBase {
   id: string;
   schemaVersion: typeof STATS_SCHEMA_VERSION;
@@ -81,6 +95,8 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   mode: "multiplayer";
   format: MultiRoomFormat;
   multiplayerMode: MultiplayerMode;
+  ruleSetKey: string;
+  ruleSetVersion: number;
   matchIndex: number;
   reason: MultiMatchEndReason | "incomplete";
   scoreSelf: number;
@@ -91,7 +107,10 @@ export interface MultiplayerStatsRecord extends StatsRecordBase {
   finalRank?: number;
   tiedForFirst?: boolean;
   eliminatedRound?: number;
+  eliminatedStage?: number;
+  survivedStages?: number;
   rounds: StatsRound[];
+  relayStages?: StatsRelayStage[];
 }
 
 export type StatsRecord = SingleStatsRecord | MultiplayerStatsRecord;
@@ -115,6 +134,18 @@ export interface MultiplayerRoundDraft {
   guessCompletedElapsedMs: number[];
 }
 
+export interface MultiplayerRelayStageDraft {
+  stageIndex: number;
+  startedAt: string;
+  assignment: "paired" | "bye";
+  encounterKey?: string;
+  activeElapsedMs: number;
+  guessCompletedElapsedMs: number[];
+  turns: StatsRelayTurnSnapshot[];
+  encounter?: StatsRound;
+  encounterEndReason?: StatsRelayStage["encounterEndReason"];
+}
+
 export interface MultiplayerStatsDraft {
   id: string;
   kind: "multiplayer";
@@ -129,9 +160,13 @@ export interface MultiplayerStatsDraft {
   matchIndex: number;
   playerLimit?: number;
   scoringMode?: "wins" | "points" | "placement";
+  ruleSetKey?: string;
+  ruleSetVersion?: number;
   rosterSize?: number;
   rounds: StatsRound[];
+  relayStages?: StatsRelayStage[];
   activeRound?: MultiplayerRoundDraft;
+  activeRelayStage?: MultiplayerRelayStageDraft;
   incomplete?: boolean;
 }
 

@@ -11,11 +11,19 @@ import {
 import { StatsDashboard } from "./StatsDashboard";
 
 const { statsChartCalls } = vi.hoisted(() => ({
-  statsChartCalls: [] as { ariaLabel: string; option: unknown; className?: string }[],
+  statsChartCalls: [] as {
+    ariaLabel: string;
+    option: unknown;
+    className?: string;
+  }[],
 }));
 
 vi.mock("./StatsChart", () => ({
-  StatsChart: (props: { ariaLabel: string; option: unknown; className?: string }) => {
+  StatsChart: (props: {
+    ariaLabel: string;
+    option: unknown;
+    className?: string;
+  }) => {
     statsChartCalls.push(props);
     return <div role="img" aria-label={props.ariaLabel} />;
   },
@@ -43,9 +51,7 @@ vi.mock("antd", () => ({
       value={value?.format("YYYY-MM-DD") ?? ""}
       onChange={(event) =>
         onChange?.(
-          event.target.value
-            ? { format: () => event.target.value }
-            : null,
+          event.target.value ? { format: () => event.target.value } : null,
         )
       }
     />
@@ -53,12 +59,36 @@ vi.mock("antd", () => ({
 }));
 
 const record: SingleStatsRecord = {
-  id: "record-1", schemaVersion: STATS_SCHEMA_VERSION, kind: "single", mode: "daily", puzzleKey: "2026-08-07",
-  startedAt: "2026-08-07T10:20:30Z", endedAt: "2026-08-07T10:21:00Z", durationMs: 30_000, outcome: "win",
+  id: "record-1",
+  schemaVersion: STATS_SCHEMA_VERSION,
+  kind: "single",
+  mode: "daily",
+  puzzleKey: "2026-08-07",
+  startedAt: "2026-08-07T10:20:30Z",
+  endedAt: "2026-08-07T10:21:00Z",
+  durationMs: 30_000,
+  outcome: "win",
   round: {
-    roundIndex: 1, startedAt: "2026-08-07T10:20:30Z", endedAt: "2026-08-07T10:21:00Z", durationMs: 30_000,
-    result: "win", answer: { id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", work: { id: "th01", title: "东方灵异传", code: "TH01" } },
-    guesses: [{ id: "reimu", name: "博丽灵梦", avatarUrl: "/avatars/reimu.webp", correct: true, durationMs: 30_000 }],
+    roundIndex: 1,
+    startedAt: "2026-08-07T10:20:30Z",
+    endedAt: "2026-08-07T10:21:00Z",
+    durationMs: 30_000,
+    result: "win",
+    answer: {
+      id: "reimu",
+      name: "博丽灵梦",
+      avatarUrl: "/avatars/reimu.webp",
+      work: { id: "th01", title: "东方灵异传", code: "TH01" },
+    },
+    guesses: [
+      {
+        id: "reimu",
+        name: "博丽灵梦",
+        avatarUrl: "/avatars/reimu.webp",
+        correct: true,
+        durationMs: 30_000,
+      },
+    ],
   },
 };
 
@@ -69,6 +99,8 @@ const placementRecord: MultiplayerStatsRecord = {
   mode: "multiplayer",
   format: "bo3",
   multiplayerMode: "race",
+  ruleSetKey: "placement",
+  ruleSetVersion: 1,
   matchIndex: 1,
   startedAt: "2026-08-08T10:20:30Z",
   endedAt: "2026-08-08T10:23:00Z",
@@ -130,8 +162,21 @@ function makeWorkRecord(index: number): SingleStatsRecord {
       roundIndex: index,
       startedAt: `2026-08-${day}T10:20:30Z`,
       endedAt: `2026-08-${day}T10:21:00Z`,
-      answer: { id: `answer-${index}`, name, avatarUrl, work: { id: `th${index}`, title: `作品 ${index}`, code } },
-      guesses: [{ id: `guess-${index}`, name, avatarUrl, correct: true, durationMs: 30_000 }],
+      answer: {
+        id: `answer-${index}`,
+        name,
+        avatarUrl,
+        work: { id: `th${index}`, title: `作品 ${index}`, code },
+      },
+      guesses: [
+        {
+          id: `guess-${index}`,
+          name,
+          avatarUrl,
+          correct: true,
+          durationMs: 30_000,
+        },
+      ],
     },
   };
 }
@@ -147,24 +192,42 @@ describe("StatsDashboard", () => {
 
   it("展示指标、图表与精确到秒的记录", async () => {
     render(<StatsDashboard />);
-    await waitFor(() => expect(screen.getByLabelText(/猜测角色：博丽灵梦/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByLabelText(/猜测角色：博丽灵梦/)).toBeTruthy(),
+    );
     expect(screen.getByText("成功次数")).toBeTruthy();
-    expect(screen.getByRole("img", { name: "各东方作品答案出现次数、获胜次数与胜率" })).toBeTruthy();
+    expect(
+      screen.getByRole("img", {
+        name: "各东方作品答案出现次数、获胜次数与胜率",
+      }),
+    ).toBeTruthy();
     expect(
       screen.getByText((text) => /\d{2}:\d{2}:\d{2}/.test(text)),
     ).toBeTruthy();
   });
 
   it("作品猜测情况默认展示完整横轴范围", async () => {
-    await statsDb.records.bulkPut(Array.from({ length: 11 }, (_, index) => makeWorkRecord(index + 2)));
+    await statsDb.records.bulkPut(
+      Array.from({ length: 11 }, (_, index) => makeWorkRecord(index + 2)),
+    );
     render(<StatsDashboard />);
 
-    await screen.findByRole("img", { name: "各东方作品答案出现次数、获胜次数与胜率" });
+    await screen.findByRole("img", {
+      name: "各东方作品答案出现次数、获胜次数与胜率",
+    });
     await waitFor(() => {
-      const workCharts = statsChartCalls.filter((call) => call.ariaLabel === "各东方作品答案出现次数、获胜次数与胜率");
+      const workCharts = statsChartCalls.filter(
+        (call) => call.ariaLabel === "各东方作品答案出现次数、获胜次数与胜率",
+      );
       expect(workCharts.length).toBeGreaterThan(0);
-      const option = workCharts[workCharts.length - 1]?.option as { dataZoom?: Array<Record<string, unknown>> };
-      expect(option.dataZoom?.[0]).toMatchObject({ type: "slider", start: 0, end: 100 });
+      const option = workCharts[workCharts.length - 1]?.option as {
+        dataZoom?: Array<Record<string, unknown>>;
+      };
+      expect(option.dataZoom?.[0]).toMatchObject({
+        type: "slider",
+        start: 0,
+        end: 100,
+      });
       expect(option.dataZoom?.[0]).not.toHaveProperty("startValue");
       expect(option.dataZoom?.[0]).not.toHaveProperty("endValue");
     });
@@ -176,15 +239,25 @@ describe("StatsDashboard", () => {
 
     const avatars = Array.from(container.querySelectorAll("img"));
     expect(avatars.length).toBeGreaterThan(0);
-    expect(avatars.every((avatar) => avatar.getAttribute("loading") === "eager")).toBe(true);
+    expect(
+      avatars.every((avatar) => avatar.getAttribute("loading") === "eager"),
+    ).toBe(true);
   });
 
   it("使用正确的导入导出图标，并联动 Ant Design 日期筛选", async () => {
     render(<StatsDashboard />);
     await screen.findByLabelText(/猜测角色：博丽灵梦/);
 
-    expect(screen.getByRole("button", { name: "导出" }).querySelector(".lucide-upload")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "导入" }).querySelector(".lucide-download")).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "导出" })
+        .querySelector(".lucide-upload"),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("button", { name: "导入" })
+        .querySelector(".lucide-download"),
+    ).toBeTruthy();
 
     const from = screen.getByLabelText("开始日期");
     const to = screen.getByLabelText("结束日期");
@@ -227,7 +300,9 @@ describe("StatsDashboard", () => {
     await statsDb.records.put(placementRecord);
     render(<StatsDashboard />);
 
-    expect(await screen.findByText(/竞速 · 积分淘汰 · 6 分 · 并列第 1 名/)).toBeTruthy();
+    expect(
+      await screen.findByText(/竞速 · 积分淘汰 · 6 分 · 并列第 1 名/),
+    ).toBeTruthy();
     expect(screen.getByText(/第 2 局淘汰/)).toBeTruthy();
     const row = screen.getByText(/竞速 · 积分淘汰/).closest("tr");
     const detailsButton = row?.querySelector<HTMLButtonElement>(
@@ -242,7 +317,9 @@ describe("StatsDashboard", () => {
     await statsDb.records.put(pointsRecord);
     render(<StatsDashboard />);
 
-    expect(await screen.findByText(/竞速 · 积分累计 · 4 分 · 第 2 名/)).toBeTruthy();
+    expect(
+      await screen.findByText(/竞速 · 积分累计 · 4 分 · 第 2 名/),
+    ).toBeTruthy();
     expect(screen.queryByText(/第 2 局淘汰/)).toBeNull();
     const row = screen.getByText(/竞速 · 积分累计/).closest("tr");
     const detailsButton = row?.querySelector<HTMLButtonElement>(
@@ -258,7 +335,9 @@ describe("StatsDashboard", () => {
     await screen.findByLabelText(/猜测角色：博丽灵梦/);
     await userEvent.click(screen.getByRole("button", { name: "清除数据" }));
     expect(await statsDb.records.count()).toBe(1);
-    expect(screen.getByRole("dialog", { name: "清除全部统计数据？" })).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: "清除全部统计数据？" }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "确认清除" }));
     await waitFor(async () => expect(await statsDb.records.count()).toBe(0));
   });
