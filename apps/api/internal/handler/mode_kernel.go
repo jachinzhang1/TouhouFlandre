@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -24,6 +25,13 @@ func (s *Server) roomPolicyForState(room repo.MultiRoom) (core.RoomPolicy, error
 		return nil, internalError(err)
 	}
 	return policy, nil
+}
+
+func (s *Server) relayRoomConfigForState(ctx context.Context, room repo.MultiRoom, q *repo.Queries) (multi.RelayRoomConfigView, error) {
+	if modeFromStored(room.Mode) != core.ModeRelay {
+		return multi.RelayRoomConfigView{}, nil
+	}
+	return multi.LoadRelayRoomConfig(ctx, q, room.ID)
 }
 
 func (s *Server) ruleSetForState(room repo.MultiRoom, match repo.MultiMatch) (core.RuleSetRef, error) {

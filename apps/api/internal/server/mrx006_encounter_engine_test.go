@@ -638,7 +638,12 @@ func TestMRX006RestartedMatchUsesModeOwnedRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	fixture.clock.Set(fixture.clock.Now().Add(10 * time.Minute))
-	rooms, err := fixture.service.Sweep(ctx, 10)
+	timing := multi.DefaultTimingConfig()
+	_, service, err := relayadapter.NewRuntime(pool, fixture.clock, mrx005Random{}, timing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rooms, err := service.Sweep(ctx, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

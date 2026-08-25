@@ -321,7 +321,11 @@ func ForfeitRaceMembersMatch(
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, membersAfter, int(spectators))); err != nil {
+	relayConfig, err := LoadRelayRoomConfig(ctx, q, room.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, membersAfter, int(spectators), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 

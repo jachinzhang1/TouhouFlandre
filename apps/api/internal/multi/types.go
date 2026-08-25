@@ -308,34 +308,65 @@ type ParticipantView struct {
 
 // RoomUpdatedPayload room.updated：大厅任何成员变化/就绪。
 type RoomUpdatedPayload struct {
-	Format                 RoomFormat      `json:"format"`
-	Mode                   MultiplayerMode `json:"mode"`
-	TurnSeconds            int             `json:"turnSeconds"`
-	PlayerLimit            int             `json:"playerLimit"`
-	RaceEliminationEnabled bool            `json:"raceEliminationEnabled"`
-	MinPlayers             int             `json:"minPlayers"`
-	PlayerCount            int             `json:"playerCount"`
-	AvailableSeats         int             `json:"availableSeats"`
-	Members                []MemberView    `json:"members"`
-	SpectatorCount         int             `json:"spectatorCount"`
+	Format                  RoomFormat      `json:"format"`
+	Mode                    MultiplayerMode `json:"mode"`
+	TurnSeconds             int             `json:"turnSeconds"`
+	PlayerLimit             int             `json:"playerLimit"`
+	RaceEliminationEnabled  bool            `json:"raceEliminationEnabled"`
+	RelayEliminationEnabled *bool           `json:"relayEliminationEnabled,omitempty"`
+	StartBlockedReason      *string         `json:"startBlockedReason,omitempty"`
+	MinPlayers              int             `json:"minPlayers"`
+	PlayerCount             int             `json:"playerCount"`
+	AvailableSeats          int             `json:"availableSeats"`
+	Members                 []MemberView    `json:"members"`
+	SpectatorCount          int             `json:"spectatorCount"`
+}
+
+type RoomProjectionConfig struct {
+	RelayEliminationEnabled *bool
+	StartBlockedReason      *string
+}
+
+func RelayRoomProjectionConfig(enabled bool) RoomProjectionConfig {
+	return RoomProjectionConfig{RelayEliminationEnabled: &enabled}
+}
+
+func RelayStartBlockedReason(room repo.MultiRoom, members []repo.MultiMember) *string {
+	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
+		return nil
+	}
+	_, reason := RelayReadyDecision(members, int(room.PlayerLimit))
+	if reason == "" {
+		return nil
+	}
+	return &reason
 }
 
 // NewRoomUpdatedPayload keeps the event projection identical across request,
 // websocket disconnect, and sweeper paths.
-func NewRoomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int) RoomUpdatedPayload {
+func NewRoomUpdatedPayload(room repo.MultiRoom, members []repo.MultiMember, spectatorCount int, configs ...RoomProjectionConfig) RoomUpdatedPayload {
 	views := MemberViews(members)
 	capacity := RoomCapacity(len(views), int(room.PlayerLimit))
+	config := RoomProjectionConfig{StartBlockedReason: RelayStartBlockedReason(room, members)}
+	if len(configs) > 0 {
+		config = configs[0]
+		if config.StartBlockedReason == nil {
+			config.StartBlockedReason = RelayStartBlockedReason(room, members)
+		}
+	}
 	return RoomUpdatedPayload{
-		Format:                 RoomFormat(room.Format),
-		Mode:                   MultiplayerMode(room.Mode),
-		TurnSeconds:            int(room.TurnSeconds),
-		PlayerLimit:            capacity.PlayerLimit,
-		RaceEliminationEnabled: room.RaceEliminationEnabled,
-		MinPlayers:             capacity.MinPlayers,
-		PlayerCount:            capacity.PlayerCount,
-		AvailableSeats:         capacity.AvailableSeats,
-		Members:                views,
-		SpectatorCount:         spectatorCount,
+		Format:                  RoomFormat(room.Format),
+		Mode:                    MultiplayerMode(room.Mode),
+		TurnSeconds:             int(room.TurnSeconds),
+		PlayerLimit:             capacity.PlayerLimit,
+		RaceEliminationEnabled:  room.RaceEliminationEnabled,
+		RelayEliminationEnabled: config.RelayEliminationEnabled,
+		StartBlockedReason:      config.StartBlockedReason,
+		MinPlayers:              capacity.MinPlayers,
+		PlayerCount:             capacity.PlayerCount,
+		AvailableSeats:          capacity.AvailableSeats,
+		Members:                 views,
+		SpectatorCount:          spectatorCount,
 	}
 }
 

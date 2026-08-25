@@ -129,6 +129,11 @@ RoomInfo:
       type: boolean
       default: false
       description: race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
+    relayEliminationEnabled:
+      type: boolean
+      description: relay 4/6/8 人时是否启用淘汰；2 人对局始终按传统双人接力。
+    startBlockedReason:
+      $ref: "./multi-common.yaml#/StartBlockedReason"
     minPlayers:
       type: integer
       enum: [2]
@@ -247,6 +252,11 @@ RoomSnapshot:
     raceEliminationEnabled:
       type: boolean
       description: race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。
+    relayEliminationEnabled:
+      type: boolean
+      description: relay 4/6/8 人时是否启用淘汰；2 人对局始终按传统双人接力。
+    startBlockedReason:
+      $ref: "./multi-common.yaml#/StartBlockedReason"
     minPlayers:
       type: integer
       enum: [2]

@@ -3,6 +3,8 @@
 **类型**：功能/Web Issue  
 **优先级**：P1  
 **依赖**：MRX-004  
+**状态**：已完成
+
 **建议标签**：`type:feature` `area:web` `area:a11y` `area:test`
 
 **决策依据**：[房间配置与开局](./decisions.md#3-房间配置与开局)、[灰度与可观测性](./decisions.md#18-灰度与可观测性)
@@ -49,3 +51,26 @@
 ## 可能涉及的代码
 
 `apps/web/src/components/{MultiLobby.tsx,RoomLobby.tsx,PlayerLimitControl.tsx}`、mode-specific room settings components、`apps/web/src/config/multiplayerRollout.ts`、transport DTO adapter、相关 component/e2e tests。
+
+## 实施与验收记录（2026-08-25）
+
+本 Issue 已完成。创建页与房间大厅现分别维护 race/relay 草稿；relay 开启 Web rollout 后提供 2/4/6/8 人上限与独立淘汰开关，房主可在无人 ready 时用一次 PATCH 原子保存两项设置。大厅直接展示服务端投影的 `relayEliminationEnabled` 与 `startBlockedReason`，请求失败会同时回滚两项草稿并通过 live region 报错；2 人配置仍显示传统 BO 语义。关闭 relay Web rollout 时不显示或发送隐藏设置，双人创建和 ready 入口保持可用。
+
+主要交付面：
+
+- 新增无玩法语义的 `PlayerLimitControl`、`SettingSwitch`，race/relay adapter 分别约束 step 1 与 step 2，并由独立开关组件提供各自说明与状态。
+- `MultiLobby` 隔离 race/relay 人数和淘汰草稿；`RoomLobby` 使用权威响应回填、ready/busy 锁定与原子失败回滚，并移除 relay “固定 2 人”硬编码。
+- API client、`useRoom` reducer/snapshot 与 `RoomPage` 已贯通 `relayEliminationEnabled`、`startBlockedReason`；新增四个默认关闭的 API/Web rollout 环境变量。
+- 2/4/6/8 人 relay 大厅覆盖 desktop Chromium 与 Pixel 7 视觉基线；长昵称、ready/在线状态、空席、spectator 与聊天区无重叠或页面横向溢出。
+
+验收与验证：
+
+- 基线 `pnpm --filter @touhouflandre/web test` 为 33 files / 154 tests，通过；实现后同命令为 33 files / 172 tests，通过。
+- `pnpm --filter @touhouflandre/web typecheck`、`pnpm --filter @touhouflandre/web build`：通过。
+- `pnpm exec prettier --check <MRX-010 TypeScript files>`：通过；`.env.example` 无可推断的 Prettier parser，已由 `git diff --check` 覆盖空白检查。
+- `pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol`：通过。
+- `PLAYWRIGHT_USE_WEB_SERVER=0 pnpm --filter @touhouflandre/web exec playwright test e2e/multiplayer.spec.ts --grep "N 人接力房间设置"`：desktop/Pixel 7 共 14/14 通过；8 张截图逐一检查通过。
+- 完整 multiplayer E2E 为 46/48 通过；两项失败均为既有 `接力模式共享棋盘与轮次锁定` 在进入 playing 后等待旧 `round.started`，服务端 relay stage/encounter 已启动但 MRX-012 Web 棋盘尚未消费其投影。将服务端 `MULTI_N_PLAYER_RELAY_ENABLED`、`MULTI_RELAY_ELIMINATION_ENABLED` 关闭后该断言仍以相同方式失败；创建、加入、ready 与 `match.started` 均成功，因此不属于本 Issue 的创建页/大厅回归，游戏中棋盘继续明确留给 MRX-012。
+- `task db:migrate` 以 expand-only 方式应用现有 0015..0019；`go tool goose -dir migrations status` 确认数据库位于 version 19。未运行会清理旧题库行的 seed；现有题库版本 `aaa89ada`（36 部作品、139 名角色）足够完成 E2E。
+
+本 Issue 未修改 OpenAPI/WS 源契约或数据库 schema，复用 MRX-004 已交付字段与投影。回滚只需先关闭两个 `NEXT_PUBLIC_*` Web 开关并重新构建，再关闭两个 API 开关；已有房间数据保持可读，无需迁移回滚。MRX-012 的接力游戏中棋盘、分页、积分、轮空与排名仍未在此实现。

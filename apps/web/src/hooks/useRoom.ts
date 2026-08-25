@@ -61,6 +61,7 @@ type MatchView = Omit<
 type MemberView = components["schemas"]["MemberView"];
 type RoomSnapshot = components["schemas"]["RoomSnapshot"];
 type RoundView = components["schemas"]["RoundView"];
+type StartBlockedReason = components["schemas"]["StartBlockedReason"];
 import { ApiRequestError, api, roomWsUrl } from "../lib/api";
 import { ForegroundTimer } from "../stats/timer";
 import {
@@ -91,6 +92,8 @@ export interface RoomUiState {
     turnSeconds: number;
     playerLimit: number;
     raceEliminationEnabled: boolean;
+    relayEliminationEnabled?: boolean;
+    startBlockedReason?: StartBlockedReason;
     minPlayers: number;
     playerCount: number;
     availableSeats: number;
@@ -161,6 +164,10 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
               turnSeconds: payload.turnSeconds,
               playerLimit: payload.playerLimit,
               raceEliminationEnabled: payload.raceEliminationEnabled,
+              relayEliminationEnabled:
+                payload.relayEliminationEnabled ??
+                state.room.relayEliminationEnabled,
+              startBlockedReason: payload.startBlockedReason,
               minPlayers: payload.minPlayers,
               playerCount: payload.playerCount,
               availableSeats: payload.availableSeats,
@@ -499,6 +506,8 @@ export function applySnapshot(
       turnSeconds: snapshot.turnSeconds,
       playerLimit: snapshot.playerLimit,
       raceEliminationEnabled: snapshot.raceEliminationEnabled,
+      relayEliminationEnabled: snapshot.relayEliminationEnabled,
+      startBlockedReason: snapshot.startBlockedReason,
       minPlayers: snapshot.minPlayers,
       playerCount: snapshot.playerCount,
       availableSeats: snapshot.availableSeats,

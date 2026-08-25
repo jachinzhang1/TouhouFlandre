@@ -15,11 +15,8 @@ func (Module) PrepareRoom(config core.RoomConfig) (core.RoomConfig, error) {
 	if config.Mode != core.ModeRelay {
 		return core.RoomConfig{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: config.Mode, Detail: "relay mode is required"}
 	}
-	if config.PlayerLimit != legacy.RelayPlayerLimit {
-		return core.RoomConfig{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: config.Mode, Detail: "legacy relay requires exactly two player seats"}
-	}
-	if config.PlayerLimitSpecified {
-		return core.RoomConfig{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: config.Mode, Detail: "legacy relay player limit cannot be configured"}
+	if !legacy.ValidPlayerLimit(legacy.MultiplayerModeRelay, config.PlayerLimit) {
+		return core.RoomConfig{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: config.Mode, Detail: "relay player limit must be one of 2, 4, 6, or 8"}
 	}
 	if !legacy.ValidTurnSeconds(config.TurnSeconds) {
 		return core.RoomConfig{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: config.Mode, Detail: "turn seconds are invalid"}
@@ -28,17 +25,36 @@ func (Module) PrepareRoom(config core.RoomConfig) (core.RoomConfig, error) {
 }
 
 func (Module) ReadyRoster(roster []core.RosterMember, playerLimit int) bool {
-	if len(roster) != legacy.RelayPlayerLimit || playerLimit != legacy.RelayPlayerLimit {
-		return false
+	return (Module{}).ReadyDecision(roster, playerLimit).Allowed
+}
+
+func (Module) ReadyDecision(roster []core.RosterMember, playerLimit int) core.RoomStartDecision {
+	if len(roster) < legacy.MinPlayers {
+		return core.RoomStartDecision{Reason: core.StartBlockedNotEnoughPlayers}
+	}
+	if len(roster) > playerLimit {
+		return core.RoomStartDecision{Reason: core.StartBlockedNotEnoughPlayers}
+	}
+	if len(roster)%2 != 0 {
+		return core.RoomStartDecision{Reason: core.StartBlockedOddPlayerCount}
 	}
 	hasHost := false
 	for _, member := range roster {
-		if !member.Player || !member.Connected || !member.Ready {
-			return false
+		if !member.Player {
+			return core.RoomStartDecision{Reason: core.StartBlockedNotEnoughPlayers}
+		}
+		if !member.Connected {
+			return core.RoomStartDecision{Reason: core.StartBlockedPlayerDisconnected}
+		}
+		if !member.Ready {
+			return core.RoomStartDecision{Reason: core.StartBlockedPlayerNotReady}
 		}
 		hasHost = hasHost || member.Seat == 1
 	}
-	return hasHost
+	if !hasHost {
+		return core.RoomStartDecision{Reason: core.StartBlockedHostMissing}
+	}
+	return core.RoomStartDecision{Allowed: true}
 }
 
 func (Module) Plan(input core.MatchPlanInput) (core.MatchPlan, error) {
@@ -66,7 +82,11 @@ func (Module) Plan(input core.MatchPlanInput) (core.MatchPlan, error) {
 		plan.FirstTurnSeat = &firstTurn
 		plan.TurnDeadline = &turnDeadline
 	case 4, 6, 8:
-		plan.RuleSet = relay.FixedPointsRuleSet()
+		if input.RelayEliminationEnabled {
+			plan.RuleSet = relay.EliminationRuleSet()
+		} else {
+			plan.RuleSet = relay.FixedPointsRuleSet()
+		}
 		plan.MaxRounds = formatNumber
 	default:
 		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "relay roster must contain 2, 4, 6, or 8 players"}

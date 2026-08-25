@@ -161,7 +161,7 @@ func TestCapabilitiesRejectUnregisteredRaceRuleSet(t *testing.T) {
 	}
 }
 
-func TestLegacyRelayPolicyRejectsInvalidPersistedCapacity(t *testing.T) {
+func TestRelayPolicyAcceptsSupportedPersistedCapacity(t *testing.T) {
 	registry, err := assembly.Production()
 	if err != nil {
 		t.Fatal(err)
@@ -170,9 +170,11 @@ func TestLegacyRelayPolicyRejectsInvalidPersistedCapacity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = policy.PrepareRoom(core.RoomConfig{Mode: core.ModeRelay, PlayerLimit: 4, TurnSeconds: 60})
-	if !core.HasErrorCode(err, core.ErrorInvalidConfiguration) {
-		t.Fatalf("legacy relay invalid capacity error = %v", err)
+	if _, err = policy.PrepareRoom(core.RoomConfig{Mode: core.ModeRelay, PlayerLimit: 4, TurnSeconds: 60}); err != nil {
+		t.Fatalf("relay supported capacity error = %v", err)
+	}
+	if _, err = policy.PrepareRoom(core.RoomConfig{Mode: core.ModeRelay, PlayerLimit: 3, TurnSeconds: 60}); !core.HasErrorCode(err, core.ErrorInvalidConfiguration) {
+		t.Fatalf("relay odd capacity error = %v", err)
 	}
 }
 

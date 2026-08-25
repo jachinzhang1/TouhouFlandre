@@ -199,6 +199,40 @@ describe("roomReducer", () => {
     expect(state.room).toBeNull();
   });
 
+  it("keeps authoritative relay settings and start blockers from room updates", () => {
+    const state = roomReducer(
+      {
+        ...initialRoomState,
+        room: {
+          ...roomFixture("lobby"),
+          mode: "relay",
+          playerLimit: 4,
+        },
+      },
+      event("room.updated", 1, {
+        format: "bo3",
+        mode: "relay",
+        turnSeconds: 60,
+        playerLimit: 6,
+        raceEliminationEnabled: false,
+        relayEliminationEnabled: true,
+        startBlockedReason: "odd_player_count",
+        minPlayers: 2,
+        playerCount: 3,
+        availableSeats: 3,
+        members: membersFixture,
+        spectatorCount: 1,
+      }),
+    );
+
+    expect(state.room).toMatchObject({
+      mode: "relay",
+      playerLimit: 6,
+      relayEliminationEnabled: true,
+      startBlockedReason: "odd_player_count",
+    });
+  });
+
   it("resets score and history on match.started", () => {
     let state: RoomUiState = {
       ...playerState(),
@@ -624,6 +658,45 @@ describe("roomReducer", () => {
 });
 
 describe("applySnapshot", () => {
+  it("restores relay room settings and the authoritative blocker", () => {
+    const snapshot = {
+      roomId: "room-1",
+      roomCode: "ABC123",
+      format: "bo3",
+      mode: "relay",
+      turnSeconds: 60,
+      playerLimit: 8,
+      raceEliminationEnabled: false,
+      relayEliminationEnabled: true,
+      startBlockedReason: "player_disconnected",
+      minPlayers: 2,
+      playerCount: 4,
+      availableSeats: 4,
+      status: "lobby",
+      expiresAt: "2026-08-06T12:30:00Z",
+      viewer: {
+        memberId: "member-host",
+        role: "player",
+        seat: 1,
+        displayName: "host",
+        status: "connected",
+      },
+      members: membersFixture,
+      spectatorCount: 0,
+      gameSequence: 9,
+      events: [],
+    };
+
+    const state = applySnapshot(initialRoomState, snapshot as never);
+
+    expect(state.room).toMatchObject({
+      playerLimit: 8,
+      relayEliminationEnabled: true,
+      startBlockedReason: "player_disconnected",
+    });
+    expect(state.appliedGameSequence).toBe(9);
+  });
+
   it("applies snapshot state and replays events", () => {
     const snapshot = {
       roomId: "room-1",

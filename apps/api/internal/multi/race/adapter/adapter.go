@@ -44,6 +44,29 @@ func (Module) ReadyRoster(roster []core.RosterMember, playerLimit int) bool {
 	return hasHost
 }
 
+func (Module) ReadyDecision(roster []core.RosterMember, playerLimit int) core.RoomStartDecision {
+	if len(roster) < legacy.MinPlayers {
+		return core.RoomStartDecision{Reason: core.StartBlockedNotEnoughPlayers}
+	}
+	if len(roster) > playerLimit {
+		return core.RoomStartDecision{Reason: core.StartBlockedNotEnoughPlayers}
+	}
+	host := false
+	for _, member := range roster {
+		if !member.Connected {
+			return core.RoomStartDecision{Reason: core.StartBlockedPlayerDisconnected}
+		}
+		if !member.Ready {
+			return core.RoomStartDecision{Reason: core.StartBlockedPlayerNotReady}
+		}
+		host = host || member.Seat == 1
+	}
+	if !host {
+		return core.RoomStartDecision{Reason: core.StartBlockedHostMissing}
+	}
+	return core.RoomStartDecision{Allowed: true}
+}
+
 func (Module) Plan(input core.MatchPlanInput) (core.MatchPlan, error) {
 	if input.Mode != core.ModeRace || input.RosterSize < legacy.MinPlayers {
 		return core.MatchPlan{}, &core.DomainError{Code: core.ErrorInvalidConfiguration, Mode: input.Mode, Detail: "race roster is invalid"}

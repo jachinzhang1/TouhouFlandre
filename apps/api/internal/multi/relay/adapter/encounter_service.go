@@ -389,7 +389,11 @@ func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []r
 		if err != nil {
 			return false, err
 		}
-		if err := legacy.AppendEvent(ctx, q, roomID, legacy.EventRoomUpdated, legacy.NewRoomUpdatedPayload(room, membersAfter, int(spectators))); err != nil {
+		relayConfig, err := legacy.LoadRelayRoomConfig(ctx, q, roomID)
+		if err != nil {
+			return false, err
+		}
+		if err := legacy.AppendEvent(ctx, q, roomID, legacy.EventRoomUpdated, legacy.NewRoomUpdatedPayload(room, membersAfter, int(spectators), legacy.RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 			return false, err
 		}
 	}

@@ -1334,8 +1334,10 @@ func (q *Queries) ListRelayMatchPlayerStates(ctx context.Context, matchID string
 const listRelaySettlementCandidates = `-- name: ListRelaySettlementCandidates :many
 SELECT stage.id
 FROM multi_relay_stage AS stage
+JOIN multi_match AS match ON match.id = stage.match_id
 WHERE stage.status <> 'ended'
   AND stage.settlement_marker IS NULL
+  AND match.status = 'playing'
   AND (
       SELECT count(*)
       FROM multi_relay_encounter AS encounter

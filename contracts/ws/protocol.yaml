@@ -162,6 +162,11 @@ events:
           maximum: 8
         raceEliminationEnabled:
           type: boolean
+        relayEliminationEnabled:
+          type: boolean
+        startBlockedReason:
+          type: string
+          enum: [not_enough_players, odd_player_count, player_not_ready, player_disconnected, host_missing, invalid_player_count]
         minPlayers:
           type: integer
           enum: [2]

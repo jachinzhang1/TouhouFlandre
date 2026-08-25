@@ -51,14 +51,18 @@ type Option func(*Server)
 
 // RolloutConfig 定义 MPX-010 灰度开关。默认关闭新增暴露面，测试/灰度环境显式开启。
 type RolloutConfig struct {
-	NPlayerRaceEnabled bool
-	ChatSendEnabled    bool
+	NPlayerRaceEnabled      bool
+	NPlayerRelayEnabled     bool
+	RelayEliminationEnabled bool
+	ChatSendEnabled         bool
 }
 
 func rolloutConfigFromEnv() RolloutConfig {
 	return RolloutConfig{
-		NPlayerRaceEnabled: config.MultiNPlayerRaceEnabled(),
-		ChatSendEnabled:    config.MultiChatSendEnabled(),
+		NPlayerRaceEnabled:      config.MultiNPlayerRaceEnabled(),
+		NPlayerRelayEnabled:     config.MultiNPlayerRelayEnabled(),
+		RelayEliminationEnabled: config.MultiRelayEliminationEnabled(),
+		ChatSendEnabled:         config.MultiChatSendEnabled(),
 	}
 }
 

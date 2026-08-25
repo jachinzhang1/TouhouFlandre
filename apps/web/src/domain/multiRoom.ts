@@ -104,6 +104,39 @@ export const MULTIPLAYER_MODE_DESCRIPTIONS: Record<MultiplayerMode, string> = {
   relay: "共用一栏轮流猜，猜中者赢下本局。",
 };
 
+export const PLAYER_LIMIT_ADAPTERS = {
+  race: {
+    allowedValues: [2, 3, 4, 5, 6, 7, 8],
+    min: 2,
+    max: 8,
+    step: 1,
+  },
+  relay: {
+    allowedValues: [2, 4, 6, 8],
+    min: 2,
+    max: 8,
+    step: 2,
+  },
+} as const satisfies Record<
+  MultiplayerMode,
+  {
+    allowedValues: readonly number[];
+    min: number;
+    max: number;
+    step: number;
+  }
+>;
+
+export function minimumPlayerLimitFor(
+  mode: MultiplayerMode,
+  playerCount: number,
+): number {
+  const adapter = PLAYER_LIMIT_ADAPTERS[mode];
+  return (
+    adapter.allowedValues.find((limit) => limit >= playerCount) ?? adapter.max
+  );
+}
+
 export function raceSettingsSummary(
   format: MultiRoomFormat,
   playerLimit: number,
@@ -116,6 +149,19 @@ export function raceSettingsSummary(
   }
   return `${playerLimit} 人 · 积分赛 · ${
     raceEliminationEnabled ? "中途末位淘汰" : "不淘汰"
+  }`;
+}
+
+export function relaySettingsSummary(
+  format: MultiRoomFormat,
+  playerLimit: number,
+  relayEliminationEnabled: boolean,
+): string {
+  if (playerLimit === 2) {
+    return `2 人 · 接力 · ${ROOM_FORMAT_SHORT[format]}`;
+  }
+  return `${playerLimit} 人 · 接力 · ${
+    relayEliminationEnabled ? "淘汰赛" : "固定积分"
   }`;
 }
 

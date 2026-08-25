@@ -314,8 +314,8 @@ export interface paths {
         head?: never;
         /**
          * 更新房间设置
-         * @description 仅 connected 的 lobby 房主可用。可提交 playerLimit、raceEliminationEnabled 任一或二者；
-         *     race 的 playerLimit 可设为 2..8，且不得低于当前玩家数。任一玩家 ready 或 match 已创建后配置锁定，
+         * @description 仅 connected 的 lobby 房主可用。可提交 playerLimit 与当前 mode 对应的淘汰字段；
+         *     race 的 playerLimit 可设为 2..8，relay 只接受 2/4/6/8，且不得低于当前玩家数。任一玩家 ready 或 match 已创建后配置锁定，
          *     所有玩家取消准备后可再次修改。降容时按旧 seat、memberId 稳定压紧非房主 seat，
          *     memberId、token 和房主不变；修改设置本身不触发开局。
          */
@@ -936,6 +936,9 @@ export interface components {
              * @default false
              */
             raceEliminationEnabled: boolean;
+            /** @description relay 4/6/8 人时是否启用淘汰；2 人对局始终按传统双人接力。 */
+            relayEliminationEnabled?: boolean;
+            startBlockedReason?: components["schemas"]["StartBlockedReason"];
             /**
              * @description 服务端固定的最少开局玩家数。
              * @enum {integer}
@@ -990,6 +993,9 @@ export interface components {
             playerLimit: number;
             /** @description race 3 人及以上时是否启用积分淘汰；2 人对局始终按双人 BO。 */
             raceEliminationEnabled: boolean;
+            /** @description relay 4/6/8 人时是否启用淘汰；2 人对局始终按传统双人接力。 */
+            relayEliminationEnabled?: boolean;
+            startBlockedReason?: components["schemas"]["StartBlockedReason"];
             /**
              * @description 服务端固定的最少开局玩家数。
              * @enum {integer}
@@ -1159,6 +1165,11 @@ export interface components {
             version: string;
             characters: components["schemas"]["CharacterSearchResult"][];
         };
+        /**
+         * @description 服务端计算的当前开局阻塞原因；缺省表示没有可公开的额外原因。
+         * @enum {string}
+         */
+        StartBlockedReason: "not_enough_players" | "odd_player_count" | "player_not_ready" | "player_disconnected" | "host_missing" | "invalid_player_count";
         /** @enum {string} */
         ScoringMode: "wins" | "points" | "placement";
         /** @enum {string} */
@@ -1838,7 +1849,7 @@ export interface operations {
                     /** @description 可选玩法模式；缺省为 race（竞速）。 */
                     mode?: components["schemas"]["MultiplayerMode"];
                     /**
-                     * @description race 玩家容量上限；缺省为 2。relay 不接受该字段并固定为 2 人。
+                     * @description race 上限为 2..8；relay 上限只接受 2/4/6/8；缺省为 2。
                      * @default 2
                      */
                     playerLimit?: number;
@@ -1847,6 +1858,11 @@ export interface operations {
                      * @default false
                      */
                     raceEliminationEnabled?: boolean;
+                    /**
+                     * @description relay 4/6/8 人时是否启用淘汰；2 人对局始终按传统双人接力。
+                     * @default false
+                     */
+                    relayEliminationEnabled?: boolean;
                     /**
                      * @description 接力模式单用户猜测时限（秒）。竞速模式忽略该值。
                      * @default 60
@@ -2113,6 +2129,7 @@ export interface operations {
                 "application/json": {
                     playerLimit?: number;
                     raceEliminationEnabled?: boolean;
+                    relayEliminationEnabled?: boolean;
                 };
             };
         };

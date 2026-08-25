@@ -727,7 +727,11 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount))); err != nil {
+	relayConfig, err := LoadRelayRoomConfig(ctx, q, room.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -811,7 +815,11 @@ func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.Mult
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount))); err != nil {
+	relayConfig, err := LoadRelayRoomConfig(ctx, q, lockedRoom.ID)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {

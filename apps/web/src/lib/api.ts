@@ -140,6 +140,7 @@ export const api = {
     mode: MultiplayerMode;
     playerLimit?: number;
     raceEliminationEnabled?: boolean;
+    relayEliminationEnabled?: boolean;
     turnSeconds: RelayTurnSeconds;
     displayName?: string;
     questionScope?: QuestionScopeConfig;
@@ -176,6 +177,7 @@ export const api = {
     body: {
       playerLimit?: number;
       raceEliminationEnabled?: boolean;
+      relayEliminationEnabled?: boolean;
     },
   ) =>
     requestApi(

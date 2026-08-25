@@ -71,13 +71,105 @@ describe("MultiLobby", () => {
     });
   });
 
-  it("omits race capacity for relay creation", async () => {
+  it("hides and omits relay settings while its rollout is closed", async () => {
     render(<MultiLobby />);
     fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    expect(
+      screen.queryByRole("slider", { name: "接力玩家上限（2/4/6/8）" }),
+    ).toBeNull();
+    expect(screen.queryByRole("switch", { name: "淘汰" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
     await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
     const body = vi.mocked(api.createRoom).mock.calls[0][0];
     expect(body.mode).toBe("relay");
     expect(body).not.toHaveProperty("playerLimit");
+    expect(body).not.toHaveProperty("relayEliminationEnabled");
+  });
+
+  it("creates an expanded relay with an even limit and its own elimination field", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED", "true");
+    render(<MultiLobby />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    const limit = screen.getByRole("slider", {
+      name: "接力玩家上限（2/4/6/8）",
+    });
+    expect(limit.getAttribute("min")).toBe("2");
+    expect(limit.getAttribute("max")).toBe("8");
+    expect(limit.getAttribute("step")).toBe("2");
+    const elimination = screen.getByRole("switch", { name: "淘汰" });
+    expect((elimination as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(limit, { target: { value: "6" } });
+    fireEvent.click(elimination);
+    expect(screen.getByText("6 人 · 接力 · 淘汰赛")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
+
+    await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
+    expect(vi.mocked(api.createRoom).mock.calls[0][0]).toMatchObject({
+      mode: "relay",
+      playerLimit: 6,
+      relayEliminationEnabled: true,
+    });
+    expect(vi.mocked(api.createRoom).mock.calls[0][0]).not.toHaveProperty(
+      "raceEliminationEnabled",
+    );
+  });
+
+  it("keeps race and relay drafts isolated while switching modes", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED", "true");
+    render(<MultiLobby />);
+
+    fireEvent.change(screen.getByLabelText("玩家上限（2-8）"), {
+      target: { value: "5" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: "淘汰" }));
+    fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    fireEvent.change(
+      screen.getByRole("slider", { name: "接力玩家上限（2/4/6/8）" }),
+      { target: { value: "4" } },
+    );
+    fireEvent.click(screen.getByRole("switch", { name: "淘汰" }));
+    fireEvent.click(screen.getByRole("radio", { name: /竞速/ }));
+
+    expect(
+      (screen.getByLabelText("玩家上限（2-8）") as HTMLInputElement).value,
+    ).toBe("5");
+    expect(
+      (
+        screen.getByRole("switch", { name: "淘汰" }) as HTMLElement
+      ).getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
+
+    await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
+    const body = vi.mocked(api.createRoom).mock.calls[0][0];
+    expect(body).toMatchObject({
+      mode: "race",
+      playerLimit: 5,
+      raceEliminationEnabled: true,
+    });
+    expect(body).not.toHaveProperty("relayEliminationEnabled");
+  });
+
+  it("does not send a hidden relay elimination setting", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED", "true");
+    vi.stubEnv("NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED", "false");
+    render(<MultiLobby />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /接力/ }));
+    fireEvent.change(
+      screen.getByRole("slider", { name: "接力玩家上限（2/4/6/8）" }),
+      { target: { value: "8" } },
+    );
+    expect(screen.queryByRole("switch", { name: "淘汰" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
+
+    await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
+    const body = vi.mocked(api.createRoom).mock.calls[0][0];
+    expect(body).toMatchObject({ mode: "relay", playerLimit: 8 });
+    expect(body).not.toHaveProperty("relayEliminationEnabled");
   });
 });

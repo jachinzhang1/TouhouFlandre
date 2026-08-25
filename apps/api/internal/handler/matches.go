@@ -66,21 +66,26 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		return internalError(err)
 	}
 	rosterSize := len(members)
+	relayConfig, err := s.relayRoomConfigForState(ctx, room, q)
+	if err != nil {
+		return internalError(err)
+	}
 	factory, err := s.modeRegistry.MatchFactory(modeFromStored(room.Mode))
 	if err != nil {
 		return internalError(err)
 	}
 	plan, err := factory.Plan(core.MatchPlanInput{
-		Mode:                   modeFromStored(room.Mode),
-		Format:                 string(format),
-		RosterSize:             rosterSize,
-		RaceEliminationEnabled: room.RaceEliminationEnabled,
-		MaxRoundsFactor:        s.timing.MaxRoundsFactor,
-		Now:                    now,
-		RoundCountdown:         s.timing.RoundCountdown,
-		RoundSeconds:           s.timing.RoundSeconds,
-		RaceRoundSeconds:       s.timing.RaceRoundSeconds,
-		TurnSeconds:            int(room.TurnSeconds),
+		Mode:                    modeFromStored(room.Mode),
+		Format:                  string(format),
+		RosterSize:              rosterSize,
+		RaceEliminationEnabled:  room.RaceEliminationEnabled,
+		RelayEliminationEnabled: relayConfig.EliminationEnabled,
+		MaxRoundsFactor:         s.timing.MaxRoundsFactor,
+		Now:                     now,
+		RoundCountdown:          s.timing.RoundCountdown,
+		RoundSeconds:            s.timing.RoundSeconds,
+		RaceRoundSeconds:        s.timing.RaceRoundSeconds,
+		TurnSeconds:             int(room.TurnSeconds),
 	})
 	if err != nil {
 		return internalError(err)
@@ -90,14 +95,15 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	}
 	if len(plan.RuleConfigSnapshot) == 0 {
 		plan.RuleConfigSnapshot, err = json.Marshal(map[string]any{
-			"mode":                   room.Mode,
-			"format":                 string(format),
-			"turnSeconds":            room.TurnSeconds,
-			"rosterSize":             rosterSize,
-			"targetWins":             plan.TargetWins,
-			"maxRounds":              plan.MaxRounds,
-			"questionScope":          scope,
-			"raceEliminationEnabled": room.RaceEliminationEnabled,
+			"mode":                    room.Mode,
+			"format":                  string(format),
+			"turnSeconds":             room.TurnSeconds,
+			"rosterSize":              rosterSize,
+			"targetWins":              plan.TargetWins,
+			"maxRounds":               plan.MaxRounds,
+			"questionScope":           scope,
+			"raceEliminationEnabled":  room.RaceEliminationEnabled,
+			"relayEliminationEnabled": relayConfig.EliminationEnabled,
 		})
 		if err != nil {
 			return internalError(err)

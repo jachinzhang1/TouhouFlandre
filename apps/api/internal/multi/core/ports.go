@@ -48,11 +48,12 @@ func NewRandomSource() RandomSource {
 }
 
 type RoomConfig struct {
-	Mode                   Mode
-	PlayerLimit            int
-	PlayerLimitSpecified   bool
-	RaceEliminationEnabled bool
-	TurnSeconds            int
+	Mode                    Mode
+	PlayerLimit             int
+	PlayerLimitSpecified    bool
+	RaceEliminationEnabled  bool
+	RelayEliminationEnabled bool
+	TurnSeconds             int
 }
 
 type RosterMember struct {
@@ -65,19 +66,36 @@ type RosterMember struct {
 type RoomPolicy interface {
 	PrepareRoom(RoomConfig) (RoomConfig, error)
 	ReadyRoster([]RosterMember, int) bool
+	ReadyDecision([]RosterMember, int) RoomStartDecision
+}
+
+type StartBlockedReason string
+
+const (
+	StartBlockedNotEnoughPlayers   StartBlockedReason = "not_enough_players"
+	StartBlockedOddPlayerCount     StartBlockedReason = "odd_player_count"
+	StartBlockedPlayerNotReady     StartBlockedReason = "player_not_ready"
+	StartBlockedPlayerDisconnected StartBlockedReason = "player_disconnected"
+	StartBlockedHostMissing        StartBlockedReason = "host_missing"
+)
+
+type RoomStartDecision struct {
+	Allowed bool
+	Reason  StartBlockedReason
 }
 
 type MatchPlanInput struct {
-	Mode                   Mode
-	Format                 string
-	RosterSize             int
-	RaceEliminationEnabled bool
-	MaxRoundsFactor        int
-	Now                    time.Time
-	RoundCountdown         time.Duration
-	RoundSeconds           time.Duration
-	RaceRoundSeconds       time.Duration
-	TurnSeconds            int
+	Mode                    Mode
+	Format                  string
+	RosterSize              int
+	RaceEliminationEnabled  bool
+	RelayEliminationEnabled bool
+	MaxRoundsFactor         int
+	Now                     time.Time
+	RoundCountdown          time.Duration
+	RoundSeconds            time.Duration
+	RaceRoundSeconds        time.Duration
+	TurnSeconds             int
 }
 
 type MatchPlan struct {

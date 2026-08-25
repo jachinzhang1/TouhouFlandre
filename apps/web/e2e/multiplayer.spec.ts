@@ -22,6 +22,11 @@ type CreateRaceRosterOptions = {
   raceEliminationEnabled?: boolean;
 };
 
+type CreateRelayRosterOptions = {
+  playerLimit?: 2 | 4 | 6 | 8;
+  relayEliminationEnabled?: boolean;
+};
+
 async function createRaceRoster(
   request: APIRequestContext,
   playerCount: number,
@@ -65,6 +70,45 @@ async function createRaceRoster(
       memberId: joined.viewer.memberId,
       role: joined.viewer.role,
     });
+  }
+  return credentials;
+}
+
+async function createRelayRoster(
+  request: APIRequestContext,
+  playerCount: number,
+  options: CreateRelayRosterOptions = {},
+): Promise<RoomCredential[]> {
+  const playerLimit = options.playerLimit ?? (playerCount as 2 | 4 | 6 | 8);
+  const createdResponse = await request.post("/api/rooms", {
+    data: {
+      format: "bo3",
+      mode: "relay",
+      playerLimit,
+      turnSeconds: 60,
+      displayName: "Relay Player 01",
+      relayEliminationEnabled: options.relayEliminationEnabled ?? false,
+    },
+  });
+  expect(createdResponse.status()).toBe(201);
+  const created = await createdResponse.json();
+  const credentials: RoomCredential[] = [
+    {
+      roomId: created.roomId,
+      roomCode: created.roomCode,
+      guestToken: created.guestToken,
+      memberId: created.viewer.memberId,
+      role: created.viewer.role,
+    },
+  ];
+  for (let index = 2; index <= playerCount; index += 1) {
+    credentials.push(
+      await joinCredential(
+        request,
+        created.roomCode,
+        `Relay Player ${String(index).padStart(2, "0")}`,
+      ),
+    );
   }
   return credentials;
 }
@@ -575,6 +619,128 @@ test.describe("多人聊天发布闸门", () => {
       ]);
     }
   });
+});
+
+test.describe("N 人接力房间设置", () => {
+  test("创建页按 2 人步进并只发送 relay 设置", async ({ page }) => {
+    await page.goto("/multi");
+    await page.locator("label", { hasText: "接力" }).click();
+    const range = page.getByRole("slider", {
+      name: "接力玩家上限（2/4/6/8）",
+    });
+    await expect(range).toHaveAttribute("min", "2");
+    await expect(range).toHaveAttribute("max", "8");
+    await expect(range).toHaveAttribute("step", "2");
+    await expect(range).toHaveValue("2");
+    await range.focus();
+    await range.press("ArrowRight");
+    await expect(range).toHaveValue("4");
+    await page.getByRole("switch", { name: "淘汰" }).click();
+
+    const requestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname === "/api/rooms",
+    );
+    await page.getByRole("button", { name: "创建房间" }).click();
+    const createRequest = await requestPromise;
+    const body = createRequest.postDataJSON();
+    expect(body).toMatchObject({
+      mode: "relay",
+      playerLimit: 4,
+      relayEliminationEnabled: true,
+    });
+    expect(body).not.toHaveProperty("raceEliminationEnabled");
+    await page.waitForURL(/\/multi\/room\/[A-Z2-9]{6}/);
+  });
+
+  test("房主原子保存两项 relay 设置并在刷新后恢复", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 2, { playerLimit: 4 });
+    await enterRoom(page, roster[0]);
+
+    const range = page.getByRole("slider", { name: "玩家上限" });
+    await expect(range).toHaveValue("4");
+    await range.focus();
+    await range.press("ArrowRight");
+    await expect(range).toHaveValue("6");
+    await page.getByRole("switch", { name: "淘汰" }).click();
+
+    const requestPromise = page.waitForRequest(
+      (roomRequest) =>
+        roomRequest.method() === "PATCH" &&
+        new URL(roomRequest.url()).pathname.endsWith("/settings"),
+    );
+    await page.getByRole("button", { name: "应用" }).click();
+    const settingsRequest = await requestPromise;
+    expect(settingsRequest.postDataJSON()).toEqual({
+      playerLimit: 6,
+      relayEliminationEnabled: true,
+    });
+    await expect(page.getByText("6 人 · 接力 · 淘汰赛")).toBeVisible();
+
+    await page.reload();
+    await expect(range).toHaveValue("6");
+    await expect(page.getByRole("switch", { name: "淘汰" })).toBeChecked();
+  });
+
+  test("奇数玩家全员准备时只显示服务端阻塞原因", async ({ page, request }) => {
+    const roster = await createRelayRoster(request, 3, { playerLimit: 4 });
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+
+    await expect(page.getByText(/接力需要偶数玩家才能开始/)).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText(/对局即将开始/)).toHaveCount(0);
+    await expect(page.getByText(/第 1 局/)).toHaveCount(0);
+  });
+
+  for (const count of [2, 4, 6, 8]) {
+    test(`${count} 人接力大厅在桌面和移动端保持可读`, async ({
+      page,
+      request,
+    }) => {
+      const roster = await createRelayRoster(request, count, {
+        playerLimit: 8,
+      });
+      if (count === 8) {
+        const spectator = await joinCredential(
+          request,
+          roster[0].roomCode,
+          "Relay Spectator",
+        );
+        expect(spectator.role).toBe("spectator");
+      }
+      await enterRoom(page, roster[0]);
+
+      await expect(
+        page.getByText(`当前玩家 ${count}/8`, { exact: false }),
+      ).toBeVisible();
+      await expect(page.locator("[data-room-member]")).toHaveCount(count);
+      for (let index = 1; index <= count; index += 1) {
+        await expect(
+          page.getByText(
+            `Relay Player ${String(index).padStart(2, "0")}${index === 1 ? "（我）" : ""}`,
+          ),
+        ).toBeVisible();
+      }
+      if (count === 8) {
+        await expect(page.getByText(/观战 1/)).toBeVisible();
+      } else {
+        await expect(page.getByText(`剩余席位 ${8 - count}`)).toBeVisible();
+      }
+      await expectNoHorizontalOverflow(page);
+      await prepareVisualSnapshot(page);
+      await expect(page).toHaveScreenshot(`relay-${count}-lobby.png`, {
+        animations: "disabled",
+        fullPage: true,
+        mask: [page.locator("[data-room-code]")],
+      });
+    });
+  }
 });
 
 test.describe("N 人竞速扩展", () => {

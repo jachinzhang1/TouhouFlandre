@@ -17,6 +17,17 @@ MultiplayerMode:
     - race
     - relay
 
+StartBlockedReason:
+  type: string
+  description: 服务端计算的当前开局阻塞原因；缺省表示没有可公开的额外原因。
+  enum:
+    - not_enough_players
+    - odd_player_count
+    - player_not_ready
+    - player_disconnected
+    - host_missing
+    - invalid_player_count
+
 RoomStatus:
   type: string
   description: 房间生命周期状态：lobby（等待加入）→ playing → finished → closed；closed 为终态。
