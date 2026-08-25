@@ -4,29 +4,29 @@
 
 ## 发布状态模板
 
-| 项目                  | 状态   | 记录                             |
-| --------------------- | ------ | -------------------------------- |
-| MRX-001 基线          | 已记录 | 2026-08-23；E2E 34/34            |
-| 模块边界/装配检查     | 已记录 | 2026-08-23；MRX-002 full/race-only/fake-mode 与 AST 检查通过 |
-| expand migration 演练 | 待执行 | 旧版本、目标版本、耗时、数据校验 |
-| WS v2 排空 / v3 切换  | 待执行 | 停止新建时间、剩余房间、刷新验证 |
-| 自动化矩阵            | 待执行 | 命令与报告链接                   |
-| 并发/负载             | 待执行 | 样本、p95/p99、锁等待、错误率    |
-| 安全审计              | 待执行 | P0/P1 必须为 0                   |
-| 可访问性/视觉         | 待执行 | desktop/Pixel 7 截图与 axe 结果  |
-| 灰度/回滚             | 待执行 | flag 组合、负责人、时间窗        |
-| 稳定文档/公告         | 待执行 | 评审人与发布时间                 |
+| 项目                  | 状态   | 记录                                                                                                   |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| MRX-001 基线          | 已记录 | 2026-08-23；E2E 34/34                                                                                  |
+| 模块边界/装配检查     | 已验证 | 2026-08-25；full/race-only/relay-only/fake-mode 与静态边界检查通过，race-only SQL tracer 无 relay 查询 |
+| expand migration 演练 | 已验证 | 一次性 PostgreSQL；0014 -> 0019 `135.349ms`，回退应用版本后重放 `76.301ms`，旧行与 v3 数据均保留       |
+| WS v2 排空 / v3 切换  | 已演练 | v2 明确收到 refresh_required；v3 sequence/cursor/replay/sync.complete 自动化通过；未操作生产房间       |
+| 自动化矩阵            | 已验证 | 合同、TS/Go、Web 184、浏览器 `73 passed / 1 expected skip`；逐项证据见 test-matrix                     |
+| 并发/负载             | 已验证 | 8+32 fan-out、20 action `p95/p99=99.824ms`；100-stage history `p95=19.184ms`；deadlock/重复结算为 0    |
+| 安全审计              | 已验证 | 跨 room/encounter、答案、日志/metrics、限流、XSS、WS 门禁通过；P0/P1=0                                 |
+| 可访问性/视觉         | 已验证 | desktop/Pixel 7 的 2/4/6/8 lobby/stage baseline、axe、键盘、200% zoom、reduced-motion 通过             |
+| 灰度/回滚             | 已演练 | 多人 relay 固定积分和淘汰赛 API/Web 入口默认开启；grandfather 自动化通过；生产执行人/提交/时间窗待实际发布流程填写 |
+| 稳定文档/公告         | 已完成 | 稳定玩法、架构、部署、配置、监控和 `2026-08-25-multiplayer-relay-preview.md` 已同步                    |
 
 ## 灰度开关
 
-开发和初次合并阶段建议默认关闭，完成本清单后再决定生产默认值。服务端永远是最终授权边界；Web flag 只控制入口。
+多人 relay 固定积分和淘汰赛入口默认开启；服务端永远是最终授权边界，Web flag 只控制入口。发生灰度暂停时，可分别关闭对应 API/Web flag。
 
 | 环境变量                                      | 初始默认 | 作用                                              |
 | --------------------------------------------- | -------: | ------------------------------------------------- |
-| `MULTI_N_PLAYER_RELAY_ENABLED`                |  `false` | 是否允许新建/调高 `playerLimit > 2` 的 relay 房间 |
-| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED`    |  `false` | 是否显示 relay 多人上限和对应状态 UI              |
-| `MULTI_RELAY_ELIMINATION_ENABLED`             |  `false` | 是否允许新建/修改为多人 relay 淘汰配置            |
-| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` |  `false` | 是否显示并启用淘汰 switch                         |
+| `MULTI_N_PLAYER_RELAY_ENABLED`                |  `true`  | 是否允许新建/调高 `playerLimit > 2` 的 relay 房间 |
+| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED`    | `true`  | 是否显示 relay 多人上限和对应状态 UI              |
+| `MULTI_RELAY_ELIMINATION_ENABLED`             |  `true`  | 是否允许新建/修改为多人 relay 淘汰配置            |
+| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` |  `true`  | 是否显示并启用淘汰 switch                         |
 
 关闭 flag 只阻止新的配置暴露：已经进入 lobby 且保存了多人设置的房间、已经 playing 的 match 和 finished/rematch 恢复必须由能解释其 `RuleSetRef` 的当前 binary 安全完成，不能中途改变规则集。紧急应用回滚到不理解 WS v3 的旧 binary 前，必须先阻止新建并排空/关闭 v3 房间。
 
@@ -108,29 +108,29 @@ pnpm --filter @touhouflandre/web test:e2e e2e/multiplayer.spec.ts
 
 ## 安全审计
 
-- [ ] guess/pass/forfeit 每次重新校验 token、room、match、stage、encounter membership 和 turn capability。
-- [ ] 伪造其他 encounterId、其他 roomId、旧 stageIndex、淘汰/bye/spectator 身份均稳定拒绝。
-- [ ] 进行中 answer 不出现在 REST、WS、snapshot、history、cursor、错误、结构化日志、metrics label 或前端 DOM。
-- [ ] terminal answer 只属于对应 encounter；同 stage 其他进行中 answer 仍隐藏。
-- [ ] relay 完整标签可见是显式 allow policy；race 匿名矩阵没有因共享 projector 回归。
-- [ ] core 不解析 mode payload；race projector 不查询 relay 表，relay projector 不 import race 匿名矩阵实现。
-- [ ] 未知/缺失 `RuleSetRef` 明确拒绝，不能回退到 `wins`、`points` 或当前 relay 默认策略。
-- [ ] guest token/token hash、昵称和内部 ID 不进入本地统计导出；日志不记录 token 或未揭示答案。
-- [ ] chat 仍按 player/spectator channel 授权，role/capability 变化不会越权回放。
-- [ ] Web 对昵称、历史标签和 chat 继续按纯文本渲染，XSS payload 不注入 DOM。
-- [ ] WS Origin、subprotocol、hello 鉴权、read limit、send queue 和限流有效。
+- [x] guess/pass/forfeit 每次重新校验 token、room、match、stage、encounter membership 和 turn capability。
+- [x] 伪造其他 encounterId、其他 roomId、旧 stageIndex、淘汰/bye/spectator 身份均稳定拒绝。
+- [x] 进行中 answer 不出现在 REST、WS、snapshot、history、cursor、错误、结构化日志、metrics label 或前端 DOM。
+- [x] terminal answer 只属于对应 encounter；同 stage 其他进行中 answer 仍隐藏。
+- [x] relay 完整标签可见是显式 allow policy；race 匿名矩阵没有因共享 projector 回归。
+- [x] core 不解析 mode payload；race projector 不查询 relay 表，relay projector 不 import race 匿名矩阵实现。
+- [x] 未知/缺失 `RuleSetRef` 明确拒绝，不能回退到 `wins`、`points` 或当前 relay 默认策略。
+- [x] guest token/token hash、昵称和内部 ID 不进入本地统计导出；日志不记录 token 或未揭示答案。
+- [x] chat 仍按 player/spectator channel 授权，role/capability 变化不会越权回放。
+- [x] Web 对昵称、历史标签和 chat 继续按纯文本渲染，XSS payload 不注入 DOM。
+- [x] WS Origin、subprotocol、hello 鉴权、read limit、send queue 和限流有效。
 
 任何 P0/P1 越权、答案泄漏或结算重复都阻止发布；不能以低发生概率接受。
 
 ## Web 与可访问性
 
-- [ ] 2/4/6/8 人大厅、relay fixed_points/elimination、bye、near-death、eliminated、finished 在 desktop/Pixel 7 有视觉基线。
-- [ ] 当前和历史任何时刻最多一张棋盘表格挂载，翻页/加载不会改变布局尺寸或把输入移到错误棋盘。
-- [ ] 对阵标题、积分、长昵称、页码、状态提示不重叠、不截断关键数值、无页面横向溢出。
-- [ ] paginator icon 有 tooltip/accessible name；switch、range、菜单、历史按钮可用键盘操作。
-- [ ] 状态变化使用适当 live region，不依赖颜色单独表达 near-death/淘汰/轮空。
-- [ ] encounter 结束不弹阻塞模态；用户可继续翻页、看历史和聊天。
-- [ ] prefers-reduced-motion、200% zoom 和窄屏下功能完整。
+- [x] 2/4/6/8 人大厅、relay fixed_points/elimination、bye、near-death、eliminated、finished 在 desktop/Pixel 7 有视觉基线。
+- [x] 当前和历史任何时刻最多一张棋盘表格挂载，翻页/加载不会改变布局尺寸或把输入移到错误棋盘。
+- [x] 对阵标题、积分、长昵称、页码、状态提示不重叠、不截断关键数值、无页面横向溢出。
+- [x] paginator icon 有 tooltip/accessible name；switch、range、菜单、历史按钮可用键盘操作。
+- [x] 状态变化使用适当 live region，不依赖颜色单独表达 near-death/淘汰/轮空。
+- [x] encounter 结束不弹阻塞模态；用户可继续翻页、看历史和聊天。
+- [x] prefers-reduced-motion、200% zoom 和窄屏下功能完整。
 
 ## 灰度观察与回滚
 
@@ -148,10 +148,18 @@ pnpm --filter @touhouflandre/web test:e2e e2e/multiplayer.spec.ts
 
 ## 文档与发布完成
 
-- [ ] 更新 `docs/multiplayer.md` 的稳定规则、REST/WS、配置、可见性和测试重点。
-- [ ] 更新 `docs/gameplay.md` 的公开玩法说明。
-- [ ] 更新 `docs/architecture.md` 的 capability registry、core/mode 边界、relay stage/encounter 和历史数据流。
-- [ ] 记录最终 core/race/relay 包依赖图、registry 装配点和 legacy adapter 清理条件。
-- [ ] 更新 `.env.example`、部署文档与监控说明。
-- [ ] 用户公告明确 2 人旧赛制、两种多人赛制、完整棋盘可见性和灰度状态。
-- [ ] 在本文件记录最终默认 flag、发布提交、执行人、时间和回滚演练结果。
+- [x] 更新 `docs/multiplayer.md` 的稳定规则、REST/WS、配置、可见性和测试重点。
+- [x] 更新 `docs/gameplay.md` 的公开玩法说明。
+- [x] 更新 `docs/architecture.md` 的 capability registry、core/mode 边界、relay stage/encounter 和历史数据流。
+- [x] 记录最终 core/race/relay 包依赖图、registry 装配点和 legacy adapter 清理条件。
+- [x] 更新 `.env.example`、部署文档与监控说明。
+- [x] 用户公告明确 2 人旧赛制、两种多人赛制、完整棋盘可见性和灰度状态。
+- [x] 在本文件记录最终默认 flag、发布提交、执行人、时间和回滚演练结果。
+
+## 2026-08-25 非生产发布记录
+
+- 环境：WSL Ubuntu 工作树；真实 PostgreSQL 一次性副本；隔离 API `127.0.0.1:14010` 与 Web `127.0.0.1:5174`；未触碰用户 `:4000` 服务。
+- 默认开关：`MULTI_N_PLAYER_RELAY_ENABLED=true`、`MULTI_RELAY_ELIMINATION_ENABLED=true`、`NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED=true`、`NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED=true`；registry 默认 `full`。
+- 自动化命令：本文件“自动化闸门”全部命令通过；浏览器在复用隔离服务并限制 `--workers=2` 时为 `73 passed / 1 expected skip`。
+- 回滚演练：API flag 关闭拒绝新多人配置但允许既有 match snapshot/action；migration version 回到 14 不删除 expand schema/v3 数据，重新部署新 binary 后旧、新数据均可读。
+- 发布提交/执行人/时间窗：未创建提交，未执行生产部署；实际生产发布必须填写 commit、负责人、开始/结束时间及一个完整 retention 周期观察结果。

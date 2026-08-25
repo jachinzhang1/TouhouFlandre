@@ -3,6 +3,8 @@
 **类型**：质量/发布 Issue  
 **优先级**：P0（发布闸门）  
 **依赖**：MRX-012（传递依赖 MRX-001 至 MRX-011）  
+**状态**：已完成
+
 **建议标签**：`type:quality` `area:test` `area:security` `area:ops`
 
 **决策依据**：[决策记录](./decisions.md)全部章节  
@@ -51,3 +53,31 @@
 ## 可能涉及的代码
 
 全仓测试与配置；重点为 `apps/api/internal/server/`、`apps/web/e2e/`、`scripts/`、`compose*.yaml`、`.env.example`、`docs/{multiplayer.md,gameplay.md,architecture.md,deployment.md}`、监控与发布配置。
+
+## 实施与验收记录（2026-08-25）
+
+本 Issue 已完成开发环境的发布就绪验收。服务端新增 `full`、`race-only`、`relay-only` registry profile，组合根只为已注册模式构造 recovery/forfeit runtime；relay rollout flag 只阻止新配置，当前 binary 仍可读取、恢复并完成已冻结的多人 match。race-only 真实 create/play/snapshot/recovery 路径通过 SQL tracer 证明不查询 `multi_relay_*` 表，未知 profile 和缺失 capability 均 fail closed。
+
+集成审计修复了发布阶段发现的小范围问题：旧双人 relay 终局现在始终生成稳定排名；handler 在 relay runtime 未注册时不再落入 race 旧路径；内部错误响应和结构化请求日志不再包含持久化错误值；relay history 增加按已认证 member 的限流。Sweeper 会隔离独立步骤和单个 relay recovery candidate 的失败，先广播已提交房间再返回聚合错误，避免一个消失候选阻止其他 countdown、timeout、settlement 或房间清理。普通 encounter action 仍只锁所属 encounter，只有终态尝试 stage barrier。
+
+可观测性新增有界、低基数的 Prometheus 指标，覆盖 active encounter、guess/history latency、stage/encounter duration、barrier wait、timeout、pairing/pool failure、settlement retry、deadlock、snapshot/WS bytes、重连和慢消费者队列丢弃；未知持久化 RuleSetRef 统一归入 `unknown/0`，不会成为答案或内部 ID label。`/metrics`、Prometheus 告警、Grafana provisioning/dashboard 和 Compose monitoring profile 已同步，配置解析通过。稳定玩法、部署、架构、默认开关与用户灰度公告均已更新；多人 relay 固定积分和淘汰赛 API/Web 入口均默认开启，可通过对应 flag 独立关闭。
+
+迁移与回滚演练使用一次性 PostgreSQL 数据库，从包含 race wins/points/placement、旧双人 relay、finished history 和 chat fixture 的 `0014` 开始：`0014 -> 0019` 耗时 `135.348628ms`，旧行数和 RuleSetRef 回填保持正确；将应用 migration version 回到 14 后，`0015..0019` 的 expand 表/列和 v3 fixture 仍保留，模拟旧 binary 的显式旧列写入可被新 binary 读取；重新应用耗时 `76.300617ms` 且行数不漂移。`0015..0019` 的 Down 均经自动化确认是 `SELECT 1` no-op，生产回滚不删除新表数据。WS v2 页面收到 `protocol.refresh_required`，v3 的 game/chat cursor、replay 与 `sync.complete` 由现有 server/Web 自动化覆盖。
+
+负载与安全结果：
+
+- 8 player + 32 spectator、4 个并发 encounter、5 波共 20 个并发 action：`p95=99.824309ms`、`p99=99.824309ms`；stage/settlement/event 各一次，8 条 settlement row，数据库 deadlock 增量为 0，spectator snapshot 小于 512 KiB。
+- 100 stage / 2000 turn fixture：snapshot `106687B`（`p95/p99=31.393106ms`），history first page `68626B`（`p95/p99=19.184407ms`）；完整历史没有无界进入 snapshot，history 远低于 1500ms 门槛。
+- 跨 room/encounter、旧 stage、非成员、非 turn、spectator/bye/eliminated capability、活动答案投影、terminal answer 边界、history 限流、日志/metrics 脱敏、XSS 纯文本、WS Origin/subprotocol/read limit/send queue 均由 Go、Web 或浏览器门禁覆盖；P0/P1 发现数为 0。
+
+最终验证：
+
+- `pnpm lint:openapi`、`pnpm check:openapi-refs`（41 个 YAML、40 个本地引用）、`pnpm check:ws-protocol`、`pnpm check:multiplayer-boundaries`：全部通过。
+- `pnpm typecheck`、`pnpm test`：shared 10、data 26、Web 184 tests 全部通过。
+- `task test:go`：全部 Go package 通过；MRX-013 security/load、migration、metrics/recovery 聚焦测试另以 `-count=1 -v` 通过并记录上述指标。
+- `task gen`：使用 CI 同版本 `sqlc v1.31.1` 成功；生成目录前后 SHA-256 聚合值均为 `60c0a07be6ca1202ccaf1bd5bbb4416d33dc040e198a2d2ea7b215f2db949b6b`。
+- `pnpm --filter @touhouflandre/web build`、`docker compose config --quiet`、固定镜像 `prom/prometheus:v3.5.0` 的 `promtool check config`（1 个 rule file / 6 条 rules）、monitoring dashboard JSON 解析和相关 Prettier 检查：全部通过。
+- 隔离真实 PostgreSQL/API/WS 环境的 `apps/web/e2e/multiplayer.spec.ts --workers=2`：desktop Chromium 与 Pixel 7 为 `73 passed / 1 skipped`；唯一 skip 是明确限定 desktop 的 8 人淘汰 survivor 长流程，desktop 对应用例通过，移动组合不属于最小矩阵。2/4/6/8 relay lobby/stage 视觉基线、race 视觉回归、axe、200% zoom、reduced-motion 和键盘 `Home/End` 切换均通过。
+- 一次诊断性 `10 workers` 运行因本机 Next dev proxy 饱和出现 4 个 desktop timeout 与 1 个 `ECONNRESET`；5 项均在单 worker 复跑通过，随后完整 2-worker 套件零失败，因此没有遗留未解释 flaky。
+
+本次未创建分支、commit、tag、push、PR 或生产发布，也未修改用户正在运行的 `:4000` API。最终发布提交、执行人和生产时间窗由实际发布流程填写；当前代码默认开放多人 relay 固定积分和淘汰入口，Web 创建页默认显示多人控件但保持 2 人、关闭淘汰的兼容初始值。回滚时按关闭 Web flag -> 关闭 API flag -> 排空 v3 room -> 回滚旧 binary、保留 expand schema 的顺序执行，发布闸门和稳定部署文档已同步。

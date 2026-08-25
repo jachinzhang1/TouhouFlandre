@@ -42,40 +42,40 @@
 
 ## 统一术语
 
-| 术语                       | 含义                                           | 与现有名称的关系                                                     |
-| -------------------------- | ---------------------------------------------- | -------------------------------------------------------------------- |
-| match / 场次               | 从开局到最终排名的一整场游戏                   | 继续使用 `multi_match`                                               |
-| stage / 全场轮次           | 当前未淘汰玩家完成一次配对和统一结算的同步边界 | 用户规则中的“第 n 局”；新 match 使用 relay-owned `multi_relay_stage` |
-| encounter / 对局           | 一对玩家在某个 stage 内进行的一局双人接力      | 新增稳定 `encounterId`；一张 encounter 对应一张棋盘                  |
-| turn / 手                  | encounter 内的一次猜测、主动空过或超时空过     | 从只关联 round 改为关联 encounter                                    |
-| bye / 轮空                 | stage 中未分配 encounter 的一名 active 玩家    | 只读、积分不变，不是 spectator 身份转换                              |
-| rule set / 规则集          | `(mode, ruleSetKey, ruleSetVersion)`           | match 开始时冻结；完整三元组才可选择规则                             |
-| scoring policy / 计分策略  | relay 规则集内部的积分与排名函数               | 不是跨模式枚举，不被 race/relay 共同实现                             |
+| 术语                       | 含义                                           | 与现有名称的关系                                                                |
+| -------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------- |
+| match / 场次               | 从开局到最终排名的一整场游戏                   | 继续使用 `multi_match`                                                          |
+| stage / 全场轮次           | 当前未淘汰玩家完成一次配对和统一结算的同步边界 | 用户规则中的“第 n 局”；新 match 使用 relay-owned `multi_relay_stage`            |
+| encounter / 对局           | 一对玩家在某个 stage 内进行的一局双人接力      | 新增稳定 `encounterId`；一张 encounter 对应一张棋盘                             |
+| turn / 手                  | encounter 内的一次猜测、主动空过或超时空过     | 从只关联 round 改为关联 encounter                                               |
+| bye / 轮空                 | stage 中未分配 encounter 的一名 active 玩家    | 只读、积分不变，不是 spectator 身份转换                                         |
+| rule set / 规则集          | `(mode, ruleSetKey, ruleSetVersion)`           | match 开始时冻结；完整三元组才可选择规则                                        |
+| scoring policy / 计分策略  | relay 规则集内部的积分与排名函数               | 不是跨模式枚举，不被 race/relay 共同实现                                        |
 | survival rounds / 存留局数 | 某玩家在 stage 结算后仍存留的次数              | 淘汰于第 n 轮者为 `n-1`；离场于第 n 轮者为 `n`；终局后仍存留者为已完成 stage 数 |
 
 ## 目标架构
 
 ```mermaid
 flowchart TB
-    COMMAND["REST / WS / sweeper"] --> CORE["窄应用核心<br/>身份、事务、room lifecycle、事件信封"]
-    CORE --> PORTS["按需 capability ports"]
-    REGISTRY["组合根 / registry"] --> RACE["Race module<br/>现有 RaceRules + 匿名投影"]
-    REGISTRY --> RELAY["Relay module"]
+    COMMAND["请求入口与后台调度<br/>REST / WebSocket / Sweeper"] --> CORE["共享房间与同步基础设施<br/>身份、生命周期、事务、事件、快照"]
+    CORE --> PORTS["模式能力接口<br/>房间、动作、结算、投影、恢复"]
+    REGISTRY["模式装配中心<br/>选择已启用模式"] --> RACE["竞速玩法模块<br/>同时猜测、计分、匿名棋盘"]
+    REGISTRY --> RELAY["接力玩法模块<br/>配对、轮流行动、多棋盘阶段"]
     RACE --> PORTS
     RELAY --> PORTS
 
-    RELAY --> ROOMPOLICY["RelayRoomPolicy"]
-    RELAY --> COORDINATOR["RelayStageCoordinator"]
-    COORDINATOR --> PAIRING["PairingPolicy"]
-    COORDINATOR --> UNIT["RelayEncounterEngine"]
-    COORDINATOR --> SCORING{"Relay ScoringPolicy"}
-    SCORING --> LEGACY["legacy_wins v1"]
-    SCORING --> POINTS["fixed_points v1"]
-    SCORING --> ELIM["elimination v1"]
+    RELAY --> ROOMPOLICY["接力房间配置与开局校验"]
+    RELAY --> COORDINATOR["接力阶段推进器"]
+    COORDINATOR --> PAIRING["随机配对与轮空"]
+    COORDINATOR --> UNIT["单棋盘轮流行动引擎"]
+    COORDINATOR --> SCORING{"接力计分与淘汰策略"}
+    SCORING --> LEGACY["双人 BO"]
+    SCORING --> POINTS["多人固定积分"]
+    SCORING --> ELIM["多人淘汰赛"]
 
-    CORE --> CORE_STORE[("Core store<br/>room / member / roster / event")]
-    RACE --> RACE_STORE[("Race-owned round/scoring")]
-    RELAY --> RELAY_STORE[("Relay-owned stage/encounter")]
+    CORE --> CORE_STORE[("共享数据存储<br/>房间、成员、roster、事件")]
+    RACE --> RACE_STORE[("竞速数据存储<br/>round、score、placement")]
+    RELAY --> RELAY_STORE[("接力数据存储<br/>stage、encounter、turn、结算")]
 ```
 
 共享核心只拥有跨模式不变量：身份、room lifecycle、房间锁入口、冻结 roster、事务/幂等框架、事件 sequence、replay 和 snapshot 水位。stage 生命周期、随机配对、接力 turn、积分、淘汰、排名和棋盘投影全部属于 relay module；race adapter 继续组合现有 `RaceRules`。详细的依赖规则、配置适配、规则集标识与数据所有权见[模块边界](./architecture.md)。
@@ -104,21 +104,21 @@ MRX-004 与 MRX-005 在 MRX-003 合并后可并行；MRX-007 与 MRX-008 在 MRX
 
 ## Issue 列表
 
-| Issue                                                    | 交付物                                                | 依赖             |
-| -------------------------------------------------------- | ----------------------------------------------------- | ---------------- |
-| [MRX-001](./MRX-001-contract-and-regression-baseline.md) | 决策冻结、现有功能特征测试、权限/状态/计分矩阵        | 无               |
-| [MRX-002](./MRX-002-multiplayer-mode-kernel.md)          | 窄核心、capability registry、race/relay 兼容适配器    | MRX-001          |
-| [MRX-003](./MRX-003-stage-encounter-data-and-ws-v3.md)   | relay-owned 数据模型、规则集引用、WS v3 契约骨架      | MRX-002          |
-| [MRX-004](./MRX-004-relay-room-policy.md)                | 2/4/6/8 容量、淘汰设置、偶数且全员准备的开局事务      | MRX-003          |
-| [MRX-005](./MRX-005-pairing-and-stage-coordinator.md)    | 可测试配对器、轮空约束、stage 完成屏障与推进器        | MRX-003          |
-| [MRX-006](./MRX-006-relay-encounter-engine.md)           | 每对独立题目/棋盘/turn/计时、动作路由、双人语义兼容   | MRX-005          |
-| [MRX-007](./MRX-007-fixed-round-points.md)               | N>2 非淘汰计分、BO 总轮数、并列排名                   | MRX-006          |
-| [MRX-008](./MRX-008-elimination-near-death-and-bye.md)   | N>2 淘汰计分、濒死、轮空、存留排名                    | MRX-006          |
-| [MRX-009](./MRX-009-lifecycle-recovery-and-rematch.md)   | 放弃/离场/断线/重启/再来一局的跨棋盘一致性            | MRX-007、MRX-008 |
-| [MRX-010](./MRX-010-room-settings-web.md)                | 创建页与大厅滑杆、淘汰开关、偶数开局反馈              | MRX-004          |
-| [MRX-011](./MRX-011-projection-sync-and-history.md)      | capability 投影、snapshot/WS 重连、按需历史棋盘 API   | MRX-009          |
-| [MRX-012](./MRX-012-multi-board-web-experience.md)       | 单棋盘分页、全员积分、轮空/等待提示、非阻塞结算与统计 | MRX-010、MRX-011 |
-| [MRX-013](./MRX-013-integration-security-rollout.md)     | 完整 e2e、并发/安全/性能、迁移与灰度发布              | MRX-012          |
+| Issue                                                    | 交付物                                                | 依赖             | 状态   |
+| -------------------------------------------------------- | ----------------------------------------------------- | ---------------- | ------ |
+| [MRX-001](./MRX-001-contract-and-regression-baseline.md) | 决策冻结、现有功能特征测试、权限/状态/计分矩阵        | 无               | 已完成 |
+| [MRX-002](./MRX-002-multiplayer-mode-kernel.md)          | 窄核心、capability registry、race/relay 兼容适配器    | MRX-001          | 已完成 |
+| [MRX-003](./MRX-003-stage-encounter-data-and-ws-v3.md)   | relay-owned 数据模型、规则集引用、WS v3 契约骨架      | MRX-002          | 已完成 |
+| [MRX-004](./MRX-004-relay-room-policy.md)                | 2/4/6/8 容量、淘汰设置、偶数且全员准备的开局事务      | MRX-003          | 已完成 |
+| [MRX-005](./MRX-005-pairing-and-stage-coordinator.md)    | 可测试配对器、轮空约束、stage 完成屏障与推进器        | MRX-003          | 已完成 |
+| [MRX-006](./MRX-006-relay-encounter-engine.md)           | 每对独立题目/棋盘/turn/计时、动作路由、双人语义兼容   | MRX-005          | 已完成 |
+| [MRX-007](./MRX-007-fixed-round-points.md)               | N>2 非淘汰计分、BO 总轮数、并列排名                   | MRX-006          | 已完成 |
+| [MRX-008](./MRX-008-elimination-near-death-and-bye.md)   | N>2 淘汰计分、濒死、轮空、存留排名                    | MRX-006          | 已完成 |
+| [MRX-009](./MRX-009-lifecycle-recovery-and-rematch.md)   | 放弃/离场/断线/重启/再来一局的跨棋盘一致性            | MRX-007、MRX-008 | 已完成 |
+| [MRX-010](./MRX-010-room-settings-web.md)                | 创建页与大厅滑杆、淘汰开关、偶数开局反馈              | MRX-004          | 已完成 |
+| [MRX-011](./MRX-011-projection-sync-and-history.md)      | capability 投影、snapshot/WS 重连、按需历史棋盘 API   | MRX-009          | 已完成 |
+| [MRX-012](./MRX-012-multi-board-web-experience.md)       | 单棋盘分页、全员积分、轮空/等待提示、非阻塞结算与统计 | MRX-010、MRX-011 | 已完成 |
+| [MRX-013](./MRX-013-integration-security-rollout.md)     | 完整 e2e、并发/安全/性能、迁移与灰度发布              | MRX-012          | 已完成 |
 
 完整覆盖矩阵见[测试矩阵](./test-matrix.md)，上线与回滚的人工检查见[发布闸门](./release-gate.md)。
 

@@ -70,7 +70,7 @@ MRX-001 只冻结下列预期，不实现 registry 或新增 wire error。MRX-00
 | ID   | Required case                                            | 层级      | Owner           |
 | ---- | -------------------------------------------------------- | --------- | --------------- |
 | L-01 | relay create/settings 只接受 2/4/6/8，默认 2             | D/DB/C/UI | MRX-004/010     |
-| L-02 | relayEliminationEnabled 默认 false，且不污染 race 开关   | DB/C/R/UI | MRX-004/010     |
+| L-02 | relayEliminationEnabled 默认 true，且不污染 race 开关    | DB/C/R/UI | MRX-004/010     |
 | L-03 | 上限 6 可由实际 2/4/6 人开局，不要求坐满                 | DB/E2E    | MRX-004/013     |
 | L-04 | 3/5/7 人全员 ready 不开局并投影 odd reason               | D/DB/R/UI | MRX-004/010     |
 | L-05 | 偶数 roster 有一人未准备或断线时不开始                   | DB/E2E    | MRX-004/013     |
@@ -113,7 +113,7 @@ MRX-001 只冻结下列预期，不实现 registry 或新增 wire error。MRX-00
 | ---- | -------------------------------------------------------- | -------- | ----------- |
 | X-01 | 初始/上限 10；胜 +1 capped，负 -n，平 -floor(n/2)        | D/DB     | MRX-008     |
 | X-02 | 首次原始结果小于等于 0 均进入濒死并钳制为 0              | D        | MRX-008     |
-| X-03 | near-death 正分无效、0 delta 不死；负 delta 保留负分      | D/DB     | MRX-008     |
+| X-03 | near-death 正分无效、0 delta 不死；负 delta 保留负分     | D/DB     | MRX-008     |
 | X-04 | near-death 下一次负 delta 保留负分并淘汰                 | D/DB     | MRX-008     |
 | X-05 | 同 stage 0/1/多人/全员淘汰均正确                         | D/DB     | MRX-008     |
 | X-06 | 剩 2 人继续淘汰 policy，结算后 <=1 人结束                | D/DB/E2E | MRX-008/013 |
@@ -177,3 +177,56 @@ MRX-001 只冻结下列预期，不实现 registry 或新增 wire error。MRX-00
 | Pixel 7  |             6 | relay elimination  | bye/淘汰只读、历史与返回当前轮           |
 | desktop  | 4 + spectator | 任一多人制         | 全标签观战、刷新/重连、chat channel      |
 | desktop  | 4 -> 3 active | relay fixed_points | 永久离场、系统 bye、提前终止保护         |
+
+## MRX-013 最终自动化证据（2026-08-25）
+
+下表逐项覆盖全部 Required ID；只有同一命令和同一组断言覆盖整组 ID 时才合并书写。所有 Go 集成测试均使用真实 PostgreSQL，浏览器测试使用隔离 API/WS/PostgreSQL 和真实 desktop Chromium/Pixel 7 profile。
+
+| Required ID            | 最终自动化证据                                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| A-01、A-05、A-07       | `pnpm check:multiplayer-boundaries`；`internal/multi/core/registry_test.go`；`internal/multi/assembly/assembly_test.go`                        |
+| A-02、A-06             | `TestMRX013RaceOnlyCreatePlaySnapshotDoesNotQueryRelayTables`；race-only create/play/snapshot/recovery 和 SQL tracer；完整 race E2E/Stats 回归 |
+| A-03、A-04             | `TestRegistrySupportsPartialFakeMode`、assembly profile tests、未知/缺失 RuleSetRef server tests                                               |
+| B-01、B-02             | `internal/multi/{match,race_scoring}_test.go`、`internal/server/{match,n_player_race,n_player_terminal}_test.go`；desktop/Pixel 7 race E2E     |
+| B-03                   | `internal/server/{mrx001_baseline,match,ws,mrx006_encounter_engine}_test.go`；2 人 legacy BO/history/rematch E2E                               |
+| B-04                   | `internal/server/{n_player_race,n_player_terminal,room_lifecycle,ws}_test.go`；race player/spectator/淘汰 UI E2E                               |
+| B-05                   | `internal/server/ws_test.go`、`useRoom.websocket.test.tsx`、`gameSequence.test.ts`、刷新/断线 E2E                                              |
+| B-06                   | `internal/server/chat_test.go`、`ChatDock.test.tsx`、`multiChat.test.ts`、player/spectator chat 与 XSS E2E                                     |
+| B-07                   | `internal/server/{room_lifecycle,player_limit_settings,match,multi}_test.go`                                                                   |
+| B-08                   | `apps/web/src/stats/{transfer,db,aggregate}.test.ts`，覆盖 v1-v6、匿名导出和 race scoringMode                                                  |
+| L-01、L-02             | `internal/server/mrx004_room_policy_test.go`、OpenAPI/WS 检查、`MultiLobby.test.tsx`、创建/设置 E2E                                            |
+| L-03、L-04、L-05、L-06 | relay room policy/ready DB tests；2/4/6 人开局、奇数阻塞和未准备/断线 E2E                                                                      |
+| L-07                   | room row lock 的 join/claim/settings/final-ready 并发 server tests                                                                             |
+| L-08、L-09             | 2 人 legacy RuleSet tests；`TestMRX013RelayFlagsBlockNewConfigurationAndGrandfatherPlayingMatch`；flag-off Web tests                           |
+| L-10                   | OpenAPI request validation、room config reducer 和 `MultiLobby.test.tsx` 模式草稿隔离                                                          |
+| E-01、E-02、E-03、E-04 | relay pairing/coordinator domain 与真实 DB tests，固定 seed、bye 和 restart fixture                                                            |
+| E-05、E-06、E-07       | `internal/server/mrx006_encounter_engine_test.go`、relay encounter domain tests、MRX-013 跨 ID 安全测试                                        |
+| E-08、E-09             | encounter barrier/concurrency tests；`TestMRX013EightPlayerConcurrentEncounterLoadProfile`；4/8 人浏览器终局                                   |
+| E-10                   | relay encounter guess/pass/timeout/forfeit 表驱动 domain/DB tests                                                                              |
+| P-01、P-02、P-03、P-04 | relay fixed-points policy/coordinator/server tests，覆盖 delta、planned stages、barrier 和幂等                                                 |
+| P-05、P-06             | fixed-points ranking/early-end tests；4 人终局与 4 -> 3 active E2E                                                                             |
+| P-07                   | `internal/multi/relay` 与 race 包隔离的静态检查和 scoring fixture 回归                                                                         |
+| X-01、X-02、X-03、X-04 | relay elimination policy table tests，覆盖 cap、濒死、正/零/负 delta                                                                           |
+| X-05、X-06             | 0/1/多人/全员淘汰和两人生存者 DB tests；6/8 人 elimination E2E                                                                                 |
+| X-07、X-08、X-09、X-10 | bye/life/ranking domain+DB+component tests；6 人 bye 和 8 人 survivor E2E                                                                      |
+| X-11、X-12             | race placement fixture、relay 负分 schema/projection 和 stats v6 tests                                                                         |
+| R-01、R-02、R-03       | disconnect grace、single/both-member expiry 的 recovery DB tests；断线重连 E2E                                                                 |
+| R-04、R-05             | fixed-points/elimination leave settlement tests；4 -> 3 active + bye E2E                                                                       |
+| R-06、R-07             | recovery/server-restart tests、`TestMRX006RecoveryReturnsRoomsCommittedBeforeLaterCandidateFailure`、sweeper partial-result tests              |
+| R-08                   | rematch server tests和 2 人 legacy finished/rematch E2E                                                                                        |
+| S-01、S-03             | relay projector/history tests；player/spectator 完整标签和 terminal-only answer E2E                                                            |
+| S-02、S-04             | `TestMRX013CrossRoomEncounterIDsAndActiveAnswersAreIsolated`、`TestMRX013InternalErrorsDoNotExposePersistedDataInResponseOrLogs`               |
+| S-05、S-08             | `internal/server/ws_test.go` 和 Web reducer tests，覆盖 v2 refresh_required、v3 sequence/cursor/replay/sync.complete                           |
+| S-06、S-07             | `TestMRX013HundredStageHistoryLoadProfile`、relay history DB/Web tests和刷新历史 E2E                                                           |
+| W-01、W-02、W-03、W-04 | `RelayStageView.test.tsx`、`relayView.test.ts`；2/4/6/8 单棋盘、翻页和 capability E2E                                                          |
+| W-05、W-06             | inline result/live region 与 score strip component tests；fixed-points/elimination/bye/left E2E                                                |
+| W-07                   | 2/4/6/8 lobby/stage desktop/Pixel 7 screenshot baseline、overflow、axe、200% zoom、reduced-motion、键盘门禁                                    |
+| W-08                   | stats v1-v6 `transfer/db/aggregate` tests 和 production typecheck/build                                                                        |
+
+最终命令与结果：
+
+- `pnpm lint:openapi`、`pnpm check:openapi-refs`、`pnpm check:ws-protocol`、`pnpm check:multiplayer-boundaries`：通过。
+- `pnpm typecheck`、`pnpm test`：shared 10、data 26、Web 184 tests 全部通过。
+- `task test:go`：全部 package 通过；MRX-013 server 8 项、migration 2 项、metrics/recovery 4 项另以 `-count=1` 通过。
+- `apps/web/e2e/multiplayer.spec.ts --workers=2`：`73 passed / 1 expected skip`。唯一 skip 为 mobile profile 下明确限定 desktop 的 8 人 elimination survivor 长流程；对应 desktop 用例通过，最小浏览器矩阵不要求 mobile 8 人终局。
+- 诊断性 10-worker 运行的 5 个 dev-proxy 饱和失败均单 worker 复跑通过，最终 2-worker 完整套件无失败，不存在未解释 flaky/skip。

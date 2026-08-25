@@ -34,8 +34,8 @@ handler 只做身份解析、输入归一化、事务入口和错误映射，不
 
 ## 3. 房间配置与开局
 
-- relay `playerLimit` 首版只允许 `2/4/6/8`，默认 2；slider 使用 `min=2,max=8,step=2`。
-- 新增 relay 专属布尔设置 `relayEliminationEnabled`，默认 `false`。它与现有 `raceEliminationEnabled` 分离，不能引入裸 `eliminationEnabled` 或在两个模式间复制开关状态。
+- relay `playerLimit` 首版只允许 `2/4/6/8`，API 与 Web 创建草稿默认均为 2；Web 在默认开启灰度时仍显示多人上限滑杆，使用 `min=2,max=8,step=2`。
+- 新增 relay 专属布尔设置 `relayEliminationEnabled`，API 与 Web 创建草稿默认均为关闭；Web 在人数调整到 4/6/8 后允许房主打开它。该设置与现有 `raceEliminationEnabled` 分离，不能引入裸 `eliminationEnabled` 或在两个模式间复制开关状态；实际 2 人开局仍固定使用 legacy BO。
 - relay 设置持久化到 `multi_relay_room_config`，由 relay adapter 读写；现有 race 列和 `turn_seconds` 不在本 Issue 搬迁。
 - 两项设置只能由房主在 lobby 且无人 ready、尚未创建 match 时修改；修改与 join、claim-seat、ready/start 共用 room 行锁。
 - 降低上限不能低于当前 player 数；沿用现有 seat 压紧规则，房主保持 seat 1，`memberId` 和 token 不变。

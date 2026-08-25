@@ -17,21 +17,21 @@
 
 ```mermaid
 flowchart TB
-    TRANSPORT["Transport adapters<br/>REST / WS / sweeper"] --> APP["Multiplayer application core<br/>身份、事务、锁序、事件出口"]
-    APP --> PORTS["Mode capability ports"]
-    COMPOSITION["Composition root / registry"] --> PORTS
-    COMPOSITION --> RACE["Race module"]
-    COMPOSITION --> RELAY["Relay module"]
+    TRANSPORT["请求入口与后台调度<br/>REST / WebSocket / Sweeper"] --> APP["共享房间与同步基础设施<br/>身份、事务、锁序、事件出口"]
+    APP --> PORTS["模式能力接口<br/>房间、动作、结算、投影、恢复"]
+    COMPOSITION["模式装配中心<br/>按 profile 注册模式"] --> PORTS
+    COMPOSITION --> RACE["竞速玩法模块<br/>同时猜测、计分、匿名棋盘"]
+    COMPOSITION --> RELAY["接力玩法模块<br/>配对、轮流行动、多棋盘阶段"]
     RACE --> PORTS
     RELAY --> PORTS
 
-    RACE --> RACE_RULES["RaceRules<br/>wins / points / placement"]
-    RELAY --> RELAY_FLOW["Relay orchestration<br/>stage / pairing / encounter"]
-    RELAY_FLOW --> RELAY_RULES["Relay rule sets<br/>legacy_wins / fixed_points / elimination"]
+    RACE --> RACE_RULES["竞速计分与排名<br/>wins / points / placement"]
+    RELAY --> RELAY_FLOW["接力阶段编排<br/>stage / pairing / encounter"]
+    RELAY_FLOW --> RELAY_RULES["接力计分规则<br/>legacy_wins / fixed_points / elimination"]
 
-    APP --> CORE_STORE["Core repositories<br/>room / member / roster / event"]
-    RACE --> RACE_STORE["Race storage adapter<br/>existing round/scoring data"]
-    RELAY --> RELAY_STORE["Relay storage adapter<br/>stage / encounter / settlement"]
+    APP --> CORE_STORE["共享数据存储<br/>房间、成员、roster、事件"]
+    RACE --> RACE_STORE["竞速数据存储<br/>round、score、placement"]
+    RELAY --> RELAY_STORE["接力数据存储<br/>stage、encounter、结算"]
 ```
 
 允许的依赖方向：
