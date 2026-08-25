@@ -257,7 +257,7 @@ func (c *Conn) replayChat(room repo.MultiRoom, targetChatPosition int64) (int64,
 					return delivered, err
 				}
 			}
-			ok, invalidated := c.deliverReplayChatFrame(message.Position, frame, visible)
+			ok, invalidated := c.deliverReplayChatFrame(ctx, message.Position, frame, visible)
 			if invalidated {
 				return delivered, nil
 			}
@@ -271,14 +271,20 @@ func (c *Conn) replayChat(room repo.MultiRoom, targetChatPosition int64) (int64,
 	return delivered, nil
 }
 
-func (c *Conn) deliverReplayChatFrame(position int64, frame []byte, visible bool) (delivered bool, invalidated bool) {
+func (c *Conn) deliverReplayChatFrame(ctx context.Context, position int64, frame []byte, visible bool) (delivered bool, invalidated bool) {
 	c.barrierMu.Lock()
 	defer c.barrierMu.Unlock()
 	if c.invalidated.Load() {
 		return false, true
 	}
-	if visible && !c.enqueue(frame) {
-		return false, false
+	if visible {
+		select {
+		case c.send <- outboundFrame{data: frame}:
+		case <-c.closed:
+			return false, true
+		case <-ctx.Done():
+			return false, false
+		}
 	}
 	delete(c.bufferedChat, position)
 	return true, false
