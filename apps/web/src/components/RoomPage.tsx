@@ -1,6 +1,6 @@
 "use client";
 
-import { FastForward, Flag } from "lucide-react";
+import { Flag } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -15,7 +15,6 @@ import {
   loadMultiRoom,
   MULTIPLAYER_MODE_LABELS,
   normalizeRoomCode,
-  relaySkipRemaining,
   ROOM_FORMAT_SHORT,
   saveMultiRoom,
 } from "../domain/multiRoom";
@@ -43,7 +42,7 @@ import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
 import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import { ChatDock } from "./ChatDock";
-import { RelayMatchBoard } from "./RelayMatchBoard";
+import { RelayStageView } from "./RelayStageView";
 import { RoomLobby } from "./RoomLobby";
 import { RoundResultOverlay } from "./RoundResultOverlay";
 
@@ -187,7 +186,6 @@ export function RoomView({ code }: { code: string }) {
   const isEliminatedPlayer =
     effectiveRole === "player" && viewerMatchStatus === "eliminated";
   const playerSeat = mySlot ?? 1;
-  const relaySlot: 1 | 2 = mySlot === 2 ? 2 : 1;
   const roundResultKey = state.roundResult
     ? `${state.roundResult.matchIndex}:${state.roundResult.roundIndex}`
     : null;
@@ -253,17 +251,6 @@ export function RoomView({ code }: { code: string }) {
     setForfeitConfirm(false);
     try {
       await actions.forfeitRound();
-    } finally {
-      setRoundActionBusy(null);
-    }
-  };
-
-  const handlePassRelayTurn = async () => {
-    if (mode !== "relay" || !state.match || state.round?.status !== "playing")
-      return;
-    setRoundActionBusy("pass");
-    try {
-      await actions.passRelayTurn();
     } finally {
       setRoundActionBusy(null);
     }
@@ -359,7 +346,48 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
-  if (isSpectator && state.room) {
+  if (
+    mode === "relay" &&
+    state.room &&
+    state.match &&
+    state.relay &&
+    state.viewer &&
+    stored?.roomId &&
+    stored.guestToken &&
+    (state.room.status === "playing" || state.room.status === "finished")
+  ) {
+    return (
+      <>
+        <RelayStageView
+          roomId={stored.roomId}
+          token={stored.guestToken}
+          format={format}
+          projection={state.relay}
+          members={state.members}
+          viewer={state.viewer}
+          catalogVersion={state.catalogVersion ?? undefined}
+          fields={visibleFields}
+          roomStatus={state.room.status}
+          retentionEndsAt={
+            state.matchResult?.retentionEndsAt ?? state.room.expiresAt
+          }
+          matchResult={state.matchResult}
+          rematchReady={state.rematchReady}
+          actions={actions}
+          onRematch={actions.rematch}
+          onLeave={handleLeave}
+        />
+        <ConnectionNotice
+          message={state.connectionIssue}
+          onReconnect={actions.reconnect}
+        />
+        <GuessErrorToast message={guessError} />
+        {chatDock}
+      </>
+    );
+  }
+
+  if (isSpectator && state.room && mode === "race") {
     return (
       <>
         <SpectatorRoom
@@ -381,7 +409,11 @@ export function RoomView({ code }: { code: string }) {
     );
   }
 
-  if (isEliminatedPlayer && state.room?.status === "playing") {
+  if (
+    mode === "race" &&
+    isEliminatedPlayer &&
+    state.room?.status === "playing"
+  ) {
     return (
       <>
         <SpectatorRoom
@@ -460,19 +492,6 @@ export function RoomView({ code }: { code: string }) {
           `${archive.matchIndex}:${archive.roundIndex}` === selectedArchiveKey,
       ) ?? null;
     const inCountdown = state.round?.status === "countdown";
-    const relayCanGuess =
-      mode === "relay" &&
-      state.round?.status === "playing" &&
-      state.round.turnSeat === relaySlot &&
-      hasOpponent;
-    const relayRows = state.round?.shared?.rows ?? [];
-    const relayMaxSkips = state.round?.maxSkipsPerPlayer ?? 2;
-    const relaySkipsRemaining = relaySkipRemaining(
-      relayRows,
-      relaySlot,
-      relayMaxSkips,
-    );
-    const relayCanPass = relayCanGuess && relaySkipsRemaining > 0;
     const participationStatus = state.round?.self.participationStatus;
     const participationMessage =
       roundActionBusy === "forfeit"
@@ -486,28 +505,18 @@ export function RoomView({ code }: { code: string }) {
               : participationStatus === "timed_out"
                 ? "本局已超时"
                 : null;
-    const raceReadOnly = mode === "race" && Boolean(participationMessage);
+    const raceReadOnly = Boolean(participationMessage);
     const roundActions =
       state.round?.status === "playing" && !raceReadOnly ? (
         <RoundActionButtons
-          mode={mode}
           forfeitConfirm={forfeitConfirm}
           actionBusy={roundActionBusy}
-          relayCanPass={relayCanPass}
-          relaySkipsRemaining={relaySkipsRemaining}
-          relayMaxSkips={relayMaxSkips}
           onForfeit={handleForfeitRound}
-          onPass={handlePassRelayTurn}
         />
       ) : null;
-    const guessedIds =
-      mode === "relay"
-        ? new Set(
-            state.round?.shared?.rows
-              .filter((row) => row.kind === "guess" && row.guess)
-              .map((row) => row.guess!.guessId) ?? [],
-          )
-        : new Set(state.round?.self.guesses.map((g) => g.guessId) ?? []);
+    const guessedIds = new Set(
+      state.round?.self.guesses.map((guess) => guess.guessId) ?? [],
+    );
     return (
       <>
         <RoundHistoryBar
@@ -518,41 +527,26 @@ export function RoomView({ code }: { code: string }) {
           selectedKey={selectedArchiveKey}
           onSelect={setSelectedArchiveKey}
         />
-        {mode === "relay" ? (
-          <RelayMatchBoard
-            format={format}
-            match={state.match}
-            round={state.round}
-            members={state.members}
-            mySlot={relaySlot}
-            roundResult={selectedPlayerArchive ?? state.roundResult}
-            roundActions={selectedPlayerArchive ? null : roundActions}
-            fields={visibleFields}
-          />
-        ) : (
-          <MatchBoard
-            format={format}
-            match={state.match}
-            round={state.round}
-            memberId={memberId}
-            members={state.members}
-            roundResult={selectedPlayerArchive ?? state.roundResult}
-            catalogVersion={state.catalogVersion ?? undefined}
-            onGuess={actions.submitGuess}
-            disabled={!hasOpponent}
-            roundActions={selectedPlayerArchive ? null : roundActions}
-            fields={visibleFields}
-          />
-        )}
+        <MatchBoard
+          format={format}
+          match={state.match}
+          round={state.round}
+          memberId={memberId}
+          members={state.members}
+          roundResult={selectedPlayerArchive ?? state.roundResult}
+          catalogVersion={state.catalogVersion ?? undefined}
+          onGuess={actions.submitGuess}
+          disabled={!hasOpponent}
+          roundActions={selectedPlayerArchive ? null : roundActions}
+          fields={visibleFields}
+        />
         {state.round?.status === "playing" && !selectedPlayerArchive && (
           <GuessInputBar
             onGuess={actions.submitGuess}
-            disabled={
-              mode === "relay" ? !relayCanGuess : !hasOpponent || raceReadOnly
-            }
+            disabled={!hasOpponent || raceReadOnly}
             catalogVersion={state.catalogVersion ?? undefined}
             guessedIds={guessedIds}
-            statusMessage={mode === "race" ? participationMessage : null}
+            statusMessage={participationMessage}
           />
         )}
         {inCountdown &&
@@ -780,26 +774,13 @@ function SpectatorRoom({
           onSelect={onSelectArchive}
         />
 
-        {mode === "relay" ? (
-          <RelayMatchBoard
-            format={format}
-            match={state.match}
-            round={state.round}
-            members={state.members}
-            mySlot={1}
-            viewerRole="spectator"
-            roundResult={displayArchive}
-            fields={fields}
-          />
-        ) : (
-          <SpectatorRaceBoards
-            boards={displayArchive?.boards ?? state.round?.boards ?? []}
-            scores={state.match?.scores}
-            members={state.members}
-            fields={fields}
-            archive={displayArchive}
-          />
-        )}
+        <SpectatorRaceBoards
+          boards={displayArchive?.boards ?? state.round?.boards ?? []}
+          scores={state.match?.scores}
+          members={state.members}
+          fields={fields}
+          archive={displayArchive}
+        />
       </div>
     </section>
   );
@@ -920,23 +901,13 @@ function SpectatorRaceBoards({
 }
 
 function RoundActionButtons({
-  mode,
   forfeitConfirm,
   actionBusy,
-  relayCanPass,
-  relaySkipsRemaining,
-  relayMaxSkips,
   onForfeit,
-  onPass,
 }: {
-  mode: string;
   forfeitConfirm: boolean;
   actionBusy: "forfeit" | "pass" | null;
-  relayCanPass: boolean;
-  relaySkipsRemaining: number;
-  relayMaxSkips: number;
   onForfeit: () => void;
-  onPass: () => void;
 }) {
   const forfeitLabel =
     actionBusy === "forfeit"
@@ -944,27 +915,8 @@ function RoundActionButtons({
       : forfeitConfirm
         ? "再次点击确认放弃"
         : "放弃本局";
-  const passDisabled = actionBusy !== null || !relayCanPass;
-  const passTitle =
-    relaySkipsRemaining <= 0 ? "本局空过次数已用完" : "主动空过本轮猜测";
-
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {mode === "relay" ? (
-        <button
-          type="button"
-          onClick={onPass}
-          disabled={passDisabled}
-          title={passTitle}
-          className="inline-flex min-h-8 items-center gap-1.5 rounded-[6px] border border-line-strong bg-paper-muted px-3 py-1.5 text-[0.75rem] font-bold text-ink-soft hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <FastForward size={14} aria-hidden="true" />
-          本轮空过
-          <span className="rounded bg-paper px-1.5 py-0.5 text-[0.68rem] tabular-nums">
-            余 {relaySkipsRemaining}/{relayMaxSkips}
-          </span>
-        </button>
-      ) : null}
       <button
         type="button"
         onClick={onForfeit}

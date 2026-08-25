@@ -1,7 +1,11 @@
 import type {
+  Envelope,
+  MultiParticipantRole,
   RelayEncounterCapabilities,
   RelayEncounterView,
   RelayMatchFragment,
+  RelayRankingView,
+  RelayRuleSetRef,
   RelayStageView,
   RelayStandingView,
   RelayTurnRow,
@@ -11,9 +15,14 @@ import type {
 export interface RelayProjectionState {
   matchIndex: number;
   sequence: number;
+  ruleSetRef: RelayRuleSetRef;
+  plannedStages?: number;
+  ranking: RelayRankingView[];
   currentStageIndex?: number;
   standings: RelayStandingView[];
   stagesByIndex: Readonly<Record<number, RelayStageView>>;
+  viewerMemberId?: string;
+  viewerRole?: MultiParticipantRole;
 }
 
 const EMPTY_CAPABILITIES: RelayEncounterCapabilities = {
@@ -26,6 +35,7 @@ export function relayProjectionFromFragment(
   matchIndex: number,
   fragment: RelayMatchFragment,
   sequence = 0,
+  viewer?: { memberId: string; role: MultiParticipantRole },
 ): RelayProjectionState {
   const stages: Record<number, RelayStageView> = {};
   for (const stage of fragment.historySummary ?? []) {
@@ -37,9 +47,50 @@ export function relayProjectionFromFragment(
   return {
     matchIndex,
     sequence,
+    ruleSetRef: fragment.ruleSetRef,
+    plannedStages: fragment.plannedStages,
+    ranking: fragment.ranking ?? [],
     currentStageIndex: fragment.currentStage?.stageIndex,
     standings: fragment.standings,
     stagesByIndex: stages,
+    viewerMemberId: viewer?.memberId,
+    viewerRole: viewer?.role,
+  };
+}
+
+export function emptyRelayProjection(
+  matchIndex: number,
+  ruleSetRef: RelayRuleSetRef,
+  plannedStages?: number,
+  viewer?: { memberId: string; role: MultiParticipantRole },
+): RelayProjectionState {
+  return {
+    matchIndex,
+    sequence: 0,
+    ruleSetRef,
+    plannedStages,
+    ranking: [],
+    standings: [],
+    stagesByIndex: {},
+    viewerMemberId: viewer?.memberId,
+    viewerRole: viewer?.role,
+  };
+}
+
+export function isRelayWsEvent(event: Envelope): event is RelayWsEvent {
+  return event.type.startsWith("relay.");
+}
+
+export function finishRelayProjection(
+  state: RelayProjectionState,
+  fragment: Pick<RelayMatchFragment, "standings" | "ranking">,
+  sequence: number,
+): RelayProjectionState {
+  return {
+    ...state,
+    sequence: Math.max(state.sequence, sequence),
+    standings: fragment.standings,
+    ranking: fragment.ranking ?? [],
   };
 }
 
@@ -67,12 +118,11 @@ export function reduceRelayProjection(
     case "relay.encounter.started": {
       const stage = stageForEvent(state, event.payload.stageIndex);
       const existing = findEncounter(stage, event.payload.encounterId);
-      const detail: RelayEncounterView = {
+      const detailWithoutCapabilities = {
         encounterId: event.payload.encounterId,
         encounterIndex: event.payload.encounterIndex,
         status: event.payload.status,
         members: event.payload.members,
-        capabilities: existing?.capabilities ?? EMPTY_CAPABILITIES,
         startsAt: event.payload.startsAt,
         deadline: event.payload.deadline,
         turnMemberId: event.payload.turnMemberId,
@@ -81,6 +131,13 @@ export function reduceRelayProjection(
         maxTurnsPerPlayer: event.payload.maxTurnsPerPlayer,
         maxSkipsPerPlayer: event.payload.maxSkipsPerPlayer,
         rows: existing?.rows ?? [],
+      };
+      const detail: RelayEncounterView = {
+        ...detailWithoutCapabilities,
+        capabilities: capabilitiesForEncounter(
+          state,
+          detailWithoutCapabilities,
+        ),
       };
       return applyEncounter(state, event.sequence, stage, detail);
     }
@@ -92,13 +149,17 @@ export function reduceRelayProjection(
       const existing = findEncounter(stage, event.payload.encounterId);
       const detail = existing ?? emptyEncounter(event.payload);
       const rows = replaceTurnRow(detail.rows, event.payload.row);
-      return applyEncounter(state, event.sequence, stage, {
+      const nextDetail = {
         ...detail,
         status: "playing",
         rows,
         turnMemberId: event.payload.nextTurnMemberId,
         turnSeat: event.payload.nextTurnSeat,
         turnDeadline: event.payload.nextTurnDeadline,
+      } satisfies RelayEncounterView;
+      return applyEncounter(state, event.sequence, stage, {
+        ...nextDetail,
+        capabilities: capabilitiesForEncounter(state, nextDetail),
       });
     }
 
@@ -135,6 +196,25 @@ export function reduceRelayProjection(
       );
     }
   }
+}
+
+function capabilitiesForEncounter(
+  state: RelayProjectionState,
+  encounter: Pick<RelayEncounterView, "status" | "members" | "turnMemberId">,
+): RelayEncounterCapabilities {
+  const viewerMemberId = state.viewerMemberId;
+  const standing = state.standings.find(
+    (candidate) => candidate.memberId === viewerMemberId,
+  );
+  const mayAct =
+    state.viewerRole === "player" &&
+    Boolean(viewerMemberId) &&
+    standing?.status === "active" &&
+    encounter.status === "playing" &&
+    encounter.turnMemberId === viewerMemberId &&
+    encounter.members.some((member) => member.memberId === viewerMemberId);
+  if (!mayAct) return EMPTY_CAPABILITIES;
+  return { canGuess: true, canPass: true, canForfeit: true };
 }
 
 function applyStage(
@@ -214,14 +294,8 @@ function findEncounter(
 
 function emptyEncounter(
   payload:
-    | Extract<
-        RelayWsEvent,
-        { type: "relay.encounter.turn.guess" }
-      >["payload"]
-    | Extract<
-        RelayWsEvent,
-        { type: "relay.encounter.ended" }
-      >["payload"],
+    | Extract<RelayWsEvent, { type: "relay.encounter.turn.guess" }>["payload"]
+    | Extract<RelayWsEvent, { type: "relay.encounter.ended" }>["payload"],
 ): RelayEncounterView {
   return {
     encounterId: payload.encounterId,

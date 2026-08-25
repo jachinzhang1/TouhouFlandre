@@ -24,6 +24,11 @@ import type {
   RoundStartedPayload,
   RoundTurnTimeoutPayload,
   RoundTurnPassPayload,
+  RelayEncounterEndedPayload,
+  RelayEncounterStartedPayload,
+  RelayMatchFragment,
+  RelayRuleSetRef,
+  RelayStageStartedPayload,
   RoomClosedPayload,
   RoomUpdatedPayload,
 } from "@touhouflandre/shared";
@@ -33,6 +38,14 @@ import {
   resultForMemberId,
 } from "../domain/memberCollections";
 import { GameSequenceCoordinator } from "../domain/gameSequence";
+import {
+  emptyRelayProjection,
+  finishRelayProjection,
+  isRelayWsEvent,
+  reduceRelayProjection,
+  relayProjectionFromFragment,
+  type RelayProjectionState,
+} from "../domain/relayProjection";
 import {
   advanceChatCursor,
   chatEntryFromFrame,
@@ -104,6 +117,8 @@ export interface RoomUiState {
   viewer: components["schemas"]["ParticipantView"] | null;
   members: MemberView[];
   match: MatchView | null;
+  /** Relay-owned stage/encounter projection. Shared room state only dispatches it. */
+  relay: RelayProjectionState | null;
   round: RoundView | null;
   /** 本局绑定题库版本（match.started 载荷；本地角色表按版本键缓存）。 */
   catalogVersion: string | null;
@@ -130,6 +145,7 @@ export const initialRoomState: RoomUiState = {
   viewer: null,
   members: [],
   match: null,
+  relay: null,
   round: null,
   catalogVersion: null,
   questionScope: null,
@@ -150,6 +166,22 @@ function roundSummary(result: string): "win" | "loss" | "draw" {
 
 /** 按 sequence 应用事件（08 §10.3 reducer；乱序/重复由调用方去重）。 */
 export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
+  if (isRelayWsEvent(event)) {
+    const ruleSetRef = state.match?.ruleSetRef;
+    const relay =
+      state.relay ??
+      (ruleSetRef?.mode === "relay"
+        ? emptyRelayProjection(
+            event.payload.matchIndex,
+            ruleSetRef as RelayRuleSetRef,
+            undefined,
+            state.viewer ?? undefined,
+          )
+        : null);
+    if (!relay) return state;
+    return { ...state, relay: reduceRelayProjection(relay, event) };
+  }
+
   switch (event.type) {
     case "room.updated": {
       const payload = event.payload as unknown as RoomUpdatedPayload;
@@ -213,6 +245,15 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
           catalogVersion: payload.catalogVersion,
           ruleSetRef: payload.ruleSetRef,
         },
+        relay:
+          payload.mode === "relay"
+            ? emptyRelayProjection(
+                payload.matchIndex,
+                payload.ruleSetRef as RelayRuleSetRef,
+                payload.plannedStages,
+                state.viewer ?? undefined,
+              )
+            : null,
         round: null,
         roundResult: null,
         matchResult: null,
@@ -448,6 +489,10 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       const payload = event.payload as unknown as MatchEndedPayload;
       return {
         ...state,
+        relay:
+          payload.relay && state.relay
+            ? finishRelayProjection(state.relay, payload.relay, event.sequence)
+            : state.relay,
         matchResult: payload,
         match: state.match
           ? {
@@ -518,6 +563,17 @@ export function applySnapshot(
     viewer: snapshot.viewer,
     members: snapshot.members,
     match: snapshot.match ?? null,
+    relay:
+      snapshot.match?.relay && snapshot.mode === "relay"
+        ? relayProjectionFromFragment(
+            snapshot.match.matchIndex,
+            snapshot.match.relay as unknown as RelayMatchFragment,
+            snapshot.gameSequence,
+            snapshot.viewer,
+          )
+        : snapshot.mode === "relay"
+          ? next.relay
+          : null,
     catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
     questionScope: (snapshot.match?.questionScope ??
       snapshot.questionScope ??
@@ -542,6 +598,11 @@ export interface RoomActions {
   submitGuess: (guessId: string) => Promise<void>;
   forfeitRound: () => Promise<void>;
   passRelayTurn: () => Promise<void>;
+  relayEncounterAction: (
+    target: { stageIndex: number; encounterId: string },
+    action: "guess" | "pass" | "forfeit",
+    guessId?: string,
+  ) => Promise<void>;
   reconnect: () => void;
   refresh: () => Promise<void>;
 }
@@ -581,11 +642,14 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
   const playerSlot = mySlot ?? 1;
   const isSpectator = role === "spectator" || mySlot === null;
   const viewerRef = useRef(state.viewer);
+  const relayRef = useRef(state.relay);
   const playerLimitRef = useRef(state.room?.playerLimit);
   const reconnectRef = useRef<() => void>(() => undefined);
   const refreshRef = useRef<() => Promise<void>>(async () => undefined);
+  const relayBootstrapRef = useRef<string | null>(null);
 
   viewerRef.current = state.viewer;
+  relayRef.current = state.relay;
   playerLimitRef.current = state.room?.playerLimit;
 
   if (timerRef.current === null) timerRef.current = new ForegroundTimer();
@@ -610,11 +674,35 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
   const applyEvent = useCallback(
     (event: Envelope) => {
       let timing: MultiplayerTimingSnapshot | undefined;
-      if (event.type === "match.started" || event.type === "round.started") {
+      if (
+        event.type === "match.started" ||
+        event.type === "round.started" ||
+        event.type === "relay.stage.started"
+      ) {
         timerRef.current?.setActive(false);
         timerRef.current?.reset(0);
         guessCompletedRef.current = [];
         pendingGuessRef.current = null;
+        if (event.type === "relay.stage.started") {
+          const payload = event.payload as unknown as RelayStageStartedPayload;
+          if (payload.byeMemberId === viewerRef.current?.memberId) {
+            timerRef.current?.setActive(false);
+          }
+        }
+      } else if (event.type === "relay.encounter.started") {
+        const payload =
+          event.payload as unknown as RelayEncounterStartedPayload;
+        if (
+          payload.members.some(
+            (member) => member.memberId === viewerRef.current?.memberId,
+          )
+        ) {
+          timerRef.current?.setActive(false);
+          timerRef.current?.reset(0);
+          guessCompletedRef.current = [];
+          pendingGuessRef.current = null;
+          timerRef.current?.setActive(payload.status === "playing");
+        }
       } else if (event.type === "round.playing") {
         timerRef.current?.setActive(true);
       } else if (event.type === "round.ended") {
@@ -638,6 +726,42 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         };
         timerRef.current?.setActive(false);
         pendingGuessRef.current = null;
+      } else if (event.type === "relay.encounter.ended") {
+        const payload = event.payload as unknown as RelayEncounterEndedPayload;
+        const projectedEncounter = Object.values(
+          relayRef.current?.stagesByIndex ?? {},
+        )
+          .flatMap((stage) => stage.encounterDetails ?? [])
+          .find(
+            (encounter) =>
+              encounter.encounterId === payload.encounterId &&
+              encounter.members.some(
+                (member) => member.memberId === viewerRef.current?.memberId,
+              ),
+          );
+        if (projectedEncounter) {
+          const rows = payload.turns ?? projectedEncounter.rows;
+          const ownGuessCount = rows.filter(
+            (row) =>
+              row.memberId === viewerRef.current?.memberId &&
+              row.kind === "guess",
+          ).length;
+          if (
+            pendingGuessRef.current !== null &&
+            guessCompletedRef.current.length < ownGuessCount
+          ) {
+            guessCompletedRef.current = [
+              ...guessCompletedRef.current,
+              pendingGuessRef.current,
+            ];
+          }
+          timing = {
+            activeElapsedMs: timerRef.current?.snapshot() ?? 0,
+            guessCompletedElapsedMs: [...guessCompletedRef.current],
+          };
+          timerRef.current?.setActive(false);
+          pendingGuessRef.current = null;
+        }
       } else if (event.type === "match.ended") {
         timerRef.current?.setActive(false);
       }
@@ -695,10 +819,18 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       snapshot.gameSequence,
     );
     await statsQueueRef.current;
+    const relayOwnEncounter =
+      snapshot.match?.relay?.currentStage?.encounterDetails?.find(
+        (encounter) =>
+          encounter.status === "playing" &&
+          encounter.members.some(
+            (member) => member.memberId === snapshot.viewer.memberId,
+          ),
+      );
     if (
       snapshot.viewer.role === "player" &&
       snapshot.match &&
-      snapshot.round?.status === "playing"
+      (snapshot.round?.status === "playing" || relayOwnEncounter)
     ) {
       const timing = await loadMultiplayerTiming(
         snapshot.roomId,
@@ -1045,12 +1177,38 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
 
   useEffect(() => {
     if (
-      isSpectator ||
-      !roomId ||
+      state.room?.mode !== "relay" ||
+      state.room.status !== "playing" ||
       !state.match ||
-      state.round?.status !== "playing"
-    )
+      !state.relay ||
+      state.relay.standings.length > 0
+    ) {
       return;
+    }
+    const key = `${roomId}:${state.match.matchIndex}`;
+    if (relayBootstrapRef.current === key) return;
+    relayBootstrapRef.current = key;
+    void refreshRef.current().catch(() => {
+      relayBootstrapRef.current = null;
+    });
+  }, [roomId, state.match, state.relay, state.room]);
+
+  useEffect(() => {
+    const relayOwnEncounter =
+      state.relay?.currentStageIndex === undefined
+        ? undefined
+        : state.relay.stagesByIndex[
+            state.relay.currentStageIndex
+          ]?.encounterDetails?.find((encounter) =>
+            encounter.members.some(
+              (candidate) => candidate.memberId === memberId,
+            ),
+          );
+    const hasActiveRound =
+      state.room?.mode === "relay"
+        ? relayOwnEncounter?.status === "playing"
+        : state.round?.status === "playing";
+    if (isSpectator || !roomId || !state.match || !hasActiveRound) return;
     const flush = () => {
       const timing = {
         activeElapsedMs: timerRef.current?.snapshot() ?? 0,
@@ -1072,7 +1230,15 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [isSpectator, roomId, state.match, state.round?.status, memberId]);
+  }, [
+    isSpectator,
+    memberId,
+    roomId,
+    state.match,
+    state.relay,
+    state.room?.mode,
+    state.round?.status,
+  ]);
 
   const sendChat = useCallback(
     async (draft: string, existingClientMessageId?: string) => {
@@ -1187,7 +1353,21 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
     },
     leave: async () => {
       try {
-        if (state.match && state.round?.status === "playing") {
+        const relayOwnEncounter =
+          state.relay?.currentStageIndex === undefined
+            ? undefined
+            : state.relay.stagesByIndex[
+                state.relay.currentStageIndex
+              ]?.encounterDetails?.find((encounter) =>
+                encounter.members.some(
+                  (candidate) => candidate.memberId === memberId,
+                ),
+              );
+        if (
+          state.match &&
+          (state.round?.status === "playing" ||
+            relayOwnEncounter?.status === "playing")
+        ) {
           await updateMultiplayerTiming(
             roomId,
             state.match.matchIndex,
@@ -1338,6 +1518,73 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         await api.passRelayTurn(roomId, token, state.match.roundIndex);
       } catch (e) {
         setGuessError(e instanceof Error ? e.message : "空过失败。");
+      }
+    },
+    relayEncounterAction: async (target, action, guessId) => {
+      setGuessError("");
+      pendingGuessRef.current = null;
+      if (
+        isSpectator ||
+        !state.match ||
+        state.room?.mode !== "relay" ||
+        !state.relay
+      ) {
+        return;
+      }
+      const encounter = state.relay.stagesByIndex[
+        target.stageIndex
+      ]?.encounterDetails?.find(
+        (candidate) => candidate.encounterId === target.encounterId,
+      );
+      const allowed =
+        action === "guess"
+          ? encounter?.capabilities.canGuess
+          : action === "pass"
+            ? encounter?.capabilities.canPass
+            : encounter?.capabilities.canForfeit;
+      if (!allowed) return;
+      if (action === "guess" && !guessId) return;
+      const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
+      if (action === "guess") pendingGuessRef.current = completedElapsedMs;
+      try {
+        await api.relayEncounterAction(
+          roomId,
+          token,
+          target.stageIndex,
+          target.encounterId,
+          {
+            action,
+            ...(guessId ? { guessId } : {}),
+            idempotencyKey: crypto.randomUUID(),
+          },
+        );
+        if (action === "guess") {
+          guessCompletedRef.current = [
+            ...guessCompletedRef.current,
+            completedElapsedMs,
+          ];
+          pendingGuessRef.current = null;
+          await updateMultiplayerTiming(
+            roomId,
+            state.match.matchIndex,
+            memberId ?? "legacy",
+            {
+              activeElapsedMs: completedElapsedMs,
+              guessCompletedElapsedMs: [...guessCompletedRef.current],
+            },
+          );
+        }
+      } catch (e) {
+        pendingGuessRef.current = null;
+        setGuessError(
+          e instanceof Error
+            ? e.message
+            : action === "guess"
+              ? "猜测失败。"
+              : action === "pass"
+                ? "空过失败。"
+                : "放弃本局失败。",
+        );
       }
     },
   };

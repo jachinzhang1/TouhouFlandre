@@ -229,6 +229,23 @@ export const api = {
         headers: guestAuthHeader(token),
       }),
     ),
+  relayEncounterAction: (
+    roomId: string,
+    token: string,
+    stageIndex: number,
+    encounterId: string,
+    body: components["schemas"]["RelayEncounterActionRequest"],
+  ) =>
+    requestApi(
+      client.POST(
+        "/api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions",
+        {
+          params: { path: { roomId, stageIndex, encounterId } },
+          headers: guestAuthHeader(token),
+          body,
+        },
+      ),
+    ),
   listRelayStageHistory: (
     roomId: string,
     token: string,

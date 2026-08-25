@@ -395,7 +395,10 @@ test.describe("多人房间", () => {
     }
   });
 
-  test("接力模式共享棋盘与轮次锁定", async ({ browser, request }) => {
+  test("双人接力使用单 encounter 棋盘并按 turn 锁定输入", async ({
+    browser,
+    request,
+  }) => {
     const { questionScope } = await fixedAnswerScope(request, [
       "博丽灵梦",
       "雾雨魔理沙",
@@ -429,9 +432,14 @@ test.describe("多人房间", () => {
 
       await host.getByRole("button", { name: "准备" }).click();
       await guest.getByRole("button", { name: "准备" }).click();
-      await expect(host.getByText(/第 1 局/)).toBeVisible({ timeout: 10_000 });
+      await expect(host.locator("[data-relay-stage-view]")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(host.locator("[data-relay-board]")).toHaveCount(1);
+      await expect(host.locator("[data-relay-board] table")).toHaveCount(1);
+      await expect(host.getByText(/第 1(?:\/3)? 轮/)).toBeVisible();
       await expect(host.getByLabel("搜索角色")).toBeEnabled({
-        timeout: 10_000,
+        timeout: 15_000,
       });
 
       await guessViaUI(host, "灵梦");
@@ -550,6 +558,166 @@ test.describe("多人房间", () => {
     } finally {
       await page.close();
     }
+  });
+});
+
+test.describe("多人接力单棋盘体验", () => {
+  test.describe.configure({ mode: "serial" });
+
+  for (const count of [2, 4, 6, 8] as const) {
+    test(`${count} 人当前 stage 始终只挂载一张棋盘`, async ({
+      page,
+      request,
+    }) => {
+      const roster = await createRelayRoster(request, count, {
+        playerLimit: count,
+      });
+      await enterRoom(page, roster[0]);
+      for (const credential of roster) await setReady(request, credential);
+
+      const stageView = page.locator("[data-relay-stage-view]");
+      await expect(stageView).toBeVisible({ timeout: 20_000 });
+      await expect(stageView.locator("[data-relay-board]")).toHaveCount(1);
+      await expect(stageView.locator("[data-relay-board] table")).toHaveCount(
+        1,
+      );
+      await expect(page.getByLabel("选择对局").locator("option")).toHaveCount(
+        count / 2,
+      );
+      await expect(page.locator("[data-guess-input-bar]")).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(
+        page.getByRole("list", { name: "玩家积分" }).getByRole("listitem"),
+      ).toHaveCount(count);
+
+      const options = await page.getByLabel("选择对局").locator("option").all();
+      const optionLabels = await Promise.all(
+        options.map((option) => option.textContent()),
+      );
+      for (let seat = 1; seat <= count; seat += 1) {
+        expect(optionLabels.join(" ")).toContain(
+          `Relay Player ${String(seat).padStart(2, "0")}(${seat})`,
+        );
+      }
+
+      const scoreText = await page
+        .getByRole("list", { name: "玩家积分" })
+        .textContent();
+      if (count > 2) {
+        const otherOptionIndex = optionLabels.findIndex(
+          (label) => !label?.includes("Relay Player 01(1)"),
+        );
+        expect(otherOptionIndex).toBeGreaterThanOrEqual(0);
+        const otherValue =
+          await options[otherOptionIndex].getAttribute("value");
+        await page.getByLabel("选择对局").selectOption(otherValue!);
+        await expect(page.locator("[data-relay-status]")).toContainText(
+          "正在浏览其他对局，操作已禁用",
+        );
+        const guessInput = page.getByLabel("搜索角色");
+        await expect
+          .poll(async () =>
+            (await guessInput.count()) === 0
+              ? true
+              : await guessInput.isDisabled(),
+          )
+          .toBe(true);
+        await expect(stageView.locator("[data-relay-board]")).toHaveCount(1);
+        await expect(stageView.locator("[data-relay-board] table")).toHaveCount(
+          1,
+        );
+        expect(
+          await page.getByRole("list", { name: "玩家积分" }).textContent(),
+        ).toBe(scoreText);
+
+        const ownLabelIndex = optionLabels.findIndex((label) =>
+          label?.includes("Relay Player 01(1)"),
+        );
+        const ownValue = await options[ownLabelIndex].getAttribute("value");
+        await page.getByLabel("选择对局").selectOption(ownValue!);
+        await expect(page.locator("[data-relay-status]")).not.toContainText(
+          "正在浏览其他对局",
+        );
+      }
+
+      await expectNoHorizontalOverflow(page);
+      await prepareVisualSnapshot(page);
+      await expect(page).toHaveScreenshot(`relay-${count}-stage.png`, {
+        animations: "disabled",
+        mask: [page.getByText(/本手 .* · 本局/)],
+        maskColor: "#e2e8e5",
+        maxDiffPixels: 250,
+      });
+    });
+  }
+
+  test("spectator 只读浏览完整 encounter 标签", async ({ page, request }) => {
+    const roster = await createRelayRoster(request, 4);
+    const spectator = await joinCredential(
+      request,
+      roster[0].roomCode,
+      "Relay Watcher",
+    );
+    expect(spectator.role).toBe("spectator");
+    await enterRoom(page, spectator);
+    for (const credential of roster) await setReady(request, credential);
+
+    await expect(page.locator("[data-relay-stage-view]")).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await expect(page.getByLabel("选择对局").locator("option")).toHaveCount(2);
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "只读观战，可以浏览所有对局",
+    );
+    await expect(page.getByLabel("搜索角色")).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+  });
+
+  test("刷新后恢复浏览的其他 encounter 且保持只读", async ({
+    page,
+    request,
+  }) => {
+    const roster = await createRelayRoster(request, 4);
+    await enterRoom(page, roster[0]);
+    for (const credential of roster) await setReady(request, credential);
+
+    await expect(page.getByLabel("选择对局").locator("option")).toHaveCount(2, {
+      timeout: 20_000,
+    });
+    const options = page.getByLabel("选择对局").locator("option");
+    const labels = await options.allTextContents();
+    const otherIndex = labels.findIndex(
+      (label) => !label.includes("Relay Player 01(1)"),
+    );
+    const otherValue = await options.nth(otherIndex).getAttribute("value");
+    await page.getByLabel("选择对局").selectOption(otherValue!);
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "正在浏览其他对局，操作已禁用",
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (key) =>
+            JSON.parse(window.sessionStorage.getItem(key) ?? "{}").encounterId,
+          `touhouflandre:relay-view:${roster[0].roomId}:0`,
+        ),
+      )
+      .toBe(otherValue);
+
+    await page.reload();
+    await expect(page.getByLabel("选择对局")).toHaveValue(otherValue!);
+    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    await expect(page.locator("[data-relay-status]")).toContainText(
+      "正在浏览其他对局，操作已禁用",
+    );
+    const guessInput = page.getByLabel("搜索角色");
+    await expect
+      .poll(async () =>
+        (await guessInput.count()) === 0 ? true : await guessInput.isDisabled(),
+      )
+      .toBe(true);
   });
 });
 
