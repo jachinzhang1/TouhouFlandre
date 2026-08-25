@@ -197,7 +197,9 @@ func TestMRX003RelayStorageConstraints(t *testing.T) {
 	assertPostgresCode(t, insertTurn("turn-4", "encounter-1", "member-1", "other-guess", "idem-1"), "23505")
 	if _, err := db.Exec(`
 		UPDATE multi_relay_encounter
-		SET status = 'ended', outcome = 'forfeit', winner_member_id = 'member-2', ended_at = now()
+		SET status = 'ended', outcome = 'forfeit', winner_member_id = 'member-2', ended_at = now(),
+		    turn_member_id = NULL, turn_deadline = NULL,
+		    ended_by_member_id = 'member-1', end_idempotency_key = 'migration-fixture-forfeit'
 		WHERE id = 'encounter-1'`); err != nil {
 		t.Fatalf("persist forfeit encounter outcome: %v", err)
 	}

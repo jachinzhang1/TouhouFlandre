@@ -14,6 +14,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 // fastRequest / fastRequestAuth：短时间常量 server 的请求辅助。
@@ -67,7 +69,17 @@ func fastRequestAuth(method, path, token string, body any) (*http.Response, []by
 
 // fastSweeper 与 fast server 同时间常量、同 hub 的 sweeper（测试手动驱动；事件入库即广播）。
 func fastSweeper() *multi.Sweeper {
-	return multi.NewSweeper(pool, multi.SweeperConfig{Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub, Registry: assembly.MustProduction()})
+	clock := core.SystemClock{}
+	random := core.NewRandomSource()
+	_, relayRecovery, err := relayadapter.NewRuntime(pool, clock, random, fastTiming)
+	if err != nil {
+		panic(err)
+	}
+	return multi.NewSweeper(pool, multi.SweeperConfig{
+		Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub, Registry: assembly.MustProduction(),
+		Clock: clock, Random: random, ModeRecoveries: []multi.ModeRecovery{relayRecovery},
+		ModeForfeiters: []multi.ModeMemberForfeiter{relayRecovery},
+	})
 }
 
 // advanceRounds 推进局间时序：间歇创建下一局（countdown）+ 倒计时到 playing。
@@ -179,10 +191,20 @@ func currentAnswer(t *testing.T, roomID string) string {
 	t.Helper()
 	var answer string
 	err := pool.QueryRow(ctx, `
-		SELECT r.answer_id FROM multi_round r
-		JOIN multi_match m ON m.id = r.match_id
-		WHERE m.room_id = $1 AND m.status = 'playing'
-		ORDER BY r.round_index DESC LIMIT 1`, roomID).Scan(&answer)
+		SELECT answer_id
+		FROM (
+			SELECT r.answer_id, r.round_index AS unit_index
+			FROM multi_round r
+			JOIN multi_match m ON m.id = r.match_id
+			WHERE m.room_id = $1 AND m.status = 'playing'
+			UNION ALL
+			SELECT encounter.answer_id, stage.stage_index AS unit_index
+			FROM multi_relay_encounter encounter
+			JOIN multi_relay_stage stage ON stage.id = encounter.stage_id
+			JOIN multi_match m ON m.id = encounter.match_id
+			WHERE m.room_id = $1 AND m.status = 'playing' AND encounter.encounter_index = 1
+		) current_unit
+		ORDER BY unit_index DESC LIMIT 1`, roomID).Scan(&answer)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,10 +588,14 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	}
 
 	if _, err := pool.Exec(ctx, `
-		UPDATE multi_round r
+		UPDATE multi_relay_encounter encounter
 		SET turn_deadline = now() - interval '1 second'
-		FROM multi_match m
-		WHERE r.match_id = m.id AND m.room_id = $1 AND r.round_index = 1`,
+		FROM multi_relay_stage stage, multi_match match
+		WHERE encounter.stage_id = stage.id
+		  AND encounter.match_id = match.id
+		  AND match.room_id = $1
+		  AND stage.stage_index = 1
+		  AND encounter.encounter_index = 1`,
 		fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
@@ -598,35 +624,44 @@ func TestRelayModeSharedTurns(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("joiner relay win status %d: %s", resp.StatusCode, payload)
 	}
-	var roundEnded, matchEnded map[string]any
+	var stageEnded, matchEnded map[string]any
 	for _, event := range eventsOf(t, fixture) {
 		switch event.Type {
-		case "round.ended":
-			roundEnded = event.Payload
+		case "relay.stage.ended":
+			stageEnded = event.Payload
 		case "match.ended":
 			matchEnded = event.Payload
 		}
 	}
-	if roundEnded == nil || matchEnded == nil {
-		t.Fatalf("relay terminal events missing: round=%v match=%v", roundEnded, matchEnded)
+	terminal := startMatchSnapshot(t, fixture)
+	if terminal.Match == nil || terminal.Match.Relay == nil || terminal.Match.Relay.CurrentStage == nil ||
+		terminal.Match.Relay.CurrentStage.EncounterDetails == nil ||
+		len(*terminal.Match.Relay.CurrentStage.EncounterDetails) != 1 {
+		t.Fatalf("relay terminal encounter detail missing: match=%+v", terminal.Match)
 	}
-	seat2Result := collectionEntryAtSeat(t, roundEnded, "results", 2)
-	if roundEnded["viewerResult"] != "loss" || roundEnded["winnerMemberId"] != seat2Result["memberId"] || seat2Result["result"] != "win" {
-		t.Fatalf("relay round result = %v, want host loss and seat 2 winner", roundEnded)
+	encounterEnded := (*terminal.Match.Relay.CurrentStage.EncounterDetails)[0]
+	if stageEnded == nil || matchEnded == nil {
+		t.Fatalf("relay terminal events missing: stage=%v match=%v", stageEnded, matchEnded)
 	}
-	if collectionEntryAtSeat(t, roundEnded, "scores", 1)["score"] != float64(0) ||
-		collectionEntryAtSeat(t, roundEnded, "scores", 2)["score"] != float64(1) {
-		t.Fatalf("relay round scores = %v, want 0-1", roundEnded["scores"])
+	seat2MemberID := snap.Members[1].MemberId
+	if encounterEnded.Status != openapi.RelayEncounterViewStatusEnded ||
+		encounterEnded.Outcome == nil || *encounterEnded.Outcome != openapi.RelayEncounterViewOutcomeWin ||
+		encounterEnded.WinnerMemberId == nil || *encounterEnded.WinnerMemberId != seat2MemberID ||
+		encounterEnded.Answer == nil {
+		t.Fatalf("relay encounter result = %+v, want terminal seat 2 winner", encounterEnded)
 	}
-	turns, ok := roundEnded["turns"].([]any)
-	if !ok || len(turns) != 4 {
-		t.Fatalf("relay turns = %#v, want four preserved rows", roundEnded["turns"])
+	if collectionEntryAtSeat(t, stageEnded, "standings", 1)["score"] != float64(0) ||
+		collectionEntryAtSeat(t, stageEnded, "standings", 2)["score"] != float64(1) {
+		t.Fatalf("relay stage standings = %v, want 0-1", stageEnded["standings"])
 	}
-	lastTurn, _ := turns[3].(map[string]any)
-	if lastTurn["memberId"] != seat2Result["memberId"] || lastTurn["seat"] != float64(2) || lastTurn["kind"] != "guess" {
+	if len(encounterEnded.Rows) != 4 {
+		t.Fatalf("relay turns = %#v, want four preserved rows", encounterEnded.Rows)
+	}
+	lastTurn := encounterEnded.Rows[3]
+	if lastTurn.MemberId != seat2MemberID || lastTurn.Seat != 2 || lastTurn.Kind != openapi.RelayTurnRowKindGuess {
 		t.Fatalf("relay winning turn = %#v, want seat 2 member guess", lastTurn)
 	}
-	if matchEnded["viewerResult"] != "loss" || matchEnded["winnerMemberId"] != seat2Result["memberId"] || matchEnded["reason"] != "normal" {
+	if matchEnded["viewerResult"] != "loss" || matchEnded["winnerMemberId"] != seat2MemberID || matchEnded["reason"] != "normal" {
 		t.Fatalf("relay match result = %v, want normal seat 2 win", matchEnded)
 	}
 	joinerEvents := eventsOfAs(t, fixture, fixture.joinerToken)

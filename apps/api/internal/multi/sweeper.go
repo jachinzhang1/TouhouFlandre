@@ -32,6 +32,22 @@ type SweeperConfig struct {
 	Registry       *core.Registry
 	Clock          core.Clock
 	Random         core.RandomSource
+	ModeRecoveries []ModeRecovery
+	ModeForfeiters []ModeMemberForfeiter
+}
+
+type ModeRecovery interface {
+	Sweep(context.Context, int) ([]string, error)
+}
+
+// ModeMemberForfeiter lets a mode-owned storage adapter handle permanent
+// player departure without making the shared sweeper query mode tables.
+type ModeMemberForfeiter interface {
+	ForfeitMatchMember(context.Context, repo.MultiMember, MatchEndReason) (bool, error)
+}
+
+type ModeMemberBatchForfeiter interface {
+	ForfeitMatchMembers(context.Context, []repo.MultiMember, MatchEndReason) (bool, error)
 }
 
 // Sweeper 后台调度器（唯一）。
@@ -50,6 +66,25 @@ func NewSweeper(pool *pgxpool.Pool, cfg SweeperConfig) *Sweeper {
 	}
 	if cfg.ChatRetention <= 0 {
 		cfg.ChatRetention = 24 * time.Hour
+	}
+	defaults := DefaultTimingConfig()
+	if cfg.Timing.RoundCountdown <= 0 {
+		cfg.Timing.RoundCountdown = defaults.RoundCountdown
+	}
+	if cfg.Timing.Intermission <= 0 {
+		cfg.Timing.Intermission = defaults.Intermission
+	}
+	if cfg.Timing.RoundSeconds <= 0 {
+		cfg.Timing.RoundSeconds = defaults.RoundSeconds
+	}
+	if cfg.Timing.RaceRoundSeconds <= 0 {
+		cfg.Timing.RaceRoundSeconds = defaults.RaceRoundSeconds
+	}
+	if cfg.Timing.TurnSeconds <= 0 {
+		cfg.Timing.TurnSeconds = defaults.TurnSeconds
+	}
+	if cfg.Timing.FinishedRetention <= 0 {
+		cfg.Timing.FinishedRetention = defaults.FinishedRetention
 	}
 	clock := cfg.Clock
 	if clock == nil {
@@ -108,6 +143,7 @@ func (s *Sweeper) notify(roomID string) {
 // SweepOnce 执行一轮清扫（幂等；供测试与启动补扫）。
 func (s *Sweeper) SweepOnce(ctx context.Context) error {
 	steps := []func(context.Context) error{
+		s.recoverModeUnits,
 		s.startCountdownRounds,
 		s.settleExpiredRelayTurns,
 		s.settleTimedOutRounds,
@@ -122,6 +158,22 @@ func (s *Sweeper) SweepOnce(ctx context.Context) error {
 	for _, step := range steps {
 		if err := step(ctx); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (s *Sweeper) recoverModeUnits(ctx context.Context) error {
+	for _, recovery := range s.cfg.ModeRecoveries {
+		if recovery == nil {
+			continue
+		}
+		roomIDs, err := recovery.Sweep(ctx, 100)
+		if err != nil {
+			return err
+		}
+		for _, roomID := range roomIDs {
+			s.notify(roomID)
 		}
 	}
 	return nil
@@ -536,6 +588,38 @@ func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.
 	})
 }
 
+func (s *Sweeper) forfeitModeMemberBatch(ctx context.Context, members []repo.MultiMember, reason MatchEndReason, now time.Time) error {
+	if len(members) == 0 {
+		return nil
+	}
+	roomID := members[0].RoomID
+	handled := false
+	for _, forfeiter := range s.cfg.ModeForfeiters {
+		if forfeiter == nil {
+			continue
+		}
+		if batch, ok := forfeiter.(ModeMemberBatchForfeiter); ok {
+			var err error
+			handled, err = batch.ForfeitMatchMembers(ctx, members, reason)
+			if err != nil {
+				return err
+			}
+			if handled {
+				break
+			}
+		}
+	}
+	if !handled {
+		for _, member := range members {
+			if err := ForfeitMemberMatch(ctx, s.pool, member, reason, now, s.cfg.Timing, s.registry); err != nil {
+				return err
+			}
+		}
+	}
+	s.notify(roomID)
+	return nil
+}
+
 // expireDisconnectedMembers 断线宽限逾期（08 §4.6/§6.2）：
 // lobby：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot；
 // 对局中：race 按房间批量标记 roster left 并套用 N 人终态表，relay 判对方胜；
@@ -547,6 +631,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		return err
 	}
 	raceBatches := map[string][]repo.MultiMember{}
+	modeBatches := map[string][]repo.MultiMember{}
 	for _, member := range members {
 		room, err := repo.New(s.pool).GetRoom(ctx, member.RoomID)
 		if err != nil {
@@ -575,10 +660,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 				raceBatches[room.ID] = append(raceBatches[room.ID], member)
 				continue
 			}
-			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing, s.registry); err != nil {
-				return err
-			}
-			s.notify(room.ID)
+			modeBatches[room.ID] = append(modeBatches[room.ID], member)
 		case string(RoomStatusLobby):
 			if err := s.expireLobbyMember(ctx, member); err != nil {
 				return err
@@ -594,6 +676,11 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 			return err
 		}
 		s.notify(roomID)
+	}
+	for _, batch := range modeBatches {
+		if err := s.forfeitModeMemberBatch(ctx, batch, MatchEndReasonDisconnect, now); err != nil {
+			return err
+		}
 	}
 	return nil
 }

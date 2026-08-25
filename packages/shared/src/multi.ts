@@ -101,6 +101,7 @@ export interface MatchStartedPayload {
   mode: MultiplayerMode;
   turnSeconds: number;
   targetWins: number;
+  plannedStages?: number;
   catalogVersion: string;
   matchIndex: number;
   scoringMode?: RaceScoringMode;
@@ -225,6 +226,7 @@ export interface MatchEndedPayload {
   scores: MemberScoreView[];
   results: MemberResultView[];
   ranking?: MemberRankingView[];
+  relay?: RelayMatchEndedView;
   reason: MultiMatchEndReason;
   retentionEndsAt: string;
 }
@@ -285,6 +287,10 @@ export interface RuleSetRef {
 export type RelayRuleSetRef = RuleSetRef & { mode: "relay" };
 
 export type RelayLifeState = "healthy" | "near_death";
+export type RelayLifeTransition =
+  | "none"
+  | "entered_near_death"
+  | "eliminated";
 
 export interface RelayStandingView {
   memberId: string;
@@ -293,6 +299,22 @@ export interface RelayStandingView {
   status: MatchPlayerStatus;
   lifeState: RelayLifeState;
   eliminatedStage?: number;
+}
+
+export interface RelayRankingView {
+  memberId: string;
+  seat: number;
+  rank: number;
+  score: number;
+  status: MatchPlayerStatus;
+  lifeState: RelayLifeState;
+  eliminatedStage?: number;
+  survivedStages?: number;
+}
+
+export interface RelayMatchEndedView {
+  standings: RelayStandingView[];
+  ranking: RelayRankingView[];
 }
 
 export interface RelayEncounterMemberView {
@@ -308,6 +330,27 @@ export interface RelayEncounterSummary {
   members: RelayEncounterMemberView[];
 }
 
+export interface RelayEncounterCapabilities {
+  canGuess: boolean;
+  canPass: boolean;
+  canForfeit: boolean;
+}
+
+export interface RelayEncounterView extends RelayEncounterSummary {
+  capabilities: RelayEncounterCapabilities;
+  startsAt?: string;
+  deadline?: string;
+  turnMemberId?: string;
+  turnSeat?: number;
+  turnDeadline?: string;
+  maxTurnsPerPlayer?: number;
+  maxSkipsPerPlayer?: number;
+  outcome?: "win" | "loss" | "draw" | "forfeit" | "timeout";
+  winnerMemberId?: string | null;
+  answer?: RelayAnswerView;
+  rows: RelayTurnRow[];
+}
+
 export interface RelayStageSettlementView {
   memberId: string;
   encounterId?: string;
@@ -318,6 +361,7 @@ export interface RelayStageSettlementView {
   scoreAfter: number;
   lifeBefore: RelayLifeState;
   lifeAfter: RelayLifeState;
+  lifeTransition: RelayLifeTransition;
   eliminatedStage?: number;
 }
 
@@ -352,6 +396,8 @@ export interface RelayEncounterStartedPayload {
   turnMemberId?: string;
   turnSeat?: number;
   turnDeadline?: string;
+  maxTurnsPerPlayer: number;
+  maxSkipsPerPlayer: number;
 }
 
 export interface RelayEncounterTurnGuessPayload {
@@ -409,8 +455,28 @@ export interface RelayStageEndedPayload {
   status: "ended";
   settlement: RelayStageSettlementView[];
   standings: RelayStandingView[];
+  eliminatedMemberIds?: string[];
   nextStageIndex?: number;
   byeMemberId?: string;
+}
+
+export interface RelayStageView {
+  stageId: string;
+  stageIndex: number;
+  status: "planned" | "playing" | "settling" | "ended";
+  encounters: RelayEncounterSummary[];
+  byeMemberId?: string;
+  settlement?: RelayStageSettlementView[];
+  encounterDetails?: RelayEncounterView[];
+}
+
+export interface RelayMatchFragment {
+  ruleSetRef: RelayRuleSetRef;
+  standings: RelayStandingView[];
+  plannedStages?: number;
+  ranking?: RelayRankingView[];
+  currentStage?: RelayStageView;
+  historySummary?: RelayStageView[];
 }
 
 // ---------- 服务端控制帧（非事件，无 sequence） ----------

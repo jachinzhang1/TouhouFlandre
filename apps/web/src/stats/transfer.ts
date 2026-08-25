@@ -109,6 +109,7 @@ const multiplayerSchema = z.object({
     "disconnect",
     "server_restart",
     "round_cap",
+    "insufficient_active_players",
     "incomplete",
   ]),
   scoreSelf: z.number().int().nonnegative(),

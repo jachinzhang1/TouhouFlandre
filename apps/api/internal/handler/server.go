@@ -21,6 +21,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 // Server 实现 StrictServerInterface。
@@ -30,6 +32,8 @@ type Server struct {
 	now              func() time.Time
 	rng              core.RandomSource
 	modeRegistry     *core.Registry
+	relayCoordinator *relaydomain.StageCoordinator
+	relayEncounters  *relayadapter.EncounterService
 	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
 	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
 	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
@@ -146,7 +150,18 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.configureRelayEngine()
 	return s
+}
+
+func (s *Server) configureRelayEngine() {
+	clock := core.ClockFunc(s.now)
+	coordinator, encounters, err := relayadapter.NewRuntime(s.pool, clock, s.rng, s.timing)
+	if err != nil {
+		panic("handler: configure relay encounter engine: " + err.Error())
+	}
+	s.relayCoordinator = coordinator
+	s.relayEncounters = encounters
 }
 
 // HealthCheck 健康检查。

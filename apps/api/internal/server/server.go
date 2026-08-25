@@ -111,7 +111,7 @@ func errorHandler(c *echo.Context, err error) {
 	}
 
 	var apiErr *handler.ApiError
-	if errors.As(err, &apiErr) {
+	if errors.As(err, &apiErr) && apiErr != nil {
 		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
 			multi.DefaultMetrics.IncChatRejected(string(apiErr.Code))
 		}
@@ -191,7 +191,7 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 // requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。
 func requestErrorCode(err error) string {
 	var apiErr *handler.ApiError
-	if errors.As(err, &apiErr) {
+	if errors.As(err, &apiErr) && apiErr != nil {
 		return string(apiErr.Code)
 	}
 	var httpErr *echo.HTTPError

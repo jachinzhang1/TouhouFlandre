@@ -773,7 +773,7 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		return nil, internalError(err)
 	}
 	if room.Status == string(multi.RoomStatusPlaying) && multi.IsPlayer(*member) {
-		if err := multi.ForfeitMemberMatch(ctx, s.pool, *member, multi.MatchEndReasonForfeit, s.now(), s.timing, s.modeRegistry); err != nil {
+		if err := s.forfeitPlayingMember(ctx, *member, multi.MatchEndReasonForfeit); err != nil {
 			return nil, internalError(err)
 		}
 		s.publish(request.RoomId)
@@ -812,7 +812,7 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 		if err := tx.Rollback(ctx); err != nil {
 			return nil, internalError(err)
 		}
-		if err := multi.ForfeitMemberMatch(ctx, s.pool, *member, multi.MatchEndReasonForfeit, s.now(), s.timing, s.modeRegistry); err != nil {
+		if err := s.forfeitPlayingMember(ctx, *member, multi.MatchEndReasonForfeit); err != nil {
 			return nil, internalError(err)
 		}
 		s.publish(request.RoomId)
@@ -864,6 +864,19 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 	}
 	s.publish(request.RoomId)
 	return openapi.RoomsLeave204Response{}, nil
+}
+
+func (s *Server) forfeitPlayingMember(ctx context.Context, member repo.MultiMember, reason multi.MatchEndReason) error {
+	if s.relayEncounters != nil {
+		handled, err := s.relayEncounters.ForfeitMatchMember(ctx, member, reason)
+		if err != nil {
+			return err
+		}
+		if handled {
+			return nil
+		}
+	}
+	return multi.ForfeitMemberMatch(ctx, s.pool, member, reason, s.now(), s.timing, s.modeRegistry)
 }
 
 func (s *Server) markMemberLeftTx(ctx context.Context, q *repo.Queries, room repo.MultiRoom, member *repo.MultiMember) error {

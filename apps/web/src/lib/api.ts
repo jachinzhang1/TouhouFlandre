@@ -227,6 +227,18 @@ export const api = {
         headers: guestAuthHeader(token),
       }),
     ),
+  listRelayStageHistory: (
+    roomId: string,
+    token: string,
+    matchIndex: number,
+    query: { after?: string; limit?: number } = {},
+  ) =>
+    requestApi(
+      client.GET("/api/rooms/{roomId}/matches/{matchIndex}/stages", {
+        params: { path: { roomId, matchIndex }, query },
+        headers: guestAuthHeader(token),
+      }),
+    ),
   listRoomMessages: (
     roomId: string,
     token: string,

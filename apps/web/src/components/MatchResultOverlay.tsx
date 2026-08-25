@@ -16,6 +16,7 @@ const REASON_LABEL: Record<string, string> = {
   disconnect: "有玩家断线",
   server_restart: "服务重启",
   round_cap: "局数上限",
+  insufficient_active_players: "人数不足",
 };
 
 export function MatchResultOverlay({

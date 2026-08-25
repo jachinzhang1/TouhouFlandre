@@ -222,11 +222,12 @@ const (
 type MatchEndReason string
 
 const (
-	MatchEndReasonNormal        MatchEndReason = "normal"
-	MatchEndReasonForfeit       MatchEndReason = "forfeit"
-	MatchEndReasonDisconnect    MatchEndReason = "disconnect"
-	MatchEndReasonServerRestart MatchEndReason = "server_restart"
-	MatchEndReasonRoundCap      MatchEndReason = "round_cap"
+	MatchEndReasonNormal                    MatchEndReason = "normal"
+	MatchEndReasonForfeit                   MatchEndReason = "forfeit"
+	MatchEndReasonDisconnect                MatchEndReason = "disconnect"
+	MatchEndReasonServerRestart             MatchEndReason = "server_restart"
+	MatchEndReasonRoundCap                  MatchEndReason = "round_cap"
+	MatchEndReasonInsufficientActivePlayers MatchEndReason = "insufficient_active_players"
 )
 
 // RoomCloseReason 房间关闭原因。
@@ -344,6 +345,7 @@ type MatchStartedPayload struct {
 	Mode           MultiplayerMode          `json:"mode"`
 	TurnSeconds    int                      `json:"turnSeconds"`
 	TargetWins     int                      `json:"targetWins"`
+	PlannedStages  *int                     `json:"plannedStages,omitempty"`
 	CatalogVersion string                   `json:"catalogVersion"`
 	MatchIndex     int                      `json:"matchIndex"`
 	QuestionScope  game.QuestionScopeConfig `json:"questionScope"`
@@ -433,6 +435,14 @@ const (
 	RelayLifeNearDeath RelayLifeState = "near_death"
 )
 
+type RelayLifeTransition string
+
+const (
+	RelayLifeTransitionNone             RelayLifeTransition = "none"
+	RelayLifeTransitionEnteredNearDeath RelayLifeTransition = "entered_near_death"
+	RelayLifeTransitionEliminated       RelayLifeTransition = "eliminated"
+)
+
 type RelayStandingView struct {
 	MemberID        string         `json:"memberId"`
 	Seat            int            `json:"seat"`
@@ -440,6 +450,22 @@ type RelayStandingView struct {
 	Status          string         `json:"status"`
 	LifeState       RelayLifeState `json:"lifeState"`
 	EliminatedStage *int           `json:"eliminatedStage,omitempty"`
+}
+
+type RelayRankingView struct {
+	MemberID        string         `json:"memberId"`
+	Seat            int            `json:"seat"`
+	Rank            int            `json:"rank"`
+	Score           int            `json:"score"`
+	Status          string         `json:"status"`
+	LifeState       RelayLifeState `json:"lifeState"`
+	EliminatedStage *int           `json:"eliminatedStage,omitempty"`
+	SurvivedStages  *int           `json:"survivedStages,omitempty"`
+}
+
+type RelayMatchEndedView struct {
+	Standings []RelayStandingView `json:"standings"`
+	Ranking   []RelayRankingView  `json:"ranking"`
 }
 
 type RelayEncounterMemberView struct {
@@ -456,16 +482,17 @@ type RelayEncounterSummary struct {
 }
 
 type RelayStageSettlementView struct {
-	MemberID        string         `json:"memberId"`
-	EncounterID     *string        `json:"encounterId,omitempty"`
-	Assignment      string         `json:"assignment"`
-	Outcome         string         `json:"outcome"`
-	ScoreBefore     int            `json:"scoreBefore"`
-	ScoreDelta      int            `json:"scoreDelta"`
-	ScoreAfter      int            `json:"scoreAfter"`
-	LifeBefore      RelayLifeState `json:"lifeBefore"`
-	LifeAfter       RelayLifeState `json:"lifeAfter"`
-	EliminatedStage *int           `json:"eliminatedStage,omitempty"`
+	MemberID        string              `json:"memberId"`
+	EncounterID     *string             `json:"encounterId,omitempty"`
+	Assignment      string              `json:"assignment"`
+	Outcome         string              `json:"outcome"`
+	ScoreBefore     int                 `json:"scoreBefore"`
+	ScoreDelta      int                 `json:"scoreDelta"`
+	ScoreAfter      int                 `json:"scoreAfter"`
+	LifeBefore      RelayLifeState      `json:"lifeBefore"`
+	LifeAfter       RelayLifeState      `json:"lifeAfter"`
+	LifeTransition  RelayLifeTransition `json:"lifeTransition"`
+	EliminatedStage *int                `json:"eliminatedStage,omitempty"`
 }
 
 type RelayStageStartedPayload struct {
@@ -478,18 +505,20 @@ type RelayStageStartedPayload struct {
 }
 
 type RelayEncounterStartedPayload struct {
-	MatchIndex     int                        `json:"matchIndex"`
-	StageID        string                     `json:"stageId"`
-	StageIndex     int                        `json:"stageIndex"`
-	EncounterID    string                     `json:"encounterId"`
-	EncounterIndex int                        `json:"encounterIndex"`
-	Status         string                     `json:"status"`
-	Members        []RelayEncounterMemberView `json:"members"`
-	StartsAt       *time.Time                 `json:"startsAt,omitempty"`
-	Deadline       *time.Time                 `json:"deadline,omitempty"`
-	TurnMemberID   *string                    `json:"turnMemberId,omitempty"`
-	TurnSeat       *int                       `json:"turnSeat,omitempty"`
-	TurnDeadline   *time.Time                 `json:"turnDeadline,omitempty"`
+	MatchIndex        int                        `json:"matchIndex"`
+	StageID           string                     `json:"stageId"`
+	StageIndex        int                        `json:"stageIndex"`
+	EncounterID       string                     `json:"encounterId"`
+	EncounterIndex    int                        `json:"encounterIndex"`
+	Status            string                     `json:"status"`
+	Members           []RelayEncounterMemberView `json:"members"`
+	StartsAt          *time.Time                 `json:"startsAt,omitempty"`
+	Deadline          *time.Time                 `json:"deadline,omitempty"`
+	TurnMemberID      *string                    `json:"turnMemberId,omitempty"`
+	TurnSeat          *int                       `json:"turnSeat,omitempty"`
+	TurnDeadline      *time.Time                 `json:"turnDeadline,omitempty"`
+	MaxTurnsPerPlayer int                        `json:"maxTurnsPerPlayer"`
+	MaxSkipsPerPlayer int                        `json:"maxSkipsPerPlayer"`
 }
 
 type RelayEncounterTurnPayload struct {
@@ -517,14 +546,15 @@ type RelayEncounterEndedPayload struct {
 }
 
 type RelayStageEndedPayload struct {
-	MatchIndex     int                        `json:"matchIndex"`
-	StageID        string                     `json:"stageId"`
-	StageIndex     int                        `json:"stageIndex"`
-	Status         string                     `json:"status"`
-	Settlement     []RelayStageSettlementView `json:"settlement"`
-	Standings      []RelayStandingView        `json:"standings"`
-	NextStageIndex *int                       `json:"nextStageIndex,omitempty"`
-	ByeMemberID    *string                    `json:"byeMemberId,omitempty"`
+	MatchIndex          int                        `json:"matchIndex"`
+	StageID             string                     `json:"stageId"`
+	StageIndex          int                        `json:"stageIndex"`
+	Status              string                     `json:"status"`
+	Settlement          []RelayStageSettlementView `json:"settlement"`
+	Standings           []RelayStandingView        `json:"standings"`
+	EliminatedMemberIDs []string                   `json:"eliminatedMemberIds,omitempty"`
+	NextStageIndex      *int                       `json:"nextStageIndex,omitempty"`
+	ByeMemberID         *string                    `json:"byeMemberId,omitempty"`
 }
 
 // RoundSharedGuessPayload round.shared.guess：接力共享猜测行。
@@ -651,14 +681,15 @@ type FieldFeedbackView struct {
 
 // MatchEndedPayload match.ended：对局结束。
 type MatchEndedPayload struct {
-	MatchIndex      int                 `json:"matchIndex"`
-	ViewerResult    *MatchResult        `json:"viewerResult,omitempty"`
-	WinnerMemberID  *string             `json:"winnerMemberId"`
-	Scores          []MemberScoreView   `json:"scores"`
-	Results         []MemberResultView  `json:"results"`
-	Reason          MatchEndReason      `json:"reason"`
-	RetentionEndsAt time.Time           `json:"retentionEndsAt"`
-	Ranking         []MemberRankingView `json:"ranking,omitempty"`
+	MatchIndex      int                  `json:"matchIndex"`
+	ViewerResult    *MatchResult         `json:"viewerResult,omitempty"`
+	WinnerMemberID  *string              `json:"winnerMemberId"`
+	Scores          []MemberScoreView    `json:"scores"`
+	Results         []MemberResultView   `json:"results"`
+	Reason          MatchEndReason       `json:"reason"`
+	RetentionEndsAt time.Time            `json:"retentionEndsAt"`
+	Ranking         []MemberRankingView  `json:"ranking,omitempty"`
+	Relay           *RelayMatchEndedView `json:"relay,omitempty"`
 }
 
 // RoomClosedPayload room.closed：房间关闭（终态）。
@@ -704,14 +735,15 @@ type RoundEndedEventPayload struct {
 // MatchEndedEventPayload 对局结束事件规范形态（入库，最小化）；
 // wire 的 result（观察者视角）由投影按 winnerSlot 推导。
 type MatchEndedEventPayload struct {
-	MatchIndex      int                 `json:"matchIndex"`
-	WinnerMemberID  *string             `json:"winnerMemberId,omitempty"`
-	MemberScores    []MemberScoreView   `json:"memberScores,omitempty"`
-	WinnerSlot      *int                `json:"winnerSlot,omitempty"`
-	Scores          ScoresView          `json:"scores"`
-	Reason          MatchEndReason      `json:"reason"`
-	RetentionEndsAt time.Time           `json:"retentionEndsAt"`
-	Ranking         []MemberRankingView `json:"ranking,omitempty"`
+	MatchIndex      int                  `json:"matchIndex"`
+	WinnerMemberID  *string              `json:"winnerMemberId,omitempty"`
+	MemberScores    []MemberScoreView    `json:"memberScores,omitempty"`
+	WinnerSlot      *int                 `json:"winnerSlot,omitempty"`
+	Scores          ScoresView           `json:"scores"`
+	Reason          MatchEndReason       `json:"reason"`
+	RetentionEndsAt time.Time            `json:"retentionEndsAt"`
+	Ranking         []MemberRankingView  `json:"ranking,omitempty"`
+	Relay           *RelayMatchEndedView `json:"relay,omitempty"`
 }
 
 // ---- 服务端控制帧（非事件，无 sequence；平铺消息含 type） ----

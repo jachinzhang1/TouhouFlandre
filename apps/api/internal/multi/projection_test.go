@@ -132,6 +132,63 @@ func TestMatchStartedV2PayloadNormalizesRuleSetRefV3(t *testing.T) {
 	}
 }
 
+func TestRelayEventProjectionDropsAnswersFromActivePayloads(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{
+		"matchIndex":     0,
+		"stageId":        "stage-1",
+		"stageIndex":     1,
+		"encounterId":    "encounter-1",
+		"encounterIndex": 1,
+		"status":         "playing",
+		"members":        []map[string]any{},
+		"answer": map[string]any{
+			"id": "secret-answer",
+		},
+		"maxTurnsPerPlayer": 10,
+		"maxSkipsPerPlayer": 2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, skip, err := ProjectEvent(context.Background(), nil, nil, repo.RoomEvent{
+		Type: string(EventRelayEncounterStarted), Payload: payload,
+	}, "room-1", repo.MultiMember{}, nil, nil)
+	if err != nil || skip {
+		t.Fatalf("project active relay event = skip:%v err:%v", skip, err)
+	}
+	data, err := json.Marshal(projected.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := fields["answer"]; exists {
+		t.Fatalf("active relay event leaked answer: %s", data)
+	}
+}
+
+func TestRelayEncounterEndedProjectionKeepsTerminalAnswer(t *testing.T) {
+	payload, err := json.Marshal(RelayEncounterEndedPayload{
+		Status: "ended",
+		Answer: AnswerView{ID: "terminal-answer", Name: "Terminal"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, skip, err := ProjectEvent(context.Background(), nil, nil, repo.RoomEvent{
+		Type: string(EventRelayEncounterEnded), Payload: payload,
+	}, "room-1", repo.MultiMember{}, nil, nil)
+	if err != nil || skip {
+		t.Fatalf("project terminal relay event = skip:%v err:%v", skip, err)
+	}
+	got := projected.Payload.(RelayEncounterEndedPayload)
+	if got.Answer.ID != "terminal-answer" {
+		t.Fatalf("terminal answer = %+v", got.Answer)
+	}
+}
+
 // TestPublicCollectionsEmptyJSON 回归：所有公开集合必须序列化为 []，不能是 null。
 func TestPublicCollectionsEmptyJSON(t *testing.T) {
 	collections := map[string]any{

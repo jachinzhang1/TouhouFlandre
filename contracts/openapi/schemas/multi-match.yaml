@@ -31,6 +31,13 @@ RelayLifeState:
     - healthy
     - near_death
 
+RelayLifeTransition:
+  type: string
+  enum:
+    - none
+    - entered_near_death
+    - eliminated
+
 RelayStandingView:
   type: object
   description: 接力专属比分；淘汰后的分数允许为负，不能与 race MemberScoreView 混用。
@@ -56,6 +63,39 @@ RelayStandingView:
     eliminatedStage:
       type: integer
       minimum: 1
+
+RelayRankingView:
+  type: object
+  description: 接力规则生成的最终共享名次；score 允许为负以保持 relay 规则边界。
+  required:
+    - memberId
+    - seat
+    - rank
+    - score
+    - status
+    - lifeState
+  properties:
+    memberId:
+      type: string
+    seat:
+      type: integer
+      minimum: 1
+      maximum: 8
+    rank:
+      type: integer
+      minimum: 1
+    score:
+      type: integer
+    status:
+      $ref: "#/MatchPlayerStatus"
+    lifeState:
+      $ref: "#/RelayLifeState"
+    eliminatedStage:
+      type: integer
+      minimum: 1
+    survivedStages:
+      type: integer
+      minimum: 0
 
 RelayEncounterSummary:
   type: object
@@ -98,16 +138,34 @@ RelayEncounterMemberView:
       type: integer
       enum: [1, 2]
 
+RelayEncounterCapabilities:
+  type: object
+  description: |
+    服务端按 viewer、encounter membership、当前 turn 与终态状态投影的动作能力。
+    非本人活动 encounter、bye、ended、eliminated、left 与 spectator 均为 false。
+  required:
+    - canGuess
+    - canPass
+    - canForfeit
+  properties:
+    canGuess:
+      type: boolean
+    canPass:
+      type: boolean
+    canForfeit:
+      type: boolean
+
 RelayEncounterView:
   type: object
   description: |
-    一张 relay 棋盘的可见状态。进行中结构没有 answer 字段；终态答案由后续
-    history/projector 契约以终态专用响应扩展，避免误泄露。
+    一张 relay 棋盘的可见状态。所有 relay viewer 可见完整标签；进行中结构没有
+    answer 字段，终态结构才揭示 answer/outcome。
   required:
     - encounterId
     - encounterIndex
     - status
     - members
+    - capabilities
     - rows
   properties:
     encounterId:
@@ -125,6 +183,8 @@ RelayEncounterView:
       maxItems: 2
       items:
         $ref: "#/RelayEncounterMemberView"
+    capabilities:
+      $ref: "#/RelayEncounterCapabilities"
     startsAt:
       type: string
       format: date-time
@@ -140,6 +200,21 @@ RelayEncounterView:
     turnDeadline:
       type: string
       format: date-time
+    maxTurnsPerPlayer:
+      type: integer
+      minimum: 1
+    maxSkipsPerPlayer:
+      type: integer
+      minimum: 0
+    outcome:
+      type: string
+      enum: [win, loss, draw, forfeit, timeout]
+    winnerMemberId:
+      type: string
+      nullable: true
+    answer:
+      description: 仅 status=ended 时出现；进行中 encounter 不投影该字段。
+      $ref: "./character.yaml#/Character"
     rows:
       type: array
       items:
@@ -178,6 +253,7 @@ RelayStageSettlementView:
     - scoreAfter
     - lifeBefore
     - lifeAfter
+    - lifeTransition
   properties:
     memberId:
       type: string
@@ -199,6 +275,8 @@ RelayStageSettlementView:
       $ref: "#/RelayLifeState"
     lifeAfter:
       $ref: "#/RelayLifeState"
+    lifeTransition:
+      $ref: "#/RelayLifeTransition"
     eliminatedStage:
       type: integer
       minimum: 1
@@ -281,6 +359,16 @@ RelayMatchFragment:
       type: array
       items:
         $ref: "#/RelayStandingView"
+    plannedStages:
+      type: integer
+      minimum: 1
+      maximum: 7
+      description: fixed_points 规则冻结的 stage 总数；其他 relay 规则省略。
+    ranking:
+      type: array
+      description: match 结束后的 relay 权威共享名次。
+      items:
+        $ref: "#/RelayRankingView"
     currentStage:
       $ref: "#/RelayStageView"
     historySummary:

@@ -18,6 +18,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
 
@@ -48,6 +49,10 @@ func main() {
 	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
 	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret(), registry)
 	e := server.NewWithOptions(pool, handler.WithMultiTiming(timing), handler.WithHub(h), handler.WithMultiplayerKernel(registry, clock, random))
+	_, relayRecovery, err := relayadapter.NewRuntime(pool, clock, random, timing)
+	if err != nil {
+		fatal("configure relay recovery", err)
+	}
 
 	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
 	sweeper := multi.NewSweeper(pool, multi.SweeperConfig{
@@ -59,6 +64,8 @@ func main() {
 		Registry:       registry,
 		Clock:          clock,
 		Random:         random,
+		ModeRecoveries: []multi.ModeRecovery{relayRecovery},
+		ModeForfeiters: []multi.ModeMemberForfeiter{relayRecovery},
 	})
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
 	defer stopSweeper()

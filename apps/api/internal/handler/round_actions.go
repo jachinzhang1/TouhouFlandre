@@ -11,6 +11,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 func (s *Server) currentRoundCommandState(ctx context.Context, q *repo.Queries, roomID string, roundIndex int) (repo.MultiRoom, repo.MultiRound, repo.MultiMatch, *ApiError) {
@@ -64,6 +66,26 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
+	if encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex); lookupErr != nil {
+		return nil, internalError(lookupErr)
+	} else if found {
+		result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+			RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+			ActorMemberID: member.ID, Action: relayadapter.EncounterActionForfeit,
+			IdempotencyKey:              "legacy-forfeit/" + member.ID + "/" + encounter.ID,
+			AllowLegacyOutOfTurnForfeit: true,
+		})
+		if result.Changed {
+			s.publish(request.RoomId)
+		}
+		if actionErr != nil {
+			if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+				return nil, roundEndedError("本局已结束。")
+			}
+			return nil, mapRelayEncounterError(actionErr)
+		}
+		return openapi.RoomsForfeitRound204Response{}, nil
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
@@ -109,6 +131,25 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	}
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
+	}
+	if encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex); lookupErr != nil {
+		return nil, internalError(lookupErr)
+	} else if found {
+		result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+			RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+			ActorMemberID: member.ID, Action: relayadapter.EncounterActionPass,
+			IdempotencyKey: "legacy-pass/" + multi.NewID(),
+		})
+		if result.Changed {
+			s.publish(request.RoomId)
+		}
+		if actionErr != nil {
+			if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+				return nil, roundEndedError("本局已结束。")
+			}
+			return nil, mapRelayEncounterError(actionErr)
+		}
+		return openapi.RoomsPassRelayTurn204Response{}, nil
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

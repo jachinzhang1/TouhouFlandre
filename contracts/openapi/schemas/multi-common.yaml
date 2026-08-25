@@ -69,6 +69,7 @@ MatchEndReason:
     - disconnect
     - server_restart
     - round_cap
+    - insufficient_active_players
 
 RoomCloseReason:
   type: string

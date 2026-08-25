@@ -174,6 +174,14 @@ RETURNING *;
 -- name: GetMatchForUpdate :one
 SELECT * FROM multi_match WHERE id = $1 FOR UPDATE;
 
+-- name: GetLatestFinishedMatchForRoomForUpdate :one
+SELECT *
+FROM multi_match
+WHERE room_id = $1 AND status = 'finished'
+ORDER BY match_index DESC
+LIMIT 1
+FOR UPDATE;
+
 -- name: CreateMatchPlayer :one
 INSERT INTO multi_match_player (match_id, member_id, seat, wins, status, score, best_round_score)
 VALUES ($1, $2, $3, 0, 'active', 0, 0)

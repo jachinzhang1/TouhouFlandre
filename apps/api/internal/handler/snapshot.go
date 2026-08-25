@@ -180,13 +180,32 @@ func (s *Server) RoomsGetSnapshot(ctx context.Context, request openapi.RoomsGetS
 	if state.Room.ID == "" {
 		return nil, roomNotFound()
 	}
-	events, err := s.q.ListEventsAfterSeq(ctx, repo.ListEventsAfterSeqParams{
+	var events []repo.RoomEvent
+	events, err = s.q.ListEventsAfterSeq(ctx, repo.ListEventsAfterSeqParams{
 		RoomID: request.RoomId, Sequence: after,
 	})
 	if err != nil {
 		return nil, internalError(err)
 	}
+	// Relay state is fully represented by the current-stage projection plus
+	// compact stage summaries. An initial snapshot keeps only settlement-level
+	// events needed by legacy replay consumers; turn events are replayed only
+	// for `after > 0`, so the payload does not grow with full turn history.
+	if after == 0 && state.Room.Mode == string(core.ModeRelay) {
+		events = compactInitialRelayEvents(events)
+	}
 	return s.buildSnapshot(ctx, state, *member, events)
+}
+
+func compactInitialRelayEvents(events []repo.RoomEvent) []repo.RoomEvent {
+	filtered := make([]repo.RoomEvent, 0, len(events))
+	for _, event := range events {
+		switch multi.EventType(event.Type) {
+		case multi.EventRelayStageEnded, multi.EventMatchEnded:
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
 }
 
 // buildSnapshot 组装逐观察者快照：room/members/match/round（水合）+ events（投影）。
@@ -238,8 +257,16 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			return nil, internalError(err)
 		}
 		roundIndex := 0
+		var relayFragment *openapi.RelayMatchFragment
+		var relayRound *openapi.RoundView
 		if state.Round != nil {
 			roundIndex = int(state.Round.RoundIndex)
+		} else if ref.Mode == core.ModeRelay {
+			var err error
+			relayFragment, relayRound, roundIndex, err = s.buildRelaySnapshot(ctx, *state.Match, state.Members, observer, ref)
+			if err != nil {
+				return nil, internalError(err)
+			}
 		}
 		roster, err := s.q.ListMatchPlayers(ctx, state.Match.ID)
 		if err != nil {
@@ -291,6 +318,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 				Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version,
 			},
 		}
+		matchView.Relay = relayFragment
 		snapshot.Match = &matchView
 
 		if state.Round != nil {
@@ -299,6 +327,8 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 				return nil, err
 			}
 			snapshot.Round = roundView
+		} else if relayRound != nil {
+			snapshot.Round = relayRound
 		}
 	}
 

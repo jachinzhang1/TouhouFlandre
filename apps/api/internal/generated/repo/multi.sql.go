@@ -1038,6 +1038,42 @@ func (q *Queries) GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessById
 	return i, err
 }
 
+const getLatestFinishedMatchForRoomForUpdate = `-- name: GetLatestFinishedMatchForRoomForUpdate :one
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+FROM multi_match
+WHERE room_id = $1 AND status = 'finished'
+ORDER BY match_index DESC
+LIMIT 1
+FOR UPDATE
+`
+
+func (q *Queries) GetLatestFinishedMatchForRoomForUpdate(ctx context.Context, roomID string) (MultiMatch, error) {
+	row := q.db.QueryRow(ctx, getLatestFinishedMatchForRoomForUpdate, roomID)
+	var i MultiMatch
+	err := row.Scan(
+		&i.ID,
+		&i.RoomID,
+		&i.MatchIndex,
+		&i.CatalogVersion,
+		&i.TargetWins,
+		&i.ScoreSlot1,
+		&i.ScoreSlot2,
+		&i.RoundCount,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.QuestionScope,
+		&i.WinnerMemberID,
+		&i.ScoringMode,
+		&i.RosterSize,
+		&i.MaxRounds,
+		&i.RuleSetKey,
+		&i.RuleSetVersion,
+		&i.RuleConfigSnapshot,
+	)
+	return i, err
+}
+
 const getMatchByIndex = `-- name: GetMatchByIndex :one
 SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE room_id = $1 AND match_index = $2
 `

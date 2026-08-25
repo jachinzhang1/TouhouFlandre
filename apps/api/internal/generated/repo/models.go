@@ -149,20 +149,22 @@ type MultiMember struct {
 }
 
 type MultiRelayEncounter struct {
-	ID             string             `json:"id"`
-	MatchID        string             `json:"match_id"`
-	StageID        string             `json:"stage_id"`
-	EncounterIndex int32              `json:"encounter_index"`
-	Status         string             `json:"status"`
-	AnswerID       string             `json:"answer_id"`
-	StartsAt       pgtype.Timestamptz `json:"starts_at"`
-	Deadline       pgtype.Timestamptz `json:"deadline"`
-	TurnMemberID   pgtype.Text        `json:"turn_member_id"`
-	TurnDeadline   pgtype.Timestamptz `json:"turn_deadline"`
-	WinnerMemberID pgtype.Text        `json:"winner_member_id"`
-	Outcome        pgtype.Text        `json:"outcome"`
-	EndedAt        pgtype.Timestamptz `json:"ended_at"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID                string             `json:"id"`
+	MatchID           string             `json:"match_id"`
+	StageID           string             `json:"stage_id"`
+	EncounterIndex    int32              `json:"encounter_index"`
+	Status            string             `json:"status"`
+	AnswerID          string             `json:"answer_id"`
+	StartsAt          pgtype.Timestamptz `json:"starts_at"`
+	Deadline          pgtype.Timestamptz `json:"deadline"`
+	TurnMemberID      pgtype.Text        `json:"turn_member_id"`
+	TurnDeadline      pgtype.Timestamptz `json:"turn_deadline"`
+	WinnerMemberID    pgtype.Text        `json:"winner_member_id"`
+	Outcome           pgtype.Text        `json:"outcome"`
+	EndedAt           pgtype.Timestamptz `json:"ended_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	EndedByMemberID   pgtype.Text        `json:"ended_by_member_id"`
+	EndIdempotencyKey pgtype.Text        `json:"end_idempotency_key"`
 }
 
 type MultiRelayEncounterMember struct {
@@ -192,6 +194,13 @@ type MultiRelayStage struct {
 	SettledAt             pgtype.Timestamptz `json:"settled_at"`
 	SettlementMarker      pgtype.Text        `json:"settlement_marker"`
 	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+}
+
+type MultiRelayStageBye struct {
+	StageID  string `json:"stage_id"`
+	MatchID  string `json:"match_id"`
+	MemberID string `json:"member_id"`
+	Seat     int32  `json:"seat"`
 }
 
 type MultiRelayStagePlayer struct {

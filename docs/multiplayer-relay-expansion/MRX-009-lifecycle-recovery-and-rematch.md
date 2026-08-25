@@ -2,6 +2,7 @@
 
 **类型**：可靠性/生命周期 Issue  
 **优先级**：P0  
+**状态**：已完成
 **依赖**：MRX-007、MRX-008  
 **建议标签**：`type:feature` `area:api` `area:multi` `area:reliability`
 
@@ -50,3 +51,28 @@
 ## 可能涉及的代码
 
 共享 room/member lifecycle 与 mode recovery 调用点、relay recovery/forfeit/coordinator、relay SQL queries、mode-owned OpenAPI/WS payload、server recovery/concurrency tests；race recovery 仅做回归或必要的 adapter 调整。
+
+## 实施与验收记录（2026-08-24）
+
+- 已交付 relay-owned lifecycle：主动离场和断线宽限逾期会批量锁定同一房间的 departed roster，单人离场只终止所属 encounter，双方同时永久离场写 draw；fixed_points 的 left roster 被后续配对移除，3/5/7 active 继续并复用 bye，不足 2 人以 `insufficient_active_players` 结束；elimination 的 left 记录当前 stage、保留 near-death 状态且不产生淘汰 transition，排名的 `survivedStages` 使用离场 stage。
+- 已交付恢复边界：core restart/sweeper 只通过 registry capability 进入模式；relay recovery 在 adapter 内扫描 active encounter 和 settlement candidate。可恢复时不重抽 pairing/answer/turn，不重复 settlement/event；未知 ruleset version 或缺失/未知 ruleset 在 relay adapter 内 fail-closed 为 `server_restart` 终态，不回落到当前默认规则。
+- 已交付 rematch：rematch 以最新 finished match 的冻结 roster 为锚点；淘汰者可确认，left/missing/disconnected roster 成员稳定返回 `REMATCH_NOT_AVAILABLE`；新 match 重新创建 roster state、relay state、stage、encounter、answer 和 turn deadline，历史 match 保持只读。
+- 主要变更面：`apps/api/internal/multi/relay/*` 规则与 stage coordinator、`apps/api/internal/multi/relay/adapter/*` 持久化 adapter、`apps/api/internal/multi/sweeper.go`、`apps/api/internal/multi/restart.go`、`apps/api/internal/handler/matches.go`、SQL source/generated repo、OpenAPI/WS reason enum、Web match result/stat transfer reason 列表，以及迁移 `0018_relay_lifecycle_recovery.sql`。
+- 迁移与回滚：`0018` 为 expand-only/backward-readable 迁移，只放宽 relay encounter outcome 与 terminal winner check 以允许 `server_restart`；旧 binary 仍可读取既有终态，发布回滚仍要求新 relay 房间按原发布闸门排空。
+- 验证通过：
+  - `task gen:openapi`
+  - `cd apps/api && go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate`
+  - `task gen:web`
+  - `cd apps/api && go test ./internal/multi/relay/... -count=1`
+  - `cd apps/api && go test ./internal/multi/... -count=1`
+  - `cd apps/api && go test ./internal/server -run "MRX006|MRX007|MRX008|MRX009|MultiRematch|MultiForfeit|MultiDisconnectGrace|MultiRestartTermination|MultiRace" -count=1`
+  - `cd apps/api && go test ./internal/server -count=1`
+  - `cd apps/api && go test ./... -count=1`
+  - `pnpm check:ws-protocol`
+  - `pnpm lint:openapi`
+  - `pnpm check:openapi-refs`
+  - `pnpm check:multiplayer-boundaries`
+  - `pnpm --filter @touhouflandre/web typecheck`
+  - `pnpm --filter @touhouflandre/web test`
+  - `git diff --check`
+- 偏差与后续：本 Issue 未实现 Web 提示、历史加载、替补/重入 roster 或房间暂停，按原非范围延后；`task gen` 在当前 WSL PATH 中找不到全局 `sqlc`，本次按仓库既有可复现方式使用 pinned `go run ...sqlc@v1.31.1 generate`。
