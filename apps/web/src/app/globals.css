@@ -1886,6 +1886,26 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   z-index: 1;
 }
 
+.relay-next-stage-countdown {
+  position: relative;
+  overflow: hidden;
+}
+
+.relay-next-stage-countdown::before {
+  position: absolute;
+  inset: 0;
+  background: var(--amber-soft);
+  content: "";
+  opacity: 0.24;
+  pointer-events: none;
+  animation: relay-next-stage-pulse 1s ease-in-out infinite;
+}
+
+.relay-next-stage-countdown > * {
+  position: relative;
+  z-index: 1;
+}
+
 .empty-state {
   height: 150px;
   color: var(--subtle-text);
@@ -2051,6 +2071,16 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   }
   50% {
     opacity: 0.62;
+  }
+}
+
+@keyframes relay-next-stage-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.88;
   }
 }
 

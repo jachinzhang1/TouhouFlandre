@@ -165,7 +165,7 @@ describe("RelayStageView", () => {
     const { container, relayEncounterAction } = renderRelay();
 
     await screen.findByRole("heading", {
-      name: "同名玩家(1) vs 同名玩家(2)",
+      name: "同名玩家(P1) vs 同名玩家(P2)",
     });
     expect(container.querySelectorAll("[data-relay-board]")).toHaveLength(1);
     expect(container.querySelectorAll("table")).toHaveLength(1);
@@ -173,9 +173,19 @@ describe("RelayStageView", () => {
       (screen.getByTestId("relay-guess-input") as HTMLButtonElement).disabled,
     ).toBe(false);
     expect(screen.queryByText("9", { selector: "strong" })).not.toBeNull();
+    expect(
+      screen
+        .getAllByRole("listitem")
+        .some((item) => item.textContent?.includes("同名玩家(我)9")),
+    ).toBe(true);
+    expect(
+      screen
+        .getAllByRole("listitem")
+        .some((item) => item.textContent?.includes("同名玩家(P2)8")),
+    ).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "下一张棋盘" }));
-    await screen.findByRole("heading", { name: "玩家 3(3) vs 玩家 4(4)" });
+    await screen.findByRole("heading", { name: "玩家 3(P3) vs 玩家 4(P4)" });
     expect(container.querySelectorAll("[data-relay-board]")).toHaveLength(1);
     expect(container.querySelectorAll("table")).toHaveLength(1);
     expect(
@@ -216,10 +226,12 @@ describe("RelayStageView", () => {
     );
     const rendered = renderRelay();
 
-    await screen.findByRole("heading", { name: "玩家 3(3) vs 玩家 4(4)" });
+    await screen.findByRole("heading", { name: "玩家 3(P3) vs 玩家 4(P4)" });
     rendered.rerender(rendered.renderProjection(projection({ matchIndex: 1 })));
 
-    await screen.findByRole("heading", { name: "同名玩家(1) vs 同名玩家(2)" });
+    await screen.findByRole("heading", {
+      name: "同名玩家(P1) vs 同名玩家(P2)",
+    });
     await waitFor(() =>
       expect(
         JSON.parse(
@@ -257,7 +269,7 @@ describe("RelayStageView", () => {
     );
     const selfScore = screen
       .getAllByRole("listitem")
-      .find((item) => item.textContent?.includes("同名玩家（我）"));
+      .find((item) => item.textContent?.includes("同名玩家(我)"));
     expect(selfScore?.textContent).toContain("濒死");
     expect(selfScore?.textContent).toContain("轮空");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -268,7 +280,11 @@ describe("RelayStageView", () => {
       projection({
         standings: projection().standings.map((standing) =>
           standing.memberId === "member-1"
-            ? { ...standing, status: "eliminated" as const }
+            ? {
+                ...standing,
+                status: "eliminated" as const,
+                lifeState: "near_death" as const,
+              }
             : standing,
         ),
       }),
@@ -276,6 +292,109 @@ describe("RelayStageView", () => {
     expect(screen.getByRole("status").textContent).toContain(
       "你已淘汰，可以继续浏览所有棋盘",
     );
+    const eliminatedScore = screen
+      .getAllByRole("listitem")
+      .find((item) => item.textContent?.includes("同名玩家(我)"));
+    expect(eliminatedScore?.textContent).toContain("已淘汰");
+    expect(eliminatedScore?.textContent).not.toContain("濒死");
+  });
+
+  it("announces the server-timed countdown before the first stage starts", async () => {
+    const plannedEncounters = Array.from({ length: 4 }, (_, index) => ({
+      ...encounter(index + 1),
+      status: "planned" as const,
+      capabilities: {
+        canGuess: false,
+        canPass: false,
+        canForfeit: false,
+      },
+    }));
+    renderRelay(
+      projection({
+        stagesByIndex: {
+          1: {
+            stageId: "stage-1",
+            stageIndex: 1,
+            startsAt: new Date(Date.now() + 5000).toISOString(),
+            status: "planned",
+            encounters: plannedEncounters,
+          },
+        },
+      }),
+    );
+
+    expect(await screen.findByText(/对局将于 [1-5] 秒后开始/)).not.toBeNull();
+    expect(screen.queryByText(/下一局将于/)).toBeNull();
+  });
+
+  it("keeps the ended board visible during the server-timed stage intermission", async () => {
+    const ended = encounter(1);
+    ended.status = "ended";
+    ended.capabilities = {
+      canGuess: false,
+      canPass: false,
+      canForfeit: false,
+    };
+    ended.answer = {
+      id: "reimu",
+      name: "博丽灵梦",
+      avatarUrl: "/reimu.png",
+      workId: "th06",
+      workTitle: "东方红魔乡",
+      workCode: "TH06",
+    };
+    ended.winnerMemberId = "member-1";
+    ended.outcome = "win";
+    const previousEncounters = [
+      ended,
+      encounter(2),
+      encounter(3),
+      encounter(4),
+    ].map((item) => ({
+      ...item,
+      status: "ended" as const,
+      capabilities: {
+        canGuess: false,
+        canPass: false,
+        canForfeit: false,
+      },
+    }));
+    const nextEncounters = Array.from({ length: 4 }, (_, index) => ({
+      ...encounter(index + 1),
+      encounterId: `next-encounter-${index + 1}`,
+      status: "planned" as const,
+    }));
+    renderRelay(
+      projection({
+        currentStageIndex: 2,
+        stagesByIndex: {
+          1: {
+            stageId: "stage-1",
+            stageIndex: 1,
+            status: "ended",
+            encounters: previousEncounters,
+            encounterDetails: previousEncounters,
+          },
+          2: {
+            stageId: "stage-2",
+            stageIndex: 2,
+            startsAt: new Date(Date.now() + 5000).toISOString(),
+            status: "planned",
+            encounters: nextEncounters,
+          },
+        },
+      }),
+    );
+
+    expect(await screen.findByText(/下一局将于 [1-5] 秒后开始/)).not.toBeNull();
+    expect(
+      screen.getByRole("heading", {
+        name: "同名玩家(P1) vs 同名玩家(P2)",
+      }),
+    ).not.toBeNull();
+    expect(screen.getByText("答案：博丽灵梦 · 东方红魔乡")).not.toBeNull();
+    expect(screen.queryByText("TH06")).toBeNull();
+    expect(screen.queryByText("等待棋盘同步。")).toBeNull();
   });
 
   it("shows terminal encounter, spectator and final ranking as inline regions", () => {

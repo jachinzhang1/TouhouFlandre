@@ -40,9 +40,9 @@ describe("MemberScoreStrip", () => {
     );
     const rows = screen.getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
-      "Self（我）0",
-      "Offline1离线",
-      "Winner2胜离开",
+      "Self(我)0",
+      "Offline(P2)1离线",
+      "Winner(P3)2胜离开",
     ]);
   });
 

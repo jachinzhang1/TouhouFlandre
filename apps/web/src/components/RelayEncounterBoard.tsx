@@ -46,7 +46,7 @@ export function RelayEncounterBoard({
       </div>
       {encounter.status === "ended" && encounter.answer ? (
         <p className="mb-2 rounded bg-jade-soft px-2 py-1 text-[0.72rem] font-bold text-jade">
-          答案：{encounter.answer.name} · {encounter.answer.workCode}
+          答案：{encounter.answer.name} · {encounter.answer.workTitle}
         </p>
       ) : null}
       <div
@@ -113,8 +113,8 @@ export function relayEncounterTitle(
     .map((participant) => {
       const name =
         members.find((member) => member.memberId === participant.memberId)
-          ?.displayName ?? `玩家 ${participant.seat}`;
-      return `${name}(${participant.seat})`;
+          ?.displayName ?? "玩家";
+      return `${name}(P${participant.seat})`;
     })
     .join(" vs ");
 }
@@ -133,7 +133,7 @@ function RelayTurn({
   const member = members.find(
     (candidate) => candidate.memberId === row.memberId,
   );
-  const owner = `${member?.displayName ?? `玩家 ${row.seat}`}(${row.seat})`;
+  const owner = `${member?.displayName ?? "玩家"}(P${row.seat})`;
   if (row.kind !== "guess" || !row.guess) {
     return (
       <tr>

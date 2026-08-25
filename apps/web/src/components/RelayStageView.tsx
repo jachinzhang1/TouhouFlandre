@@ -87,7 +87,50 @@ export function RelayStageView({
   const [actionBusy, setActionBusy] = useState<"pass" | "forfeit" | null>(null);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const history = useRelayHistory(roomId, token, projection.matchIndex);
-  const currentStage = currentRelayStage(projection);
+  const projectedCurrentStage = currentRelayStage(projection);
+  const projectedStageStartsAt =
+    projectedCurrentStage?.startsAt ??
+    projectedCurrentStage?.encounterDetails?.[0]?.startsAt;
+  const nextStageRemaining = useRoomClock(projectedStageStartsAt ?? null);
+  const previousStage = projectedCurrentStage
+    ? projection.stagesByIndex[projectedCurrentStage.stageIndex - 1]
+    : undefined;
+  const stageHasStarted = Boolean(
+    (projectedCurrentStage && projectedCurrentStage.status !== "planned") ||
+    projectedCurrentStage?.encounters.some(
+      (encounter) =>
+        encounter.status === "playing" || encounter.status === "ended",
+    ),
+  );
+  const isInitialStageCountdown = Boolean(
+    projectedStageStartsAt &&
+    projectedCurrentStage?.stageIndex === 1 &&
+    !previousStage &&
+    !stageHasStarted,
+  );
+  const isStageIntermission = Boolean(
+    projectedStageStartsAt &&
+    previousStage?.status === "ended" &&
+    !stageHasStarted,
+  );
+  const intermissionStage = previousStage
+    ? (history.stagesByIndex[previousStage.stageIndex] ?? previousStage)
+    : undefined;
+  const currentStage = isStageIntermission
+    ? intermissionStage
+    : projectedCurrentStage;
+  const visibleProjection = isStageIntermission
+    ? {
+        ...projection,
+        currentStageIndex: intermissionStage?.stageIndex,
+        stagesByIndex: intermissionStage
+          ? {
+              ...projection.stagesByIndex,
+              [intermissionStage.stageIndex]: intermissionStage,
+            }
+          : projection.stagesByIndex,
+      }
+    : projection;
 
   useEffect(() => {
     let restored: RelayViewSelection = { scope: "current" };
@@ -127,6 +170,17 @@ export function RelayStageView({
   }, [history.loadStage, selection.scope, selection.stageIndex]);
 
   useEffect(() => {
+    if (
+      !isStageIntermission ||
+      !previousStage ||
+      previousStage.encounterDetails?.length
+    ) {
+      return;
+    }
+    void history.loadStage(previousStage.stageIndex);
+  }, [history.loadStage, isStageIntermission, previousStage]);
+
+  useEffect(() => {
     setForfeitConfirm(false);
     setActionBusy(null);
   }, [selection.encounterId, selection.scope, selection.stageIndex]);
@@ -138,7 +192,7 @@ export function RelayStageView({
   }, [forfeitConfirm]);
 
   const selected = selectRelayView(
-    projection,
+    visibleProjection,
     selection,
     history.stagesByIndex,
   );
@@ -160,7 +214,7 @@ export function RelayStageView({
   const scoreEntries = relayScoreEntries(
     projection,
     members,
-    currentStage?.byeMemberId,
+    projectedCurrentStage?.byeMemberId,
   );
   const skips = relaySkipUsage(selected.ownEncounter, viewer.memberId);
   const isCurrent = selection.scope === "current";
@@ -232,6 +286,26 @@ export function RelayStageView({
               : "等待轮次"}
           </span>
         </div>
+
+        {isInitialStageCountdown || isStageIntermission ? (
+          <div
+            className="relay-next-stage-countdown mb-3 flex min-h-14 items-center justify-center border-y border-amber bg-paper px-3 py-2.5 text-center"
+            data-relay-stage-countdown
+            data-relay-intermission={isStageIntermission ? "" : undefined}
+            data-relay-initial-countdown={
+              isInitialStageCountdown ? "" : undefined
+            }
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <p className="m-0 text-[0.9rem] font-black text-amber tabular-nums">
+              {nextStageRemaining > 0
+                ? `${isInitialStageCountdown ? "对局" : "下一局"}将于 ${Math.ceil(nextStageRemaining / 1000)} 秒后开始…`
+                : `${isInitialStageCountdown ? "对局" : "下一局"}即将开始…`}
+            </p>
+          </div>
+        ) : null}
 
         {roomStatus === "finished" && projection.ranking.length > 0 ? (
           <RelayFinishedBand
@@ -588,14 +662,16 @@ function RelayFinishedBand({
           .map((entry) => {
             const name =
               members.find((member) => member.memberId === entry.memberId)
-                ?.displayName ?? `玩家 ${entry.seat}`;
+                ?.displayName ?? "玩家";
+            const suffix =
+              entry.memberId === viewerMemberId ? "我" : `P${entry.seat}`;
             return (
               <li
                 key={entry.memberId}
                 className={`flex min-w-0 items-center justify-between gap-2 rounded border px-2 py-1 text-[0.72rem] ${entry.memberId === viewerMemberId ? "border-vermilion bg-paper" : "border-line bg-paper-muted"}`}
               >
                 <span className="min-w-0 truncate font-bold">
-                  第 {entry.rank} 名 · {name}({entry.seat})
+                  第 {entry.rank} 名 · {name}({suffix})
                 </span>
                 <span className="shrink-0 tabular-nums">
                   {entry.score} 分
@@ -630,7 +706,10 @@ function relayScoreEntries(
     const labels = [
       ...(standing.status === "eliminated" ? ["已淘汰"] : []),
       ...(standing.status === "left" ? ["已离场"] : []),
-      ...(standing.lifeState === "near_death" ? ["濒死"] : []),
+      ...(standing.status !== "eliminated" &&
+      standing.lifeState === "near_death"
+        ? ["濒死"]
+        : []),
       ...(standing.memberId === byeMemberId ? ["轮空"] : []),
       ...(member?.status === "disconnected" ? ["离线"] : []),
       ...(ranking
@@ -642,7 +721,7 @@ function relayScoreEntries(
     return {
       memberId: standing.memberId,
       seat: standing.seat,
-      displayName: member?.displayName ?? `玩家 ${standing.seat}`,
+      displayName: member?.displayName ?? "玩家",
       score: standing.score,
       isViewer: standing.memberId === projection.viewerMemberId,
       isWinner: ranking?.rank === 1 && rankCounts.get(1) === 1,
@@ -693,7 +772,7 @@ function relayStatusMessage(
     (member) => member.memberId === encounter.turnMemberId,
   );
   return turnMember
-    ? `等待 ${turnMember.displayName}(${turnMember.seat}) 操作`
+    ? `等待 ${turnMember.displayName}(P${turnMember.seat}) 操作`
     : "等待对手操作";
 }
 

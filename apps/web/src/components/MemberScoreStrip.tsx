@@ -45,7 +45,7 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
             score: scoreForMemberId(props.scores, member.memberId),
             isViewer: member.memberId === props.viewerMemberId,
             isWinner: member.memberId === props.winnerMemberId,
-            showSeat: false,
+            showSeat: true,
             winnerBeforeStatuses: true,
             tone: eliminated
               ? ("danger" as const)
@@ -80,12 +80,12 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
           <li
             key={entry.memberId}
             className={`flex min-w-0 items-center gap-1.5 rounded border px-2 py-1 text-[0.72rem] ${toneClass}`}
-            title={`${entry.displayName}（${entry.seat}）`}
+            title={`${entry.displayName}(${entry.isViewer ? "我" : `P${entry.seat}`})`}
           >
             {entry.showSeat === false ? (
               <span className="max-w-28 truncate font-bold">
                 {entry.displayName}
-                {entry.isViewer ? "（我）" : ""}
+                {entry.isViewer ? "(我)" : ""}
               </span>
             ) : (
               <>
@@ -93,7 +93,7 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
                   {entry.displayName}
                 </span>
                 <span className="shrink-0">
-                  {entry.isViewer ? "（我）" : `（${entry.seat}）`}
+                  {entry.isViewer ? "(我)" : `(P${entry.seat})`}
                 </span>
               </>
             )}
