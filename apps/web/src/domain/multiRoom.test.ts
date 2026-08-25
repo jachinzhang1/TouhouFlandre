@@ -6,6 +6,9 @@ import {
   normalizeRoomCode,
   relaySkipRemaining,
   loadMultiRoom,
+  minimumPlayerLimitFor,
+  PLAYER_LIMIT_ADAPTERS,
+  relaySettingsSummary,
   saveMultiRoom,
   MULTI_ROOM_STORAGE_KEY,
 } from "../domain/multiRoom";
@@ -77,5 +80,24 @@ describe("relay skip quota", () => {
     expect(countRelaySkips(rows, 2)).toBe(1);
     expect(relaySkipRemaining(rows, 1, 2)).toBe(0);
     expect(relaySkipRemaining(rows, 2, 2)).toBe(1);
+  });
+});
+
+describe("mode-specific room settings", () => {
+  it("keeps race continuous and relay even-only player limits", () => {
+    expect(PLAYER_LIMIT_ADAPTERS.race).toMatchObject({ step: 1 });
+    expect(PLAYER_LIMIT_ADAPTERS.race.allowedValues).toEqual([
+      2, 3, 4, 5, 6, 7, 8,
+    ]);
+    expect(PLAYER_LIMIT_ADAPTERS.relay).toMatchObject({ step: 2 });
+    expect(PLAYER_LIMIT_ADAPTERS.relay.allowedValues).toEqual([2, 4, 6, 8]);
+    expect(minimumPlayerLimitFor("relay", 3)).toBe(4);
+    expect(minimumPlayerLimitFor("relay", 5)).toBe(6);
+  });
+
+  it("keeps two-player relay on traditional BO regardless of preference", () => {
+    expect(relaySettingsSummary("bo3", 2, false)).toBe("2 人 · 接力 · BO3");
+    expect(relaySettingsSummary("bo3", 2, true)).toBe("2 人 · 接力 · BO3");
+    expect(relaySettingsSummary("bo3", 6, true)).toBe("6 人 · 接力 · 淘汰赛");
   });
 });

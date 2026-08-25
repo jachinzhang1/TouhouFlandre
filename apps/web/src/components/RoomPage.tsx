@@ -322,6 +322,8 @@ export function RoomView({ code }: { code: string }) {
           mySlot={1}
           playerLimit={state.room.playerLimit}
           raceEliminationEnabled={state.room.raceEliminationEnabled}
+          relayEliminationEnabled={state.room.relayEliminationEnabled}
+          startBlockedReason={state.room.startBlockedReason}
           playerCount={state.room.playerCount}
           availableSeats={state.room.availableSeats}
           spectatorCount={state.room.spectatorCount}
@@ -414,6 +416,8 @@ export function RoomView({ code }: { code: string }) {
           mySlot={playerSeat}
           playerLimit={state.room?.playerLimit ?? 2}
           raceEliminationEnabled={state.room?.raceEliminationEnabled ?? false}
+          relayEliminationEnabled={state.room?.relayEliminationEnabled}
+          startBlockedReason={state.room?.startBlockedReason}
           playerCount={state.room?.playerCount ?? state.members.length}
           availableSeats={state.room?.availableSeats ?? 0}
           spectatorCount={state.room?.spectatorCount ?? 0}

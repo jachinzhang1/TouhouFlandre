@@ -2,7 +2,7 @@
 
 import { SettingSwitch } from "./SettingSwitch";
 
-export function RaceEliminationSwitch({
+export function RelayEliminationSwitch({
   checked,
   disabled,
   onChange,
@@ -18,7 +18,7 @@ export function RaceEliminationSwitch({
       checked={checked}
       disabled={disabled}
       onChange={onChange}
-      description="仅当3人及以上可切换，打开时开启竞速淘汰赛"
+      description="仅当4人及以上可切换，打开时启用接力淘汰赛"
       className={className}
     />
   );
