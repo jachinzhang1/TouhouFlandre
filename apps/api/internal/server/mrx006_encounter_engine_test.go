@@ -1,10 +1,12 @@
 package server_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -40,6 +42,21 @@ type mrx006Fixture struct {
 	coordinator *relay.StageCoordinator
 	service     *relayadapter.EncounterService
 	plan        relay.StagePlan
+}
+
+type cancelingMRX006Clock struct {
+	value    time.Time
+	cancel   context.CancelFunc
+	cancelAt int
+	calls    int
+}
+
+func (c *cancelingMRX006Clock) Now() time.Time {
+	c.calls++
+	if c.calls == c.cancelAt {
+		c.cancel()
+	}
+	return c.value
 }
 
 func createMRX006Fixture(t *testing.T, playerCount int, scoring relay.ScoringPolicy, ruleSet string) mrx006Fixture {
@@ -110,6 +127,53 @@ func TestMRX006StageAnswersAreUniqueForSupportedRosters(t *testing.T) {
 				t.Fatalf("persisted=%d distinct=%d", persisted, distinct)
 			}
 		})
+	}
+}
+
+func TestMRX006RecoveryReturnsRoomsCommittedBeforeLaterCandidateFailure(t *testing.T) {
+	fixture := createMRX006Fixture(t, 4, &mrx005Scoring{}, "")
+	sweepNow := time.Unix(120, 0).UTC()
+	startsAt := time.Unix(60, 0).UTC()
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_relay_stage SET starts_at = $2 WHERE id = $1`,
+		fixture.plan.StageID, startsAt); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE multi_relay_encounter
+		SET starts_at = $2,
+		    deadline = $3,
+		    turn_deadline = $4
+		WHERE stage_id = $1`,
+		fixture.plan.StageID, startsAt, sweepNow.Add(5*time.Minute), sweepNow.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, `UPDATE multi_match SET status = 'finished' WHERE id = $1`, fixture.base.match.MatchID)
+	})
+
+	sweepCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	clock := &cancelingMRX006Clock{value: sweepNow, cancel: cancel, cancelAt: 3}
+	service := relayadapter.NewEncounterService(pool, clock, fixture.coordinator, time.Minute)
+	rooms, err := service.Sweep(sweepCtx, 10)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %v, want context cancellation", err)
+	}
+	if !slices.Contains(rooms, fixture.base.roomID) {
+		t.Fatalf("rooms = %v, want committed room %s", rooms, fixture.base.roomID)
+	}
+
+	var startedEncounters, startedEvents int
+	if err := pool.QueryRow(ctx, `
+		SELECT
+			(SELECT count(*)::int FROM multi_relay_encounter WHERE stage_id = $1 AND status = 'playing'),
+			(SELECT count(*)::int FROM room_event WHERE room_id = $2 AND type = 'relay.encounter.started')`,
+		fixture.plan.StageID, fixture.base.roomID).Scan(&startedEncounters, &startedEvents); err != nil {
+		t.Fatal(err)
+	}
+	if startedEncounters != 1 || startedEvents != 1 {
+		t.Fatalf("started encounters=%d events=%d", startedEncounters, startedEvents)
 	}
 }
 

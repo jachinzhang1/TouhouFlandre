@@ -194,7 +194,17 @@ func (s *Server) RoomsGetSnapshot(ctx context.Context, request openapi.RoomsGetS
 	if after == 0 && state.Room.Mode == string(core.ModeRelay) {
 		events = compactInitialRelayEvents(events)
 	}
-	return s.buildSnapshot(ctx, state, *member, events)
+	response, err := s.buildSnapshot(ctx, state, *member, events)
+	if err != nil {
+		return nil, err
+	}
+	if state.Match != nil {
+		labels := multi.NewMetricLabels(state.Room.Mode, state.Match.RuleSetKey, int(state.Match.RuleSetVersion))
+		if payload, marshalErr := json.Marshal(response); marshalErr == nil {
+			multi.DefaultMetrics.RecordSnapshotBytes(labels, len(payload))
+		}
+	}
+	return response, nil
 }
 
 func compactInitialRelayEvents(events []repo.RoomEvent) []repo.RoomEvent {
@@ -218,7 +228,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 		memberViews = append(memberViews, toOpenAPIMemberView(view))
 	}
 	capacity := multi.RoomCapacity(len(memberViews), int(state.Room.PlayerLimit))
-	relayConfig, err := multi.LoadRelayRoomConfig(ctx, s.q, state.Room.ID)
+	relayConfig, err := s.relayRoomConfigForState(ctx, state.Room, s.q)
 	if err != nil {
 		return nil, internalError(err)
 	}

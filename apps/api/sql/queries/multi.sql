@@ -76,7 +76,8 @@ SELECT jsonb_build_object(
 -- name: CreateRelayRoomConfig :exec
 INSERT INTO multi_relay_room_config (room_id, elimination_enabled)
 VALUES (sqlc.arg(room_id), sqlc.arg(elimination_enabled))
-ON CONFLICT (room_id) DO NOTHING;
+ON CONFLICT (room_id) DO UPDATE
+SET elimination_enabled = EXCLUDED.elimination_enabled;
 
 -- name: GetRelayRoomConfig :one
 SELECT * FROM multi_relay_room_config WHERE room_id = $1;

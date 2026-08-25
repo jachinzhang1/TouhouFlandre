@@ -56,6 +56,19 @@ WHERE stage.status <> 'ended'
 ORDER BY stage.created_at, stage.id
 LIMIT sqlc.arg(candidate_limit);
 
+-- name: CountActiveRelayEncountersByRuleSet :many
+SELECT room.mode,
+       match.rule_set_key,
+       match.rule_set_version,
+       count(*)::int AS count
+FROM multi_relay_encounter AS encounter
+JOIN multi_match AS match ON match.id = encounter.match_id
+JOIN multi_room AS room ON room.id = match.room_id
+WHERE match.status = 'playing'
+  AND encounter.status <> 'ended'
+GROUP BY room.mode, match.rule_set_key, match.rule_set_version
+ORDER BY room.mode, match.rule_set_key, match.rule_set_version;
+
 -- name: CreateRelayStage :one
 INSERT INTO multi_relay_stage (
     id, match_id, stage_index, status, planned_encounter_count, starts_at

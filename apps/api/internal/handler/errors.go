@@ -11,9 +11,12 @@ type ApiError struct {
 	Status  int
 	Code    openapi.ErrorResponseCode
 	Message string
+	cause   error
 }
 
 func (e *ApiError) Error() string { return e.Message }
+
+func (e *ApiError) Unwrap() error { return e.cause }
 
 func (e *ApiError) Response() openapi.ErrorResponse {
 	return openapi.ErrorResponse{Code: e.Code, Error: e.Message}
@@ -63,5 +66,10 @@ const (
 )
 
 func internalError(err error) *ApiError {
-	return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: err.Error()}
+	return &ApiError{
+		Status:  http.StatusInternalServerError,
+		Code:    codeInternal,
+		Message: "服务器暂时无法处理请求。",
+		cause:   err,
+	}
 }

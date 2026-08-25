@@ -10,18 +10,22 @@ import (
 
 // Metrics 多人模式指标。
 type Metrics struct {
-	mu              sync.Mutex
-	eventsTotal     map[string]int64 // events_total{type}
-	forfeitsTotal   map[string]int64 // forfeits_total{reason}
-	roomsByStatus   map[string]int64 // rooms{status}
-	membersByStatus map[string]int64 // members{status}
-	wsConnections   int64            // ws_connections（当前值）
-	activeRounds    int64            // active_rounds（当前值）
-	reconnectsTotal int64            // reconnects_total
-	guessLatency    []time.Duration  // guess_latency 采样（p50/p95 在 Snapshot 计算）
-	chatMessages    map[string]int64 // chat_messages_total{channel,kind}
-	chatRejected    map[string]int64 // chat_rejected_total{code}
-	chatProjection  map[string]int64 // chat_projection_failures_total{path}
+	mu                sync.Mutex
+	eventsTotal       map[string]int64 // events_total{type}
+	forfeitsTotal     map[string]int64 // forfeits_total{reason}
+	roomsByStatus     map[string]int64 // rooms{status}
+	membersByStatus   map[string]int64 // members{status}
+	wsConnections     int64            // ws_connections（当前值）
+	activeRounds      int64            // active_rounds（当前值）
+	reconnectsTotal   int64            // reconnects_total
+	guessLatency      []time.Duration  // guess_latency 采样（p50/p95 在 Snapshot 计算）
+	chatMessages      map[string]int64 // chat_messages_total{channel,kind}
+	chatRejected      map[string]int64 // chat_rejected_total{code}
+	chatProjection    map[string]int64 // chat_projection_failures_total{path}
+	activeEncounters  map[MetricLabels]int64
+	labeledCounters   map[string]map[MetricLabels]int64
+	labeledHistograms map[string]map[MetricLabels]*metricHistogram
+	guessCursor       int
 }
 
 // DefaultMetrics 全局指标实例（sweeper/hub/handler 共用）。
@@ -105,7 +109,13 @@ func (m *Metrics) SetActiveRounds(count int64) {
 // RecordGuessLatency 猜测耗时采样。
 func (m *Metrics) RecordGuessLatency(d time.Duration) {
 	m.mu.Lock()
-	m.guessLatency = append(m.guessLatency, d)
+	const maxSamples = 4096
+	if len(m.guessLatency) < maxSamples {
+		m.guessLatency = append(m.guessLatency, d)
+	} else {
+		m.guessLatency[m.guessCursor%maxSamples] = d
+		m.guessCursor++
+	}
 	m.mu.Unlock()
 }
 
@@ -150,5 +160,5 @@ func quantiles(samples []time.Duration) map[string]time.Duration {
 		idx := int(float64(len(sorted)-1) * p)
 		return sorted[idx]
 	}
-	return map[string]time.Duration{"p50": at(0.5), "p95": at(0.95), "count": time.Duration(len(sorted))}
+	return map[string]time.Duration{"p50": at(0.5), "p95": at(0.95), "p99": at(0.99), "count": time.Duration(len(sorted))}
 }

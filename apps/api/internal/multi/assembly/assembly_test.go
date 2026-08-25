@@ -1,6 +1,7 @@
 package assembly_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,38 @@ import (
 	raceadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/race/adapter"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 )
+
+func TestForProfileBuildsOnlyRequestedModules(t *testing.T) {
+	tests := []struct {
+		profile   string
+		wantRace  bool
+		wantRelay bool
+	}{
+		{profile: assembly.ProfileFull, wantRace: true, wantRelay: true},
+		{profile: assembly.ProfileRaceOnly, wantRace: true},
+		{profile: assembly.ProfileRelayOnly, wantRelay: true},
+	}
+	for _, test := range tests {
+		t.Run(test.profile, func(t *testing.T) {
+			registry, err := assembly.ForProfile(test.profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, raceErr := registry.CommandHandler(core.ModeRace)
+			_, relayErr := registry.CommandHandler(core.ModeRelay)
+			if (raceErr == nil) != test.wantRace || (relayErr == nil) != test.wantRelay {
+				t.Fatalf("race error=%v relay error=%v", raceErr, relayErr)
+			}
+		})
+	}
+}
+
+func TestForProfileRejectsUnknownProfile(t *testing.T) {
+	registry, err := assembly.ForProfile("full-with-typo")
+	if registry != nil || err == nil || !strings.Contains(err.Error(), "full-with-typo") {
+		t.Fatalf("registry=%v error=%v", registry, err)
+	}
+}
 
 func TestRaceOnlyAssemblyDoesNotResolveRelay(t *testing.T) {
 	registry, err := assembly.RaceOnly()

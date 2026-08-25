@@ -1,6 +1,9 @@
 package handler
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestRelayStageHistoryCursorBindsMatchAndUsesStableIndex(t *testing.T) {
 	cursor, err := encodeRelayStageHistoryCursor(3, 12)
@@ -13,6 +16,17 @@ func TestRelayStageHistoryCursorBindsMatchAndUsesStableIndex(t *testing.T) {
 	}
 	if _, apiErr := decodeRelayStageHistoryCursor(&cursor, 4); apiErr == nil {
 		t.Fatal("cursor from another match was accepted")
+	}
+}
+
+func TestInternalErrorPreservesCauseButRedactsPublicMessage(t *testing.T) {
+	cause := errors.New("mrx013-unrevealed-answer-sentinel")
+	apiErr := internalError(cause)
+	if !errors.Is(apiErr, cause) {
+		t.Fatal("internal error did not preserve its cause")
+	}
+	if apiErr.Message == cause.Error() || apiErr.Response().Error == cause.Error() {
+		t.Fatal("internal cause was exposed in the public error")
 	}
 }
 

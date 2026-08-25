@@ -439,7 +439,8 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (Mul
 const createRelayRoomConfig = `-- name: CreateRelayRoomConfig :exec
 INSERT INTO multi_relay_room_config (room_id, elimination_enabled)
 VALUES ($1, $2)
-ON CONFLICT (room_id) DO NOTHING
+ON CONFLICT (room_id) DO UPDATE
+SET elimination_enabled = EXCLUDED.elimination_enabled
 `
 
 type CreateRelayRoomConfigParams struct {

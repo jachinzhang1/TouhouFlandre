@@ -68,6 +68,7 @@ func NewEncounterService(pool *pgxpool.Pool, clock core.Clock, coordinator *rela
 }
 
 func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) (EncounterActionResult, error) {
+	actionStarted := time.Now()
 	result := EncounterActionResult{RoomID: input.RoomID, StageIndex: input.StageIndex, EncounterID: input.EncounterID}
 	if input.RoomID == "" || input.StageIndex < 1 || input.EncounterID == "" || input.ActorMemberID == "" || input.IdempotencyKey == "" {
 		return result, fmt.Errorf("%w: incomplete action", relaydomain.ErrInvalidStagePlan)
@@ -100,6 +101,10 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 	}
 	if err := validateEncounterRuleSet(match); err != nil {
 		return result, err
+	}
+	labels := relayMetricLabels(match)
+	if input.Action == EncounterActionGuess {
+		defer func() { legacy.DefaultMetrics.RecordGuessLatencyFor(labels, time.Since(actionStarted)) }()
 	}
 	if !memberAssigned(members, input.ActorMemberID) {
 		return result, relaydomain.ErrNotEncounterPlayer
@@ -188,6 +193,7 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		if err := appendTurnEvent(ctx, q, match, encounter, members, inserted, transition); err != nil {
 			return result, err
 		}
+		legacy.DefaultMetrics.IncTurnTimeout(labels)
 		if transition.Ended {
 			if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now); err != nil {
 				return result, err
@@ -459,10 +465,15 @@ func (s *EncounterService) Sweep(ctx context.Context, limit int) ([]string, erro
 		return nil, err
 	}
 	rooms := map[string]struct{}{}
+	var sweepErr error
 	for _, id := range startIDs {
 		roomID, err := s.startCandidate(ctx, id)
 		if err != nil {
-			return nil, err
+			sweepErr = errors.Join(sweepErr, fmt.Errorf("start relay encounter %s: %w", id, err))
+			if ctx.Err() != nil {
+				return sortedRoomIDs(rooms), sweepErr
+			}
+			continue
 		}
 		if roomID != "" {
 			rooms[roomID] = struct{}{}
@@ -470,31 +481,38 @@ func (s *EncounterService) Sweep(ctx context.Context, limit int) ([]string, erro
 	}
 	timeoutIDs, err := q.ListRelayEncounterTimeoutCandidates(ctx, repo.ListRelayEncounterTimeoutCandidatesParams{Now: timestamptz(now), CandidateLimit: int32(limit)})
 	if err != nil {
-		return nil, err
+		return sortedRoomIDs(rooms), errors.Join(sweepErr, err)
 	}
 	for _, id := range timeoutIDs {
 		roomID, err := s.timeoutCandidate(ctx, id)
 		if err != nil {
-			return nil, err
+			sweepErr = errors.Join(sweepErr, fmt.Errorf("timeout relay encounter %s: %w", id, err))
+			if ctx.Err() != nil {
+				return sortedRoomIDs(rooms), sweepErr
+			}
+			continue
 		}
 		if roomID != "" {
 			rooms[roomID] = struct{}{}
 		}
 	}
 	if s.coordinator != nil {
-		settlementRooms, err := s.recoverSettlements(ctx, q, limit)
-		if err != nil {
-			return nil, err
-		}
+		settlementRooms, settlementErr := s.recoverSettlements(ctx, q, limit)
 		for _, roomID := range settlementRooms {
 			rooms[roomID] = struct{}{}
 		}
+		sweepErr = errors.Join(sweepErr, settlementErr)
 	}
+	return sortedRoomIDs(rooms), sweepErr
+}
+
+func sortedRoomIDs(rooms map[string]struct{}) []string {
 	result := make([]string, 0, len(rooms))
 	for roomID := range rooms {
 		result = append(result, roomID)
 	}
-	return result, nil
+	sort.Strings(result)
+	return result
 }
 
 func (s *EncounterService) startCandidate(ctx context.Context, encounterID string) (string, error) {
@@ -552,6 +570,7 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 	if err := validateEncounterRuleSet(match); err != nil {
 		return s.terminateUnrecoverableMatchInTransaction(ctx, tx, q, match, now)
 	}
+	labels := relayMetricLabels(match)
 	if !now.Before(encounter.Deadline.Time) {
 		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now); err != nil {
 			return "", err
@@ -577,6 +596,7 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 		if err := appendTurnEvent(ctx, q, match, encounter, members, inserted, transition); err != nil {
 			return "", err
 		}
+		legacy.DefaultMetrics.IncTurnTimeout(labels)
 		if transition.Ended {
 			if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now); err != nil {
 				return "", err
@@ -595,40 +615,66 @@ func (s *EncounterService) recoverSettlements(ctx context.Context, q *repo.Queri
 		return nil, err
 	}
 	roomIDs := make([]string, 0, len(stageIDs))
+	var recoveryErr error
 	for _, stageID := range stageIDs {
 		stage, err := q.GetRelayStage(ctx, stageID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 		if err != nil {
-			return roomIDs, err
+			recoveryErr = errors.Join(recoveryErr, fmt.Errorf("load relay settlement stage %s: %w", stageID, err))
+			continue
 		}
 		match, err := q.GetRelayMatch(ctx, stage.MatchID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 		if err != nil {
-			return roomIDs, err
+			recoveryErr = errors.Join(recoveryErr, fmt.Errorf("load relay settlement match %s: %w", stage.MatchID, err))
+			continue
 		}
 		if err := validateEncounterRuleSet(match); err != nil {
-			roomID, err := s.terminateUnrecoverableMatch(ctx, match.ID, s.clock.Now())
-			if err != nil {
-				return roomIDs, err
+			roomID, terminateErr := s.terminateUnrecoverableMatch(ctx, match.ID, s.clock.Now())
+			if terminateErr != nil {
+				recoveryErr = errors.Join(recoveryErr, fmt.Errorf("terminate unrecoverable relay match %s: %w", match.ID, terminateErr))
+				if ctx.Err() != nil {
+					return roomIDs, recoveryErr
+				}
+				continue
 			}
 			if roomID != "" {
 				roomIDs = append(roomIDs, roomID)
 			}
 			continue
 		}
+		legacy.DefaultMetrics.IncSettlementRetry(relayMetricLabels(match))
 		settlement, err := s.coordinator.TrySettle(ctx, stageID)
 		if err != nil {
-			return roomIDs, err
+			recoveryErr = errors.Join(recoveryErr, fmt.Errorf("settle relay stage %s: %w", stageID, err))
+			if ctx.Err() != nil {
+				return roomIDs, recoveryErr
+			}
+			continue
 		}
 		stage, err = q.GetRelayStage(ctx, settlement.StageID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 		if err != nil {
-			return roomIDs, err
+			recoveryErr = errors.Join(recoveryErr, fmt.Errorf("reload relay settlement stage %s: %w", settlement.StageID, err))
+			continue
 		}
 		match, err = q.GetRelayMatch(ctx, stage.MatchID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
 		if err != nil {
-			return roomIDs, err
+			recoveryErr = errors.Join(recoveryErr, fmt.Errorf("reload relay settlement match %s: %w", stage.MatchID, err))
+			continue
 		}
 		roomIDs = append(roomIDs, match.RoomID)
 	}
-	return roomIDs, nil
+	return roomIDs, recoveryErr
 }
 
 func (s *EncounterService) terminateUnrecoverableMatch(ctx context.Context, matchID string, now time.Time) (string, error) {
@@ -737,6 +783,7 @@ func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.
 	}); err != nil {
 		return err
 	}
+	legacy.DefaultMetrics.RecordEncounterDuration(relayMetricLabels(match), now.Sub(encounter.StartsAt.Time))
 	characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
 	if err != nil {
 		return err
@@ -762,10 +809,14 @@ func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.
 	}
 	if s.coordinator != nil {
 		stageTx := NewStageTransaction(tx, s.finishedRetention)
+		var settlement relaydomain.SettlementResult
 		if forced != nil {
-			_, err = s.coordinator.TrySettleForMatchEndInTransaction(ctx, stageTx, encounter.StageID, *forced)
+			settlement, err = s.coordinator.TrySettleForMatchEndInTransaction(ctx, stageTx, encounter.StageID, *forced)
 		} else {
-			_, err = s.coordinator.TrySettleInTransaction(ctx, stageTx, encounter.StageID)
+			settlement, err = s.coordinator.TrySettleInTransaction(ctx, stageTx, encounter.StageID)
+		}
+		if err == nil && settlement.Owner {
+			recordRelayStageMetrics(ctx, q, match, encounter.StageID, now)
 		}
 		return err
 	}
@@ -773,6 +824,30 @@ func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.
 		return fmt.Errorf("%w: forced match end requires a coordinator", relaydomain.ErrInvalidStagePlan)
 	}
 	return nil
+}
+
+func relayMetricLabels(match repo.MultiMatch) legacy.MetricLabels {
+	return legacy.NewMetricLabels(string(core.ModeRelay), match.RuleSetKey, int(match.RuleSetVersion))
+}
+
+func recordRelayStageMetrics(ctx context.Context, q *repo.Queries, match repo.MultiMatch, stageID string, settledAt time.Time) {
+	stage, err := q.GetRelayStage(ctx, stageID)
+	if err != nil {
+		return
+	}
+	labels := relayMetricLabels(match)
+	legacy.DefaultMetrics.RecordStageDuration(labels, settledAt.Sub(stage.StartsAt.Time))
+	encounters, err := q.ListRelayEncountersForStage(ctx, stageID)
+	if err != nil {
+		return
+	}
+	lastEndedAt := stage.StartsAt.Time
+	for _, encounter := range encounters {
+		if encounter.EndedAt.Valid && encounter.EndedAt.Time.After(lastEndedAt) {
+			lastEndedAt = encounter.EndedAt.Time
+		}
+	}
+	legacy.DefaultMetrics.RecordStageBarrierWait(labels, settledAt.Sub(lastEndedAt))
 }
 
 func loadEncounterContext(ctx context.Context, q *repo.Queries, encounter repo.MultiRelayEncounter) (repo.MultiMatch, []repo.MultiRelayEncounterMember, []repo.MultiRelayTurn, error) {

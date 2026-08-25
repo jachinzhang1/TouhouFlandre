@@ -66,25 +66,34 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
-	if encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex); lookupErr != nil {
-		return nil, internalError(lookupErr)
-	} else if found {
-		result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
-			RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
-			ActorMemberID: member.ID, Action: relayadapter.EncounterActionForfeit,
-			IdempotencyKey:              "legacy-forfeit/" + member.ID + "/" + encounter.ID,
-			AllowLegacyOutOfTurnForfeit: true,
-		})
-		if result.Changed {
-			s.publish(request.RoomId)
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
 		}
-		if actionErr != nil {
-			if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
-				return nil, roundEndedError("本局已结束。")
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionForfeit,
+				IdempotencyKey:              "legacy-forfeit/" + member.ID + "/" + encounter.ID,
+				AllowLegacyOutOfTurnForfeit: true,
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
 			}
-			return nil, mapRelayEncounterError(actionErr)
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			return openapi.RoomsForfeitRound204Response{}, nil
 		}
-		return openapi.RoomsForfeitRound204Response{}, nil
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -132,24 +141,33 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
-	if encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex); lookupErr != nil {
-		return nil, internalError(lookupErr)
-	} else if found {
-		result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
-			RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
-			ActorMemberID: member.ID, Action: relayadapter.EncounterActionPass,
-			IdempotencyKey: "legacy-pass/" + multi.NewID(),
-		})
-		if result.Changed {
-			s.publish(request.RoomId)
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
 		}
-		if actionErr != nil {
-			if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
-				return nil, roundEndedError("本局已结束。")
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionPass,
+				IdempotencyKey: "legacy-pass/" + multi.NewID(),
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
 			}
-			return nil, mapRelayEncounterError(actionErr)
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			return openapi.RoomsPassRelayTurn204Response{}, nil
 		}
-		return openapi.RoomsPassRelayTurn204Response{}, nil
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

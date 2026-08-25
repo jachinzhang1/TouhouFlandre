@@ -253,7 +253,7 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
-	relayConfig, err := multi.LoadRelayRoomConfig(ctx, q, roomID)
+	relayConfig, err := multi.RelayRoomConfigForRoom(ctx, q, room)
 	if err != nil {
 		slog.Error("hub: load relay room config", "member_id", memberID, "room_id", roomID, "error", err)
 		return

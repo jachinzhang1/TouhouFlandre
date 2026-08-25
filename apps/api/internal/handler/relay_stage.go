@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
@@ -31,6 +33,9 @@ func (s *Server) RoomsRelayEncounterAction(ctx context.Context, request openapi.
 	}
 	if request.Body == nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
+	}
+	if s.relayEncounters == nil {
+		return nil, internalError(errors.New("relay command runtime is not registered"))
 	}
 	result, err := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
 		RoomID: request.RoomId, StageIndex: request.StageIndex, EncounterID: request.EncounterId,
@@ -106,6 +111,7 @@ func optionalString(value *string) string {
 }
 
 func (s *Server) RoomsListRelayStageHistory(ctx context.Context, request openapi.RoomsListRelayStageHistoryRequestObject) (openapi.RoomsListRelayStageHistoryResponseObject, error) {
+	started := time.Now()
 	member, ok := GuestMemberFromContext(ctx)
 	if !ok {
 		return nil, guestUnauthorized("缺少鉴权上下文。")
@@ -131,6 +137,8 @@ func (s *Server) RoomsListRelayStageHistory(ctx context.Context, request openapi
 	if ref.Mode != core.ModeRelay {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "只有接力场次支持 stage 历史。"}
 	}
+	labels := multi.NewMetricLabels(string(ref.Mode), ref.Key, ref.Version)
+	defer func() { multi.DefaultMetrics.RecordHistoryLatency(labels, time.Since(started)) }()
 	reader, err := s.modeRegistry.HistoryReader(ref.Mode)
 	if err != nil {
 		return nil, internalError(err)

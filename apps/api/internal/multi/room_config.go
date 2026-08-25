@@ -26,3 +26,11 @@ func LoadRelayRoomConfig(ctx context.Context, q *repo.Queries, roomID string) (R
 	}
 	return RelayRoomConfigView{EliminationEnabled: row.EliminationEnabled}, nil
 }
+
+// RelayRoomConfigForRoom avoids touching relay-owned storage for other modes.
+func RelayRoomConfigForRoom(ctx context.Context, q *repo.Queries, room repo.MultiRoom) (RelayRoomConfigView, error) {
+	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
+		return RelayRoomConfigView{}, nil
+	}
+	return LoadRelayRoomConfig(ctx, q, room.ID)
+}

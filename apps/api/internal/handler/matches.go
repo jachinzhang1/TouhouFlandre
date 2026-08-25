@@ -188,8 +188,10 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		})
 		if err != nil {
 			if errors.Is(err, relaydomain.ErrQuestionPoolTooSmall) {
+				multi.DefaultMetrics.IncPoolTooSmall(multi.NewMetricLabels(string(plan.RuleSet.Mode), plan.RuleSet.Key, plan.RuleSet.Version))
 				return &ApiError{Status: http.StatusConflict, Code: codeQuestionPoolTooSmall, Message: "题库中的可用答案不足以创建本轮对局。"}
 			}
+			multi.DefaultMetrics.IncPairingFailure(multi.NewMetricLabels(string(plan.RuleSet.Mode), plan.RuleSet.Key, plan.RuleSet.Version))
 			return internalError(err)
 		}
 	} else {
@@ -250,29 +252,38 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if request.Body == nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
 	}
-	if encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex); lookupErr != nil {
-		return nil, internalError(lookupErr)
-	} else if found {
-		result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
-			RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
-			ActorMemberID: member.ID, Action: relayadapter.EncounterActionGuess,
-			GuessID: request.Body.GuessId, IdempotencyKey: request.Body.IdempotencyKey,
-		})
-		if result.Changed {
-			s.publish(request.RoomId)
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
 		}
-		if actionErr != nil {
-			if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
-				return nil, roundEndedError("本局已结束。")
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionGuess,
+				GuessID: request.Body.GuessId, IdempotencyKey: request.Body.IdempotencyKey,
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
 			}
-			return nil, mapRelayEncounterError(actionErr)
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			if result.Guess == nil {
+				return nil, internalError(errors.New("relay guess action returned no feedback"))
+			}
+			return openapi.RoomsSubmitGuess200JSONResponse{
+				RoundIndex: request.RoundIndex, Guess: toOpenAPIGuessResultView(*result.Guess),
+			}, nil
 		}
-		if result.Guess == nil {
-			return nil, internalError(errors.New("relay guess action returned no feedback"))
-		}
-		return openapi.RoomsSubmitGuess200JSONResponse{
-			RoundIndex: request.RoundIndex, Guess: toOpenAPIGuessResultView(*result.Guess),
-		}, nil
 	}
 
 	tx, err := s.pool.Begin(ctx)

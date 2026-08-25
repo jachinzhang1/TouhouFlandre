@@ -1,6 +1,9 @@
 package relay
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 type LegacyWinsPolicy struct{}
 
@@ -53,6 +56,7 @@ func (p LegacyWinsPolicy) Settle(input SettlementInput) (SettlementDecision, err
 		}
 		decision.Match = &MatchDecision{
 			ScoresBySeat: scores, Ended: true, WinnerMemberID: winner, Reason: input.ForcedMatchEnd.Reason,
+			Ranking: legacyWinsRanking(decision.Standings, winner),
 		}
 		return decision, nil
 	}
@@ -77,5 +81,43 @@ func (p LegacyWinsPolicy) Settle(input SettlementInput) (SettlementDecision, err
 		reason = "round_cap"
 	}
 	decision.Match = &MatchDecision{ScoresBySeat: scores, Ended: ended, WinnerMemberID: matchWinner, Reason: reason}
+	if ended {
+		decision.Match.Ranking = legacyWinsRanking(decision.Standings, matchWinner)
+	}
 	return decision, nil
+}
+
+func legacyWinsRanking(states []PlayerState, winnerMemberID *string) []RankingEntry {
+	ranked := append([]PlayerState(nil), states...)
+	sort.Slice(ranked, func(i, j int) bool {
+		if winnerMemberID != nil {
+			iWinner := ranked[i].Player.MemberID == *winnerMemberID
+			jWinner := ranked[j].Player.MemberID == *winnerMemberID
+			if iWinner != jWinner {
+				return iWinner
+			}
+		}
+		if ranked[i].Score != ranked[j].Score {
+			return ranked[i].Score > ranked[j].Score
+		}
+		return ranked[i].Player.Seat < ranked[j].Player.Seat
+	})
+	entries := make([]RankingEntry, 0, len(ranked))
+	for index, state := range ranked {
+		rank := 1
+		if winnerMemberID != nil {
+			if state.Player.MemberID != *winnerMemberID {
+				rank = 2
+			}
+		} else if index > 0 && state.Score < ranked[index-1].Score {
+			rank = index + 1
+		} else if index > 0 {
+			rank = entries[index-1].Rank
+		}
+		entries = append(entries, RankingEntry{
+			Player: state.Player, Rank: rank, Score: state.Score, Status: state.Status,
+			LifeState: state.LifeState, EliminatedStage: state.EliminatedStage,
+		})
+	}
+	return entries
 }

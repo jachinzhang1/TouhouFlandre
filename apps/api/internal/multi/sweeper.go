@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -142,41 +143,55 @@ func (s *Sweeper) notify(roomID string) {
 
 // SweepOnce 执行一轮清扫（幂等；供测试与启动补扫）。
 func (s *Sweeper) SweepOnce(ctx context.Context) error {
-	steps := []func(context.Context) error{
-		s.recoverModeUnits,
-		s.startCountdownRounds,
-		s.settleExpiredRelayTurns,
-		s.settleTimedOutRounds,
-		s.advanceRounds,
-		s.expireDisconnectedMembers,
-		s.closeExpiredLobbies,
-		s.closeExpiredFinishedRooms,
-		s.deleteExpiredChatMessages,
-		s.deleteExpiredClosedRooms,
-		s.updateStatusMetrics,
+	steps := []sweepStep{
+		{name: "recover mode units", run: s.recoverModeUnits},
+		{name: "start countdown rounds", run: s.startCountdownRounds},
+		{name: "settle expired relay turns", run: s.settleExpiredRelayTurns},
+		{name: "settle timed out rounds", run: s.settleTimedOutRounds},
+		{name: "advance rounds", run: s.advanceRounds},
+		{name: "expire disconnected members", run: s.expireDisconnectedMembers},
+		{name: "close expired lobbies", run: s.closeExpiredLobbies},
+		{name: "close expired finished rooms", run: s.closeExpiredFinishedRooms},
+		{name: "delete expired chat messages", run: s.deleteExpiredChatMessages},
+		{name: "delete expired closed rooms", run: s.deleteExpiredClosedRooms},
+		{name: "update status metrics", run: s.updateStatusMetrics},
 	}
+	return runSweepSteps(ctx, steps)
+}
+
+type sweepStep struct {
+	name string
+	run  func(context.Context) error
+}
+
+func runSweepSteps(ctx context.Context, steps []sweepStep) error {
+	var sweepErr error
 	for _, step := range steps {
-		if err := step(ctx); err != nil {
-			return err
+		if ctx.Err() != nil {
+			return errors.Join(sweepErr, ctx.Err())
+		}
+		if err := step.run(ctx); err != nil {
+			sweepErr = errors.Join(sweepErr, fmt.Errorf("%s: %w", step.name, err))
 		}
 	}
-	return nil
+	return sweepErr
 }
 
 func (s *Sweeper) recoverModeUnits(ctx context.Context) error {
+	var recoveryErr error
 	for _, recovery := range s.cfg.ModeRecoveries {
 		if recovery == nil {
 			continue
 		}
 		roomIDs, err := recovery.Sweep(ctx, 100)
-		if err != nil {
-			return err
-		}
 		for _, roomID := range roomIDs {
 			s.notify(roomID)
 		}
+		if err != nil {
+			recoveryErr = errors.Join(recoveryErr, err)
+		}
 	}
-	return nil
+	return recoveryErr
 }
 
 func (s *Sweeper) deleteExpiredChatMessages(ctx context.Context) error {
@@ -207,6 +222,18 @@ func (s *Sweeper) updateStatusMetrics(ctx context.Context) error {
 	}
 	if active, err := q.CountActiveRounds(ctx); err == nil {
 		DefaultMetrics.SetActiveRounds(int64(active))
+	}
+	if _, err := s.cfg.Registry.CommandHandler(core.ModeRelay); err == nil {
+		if rows, err := q.CountActiveRelayEncountersByRuleSet(ctx); err == nil {
+			counts := make(map[MetricLabels]int64, len(rows))
+			for _, row := range rows {
+				labels := NewMetricLabels(row.Mode, row.RuleSetKey, int(row.RuleSetVersion))
+				counts[labels] = int64(row.Count)
+			}
+			DefaultMetrics.SetActiveEncounters(counts)
+		}
+	} else {
+		DefaultMetrics.SetActiveEncounters(nil)
 	}
 	return nil
 }
@@ -727,7 +754,7 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
-	relayConfig, err := LoadRelayRoomConfig(ctx, q, room.ID)
+	relayConfig, err := RelayRoomConfigForRoom(ctx, q, room)
 	if err != nil {
 		return err
 	}
@@ -815,7 +842,7 @@ func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.Mult
 	if err != nil {
 		return err
 	}
-	relayConfig, err := LoadRelayRoomConfig(ctx, q, lockedRoom.ID)
+	relayConfig, err := RelayRoomConfigForRoom(ctx, q, lockedRoom)
 	if err != nil {
 		return err
 	}

@@ -28,10 +28,7 @@ func (s *Server) roomPolicyForState(room repo.MultiRoom) (core.RoomPolicy, error
 }
 
 func (s *Server) relayRoomConfigForState(ctx context.Context, room repo.MultiRoom, q *repo.Queries) (multi.RelayRoomConfigView, error) {
-	if modeFromStored(room.Mode) != core.ModeRelay {
-		return multi.RelayRoomConfigView{}, nil
-	}
-	return multi.LoadRelayRoomConfig(ctx, q, room.ID)
+	return multi.RelayRoomConfigForRoom(ctx, q, room)
 }
 
 func (s *Server) ruleSetForState(room repo.MultiRoom, match repo.MultiMatch) (core.RuleSetRef, error) {

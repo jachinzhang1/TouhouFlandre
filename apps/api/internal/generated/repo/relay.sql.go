@@ -49,6 +49,52 @@ func (q *Queries) AddRelayEncounterMember(ctx context.Context, arg AddRelayEncou
 	return i, err
 }
 
+const countActiveRelayEncountersByRuleSet = `-- name: CountActiveRelayEncountersByRuleSet :many
+SELECT room.mode,
+       match.rule_set_key,
+       match.rule_set_version,
+       count(*)::int AS count
+FROM multi_relay_encounter AS encounter
+JOIN multi_match AS match ON match.id = encounter.match_id
+JOIN multi_room AS room ON room.id = match.room_id
+WHERE match.status = 'playing'
+  AND encounter.status <> 'ended'
+GROUP BY room.mode, match.rule_set_key, match.rule_set_version
+ORDER BY room.mode, match.rule_set_key, match.rule_set_version
+`
+
+type CountActiveRelayEncountersByRuleSetRow struct {
+	Mode           string `json:"mode"`
+	RuleSetKey     string `json:"rule_set_key"`
+	RuleSetVersion int32  `json:"rule_set_version"`
+	Count          int32  `json:"count"`
+}
+
+func (q *Queries) CountActiveRelayEncountersByRuleSet(ctx context.Context) ([]CountActiveRelayEncountersByRuleSetRow, error) {
+	rows, err := q.db.Query(ctx, countActiveRelayEncountersByRuleSet)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CountActiveRelayEncountersByRuleSetRow{}
+	for rows.Next() {
+		var i CountActiveRelayEncountersByRuleSetRow
+		if err := rows.Scan(
+			&i.Mode,
+			&i.RuleSetKey,
+			&i.RuleSetVersion,
+			&i.Count,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countRelayEncounterMembers = `-- name: CountRelayEncounterMembers :one
 SELECT count(*)::int
 FROM multi_relay_encounter_member

@@ -65,6 +65,9 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				if roomID, ok := roomIDFromRequest(request); ok && member.RoomID != roomID {
 					return nil, guestUnauthorized("令牌不属于该房间。")
 				}
+				if operationID == "RoomsListRelayStageHistory" && !s.historyLimiter.allow(member.ID, s.now()) {
+					return nil, &ApiError{Status: http.StatusTooManyRequests, Code: codeRateLimited, Message: "历史请求过于频繁，请稍后再试。"}
+				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
 			case "RoomsListMessages", "RoomsSendMessage":

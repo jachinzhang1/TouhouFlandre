@@ -35,7 +35,10 @@ func main() {
 
 	// 服务重启明确终止（08 §4.6）：启动时对进行中对局（含 countdown 态局）判平终止，不静默丢失。
 	timing := config.MultiTiming()
-	registry := assembly.MustProduction()
+	registry, err := assembly.ForProfile(config.MultiModeRegistry())
+	if err != nil {
+		fatal("configure multiplayer registry", err)
+	}
 	clock := core.SystemClock{}
 	random := core.NewRandomSource()
 	terminated, err := multi.TerminateActiveMatches(ctx, pool, clock.Now(), timing, registry)
@@ -49,9 +52,15 @@ func main() {
 	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
 	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret(), registry)
 	e := server.NewWithOptions(pool, handler.WithMultiTiming(timing), handler.WithHub(h), handler.WithMultiplayerKernel(registry, clock, random))
-	_, relayRecovery, err := relayadapter.NewRuntime(pool, clock, random, timing)
-	if err != nil {
-		fatal("configure relay recovery", err)
+	modeRecoveries := []multi.ModeRecovery{}
+	modeForfeiters := []multi.ModeMemberForfeiter{}
+	if _, capabilityErr := registry.CommandHandler(core.ModeRelay); capabilityErr == nil {
+		_, relayRecovery, runtimeErr := relayadapter.NewRuntime(pool, clock, random, timing)
+		if runtimeErr != nil {
+			fatal("configure relay recovery", runtimeErr)
+		}
+		modeRecoveries = append(modeRecoveries, relayRecovery)
+		modeForfeiters = append(modeForfeiters, relayRecovery)
 	}
 
 	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
@@ -64,8 +73,8 @@ func main() {
 		Registry:       registry,
 		Clock:          clock,
 		Random:         random,
-		ModeRecoveries: []multi.ModeRecovery{relayRecovery},
-		ModeForfeiters: []multi.ModeMemberForfeiter{relayRecovery},
+		ModeRecoveries: modeRecoveries,
+		ModeForfeiters: modeForfeiters,
 	})
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
 	defer stopSweeper()

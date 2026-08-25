@@ -37,6 +37,7 @@ type Server struct {
 	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
 	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
 	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	historyLimiter   *ipRateLimiter     // relay history 按 member 限流
 	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
 	chatRetention    time.Duration
 	chatRate         multi.ChatRateConfig
@@ -49,7 +50,8 @@ type Server struct {
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
 
-// RolloutConfig 定义 MPX-010 灰度开关。默认关闭新增暴露面，测试/灰度环境显式开启。
+// RolloutConfig 定义多人玩法灰度开关。固定积分 relay 默认开启；淘汰赛和
+// 其他可选入口仍可独立关闭。服务端开关是最终授权边界。
 type RolloutConfig struct {
 	NPlayerRaceEnabled      bool
 	NPlayerRelayEnabled     bool
@@ -77,6 +79,13 @@ func WithRolloutConfig(rollout RolloutConfig) Option {
 func WithJoinRateLimit(limit int, window time.Duration) Option {
 	return func(s *Server) {
 		s.joinLimiter = newIPRateLimiter(limit, window)
+	}
+}
+
+// WithRelayHistoryRateLimit overrides the authenticated history limiter.
+func WithRelayHistoryRateLimit(limit int, window time.Duration) Option {
+	return func(s *Server) {
+		s.historyLimiter = newIPRateLimiter(limit, window)
 	}
 }
 
@@ -144,6 +153,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 		lobbyTTL:         config.MultiLobbyTTL(),
 		eventRetention:   config.MultiEventRetention(),
 		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		historyLimiter:   newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
 		timing:           multi.DefaultTimingConfig(),
 		chatRetention:    config.MultiChatRetention(),
 		chatRate:         config.MultiChatRate(),
@@ -159,6 +169,9 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 }
 
 func (s *Server) configureRelayEngine() {
+	if _, err := s.modeRegistry.CommandHandler(core.ModeRelay); err != nil {
+		return
+	}
 	clock := core.ClockFunc(s.now)
 	coordinator, encounters, err := relayadapter.NewRuntime(s.pool, clock, s.rng, s.timing)
 	if err != nil {

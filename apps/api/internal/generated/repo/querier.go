@@ -16,6 +16,7 @@ type Querier interface {
 	AwardRoundPlayerPoints(ctx context.Context, arg AwardRoundPlayerPointsParams) (MultiRoundPlayer, error)
 	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
+	CountActiveRelayEncountersByRuleSet(ctx context.Context) ([]CountActiveRelayEncountersByRuleSetRow, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)
 	CountCorrectRoundPlayers(ctx context.Context, roundID string) (int32, error)

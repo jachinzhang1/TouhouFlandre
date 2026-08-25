@@ -131,8 +131,20 @@ func TestMRX004RelayOddRosterBlocksAndEvenRosterStarts(t *testing.T) {
 func TestMRX004RelayTwoPlayersFreezeLegacyRegardlessOfToggle(t *testing.T) {
 	for _, elimination := range []bool{false, true} {
 		fixture := createRelayPolicyFixture(t, 4, elimination, 2)
+		resp, payload := fastRequest(http.MethodGet, "/api/rooms/"+fixture.code, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("two-player relay info: %d %s", resp.StatusCode, payload)
+		}
+		var info openapi.RoomInfo
+		if err := json.Unmarshal(payload, &info); err != nil {
+			t.Fatal(err)
+		}
+		if info.RelayEliminationEnabled == nil || *info.RelayEliminationEnabled != elimination {
+			t.Fatalf("two-player relay elimination setting = %v, want %t", info.RelayEliminationEnabled, elimination)
+		}
+
 		setRelayReady(t, fixture)
-		resp, payload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.tokens[0], nil)
+		resp, payload = fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.tokens[0], nil)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("two-player relay snapshot: %d %s", resp.StatusCode, payload)
 		}
@@ -143,5 +155,21 @@ func TestMRX004RelayTwoPlayersFreezeLegacyRegardlessOfToggle(t *testing.T) {
 		if snapshot.Match == nil || snapshot.Match.RuleSetRef.Key != "legacy_wins" {
 			t.Fatalf("two-player relay toggle=%t match = %+v", elimination, snapshot.Match)
 		}
+	}
+}
+
+func TestMRX004RelayEliminationCreateFreezesEliminationRuleSet(t *testing.T) {
+	fixture := createRelayPolicyFixture(t, 6, true, 6)
+	setRelayReady(t, fixture)
+	resp, payload := fastRequestAuth(http.MethodGet, "/api/rooms/"+fixture.roomID+"/snapshot", fixture.tokens[0], nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("elimination relay snapshot: %d %s", resp.StatusCode, payload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(payload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Match == nil || snapshot.Match.RuleSetRef.Mode != "relay" || snapshot.Match.RuleSetRef.Key != "elimination" || snapshot.Match.RuleSetRef.Version != 1 {
+		t.Fatalf("elimination relay match = %+v", snapshot.Match)
 	}
 }

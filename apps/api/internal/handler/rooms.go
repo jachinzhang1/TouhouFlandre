@@ -347,7 +347,7 @@ func (s *Server) RoomsUpdateSettings(ctx context.Context, request openapi.RoomsU
 		return nil, internalError(err)
 	}
 	mode := modeFromStored(room.Mode)
-	relayConfig, err := multi.LoadRelayRoomConfig(ctx, q, request.RoomId)
+	relayConfig, err := s.relayRoomConfigForState(ctx, room, q)
 	if err != nil {
 		return nil, internalError(err)
 	}
@@ -520,7 +520,7 @@ func (s *Server) RoomsGetInfo(ctx context.Context, request openapi.RoomsGetInfoR
 	if err != nil {
 		return nil, internalError(err)
 	}
-	relayConfig, err := multi.LoadRelayRoomConfig(ctx, s.q, room.ID)
+	relayConfig, err := s.relayRoomConfigForState(ctx, room, s.q)
 	if err != nil {
 		return nil, internalError(err)
 	}

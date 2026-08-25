@@ -3,12 +3,33 @@
 package assembly
 
 import (
+	"fmt"
+
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 	racedomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/race"
 	race "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/race/adapter"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
+
+const (
+	ProfileFull      = "full"
+	ProfileRaceOnly  = "race-only"
+	ProfileRelayOnly = "relay-only"
+)
+
+func ForProfile(profile string) (*core.Registry, error) {
+	switch profile {
+	case ProfileFull:
+		return Production()
+	case ProfileRaceOnly:
+		return RaceOnly()
+	case ProfileRelayOnly:
+		return RelayOnly()
+	default:
+		return nil, fmt.Errorf("unknown multiplayer registry profile %q", profile)
+	}
+}
 
 func RaceOnly() (*core.Registry, error) {
 	registry := core.NewRegistry()

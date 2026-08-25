@@ -423,6 +423,7 @@ func (c *Conn) writeLoop() {
 				return
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
+			multi.DefaultMetrics.RecordWSPayloadBytes(multi.NewMetricLabels("unknown", "unknown", 0), len(frame.data))
 			err := c.ws.Write(ctx, websocket.MessageText, frame.data)
 			cancel()
 			if err != nil {
@@ -477,6 +478,7 @@ func (c *Conn) writeText(v any) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
 	defer cancel()
+	multi.DefaultMetrics.RecordWSPayloadBytes(multi.NewMetricLabels("unknown", "unknown", 0), len(data))
 	return c.ws.Write(ctx, websocket.MessageText, data)
 }
 
@@ -519,6 +521,7 @@ func (c *Conn) sendMemberChangedAndClose() {
 // closeSlow 慢消费者：发送队列写满 → 1013（08 §8.5），不阻塞房间广播。
 func (c *Conn) closeSlow() {
 	c.setCloseReason("slow_consumer")
+	multi.DefaultMetrics.IncWSQueueDrop(multi.NewMetricLabels("unknown", "unknown", 0))
 	c.closeWith(websocket.StatusTryAgainLater, "slow consumer")
 }
 
