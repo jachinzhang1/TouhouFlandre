@@ -286,7 +286,7 @@ func (s *Server) projectChatBackwards(rows []repo.MultiChatMessage, viewer repo.
 func (s *Server) toOpenAPIChatMessage(row repo.MultiChatMessage, room repo.MultiRoom) openapi.ChatMessage {
 	message := openapi.ChatMessage{
 		MessageId: row.ID, RoomId: row.RoomID, SenderMemberId: row.SenderMemberID,
-		SenderDisplayName: row.SenderDisplayName, SenderRole: openapi.ParticipantRole(row.SenderRole),
+		SenderDisplayName: row.SenderDisplayName, SenderRole: openapi.ChatSenderRole(row.SenderRole),
 		Kind: openapi.ChatKind(row.Kind), Content: row.Content, Channel: openapi.ChatChannel(row.Channel),
 		Cursor:    s.chatCursor.Encode(room.ID, room.CreatedAt.Time, row.Position, multi.ChatCursorAfter),
 		CreatedAt: row.CreatedAt.Time,

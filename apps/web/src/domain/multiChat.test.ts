@@ -5,6 +5,7 @@ import {
   initialRoomChatState,
   mergeChatEntries,
   normalizeChatDraft,
+  isOwnChatEntry,
 } from "./multiChat";
 
 const message = (overrides: Partial<ReturnType<typeof chatEntryFromMessage>>) =>
@@ -36,6 +37,18 @@ describe("multiChat domain helpers", () => {
         }),
       ),
     ).toBe("观战者:");
+  });
+
+  it("formats the system sender without a seat and never treats it as the viewer", () => {
+    const system = message({
+      senderMemberId: "system",
+      senderDisplayName: "系统",
+      senderRole: "system",
+      senderSeat: undefined,
+      content: "[第 1 轮]灵梦(P1)已猜中",
+    });
+    expect(chatSenderLabel(system)).toBe("系统:");
+    expect(isOwnChatEntry(system, "system")).toBe(false);
   });
 
   it("treats a single whitelisted emoji as emoji and mixed text as text", () => {

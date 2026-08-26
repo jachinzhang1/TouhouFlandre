@@ -57,6 +57,7 @@ cursorEnvelope:
       format: date-time
 
 # 独立聊天帧；不使用 room event 信封，也没有游戏 sequence。
+# senderRole=system 仅由服务端生成，使用 room channel 对玩家和观战者可见。
 chatFrame:
   type: object
   additionalProperties: false
@@ -88,7 +89,7 @@ chatFrame:
       type: string
     senderRole:
       type: string
-      enum: [player, spectator]
+      enum: [player, spectator, system]
     senderSeat:
       type: integer
       minimum: 1
@@ -166,7 +167,15 @@ events:
           type: boolean
         startBlockedReason:
           type: string
-          enum: [not_enough_players, odd_player_count, player_not_ready, player_disconnected, host_missing, invalid_player_count]
+          enum:
+            [
+              not_enough_players,
+              odd_player_count,
+              player_not_ready,
+              player_disconnected,
+              host_missing,
+              invalid_player_count,
+            ]
         minPlayers:
           type: integer
           enum: [2]
@@ -622,7 +631,15 @@ events:
           $ref: "#/definitions/RelayMatchEnded"
         reason:
           type: string
-          enum: [normal, forfeit, disconnect, server_restart, round_cap, insufficient_active_players]
+          enum:
+            [
+              normal,
+              forfeit,
+              disconnect,
+              server_restart,
+              round_cap,
+              insufficient_active_players,
+            ]
         retentionEndsAt:
           type: string
           format: date-time
