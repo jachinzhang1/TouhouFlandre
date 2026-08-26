@@ -35,10 +35,20 @@ type SweeperConfig struct {
 	Random         core.RandomSource
 	ModeRecoveries []ModeRecovery
 	ModeForfeiters []ModeMemberForfeiter
+	Announcements  *SystemAnnouncementWriter
 }
 
 type ModeRecovery interface {
 	Sweep(context.Context, int) ([]string, error)
+}
+
+type ModeRecoveryEffect struct {
+	RoomID      string
+	ChatChanged bool
+}
+
+type ModeRecoveryWithEffects interface {
+	SweepWithEffects(context.Context, int) ([]ModeRecoveryEffect, error)
 }
 
 // ModeMemberForfeiter lets a mode-owned storage adapter handle permanent
@@ -49,6 +59,15 @@ type ModeMemberForfeiter interface {
 
 type ModeMemberBatchForfeiter interface {
 	ForfeitMatchMembers(context.Context, []repo.MultiMember, MatchEndReason) (bool, error)
+}
+
+type ModeMemberForfeitResult struct {
+	Handled     bool
+	ChatChanged bool
+}
+
+type ModeMemberBatchForfeiterWithEffects interface {
+	ForfeitMatchMembersWithEffects(context.Context, []repo.MultiMember, MatchEndReason) (ModeMemberForfeitResult, error)
 }
 
 // Sweeper 后台调度器（唯一）。
@@ -141,6 +160,12 @@ func (s *Sweeper) notify(roomID string) {
 	}
 }
 
+func (s *Sweeper) notifyChat(roomID string) {
+	if broadcaster, ok := s.cfg.Broadcaster.(interface{ PublishChat(string) }); ok {
+		broadcaster.PublishChat(roomID)
+	}
+}
+
 // SweepOnce 执行一轮清扫（幂等；供测试与启动补扫）。
 func (s *Sweeper) SweepOnce(ctx context.Context) error {
 	steps := []sweepStep{
@@ -181,6 +206,19 @@ func (s *Sweeper) recoverModeUnits(ctx context.Context) error {
 	var recoveryErr error
 	for _, recovery := range s.cfg.ModeRecoveries {
 		if recovery == nil {
+			continue
+		}
+		if detailed, ok := recovery.(ModeRecoveryWithEffects); ok {
+			effects, err := detailed.SweepWithEffects(ctx, 100)
+			for _, effect := range effects {
+				s.notify(effect.RoomID)
+				if effect.ChatChanged {
+					s.notifyChat(effect.RoomID)
+				}
+			}
+			if err != nil {
+				recoveryErr = errors.Join(recoveryErr, err)
+			}
 			continue
 		}
 		roomIDs, err := recovery.Sweep(ctx, 100)
@@ -339,6 +377,7 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 	}
 
 	changed := false
+	chatChanged := false
 	for RelayTurnExpired(round, s.now()) {
 		result, err := SettleExpiredRelayTurnTx(ctx, q, room, round, match, s.now(), s.cfg.Timing)
 		if err != nil {
@@ -347,6 +386,10 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 		changed = true
 		round = result.Round
 		if result.RoundEnded {
+			chatChanged, err = AppendLegacyRelayRoundAnnouncement(ctx, q, s.cfg.Announcements, round, match, result.WinnerSlot, s.now())
+			if err != nil {
+				return err
+			}
 			break
 		}
 	}
@@ -355,6 +398,9 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 	}
 	if changed {
 		s.notify(room.ID)
+	}
+	if chatChanged {
+		s.notifyChat(room.ID)
 	}
 	return nil
 }
@@ -432,10 +478,17 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	}); err != nil {
 		return err
 	}
+	chatChanged, err := AppendLegacyRelayRoundAnnouncement(ctx, q, s.cfg.Announcements, round, match, 0, now)
+	if err != nil {
+		return err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 	s.notify(match.RoomID)
+	if chatChanged {
+		s.notifyChat(match.RoomID)
+	}
 	return nil
 }
 
@@ -625,7 +678,20 @@ func (s *Sweeper) forfeitModeMemberBatch(ctx context.Context, members []repo.Mul
 		if forfeiter == nil {
 			continue
 		}
-		if batch, ok := forfeiter.(ModeMemberBatchForfeiter); ok {
+		if batch, ok := forfeiter.(ModeMemberBatchForfeiterWithEffects); ok {
+			result, err := batch.ForfeitMatchMembersWithEffects(ctx, members, reason)
+			if err != nil {
+				return err
+			}
+			handled = result.Handled
+			if handled {
+				s.notify(roomID)
+				if result.ChatChanged {
+					s.notifyChat(roomID)
+				}
+				return nil
+			}
+		} else if batch, ok := forfeiter.(ModeMemberBatchForfeiter); ok {
 			var err error
 			handled, err = batch.ForfeitMatchMembers(ctx, members, reason)
 			if err != nil {
@@ -699,10 +765,14 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		}
 	}
 	for roomID, batch := range raceBatches {
-		if err := ForfeitRaceMembersMatch(ctx, s.pool, batch, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
+		chatChanged, err := ForfeitRaceMembersMatchWithEffects(ctx, s.pool, batch, MatchEndReasonDisconnect, now, s.cfg.Timing, s.cfg.Announcements)
+		if err != nil {
 			return err
 		}
 		s.notify(roomID)
+		if chatChanged {
+			s.notifyChat(roomID)
+		}
 	}
 	for _, batch := range modeBatches {
 		if err := s.forfeitModeMemberBatch(ctx, batch, MatchEndReasonDisconnect, now); err != nil {

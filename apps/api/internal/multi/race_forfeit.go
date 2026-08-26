@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -244,6 +245,35 @@ func ForfeitRaceMembersMatch(
 	reason MatchEndReason,
 	now time.Time,
 	timing TimingConfig,
+	announcers ...*SystemAnnouncementWriter,
+) error {
+	_, err := ForfeitRaceMembersMatchWithEffects(ctx, pool, members, reason, now, timing, announcers...)
+	return err
+}
+
+func ForfeitRaceMembersMatchWithEffects(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	members []repo.MultiMember,
+	reason MatchEndReason,
+	now time.Time,
+	timing TimingConfig,
+	announcers ...*SystemAnnouncementWriter,
+) (bool, error) {
+	chatChanged := false
+	err := forfeitRaceMembersMatch(ctx, pool, members, reason, now, timing, &chatChanged, announcers...)
+	return chatChanged, err
+}
+
+func forfeitRaceMembersMatch(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	members []repo.MultiMember,
+	reason MatchEndReason,
+	now time.Time,
+	timing TimingConfig,
+	chatChanged *bool,
+	announcers ...*SystemAnnouncementWriter,
 ) error {
 	if len(members) == 0 {
 		return nil
@@ -358,6 +388,33 @@ func ForfeitRaceMembersMatch(
 		}
 		if _, _, err := settleRaceRoundRosterTx(ctx, q, room, round, match, forfeitedMemberID, now, timing); err != nil {
 			return err
+		}
+	}
+	if reason == MatchEndReasonDisconnect && hasRound && len(announcers) > 0 && announcers[0] != nil {
+		memberByID := make(map[string]repo.MultiMember, len(members))
+		for _, member := range members {
+			memberByID[member.ID] = member
+		}
+		sort.Slice(changed, func(i, j int) bool {
+			return MemberSeat(memberByID[changed[i]]) < MemberSeat(memberByID[changed[j]])
+		})
+		for _, memberID := range changed {
+			member := memberByID[memberID]
+			announcement, err := (RaceAnnouncement{
+				RoomID: room.ID, RoundID: round.ID, RoundIndex: int(round.RoundIndex), RosterSize: int(match.RosterSize),
+				MemberID: member.ID, DisplayName: member.DisplayName, Seat: MemberSeat(member),
+				Reason: RaceAnnouncementDisconnect, CreatedAt: now,
+			}).SystemAnnouncement()
+			if err != nil {
+				return err
+			}
+			appended, err := announcers[0].Append(ctx, q, announcement)
+			if err != nil {
+				return err
+			}
+			if appended {
+				*chatChanged = true
+			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

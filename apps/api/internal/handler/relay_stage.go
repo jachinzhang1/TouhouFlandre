@@ -45,6 +45,9 @@ func (s *Server) RoomsRelayEncounterAction(ctx context.Context, request openapi.
 	if result.Changed {
 		s.publish(request.RoomId)
 	}
+	if result.ChatChanged {
+		s.publishChatRoom(request.RoomId)
+	}
 	if err != nil {
 		return nil, mapRelayEncounterError(err)
 	}

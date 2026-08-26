@@ -967,11 +967,14 @@ func (s *Server) RoomsLeave(ctx context.Context, request openapi.RoomsLeaveReque
 
 func (s *Server) forfeitPlayingMember(ctx context.Context, member repo.MultiMember, reason multi.MatchEndReason) error {
 	if s.relayEncounters != nil {
-		handled, err := s.relayEncounters.ForfeitMatchMember(ctx, member, reason)
+		result, err := s.relayEncounters.ForfeitMatchMemberWithEffects(ctx, member, reason)
 		if err != nil {
 			return err
 		}
-		if handled {
+		if result.Handled {
+			if result.ChatChanged {
+				s.publishChatRoom(member.RoomID)
+			}
 			return nil
 		}
 	}

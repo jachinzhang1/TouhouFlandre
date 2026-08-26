@@ -25,9 +25,10 @@ type submitGuessInput struct {
 }
 
 type submitGuessResult struct {
-	response openapi.RoomsSubmitGuessResponseObject
-	commit   bool
-	publish  bool
+	response    openapi.RoomsSubmitGuessResponseObject
+	commit      bool
+	publish     bool
+	chatChanged bool
 }
 
 type guessModeModule interface {
@@ -225,5 +226,26 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 			return submitGuessResult{}, internalError(err)
 		}
 	}
-	return submitGuessResult{response: response, commit: true, publish: true}, nil
+	var announcementReason multi.RaceAnnouncementReason
+	if isCorrect {
+		announcementReason = multi.RaceAnnouncementCorrect
+	} else if sequence >= maxGuesses {
+		announcementReason = multi.RaceAnnouncementExhausted
+	}
+	chatChanged := false
+	if announcementReason != "" {
+		announcement, err := (multi.RaceAnnouncement{
+			RoomID: room.ID, RoundID: round.ID, RoundIndex: int(round.RoundIndex), RosterSize: int(match.RosterSize),
+			MemberID: member.ID, DisplayName: member.DisplayName, Seat: multi.MemberSeat(member),
+			Reason: announcementReason, CreatedAt: s.now(),
+		}).SystemAnnouncement()
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+		chatChanged, err = s.announcements.Append(ctx, q, announcement)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+	}
+	return submitGuessResult{response: response, commit: true, publish: true, chatChanged: chatChanged}, nil
 }
