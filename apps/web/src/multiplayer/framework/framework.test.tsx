@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BoardBrowser,
@@ -6,12 +6,122 @@ import {
   MatchCountdownBand,
   MatchFinishedBand,
   MatchSummaryBar,
+  MultiplayerBottomDockProvider,
   MultiplayerMatchFrame,
 } from ".";
 
 describe("multiplayer match framework", () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("stacks persistent and optional action docks through the shared host", async () => {
+    const view = render(
+      <MultiplayerBottomDockProvider
+        persistentDock={<div data-testid="persistent-dock">chat</div>}
+      >
+        <MultiplayerMatchFrame
+          bottomDock={<div data-testid="action-dock">guess</div>}
+        >
+          <div>board</div>
+        </MultiplayerMatchFrame>
+      </MultiplayerBottomDockProvider>,
+    );
+
+    const persistent = screen.getByTestId("persistent-dock");
+    const action = await screen.findByTestId("action-dock");
+    const persistentSlot = persistent.closest(
+      "[data-multiplayer-persistent-dock]",
+    );
+    const actionSlot = action.closest("[data-multiplayer-action-dock]");
+    const host = persistent.closest("[data-multiplayer-bottom-dock]");
+    expect(persistentSlot).not.toBeNull();
+    expect(actionSlot).not.toBeNull();
+    expect(host?.className).toContain("bg-paper/95");
+    expect(host?.className).toContain("border-t");
+    expect(persistentSlot?.className).not.toContain("bg-paper");
+    expect(persistentSlot?.className).not.toContain("border-t");
+    expect(
+      persistentSlot!.compareDocumentPosition(actionSlot!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+
+    view.rerender(
+      <MultiplayerBottomDockProvider
+        persistentDock={<div data-testid="persistent-dock">chat</div>}
+      >
+        <MultiplayerMatchFrame>
+          <div>board</div>
+        </MultiplayerMatchFrame>
+      </MultiplayerBottomDockProvider>,
+    );
+    await waitFor(() => expect(screen.queryByTestId("action-dock")).toBeNull());
+    expect(
+      document.querySelector("[data-multiplayer-action-dock]")?.childNodes,
+    ).toHaveLength(0);
+  });
+
+  it("supports either dock slot independently and collapses an empty host", async () => {
+    const view = render(
+      <MultiplayerBottomDockProvider>
+        <MultiplayerMatchFrame
+          bottomDock={<div data-testid="action-only">guess</div>}
+        >
+          <div>board</div>
+        </MultiplayerMatchFrame>
+      </MultiplayerBottomDockProvider>,
+    );
+    expect(await screen.findByTestId("action-only")).not.toBeNull();
+    expect(
+      document.querySelector("[data-multiplayer-persistent-dock]"),
+    ).toBeNull();
+
+    view.rerender(
+      <MultiplayerBottomDockProvider>
+        <div>board</div>
+      </MultiplayerBottomDockProvider>,
+    );
+    await waitFor(() => expect(screen.queryByTestId("action-only")).toBeNull());
+    expect(document.querySelector("[data-multiplayer-bottom-dock]")).toBeNull();
+    expect(
+      document.querySelector("[data-multiplayer-bottom-dock-spacer]"),
+    ).toBeNull();
+  });
+
+  it("reserves the measured collapsed dock height in page flow", async () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        const height = this.hasAttribute("data-multiplayer-bottom-dock")
+          ? 84
+          : 0;
+        return {
+          x: 0,
+          y: 0,
+          top: 0,
+          right: 0,
+          bottom: height,
+          left: 0,
+          width: 0,
+          height,
+          toJSON: () => ({}),
+        };
+      },
+    );
+
+    render(
+      <MultiplayerBottomDockProvider persistentDock={<div>chat</div>}>
+        <div>board</div>
+      </MultiplayerBottomDockProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        document.querySelector<HTMLElement>(
+          "[data-multiplayer-bottom-dock-spacer]",
+        )?.style.height,
+      ).toBe("84px"),
+    );
   });
 
   it("renders the shared frame and score summary without mode-specific data", () => {
