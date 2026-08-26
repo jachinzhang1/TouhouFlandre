@@ -42,6 +42,7 @@ type Server struct {
 	chatRetention    time.Duration
 	chatRate         multi.ChatRateConfig
 	chatCursor       *multi.ChatCursorCodec
+	announcements    *multi.SystemAnnouncementWriter
 	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 	rollout          RolloutConfig
@@ -53,18 +54,20 @@ type Option func(*Server)
 // RolloutConfig 定义多人玩法灰度开关。固定积分 relay 默认开启；淘汰赛和
 // 其他可选入口仍可独立关闭。服务端开关是最终授权边界。
 type RolloutConfig struct {
-	NPlayerRaceEnabled      bool
-	NPlayerRelayEnabled     bool
-	RelayEliminationEnabled bool
-	ChatSendEnabled         bool
+	NPlayerRaceEnabled         bool
+	NPlayerRelayEnabled        bool
+	RelayEliminationEnabled    bool
+	ChatSendEnabled            bool
+	SystemAnnouncementsEnabled bool
 }
 
 func rolloutConfigFromEnv() RolloutConfig {
 	return RolloutConfig{
-		NPlayerRaceEnabled:      config.MultiNPlayerRaceEnabled(),
-		NPlayerRelayEnabled:     config.MultiNPlayerRelayEnabled(),
-		RelayEliminationEnabled: config.MultiRelayEliminationEnabled(),
-		ChatSendEnabled:         config.MultiChatSendEnabled(),
+		NPlayerRaceEnabled:         config.MultiNPlayerRaceEnabled(),
+		NPlayerRelayEnabled:        config.MultiNPlayerRelayEnabled(),
+		RelayEliminationEnabled:    config.MultiRelayEliminationEnabled(),
+		ChatSendEnabled:            config.MultiChatSendEnabled(),
+		SystemAnnouncementsEnabled: config.MultiSystemAnnouncementsEnabled(),
 	}
 }
 
@@ -142,6 +145,12 @@ func (s *Server) publishChat(message repo.MultiChatMessage) {
 	}
 }
 
+func (s *Server) publishChatRoom(roomID string) {
+	if s.hub != nil {
+		s.hub.PublishChat(roomID)
+	}
+}
+
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	clock := core.SystemClock{}
 	s := &Server{
@@ -164,6 +173,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
 	s.configureRelayEngine()
 	return s
 }
@@ -173,7 +183,7 @@ func (s *Server) configureRelayEngine() {
 		return
 	}
 	clock := core.ClockFunc(s.now)
-	coordinator, encounters, err := relayadapter.NewRuntime(s.pool, clock, s.rng, s.timing)
+	coordinator, encounters, err := relayadapter.NewRuntime(s.pool, clock, s.rng, s.timing, s.announcements)
 	if err != nil {
 		panic("handler: configure relay encounter engine: " + err.Error())
 	}

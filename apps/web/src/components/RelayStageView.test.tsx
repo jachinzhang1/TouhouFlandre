@@ -323,7 +323,10 @@ describe("RelayStageView", () => {
       }),
     );
 
-    expect(await screen.findByText(/对局将于 [1-5] 秒后开始/)).not.toBeNull();
+    const message = await screen.findByText(/对局将于 [1-5] 秒后开始/);
+    const countdown = message.closest("[data-match-countdown]");
+    expect(countdown?.classList.contains("match-countdown-band")).toBe(true);
+    expect(countdown?.getAttribute("data-countdown-kind")).toBe("initial");
     expect(screen.queryByText(/下一局将于/)).toBeNull();
   });
 
@@ -381,6 +384,7 @@ describe("RelayStageView", () => {
             startsAt: new Date(Date.now() + 5000).toISOString(),
             status: "planned",
             encounters: nextEncounters,
+            byeMemberId: "member-3",
           },
         },
       }),
@@ -393,6 +397,7 @@ describe("RelayStageView", () => {
       }),
     ).not.toBeNull();
     expect(screen.getByText("答案：博丽灵梦 · 东方红魔乡")).not.toBeNull();
+    expect(screen.getByText("本轮有轮空")).not.toBeNull();
     expect(screen.queryByText("TH06")).toBeNull();
     expect(screen.queryByText("等待棋盘同步。")).toBeNull();
   });
@@ -488,6 +493,11 @@ describe("RelayStageView", () => {
       .closest("section");
     expect(ranking).not.toBeNull();
     expect(within(ranking!).getAllByText(/第 1 名/)).toHaveLength(2);
+    expect(container.querySelector("[data-relay-status]")).toBeNull();
+    expect(screen.queryByText("你已猜中本局")).toBeNull();
+    expect(screen.queryByText("对手已猜中本局")).toBeNull();
+    expect(screen.queryByRole("button", { name: "主动空过本手" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "放弃本局" })).toBeNull();
     expect(container.querySelectorAll("[data-relay-board]")).toHaveLength(1);
     expect(screen.queryByRole("dialog")).toBeNull();
   });

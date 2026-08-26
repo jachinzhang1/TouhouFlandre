@@ -30,22 +30,30 @@ func TestMultiProjectionSecretFallbackIsProcessStableAndPrivate(t *testing.T) {
 func TestMultiRolloutFlagsDefaultOpen(t *testing.T) {
 	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "")
 	t.Setenv("MULTI_CHAT_SEND_ENABLED", "")
+	t.Setenv("MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED", "")
 	if !MultiNPlayerRaceEnabled() {
 		t.Fatal("N-player race rollout should default to enabled")
 	}
 	if !MultiChatSendEnabled() {
 		t.Fatal("chat send rollout should default to enabled")
 	}
+	if !MultiSystemAnnouncementsEnabled() {
+		t.Fatal("system announcements should default to enabled")
+	}
 }
 
 func TestMultiRolloutFlagsParseBooleanValues(t *testing.T) {
 	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "on")
 	t.Setenv("MULTI_CHAT_SEND_ENABLED", "0")
+	t.Setenv("MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED", "off")
 	if !MultiNPlayerRaceEnabled() {
 		t.Fatal("N-player race rollout should parse on as enabled")
 	}
 	if MultiChatSendEnabled() {
 		t.Fatal("chat send rollout should parse 0 as disabled")
+	}
+	if MultiSystemAnnouncementsEnabled() {
+		t.Fatal("system announcements should parse off as disabled")
 	}
 }
 

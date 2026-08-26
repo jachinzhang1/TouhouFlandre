@@ -48,6 +48,7 @@ type EncounterActionResult struct {
 	Turn        *legacy.RelayTurnRow
 	Guess       *legacy.GuessResultView
 	Ended       bool
+	ChatChanged bool
 }
 
 type EncounterService struct {
@@ -55,6 +56,7 @@ type EncounterService struct {
 	clock             core.Clock
 	coordinator       *relaydomain.StageCoordinator
 	finishedRetention time.Duration
+	announcements     *legacy.SystemAnnouncementWriter
 }
 
 func NewEncounterService(pool *pgxpool.Pool, clock core.Clock, coordinator *relaydomain.StageCoordinator, finishedRetention ...time.Duration) *EncounterService {
@@ -161,7 +163,8 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		}
 	}
 	if !now.Before(encounter.Deadline.Time) {
-		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now); err != nil {
+		chatChanged, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now)
+		if err != nil {
 			return result, err
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -169,6 +172,7 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		}
 		result.Ended = true
 		result.Changed = true
+		result.ChatChanged = chatChanged
 		return result, relaydomain.ErrEncounterEnded
 	}
 
@@ -195,7 +199,8 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		}
 		legacy.DefaultMetrics.IncTurnTimeout(labels)
 		if transition.Ended {
-			if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now); err != nil {
+			chatChanged, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now)
+			if err != nil {
 				return result, err
 			}
 			if err := tx.Commit(ctx); err != nil {
@@ -203,6 +208,7 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 			}
 			result.Ended = true
 			result.Changed = true
+			result.ChatChanged = chatChanged
 			return result, relaydomain.ErrEncounterEnded
 		}
 		encounter.TurnMemberID = pgtype.Text{String: *transition.NextTurnMemberID, Valid: true}
@@ -228,7 +234,8 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		if err != nil {
 			return result, err
 		}
-		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, input.ActorMemberID, input.IdempotencyKey, now); err != nil {
+		chatChanged, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, input.ActorMemberID, input.IdempotencyKey, now)
+		if err != nil {
 			return result, err
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -236,6 +243,7 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		}
 		result.Accepted, result.Ended = true, true
 		result.Changed = true
+		result.ChatChanged = chatChanged
 		return result, nil
 	}
 
@@ -265,10 +273,12 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		return result, err
 	}
 	if transition.Ended {
-		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now); err != nil {
+		chatChanged, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now)
+		if err != nil {
 			return result, err
 		}
 		result.Ended = true
+		result.ChatChanged = chatChanged
 	}
 	row, guess, err := hydrateTurn(ctx, q, match, members, inserted)
 	if err != nil {
@@ -286,11 +296,27 @@ func (s *EncounterService) ForfeitMatchMember(ctx context.Context, member repo.M
 	return s.ForfeitMatchMembers(ctx, []repo.MultiMember{member}, reason)
 }
 
+func (s *EncounterService) ForfeitMatchMemberWithEffects(ctx context.Context, member repo.MultiMember, reason legacy.MatchEndReason) (legacy.ModeMemberForfeitResult, error) {
+	return s.ForfeitMatchMembersWithEffects(ctx, []repo.MultiMember{member}, reason)
+}
+
+func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []repo.MultiMember, reason legacy.MatchEndReason) (bool, error) {
+	result, err := s.ForfeitMatchMembersWithEffects(ctx, departed, reason)
+	return result.Handled, err
+}
+
+func (s *EncounterService) ForfeitMatchMembersWithEffects(ctx context.Context, departed []repo.MultiMember, reason legacy.MatchEndReason) (legacy.ModeMemberForfeitResult, error) {
+	result := legacy.ModeMemberForfeitResult{}
+	handled, err := s.forfeitMatchMembers(ctx, departed, reason, &result.ChatChanged)
+	result.Handled = handled
+	return result, err
+}
+
 // ForfeitMatchMembers handles relay-owned permanent departure in one
 // transaction. Batching gives every member that expired at the same sweeper
 // time the same view of the stage, so two players in one encounter become a
 // draw instead of whichever row happens to be visited first.
-func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []repo.MultiMember, reason legacy.MatchEndReason) (bool, error) {
+func (s *EncounterService) forfeitMatchMembers(ctx context.Context, departed []repo.MultiMember, reason legacy.MatchEndReason, chatChanged *bool) (bool, error) {
 	if reason != legacy.MatchEndReasonForfeit && reason != legacy.MatchEndReasonDisconnect {
 		return false, fmt.Errorf("%w: unsupported forced match-end reason", relaydomain.ErrInvalidStagePlan)
 	}
@@ -432,8 +458,12 @@ func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []r
 		if ref == relaydomain.LegacyRuleSet() {
 			forced = &relaydomain.ForcedMatchEnd{WinnerMemberID: transition.WinnerMemberID, Reason: string(reason)}
 		}
-		if err := s.endEncounterWithMatchEnd(ctx, tx, q, match, encounter, members, turns, transition, endedBy, key, now, forced); err != nil {
+		appended, err := s.endEncounterWithMatchEnd(ctx, tx, q, match, encounter, members, turns, transition, endedBy, key, now, forced)
+		if err != nil {
 			return false, err
+		}
+		if appended {
+			*chatChanged = true
 		}
 	}
 	if s.coordinator != nil {
@@ -455,6 +485,15 @@ func (s *EncounterService) ForfeitMatchMembers(ctx context.Context, departed []r
 }
 
 func (s *EncounterService) Sweep(ctx context.Context, limit int) ([]string, error) {
+	effects, err := s.SweepWithEffects(ctx, limit)
+	roomIDs := make([]string, 0, len(effects))
+	for _, effect := range effects {
+		roomIDs = append(roomIDs, effect.RoomID)
+	}
+	return roomIDs, err
+}
+
+func (s *EncounterService) SweepWithEffects(ctx context.Context, limit int) ([]legacy.ModeRecoveryEffect, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -464,54 +503,63 @@ func (s *EncounterService) Sweep(ctx context.Context, limit int) ([]string, erro
 	if err != nil {
 		return nil, err
 	}
-	rooms := map[string]struct{}{}
+	rooms := map[string]bool{}
 	var sweepErr error
 	for _, id := range startIDs {
 		roomID, err := s.startCandidate(ctx, id)
 		if err != nil {
 			sweepErr = errors.Join(sweepErr, fmt.Errorf("start relay encounter %s: %w", id, err))
 			if ctx.Err() != nil {
-				return sortedRoomIDs(rooms), sweepErr
+				return sortedRecoveryEffects(rooms), sweepErr
 			}
 			continue
 		}
 		if roomID != "" {
-			rooms[roomID] = struct{}{}
+			if _, seen := rooms[roomID]; !seen {
+				rooms[roomID] = false
+			}
 		}
 	}
 	timeoutIDs, err := q.ListRelayEncounterTimeoutCandidates(ctx, repo.ListRelayEncounterTimeoutCandidatesParams{Now: timestamptz(now), CandidateLimit: int32(limit)})
 	if err != nil {
-		return sortedRoomIDs(rooms), errors.Join(sweepErr, err)
+		return sortedRecoveryEffects(rooms), errors.Join(sweepErr, err)
 	}
 	for _, id := range timeoutIDs {
-		roomID, err := s.timeoutCandidate(ctx, id)
+		chatChanged := false
+		roomID, err := s.timeoutCandidate(ctx, id, &chatChanged)
 		if err != nil {
 			sweepErr = errors.Join(sweepErr, fmt.Errorf("timeout relay encounter %s: %w", id, err))
 			if ctx.Err() != nil {
-				return sortedRoomIDs(rooms), sweepErr
+				return sortedRecoveryEffects(rooms), sweepErr
 			}
 			continue
 		}
 		if roomID != "" {
-			rooms[roomID] = struct{}{}
+			rooms[roomID] = rooms[roomID] || chatChanged
 		}
 	}
 	if s.coordinator != nil {
 		settlementRooms, settlementErr := s.recoverSettlements(ctx, q, limit)
 		for _, roomID := range settlementRooms {
-			rooms[roomID] = struct{}{}
+			if _, seen := rooms[roomID]; !seen {
+				rooms[roomID] = false
+			}
 		}
 		sweepErr = errors.Join(sweepErr, settlementErr)
 	}
-	return sortedRoomIDs(rooms), sweepErr
+	return sortedRecoveryEffects(rooms), sweepErr
 }
 
-func sortedRoomIDs(rooms map[string]struct{}) []string {
-	result := make([]string, 0, len(rooms))
+func sortedRecoveryEffects(rooms map[string]bool) []legacy.ModeRecoveryEffect {
+	roomIDs := make([]string, 0, len(rooms))
 	for roomID := range rooms {
-		result = append(result, roomID)
+		roomIDs = append(roomIDs, roomID)
 	}
-	sort.Strings(result)
+	sort.Strings(roomIDs)
+	result := make([]legacy.ModeRecoveryEffect, 0, len(roomIDs))
+	for _, roomID := range roomIDs {
+		result = append(result, legacy.ModeRecoveryEffect{RoomID: roomID, ChatChanged: rooms[roomID]})
+	}
 	return result
 }
 
@@ -545,7 +593,7 @@ func (s *EncounterService) startCandidate(ctx context.Context, encounterID strin
 	return match.RoomID, tx.Commit(ctx)
 }
 
-func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID string) (string, error) {
+func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID string, chatChanged *bool) (string, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -572,9 +620,11 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 	}
 	labels := relayMetricLabels(match)
 	if !now.Before(encounter.Deadline.Time) {
-		if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now); err != nil {
+		appended, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, relaydomain.DeadlineTransition(), "", "", now)
+		if err != nil {
 			return "", err
 		}
+		*chatChanged = appended
 		return match.RoomID, tx.Commit(ctx)
 	}
 	if !encounter.TurnDeadline.Valid || now.Before(encounter.TurnDeadline.Time) {
@@ -598,9 +648,11 @@ func (s *EncounterService) timeoutCandidate(ctx context.Context, encounterID str
 		}
 		legacy.DefaultMetrics.IncTurnTimeout(labels)
 		if transition.Ended {
-			if err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now); err != nil {
+			appended, err := s.endEncounter(ctx, tx, q, match, encounter, members, turns, transition, "", "", now)
+			if err != nil {
 				return "", err
 			}
+			*chatChanged = appended
 			break
 		}
 		encounter.TurnMemberID = pgtype.Text{String: *transition.NextTurnMemberID, Valid: true}
@@ -769,43 +821,47 @@ func relayMemberScores(ctx context.Context, q *repo.Queries, matchID string) ([]
 	return scores, nil
 }
 
-func (s *EncounterService) endEncounter(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, turns []repo.MultiRelayTurn, transition relaydomain.Transition, endedBy, idempotencyKey string, now time.Time) error {
+func (s *EncounterService) endEncounter(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, turns []repo.MultiRelayTurn, transition relaydomain.Transition, endedBy, idempotencyKey string, now time.Time) (bool, error) {
 	return s.endEncounterWithMatchEnd(ctx, tx, q, match, encounter, members, turns, transition, endedBy, idempotencyKey, now, nil)
 }
 
-func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, turns []repo.MultiRelayTurn, transition relaydomain.Transition, endedBy, idempotencyKey string, now time.Time, forced *relaydomain.ForcedMatchEnd) error {
+func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.Tx, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, turns []repo.MultiRelayTurn, transition relaydomain.Transition, endedBy, idempotencyKey string, now time.Time, forced *relaydomain.ForcedMatchEnd) (bool, error) {
 	if !transition.Ended {
-		return fmt.Errorf("%w: non-terminal transition", relaydomain.ErrInvalidStagePlan)
+		return false, fmt.Errorf("%w: non-terminal transition", relaydomain.ErrInvalidStagePlan)
 	}
 	if _, err := q.EndRelayEncounter(ctx, repo.EndRelayEncounterParams{
 		ID: encounter.ID, WinnerMemberID: optionalText(transition.WinnerMemberID), Outcome: pgtype.Text{String: string(transition.Reason), Valid: true},
 		EndedAt: timestamptz(now), EndedByMemberID: optionalText(nonEmptyPointer(endedBy)), EndIdempotencyKey: optionalText(nonEmptyPointer(idempotencyKey)),
 	}); err != nil {
-		return err
+		return false, err
 	}
 	legacy.DefaultMetrics.RecordEncounterDuration(relayMetricLabels(match), now.Sub(encounter.StartsAt.Time))
 	characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
 	if err != nil {
-		return err
+		return false, err
 	}
 	answer, ok := legacy.CharactersByID(characters)[encounter.AnswerID]
 	if !ok {
-		return errors.New("relay encounter answer is absent from the frozen catalog")
+		return false, errors.New("relay encounter answer is absent from the frozen catalog")
 	}
 	rows, err := hydrateTurns(ctx, q, match, members, turns)
 	if err != nil {
-		return err
+		return false, err
 	}
 	index, err := stageIndex(ctx, q, encounter.StageID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := legacy.AppendEvent(ctx, q, match.RoomID, legacy.EventRelayEncounterEnded, legacy.RelayEncounterEndedPayload{
 		MatchIndex: int(match.MatchIndex), StageID: encounter.StageID, StageIndex: index,
 		EncounterID: encounter.ID, Status: string(relaydomain.EncounterStatusEnded), Outcome: string(transition.Reason),
 		WinnerMemberID: transition.WinnerMemberID, Answer: legacy.AnswerViewForCharacter(answer), Turns: rows,
 	}); err != nil {
-		return err
+		return false, err
+	}
+	chatChanged, err := s.appendEncounterAnnouncement(ctx, q, match, encounter, members, transition, index, now)
+	if err != nil {
+		return false, err
 	}
 	if s.coordinator != nil {
 		stageTx := NewStageTransaction(tx, s.finishedRetention)
@@ -818,12 +874,37 @@ func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.
 		if err == nil && settlement.Owner {
 			recordRelayStageMetrics(ctx, q, match, encounter.StageID, now)
 		}
-		return err
+		return chatChanged, err
 	}
 	if forced != nil {
-		return fmt.Errorf("%w: forced match end requires a coordinator", relaydomain.ErrInvalidStagePlan)
+		return false, fmt.Errorf("%w: forced match end requires a coordinator", relaydomain.ErrInvalidStagePlan)
 	}
-	return nil
+	return chatChanged, nil
+}
+
+func (s *EncounterService) appendEncounterAnnouncement(ctx context.Context, q *repo.Queries, match repo.MultiMatch, encounter repo.MultiRelayEncounter, members []repo.MultiRelayEncounterMember, transition relaydomain.Transition, stageIndex int, now time.Time) (bool, error) {
+	if s.announcements == nil || !s.announcements.Enabled() || transition.Reason == relaydomain.TerminalServerRestart {
+		return false, nil
+	}
+	announcementMembers := make([]relaydomain.AnnouncementMember, 0, len(members))
+	for _, assignment := range members {
+		member, err := q.GetMember(ctx, assignment.MemberID)
+		if err != nil {
+			return false, err
+		}
+		announcementMembers = append(announcementMembers, relaydomain.AnnouncementMember{
+			MemberID: member.ID, DisplayName: member.DisplayName, Seat: int(assignment.Seat),
+		})
+	}
+	announcement, err := (relaydomain.EncounterAnnouncement{
+		RoomID: match.RoomID, EncounterID: encounter.ID, StageIndex: stageIndex,
+		RosterSize: int(match.RosterSize), Members: announcementMembers,
+		WinnerMemberID: transition.WinnerMemberID, CreatedAt: now,
+	}).SystemAnnouncement()
+	if err != nil {
+		return false, err
+	}
+	return s.announcements.Append(ctx, q, announcement)
 }
 
 func relayMetricLabels(match repo.MultiMatch) legacy.MetricLabels {

@@ -1,7 +1,7 @@
 "use client";
 
-// 底部固定搜索条（对局中）：输入框 fixed 于页面底部、水平居中；
-// 建议下拉向上展开（不遮挡棋盘）；猜测随建议点击提交（与单人一致）。
+// 多人底部操作条：固定定位由 MultiplayerBottomDockProvider 统一负责；
+// 建议向上展开，猜测随建议点击提交（与单人一致）。
 import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
@@ -77,10 +77,7 @@ export function GuessInputBar({
   };
 
   return (
-    <div
-      data-guess-input-bar
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur max-[680px]:bottom-[68px]"
-    >
+    <div data-guess-input-bar className="px-4 py-3">
       {statusMessage ? (
         <p
           className="mx-auto mb-2 w-full max-w-[720px] text-[0.78rem] font-bold text-vermilion"
@@ -129,7 +126,7 @@ export function GuessInputBar({
             <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>
           )}
           {showSuggestions && (
-            <ul className="absolute right-0 bottom-full left-0 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
+            <ul className="absolute right-0 bottom-full left-0 z-40 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">
               {filtered.map((result, index) => (
                 <li key={result.id}>
                   <button

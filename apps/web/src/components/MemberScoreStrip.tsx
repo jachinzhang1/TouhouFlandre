@@ -29,36 +29,48 @@ type MemberScoreStripProps =
       winnerMemberId?: string | null;
     };
 
+export function memberScoreEntries({
+  members,
+  scores,
+  viewerMemberId,
+  winnerMemberId,
+}: {
+  members: readonly MemberView[];
+  scores: readonly MemberScoreView[];
+  viewerMemberId?: string | null;
+  winnerMemberId?: string | null;
+}): MemberScoreStripEntry[] {
+  return sortMembersBySeat(members).map((member) => {
+    const score = scores.find((entry) => entry.memberId === member.memberId);
+    const eliminated = score?.status === "eliminated";
+    return {
+      memberId: member.memberId,
+      seat: member.seat,
+      displayName: member.displayName,
+      score: scoreForMemberId(scores, member.memberId),
+      isViewer: member.memberId === viewerMemberId,
+      isWinner: member.memberId === winnerMemberId,
+      showSeat: true,
+      winnerBeforeStatuses: true,
+      tone: eliminated
+        ? "danger"
+        : member.memberId === viewerMemberId
+          ? "accent"
+          : "default",
+      statusLabels: [
+        ...(eliminated ? ["已淘汰"] : []),
+        ...(member.status === "disconnected" ? ["离线"] : []),
+        ...(member.status === "left" ? ["离开"] : []),
+      ],
+    } satisfies MemberScoreStripEntry;
+  });
+}
+
 export function MemberScoreStrip(props: MemberScoreStripProps) {
   const entries =
     "entries" in props
       ? [...props.entries].sort((left, right) => left.seat - right.seat)
-      : sortMembersBySeat(props.members).map((member) => {
-          const score = props.scores.find(
-            (entry) => entry.memberId === member.memberId,
-          );
-          const eliminated = score?.status === "eliminated";
-          return {
-            memberId: member.memberId,
-            seat: member.seat,
-            displayName: member.displayName,
-            score: scoreForMemberId(props.scores, member.memberId),
-            isViewer: member.memberId === props.viewerMemberId,
-            isWinner: member.memberId === props.winnerMemberId,
-            showSeat: true,
-            winnerBeforeStatuses: true,
-            tone: eliminated
-              ? ("danger" as const)
-              : member.memberId === props.viewerMemberId
-                ? ("accent" as const)
-                : ("default" as const),
-            statusLabels: [
-              ...(eliminated ? ["已淘汰"] : []),
-              ...(member.status === "disconnected" ? ["离线"] : []),
-              ...(member.status === "left" ? ["离开"] : []),
-            ],
-          } satisfies MemberScoreStripEntry;
-        });
+      : memberScoreEntries(props);
   return (
     <ol
       className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 max-[680px]:order-last max-[680px]:w-full max-[680px]:basis-full max-[680px]:justify-start"

@@ -14,6 +14,7 @@ type RelayTimeoutResult struct {
 	Round       repo.MultiRound
 	RoundEnded  bool
 	ExpiredSlot int
+	WinnerSlot  int
 }
 
 type relaySkipKind struct {
@@ -129,7 +130,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		if _, err := CompleteRoundTx(ctx, q, room, round, match, OtherSlot(memberSlot), now, timing); err != nil {
 			return RelayTimeoutResult{}, err
 		}
-		return RelayTimeoutResult{Round: round, RoundEnded: true, ExpiredSlot: memberSlot}, nil
+		return RelayTimeoutResult{Round: round, RoundEnded: true, ExpiredSlot: memberSlot, WinnerSlot: OtherSlot(memberSlot)}, nil
 	}
 	advance := AdvanceRelayTurn(false, memberSlot, counts, maxTurnsPerPlayer)
 	if !advance.RoundEnded {
@@ -160,7 +161,7 @@ func settleRelaySkippedTurnTx(ctx context.Context, q *repo.Queries, room repo.Mu
 			return RelayTimeoutResult{}, err
 		}
 	}
-	return RelayTimeoutResult{Round: round, RoundEnded: advance.RoundEnded, ExpiredSlot: memberSlot}, nil
+	return RelayTimeoutResult{Round: round, RoundEnded: advance.RoundEnded, ExpiredSlot: memberSlot, WinnerSlot: advance.WinnerSlot}, nil
 }
 
 func relaySkipPayload(kind RelayTurnKind, match repo.MultiMatch, round repo.MultiRound, row RelayTurnRow, nextTurnMemberID *string, nextTurnSeat *int, nextTurnDeadline *time.Time) any {

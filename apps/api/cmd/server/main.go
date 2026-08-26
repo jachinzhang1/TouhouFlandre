@@ -54,8 +54,9 @@ func main() {
 	e := server.NewWithOptions(pool, handler.WithMultiTiming(timing), handler.WithHub(h), handler.WithMultiplayerKernel(registry, clock, random))
 	modeRecoveries := []multi.ModeRecovery{}
 	modeForfeiters := []multi.ModeMemberForfeiter{}
+	announcements := multi.NewSystemAnnouncementWriter(config.MultiSystemAnnouncementsEnabled())
 	if _, capabilityErr := registry.CommandHandler(core.ModeRelay); capabilityErr == nil {
-		_, relayRecovery, runtimeErr := relayadapter.NewRuntime(pool, clock, random, timing)
+		_, relayRecovery, runtimeErr := relayadapter.NewRuntime(pool, clock, random, timing, announcements)
 		if runtimeErr != nil {
 			fatal("configure relay recovery", runtimeErr)
 		}
@@ -75,6 +76,7 @@ func main() {
 		Random:         random,
 		ModeRecoveries: modeRecoveries,
 		ModeForfeiters: modeForfeiters,
+		Announcements:  announcements,
 	})
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
 	defer stopSweeper()

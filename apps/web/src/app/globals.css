@@ -1886,22 +1886,24 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   z-index: 1;
 }
 
-.relay-next-stage-countdown {
+.match-countdown-band {
+  isolation: isolate;
   position: relative;
   overflow: hidden;
 }
 
-.relay-next-stage-countdown::before {
+.match-countdown-band::before {
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: var(--amber-soft);
   content: "";
   opacity: 0.24;
   pointer-events: none;
-  animation: relay-next-stage-pulse 1s ease-in-out infinite;
+  animation: match-countdown-pulse 1s ease-in-out infinite;
 }
 
-.relay-next-stage-countdown > * {
+.match-countdown-band > * {
   position: relative;
   z-index: 1;
 }
@@ -2074,7 +2076,7 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   }
 }
 
-@keyframes relay-next-stage-pulse {
+@keyframes match-countdown-pulse {
   0%,
   100% {
     opacity: 0.2;

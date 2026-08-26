@@ -443,7 +443,7 @@ async function prepareVisualSnapshot(page: Page) {
       nextjs-portal { display: none !important; }
       @media (max-width: 680px) {
         [data-site-nav-links] { display: none !important; }
-        [data-guess-input-bar] { bottom: 0 !important; }
+        [data-multiplayer-bottom-dock] { bottom: 0 !important; }
       }
     `,
   });
@@ -766,7 +766,7 @@ test.describe("多人接力单棋盘体验", () => {
       );
       for (let seat = 1; seat <= count; seat += 1) {
         expect(optionLabels.join(" ")).toContain(
-          `Relay Player ${String(seat).padStart(2, "0")}(${seat})`,
+          `Relay Player ${String(seat).padStart(2, "0")}(P${seat})`,
         );
       }
 
@@ -775,7 +775,7 @@ test.describe("多人接力单棋盘体验", () => {
         .textContent();
       if (count > 2) {
         const otherOptionIndex = optionLabels.findIndex(
-          (label) => !label?.includes("Relay Player 01(1)"),
+          (label) => !label?.includes("Relay Player 01(P1)"),
         );
         expect(otherOptionIndex).toBeGreaterThanOrEqual(0);
         const otherValue =
@@ -801,7 +801,7 @@ test.describe("多人接力单棋盘体验", () => {
         ).toBe(scoreText);
 
         const ownLabelIndex = optionLabels.findIndex((label) =>
-          label?.includes("Relay Player 01(1)"),
+          label?.includes("Relay Player 01(P1)"),
         );
         const ownValue = await options[ownLabelIndex].getAttribute("value");
         await page.getByLabel("选择对局").selectOption(ownValue!);
@@ -858,7 +858,7 @@ test.describe("多人接力单棋盘体验", () => {
     const options = page.getByLabel("选择对局").locator("option");
     const labels = await options.allTextContents();
     const otherIndex = labels.findIndex(
-      (label) => !label.includes("Relay Player 01(1)"),
+      (label) => !label.includes("Relay Player 01(P1)"),
     );
     const otherValue = await options.nth(otherIndex).getAttribute("value");
     await page.getByLabel("选择对局").selectOption(otherValue!);
@@ -914,7 +914,7 @@ test.describe("MRX-013 接力结算流程", () => {
     await expect(page.locator("[data-relay-board]")).toHaveCount(1);
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page.getByLabel("选择轮次").selectOption("1");
+    await page.getByLabel("选择轮次").selectOption("history:1");
     await expect(page.locator("[data-relay-status]")).toContainText(
       "第 1 轮历史",
       { timeout: 20_000 },
@@ -962,7 +962,7 @@ test.describe("MRX-013 接力结算流程", () => {
         .locator("xpath=ancestor::section[1]"),
     ).toContainText("第 1 名");
     await expect(page.locator("[data-relay-board]")).toHaveCount(1);
-    await page.getByLabel("选择轮次").selectOption("1");
+    await page.getByLabel("选择轮次").selectOption("history:1");
     await expect(page.locator("[data-relay-status]")).toContainText(
       "第 1 轮历史",
       { timeout: 20_000 },
@@ -1409,18 +1409,42 @@ test.describe("N 人竞速扩展", () => {
       await expectNoHorizontalOverflow(page);
 
       if (count === 8) {
-        await prepareVisualSnapshot(page);
-        const lobbyBox = await page
-          .locator("[data-room-lobby-card]")
-          .boundingBox();
-        const chatBox = await page
-          .locator('[data-chat-dock="inline"]')
-          .boundingBox();
-        expect(lobbyBox).not.toBeNull();
+        const dockHost = page.locator("[data-multiplayer-bottom-dock]");
+        const chatBox = await page.locator("[data-chat-dock]").boundingBox();
+        const dockBox = await dockHost.boundingBox();
         expect(chatBox).not.toBeNull();
-        expect(chatBox!.y).toBeGreaterThanOrEqual(
-          lobbyBox!.y + lobbyBox!.height,
+        expect(dockBox).not.toBeNull();
+        expect(
+          await dockHost.evaluate(
+            (element) => getComputedStyle(element).position,
+          ),
+        ).toBe("fixed");
+        const viewport = page.viewportSize()!;
+        const anchorY =
+          viewport.width <= 680
+            ? (await page.locator("[data-site-nav-links]").boundingBox())!.y
+            : viewport.height;
+        expect(Math.abs(dockBox!.y + dockBox!.height - anchorY)).toBeLessThan(
+          2,
         );
+
+        const controlsY = chatBox!.y;
+        await page.getByLabel("展开聊天记录").click();
+        const historyBox = await page
+          .locator("[data-chat-history]")
+          .boundingBox();
+        const expandedChatBox = await page
+          .locator("[data-chat-dock]")
+          .boundingBox();
+        expect(historyBox).not.toBeNull();
+        expect(expandedChatBox).not.toBeNull();
+        expect(expandedChatBox!.y).toBe(controlsY);
+        expect(historyBox!.y).toBeGreaterThanOrEqual(0);
+        expect(historyBox!.y + historyBox!.height).toBeLessThanOrEqual(
+          expandedChatBox!.y,
+        );
+        await page.getByLabel("展开聊天记录").click();
+        await prepareVisualSnapshot(page);
         await expect(page).toHaveScreenshot("race-8-lobby.png", {
           animations: "disabled",
           fullPage: true,
@@ -1468,6 +1492,13 @@ test.describe("N 人竞速扩展", () => {
       expect(navigation).not.toBeNull();
       expect(inputBar!.y + inputBar!.height).toBeLessThanOrEqual(navigation!.y);
     }
+    const chatDock = await page.locator("[data-chat-dock]").boundingBox();
+    const guessDock = await page
+      .locator("[data-guess-input-bar]")
+      .boundingBox();
+    expect(chatDock).not.toBeNull();
+    expect(guessDock).not.toBeNull();
+    expect(chatDock!.y + chatDock!.height).toBeLessThanOrEqual(guessDock!.y);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-8-player.png", {
       animations: "disabled",
@@ -1486,6 +1517,17 @@ test.describe("N 人竞速扩展", () => {
     await page.getByRole("button", { name: "放弃本局" }).click();
     await page.getByRole("button", { name: /再次点击确认放弃/ }).click();
     await expect(input).toBeDisabled();
+    const disabledChatDock = await page
+      .locator("[data-chat-dock]")
+      .boundingBox();
+    const disabledGuessDock = await page
+      .locator("[data-guess-input-bar]")
+      .boundingBox();
+    expect(disabledChatDock).not.toBeNull();
+    expect(disabledGuessDock).not.toBeNull();
+    expect(disabledChatDock!.y + disabledChatDock!.height).toBeLessThanOrEqual(
+      disabledGuessDock!.y,
+    );
     await expect(
       page.getByRole("status").getByText("你已放弃本局"),
     ).toBeVisible();
@@ -1515,16 +1557,36 @@ test.describe("N 人竞速扩展", () => {
     );
     await expect(page.getByLabel("搜索角色")).toHaveCount(0);
     const eliminatedScore = page
-      .locator("li")
-      .filter({ hasText: "Player 3（我）" })
+      .getByRole("list", { name: "玩家积分" })
+      .getByRole("listitem")
+      .filter({ hasText: "Player 3" })
       .filter({ hasText: "已淘汰" });
     await expect(eliminatedScore).toHaveClass(/bg-vermilion/);
-    await expect(page.getByRole("button", { name: "当前棋盘" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "返回当前局" }),
+    ).toBeVisible();
     const spectatorPageSize =
       testInfo.project.name === "mobile-chromium" ? 1 : 2;
     await expect(page.locator("[data-member-board]")).toHaveCount(
       spectatorPageSize,
     );
+    const eliminatedChatDock = await page
+      .locator("[data-chat-dock]")
+      .boundingBox();
+    expect(eliminatedChatDock).not.toBeNull();
+    await expect(page.locator("[data-guess-input-bar]")).toHaveCount(0);
+    const eliminatedDockHost = await page
+      .locator("[data-multiplayer-bottom-dock]")
+      .boundingBox();
+    expect(eliminatedDockHost).not.toBeNull();
+    const viewport = page.viewportSize()!;
+    const anchorY =
+      viewport.width <= 680
+        ? (await page.locator("[data-site-nav-links]").boundingBox())!.y
+        : viewport.height;
+    expect(
+      Math.abs(eliminatedDockHost!.y + eliminatedDockHost!.height - anchorY),
+    ).toBeLessThan(2);
     await expectNoHorizontalOverflow(page);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-eliminated.png", {
@@ -1537,11 +1599,14 @@ test.describe("N 人竞速扩展", () => {
     await submitCorrectGuess(request, roster[0], 2, answerId);
     await forfeitRound(request, roster[1], 2);
 
-    const resultDialog = page.getByRole("dialog", { name: /MATCH 0/ });
-    await expect(resultDialog).toBeVisible({
+    const resultBand = page.locator("[data-match-finished]");
+    await expect(
+      resultBand.getByRole("heading", { name: "对局结果" }),
+    ).toBeVisible({
       timeout: 15_000,
     });
-    const ranking = resultDialog.getByRole("listitem");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    const ranking = resultBand.getByRole("listitem");
     await expect(ranking).toHaveCount(3);
     await expect(ranking.nth(0)).toContainText("Player 1(P1)");
     await expect(ranking.nth(0)).toContainText("5 分");

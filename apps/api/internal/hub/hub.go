@@ -163,7 +163,7 @@ func (h *Hub) chatFrame(message repo.MultiChatMessage, room repo.MultiRoom) ([]b
 	frame := multi.ChatMessageFrame{
 		Type: "chat.message", MessageID: message.ID, RoomID: message.RoomID,
 		SenderMemberID: message.SenderMemberID, SenderDisplayName: message.SenderDisplayName,
-		SenderRole: multi.ParticipantRole(message.SenderRole), Kind: multi.ChatKind(message.Kind),
+		SenderRole: multi.ChatSenderRole(message.SenderRole), Kind: multi.ChatKind(message.Kind),
 		Content: message.Content, Channel: multi.ChatChannel(message.Channel),
 		Cursor:    h.chatCursor.Encode(room.ID, room.CreatedAt.Time, message.Position, multi.ChatCursorAfter),
 		CreatedAt: message.CreatedAt.Time,

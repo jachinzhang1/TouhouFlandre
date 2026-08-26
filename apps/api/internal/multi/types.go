@@ -833,16 +833,16 @@ type AckMessage struct {
 
 // ChatMessageFrame 是独立聊天位置的公开平铺帧，不携带游戏 sequence。
 type ChatMessageFrame struct {
-	Type              string          `json:"type"`
-	MessageID         string          `json:"messageId"`
-	RoomID            string          `json:"roomId"`
-	SenderMemberID    string          `json:"senderMemberId"`
-	SenderDisplayName string          `json:"senderDisplayName"`
-	SenderRole        ParticipantRole `json:"senderRole"`
-	SenderSeat        *int            `json:"senderSeat,omitempty"`
-	Kind              ChatKind        `json:"kind"`
-	Content           string          `json:"content"`
-	Channel           ChatChannel     `json:"channel"`
-	Cursor            string          `json:"cursor"`
-	CreatedAt         time.Time       `json:"createdAt"`
+	Type              string         `json:"type"`
+	MessageID         string         `json:"messageId"`
+	RoomID            string         `json:"roomId"`
+	SenderMemberID    string         `json:"senderMemberId"`
+	SenderDisplayName string         `json:"senderDisplayName"`
+	SenderRole        ChatSenderRole `json:"senderRole"`
+	SenderSeat        *int           `json:"senderSeat,omitempty"`
+	Kind              ChatKind       `json:"kind"`
+	Content           string         `json:"content"`
+	Channel           ChatChannel    `json:"channel"`
+	Cursor            string         `json:"cursor"`
+	CreatedAt         time.Time      `json:"createdAt"`
 }

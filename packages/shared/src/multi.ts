@@ -295,10 +295,7 @@ export interface RuleSetRef {
 export type RelayRuleSetRef = RuleSetRef & { mode: "relay" };
 
 export type RelayLifeState = "healthy" | "near_death";
-export type RelayLifeTransition =
-  | "none"
-  | "entered_near_death"
-  | "eliminated";
+export type RelayLifeTransition = "none" | "entered_near_death" | "eliminated";
 
 export interface RelayStandingView {
   memberId: string;
@@ -546,7 +543,7 @@ export interface ChatMessageFrame {
   roomId: string;
   senderMemberId: string;
   senderDisplayName: string;
-  senderRole: MultiParticipantRole;
+  senderRole: ChatSenderRole;
   senderSeat?: number;
   kind: "text" | "emoji";
   content: string;
@@ -554,6 +551,8 @@ export interface ChatMessageFrame {
   cursor: string;
   createdAt: string;
 }
+
+export type ChatSenderRole = MultiParticipantRole | "system";
 
 export type MultiWsServerFrame =
   | GameSequenceFrame

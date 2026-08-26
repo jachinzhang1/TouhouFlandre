@@ -86,6 +86,9 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 			if result.Changed {
 				s.publish(request.RoomId)
 			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
 			if actionErr != nil {
 				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
 					return nil, roundEndedError("本局已结束。")
@@ -101,6 +104,7 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
+	chatChanged := false
 
 	room, round, match, apiErr := s.currentRoundCommandState(ctx, q, request.RoomId, request.RoundIndex)
 	if apiErr != nil {
@@ -118,9 +122,25 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 			}
 			return nil, internalError(err)
 		}
+		announcement, err := (multi.RaceAnnouncement{
+			RoomID: room.ID, RoundID: round.ID, RoundIndex: int(round.RoundIndex), RosterSize: int(match.RosterSize),
+			MemberID: member.ID, DisplayName: member.DisplayName, Seat: multi.MemberSeat(*member),
+			Reason: multi.RaceAnnouncementForfeited, CreatedAt: s.now(),
+		}).SystemAnnouncement()
+		if err != nil {
+			return nil, internalError(err)
+		}
+		chatChanged, err = s.announcements.Append(ctx, q, announcement)
+		if err != nil {
+			return nil, internalError(err)
+		}
 	case core.CommandRouteLegacyRelay:
 		winnerSlot := multi.OtherSlot(multi.MemberSeat(*member))
 		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSeat(*member)); err != nil {
+			return nil, internalError(err)
+		}
+		chatChanged, err = multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, winnerSlot, s.now())
+		if err != nil {
 			return nil, internalError(err)
 		}
 	default:
@@ -130,6 +150,9 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 		return nil, internalError(err)
 	}
 	s.publish(request.RoomId)
+	if chatChanged {
+		s.publishChatRoom(request.RoomId)
+	}
 	return openapi.RoomsForfeitRound204Response{}, nil
 }
 
@@ -159,6 +182,9 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 			})
 			if result.Changed {
 				s.publish(request.RoomId)
+			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
 			}
 			if actionErr != nil {
 				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
@@ -202,10 +228,17 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		}
 		round = result.Round
 		if result.RoundEnded {
+			chatChanged, err := multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, result.WinnerSlot, now)
+			if err != nil {
+				return nil, internalError(err)
+			}
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return nil, internalError(commitErr)
 			}
 			s.publish(request.RoomId)
+			if chatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
 			return nil, turnExpiredError("本轮已超时空过，本局已结算。")
 		}
 	}
@@ -219,12 +252,23 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSeat(*member) {
 		return nil, notYourTurnError()
 	}
-	if _, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing); err != nil {
+	result, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing)
+	if err != nil {
 		return nil, internalError(err)
+	}
+	chatChanged := false
+	if result.RoundEnded {
+		chatChanged, err = multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, result.WinnerSlot, now)
+		if err != nil {
+			return nil, internalError(err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
 	s.publish(request.RoomId)
+	if chatChanged {
+		s.publishChatRoom(request.RoomId)
+	}
 	return openapi.RoomsPassRelayTurn204Response{}, nil
 }

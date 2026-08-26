@@ -271,6 +271,9 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 			if result.Changed {
 				s.publish(request.RoomId)
 			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
 			if actionErr != nil {
 				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
 					return nil, roundEndedError("本局已结束。")
@@ -346,6 +349,9 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 		}
 		if result.publish {
 			s.publish(request.RoomId)
+		}
+		if result.chatChanged {
+			s.publishChatRoom(request.RoomId)
 		}
 	}
 	if err != nil {

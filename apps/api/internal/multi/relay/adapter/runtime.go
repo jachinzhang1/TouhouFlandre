@@ -8,7 +8,7 @@ import (
 	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
 )
 
-func NewRuntime(pool *pgxpool.Pool, clock core.Clock, random core.RandomSource, timing legacy.TimingConfig) (*relaydomain.StageCoordinator, *EncounterService, error) {
+func NewRuntime(pool *pgxpool.Pool, clock core.Clock, random core.RandomSource, timing legacy.TimingConfig, announcers ...*legacy.SystemAnnouncementWriter) (*relaydomain.StageCoordinator, *EncounterService, error) {
 	if clock == nil {
 		clock = core.SystemClock{}
 	}
@@ -37,5 +37,9 @@ func NewRuntime(pool *pgxpool.Pool, clock core.Clock, random core.RandomSource, 
 	if err != nil {
 		return nil, nil, err
 	}
-	return coordinator, NewEncounterService(pool, clock, coordinator, timing.FinishedRetention), nil
+	service := NewEncounterService(pool, clock, coordinator, timing.FinishedRetention)
+	if len(announcers) > 0 {
+		service.announcements = announcers[0]
+	}
+	return coordinator, service, nil
 }

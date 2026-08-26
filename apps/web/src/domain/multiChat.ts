@@ -1,5 +1,6 @@
 import type {
   ChatMessageFrame,
+  ChatSenderRole,
   MultiParticipantRole,
 } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
@@ -32,7 +33,7 @@ export interface RoomChatEntry {
   roomId: string;
   senderMemberId: string;
   senderDisplayName: string;
-  senderRole: MultiParticipantRole;
+  senderRole: ChatSenderRole;
   senderSeat?: number;
   kind: ChatKind;
   content: string;
@@ -71,7 +72,11 @@ export function normalizeChatDraft(
 ): { kind: ChatKind; content: string } | null {
   const content = draft.replace(/\r\n?/g, "\n").normalize("NFC").trim();
   if (!content) return null;
-  if (CHAT_EMOJI_WHITELIST.includes(content as (typeof CHAT_EMOJI_WHITELIST)[number])) {
+  if (
+    CHAT_EMOJI_WHITELIST.includes(
+      content as (typeof CHAT_EMOJI_WHITELIST)[number],
+    )
+  ) {
     return { kind: "emoji", content };
   }
   return { kind: "text", content };
@@ -159,9 +164,7 @@ export function chatStateWithInitialHistory(
   };
 }
 
-export function chatStateWithHistoryError(
-  error: string,
-): RoomChatState {
+export function chatStateWithHistoryError(error: string): RoomChatState {
   return {
     ...initialRoomChatState,
     historyStatus: "error",
@@ -174,7 +177,8 @@ export function mergeChatEntries(
   entries: RoomChatEntry[],
 ): RoomChatState {
   const merged = new Map<string, RoomChatEntry>();
-  for (const message of state.messages) merged.set(chatEntryKey(message), message);
+  for (const message of state.messages)
+    merged.set(chatEntryKey(message), message);
   for (const entry of entries) merged.set(chatEntryKey(entry), entry);
   return {
     ...state,
@@ -242,6 +246,7 @@ export function advanceChatCursor(
 
 export function chatSenderLabel(entry: RoomChatEntry): string {
   const name = entry.senderDisplayName || "匿名玩家";
+  if (entry.senderRole === "system") return `${name}:`;
   if (entry.senderRole === "player" && typeof entry.senderSeat === "number") {
     return `${name}(P${entry.senderSeat}):`;
   }
@@ -252,7 +257,11 @@ export function isOwnChatEntry(
   entry: RoomChatEntry,
   viewerMemberId: string | null | undefined,
 ): boolean {
-  return Boolean(viewerMemberId && entry.senderMemberId === viewerMemberId);
+  return Boolean(
+    entry.senderRole !== "system" &&
+    viewerMemberId &&
+    entry.senderMemberId === viewerMemberId,
+  );
 }
 
 function chatEntryKey(entry: RoomChatEntry): string {

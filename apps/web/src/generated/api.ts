@@ -1118,7 +1118,7 @@ export interface components {
             roomId: string;
             senderMemberId: string;
             senderDisplayName: string;
-            senderRole: components["schemas"]["ParticipantRole"];
+            senderRole: components["schemas"]["ChatSenderRole"];
             senderSeat?: number;
             kind: components["schemas"]["ChatKind"];
             content: string;
@@ -1323,6 +1323,8 @@ export interface components {
             seat: number;
             guesses: components["schemas"]["GuessResult"][];
         };
+        /** @enum {string} */
+        ChatSenderRole: "player" | "spectator" | "system";
         /** @enum {string} */
         ChatKind: "text" | "emoji";
         /** @enum {string} */

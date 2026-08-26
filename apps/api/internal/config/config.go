@@ -131,6 +131,12 @@ func MultiChatSendEnabled() bool {
 	return boolFromEnv("MULTI_CHAT_SEND_ENABLED", true)
 }
 
+// MultiSystemAnnouncementsEnabled controls creation of new server-authored
+// chat announcements. Existing history remains readable when disabled.
+func MultiSystemAnnouncementsEnabled() bool {
+	return boolFromEnv("MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED", true)
+}
+
 // MultiChatRate 两级聊天 token bucket 配置。
 func MultiChatRate() multi.ChatRateConfig {
 	return multi.ChatRateConfig{

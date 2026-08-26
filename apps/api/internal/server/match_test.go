@@ -71,7 +71,8 @@ func fastRequestAuth(method, path, token string, body any) (*http.Response, []by
 func fastSweeper() *multi.Sweeper {
 	clock := core.SystemClock{}
 	random := core.NewRandomSource()
-	_, relayRecovery, err := relayadapter.NewRuntime(pool, clock, random, fastTiming)
+	announcements := multi.NewSystemAnnouncementWriter(true)
+	_, relayRecovery, err := relayadapter.NewRuntime(pool, clock, random, fastTiming, announcements)
 	if err != nil {
 		panic(err)
 	}
@@ -79,6 +80,7 @@ func fastSweeper() *multi.Sweeper {
 		Timing: fastTiming, EventRetention: time.Hour, Broadcaster: fastHub, Registry: assembly.MustProduction(),
 		Clock: clock, Random: random, ModeRecoveries: []multi.ModeRecovery{relayRecovery},
 		ModeForfeiters: []multi.ModeMemberForfeiter{relayRecovery},
+		Announcements:  announcements,
 	})
 }
 
