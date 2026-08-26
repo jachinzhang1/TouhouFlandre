@@ -122,6 +122,15 @@ describe("ChatDock", () => {
     expect(dock?.className).not.toContain("fixed");
   });
 
+  it("uses document flow and reserves input space below a match", () => {
+    renderDock(baseChat, { placement: "match" });
+
+    const dock = document.querySelector('[data-chat-dock="match"]');
+    expect(dock?.className).toContain("relative");
+    expect(dock?.className).toContain("mb-24");
+    expect(dock?.className).not.toContain("fixed");
+  });
+
   it("disables history, input, and emoji controls while muted", async () => {
     const user = userEvent.setup();
     renderDock(baseChat);

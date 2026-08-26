@@ -17,7 +17,7 @@ interface ChatDockProps {
   roomId: string;
   viewer: ParticipantView | null;
   chat: RoomChatState;
-  placement?: "floating" | "inline";
+  placement?: "floating" | "inline" | "match";
   disabled?: boolean;
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
@@ -165,7 +165,9 @@ export function ChatDock({
   const placementClass =
     placement === "inline"
       ? "relative z-[45] mx-auto mt-4 mb-6 w-[min(560px,calc(100vw-36px))] max-[680px]:mb-24"
-      : "fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]";
+      : placement === "match"
+        ? "relative z-[45] mx-auto mt-4 mb-24 w-[min(560px,calc(100vw-36px))] max-[680px]:mb-36"
+        : "fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]";
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
