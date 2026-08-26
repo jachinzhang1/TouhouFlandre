@@ -106,8 +106,11 @@ stateDiagram-v2
 | --------- | -------------- | ------------------- |
 | player    | `room`         | player 与 spectator |
 | spectator | `spectator`    | spectator           |
+| system    | `room`         | player 与 spectator |
 
 客户端不能提交 sender、role、seat 或 channel；这些字段由服务端根据成员令牌和当前角色派生并保存快照。聊天内容只支持 `text` 和白名单 Unicode `emoji`，按纯文本渲染，不解析 HTML。spectator claim-seat 成为 player 后，旧连接会失效；重连后的 player 不再接收 spectator channel。
+
+对局实际冻结阵容不少于 2 人时，服务端可以 `system` 身份写入完成状态播报。竞速在玩家猜中、猜测次数耗尽、主动放弃当局或断线宽限届满时播报；接力在每个 encounter 产生胜者或平局时播报。系统消息不占用玩家聊天限流，不能由客户端伪造。
 
 闭麦是浏览器本地 `receiveChat` 偏好，只影响当前客户端是否显示他人消息和是否允许自己发送；它不改变服务端授权、历史扫描、chat cursor 或其他查看者的显示。关闭聊天发送的灰度 flag 时，新发送返回 `CHAT_SEND_FORBIDDEN`，历史读取仍按授权可用。
 
@@ -198,35 +201,36 @@ REST 写命令使用成员令牌鉴权。WS 鉴权在首帧 `hello` 中携带令
 
 ## 配置项
 
-| 变量                                          | 默认语义                                                                        |
-| --------------------------------------------- | ------------------------------------------------------------------------------- |
-| `MULTI_LOBBY_TTL`                             | 大厅未开局保留时长。                                                            |
-| `MULTI_EVENT_RETENTION`                       | closed 后事件和房间树保留时长。                                                 |
-| `MULTI_JOIN_RATE_LIMIT`                       | 加入/预检限流。                                                                 |
-| `MULTI_ROUND_COUNTDOWN`                       | 首局开始前倒计时。                                                              |
-| `MULTI_INTERMISSION`                          | 局间间歇。                                                                      |
-| `MULTI_ROUND_SECONDS`                         | 接力模式单局最长时间，默认 900 秒。                                             |
-| `MULTI_RACE_ROUND_SECONDS`                    | 竞速模式单局最长时间，默认 300 秒。                                             |
-| `MULTI_TURN_SECONDS`                          | 接力模式默认单次行动时限。                                                      |
-| `MULTI_DISCONNECT_GRACE`                      | 断线宽限期。                                                                    |
-| `MULTI_MAX_ROUNDS_FACTOR`                     | 最大局数保护因子。                                                              |
-| `MULTI_FINISHED_RETENTION`                    | 结束态保留时长，默认 10 分钟。                                                  |
-| `MULTI_WS_READ_LIMIT`                         | 客户端 WS 消息读限。                                                            |
-| `MULTI_WS_SEND_QUEUE`                         | 单连接发送队列长度。                                                            |
-| `MULTI_PROJECTION_SECRET`                     | 对手匿名棋盘列置换的 HMAC 密钥；生产环境必填，未配置时生成进程级随机值。        |
-| `MULTI_MODE_REGISTRY`                         | 模式装配 profile：`full`（默认）、`race-only` 或 `relay-only`；未知值启动失败。 |
-| `MULTI_N_PLAYER_RACE_ENABLED`                 | 是否允许新建/调高 2 人以上竞速房间，默认开启，可关闭。                          |
-| `NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED`     | Web 创建页是否显示 2..8 人 race 上限控件，默认开启，可关闭。                    |
-| `MULTI_CHAT_SEND_ENABLED`                     | 是否允许写入新的房间聊天消息，默认开启，可关闭。                                |
-| `NEXT_PUBLIC_MULTI_CHAT_UI_ENABLED`           | Web 房间页是否挂载聊天入口，默认开启，可关闭。                                  |
-| `NEXT_PUBLIC_MULTI_CHAT_SEND_ENABLED`         | Web 聊天输入和表情发送控件是否启用，默认开启，可关闭。                          |
+| 变量                                          | 默认语义                                                                                |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `MULTI_LOBBY_TTL`                             | 大厅未开局保留时长。                                                                    |
+| `MULTI_EVENT_RETENTION`                       | closed 后事件和房间树保留时长。                                                         |
+| `MULTI_JOIN_RATE_LIMIT`                       | 加入/预检限流。                                                                         |
+| `MULTI_ROUND_COUNTDOWN`                       | 首局开始前倒计时。                                                                      |
+| `MULTI_INTERMISSION`                          | 局间间歇。                                                                              |
+| `MULTI_ROUND_SECONDS`                         | 接力模式单局最长时间，默认 900 秒。                                                     |
+| `MULTI_RACE_ROUND_SECONDS`                    | 竞速模式单局最长时间，默认 300 秒。                                                     |
+| `MULTI_TURN_SECONDS`                          | 接力模式默认单次行动时限。                                                              |
+| `MULTI_DISCONNECT_GRACE`                      | 断线宽限期。                                                                            |
+| `MULTI_MAX_ROUNDS_FACTOR`                     | 最大局数保护因子。                                                                      |
+| `MULTI_FINISHED_RETENTION`                    | 结束态保留时长，默认 10 分钟。                                                          |
+| `MULTI_WS_READ_LIMIT`                         | 客户端 WS 消息读限。                                                                    |
+| `MULTI_WS_SEND_QUEUE`                         | 单连接发送队列长度。                                                                    |
+| `MULTI_PROJECTION_SECRET`                     | 对手匿名棋盘列置换的 HMAC 密钥；生产环境必填，未配置时生成进程级随机值。                |
+| `MULTI_MODE_REGISTRY`                         | 模式装配 profile：`full`（默认）、`race-only` 或 `relay-only`；未知值启动失败。         |
+| `MULTI_N_PLAYER_RACE_ENABLED`                 | 是否允许新建/调高 2 人以上竞速房间，默认开启，可关闭。                                  |
+| `NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED`     | Web 创建页是否显示 2..8 人 race 上限控件，默认开启，可关闭。                            |
+| `MULTI_CHAT_SEND_ENABLED`                     | 是否允许写入新的房间聊天消息，默认开启，可关闭。                                        |
+| `MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED`          | 是否生成新的对局系统播报，默认开启；关闭不影响已保存历史。                              |
+| `NEXT_PUBLIC_MULTI_CHAT_UI_ENABLED`           | Web 房间页是否挂载聊天入口，默认开启，可关闭。                                          |
+| `NEXT_PUBLIC_MULTI_CHAT_SEND_ENABLED`         | Web 聊天输入和表情发送控件是否启用，默认开启，可关闭。                                  |
 | `MULTI_N_PLAYER_RELAY_ENABLED`                | 是否允许新建或调高为多人 relay，默认开启；设为 false 可关闭新入口，不影响已冻结 match。 |
 | `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED`    | Web 是否显示多人 relay 上限和对应状态，构建期默认开启；设为 false 可隐藏入口。          |
-| `MULTI_RELAY_ELIMINATION_ENABLED`             | 是否允许新建/修改多人 relay 淘汰设置，默认开启；设为 false 可关闭新入口。          |
-| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 是否显示多人 relay 淘汰开关，构建期默认开启；设为 false 可隐藏入口。           |
-| `MULTI_RELAY_HISTORY_RATE_LIMIT`              | 每名已鉴权成员每分钟 relay 历史请求上限，默认 60。                              |
-| `MULTI_CHAT_RETENTION`                        | 聊天消息逻辑/物理保留时长，默认 24 小时。                                       |
-| `MULTI_CHAT_CURSOR_SECRET`                    | 聊天 cursor HMAC 密钥；未配置时从 `MULTI_PROJECTION_SECRET` 域隔离派生。        |
+| `MULTI_RELAY_ELIMINATION_ENABLED`             | 是否允许新建/修改多人 relay 淘汰设置，默认开启；设为 false 可关闭新入口。               |
+| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 是否显示多人 relay 淘汰开关，构建期默认开启；设为 false 可隐藏入口。                |
+| `MULTI_RELAY_HISTORY_RATE_LIMIT`              | 每名已鉴权成员每分钟 relay 历史请求上限，默认 60。                                      |
+| `MULTI_CHAT_RETENTION`                        | 聊天消息逻辑/物理保留时长，默认 24 小时。                                               |
+| `MULTI_CHAT_CURSOR_SECRET`                    | 聊天 cursor HMAC 密钥；未配置时从 `MULTI_PROJECTION_SECRET` 域隔离派生。                |
 
 ## 测试重点
 

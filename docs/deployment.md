@@ -48,8 +48,9 @@ cp .env.example .env
 | `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                  |
 | `MULTI_MODE_REGISTRY`                                                                      | 默认 `full`；仅隔离演练可设为 `race-only` 或 `relay-only`，未知值会阻止 API 启动。 |
 | `MULTI_N_PLAYER_RELAY_ENABLED` / `MULTI_RELAY_ELIMINATION_ENABLED`                         | API 多人 relay 固定积分和淘汰赛入口默认均为 `true`；可分别关闭。                   |
-| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。         |
+| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。        |
 | `MULTI_RELAY_HISTORY_RATE_LIMIT`                                                           | 每名已鉴权成员每分钟 relay 历史请求上限，默认 60。                                 |
+| `MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED`                                                       | 默认 `true`；紧急时可停止生成新系统播报，已保存聊天历史继续可读。                  |
 | `MULTI_*`                                                                                  | 其余 TTL、回合时长、聊天、投影密钥和 WebSocket 限制按 `.env.example` 调整。        |
 
 如果使用 cloudflared、nginx 或其他反向代理，公网入口通常指向宿主机 `http://localhost:3000`。API 的宿主机 `4000` 端口主要用于直连调试或单独代理。

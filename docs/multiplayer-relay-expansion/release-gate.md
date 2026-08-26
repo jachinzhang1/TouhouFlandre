@@ -4,18 +4,18 @@
 
 ## 发布状态模板
 
-| 项目                  | 状态   | 记录                                                                                                   |
-| --------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| MRX-001 基线          | 已记录 | 2026-08-23；E2E 34/34                                                                                  |
-| 模块边界/装配检查     | 已验证 | 2026-08-25；full/race-only/relay-only/fake-mode 与静态边界检查通过，race-only SQL tracer 无 relay 查询 |
-| expand migration 演练 | 已验证 | 一次性 PostgreSQL；0014 -> 0019 `135.349ms`，回退应用版本后重放 `76.301ms`，旧行与 v3 数据均保留       |
-| WS v2 排空 / v3 切换  | 已演练 | v2 明确收到 refresh_required；v3 sequence/cursor/replay/sync.complete 自动化通过；未操作生产房间       |
-| 自动化矩阵            | 已验证 | 合同、TS/Go、Web 184、浏览器 `73 passed / 1 expected skip`；逐项证据见 test-matrix                     |
-| 并发/负载             | 已验证 | 8+32 fan-out、20 action `p95/p99=99.824ms`；100-stage history `p95=19.184ms`；deadlock/重复结算为 0    |
-| 安全审计              | 已验证 | 跨 room/encounter、答案、日志/metrics、限流、XSS、WS 门禁通过；P0/P1=0                                 |
-| 可访问性/视觉         | 已验证 | desktop/Pixel 7 的 2/4/6/8 lobby/stage baseline、axe、键盘、200% zoom、reduced-motion 通过             |
+| 项目                  | 状态   | 记录                                                                                                               |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| MRX-001 基线          | 已记录 | 2026-08-23；E2E 34/34                                                                                              |
+| 模块边界/装配检查     | 已验证 | 2026-08-25；full/race-only/relay-only/fake-mode 与静态边界检查通过，race-only SQL tracer 无 relay 查询             |
+| expand migration 演练 | 已验证 | 一次性 PostgreSQL；0014 -> 0019 `135.349ms`，回退应用版本后重放 `76.301ms`，旧行与 v3 数据均保留                   |
+| WS v2 排空 / v3 切换  | 已演练 | v2 明确收到 refresh_required；v3 sequence/cursor/replay/sync.complete 自动化通过；未操作生产房间                   |
+| 自动化矩阵            | 已验证 | 合同、TS/Go、Web 184、浏览器 `73 passed / 1 expected skip`；逐项证据见 test-matrix                                 |
+| 并发/负载             | 已验证 | 8+32 fan-out、20 action `p95/p99=99.824ms`；100-stage history `p95=19.184ms`；deadlock/重复结算为 0                |
+| 安全审计              | 已验证 | 跨 room/encounter、答案、日志/metrics、限流、XSS、WS 门禁通过；P0/P1=0                                             |
+| 可访问性/视觉         | 已验证 | desktop/Pixel 7 的 2/4/6/8 lobby/stage baseline、axe、键盘、200% zoom、reduced-motion 通过                         |
 | 灰度/回滚             | 已演练 | 多人 relay 固定积分和淘汰赛 API/Web 入口默认开启；grandfather 自动化通过；生产执行人/提交/时间窗待实际发布流程填写 |
-| 稳定文档/公告         | 已完成 | 稳定玩法、架构、部署、配置、监控和 `2026-08-25-multiplayer-relay-preview.md` 已同步                    |
+| 稳定文档/公告         | 已完成 | 稳定玩法、架构、部署、配置、监控和 `2026-08-25-multiplayer-relay-preview.md` 已同步                                |
 
 ## 灰度开关
 
@@ -23,12 +23,15 @@
 
 | 环境变量                                      | 初始默认 | 作用                                              |
 | --------------------------------------------- | -------: | ------------------------------------------------- |
-| `MULTI_N_PLAYER_RELAY_ENABLED`                |  `true`  | 是否允许新建/调高 `playerLimit > 2` 的 relay 房间 |
-| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED`    | `true`  | 是否显示 relay 多人上限和对应状态 UI              |
-| `MULTI_RELAY_ELIMINATION_ENABLED`             |  `true`  | 是否允许新建/修改为多人 relay 淘汰配置            |
-| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` |  `true`  | 是否显示并启用淘汰 switch                         |
+| `MULTI_N_PLAYER_RELAY_ENABLED`                |   `true` | 是否允许新建/调高 `playerLimit > 2` 的 relay 房间 |
+| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED`    |   `true` | 是否显示 relay 多人上限和对应状态 UI              |
+| `MULTI_RELAY_ELIMINATION_ENABLED`             |   `true` | 是否允许新建/修改为多人 relay 淘汰配置            |
+| `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` |   `true` | 是否显示并启用淘汰 switch                         |
+| `MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED`          |   `true` | 是否生成新的竞速/接力系统播报                     |
 
 关闭 flag 只阻止新的配置暴露：已经进入 lobby 且保存了多人设置的房间、已经 playing 的 match 和 finished/rematch 恢复必须由能解释其 `RuleSetRef` 的当前 binary 安全完成，不能中途改变规则集。紧急应用回滚到不理解 WS v3 的旧 binary 前，必须先阻止新建并排空/关闭 v3 房间。
+
+`MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED=false` 只停止新播报写入，不关闭玩家聊天、不隐藏历史系统消息，也不改变 chat cursor 水位。
 
 ## 自动化闸门
 
