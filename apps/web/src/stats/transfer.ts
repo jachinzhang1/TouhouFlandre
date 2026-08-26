@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QUESTION_DIFFICULTY_PRESETS } from "@touhouflandre/shared";
 import { mergeStatistics, replaceStatistics, statsDb } from "./db";
 import {
   STATS_SCHEMA_VERSION,
@@ -71,7 +72,7 @@ const outcomeSchema = z.enum([
   "incomplete",
 ]);
 const difficultySchema = z
-  .enum(["easy", "normal", "hard", "lunatic", "custom", "unknown"])
+  .enum([...QUESTION_DIFFICULTY_PRESETS, "custom", "unknown"])
   .default("unknown");
 const schemaVersion = z.union([
   z.literal(1),

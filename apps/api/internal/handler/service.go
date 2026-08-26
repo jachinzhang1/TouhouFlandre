@@ -150,7 +150,7 @@ func (s *Server) selectAnswer(ctx context.Context, mode string, definition game.
 	}
 	scopeInput := requestedScope
 	if mode == string(game.GameModeDaily) {
-		if !game.IsQuestionDifficultyPreset(dailyDifficulty) {
+		if !game.IsDailyQuestionDifficulty(dailyDifficulty) {
 			dailyDifficulty = game.QuestionDifficultyNormal
 		}
 		preset := game.DefaultQuestionScope(version, questionScopeWorks(works), characters, dailyDifficulty)

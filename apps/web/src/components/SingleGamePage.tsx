@@ -26,14 +26,14 @@ import {
   GAME_CONTENT_DEFINITIONS,
   HAIR_COLOR_LABELS,
   QUESTION_DIFFICULTY_LABELS,
-  QUESTION_DIFFICULTY_PRESETS,
+  DAILY_QUESTION_DIFFICULTY_PRESETS,
   isUnlimitedGuessLimit,
   visibleQuestionFields,
 } from "@touhouflandre/shared";
 import type {
   CharacterSearchResult,
+  DailyQuestionDifficulty,
   FieldFeedback,
-  QuestionDifficultyPreset,
   PublicGameSession,
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
@@ -57,8 +57,8 @@ import {
 
 const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 const GAME_SEARCH_RESULT_LIMIT = 12;
-const DEFAULT_DAILY_DIFFICULTY: QuestionDifficultyPreset = "normal";
-const DAILY_DIFFICULTIES = QUESTION_DIFFICULTY_PRESETS;
+const DEFAULT_DAILY_DIFFICULTY: DailyQuestionDifficulty = "normal";
+const DAILY_DIFFICULTIES = DAILY_QUESTION_DIFFICULTY_PRESETS;
 
 const writeStatsInBackground = (operation: Promise<unknown>) => {
   void operation.catch((error) => console.error("本地单人统计写入失败", error));
@@ -76,17 +76,17 @@ type StoredSession = {
 
 type DailySessionStatus = "won" | "lost" | "playing" | null;
 
-const dailyStorageKey = (difficulty: QuestionDifficultyPreset) =>
+const dailyStorageKey = (difficulty: DailyQuestionDifficulty) =>
   difficulty === DEFAULT_DAILY_DIFFICULTY
     ? modeConfig.daily.storageKey
     : `${modeConfig.daily.storageKey}:${difficulty}`;
 
 const storageKeyForMode = (
   mode: SinglePlayerGameMode,
-  difficulty: QuestionDifficultyPreset,
+  difficulty: DailyQuestionDifficulty,
 ) => (mode === "daily" ? dailyStorageKey(difficulty) : modeConfig[mode].storageKey);
 
-const emptyDailyStatuses = (): Record<QuestionDifficultyPreset, DailySessionStatus> => ({
+const emptyDailyStatuses = (): Record<DailyQuestionDifficulty, DailySessionStatus> => ({
   easy: null,
   normal: null,
   hard: null,
@@ -117,7 +117,7 @@ const formatDuration = (seconds: number) => {
 
 const dailyPuzzleLabel = (
   dateKey: string | undefined,
-  difficulty: QuestionDifficultyPreset,
+  difficulty: DailyQuestionDifficulty,
 ) =>
   dateKey
     ? `每日题 ${dateKey} - ${QUESTION_DIFFICULTY_LABELS[difficulty]} Level`
@@ -226,10 +226,10 @@ function DailyDifficultyButtons({
   onSelect,
   statuses,
 }: {
-  active: QuestionDifficultyPreset;
+  active: DailyQuestionDifficulty;
   disabled: boolean;
-  onSelect: (difficulty: QuestionDifficultyPreset) => void;
-  statuses: Record<QuestionDifficultyPreset, DailySessionStatus>;
+  onSelect: (difficulty: DailyQuestionDifficulty) => void;
+  statuses: Record<DailyQuestionDifficulty, DailySessionStatus>;
 }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="每日题难度">
@@ -299,9 +299,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [guessCompletedElapsedMs, setGuessCompletedElapsedMs] =
     useState<number[]>([]);
   const [dailyDifficulty, setDailyDifficulty] =
-    useState<QuestionDifficultyPreset>(DEFAULT_DAILY_DIFFICULTY);
+    useState<DailyQuestionDifficulty>(DEFAULT_DAILY_DIFFICULTY);
   const [dailyStatuses, setDailyStatuses] =
-    useState<Record<QuestionDifficultyPreset, DailySessionStatus>>(
+    useState<Record<DailyQuestionDifficulty, DailySessionStatus>>(
       emptyDailyStatuses,
     );
 
@@ -402,7 +402,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   const setDailyStatus = (
-    difficulty: QuestionDifficultyPreset,
+    difficulty: DailyQuestionDifficulty,
     status: DailySessionStatus,
   ) => {
     setDailyStatuses((current) => ({ ...current, [difficulty]: status }));
@@ -433,7 +433,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
 
   const loadSession = async (
     nextMode: SinglePlayerGameMode,
-    difficulty: QuestionDifficultyPreset = dailyDifficulty,
+    difficulty: DailyQuestionDifficulty = dailyDifficulty,
   ) => {
     const requestId = ++loadRequestIdRef.current;
     const isCurrentRequest = () => loadRequestIdRef.current === requestId;
@@ -598,7 +598,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     await startFresh("random");
   };
 
-  const switchDailyDifficulty = async (difficulty: QuestionDifficultyPreset) => {
+  const switchDailyDifficulty = async (difficulty: DailyQuestionDifficulty) => {
     if (mode !== "daily" || loading || submitting || endingSession || timingOut) return;
     if (session && !isFinished) {
       if (session.guesses.length === 0) {

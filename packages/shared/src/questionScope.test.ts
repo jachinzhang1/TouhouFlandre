@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyQuestionScopePreset,
   effectiveQuestionScopeMaxGuesses,
   normalizeQuestionScope,
   normalizeQuestionScopeRules,
+  presetQuestionScopeIds,
   questionScopePresetRules,
+  QUESTION_DIFFICULTY_DESCRIPTIONS,
+  QUESTION_DIFFICULTY_LABELS,
+  QUESTION_DIFFICULTY_PRESETS,
+  DAILY_QUESTION_DIFFICULTY_PRESETS,
   QUESTION_SCOPE_SCHEMA_VERSION,
   visibleQuestionFields,
   type Character,
@@ -62,7 +68,17 @@ const snapshot: FullCatalogSnapshot = {
     character("easy-one", "th06", 1, "easy"),
     character("normal-one", "th06", 2, "normal"),
     character("hard-one", "th07", 3, "hard"),
+    character("lunatic-one", "th07", 4, "lunatic"),
+    character("extra-one", "th07", 5, "extra"),
   ],
+};
+
+const snapshotWithoutExtra: FullCatalogSnapshot = {
+  ...snapshot,
+  version: "v-without-extra",
+  characters: snapshot.characters.filter(
+    (entry) => entry.difficultyTier !== "extra",
+  ),
 };
 
 describe("question scope normalization", () => {
@@ -100,6 +116,82 @@ describe("question scope normalization", () => {
     });
   });
 
+  it("defines extra as the all-tier preset with an eight-guess, 30-second limit", () => {
+    expect(QUESTION_DIFFICULTY_PRESETS).toContain("extra");
+    expect(QUESTION_DIFFICULTY_LABELS.extra).toBe("Extra");
+    expect(QUESTION_DIFFICULTY_DESCRIPTIONS.extra).toBe(
+      "包含仅在旧作中登场的角色",
+    );
+    expect(presetQuestionScopeIds("extra", snapshot.characters)).toEqual([
+      "easy-one",
+      "normal-one",
+      "hard-one",
+      "lunatic-one",
+      "extra-one",
+    ]);
+    expect(questionScopePresetRules("extra").fields.firstAppearance).toBe(
+      false,
+    );
+    expect(questionScopePresetRules("extra").guessLimit).toEqual({
+      enabled: true,
+      maxGuesses: 8,
+    });
+    expect(questionScopePresetRules("extra").turnLimit).toEqual({
+      enabled: true,
+      seconds: 30,
+    });
+  });
+
+  it("builds cumulative preset pools and reserves all tiers for extra", () => {
+    expect(presetQuestionScopeIds("easy", snapshot.characters)).toEqual([
+      "easy-one",
+    ]);
+    expect(presetQuestionScopeIds("normal", snapshot.characters)).toEqual([
+      "easy-one",
+      "normal-one",
+    ]);
+    expect(presetQuestionScopeIds("hard", snapshot.characters)).toEqual([
+      "easy-one",
+      "normal-one",
+      "hard-one",
+    ]);
+    expect(presetQuestionScopeIds("lunatic", snapshot.characters)).toEqual([
+      "easy-one",
+      "normal-one",
+      "hard-one",
+      "lunatic-one",
+    ]);
+    expect(presetQuestionScopeIds("extra", snapshot.characters)).toEqual(
+      snapshot.characters.map((entry) => entry.id),
+    );
+  });
+
+  it("preserves an explicitly selected extra preset before extra data exists", () => {
+    const applied = applyQuestionScopePreset(snapshotWithoutExtra, "extra");
+
+    expect(applied.difficulty).toBe("extra");
+    expect(applied.mode).toBe("preset");
+    expect(
+      normalizeQuestionScope(applied, snapshotWithoutExtra).config.difficulty,
+    ).toBe("extra");
+
+    const expanded = normalizeQuestionScope(applied, snapshot).config;
+    expect(expanded.difficulty).toBe("extra");
+    expect(expanded.selectedCharacterIds).toEqual(
+      snapshot.characters.map((entry) => entry.id),
+    );
+  });
+
+  it("keeps extra unavailable for daily questions", () => {
+    expect(DAILY_QUESTION_DIFFICULTY_PRESETS).toEqual([
+      "easy",
+      "normal",
+      "hard",
+      "lunatic",
+    ]);
+    expect(DAILY_QUESTION_DIFFICULTY_PRESETS).not.toContain("extra");
+  });
+
   it("recomputes preset identity from the current catalog", () => {
     const correction = normalizeQuestionScope(
       {
@@ -107,7 +199,7 @@ describe("question scope normalization", () => {
         catalogVersion: "v1",
         mode: "preset",
         difficulty: "normal",
-        selectedCharacterIds: ["easy-one", "normal-one"],
+        selectedCharacterIds: ["easy-one"],
         workStates: [],
         rules: { hiddenFields: [] },
       },
@@ -118,7 +210,10 @@ describe("question scope normalization", () => {
     expect(correction.config.schemaVersion).toBe(QUESTION_SCOPE_SCHEMA_VERSION);
     expect(correction.config.difficulty).toBe("normal");
     expect(correction.config.mode).toBe("preset");
-    expect(correction.config.workStates.find((state) => state.workId === "th06")?.state).toBe("all");
+    expect(
+      correction.config.workStates.find((state) => state.workId === "th06")
+        ?.state,
+    ).toBe("all");
   });
 
   it("drops invalid character ids and falls back to the matching preset", () => {
@@ -156,7 +251,10 @@ describe("question scope normalization", () => {
     );
 
     expect(correction.reason).toBe("empty-pool-fallback");
-    expect(correction.config.selectedCharacterIds).toEqual(["easy-one", "normal-one"]);
+    expect(correction.config.selectedCharacterIds).toEqual([
+      "easy-one",
+      "normal-one",
+    ]);
     expect(correction.config.difficulty).toBe("normal");
   });
 
@@ -185,7 +283,12 @@ describe("question scope normalization", () => {
         catalogVersion: "v1",
         mode: "preset",
         difficulty: "lunatic",
-        selectedCharacterIds: ["easy-one", "normal-one", "hard-one"],
+        selectedCharacterIds: [
+          "easy-one",
+          "normal-one",
+          "hard-one",
+          "lunatic-one",
+        ],
         workStates: [],
         rules: { hiddenFields: ["firstAppearance"], turnSeconds: 12 },
       },
@@ -195,7 +298,10 @@ describe("question scope normalization", () => {
     expect(correction.config.schemaVersion).toBe(2);
     expect(correction.config.rules.fields.firstAppearance).toBe(false);
     expect(correction.config.rules.fields.releaseYear).toBe("directional");
-    expect(correction.config.rules.turnLimit).toEqual({ enabled: true, seconds: 30 });
+    expect(correction.config.rules.turnLimit).toEqual({
+      enabled: true,
+      seconds: 30,
+    });
     expect(correction.config.difficulty).toBe("lunatic");
   });
 

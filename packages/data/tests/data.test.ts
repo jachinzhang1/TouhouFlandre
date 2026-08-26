@@ -3,12 +3,17 @@ import {
   demoCatalogVersion,
   demoCharacters,
   demoWorks,
+  difficultyTierSchema,
   getAppearanceOrder,
   hairColorSchema,
   workSchema,
 } from "../src";
 
 describe("catalog metadata", () => {
+  it("accepts the extra character difficulty tier", () => {
+    expect(difficultyTierSchema.safeParse("extra").success).toBe(true);
+  });
+
   it("parses the four-digit portrait order", () => {
     expect(getAppearanceOrder("/characters/0601-露米娅.png")).toBe(601);
     expect(getAppearanceOrder("/characters/0751-伊吹萃香.png")).toBe(751);

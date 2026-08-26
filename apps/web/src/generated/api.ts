@@ -536,7 +536,7 @@ export interface components {
         /** @enum {string} */
         HairColor: "black" | "brown" | "blonde" | "white" | "silver" | "red" | "pink" | "purple" | "blue" | "green" | "orange" | "gray" | "multicolor" | "other" | "none";
         /** @enum {string} */
-        DifficultyTier: "easy" | "normal" | "hard" | "lunatic";
+        DifficultyTier: "easy" | "normal" | "hard" | "lunatic" | "extra";
         /** @enum {string} */
         Era: "pc98" | "windows" | "other";
         LocalizedNames: {
@@ -623,9 +623,11 @@ export interface components {
             works: components["schemas"]["Work"][];
         };
         /** @enum {string} */
-        QuestionDifficultyPreset: "easy" | "normal" | "hard" | "lunatic";
+        QuestionDifficultyPreset: "easy" | "normal" | "hard" | "lunatic" | "extra";
         /** @enum {string} */
-        QuestionDifficulty: "easy" | "normal" | "hard" | "lunatic" | "custom";
+        DailyQuestionDifficulty: "easy" | "normal" | "hard" | "lunatic";
+        /** @enum {string} */
+        QuestionDifficulty: "easy" | "normal" | "hard" | "lunatic" | "extra" | "custom";
         /** @enum {string} */
         QuestionScopeMode: "preset" | "custom";
         /** @enum {string} */
@@ -682,7 +684,7 @@ export interface components {
         };
         PuzzleCreateRequest: {
             questionScope?: components["schemas"]["QuestionScopeConfig"];
-            difficulty?: components["schemas"]["QuestionDifficultyPreset"];
+            difficulty?: components["schemas"]["DailyQuestionDifficulty"];
         };
         /** @enum {string} */
         WorkType: "game" | "ftg" | "stg" | "print" | "music_cd" | "other";

@@ -1,4 +1,4 @@
-import type { Character, GuessFieldKey, Work } from "./types";
+import type { Character, DifficultyTier, GuessFieldKey, Work } from "./types";
 
 export const QUESTION_SCOPE_SCHEMA_VERSION = 2 as const;
 export const QUESTION_SCOPE_MIN_TURN_SECONDS = 30;
@@ -9,12 +9,6 @@ export const QUESTION_SCOPE_DEFAULT_GUESSES = 8;
 export const QUESTION_SCOPE_MAX_GUESSES = 20;
 export const QUESTION_SCOPE_UNLIMITED_GUESSES = 999;
 
-export const QUESTION_DIFFICULTY_PRESETS = [
-  "easy",
-  "normal",
-  "hard",
-  "lunatic",
-] as const;
 export const QUESTION_SCOPE_CONFIGURABLE_FIELDS = [
   "firstAppearance",
   "releaseYear",
@@ -24,17 +18,12 @@ export const QUESTION_SCOPE_CONFIGURABLE_FIELDS = [
   "hairColors",
 ] as const;
 
-export type QuestionDifficultyPreset =
-  (typeof QUESTION_DIFFICULTY_PRESETS)[number];
-export type QuestionDifficulty = QuestionDifficultyPreset | "custom";
 export type QuestionScopeMode = "preset" | "custom";
 export type QuestionScopeWorkSelection = "all" | "partial" | "none";
 export type QuestionScopeConfigurableField =
   (typeof QUESTION_SCOPE_CONFIGURABLE_FIELDS)[number];
 export type QuestionScopeReleaseYearMode =
-  | "hidden"
-  | "exactOnly"
-  | "directional";
+  "hidden" | "exactOnly" | "directional";
 export type QuestionScopeGuessLimit = {
   enabled: boolean;
   maxGuesses: number;
@@ -96,27 +85,6 @@ export type QuestionScopeCorrection = {
   reason?: "catalog-updated" | "invalid-ids-dropped" | "empty-pool-fallback";
 };
 
-export const QUESTION_DIFFICULTY_LABELS: Record<
-  QuestionDifficulty,
-  string
-> = {
-  easy: "Easy",
-  normal: "Normal",
-  hard: "Hard",
-  lunatic: "Lunatic",
-  custom: "自定义",
-};
-
-export const QUESTION_DIFFICULTY_DESCRIPTIONS: Record<
-  QuestionDifficultyPreset,
-  string
-> = {
-  easy: "仅包含高人气整数作角色，不限制猜测次数",
-  normal: "包含官作（整数作、小数作、出版物）的部分高人气角色，限制 8 次猜测",
-  hard: "包含所有角色，限制 8 次猜测，每手限时 45 秒",
-  lunatic: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒",
-};
-
 const allFieldsEnabled: QuestionScopeRules["fields"] = {
   firstAppearance: true,
   releaseYear: "directional",
@@ -141,28 +109,101 @@ const unlimitedGuessLimit: QuestionScopeGuessLimit = {
   maxGuesses: QUESTION_SCOPE_DEFAULT_GUESSES,
 };
 
-const presetRules: Record<QuestionDifficultyPreset, QuestionScopeRules> = {
+type QuestionDifficultyPresetDefinition = {
+  label: string;
+  description: string;
+  includedDifficultyTiers: "all" | readonly DifficultyTier[];
+  rules: QuestionScopeRules;
+};
+
+export const QUESTION_DIFFICULTY_PRESET_DEFINITIONS = {
   easy: {
-    fields: allFieldsEnabled,
-    turnLimit: defaultTurnLimit,
-    guessLimit: unlimitedGuessLimit,
+    label: "Easy",
+    description: "仅包含高人气整数作角色，不限制猜测次数",
+    includedDifficultyTiers: ["easy"],
+    rules: {
+      fields: allFieldsEnabled,
+      turnLimit: defaultTurnLimit,
+      guessLimit: unlimitedGuessLimit,
+    },
   },
   normal: {
-    fields: allFieldsEnabled,
-    turnLimit: defaultTurnLimit,
-    guessLimit: defaultGuessLimit,
+    label: "Normal",
+    description:
+      "包含官作（游戏、出版物、音乐 CD）的部分高人气角色，限制 8 次猜测",
+    includedDifficultyTiers: ["easy", "normal"],
+    rules: {
+      fields: allFieldsEnabled,
+      turnLimit: defaultTurnLimit,
+      guessLimit: defaultGuessLimit,
+    },
   },
   hard: {
-    fields: allFieldsEnabled,
-    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
-    guessLimit: defaultGuessLimit,
+    label: "Hard",
+    description:
+      "包含所有官作角色，限制 8 次猜测，每手限时 45 秒",
+    includedDifficultyTiers: ["easy", "normal", "hard"],
+    rules: {
+      fields: allFieldsEnabled,
+      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
+      guessLimit: defaultGuessLimit,
+    },
   },
   lunatic: {
-    fields: { ...allFieldsEnabled, firstAppearance: false },
-    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
-    guessLimit: defaultGuessLimit,
+    label: "Lunatic",
+    description: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒",
+    includedDifficultyTiers: ["easy", "normal", "hard", "lunatic"],
+    rules: {
+      fields: { ...allFieldsEnabled, firstAppearance: false },
+      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
+      guessLimit: defaultGuessLimit,
+    },
   },
+  extra: {
+    label: "Extra",
+    description: "包含仅在旧作中登场的角色",
+    includedDifficultyTiers: "all",
+    rules: {
+      fields: { ...allFieldsEnabled, firstAppearance: false },
+      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
+      guessLimit: defaultGuessLimit,
+    },
+  },
+} as const satisfies Record<string, QuestionDifficultyPresetDefinition>;
+
+export type QuestionDifficultyPreset =
+  keyof typeof QUESTION_DIFFICULTY_PRESET_DEFINITIONS;
+export type QuestionDifficulty = QuestionDifficultyPreset | "custom";
+
+export const QUESTION_DIFFICULTY_PRESETS = Object.keys(
+  QUESTION_DIFFICULTY_PRESET_DEFINITIONS,
+) as QuestionDifficultyPreset[];
+
+export const DAILY_QUESTION_DIFFICULTY_PRESETS = [
+  "easy",
+  "normal",
+  "hard",
+  "lunatic",
+] as const satisfies readonly QuestionDifficultyPreset[];
+export type DailyQuestionDifficulty =
+  (typeof DAILY_QUESTION_DIFFICULTY_PRESETS)[number];
+
+export const QUESTION_DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
+  ...(Object.fromEntries(
+    QUESTION_DIFFICULTY_PRESETS.map((preset) => [
+      preset,
+      QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset].label,
+    ]),
+  ) as Record<QuestionDifficultyPreset, string>),
+  custom: "自定义",
 };
+
+export const QUESTION_DIFFICULTY_DESCRIPTIONS = Object.fromEntries(
+  QUESTION_DIFFICULTY_PRESETS.map((preset) => [
+    preset,
+    QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset].description,
+  ]),
+) as Record<QuestionDifficultyPreset, string>;
 
 const presetSet = new Set<string>(QUESTION_DIFFICULTY_PRESETS);
 
@@ -175,19 +216,23 @@ const answerableCharacters = (characters: Character[]) =>
 const sortByCatalogOrder = (characters: Character[]) =>
   [...characters].sort(
     (left, right) =>
-      left.appearanceOrder - right.appearanceOrder || left.id.localeCompare(right.id),
+      left.appearanceOrder - right.appearanceOrder ||
+      left.id.localeCompare(right.id),
   );
 
 export function presetQuestionScopeIds(
   preset: QuestionDifficultyPreset,
   characters: Character[],
 ): string[] {
+  const includedTiers =
+    QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset].includedDifficultyTiers;
   const pool = answerableCharacters(characters).filter((character) => {
-    if (preset === "hard" || preset === "lunatic") return true;
-    if (preset === "normal") {
-      return character.difficultyTier === "easy" || character.difficultyTier === "normal";
-    }
-    return character.difficultyTier === "easy";
+    return (
+      includedTiers === "all" ||
+      (includedTiers as readonly DifficultyTier[]).includes(
+        character.difficultyTier,
+      )
+    );
   });
   return sortByCatalogOrder(pool).map((character) => character.id);
 }
@@ -195,7 +240,7 @@ export function presetQuestionScopeIds(
 export function questionScopePresetRules(
   preset: QuestionDifficultyPreset,
 ): QuestionScopeRules {
-  const rules = presetRules[preset];
+  const rules = QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset].rules;
   return {
     fields: { ...rules.fields },
     turnLimit: { ...rules.turnLimit },
@@ -303,7 +348,10 @@ export function isUnlimitedGuessLimit(
   return (maxGuesses ?? 0) >= QUESTION_SCOPE_UNLIMITED_GUESSES;
 }
 
-function rulesEqual(left: QuestionScopeRules, right: QuestionScopeRules): boolean {
+function rulesEqual(
+  left: QuestionScopeRules,
+  right: QuestionScopeRules,
+): boolean {
   left = normalizeQuestionScopeRules(left);
   right = normalizeQuestionScopeRules(right);
   return (
@@ -330,12 +378,17 @@ function inferDifficulty(
   selectedCharacterIds: string[],
   rules: QuestionScopeRules,
   characters: Character[],
+  preferredPreset?: QuestionDifficultyPreset,
 ): QuestionDifficulty {
+  const matchesPreset = (preset: QuestionDifficultyPreset) =>
+    sameIds(selectedCharacterIds, presetQuestionScopeIds(preset, characters)) &&
+    rulesEqual(rules, questionScopePresetRules(preset));
+
+  if (preferredPreset && matchesPreset(preferredPreset)) {
+    return preferredPreset;
+  }
   for (const preset of QUESTION_DIFFICULTY_PRESETS) {
-    if (
-      sameIds(selectedCharacterIds, presetQuestionScopeIds(preset, characters)) &&
-      rulesEqual(rules, questionScopePresetRules(preset))
-    ) {
+    if (matchesPreset(preset)) {
       return preset;
     }
   }
@@ -344,10 +397,7 @@ function inferDifficulty(
 
 export function visibleQuestionFields<T extends { key: GuessFieldKey }>(
   rulesOrHiddenFields:
-    | Partial<QuestionScopeRules>
-    | readonly GuessFieldKey[]
-    | null
-    | undefined,
+    Partial<QuestionScopeRules> | readonly GuessFieldKey[] | null | undefined,
   fields: readonly T[],
 ) {
   const rulesInput = rulesOrHiddenFields;
@@ -388,7 +438,10 @@ export function buildQuestionScopeWorkStates(
   selectedCharacterIds: readonly string[],
 ): QuestionScopeWorkState[] {
   const selected = new Set(selectedCharacterIds);
-  const totals = new Map<string, { selectedCount: number; totalCount: number }>();
+  const totals = new Map<
+    string,
+    { selectedCount: number; totalCount: number }
+  >();
   for (const character of characters) {
     if (!character.enabledAsAnswer) continue;
     const workId = character.firstAppearance.workId;
@@ -423,8 +476,14 @@ function canonicalConfig(
   snapshot: FullCatalogSnapshot,
   selectedCharacterIds: string[],
   rules: QuestionScopeRules,
+  preferredPreset?: QuestionDifficultyPreset,
 ): QuestionScopeConfig {
-  const difficulty = inferDifficulty(selectedCharacterIds, rules, snapshot.characters);
+  const difficulty = inferDifficulty(
+    selectedCharacterIds,
+    rules,
+    snapshot.characters,
+    preferredPreset,
+  );
   return {
     schemaVersion: QUESTION_SCOPE_SCHEMA_VERSION,
     catalogVersion: snapshot.version,
@@ -448,6 +507,7 @@ export function defaultQuestionScope(
     snapshot,
     presetQuestionScopeIds(preset, snapshot.characters),
     questionScopePresetRules(preset),
+    preset,
   );
 }
 
@@ -459,31 +519,44 @@ export function normalizeQuestionScope(
     return { config: defaultQuestionScope(snapshot), changed: true };
   }
 
-  const requestedPreset = isPreset(input.difficulty) ? input.difficulty : undefined;
+  const requestedPreset = isPreset(input.difficulty)
+    ? input.difficulty
+    : undefined;
+  let preferredPreset = requestedPreset;
   let requestedRules = input.rules
     ? normalizeQuestionScopeRules(input.rules)
     : requestedPreset
       ? questionScopePresetRules(requestedPreset)
       : questionScopePresetRules("normal");
-  const incomingIds = Array.isArray(input.selectedCharacterIds)
-    ? input.selectedCharacterIds
-    : requestedPreset
+  const catalogChanged = input.catalogVersion !== snapshot.version;
+  const incomingIds =
+    catalogChanged && input.mode === "preset" && requestedPreset
       ? presetQuestionScopeIds(requestedPreset, snapshot.characters)
-      : [];
+      : Array.isArray(input.selectedCharacterIds)
+        ? input.selectedCharacterIds
+        : requestedPreset
+          ? presetQuestionScopeIds(requestedPreset, snapshot.characters)
+          : [];
 
   let selectedIds = normalizeSelectedIds(incomingIds, snapshot.characters);
   let reason: QuestionScopeCorrection["reason"] | undefined;
   if (selectedIds.length === 0) {
     selectedIds = presetQuestionScopeIds("normal", snapshot.characters);
     requestedRules = questionScopePresetRules("normal");
+    preferredPreset = "normal";
     reason = "empty-pool-fallback";
   } else if (selectedIds.length !== incomingIds.length) {
     reason = "invalid-ids-dropped";
   }
 
-  const config = canonicalConfig(snapshot, selectedIds, requestedRules);
+  const config = canonicalConfig(
+    snapshot,
+    selectedIds,
+    requestedRules,
+    preferredPreset,
+  );
   const changed =
-    input.catalogVersion !== snapshot.version ||
+    catalogChanged ||
     input.schemaVersion !== QUESTION_SCOPE_SCHEMA_VERSION ||
     input.mode !== config.mode ||
     input.difficulty !== config.difficulty ||
@@ -493,7 +566,7 @@ export function normalizeQuestionScope(
   return {
     config,
     changed,
-    reason: reason ?? (input.catalogVersion !== snapshot.version ? "catalog-updated" : undefined),
+    reason: reason ?? (catalogChanged ? "catalog-updated" : undefined),
   };
 }
 
@@ -506,7 +579,10 @@ export function toggleWorkInQuestionScope(
   const selected = new Set(config.selectedCharacterIds);
   const shouldSelectAll = workState?.state !== "all";
   for (const character of snapshot.characters) {
-    if (!character.enabledAsAnswer || character.firstAppearance.workId !== workId) {
+    if (
+      !character.enabledAsAnswer ||
+      character.firstAppearance.workId !== workId
+    ) {
       continue;
     }
     if (shouldSelectAll) selected.add(character.id);
@@ -516,6 +592,7 @@ export function toggleWorkInQuestionScope(
     snapshot,
     normalizeSelectedIds([...selected], snapshot.characters),
     config.rules,
+    isPreset(config.difficulty) ? config.difficulty : undefined,
   );
 }
 
@@ -524,7 +601,9 @@ export function toggleCharacterInQuestionScope(
   snapshot: FullCatalogSnapshot,
   characterId: string,
 ): QuestionScopeConfig {
-  const character = snapshot.characters.find((entry) => entry.id === characterId);
+  const character = snapshot.characters.find(
+    (entry) => entry.id === characterId,
+  );
   if (!character?.enabledAsAnswer) return config;
   const selected = new Set(config.selectedCharacterIds);
   if (selected.has(characterId)) selected.delete(characterId);
@@ -533,6 +612,7 @@ export function toggleCharacterInQuestionScope(
     snapshot,
     normalizeSelectedIds([...selected], snapshot.characters),
     config.rules,
+    isPreset(config.difficulty) ? config.difficulty : undefined,
   );
 }
 
@@ -545,6 +625,7 @@ export function updateQuestionScopeRules(
     snapshot,
     normalizeSelectedIds(config.selectedCharacterIds, snapshot.characters),
     normalizeQuestionScopeRules(rules),
+    isPreset(config.difficulty) ? config.difficulty : undefined,
   );
 }
 
@@ -556,5 +637,6 @@ export function applyQuestionScopePreset(
     snapshot,
     presetQuestionScopeIds(preset, snapshot.characters),
     questionScopePresetRules(preset),
+    preset,
   );
 }
