@@ -205,6 +205,29 @@ describe("ChatDock", () => {
     expect(label.closest("li")?.className).not.toContain("rounded");
   });
 
+  it("renders the system sender in theme color, bold, and underlined", async () => {
+    const user = userEvent.setup();
+    renderDock({
+      ...baseChat,
+      messages: [
+        message({
+          senderMemberId: "system",
+          senderDisplayName: "系统",
+          senderRole: "system",
+          senderSeat: undefined,
+          content: "[第 1 轮]灵梦(P1)已猜中",
+        }),
+      ],
+    });
+
+    await user.click(screen.getByLabelText("展开聊天记录"));
+
+    const label = screen.getByText("系统:");
+    expect(label.tagName).toBe("STRONG");
+    expect(label.className).toContain("text-vermilion");
+    expect(label.className).toContain("underline");
+  });
+
   it("does not replay messages received while muted after unmuting", async () => {
     const user = userEvent.setup();
     const { rerender } = renderDock(baseChat);

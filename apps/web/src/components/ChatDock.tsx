@@ -472,9 +472,18 @@ function ChatMessageLine({
   viewerMemberId?: string;
 }) {
   const own = isOwnChatEntry(entry, viewerMemberId);
+  const system = entry.senderRole === "system";
   return (
     <p className="m-0 break-words">
-      <strong className={own ? "text-vermilion" : undefined}>
+      <strong
+        className={
+          system
+            ? "text-vermilion underline"
+            : own
+              ? "text-vermilion"
+              : undefined
+        }
+      >
         {chatSenderLabel(entry)}
       </strong>{" "}
       {entry.content}
