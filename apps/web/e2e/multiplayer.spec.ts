@@ -431,18 +431,6 @@ async function expectNoHorizontalOverflow(page: Page) {
     .toBe(true);
 }
 
-function rectanglesOverlap(
-  left: { x: number; y: number; width: number; height: number },
-  right: { x: number; y: number; width: number; height: number },
-) {
-  return (
-    left.x < right.x + right.width &&
-    left.x + left.width > right.x &&
-    left.y < right.y + right.height &&
-    left.y + left.height > right.y
-  );
-}
-
 async function prepareVisualSnapshot(page: Page) {
   await expect(page.getByText(/实时同步连接中断/)).toHaveCount(0);
   await page.locator("[data-site-visit-count]").evaluate((element) => {
@@ -455,7 +443,7 @@ async function prepareVisualSnapshot(page: Page) {
       nextjs-portal { display: none !important; }
       @media (max-width: 680px) {
         [data-site-nav-links] { display: none !important; }
-        [data-guess-input-bar] { bottom: 0 !important; }
+        [data-multiplayer-bottom-dock] { bottom: 0 !important; }
       }
     `,
   });
@@ -1421,18 +1409,42 @@ test.describe("N 人竞速扩展", () => {
       await expectNoHorizontalOverflow(page);
 
       if (count === 8) {
-        await prepareVisualSnapshot(page);
-        const lobbyBox = await page
-          .locator("[data-room-lobby-card]")
-          .boundingBox();
-        const chatBox = await page
-          .locator('[data-chat-dock="inline"]')
-          .boundingBox();
-        expect(lobbyBox).not.toBeNull();
+        const dockHost = page.locator("[data-multiplayer-bottom-dock]");
+        const chatBox = await page.locator("[data-chat-dock]").boundingBox();
+        const dockBox = await dockHost.boundingBox();
         expect(chatBox).not.toBeNull();
-        expect(chatBox!.y).toBeGreaterThanOrEqual(
-          lobbyBox!.y + lobbyBox!.height,
+        expect(dockBox).not.toBeNull();
+        expect(
+          await dockHost.evaluate(
+            (element) => getComputedStyle(element).position,
+          ),
+        ).toBe("fixed");
+        const viewport = page.viewportSize()!;
+        const anchorY =
+          viewport.width <= 680
+            ? (await page.locator("[data-site-nav-links]").boundingBox())!.y
+            : viewport.height;
+        expect(Math.abs(dockBox!.y + dockBox!.height - anchorY)).toBeLessThan(
+          2,
         );
+
+        const controlsY = chatBox!.y;
+        await page.getByLabel("展开聊天记录").click();
+        const historyBox = await page
+          .locator("[data-chat-history]")
+          .boundingBox();
+        const expandedChatBox = await page
+          .locator("[data-chat-dock]")
+          .boundingBox();
+        expect(historyBox).not.toBeNull();
+        expect(expandedChatBox).not.toBeNull();
+        expect(expandedChatBox!.y).toBe(controlsY);
+        expect(historyBox!.y).toBeGreaterThanOrEqual(0);
+        expect(historyBox!.y + historyBox!.height).toBeLessThanOrEqual(
+          expandedChatBox!.y,
+        );
+        await page.getByLabel("展开聊天记录").click();
+        await prepareVisualSnapshot(page);
         await expect(page).toHaveScreenshot("race-8-lobby.png", {
           animations: "disabled",
           fullPage: true,
@@ -1480,15 +1492,13 @@ test.describe("N 人竞速扩展", () => {
       expect(navigation).not.toBeNull();
       expect(inputBar!.y + inputBar!.height).toBeLessThanOrEqual(navigation!.y);
     }
-    const visibleBoard = await page
-      .locator("[data-member-board]")
+    const chatDock = await page.locator("[data-chat-dock]").boundingBox();
+    const guessDock = await page
+      .locator("[data-guess-input-bar]")
       .boundingBox();
-    const chatDock = await page
-      .locator('[data-chat-dock="match"]')
-      .boundingBox();
-    expect(visibleBoard).not.toBeNull();
     expect(chatDock).not.toBeNull();
-    expect(rectanglesOverlap(visibleBoard!, chatDock!)).toBe(false);
+    expect(guessDock).not.toBeNull();
+    expect(chatDock!.y + chatDock!.height).toBeLessThanOrEqual(guessDock!.y);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-8-player.png", {
       animations: "disabled",
@@ -1507,6 +1517,17 @@ test.describe("N 人竞速扩展", () => {
     await page.getByRole("button", { name: "放弃本局" }).click();
     await page.getByRole("button", { name: /再次点击确认放弃/ }).click();
     await expect(input).toBeDisabled();
+    const disabledChatDock = await page
+      .locator("[data-chat-dock]")
+      .boundingBox();
+    const disabledGuessDock = await page
+      .locator("[data-guess-input-bar]")
+      .boundingBox();
+    expect(disabledChatDock).not.toBeNull();
+    expect(disabledGuessDock).not.toBeNull();
+    expect(disabledChatDock!.y + disabledChatDock!.height).toBeLessThanOrEqual(
+      disabledGuessDock!.y,
+    );
     await expect(
       page.getByRole("status").getByText("你已放弃本局"),
     ).toBeVisible();
@@ -1550,14 +1571,22 @@ test.describe("N 人竞速扩展", () => {
       spectatorPageSize,
     );
     const eliminatedChatDock = await page
-      .locator('[data-chat-dock="match"]')
+      .locator("[data-chat-dock]")
       .boundingBox();
     expect(eliminatedChatDock).not.toBeNull();
-    for (const board of await page.locator("[data-member-board]").all()) {
-      const boardBox = await board.boundingBox();
-      expect(boardBox).not.toBeNull();
-      expect(rectanglesOverlap(boardBox!, eliminatedChatDock!)).toBe(false);
-    }
+    await expect(page.locator("[data-guess-input-bar]")).toHaveCount(0);
+    const eliminatedDockHost = await page
+      .locator("[data-multiplayer-bottom-dock]")
+      .boundingBox();
+    expect(eliminatedDockHost).not.toBeNull();
+    const viewport = page.viewportSize()!;
+    const anchorY =
+      viewport.width <= 680
+        ? (await page.locator("[data-site-nav-links]").boundingBox())!.y
+        : viewport.height;
+    expect(
+      Math.abs(eliminatedDockHost!.y + eliminatedDockHost!.height - anchorY),
+    ).toBeLessThan(2);
     await expectNoHorizontalOverflow(page);
     await prepareVisualSnapshot(page);
     await expect(page).toHaveScreenshot("race-eliminated.png", {

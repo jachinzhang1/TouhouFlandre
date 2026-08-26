@@ -19,6 +19,7 @@ import {
   isChatUiEnabled,
 } from "../config/multiplayerRollout";
 import { api } from "../lib/api";
+import { MultiplayerBottomDockProvider } from "../multiplayer/framework";
 import { matchExperienceFor } from "../multiplayer/modeExperienceRegistry";
 import { migrateLegacyMultiplayerDraft } from "../stats/multiplayerRecorder";
 import { ChatDock } from "./ChatDock";
@@ -150,7 +151,6 @@ export function RoomView({ code }: { code: string }) {
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
-        placement={status === "lobby" ? "inline" : "match"}
         disabled={roomUnavailable}
         sendEnabled={chatSendUiEnabled}
         onSend={actions.sendChat}
@@ -209,7 +209,7 @@ export function RoomView({ code }: { code: string }) {
 
   if (isSpectator && state.room && state.room.status === "lobby") {
     return (
-      <>
+      <MultiplayerBottomDockProvider persistentDock={chatDock}>
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -251,8 +251,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
-      </>
+      </MultiplayerBottomDockProvider>
     );
   }
 
@@ -266,7 +265,7 @@ export function RoomView({ code }: { code: string }) {
   ) {
     const MatchExperience = matchExperienceFor(mode);
     return (
-      <>
+      <MultiplayerBottomDockProvider persistentDock={chatDock}>
         <MatchExperience
           roomId={stored.roomId}
           token={stored.guestToken}
@@ -283,14 +282,13 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
-      </>
+      </MultiplayerBottomDockProvider>
     );
   }
 
   if (status === "lobby" || status === "connecting") {
     return (
-      <>
+      <MultiplayerBottomDockProvider persistentDock={chatDock}>
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -332,8 +330,7 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-        {chatDock}
-      </>
+      </MultiplayerBottomDockProvider>
     );
   }
 

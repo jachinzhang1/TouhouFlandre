@@ -114,21 +114,35 @@ describe("ChatDock", () => {
     expect((input as HTMLInputElement).value).toBe("");
   });
 
-  it("uses document flow when embedded below a lobby", () => {
-    renderDock(baseChat, { placement: "inline" });
+  it("leaves viewport placement to the multiplayer dock host", () => {
+    renderDock(baseChat);
 
-    const dock = document.querySelector('[data-chat-dock="inline"]');
+    const dock = document.querySelector("[data-chat-dock]");
     expect(dock?.className).toContain("relative");
     expect(dock?.className).not.toContain("fixed");
+    expect(dock?.className).not.toContain("bottom-");
+    expect(screen.getByLabelText("展开聊天记录").className).not.toContain(
+      "shadow-sm",
+    );
+    expect(screen.getByLabelText("聊天输入").className).not.toContain(
+      "shadow-sm",
+    );
+    expect(screen.getByLabelText("闭麦").className).not.toContain("shadow-sm");
   });
 
-  it("uses document flow and reserves input space below a match", () => {
-    renderDock(baseChat, { placement: "match" });
+  it("opens history above the controls without changing the dock box", async () => {
+    const user = userEvent.setup();
+    renderDock(baseChat);
+    const dock = document.querySelector("[data-chat-dock]");
+    const dockClassName = dock?.className;
 
-    const dock = document.querySelector('[data-chat-dock="match"]');
-    expect(dock?.className).toContain("relative");
-    expect(dock?.className).toContain("mb-24");
-    expect(dock?.className).not.toContain("fixed");
+    await user.click(screen.getByLabelText("展开聊天记录"));
+
+    const history = document.querySelector("[data-chat-history]");
+    expect(history?.className).toContain("absolute");
+    expect(history?.className).toContain("bottom-full");
+    expect(history?.getAttribute("aria-hidden")).toBe("false");
+    expect(dock?.className).toBe(dockClassName);
   });
 
   it("disables history, input, and emoji controls while muted", async () => {

@@ -17,7 +17,6 @@ interface ChatDockProps {
   roomId: string;
   viewer: ParticipantView | null;
   chat: RoomChatState;
-  placement?: "floating" | "inline" | "match";
   disabled?: boolean;
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
@@ -35,7 +34,6 @@ export function ChatDock({
   roomId,
   viewer,
   chat,
-  placement = "floating",
   disabled = false,
   sendEnabled = true,
   onSend,
@@ -162,12 +160,6 @@ export function ChatDock({
   const inputDisabled =
     historyDisabled || viewer?.status !== "connected" || !sendEnabled;
   const canSend = !inputDisabled && draft.trim().length > 0;
-  const placementClass =
-    placement === "inline"
-      ? "relative z-[45] mx-auto mt-4 mb-6 w-[min(560px,calc(100vw-36px))] max-[680px]:mb-24"
-      : placement === "match"
-        ? "relative z-[45] mx-auto mt-4 mb-24 w-[min(560px,calc(100vw-36px))] max-[680px]:mb-36"
-        : "fixed bottom-24 left-4 z-[45] w-[min(420px,calc(100vw-32px))] max-[680px]:bottom-[144px]";
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -194,8 +186,17 @@ export function ChatDock({
   };
 
   return (
-    <div className={placementClass} data-chat-dock={placement}>
-      <div className="pointer-events-none absolute right-12 bottom-full left-10 mb-2 flex flex-col gap-2">
+    <div className="relative" data-chat-dock>
+      <div
+        className="pointer-events-none absolute right-12 bottom-full left-10 z-20 mb-2 flex flex-col gap-2"
+        style={
+          historyVisible
+            ? {
+                bottom: "calc(100% + min(18rem, calc(100dvh - 13rem)) + 1rem)",
+              }
+            : undefined
+        }
+      >
         {toasts.map((toast) => (
           <ChatToastCard
             key={toast.id}
@@ -211,11 +212,17 @@ export function ChatDock({
       </div>
 
       <div
-        className={`overflow-hidden rounded-[6px] border bg-paper shadow-lg transition-[height,opacity,transform,border-color,margin] duration-200 ease-out ${
+        className={`absolute right-0 bottom-full left-0 z-10 mb-2 overflow-hidden rounded-[6px] border bg-paper shadow-lg transition-[height,opacity,transform,border-color] duration-200 ease-out ${
           historyVisible
-            ? "pointer-events-auto mb-2 h-72 translate-y-0 border-line opacity-100"
-            : "pointer-events-none mb-0 h-0 translate-y-2 border-transparent opacity-0"
+            ? "pointer-events-auto translate-y-0 border-line opacity-100"
+            : "pointer-events-none h-0 translate-y-2 border-transparent opacity-0"
         }`}
+        data-chat-history
+        style={
+          historyVisible
+            ? { height: "min(18rem, calc(100dvh - 13rem))" }
+            : undefined
+        }
         aria-hidden={!historyVisible}
       >
         {historyVisible ? (
@@ -270,7 +277,7 @@ export function ChatDock({
           title="聊天记录"
           onClick={() => setHistoryOpen((current) => !current)}
           disabled={historyDisabled}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border border-line bg-paper text-ink-soft shadow-sm hover:bg-paper-muted disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border border-line bg-paper text-ink-soft hover:bg-paper-muted disabled:cursor-not-allowed disabled:opacity-45"
         >
           <History size={18} aria-hidden="true" />
         </button>
@@ -287,7 +294,7 @@ export function ChatDock({
             maxLength={1024}
             aria-label="聊天输入"
             placeholder="请输入消息"
-            className="h-10 w-full rounded-[6px] border border-line-strong bg-paper pr-11 pl-3 text-[0.86rem] text-ink shadow-sm outline-none focus:border-line-strong focus:shadow-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
+            className="h-10 w-full rounded-[6px] border border-line-strong bg-paper pr-11 pl-3 text-[0.86rem] text-ink outline-none focus:border-line-strong focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
           />
           <button
             type="button"
@@ -323,7 +330,7 @@ export function ChatDock({
           title={muted ? "开启聊天" : "闭麦"}
           onClick={toggleReceiveChat}
           disabled={disabled || !viewer}
-          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border shadow-sm disabled:cursor-not-allowed disabled:opacity-45 ${
+          className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border disabled:cursor-not-allowed disabled:opacity-45 ${
             muted
               ? "border-vermilion bg-vermilion-soft text-vermilion"
               : "border-line bg-paper text-ink-soft hover:bg-paper-muted"
