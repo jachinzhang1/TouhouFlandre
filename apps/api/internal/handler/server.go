@@ -556,27 +556,25 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 		if session.ContentType != string(game.GameContentCharacter) {
 			return nil, &ApiError{Status: http.StatusNotImplemented, Code: codeUnsupportedContentType, Message: fmt.Sprintf("暂不支持 %s 类型的猜测。", session.ContentType)}
 		}
-		var guess, answer *game.Character
-		for i := range characters {
-			if characters[i].ID == guessID && characters[i].EnabledAsGuess {
-				guess = &characters[i]
-			}
-			if characters[i].ID == session.AnswerID {
-				answer = &characters[i]
-			}
-		}
-		if guess == nil {
-			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "请选择本局题库中的角色。"}
-		}
-		if answer == nil {
-			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "本局题库快照中缺少答案角色。"}
-		}
-
 		scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
 		if err != nil {
 			return nil, internalError(err)
 		}
-		result := game.CompareCharacter(*guess, *answer, game.FieldsForQuestionScope(scope))
+		policy, err := game.ParseAnswerMatchPolicy(session.AnswerMatchPolicy)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		result, err := s.guessEvaluator.Evaluate(ctx, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
+		if err != nil {
+			switch {
+			case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
+				return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "请选择本局题库中的角色。"}
+			case errors.Is(err, game.ErrAnswerCharacterMissing):
+				return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "本局题库快照中缺少答案角色。"}
+			default:
+				return nil, internalError(err)
+			}
+		}
 		nextGuesses := append(guesses, result)
 		nextStatus := game.SessionPlaying
 		if result.IsCorrect {
