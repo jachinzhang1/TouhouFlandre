@@ -50,6 +50,33 @@ vi.mock("../lib/api", () => ({
           sourceRefs: ["https://example.com/lunatic"],
         },
       ],
+      fieldDefinitions: [
+        {
+          key: "abilityTags",
+          label: "能力标签",
+          type: "multi_enum",
+          configurable: true,
+          defaultMode: "default",
+          modes: [
+            { key: "hidden", label: "关闭", enabled: false },
+            { key: "default", label: "开启", enabled: true },
+          ],
+          equivalence: true,
+        },
+        {
+          key: "releaseYear",
+          label: "初登场年份",
+          type: "number",
+          configurable: true,
+          defaultMode: "directional",
+          modes: [
+            { key: "hidden", label: "关闭", enabled: false },
+            { key: "exactOnly", label: "仅精确", enabled: true },
+            { key: "directional", label: "方向提示", enabled: true },
+          ],
+          equivalence: true,
+        },
+      ],
     }),
   },
 }));
@@ -65,5 +92,24 @@ describe("QuestionScopeDialog", () => {
 
     fireEvent.click(extra);
     expect(screen.getByText("当前难度：Extra")).toBeTruthy();
+  });
+
+  it("renders fields and comparison modes from the catalog registry", async () => {
+    render(<QuestionScopeDialog open onClose={() => undefined} />);
+
+    const ability = await screen.findByRole("checkbox", { name: "能力标签" });
+    expect(ability.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(ability);
+    expect(ability.getAttribute("aria-checked")).toBe("false");
+
+    const comparison = screen.getByRole("combobox", {
+      name: "初登场年份比较模式",
+    });
+    expect(
+      within(comparison).getByRole("option", { name: "仅精确" }),
+    ).toBeTruthy();
+    expect(
+      within(comparison).getByRole("option", { name: "方向提示" }),
+    ).toBeTruthy();
   });
 });

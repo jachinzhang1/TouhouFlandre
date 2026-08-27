@@ -18,7 +18,6 @@ import {
   InputNumber,
   Slider,
   Switch,
-  Tooltip,
   message as globalMessage,
 } from "antd";
 import {
@@ -66,14 +65,6 @@ type QuestionScopeExportFile = {
   exportedAt: string;
   questionScope: QuestionScopeConfig;
 };
-
-const FIELD_TOGGLE_LABELS = [
-  ["firstAppearance", "初登场作品"],
-  ["species", "种族"],
-  ["affiliations", "阵营"],
-  ["locations", "地点"],
-  ["hairColors", "头发颜色"],
-] as const;
 
 export function QuestionScopeDialog({
   open,
@@ -164,20 +155,21 @@ export function QuestionScopeDialog({
   const invalidScope = Boolean(
     !readOnly && draft && draft.selectedCharacterIds.length === 0,
   );
-  const rules = normalizeQuestionScopeRules(draft?.rules);
+  const rules = normalizeQuestionScopeRules(
+    draft?.rules,
+    snapshot?.fieldDefinitions ?? [],
+    draft?.mode === "custom" ? "hidden" : undefined,
+  );
   const updateRules = (nextRules: QuestionScopeRules) => {
     if (!snapshot || !draft || readOnly) return;
     setDraft(updateQuestionScopeRules(draft, snapshot, nextRules));
   };
-  const updateField = <Key extends keyof QuestionScopeRules["fields"]>(
-    field: Key,
-    value: QuestionScopeRules["fields"][Key],
-  ) => {
+  const updateFieldMode = (field: string, mode: string) => {
     updateRules({
       ...rules,
-      fields: {
-        ...rules.fields,
-        [field]: value,
+      fieldModes: {
+        ...rules.fieldModes,
+        [field]: mode,
       },
     });
   };
@@ -417,58 +409,66 @@ export function QuestionScopeDialog({
                 </h3>
                 <div className="grid gap-2 rounded-[6px] border border-line bg-paper-muted p-3">
                   <div className="grid gap-2 md:grid-cols-3">
-                    {FIELD_TOGGLE_LABELS.map(([field, label]) => {
-                      const checked = rules.fields[field];
-                      return (
-                        <button
-                          key={field}
-                          type="button"
-                          disabled={readOnly}
-                          role="checkbox"
-                          aria-checked={checked}
-                          className="flex min-h-[40px] items-center gap-2 rounded-[5px] border border-line bg-paper px-2.5 py-1.5 text-left text-sm text-ink hover:bg-paper-muted disabled:cursor-default disabled:opacity-60"
-                          onClick={() => updateField(field, !checked)}
-                        >
-                          <BinaryCheck checked={checked} />
-                          <span className="font-bold">{label}</span>
-                        </button>
+                    {(snapshot.fieldDefinitions ?? [])
+                      .filter((definition) => definition.configurable)
+                      .map((definition) => {
+                      const mode =
+                        rules.fieldModes[definition.key] ?? definition.defaultMode;
+                      const selectedMode = definition.modes.find(
+                        (candidate) => candidate.key === mode,
                       );
-                    })}
-                    <div className="flex min-h-[40px] items-center justify-between gap-2 rounded-[5px] border border-line bg-paper px-2.5 py-1.5">
-                      <button
-                        type="button"
-                        disabled={readOnly}
-                        role="checkbox"
-                        aria-checked={rules.fields.releaseYear !== "hidden"}
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-ink disabled:cursor-default disabled:opacity-60"
-                        onClick={() =>
-                          updateField(
-                            "releaseYear",
-                            rules.fields.releaseYear === "hidden"
-                              ? "directional"
-                              : "hidden",
-                          )
-                        }
-                      >
-                        <BinaryCheck checked={rules.fields.releaseYear !== "hidden"} />
-                        <strong className="block min-w-0 truncate">初登场年份</strong>
-                      </button>
-                      <Tooltip title="是否开启年份偏高或偏低提示">
-                        <span className="shrink-0">
-                          <Switch
-                            size="small"
-                            checked={rules.fields.releaseYear === "directional"}
-                            disabled={readOnly || rules.fields.releaseYear === "hidden"}
-                            onChange={(checked) =>
-                              updateField(
-                                "releaseYear",
-                                checked ? "directional" : "exactOnly",
+                      const checked = selectedMode?.enabled === true;
+                      const enabledModes = definition.modes.filter(
+                        (candidate) => candidate.enabled,
+                      );
+                      const hiddenMode = definition.modes.find(
+                        (candidate) => !candidate.enabled,
+                      )?.key;
+                      return (
+                        <div
+                          key={definition.key}
+                          className="flex min-h-[40px] items-center justify-between gap-2 rounded-[5px] border border-line bg-paper px-2.5 py-1.5"
+                        >
+                          <button
+                            type="button"
+                            disabled={readOnly}
+                            role="checkbox"
+                            aria-checked={checked}
+                            className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-ink disabled:cursor-default disabled:opacity-60"
+                            onClick={() =>
+                              updateFieldMode(
+                                definition.key,
+                                checked
+                                  ? (hiddenMode ?? "hidden")
+                                  : (enabledModes[0]?.key ?? definition.defaultMode),
                               )
                             }
-                          />
-                        </span>
-                      </Tooltip>
-                    </div>
+                          >
+                            <BinaryCheck checked={checked} />
+                            <span className="min-w-0 truncate font-bold">
+                              {definition.label}
+                            </span>
+                          </button>
+                          {enabledModes.length > 1 ? (
+                            <select
+                              aria-label={`${definition.label}比较模式`}
+                              className="h-7 max-w-[112px] rounded-[4px] border border-line bg-paper px-1.5 text-xs text-ink disabled:opacity-50"
+                              value={checked ? mode : enabledModes[0]?.key}
+                              disabled={readOnly || !checked}
+                              onChange={(event) =>
+                                updateFieldMode(definition.key, event.target.value)
+                              }
+                            >
+                              {enabledModes.map((candidate) => (
+                                <option key={candidate.key} value={candidate.key}>
+                                  {candidate.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="grid gap-2 border-t border-line pt-2 md:grid-cols-[150px_minmax(0,1fr)_86px] md:items-center">
                     <label className="flex items-center justify-between gap-2 text-sm font-bold text-ink">

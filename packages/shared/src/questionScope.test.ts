@@ -129,9 +129,7 @@ describe("question scope normalization", () => {
       "lunatic-one",
       "extra-one",
     ]);
-    expect(questionScopePresetRules("extra").fields.firstAppearance).toBe(
-      false,
-    );
+    expect(questionScopePresetRules("extra").fieldModes.firstAppearance).toBe("hidden");
     expect(questionScopePresetRules("extra").guessLimit).toEqual({
       enabled: true,
       maxGuesses: 8,
@@ -295,9 +293,9 @@ describe("question scope normalization", () => {
       snapshot,
     );
 
-    expect(correction.config.schemaVersion).toBe(2);
-    expect(correction.config.rules.fields.firstAppearance).toBe(false);
-    expect(correction.config.rules.fields.releaseYear).toBe("directional");
+    expect(correction.config.schemaVersion).toBe(3);
+    expect(correction.config.rules.fieldModes.firstAppearance).toBe("hidden");
+    expect(correction.config.rules.fieldModes.releaseYear).toBe("directional");
     expect(correction.config.rules.turnLimit).toEqual({
       enabled: true,
       seconds: 30,
@@ -316,8 +314,8 @@ describe("question scope normalization", () => {
         workStates: [],
         rules: {
           ...questionScopePresetRules("hard"),
-          fields: {
-            ...questionScopePresetRules("hard").fields,
+          fieldModes: {
+            ...questionScopePresetRules("hard").fieldModes,
             releaseYear: "exactOnly",
           },
         },
@@ -340,11 +338,11 @@ describe("question scope normalization", () => {
     expect(
       visibleQuestionFields(
         {
-          fields: {
-            ...questionScopePresetRules("hard").fields,
-            firstAppearance: false,
+          fieldModes: {
+            ...questionScopePresetRules("hard").fieldModes,
+            firstAppearance: "hidden",
             releaseYear: "hidden",
-            species: false,
+            species: "hidden",
           },
           turnLimit: { enabled: false, seconds: 30 },
         },
