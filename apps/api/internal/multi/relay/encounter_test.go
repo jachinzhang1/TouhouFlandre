@@ -25,7 +25,7 @@ func TestFirstTurnPlayerAlternatesByStageAndSeat(t *testing.T) {
 	}
 }
 
-func TestQuestionProvisionerUsesUniqueStageAnswersAndResetsHistory(t *testing.T) {
+func TestQuestionProvisionerRejectsWhenUnusedStageAnswersAreInsufficient(t *testing.T) {
 	input := relay.StageProvisionInput{
 		StageIndex: 2,
 		StartsAt:   time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC),
@@ -38,15 +38,9 @@ func TestQuestionProvisionerUsesUniqueStageAnswersAndResetsHistory(t *testing.T)
 		TurnSeconds:        30,
 		EncounterDuration:  15 * time.Minute,
 	}
-	got, err := (relay.QuestionProvisioner{Random: &sequenceRandom{values: []int{0, 0}}}).Provision(context.Background(), input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 2 || got[0].AnswerID == got[1].AnswerID {
-		t.Fatalf("provisioned answers=%+v", got)
-	}
-	if got[0].TurnMemberID != "b" || got[1].TurnMemberID != "d" {
-		t.Fatalf("even-stage first turns=%+v", got)
+	_, err := (relay.QuestionProvisioner{Random: &sequenceRandom{values: []int{0, 0}}}).Provision(context.Background(), input)
+	if !errors.Is(err, relay.ErrQuestionPoolTooSmall) {
+		t.Fatalf("error=%v, want ErrQuestionPoolTooSmall", err)
 	}
 }
 

@@ -88,8 +88,3 @@ func CompareCharacterWithMatch(guess, answer Character, fields []GuessField, mat
 		Feedback:       feedback,
 	}
 }
-
-// CompareCharacter preserves strict identity semantics while callers migrate to GuessEvaluator.
-func CompareCharacter(guess, answer Character, fields []GuessField) GuessResult {
-	return CompareCharacterWithMatch(guess, answer, fields, StrictIdentityMatcher{}.Match(nil, answer.ID, guess.ID))
-}

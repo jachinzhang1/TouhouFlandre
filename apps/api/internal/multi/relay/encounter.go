@@ -200,7 +200,7 @@ func (p QuestionProvisioner) Provision(_ context.Context, input StageProvisionIn
 		}
 	}
 	if len(candidates) < count {
-		candidates = append([]string(nil), pool...)
+		return nil, ErrQuestionPoolTooSmall
 	}
 	for index := 0; index < count; index++ {
 		draw := index + p.Random.IntN(len(candidates)-index)

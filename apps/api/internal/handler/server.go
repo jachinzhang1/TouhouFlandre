@@ -234,6 +234,7 @@ func (s *Server) configureRelayEngine() {
 	if err != nil {
 		panic("handler: configure relay encounter engine: " + err.Error())
 	}
+	encounters.SetGuessEvaluator(s.guessEvaluator)
 	s.relayCoordinator = coordinator
 	s.relayEncounters = encounters
 }
