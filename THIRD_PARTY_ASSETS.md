@@ -45,6 +45,14 @@ Bilibili 与 pixiv 标识仅用于指向对应平台主页。相关商标归各�
 | 站点 favicon PNG | `apps/web/public/favicon.png` | SVG 的位图版本或配套图标。 |
 | 阴阳标记组件 | `apps/web/src/components/YinYangMark.tsx` | 项目内自制 SVG 组件。 |
 
+## 音乐播放器素材
+
+本声明适用于 `apps/web/public/music` 中保存的全部现有及未来音乐、专辑封面、曲目封面和占位图素材。它们仅用于本站音乐播放器，相关著作权及其他权利仍归各自作者、制作方和权利方所有，不自动适用本仓库的 MIT License，也不因进入本仓库而获得重新授权。
+
+每项素材的来源页面和实际本地化地址记录在 `packages/data/src/music` 的曲库 JSON `sourceRefs` 中；运行时路径由同一 JSON 目录中的 `audioUrl`、专辑 `coverUrl` 和校验器约束。
+
+请勿从本项目中单独抽取或再分发这些素材，也不得将其误认为本项目创作、MIT 授权或官方授权资源。TouhouFlandre 仍是非官方同人项目，与任何音乐、封面素材的作者、制作方和权利方不存在隶属或背书关系。
+
 ## 东方 Project 声明
 
 TouhouFlandre 是非官方同人项目，与上海爱丽丝幻乐团或任何官方发行方无关。东方 Project 的名称、角色和设定归各自权利方所有。

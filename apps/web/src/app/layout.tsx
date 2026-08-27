@@ -3,6 +3,7 @@ import Script from "next/script";
 import { AppearanceSwitcher } from "../components/AppearanceSwitcher";
 import { SiteFooter } from "../components/SiteFooter";
 import { SiteNav } from "../components/SiteNav";
+import { MusicPlayerRoot } from "../features/music-player/MusicPlayerRoot";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -78,6 +79,7 @@ export default function RootLayout({
           <SiteFooter />
         </div>
         <AppearanceSwitcher />
+        <MusicPlayerRoot />
       </body>
     </html>
   );
