@@ -2,11 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
-import {
-  CHARACTER_GUESS_FIELDS,
-  isUnlimitedGuessLimit,
-  type GuessField,
-} from "@touhouflandre/shared";
+import { isUnlimitedGuessLimit, type GuessField } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
 import type { RoomUiState } from "../hooks/useRoom";
 import {
@@ -37,7 +33,7 @@ export function RelayMatchBoard({
   mySlot,
   roundResult,
   roundActions,
-  fields = CHARACTER_GUESS_FIELDS,
+  fields = [],
   viewerRole = "player",
 }: {
   format: string;
@@ -354,7 +350,7 @@ function RelayTurn({
             {row.guess.guessName}
             {row.guess.isCorrect ? (
               <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                命中
+                {row.guess.matchKind === "equivalent" ? "等价命中" : "命中"}
               </span>
             ) : null}
           </span>

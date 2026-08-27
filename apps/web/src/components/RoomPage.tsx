@@ -3,10 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  CHARACTER_GUESS_FIELDS,
-  visibleQuestionFields,
-} from "@touhouflandre/shared";
-import {
   clearMultiRoom,
   loadMultiRoom,
   normalizeRoomCode,
@@ -131,10 +127,7 @@ export function RoomView({ code }: { code: string }) {
   const format = state.room?.format ?? "bo3";
   const mode = state.room?.mode ?? "race";
   const turnSeconds = state.room?.turnSeconds ?? 60;
-  const visibleFields = visibleQuestionFields(
-    state.questionScope?.rules,
-    CHARACTER_GUESS_FIELDS,
-  );
+  const visibleFields = state.match?.activeFields ?? [];
   const roleBeforeFirstSnapshot = state.room ? null : (stored?.role ?? null);
   const effectiveRole = role ?? roleBeforeFirstSnapshot;
   const isSpectator = effectiveRole === "spectator";

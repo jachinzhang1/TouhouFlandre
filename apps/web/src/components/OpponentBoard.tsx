@@ -4,11 +4,7 @@
 // 颜色序列与自视角/单人一致（统一 feedback feedback-{status} 语义类，同色同高）。
 // 单元格 role="img" + aria-label 携带状态名（颜色不唯一表达，08 §10.4）。
 import type { components } from "../generated/api";
-import {
-  CHARACTER_GUESS_FIELDS,
-  type GuessField,
-  type GuessFieldKey,
-} from "@touhouflandre/shared";
+import type { GuessField, GuessFieldKey } from "@touhouflandre/shared";
 import { GuessTable, type GuessRow } from "./GuessTable";
 
 type OpponentRow = components["schemas"]["OpponentRow"];
@@ -16,7 +12,7 @@ type OpponentRow = components["schemas"]["OpponentRow"];
 export function OpponentBoard({
   title = "对手",
   rows,
-  fields,
+  fields = [],
   fieldOrder,
 }: {
   title?: string;
@@ -24,7 +20,6 @@ export function OpponentBoard({
   fields?: readonly GuessField[];
   fieldOrder?: readonly GuessFieldKey[];
 }) {
-  const displayFields = fields ?? CHARACTER_GUESS_FIELDS;
   const tableRows: GuessRow[] = rows.map((row) => ({
     key: String(row.index),
     cells: row.statuses.map((status, index) => ({
@@ -40,7 +35,7 @@ export function OpponentBoard({
       variant="opponent"
       rows={tableRows}
       emptyLabel="等待对方猜测……"
-      fields={displayFields}
+      fields={fields}
     />
   );
 }

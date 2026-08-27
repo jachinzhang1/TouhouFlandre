@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
+import type { GuessField } from "@touhouflandre/shared";
 import {
   initialRoomState,
   type RoomActions,
@@ -9,6 +9,21 @@ import {
 import { RaceMatchExperience } from "./RaceMatchExperience";
 
 const characterSearchMock = vi.hoisted(() => vi.fn());
+
+const fields = [
+  "firstAppearance",
+  "releaseYear",
+  "species",
+  "affiliations",
+  "locations",
+  "hairColors",
+].map((key) => ({
+  key,
+  label: key,
+  type: "multi_enum" as const,
+  visible: true,
+  compareStrategy: "multiSet",
+})) satisfies GuessField[];
 
 vi.mock("../../../hooks/useCharacterSearch", () => ({
   useCharacterSearch: (query: string, options: unknown) => {
@@ -102,11 +117,11 @@ function state(): RoomUiState {
         {
           memberId: "two",
           seat: 2,
-          fieldOrder: CHARACTER_GUESS_FIELDS.map((field) => field.key),
+          fieldOrder: fields.map((field) => field.key),
           rows: [
             {
               index: 1,
-              statuses: CHARACTER_GUESS_FIELDS.map(() => "exact" as const),
+              statuses: fields.map(() => "exact" as const),
             },
           ],
         },
@@ -139,7 +154,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={state()}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="one"
         role="player"
         actions={actions}
@@ -180,7 +195,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={countdownState}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="one"
         role="player"
         actions={actions}
@@ -215,7 +230,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={spectatorState}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="watcher"
         role="spectator"
         actions={actions}
@@ -262,7 +277,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={finished}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="three"
         role="player"
         actions={actions}

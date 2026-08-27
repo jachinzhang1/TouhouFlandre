@@ -162,8 +162,9 @@ export interface RoundSpectatorGuessPayload {
   guess: NormalizedGuessResult;
 }
 
-export type NormalizedGuessResult = GuessResult & {
+export type NormalizedGuessResult = Omit<GuessResult, "kind" | "matchKind"> & {
   kind: NonNullable<GuessResult["kind"]>;
+  matchKind: NonNullable<GuessResult["matchKind"]>;
 };
 
 export interface RelayTurnRow {
