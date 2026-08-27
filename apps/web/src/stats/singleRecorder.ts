@@ -87,6 +87,7 @@ export async function recordSingleSession(
         name: guess.guessName,
         avatarUrl: guess.guessAvatarUrl,
         correct: guess.isCorrect,
+        matchKind: guess.matchKind ?? (guess.isCorrect ? "exact" : "none"),
         durationMs: durations[index],
       })),
     },
