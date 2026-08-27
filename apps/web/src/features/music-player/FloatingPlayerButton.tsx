@@ -2,6 +2,7 @@
 
 import { MusicNoteBeamed } from "react-bootstrap-icons";
 import type { Ref } from "react";
+import type { FloatingDragHandleProps } from "../../hooks/useDraggableFloatingControl";
 import type { MusicPlayerStatus } from "./contracts";
 import { isUsableDuration } from "./contracts";
 import { useMusicPlayer } from "./MusicPlayerProvider";
@@ -18,6 +19,7 @@ export type FloatingPlayerButtonProps = {
   onToggle: () => void;
   cardId: string;
   buttonRef?: Ref<HTMLButtonElement>;
+  dragHandleProps?: FloatingDragHandleProps;
 };
 
 export function clampPlaybackProgress(
@@ -65,6 +67,7 @@ export function FloatingPlayerButton({
   onToggle,
   cardId,
   buttonRef,
+  dragHandleProps,
 }: FloatingPlayerButtonProps) {
   const { state } = useMusicPlayer();
   const progress = clampPlaybackProgress(state.currentTime, state.duration);
@@ -82,6 +85,7 @@ export function FloatingPlayerButton({
   return (
     <span className="music-player-launcher-target">
       <button
+        {...dragHandleProps}
         type="button"
         ref={buttonRef}
         className="music-player-launcher"

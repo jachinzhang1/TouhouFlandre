@@ -8,6 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAnchoredFloatingPanel } from "../../hooks/useAnchoredFloatingPanel";
+import { useDraggableFloatingControl } from "../../hooks/useDraggableFloatingControl";
 import type { MusicPlayerInitialPreferences } from "./contracts";
 import { MUSIC_CATALOG } from "./catalog";
 import { PlayerCard } from "./components/PlayerCard";
@@ -25,11 +27,24 @@ import {
 
 export const MUSIC_PLAYER_CARD_ID = "music-player-card";
 
+function getDefaultMusicPlayerPosition(
+  bounds: { right: number; bottom: number },
+  controlSize: { width: number; height: number },
+) {
+  const compact = window.innerWidth <= 680;
+  return {
+    x: bounds.right - controlSize.width - (compact ? 0 : 4),
+    y: Math.min(bounds.bottom - controlSize.height, compact ? 60 : 76),
+  };
+}
+
 function MusicPlayerShell({ children }: { children?: ReactNode }) {
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
+  const boundaryRef = useRef<HTMLDivElement>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
   const playlistSettingsButtonRef = useRef<HTMLButtonElement>(null);
   const toggleCard = useCallback(() => {
     setIsCardOpen((open) => !open);
@@ -52,6 +67,21 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
       }
     });
   }, [isCardOpen]);
+  const { positionStyle, isDragging, dragHandleProps } =
+    useDraggableFloatingControl({
+      controlId: "musicPlayer",
+      boundaryRef,
+      floatingRef: shellRef,
+      handleRef: launcherRef,
+      getDefaultPosition: getDefaultMusicPlayerPosition,
+    });
+  const panelPosition = useAnchoredFloatingPanel({
+    boundaryRef,
+    anchorRef: launcherRef,
+    panelRef: cardRef,
+    maximumNaturalHeight: 620,
+    positionKey: `${String(positionStyle.left)}:${String(positionStyle.top)}`,
+  });
 
   useEffect(() => {
     if (!isCardOpen) return;
@@ -82,23 +112,36 @@ function MusicPlayerShell({ children }: { children?: ReactNode }) {
     onToggle: toggleCard,
     cardId: MUSIC_PLAYER_CARD_ID,
     buttonRef: launcherRef,
+    dragHandleProps,
   };
 
   return (
     <div
-      ref={shellRef}
-      className="music-player-shell"
-      data-music-player-shell="true"
+      ref={boundaryRef}
+      className="floating-control-boundary music-player-control-boundary"
+      data-floating-control-boundary="musicPlayer"
     >
-      <FloatingPlayerButton {...buttonProps} />
-      <PlayerCard
-        open={isCardOpen}
-        cardId={MUSIC_PLAYER_CARD_ID}
-        onOpenPlaylist={openPlaylist}
-        playlistSettingsButtonRef={playlistSettingsButtonRef}
-      />
-      <PlaylistDialog open={isPlaylistOpen} onClose={closePlaylist} />
-      {children}
+      <div
+        ref={shellRef}
+        className="music-player-shell"
+        data-music-player-shell="true"
+        data-dragging={isDragging}
+        style={positionStyle}
+      >
+        <FloatingPlayerButton {...buttonProps} />
+        <PlayerCard
+          open={isCardOpen}
+          cardId={MUSIC_PLAYER_CARD_ID}
+          onOpenPlaylist={openPlaylist}
+          playlistSettingsButtonRef={playlistSettingsButtonRef}
+          cardRef={cardRef}
+          placementStyle={panelPosition.panelStyle}
+          placementVertical={panelPosition.vertical}
+          placementHorizontal={panelPosition.horizontal}
+        />
+        <PlaylistDialog open={isPlaylistOpen} onClose={closePlaylist} />
+        {children}
+      </div>
     </div>
   );
 }
