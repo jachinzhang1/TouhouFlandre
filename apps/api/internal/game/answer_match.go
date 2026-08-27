@@ -147,6 +147,8 @@ func (runtime *CatalogRuntime) Match(answerID, guessID string) (MatchResult, err
 
 type CatalogLoader func(context.Context, string) ([]Character, error)
 
+var ErrCatalogRuntimeLoaderMissing = errors.New("catalog runtime loader is nil")
+
 type catalogRuntimeKey struct {
 	version string
 	policy  AnswerMatchPolicy
@@ -174,6 +176,13 @@ func NewCatalogRuntimeProvider(loader CatalogLoader) *CatalogRuntimeProvider {
 }
 
 func (provider *CatalogRuntimeProvider) Get(ctx context.Context, version string, policy AnswerMatchPolicy) (*CatalogRuntime, error) {
+	return provider.GetWithLoader(ctx, version, policy, provider.loader)
+}
+
+func (provider *CatalogRuntimeProvider) GetWithLoader(ctx context.Context, version string, policy AnswerMatchPolicy, loader CatalogLoader) (*CatalogRuntime, error) {
+	if loader == nil {
+		return nil, ErrCatalogRuntimeLoaderMissing
+	}
 	key := catalogRuntimeKey{version: version, policy: policy}
 	provider.mu.Lock()
 	if runtime := provider.cache[key]; runtime != nil {
@@ -193,7 +202,7 @@ func (provider *CatalogRuntimeProvider) Get(ctx context.Context, version string,
 	provider.loads[key] = load
 	provider.mu.Unlock()
 
-	characters, err := provider.loader(ctx, version)
+	characters, err := loader(ctx, version)
 	if err == nil {
 		load.runtime, err = BuildCatalogRuntime(version, policy, characters)
 	}
@@ -235,6 +244,26 @@ func (evaluator *GuessEvaluator) Evaluate(
 	if err != nil {
 		return GuessResult{}, err
 	}
+	return evaluateGuess(runtime, answerID, guessID, fields)
+}
+
+func (evaluator *GuessEvaluator) EvaluateWithLoader(
+	ctx context.Context,
+	catalogVersion string,
+	policy AnswerMatchPolicy,
+	answerID string,
+	guessID string,
+	fields []GuessField,
+	loader CatalogLoader,
+) (GuessResult, error) {
+	runtime, err := evaluator.catalogs.GetWithLoader(ctx, catalogVersion, policy, loader)
+	if err != nil {
+		return GuessResult{}, err
+	}
+	return evaluateGuess(runtime, answerID, guessID, fields)
+}
+
+func evaluateGuess(runtime *CatalogRuntime, answerID, guessID string, fields []GuessField) (GuessResult, error) {
 	guess, ok := runtime.ByID[guessID]
 	if !ok {
 		return GuessResult{}, ErrGuessCharacterMissing

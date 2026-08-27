@@ -103,7 +103,7 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	guessChar, statuses, matchKind, isCorrect, apiErr := s.computeFeedback(ctx, match.CatalogVersion, round.AnswerID, request.Body.GuessId, policy, storageFields)
+	guessChar, statuses, matchKind, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, policy, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}

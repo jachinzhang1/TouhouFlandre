@@ -122,7 +122,9 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 	if err != nil {
 		return internalError(err)
 	}
-	runtime, err := s.catalogRuntimes.Get(ctx, state.CurrentVersion, s.answerMatchPolicy)
+	runtime, err := s.catalogRuntimes.GetWithLoader(ctx, state.CurrentVersion, s.answerMatchPolicy, func(ctx context.Context, version string) ([]game.Character, error) {
+		return multi.CharactersForVersion(ctx, q, version)
+	})
 	if err != nil {
 		return internalError(err)
 	}
@@ -380,8 +382,11 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 }
 
 // computeFeedback 校验角色并计算反馈（真实列序状态数组）。
-func (s *Server) computeFeedback(ctx context.Context, catalogVersion, answerID, guessID string, policy game.AnswerMatchPolicy, fields []game.GuessField) (game.Character, []string, game.MatchKind, bool, *ApiError) {
-	result, err := s.guessEvaluator.Evaluate(ctx, catalogVersion, policy, answerID, guessID, fields)
+func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVersion, answerID, guessID string, policy game.AnswerMatchPolicy, fields []game.GuessField) (game.Character, []string, game.MatchKind, bool, *ApiError) {
+	loader := func(ctx context.Context, version string) ([]game.Character, error) {
+		return multi.CharactersForVersion(ctx, q, version)
+	}
+	result, err := s.guessEvaluator.EvaluateWithLoader(ctx, catalogVersion, policy, answerID, guessID, fields, loader)
 	if err != nil {
 		switch {
 		case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
@@ -392,7 +397,7 @@ func (s *Server) computeFeedback(ctx context.Context, catalogVersion, answerID, 
 			return game.Character{}, nil, game.MatchNone, false, internalError(err)
 		}
 	}
-	runtime, err := s.catalogRuntimes.Get(ctx, catalogVersion, policy)
+	runtime, err := s.catalogRuntimes.GetWithLoader(ctx, catalogVersion, policy, loader)
 	if err != nil {
 		return game.Character{}, nil, game.MatchNone, false, internalError(err)
 	}
