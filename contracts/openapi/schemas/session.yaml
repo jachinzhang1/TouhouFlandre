@@ -30,6 +30,13 @@ GameContentType:
   enum:
     - character
 
+MatchKind:
+  type: string
+  enum:
+    - none
+    - exact
+    - equivalent
+
 FeedbackSymbol:
   type: string
   description: 反馈符号（O / ~ / X / ↑ / ↓ / ?）。
@@ -70,6 +77,7 @@ GuessResult:
     - guessId
     - guessName
     - isCorrect
+    - matchKind
     - feedback
   properties:
     kind:
@@ -87,6 +95,8 @@ GuessResult:
       description: 旧记录可能缺少该字段。
     isCorrect:
       type: boolean
+    matchKind:
+      $ref: "#/MatchKind"
     feedback:
       type: array
       items:
@@ -101,6 +111,7 @@ PublicGameSession:
     - contentType
     - status
     - maxGuesses
+    - activeFields
     - guesses
     - startedAt
   properties:
@@ -120,6 +131,11 @@ PublicGameSession:
       description: 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
+    activeFields:
+      type: array
+      description: 本局冻结且实际显示的反馈词条，顺序即棋盘列顺序。
+      items:
+        $ref: "./guess.yaml#/GuessField"
     puzzleKey:
       type: string
     guesses:

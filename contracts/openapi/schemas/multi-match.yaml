@@ -471,6 +471,7 @@ MatchView:
     - maxRounds
     - rematchReady
     - catalogVersion
+    - activeFields
     - ruleSetRef
   properties:
     matchIndex:
@@ -510,6 +511,11 @@ MatchView:
       description: 本场绑定的题库版本。
     questionScope:
       $ref: "./question-scope.yaml#/QuestionScopeConfig"
+    activeFields:
+      type: array
+      description: 本场冻结且实际显示的反馈词条，顺序即棋盘列顺序。
+      items:
+        $ref: "./guess.yaml#/GuessField"
     ruleSetRef:
       $ref: "#/RuleSetRef"
     relay:

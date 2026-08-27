@@ -97,11 +97,17 @@ QuestionScopeGuessLimit:
 QuestionScopeRules:
   type: object
   required:
-    - fields
+    - fieldModes
     - turnLimit
     - guessLimit
   properties:
+    fieldModes:
+      description: schemaVersion 3 的通用字段配置；key 来自 CatalogFull.fieldDefinitions。
+      type: object
+      additionalProperties:
+        type: string
     fields:
+      description: Legacy schemaVersion 2 input. Normalized responses use fieldModes.
       $ref: "#/QuestionScopeFieldRules"
     turnLimit:
       $ref: "#/QuestionScopeTurnLimit"
@@ -114,6 +120,30 @@ QuestionScopeRules:
         $ref: "./guess.yaml#/GuessFieldKey"
     turnSeconds:
       description: Legacy schemaVersion 1 input. Normalized responses use turnLimit.
+      type: integer
+      minimum: 1
+
+QuestionScopeRulesInput:
+  type: object
+  description: |
+    题库配置导入结构。schemaVersion 3 使用 fieldModes、turnLimit 和 guessLimit；
+    schemaVersion 1/2 可继续提交旧 fields、hiddenFields 与 turnSeconds，缺省值由服务端迁移。
+  properties:
+    fieldModes:
+      type: object
+      additionalProperties:
+        type: string
+    fields:
+      $ref: "#/QuestionScopeFieldRules"
+    turnLimit:
+      $ref: "#/QuestionScopeTurnLimit"
+    guessLimit:
+      $ref: "#/QuestionScopeGuessLimit"
+    hiddenFields:
+      type: array
+      items:
+        $ref: "./guess.yaml#/GuessFieldKey"
+    turnSeconds:
       type: integer
       minimum: 1
 
@@ -149,7 +179,7 @@ QuestionScopeConfig:
   properties:
     schemaVersion:
       type: integer
-      enum: [2]
+      enum: [1, 2, 3]
     catalogVersion:
       type: string
     mode:
@@ -167,6 +197,37 @@ QuestionScopeConfig:
     rules:
       $ref: "#/QuestionScopeRules"
 
+QuestionScopeConfigInput:
+  type: object
+  required:
+    - schemaVersion
+    - catalogVersion
+    - mode
+    - difficulty
+    - selectedCharacterIds
+    - workStates
+    - rules
+  properties:
+    schemaVersion:
+      type: integer
+      enum: [1, 2, 3]
+    catalogVersion:
+      type: string
+    mode:
+      $ref: "#/QuestionScopeMode"
+    difficulty:
+      $ref: "#/QuestionDifficulty"
+    selectedCharacterIds:
+      type: array
+      items:
+        type: string
+    workStates:
+      type: array
+      items:
+        $ref: "#/QuestionScopeWorkState"
+    rules:
+      $ref: "#/QuestionScopeRulesInput"
+
 CatalogFull:
   type: object
   description: 当前全量题库快照。供题库设置弹窗和版本修正使用，不作为角色搜索缓存源。
@@ -174,6 +235,7 @@ CatalogFull:
     - version
     - works
     - characters
+    - fieldDefinitions
     - defaultQuestionScope
   properties:
     version:
@@ -186,6 +248,10 @@ CatalogFull:
       type: array
       items:
         $ref: "./character.yaml#/Character"
+    fieldDefinitions:
+      type: array
+      items:
+        $ref: "./guess.yaml#/GuessFieldDefinition"
     defaultQuestionScope:
       $ref: "#/QuestionScopeConfig"
 
@@ -193,6 +259,6 @@ PuzzleCreateRequest:
   type: object
   properties:
     questionScope:
-      $ref: "#/QuestionScopeConfig"
+      $ref: "#/QuestionScopeConfigInput"
     difficulty:
       $ref: "#/DailyQuestionDifficulty"

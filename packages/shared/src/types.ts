@@ -18,9 +18,22 @@ export const HAIR_COLORS = [
   "none",
 ] as const;
 export type HairColor = (typeof HAIR_COLORS)[number];
-export const WORK_TYPES = ["game", "ftg", "stg", "print", "music_cd", "other"] as const;
+export const WORK_TYPES = [
+  "game",
+  "ftg",
+  "stg",
+  "print",
+  "music_cd",
+  "other",
+] as const;
 export type WorkType = (typeof WORK_TYPES)[number];
-export const DIFFICULTY_TIERS = ["easy", "normal", "hard", "lunatic", "extra"] as const;
+export const DIFFICULTY_TIERS = [
+  "easy",
+  "normal",
+  "hard",
+  "lunatic",
+  "extra",
+] as const;
 export type DifficultyTier = (typeof DIFFICULTY_TIERS)[number];
 export const SINGLE_PLAYER_GAME_MODES = ["daily", "random"] as const;
 export type SinglePlayerGameMode = (typeof SINGLE_PLAYER_GAME_MODES)[number];
@@ -96,26 +109,35 @@ export type Character = {
   sourceRefs: string[];
 };
 
-export const GUESS_FIELD_KEYS = [
-  "firstAppearance",
-  "releaseYear",
-  "species",
-  "abilityTags",
-  "affiliations",
-  "locations",
-  "roles",
-  "hairColors",
-] as const;
-export type GuessFieldKey = (typeof GUESS_FIELD_KEYS)[number];
+export type GuessFieldKey = string;
 
 export type GuessField = {
   key: GuessFieldKey;
   label: string;
   type: "string" | "enum" | "multi_enum" | "number" | "hierarchy";
   visible: boolean;
-  compareStrategy: "firstAppearance" | "numberDirection" | "numberExact" | "multiSet";
+  compareStrategy: string;
   helpText?: string;
 };
+
+export type GuessFieldModeDefinition = {
+  key: string;
+  label: string;
+  enabled: boolean;
+};
+
+export type GuessFieldDefinition = {
+  key: GuessFieldKey;
+  label: string;
+  type: GuessField["type"];
+  helpText?: string;
+  configurable: boolean;
+  defaultMode: string;
+  modes: GuessFieldModeDefinition[];
+  equivalence: boolean;
+};
+
+export type MatchKind = "none" | "exact" | "equivalent";
 
 export type FieldFeedback = {
   field: GuessFieldKey;
@@ -131,6 +153,8 @@ export type GuessResult = {
   guessName: string;
   guessAvatarUrl?: string;
   isCorrect: boolean;
+  /** Missing only on legacy persisted records. */
+  matchKind?: MatchKind;
   feedback: FieldFeedback[];
 };
 
@@ -142,6 +166,7 @@ export type PublicGameSession = {
   maxGuesses: number;
   catalogVersion?: string;
   questionScope?: QuestionScopeConfig;
+  activeFields?: GuessField[];
   puzzleKey?: string;
   guesses: GuessResult[];
   startedAt: string;
