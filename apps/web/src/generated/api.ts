@@ -1429,10 +1429,14 @@ export interface operations {
             query?: {
                 /** @description 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。 */
                 q?: string;
-                /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
+                /** @description 单人游戏会话 id；提供后按该会话冻结的题库版本和题库范围搜索。 */
                 sessionId?: string;
-                /** @description 题库版本；供多人题局按绑定快照搜索。与 sessionId 互斥。 */
+                /** @description 题库版本；仅绑定版本快照，不应用游戏题库范围。与游戏上下文参数互斥。 */
                 catalogVersion?: string;
+                /** @description 多人房间 id；必须与 matchIndex 同时提供，并按该场冻结的题库版本和题库范围搜索。 */
+                roomId?: string;
+                /** @description 多人场次序号；必须与 roomId 同时提供。 */
+                matchIndex?: number;
                 /** @description 逗号分隔的作品 id 列表；仅用于收窄搜索结果。 */
                 workIds?: string;
                 limit?: number;
@@ -1464,7 +1468,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 游戏会话或题库版本不存在 */
+            /** @description 游戏会话、多人场次或题库版本不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;

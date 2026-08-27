@@ -46,10 +46,31 @@ type Server struct {
 	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 	rollout          RolloutConfig
+	characterSearch  CharacterSearchConfig
 }
 
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
+
+// CharacterSearchConfig controls optional filters assembled around the shared
+// character search implementation.
+type CharacterSearchConfig struct {
+	QuestionScopeFilterEnabled bool
+}
+
+func characterSearchConfigFromEnv() CharacterSearchConfig {
+	return CharacterSearchConfig{
+		QuestionScopeFilterEnabled: config.CharacterSearchQuestionScopeFilterEnabled(),
+	}
+}
+
+// WithCharacterSearchConfig overrides character search filters for tests and
+// staged deployments.
+func WithCharacterSearchConfig(searchConfig CharacterSearchConfig) Option {
+	return func(s *Server) {
+		s.characterSearch = searchConfig
+	}
+}
 
 // RolloutConfig 定义多人玩法灰度开关。固定积分 relay 默认开启；淘汰赛和
 // 其他可选入口仍可独立关闭。服务端开关是最终授权边界。
@@ -169,6 +190,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
 		projectionSecret: config.MultiProjectionSecret(),
 		rollout:          rolloutConfigFromEnv(),
+		characterSearch:  characterSearchConfigFromEnv(),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -236,8 +258,17 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.SessionId != nil && request.Params.CatalogVersion != nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "sessionId 与 catalogVersion 不能同时提供。"}
 	}
+	hasRoomID := request.Params.RoomId != nil
+	hasMatchIndex := request.Params.MatchIndex != nil
+	if hasRoomID != hasMatchIndex {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "roomId 与 matchIndex 必须同时提供。"}
+	}
+	if hasRoomID && (request.Params.SessionId != nil || request.Params.CatalogVersion != nil) {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "多人场次上下文不能与 sessionId 或 catalogVersion 同时提供。"}
+	}
 
 	var characters []game.Character
+	var questionScope *game.QuestionScopeConfig
 	if request.Params.SessionId != nil {
 		session, err := s.q.GetSession(ctx, *request.Params.SessionId)
 		if err != nil {
@@ -249,6 +280,35 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		characters, err = s.charactersForVersion(ctx, session.CatalogVersion)
 		if err != nil {
 			return nil, err
+		}
+		if s.characterSearch.QuestionScopeFilterEnabled {
+			scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
+			if err != nil {
+				return nil, internalError(err)
+			}
+			questionScope = &scope
+		}
+	} else if hasRoomID {
+		match, err := s.q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{
+			RoomID:     *request.Params.RoomId,
+			MatchIndex: int32(*request.Params.MatchIndex),
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &ApiError{Status: http.StatusNotFound, Code: codeRoomNotFound, Message: "没有找到这一场游戏。"}
+			}
+			return nil, internalError(err)
+		}
+		characters, err = s.charactersForVersion(ctx, match.CatalogVersion)
+		if err != nil {
+			return nil, err
+		}
+		if s.characterSearch.QuestionScopeFilterEnabled {
+			scope, err := questionScopeFromJSON(match.QuestionScope, match.CatalogVersion, nil, characters)
+			if err != nil {
+				return nil, internalError(err)
+			}
+			questionScope = &scope
 		}
 	} else if request.Params.CatalogVersion != nil {
 		var err error
@@ -268,8 +328,15 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
 		sortBy = "appearance"
 	}
+	filters := []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()}
+	if filterByWork {
+		filters = append(filters, game.WorkIDsSearchFilter(workIDs))
+	}
+	if questionScope != nil {
+		filters = append(filters, game.CharacterIDsSearchFilter(questionScope.SelectedCharacterIDs))
+	}
 	page := game.SearchCharacters(characters, game.CharacterSearchOptions{
-		Query: query, WorkIDs: workIDs, FilterByWork: filterByWork,
+		Query: query, Filters: filters,
 		SortBy: sortBy, Descending: direction == "desc", Offset: offset, Limit: limit,
 	})
 	results := make([]openapi.CharacterSearchResult, 0, len(page.Characters))

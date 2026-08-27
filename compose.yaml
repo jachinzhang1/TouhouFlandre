@@ -61,6 +61,7 @@ services:
       DATABASE_URL_PG: postgres://touhouflandre:${POSTGRES_PASSWORD}@postgres:5432/touhouflandre?sslmode=disable
       API_PORT: "4000"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED: ${CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED:-true}
       # WS 升级校验 Origin ∈ WEB_ORIGINS（逗号分隔，含协议与端口）：
       #   cloudflared：https://<隧道公网域名>（浏览器 Origin）
       #   本地直连调试：http://localhost:3000

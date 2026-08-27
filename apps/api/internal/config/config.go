@@ -101,6 +101,12 @@ func boolFromEnv(key string, fallback bool) bool {
 	return fallback
 }
 
+// CharacterSearchQuestionScopeFilterEnabled controls whether in-game searches
+// are restricted to the selected answer pool frozen for that game.
+func CharacterSearchQuestionScopeFilterEnabled() bool {
+	return boolFromEnv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", true)
+}
+
 // MultiNPlayerRaceEnabled 控制是否允许新建/调高 2 人以上竞速房间。
 // MPX-010 发布闸门要求默认保持双人容量；已有多人房间的 join/对局推进不受影响。
 func MultiNPlayerRaceEnabled() bool {

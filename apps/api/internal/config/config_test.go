@@ -42,6 +42,17 @@ func TestMultiRolloutFlagsDefaultOpen(t *testing.T) {
 	}
 }
 
+func TestCharacterSearchQuestionScopeFilterDefaultsOpenAndParsesFalse(t *testing.T) {
+	t.Setenv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", "")
+	if !CharacterSearchQuestionScopeFilterEnabled() {
+		t.Fatal("question scope search filter should default to enabled")
+	}
+	t.Setenv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", "off")
+	if CharacterSearchQuestionScopeFilterEnabled() {
+		t.Fatal("question scope search filter should honor explicit off")
+	}
+}
+
 func TestMultiRolloutFlagsParseBooleanValues(t *testing.T) {
 	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "on")
 	t.Setenv("MULTI_CHAT_SEND_ENABLED", "0")
