@@ -19,6 +19,7 @@
     {
       "type": "match.started",
       "payloadKeys": [
+        "activeFields",
         "catalogVersion",
         "format",
         "matchIndex",

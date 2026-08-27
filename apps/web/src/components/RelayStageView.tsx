@@ -333,7 +333,7 @@ export function RelayStageView({
           isCurrent ? (
             <GuessInputBar
               onGuess={(guessId) => {
-                if (!canGuess || !actionTarget) return Promise.resolve();
+                if (!canGuess || !actionTarget) return Promise.resolve(false);
                 return actions.relayEncounterAction(
                   actionTarget,
                   "guess",

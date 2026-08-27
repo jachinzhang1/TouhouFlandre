@@ -59,6 +59,7 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          activeFields: [],
           ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
         round={
@@ -100,6 +101,7 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          activeFields: [],
           ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
         round={
@@ -203,6 +205,7 @@ describe("MatchBoard", () => {
           scores: result.scores,
           rematchReady: [],
           catalogVersion: "v1",
+          activeFields: [],
           ruleSetRef: { mode: "race", key: "placement", version: 1 },
         }}
         round={null}
@@ -238,6 +241,7 @@ describe("MatchBoard", () => {
           })),
           rematchReady: [],
           catalogVersion: "v1",
+          activeFields: [],
           ruleSetRef: { mode: "race", key: "points", version: 1 },
         }}
         round={

@@ -107,6 +107,9 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
+	if err := multi.ValidateStoredStatuses(match, statuses); err != nil {
+		return submitGuessResult{}, internalError(err)
+	}
 	statusesJSON, err := json.Marshal(statuses)
 	if err != nil {
 		return submitGuessResult{}, internalError(err)

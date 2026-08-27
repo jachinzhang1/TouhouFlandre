@@ -128,6 +128,10 @@ func TestMatchStartedV2PayloadNormalizesRuleSetRefV3(t *testing.T) {
 			if got.Mode != MultiplayerMode(test.mode) || got.Key != test.key || got.Version != 1 {
 				t.Fatalf("normalized RuleSetRef = %+v", got)
 			}
+			activeFields := projected.Payload.(MatchStartedPayload).ActiveFields
+			if len(activeFields) != len(game.CharacterGuessFields) {
+				t.Fatalf("normalized active fields = %d, want %d", len(activeFields), len(game.CharacterGuessFields))
+			}
 		})
 	}
 }

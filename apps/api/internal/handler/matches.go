@@ -161,6 +161,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
 		QuestionScope:  scope,
+		ActiveFields:   multi.FieldsForMatch(match),
 		ScoringMode:    scoringMode,
 		RuleSetRef: multi.RuleSetRefView{
 			Mode: multi.MultiplayerMode(plan.RuleSet.Mode), Key: plan.RuleSet.Key, Version: plan.RuleSet.Version,

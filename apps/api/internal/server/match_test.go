@@ -307,6 +307,27 @@ func TestMultiMatchStart(t *testing.T) {
 	if len(snap.Events) < 2 {
 		t.Fatalf("expected match.started + round.started events, got %d", len(snap.Events))
 	}
+	var started *openapi.RoomEventEnvelope
+	for i := range snap.Events {
+		if snap.Events[i].Type == "match.started" {
+			started = &snap.Events[i]
+			break
+		}
+	}
+	if started == nil {
+		t.Fatal("match.started event missing")
+	}
+	eventFields, ok := started.Payload["activeFields"].([]any)
+	if !ok || len(eventFields) != len(snap.Match.ActiveFields) {
+		t.Fatalf("match.started active fields = %#v, snapshot fields = %+v", started.Payload["activeFields"], snap.Match.ActiveFields)
+	}
+	for index, item := range eventFields {
+		field, ok := item.(map[string]any)
+		key, keyOK := field["key"].(string)
+		if !ok || !keyOK || key != string(snap.Match.ActiveFields[index].Key) {
+			t.Fatalf("active field %d differs between event and snapshot: event=%#v snapshot=%+v", index, item, snap.Match.ActiveFields[index])
+		}
+	}
 
 	// 对局已开始后的重复 ready → MATCH_ALREADY_STARTED
 	resp, payload = fastRequestAuth(http.MethodPost, "/api/rooms/"+fixture.roomID+"/ready", fixture.joinerToken, map[string]bool{"ready": true})
