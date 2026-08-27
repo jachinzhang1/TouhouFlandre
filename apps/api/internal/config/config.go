@@ -107,6 +107,20 @@ func CharacterSearchQuestionScopeFilterEnabled() bool {
 	return boolFromEnv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", true)
 }
 
+// AnswerMatchPolicy freezes the answer matcher selected for newly created games.
+func AnswerMatchPolicy() string {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv("ANSWER_MATCH_POLICY")))
+	if value == "" {
+		return "public_fields_v1"
+	}
+	switch value {
+	case "strict", "public_fields_v1":
+		return value
+	default:
+		panic("config: unknown ANSWER_MATCH_POLICY " + value)
+	}
+}
+
 // MultiNPlayerRaceEnabled 控制是否允许新建/调高 2 人以上竞速房间。
 // MPX-010 发布闸门要求默认保持双人容量；已有多人房间的 join/对局推进不受影响。
 func MultiNPlayerRaceEnabled() bool {

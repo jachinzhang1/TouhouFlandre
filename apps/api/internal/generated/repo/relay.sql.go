@@ -619,7 +619,7 @@ func (q *Queries) GetRelayGuessForEncounter(ctx context.Context, arg GetRelayGue
 }
 
 const getRelayMatch = `-- name: GetRelayMatch :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE id = $1
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match WHERE id = $1
 `
 
 func (q *Queries) GetRelayMatch(ctx context.Context, id string) (MultiMatch, error) {
@@ -645,6 +645,7 @@ func (q *Queries) GetRelayMatch(ctx context.Context, id string) (MultiMatch, err
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -805,7 +806,7 @@ const incrementRelayMatchStageCount = `-- name: IncrementRelayMatchStageCount :o
 UPDATE multi_match
 SET round_count = GREATEST(round_count, $1)
 WHERE id = $2
-RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 `
 
 type IncrementRelayMatchStageCountParams struct {
@@ -836,6 +837,7 @@ func (q *Queries) IncrementRelayMatchStageCount(ctx context.Context, arg Increme
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }

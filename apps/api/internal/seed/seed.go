@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 
@@ -176,6 +177,14 @@ func intPtr(value *int) pgtype.Int4 {
 	return pgtype.Int4{Int32: int32(*value), Valid: true}
 }
 
+func sameJSON(left, right []byte) bool {
+	var leftValue, rightValue any
+	if json.Unmarshal(left, &leftValue) != nil || json.Unmarshal(right, &rightValue) != nil {
+		return false
+	}
+	return reflect.DeepEqual(leftValue, rightValue)
+}
+
 // Run 从 dataDir 读取题库 JSON，重建行表、快照与当前版本。
 // 返回 catalog 版本号。
 func Run(ctx context.Context, pool *pgxpool.Pool, dataDir string) (string, error) {
@@ -297,6 +306,13 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dataDir string) (string, error
 		Characters: snapshot,
 	}); err != nil {
 		return "", fmt.Errorf("upsert snapshot: %w", err)
+	}
+	storedSnapshot, err := q.GetSnapshot(ctx, version)
+	if err != nil {
+		return "", fmt.Errorf("verify snapshot: %w", err)
+	}
+	if !sameJSON(storedSnapshot.Characters, snapshot) {
+		return "", fmt.Errorf("catalog snapshot %s already exists with different content", version)
 	}
 	if err := q.UpsertCatalogState(ctx, version); err != nil {
 		return "", fmt.Errorf("upsert catalog state: %w", err)

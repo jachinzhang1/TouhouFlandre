@@ -53,6 +53,24 @@ func TestCharacterSearchQuestionScopeFilterDefaultsOpenAndParsesFalse(t *testing
 	}
 }
 
+func TestAnswerMatchPolicyDefaultsAndValidation(t *testing.T) {
+	t.Setenv("ANSWER_MATCH_POLICY", "")
+	if got := AnswerMatchPolicy(); got != "public_fields_v1" {
+		t.Fatalf("default answer policy = %q", got)
+	}
+	t.Setenv("ANSWER_MATCH_POLICY", " STRICT ")
+	if got := AnswerMatchPolicy(); got != "strict" {
+		t.Fatalf("normalized answer policy = %q", got)
+	}
+	t.Setenv("ANSWER_MATCH_POLICY", "all-visible-fields")
+	defer func() {
+		if recover() == nil {
+			t.Fatal("unknown answer policy did not stop startup")
+		}
+	}()
+	_ = AnswerMatchPolicy()
+}
+
 func TestMultiRolloutFlagsParseBooleanValues(t *testing.T) {
 	t.Setenv("MULTI_N_PLAYER_RACE_ENABLED", "on")
 	t.Setenv("MULTI_CHAT_SEND_ENABLED", "0")

@@ -27,26 +27,29 @@ import (
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool             *pgxpool.Pool
-	q                *repo.Queries
-	now              func() time.Time
-	rng              core.RandomSource
-	modeRegistry     *core.Registry
-	relayCoordinator *relaydomain.StageCoordinator
-	relayEncounters  *relayadapter.EncounterService
-	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
-	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
-	historyLimiter   *ipRateLimiter     // relay history 按 member 限流
-	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	chatRetention    time.Duration
-	chatRate         multi.ChatRateConfig
-	chatCursor       *multi.ChatCursorCodec
-	announcements    *multi.SystemAnnouncementWriter
-	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
-	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
-	rollout          RolloutConfig
-	characterSearch  CharacterSearchConfig
+	pool              *pgxpool.Pool
+	q                 *repo.Queries
+	now               func() time.Time
+	rng               core.RandomSource
+	modeRegistry      *core.Registry
+	relayCoordinator  *relaydomain.StageCoordinator
+	relayEncounters   *relayadapter.EncounterService
+	lobbyTTL          time.Duration      // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention    time.Duration      // closed 保留期（关闭时 expires_at）
+	joinLimiter       *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	historyLimiter    *ipRateLimiter     // relay history 按 member 限流
+	timing            multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	chatRetention     time.Duration
+	chatRate          multi.ChatRateConfig
+	chatCursor        *multi.ChatCursorCodec
+	announcements     *multi.SystemAnnouncementWriter
+	hub               *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	projectionSecret  []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
+	rollout           RolloutConfig
+	characterSearch   CharacterSearchConfig
+	answerMatchPolicy game.AnswerMatchPolicy
+	catalogRuntimes   *game.CatalogRuntimeProvider
+	guessEvaluator    *game.GuessEvaluator
 }
 
 // Option 定制 Server（测试注入用）。
@@ -69,6 +72,12 @@ func characterSearchConfigFromEnv() CharacterSearchConfig {
 func WithCharacterSearchConfig(searchConfig CharacterSearchConfig) Option {
 	return func(s *Server) {
 		s.characterSearch = searchConfig
+	}
+}
+
+func WithAnswerMatchPolicy(policy game.AnswerMatchPolicy) Option {
+	return func(s *Server) {
+		s.answerMatchPolicy = policy
 	}
 }
 
@@ -174,28 +183,44 @@ func (s *Server) publishChatRoom(roomID string) {
 
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	clock := core.SystemClock{}
+	answerMatchPolicy, err := game.ParseAnswerMatchPolicy(config.AnswerMatchPolicy())
+	if err != nil {
+		panic("handler: " + err.Error())
+	}
 	s := &Server{
-		pool:             pool,
-		q:                repo.New(pool),
-		now:              clock.Now,
-		rng:              core.NewRandomSource(),
-		modeRegistry:     assembly.MustProduction(),
-		lobbyTTL:         config.MultiLobbyTTL(),
-		eventRetention:   config.MultiEventRetention(),
-		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
-		historyLimiter:   newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
-		timing:           multi.DefaultTimingConfig(),
-		chatRetention:    config.MultiChatRetention(),
-		chatRate:         config.MultiChatRate(),
-		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
-		projectionSecret: config.MultiProjectionSecret(),
-		rollout:          rolloutConfigFromEnv(),
-		characterSearch:  characterSearchConfigFromEnv(),
+		pool:              pool,
+		q:                 repo.New(pool),
+		now:               clock.Now,
+		rng:               core.NewRandomSource(),
+		modeRegistry:      assembly.MustProduction(),
+		lobbyTTL:          config.MultiLobbyTTL(),
+		eventRetention:    config.MultiEventRetention(),
+		joinLimiter:       newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		historyLimiter:    newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
+		timing:            multi.DefaultTimingConfig(),
+		chatRetention:     config.MultiChatRetention(),
+		chatRate:          config.MultiChatRate(),
+		chatCursor:        multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
+		projectionSecret:  config.MultiProjectionSecret(),
+		rollout:           rolloutConfigFromEnv(),
+		characterSearch:   characterSearchConfigFromEnv(),
+		answerMatchPolicy: answerMatchPolicy,
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
 	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
+	s.catalogRuntimes = game.NewCatalogRuntimeProvider(func(ctx context.Context, version string) ([]game.Character, error) {
+		return multi.CharactersForVersion(ctx, s.q, version)
+	})
+	s.guessEvaluator = game.NewGuessEvaluator(s.catalogRuntimes)
+	if state, err := s.q.GetCatalogState(context.Background()); err == nil {
+		if _, err := s.catalogRuntimes.Get(context.Background(), state.CurrentVersion, s.answerMatchPolicy); err != nil {
+			panic("handler: prewarm catalog runtime: " + err.Error())
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		panic("handler: load catalog state: " + err.Error())
+	}
 	s.configureRelayEngine()
 	return s
 }

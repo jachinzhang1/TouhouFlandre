@@ -8,7 +8,7 @@ SELECT * FROM catalog_snapshot WHERE version = @version;
 -- name: UpsertSnapshot :exec
 INSERT INTO catalog_snapshot (version, characters)
 VALUES (@version, @characters)
-ON CONFLICT (version) DO UPDATE SET characters = EXCLUDED.characters;
+ON CONFLICT (version) DO NOTHING;
 
 -- name: UpsertCatalogState :exec
 INSERT INTO catalog_state (id, current_version)

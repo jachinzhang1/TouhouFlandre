@@ -181,11 +181,15 @@ UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;
 INSERT INTO multi_match (
     id, room_id, match_index, catalog_version, target_wins, status,
     started_at, question_scope, scoring_mode, roster_size, max_rounds,
-    rule_set_key, rule_set_version, rule_config_snapshot
+    rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 )
 SELECT
     $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing',
-    $5, $6, $7, $8, $9, $10, $11, $12
+    $5, $6, $7, $8, $9, $10, $11,
+    COALESCE(sqlc.arg(rule_config_snapshot)::jsonb, '{}'::jsonb) || jsonb_build_object(
+        'answerMatchPolicy', COALESCE(NULLIF(sqlc.arg(answer_match_policy)::text, ''), 'strict')
+    ),
+    COALESCE(NULLIF(sqlc.arg(answer_match_policy)::text, ''), 'strict')
 FROM multi_match WHERE room_id = $2
 RETURNING *;
 

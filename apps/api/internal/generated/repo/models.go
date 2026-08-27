@@ -47,29 +47,31 @@ type Character struct {
 }
 
 type DailyPuzzle struct {
-	DateKey        string             `json:"date_key"`
-	CatalogVersion string             `json:"catalog_version"`
-	AnswerID       string             `json:"answer_id"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	Difficulty     string             `json:"difficulty"`
+	DateKey           string             `json:"date_key"`
+	CatalogVersion    string             `json:"catalog_version"`
+	AnswerID          string             `json:"answer_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	Difficulty        string             `json:"difficulty"`
+	AnswerMatchPolicy string             `json:"answer_match_policy"`
 }
 
 type GameSession struct {
-	ID             string             `json:"id"`
-	Mode           string             `json:"mode"`
-	ContentType    string             `json:"content_type"`
-	AnswerID       string             `json:"answer_id"`
-	CatalogVersion string             `json:"catalog_version"`
-	PuzzleKey      pgtype.Text        `json:"puzzle_key"`
-	Status         string             `json:"status"`
-	MaxGuesses     int32              `json:"max_guesses"`
-	Guesses        []byte             `json:"guesses"`
-	Version        int32              `json:"version"`
-	StartedAt      pgtype.Timestamptz `json:"started_at"`
-	EndedAt        pgtype.Timestamptz `json:"ended_at"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	QuestionScope  []byte             `json:"question_scope"`
+	ID                string             `json:"id"`
+	Mode              string             `json:"mode"`
+	ContentType       string             `json:"content_type"`
+	AnswerID          string             `json:"answer_id"`
+	CatalogVersion    string             `json:"catalog_version"`
+	PuzzleKey         pgtype.Text        `json:"puzzle_key"`
+	Status            string             `json:"status"`
+	MaxGuesses        int32              `json:"max_guesses"`
+	Guesses           []byte             `json:"guesses"`
+	Version           int32              `json:"version"`
+	StartedAt         pgtype.Timestamptz `json:"started_at"`
+	EndedAt           pgtype.Timestamptz `json:"ended_at"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	QuestionScope     []byte             `json:"question_scope"`
+	AnswerMatchPolicy string             `json:"answer_match_policy"`
 }
 
 type MultiChatMessage struct {
@@ -119,6 +121,7 @@ type MultiMatch struct {
 	RuleSetKey         string             `json:"rule_set_key"`
 	RuleSetVersion     int32              `json:"rule_set_version"`
 	RuleConfigSnapshot []byte             `json:"rule_config_snapshot"`
+	AnswerMatchPolicy  string             `json:"answer_match_policy"`
 }
 
 type MultiMatchPlayer struct {
