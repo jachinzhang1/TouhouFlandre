@@ -11,7 +11,7 @@ import {
   Send,
   X,
 } from "lucide-react";
-import { message as globalMessage } from "antd";
+import { message as antdMessage } from "antd";
 import { createPortal } from "react-dom";
 import {
   useCallback,
@@ -275,6 +275,7 @@ function DailyDifficultyButtons({
 
 export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const listboxId = useId();
+  const [messageApi, messageContextHolder] = antdMessage.useMessage();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadRequestIdRef = useRef(0);
@@ -955,9 +956,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       await navigator.clipboard.writeText(
         createShareText(session, sharePuzzleLabel, window.location.origin),
       );
-      globalMessage.success("分享文本已复制");
+      messageApi.success("分享文本已复制");
     } catch {
-      globalMessage.error("复制失败，请检查浏览器的剪贴板权限");
+      messageApi.error("复制失败，请检查浏览器的剪贴板权限");
     }
   };
 
@@ -1013,6 +1014,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
 
   return (
     <>
+      {messageContextHolder}
       <section className="game-surface" aria-label="TouhouFlandre 游戏区域">
         <div className="status-strip">
           <div className="puzzle-status">
