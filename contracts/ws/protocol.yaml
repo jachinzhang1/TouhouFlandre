@@ -227,6 +227,7 @@ events:
           catalogVersion,
           matchIndex,
           questionScope,
+          activeFields,
           scoringMode,
           ruleSetRef,
           rosterSize,
@@ -259,6 +260,12 @@ events:
         questionScope:
           type: object
           additionalProperties: true
+        activeFields:
+          type: array
+          minItems: 1
+          description: 本场冻结且实际显示的反馈词条，顺序即棋盘列顺序。
+          items:
+            $ref: "#/definitions/GuessField"
         scoringMode:
           type: string
           enum: [wins, points, placement]
@@ -983,6 +990,24 @@ definitions:
         roles,
         hairColors,
       ]
+  GuessField:
+    type: object
+    additionalProperties: false
+    required: [key, label, type, visible, compareStrategy]
+    properties:
+      key:
+        $ref: "#/definitions/GuessFieldKey"
+      label:
+        type: string
+      type:
+        type: string
+        enum: [string, enum, multi_enum, number, hierarchy]
+      visible:
+        type: boolean
+      compareStrategy:
+        type: string
+      helpText:
+        type: string
   FeedbackStatus:
     type: string
     enum: [exact, partial, miss, higher, lower, unknown]
@@ -1384,6 +1409,37 @@ examples:
           targetWins: 2
           catalogVersion: 66b0a79b
           matchIndex: 0
+          activeFields:
+            - key: firstAppearance
+              label: 初登场作品
+              type: hierarchy
+              visible: true
+              compareStrategy: firstAppearance
+            - key: releaseYear
+              label: 初登场年份
+              type: number
+              visible: true
+              compareStrategy: numberDirection
+            - key: species
+              label: 种族
+              type: multi_enum
+              visible: true
+              compareStrategy: multiSet
+            - key: affiliations
+              label: 阵营
+              type: multi_enum
+              visible: true
+              compareStrategy: multiSet
+            - key: locations
+              label: 地点
+              type: multi_enum
+              visible: true
+              compareStrategy: multiSet
+            - key: hairColors
+              label: 头发颜色
+              type: multi_enum
+              visible: true
+              compareStrategy: multiSet
           scoringMode: wins
           ruleSetRef:
             mode: race

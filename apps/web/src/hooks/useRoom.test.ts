@@ -35,6 +35,16 @@ const scoresFixture = [
   { memberId: "member-guest", seat: 2, score: 0 },
 ];
 
+const activeFieldsFixture = [
+  {
+    key: "species",
+    label: "种族",
+    type: "multi_enum",
+    visible: true,
+    compareStrategy: "multiSet",
+  },
+] satisfies NonNullable<RoomUiState["match"]>["activeFields"];
+
 const playerState = (): RoomUiState => ({
   ...initialRoomState,
   viewer: {
@@ -77,6 +87,7 @@ const matchFixture: NonNullable<RoomUiState["match"]> = {
     ready: false,
   })),
   catalogVersion: "v1",
+  activeFields: activeFieldsFixture,
   ruleSetRef: { mode: "race", key: "wins", version: 1 },
 };
 
@@ -252,11 +263,13 @@ describe("roomReducer", () => {
         targetWins: 2,
         catalogVersion: "v1",
         matchIndex: 1,
+        activeFields: activeFieldsFixture,
         ruleSetRef: { mode: "race", key: "wins", version: 1 },
       }),
     );
 
     expect(state.match?.matchIndex).toBe(1);
+    expect(state.match?.activeFields).toEqual(activeFieldsFixture);
     expect(state.match?.scores.find((score) => score.seat === 1)?.score).toBe(
       0,
     );

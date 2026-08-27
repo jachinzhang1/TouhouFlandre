@@ -380,6 +380,7 @@ type MatchStartedPayload struct {
 	CatalogVersion string                   `json:"catalogVersion"`
 	MatchIndex     int                      `json:"matchIndex"`
 	QuestionScope  game.QuestionScopeConfig `json:"questionScope"`
+	ActiveFields   []game.GuessField        `json:"activeFields"`
 	ScoringMode    ScoringMode              `json:"scoringMode"`
 	RuleSetRef     RuleSetRefView           `json:"ruleSetRef"`
 	RosterSize     int                      `json:"rosterSize"`

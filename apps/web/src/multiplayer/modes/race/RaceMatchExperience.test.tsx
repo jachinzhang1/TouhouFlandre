@@ -100,6 +100,7 @@ function state(): RoomUiState {
       rosterSize: 3,
       rematchReady: [],
       catalogVersion: "v1",
+      activeFields: fields,
       ruleSetRef: { mode: "race" as const, key: "placement", version: 1 },
     },
     round: {

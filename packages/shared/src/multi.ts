@@ -3,7 +3,12 @@
 // 字段名集合由 scripts/check-ws-protocol.mjs 与协议比对（`task check:ws-protocol`）。
 // 依据：docs/multiplayer.md（WebSocket 协议）。
 
-import type { FeedbackStatus, GuessFieldKey, GuessResult } from "./types";
+import type {
+  FeedbackStatus,
+  GuessField,
+  GuessFieldKey,
+  GuessResult,
+} from "./types";
 import type { QuestionScopeConfig } from "./questionScope";
 
 export const MULTI_ROOM_FORMATS = ["bo1", "bo3", "bo5", "bo7"] as const;
@@ -112,6 +117,7 @@ export interface MatchStartedPayload {
   plannedStages?: number;
   catalogVersion: string;
   matchIndex: number;
+  activeFields: GuessField[];
   scoringMode?: RaceScoringMode;
   ruleSetRef: RuleSetRef;
   rosterSize?: number;

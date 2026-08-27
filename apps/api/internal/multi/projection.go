@@ -150,6 +150,9 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
 			return ProjectedEvent{}, false, err
 		}
+		if len(payload.ActiveFields) == 0 {
+			payload.ActiveFields = game.FieldsForQuestionScope(payload.QuestionScope)
+		}
 		if err := normalizeMatchStartedRuleSet(&payload); err != nil {
 			return ProjectedEvent{}, false, err
 		}

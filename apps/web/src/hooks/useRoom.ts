@@ -70,7 +70,7 @@ type MatchView = Omit<
   scores: MemberScoreView[];
   scoringMode?: "wins" | "points" | "placement";
   rosterSize?: number;
-  activeFields?: components["schemas"]["GuessField"][];
+  activeFields: components["schemas"]["GuessField"][];
 };
 type MemberView = components["schemas"]["MemberView"];
 type RoomSnapshot = components["schemas"]["RoomSnapshot"];
@@ -244,6 +244,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
             ready: false,
           })),
           catalogVersion: payload.catalogVersion,
+          activeFields: payload.activeFields,
           ruleSetRef: payload.ruleSetRef,
         },
         relay:
@@ -596,14 +597,14 @@ export interface RoomActions {
   retryChat: (clientMessageId: string) => Promise<void>;
   loadOlderChat: () => Promise<void>;
   clearChatError: () => void;
-  submitGuess: (guessId: string) => Promise<void>;
+  submitGuess: (guessId: string) => Promise<boolean>;
   forfeitRound: () => Promise<void>;
   passRelayTurn: () => Promise<void>;
   relayEncounterAction: (
     target: { stageIndex: number; encounterId: string },
     action: "guess" | "pass" | "forfeit",
     guessId?: string,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   reconnect: () => void;
   refresh: () => Promise<void>;
 }
@@ -1405,7 +1406,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         state.round.status !== "playing" ||
         !state.match
       )
-        return;
+        return false;
       const idempotencyKey = crypto.randomUUID();
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
       const isRelay = state.room?.mode === "relay";
@@ -1431,15 +1432,6 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           ];
         }
         pendingGuessRef.current = null;
-        await updateMultiplayerTiming(
-          roomId,
-          state.match.matchIndex,
-          memberId ?? "legacy",
-          {
-            activeElapsedMs: completedElapsedMs,
-            guessCompletedElapsedMs: [...guessCompletedRef.current],
-          },
-        );
         if (!isRelay) {
           const raceResponse = resp as typeof resp & {
             participationStatus?: components["schemas"]["RaceRoundParticipantStatus"];
@@ -1468,9 +1460,22 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
               : s,
           );
         }
+        void updateMultiplayerTiming(
+          roomId,
+          state.match.matchIndex,
+          memberId ?? "legacy",
+          {
+            activeElapsedMs: completedElapsedMs,
+            guessCompletedElapsedMs: [...guessCompletedRef.current],
+          },
+        ).catch((error) => {
+          console.error("本地多人统计写入失败", error);
+        });
+        return true;
       } catch (e) {
         pendingGuessRef.current = null;
         setGuessError(e instanceof Error ? e.message : "猜测失败。");
+        return false;
       }
     },
     forfeitRound: async () => {
@@ -1530,7 +1535,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
         state.room?.mode !== "relay" ||
         !state.relay
       ) {
-        return;
+        return false;
       }
       const encounter = state.relay.stagesByIndex[
         target.stageIndex
@@ -1543,8 +1548,8 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
           : action === "pass"
             ? encounter?.capabilities.canPass
             : encounter?.capabilities.canForfeit;
-      if (!allowed) return;
-      if (action === "guess" && !guessId) return;
+      if (!allowed) return false;
+      if (action === "guess" && !guessId) return false;
       const completedElapsedMs = timerRef.current?.snapshot() ?? 0;
       if (action === "guess") pendingGuessRef.current = completedElapsedMs;
       try {
@@ -1565,7 +1570,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
             completedElapsedMs,
           ];
           pendingGuessRef.current = null;
-          await updateMultiplayerTiming(
+          void updateMultiplayerTiming(
             roomId,
             state.match.matchIndex,
             memberId ?? "legacy",
@@ -1573,8 +1578,11 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
               activeElapsedMs: completedElapsedMs,
               guessCompletedElapsedMs: [...guessCompletedRef.current],
             },
-          );
+          ).catch((error) => {
+            console.error("本地多人统计写入失败", error);
+          });
         }
+        return true;
       } catch (e) {
         pendingGuessRef.current = null;
         setGuessError(
@@ -1586,6 +1594,7 @@ export function useRoom(roomId: string, token: string): UseRoomResult {
                 ? "空过失败。"
                 : "放弃本局失败。",
         );
+        return false;
       }
     },
   };

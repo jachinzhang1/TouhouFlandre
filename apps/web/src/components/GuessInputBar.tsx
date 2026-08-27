@@ -20,23 +20,25 @@ export function GuessInputBar({
   guessedIds,
   statusMessage,
 }: {
-  onGuess: (guessId: string) => void;
+  onGuess: (guessId: string) => Promise<boolean>;
   disabled?: boolean;
   searchContext?: MultiplayerCharacterSearchContext;
   guessedIds: ReadonlySet<string>;
   statusMessage?: string | null;
 }) {
   const [query, setQuery] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
   const { results, loading, error } = useCharacterSearch(query, {
-    enabled: Boolean(searchContext) && !disabled,
+    enabled: Boolean(searchContext) && !disabled && !submitting,
     context: searchContext,
     limit: GAME_SEARCH_RESULT_LIMIT,
   });
   const filtered = results.filter((r) => !guessedIds.has(r.id));
   const showSuggestions =
-    query.trim().length > 0 && !loading && filtered.length > 0;
+    query.trim().length > 0 && !loading && !submitting && filtered.length > 0;
 
   // 键盘指针：默认指向第一项；查询/结果变化时回到第一项
   const [highlightIndex, setHighlightIndex] = useState(0);
@@ -49,23 +51,32 @@ export function GuessInputBar({
   }, [disabled]);
 
   useEffect(() => {
-    if (!restoreFocusRequested || disabled) return;
+    if (!restoreFocusRequested || disabled || submitting) return;
     const timeout = window.setTimeout(() => {
       inputRef.current?.focus();
       setRestoreFocusRequested(false);
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [disabled, restoreFocusRequested]);
+  }, [disabled, restoreFocusRequested, submitting]);
 
-  const submit = (guessId: string, restoreFocus = false) => {
-    onGuess(guessId);
-    setQuery("");
-    setHighlightIndex(0);
+  const submit = async (guessId: string, restoreFocus = false) => {
+    if (disabled || submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
     if (restoreFocus) setRestoreFocusRequested(true);
+    try {
+      if (await onGuess(guessId)) {
+        setQuery("");
+        setHighlightIndex(0);
+      }
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showSuggestions || disabled) return;
+    if (!showSuggestions || disabled || submitting) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setHighlightIndex((i) => (i + 1) % filtered.length);
@@ -75,7 +86,7 @@ export function GuessInputBar({
     } else if (event.key === "Enter") {
       event.preventDefault();
       const item = filtered[highlightIndex];
-      if (item) submit(item.id, true);
+      if (item) void submit(item.id, true);
     }
   };
 
@@ -101,11 +112,13 @@ export function GuessInputBar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={disabled}
+            disabled={disabled || submitting}
             placeholder={
               disabled
                 ? (statusMessage ?? "等待当前轮次……")
-                : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
+                : submitting
+                  ? "正在提交……"
+                  : "搜索角色并选择提交……（↑↓ 选择，Enter 提交）"
             }
             aria-label="搜索角色"
             aria-activedescendant={
@@ -135,8 +148,8 @@ export function GuessInputBar({
                   <button
                     type="button"
                     id={`suggestion-${index}`}
-                    disabled={disabled}
-                    onClick={() => submit(result.id)}
+                    disabled={disabled || submitting}
+                    onClick={() => void submit(result.id)}
                     onMouseEnter={() => setHighlightIndex(index)}
                     className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.82rem] disabled:opacity-50 ${
                       highlightIndex === index
