@@ -110,7 +110,7 @@ seed 会在单事务内 upsert 行表、写版本化快照并更新当前版本�
 
 ## 角色搜索
 
-角色搜索采用单一权威实现。角色目录、单人猜测和多人猜测都通过前端 `useCharacterSearch` 调用 `GET /api/characters/search`；handler 负责确定题库范围，匹配、过滤、排序和分页统一由 `internal/game.SearchCharacters` 完成。前端只负责防抖、取消过期请求和展示结果，Postgres 负责保存题库数据与快照，不定义另一套搜索语义。
+角色搜索采用单一权威实现。角色目录、单人猜测和多人猜测都通过前端 `useCharacterSearch` 调用 `GET /api/characters/search`；handler 负责根据游戏身份确定冻结的题库版本与角色范围，匹配、过滤、排序和分页统一由 `internal/game.SearchCharacters` 完成。前端只负责防抖、取消过期请求和展示结果，Postgres 负责保存题库数据与快照，不定义另一套搜索语义。
 
 ```mermaid
 flowchart LR
@@ -119,22 +119,24 @@ flowchart LR
     M["多人猜测"] --> H
     H --> A["GET /api/characters/search"]
     A --> R{"选择搜索范围"}
-    R -->|"无版本参数"| V1["当前题库快照"]
-    R -->|"sessionId"| V2["单人会话快照"]
-    R -->|"catalogVersion"| V3["多人场次快照"]
+    R -->|"无游戏上下文"| V1["当前或指定版本快照"]
+    R -->|"sessionId"| V2["单人会话快照 + 题库范围"]
+    R -->|"roomId + matchIndex"| V3["多人场次快照 + 题库范围"]
     V1 --> G["game.SearchCharacters"]
     V2 --> G
     V3 --> G
     G --> O["搜索结果与总数"]
 ```
 
-这种范围选择与题局的版本约束一致：题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍搜索各自绑定的旧快照。
+这种范围选择与题局的版本约束一致：题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍搜索各自绑定的旧快照与 `selectedCharacterIds`。只传 `catalogVersion` 的非游戏搜索仅绑定版本，不应用题局角色范围。
+
+搜索限制由命名过滤器按 AND 组合，并在文本匹配、排序和分页之前执行。默认过滤器包括 `enabledAsGuess`，请求可追加作品范围；游戏上下文在 `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED=true` 时再追加当前局题库角色范围。该环境变量默认开启，设为 `false` 并重启 API 后只移除题库范围过滤器，保留版本绑定和其他搜索条件。
 
 ### 匹配模型
 
 这里的“模糊搜索”特指归一化后的连续子串匹配，不包含拼写纠错、自动拼音转换或跨字段分词查询。处理顺序如下：
 
-1. 从所选题库快照中排除不可猜角色，并应用初登场作品筛选条件。
+1. 从所选题库快照中排除不可猜角色，应用初登场作品筛选条件，并在游戏搜索中限制为该局 `selectedCharacterIds`。
 2. 查询串和每个候选字段分别转为小写、执行 Unicode NFKC 归一化，并移除空白及 `_`、`.`、`・`、`·`、`-`。
 3. 每个字段保留为独立搜索词元；每个别名和每个作品拼音缩写也分别形成词元。
 4. 归一化后的完整查询串是任一词元的连续子串时，角色命中。

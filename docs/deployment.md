@@ -46,6 +46,7 @@ cp .env.example .env
 | `WEB_ORIGINS`                                                                              | 浏览器实际访问源，例如 `https://game.example.com`。                                |
 | `NEXT_PUBLIC_API_BASE_URL`                                                                 | 通常留空，使用同源 `/api`。                                                        |
 | `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                  |
+| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                            | 默认 `true`；游戏内搜索只显示该局题库角色。设为 `false` 并重启 API 可恢复全快照候选。 |
 | `MULTI_MODE_REGISTRY`                                                                      | 默认 `full`；仅隔离演练可设为 `race-only` 或 `relay-only`，未知值会阻止 API 启动。 |
 | `MULTI_N_PLAYER_RELAY_ENABLED` / `MULTI_RELAY_ELIMINATION_ENABLED`                         | API 多人 relay 固定积分和淘汰赛入口默认均为 `true`；可分别关闭。                   |
 | `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。        |
