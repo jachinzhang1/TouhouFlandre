@@ -502,7 +502,7 @@ export function QuestionScopeDialog({
                     <InputNumber
                       min={QUESTION_SCOPE_MIN_TURN_SECONDS}
                       max={QUESTION_SCOPE_MAX_TURN_SECONDS}
-                      addonAfter="s"
+                      suffix="s"
                       size="small"
                       value={rules.turnLimit.seconds}
                       disabled={readOnly || !rules.turnLimit.enabled}
@@ -807,7 +807,7 @@ function GuessLimitControls({
       <InputNumber
         min={QUESTION_SCOPE_MIN_GUESSES}
         max={QUESTION_SCOPE_MAX_GUESSES}
-        addonAfter="手"
+        suffix="手"
         size="small"
         value={guessLimit.maxGuesses}
         disabled={readOnly || !guessLimit.enabled}
