@@ -82,6 +82,9 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
+	if err := multi.ValidateStoredStatuses(match, statuses); err != nil {
+		return submitGuessResult{}, internalError(err)
+	}
 	switch round.Status {
 	case string(multi.RoundStatusEnded):
 		if isCorrect {

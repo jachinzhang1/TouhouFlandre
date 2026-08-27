@@ -2,6 +2,7 @@ package multi
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -44,6 +45,24 @@ func StorageFieldsForMatch(match repo.MultiMatch) []game.GuessField {
 		return game.CharacterGuessFields
 	}
 	return game.StorageFieldsForQuestionScope(scope)
+}
+
+// ValidateStoredStatuses enforces the match-owned feedback width and the
+// registry vocabulary before a positional status array reaches persistence.
+func ValidateStoredStatuses(match repo.MultiMatch, statuses []string) error {
+	fields := StorageFieldsForMatch(match)
+	if len(statuses) != len(fields) {
+		return fmt.Errorf("stored feedback width %d does not match field registry width %d", len(statuses), len(fields))
+	}
+	for index, status := range statuses {
+		switch game.FeedbackStatus(status) {
+		case game.FeedbackExact, game.FeedbackPartial, game.FeedbackMiss,
+			game.FeedbackHigher, game.FeedbackLower, game.FeedbackUnknown:
+		default:
+			return fmt.Errorf("stored feedback at index %d has invalid status %q", index, status)
+		}
+	}
+	return nil
 }
 
 func AnswerPoolForMatch(match repo.MultiMatch, characters []game.Character) []string {

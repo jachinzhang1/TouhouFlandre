@@ -1078,7 +1078,7 @@ func (s *EncounterService) compareGuess(ctx context.Context, q *repo.Queries, ma
 	if err != nil {
 		return game.Character{}, nil, false, err
 	}
-	feedback, err := s.guessEvaluator.Evaluate(ctx, match.CatalogVersion, policy, answerID, guessID, legacy.FieldsForMatch(match))
+	feedback, err := s.guessEvaluator.Evaluate(ctx, match.CatalogVersion, policy, answerID, guessID, legacy.StorageFieldsForMatch(match))
 	if errors.Is(err, game.ErrGuessCharacterMissing) || errors.Is(err, game.ErrGuessCharacterDisabled) {
 		return game.Character{}, nil, false, relaydomain.ErrInvalidGuess
 	}
@@ -1096,6 +1096,9 @@ func (s *EncounterService) compareGuess(ctx context.Context, q *repo.Queries, ma
 	statuses := make([]string, len(feedback.Feedback))
 	for index, field := range feedback.Feedback {
 		statuses[index] = string(field.Status)
+	}
+	if err := legacy.ValidateStoredStatuses(match, statuses); err != nil {
+		return game.Character{}, nil, false, err
 	}
 	return guess, statuses, feedback.IsCorrect, nil
 }
