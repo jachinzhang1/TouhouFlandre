@@ -699,6 +699,7 @@ type GuessResultView struct {
 	GuessName      string              `json:"guessName"`
 	GuessAvatarURL string              `json:"guessAvatarUrl,omitempty"`
 	IsCorrect      bool                `json:"isCorrect"`
+	MatchKind      game.MatchKind      `json:"matchKind"`
 	Feedback       []FieldFeedbackView `json:"feedback"`
 }
 

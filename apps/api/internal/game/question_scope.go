@@ -2,7 +2,7 @@ package game
 
 import "sort"
 
-const QuestionScopeSchemaVersion = 2
+const QuestionScopeSchemaVersion = 3
 
 const (
 	QuestionScopeMinTurnSeconds  = 30
@@ -71,11 +71,12 @@ type QuestionScopeGuessLimit struct {
 }
 
 type QuestionScopeRules struct {
-	Fields       QuestionScopeFieldRules `json:"fields"`
-	TurnLimit    QuestionScopeTurnLimit  `json:"turnLimit"`
-	GuessLimit   QuestionScopeGuessLimit `json:"guessLimit"`
-	HiddenFields []GuessFieldKey         `json:"hiddenFields,omitempty"`
-	TurnSeconds  *int                    `json:"turnSeconds,omitempty"`
+	FieldModes   map[GuessFieldKey]string `json:"fieldModes,omitempty"`
+	TurnLimit    QuestionScopeTurnLimit   `json:"turnLimit"`
+	GuessLimit   QuestionScopeGuessLimit  `json:"guessLimit"`
+	Fields       *QuestionScopeFieldRules `json:"fields,omitempty"`
+	HiddenFields []GuessFieldKey          `json:"hiddenFields,omitempty"`
+	TurnSeconds  *int                     `json:"turnSeconds,omitempty"`
 }
 
 type QuestionScopeWorkState struct {
@@ -170,14 +171,7 @@ func IsDailyQuestionDifficulty(value QuestionDifficulty) bool {
 func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
 	definition, _ := questionScopePresetDefinitionFor(preset)
 	rules := QuestionScopeRules{
-		Fields: QuestionScopeFieldRules{
-			FirstAppearance: true,
-			ReleaseYear:     QuestionScopeReleaseYearDirectional,
-			Species:         true,
-			Affiliations:    true,
-			Locations:       true,
-			HairColors:      true,
-		},
+		FieldModes: CharacterFields.DefaultFieldModes(),
 		TurnLimit: QuestionScopeTurnLimit{
 			Enabled: false,
 			Seconds: QuestionScopeMinTurnSeconds,
@@ -195,7 +189,7 @@ func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
 		rules.TurnLimit.Seconds = definition.TurnSeconds
 	}
 	if definition.HideFirstAppearance {
-		rules.Fields.FirstAppearance = false
+		rules.FieldModes[FieldFirstAppearance] = FieldModeHidden
 	}
 	return rules
 }
@@ -246,13 +240,75 @@ func DefaultQuestionScope(catalogVersion string, works []QuestionScopeWork, char
 	return canonicalQuestionScope(catalogVersion, works, characters, PresetQuestionScopeIDs(preset, characters), PresetQuestionScopeRules(preset), preset)
 }
 
-func normalizeQuestionScopeFieldRules(fields QuestionScopeFieldRules) QuestionScopeFieldRules {
-	if fields.ReleaseYear != QuestionScopeReleaseYearHidden &&
-		fields.ReleaseYear != QuestionScopeReleaseYearExactOnly &&
-		fields.ReleaseYear != QuestionScopeReleaseYearDirectional {
-		fields.ReleaseYear = QuestionScopeReleaseYearDirectional
+func legacyFieldModes(fields *QuestionScopeFieldRules) map[GuessFieldKey]string {
+	modes := CharacterFields.DefaultFieldModes()
+	if fields == nil {
+		return modes
 	}
-	return fields
+	if !fields.FirstAppearance {
+		modes[FieldFirstAppearance] = FieldModeHidden
+	}
+	switch fields.ReleaseYear {
+	case QuestionScopeReleaseYearHidden:
+		modes[FieldReleaseYear] = FieldModeHidden
+	case QuestionScopeReleaseYearExactOnly:
+		modes[FieldReleaseYear] = FieldModeExactOnly
+	default:
+		modes[FieldReleaseYear] = FieldModeDirectional
+	}
+	if !fields.Species {
+		modes[FieldSpecies] = FieldModeHidden
+	}
+	if !fields.Affiliations {
+		modes[FieldAffiliations] = FieldModeHidden
+	}
+	if !fields.Locations {
+		modes[FieldLocations] = FieldModeHidden
+	}
+	if !fields.HairColors {
+		modes[FieldHairColors] = FieldModeHidden
+	}
+	return modes
+}
+
+func normalizeQuestionScopeFieldModes(rules QuestionScopeRules, missingMode string) map[GuessFieldKey]string {
+	if len(rules.FieldModes) == 0 {
+		return legacyFieldModes(rules.Fields)
+	}
+	modes := make(map[GuessFieldKey]string, len(CharacterFields.Definitions()))
+	for _, definition := range CharacterFields.Definitions() {
+		mode, ok := rules.FieldModes[definition.Key]
+		if !ok {
+			mode = missingMode
+			if mode == "" {
+				mode = definition.DefaultMode
+			}
+		}
+		if !CharacterFields.FieldModeValid(definition.Key, mode) {
+			mode = missingMode
+			if !CharacterFields.FieldModeValid(definition.Key, mode) {
+				mode = definition.DefaultMode
+			}
+		}
+		modes[definition.Key] = mode
+	}
+	return modes
+}
+
+func hideFieldsMissingFromLegacySchema(modes map[GuessFieldKey]string) {
+	legacyKeys := map[GuessFieldKey]struct{}{
+		FieldFirstAppearance: {},
+		FieldReleaseYear:     {},
+		FieldSpecies:         {},
+		FieldAffiliations:    {},
+		FieldLocations:       {},
+		FieldHairColors:      {},
+	}
+	for _, definition := range CharacterFields.Definitions() {
+		if _, represented := legacyKeys[definition.Key]; !represented {
+			modes[definition.Key] = FieldModeHidden
+		}
+	}
 }
 
 func normalizeQuestionScopeTurnLimit(turnLimit QuestionScopeTurnLimit) QuestionScopeTurnLimit {
@@ -280,9 +336,10 @@ func normalizeQuestionScopeGuessLimit(guessLimit QuestionScopeGuessLimit) Questi
 
 func normalizeQuestionScopeRules(rules QuestionScopeRules) QuestionScopeRules {
 	return QuestionScopeRules{
-		Fields:       normalizeQuestionScopeFieldRules(rules.Fields),
+		FieldModes:   normalizeQuestionScopeFieldModes(rules, ""),
 		TurnLimit:    normalizeQuestionScopeTurnLimit(rules.TurnLimit),
 		GuessLimit:   normalizeQuestionScopeGuessLimit(rules.GuessLimit),
+		Fields:       nil,
 		HiddenFields: nil,
 		TurnSeconds:  nil,
 	}
@@ -300,7 +357,14 @@ func EffectiveQuestionScopeMaxGuesses(rules QuestionScopeRules) int {
 	return guessLimit.MaxGuesses
 }
 
-func legacyQuestionScopeRules(rules QuestionScopeRules, requestedPreset QuestionDifficulty) QuestionScopeRules {
+func legacyQuestionScopeRules(rules QuestionScopeRules, requestedPreset QuestionDifficulty, schemaVersion int, custom bool) QuestionScopeRules {
+	if schemaVersion >= 2 && rules.Fields != nil {
+		normalized := normalizeQuestionScopeRules(rules)
+		if custom {
+			hideFieldsMissingFromLegacySchema(normalized.FieldModes)
+		}
+		return normalized
+	}
 	if requestedPreset == "" {
 		requestedPreset = QuestionDifficultyNormal
 	}
@@ -311,38 +375,54 @@ func legacyQuestionScopeRules(rules QuestionScopeRules, requestedPreset Question
 		hidden[field] = true
 	}
 	if hidden[FieldFirstAppearance] {
-		normalized.Fields.FirstAppearance = false
+		normalized.FieldModes[FieldFirstAppearance] = FieldModeHidden
 	}
 	if hidden[FieldReleaseYear] {
-		normalized.Fields.ReleaseYear = QuestionScopeReleaseYearHidden
+		normalized.FieldModes[FieldReleaseYear] = FieldModeHidden
 	}
 	if hidden[FieldSpecies] {
-		normalized.Fields.Species = false
+		normalized.FieldModes[FieldSpecies] = FieldModeHidden
 	}
 	if hidden[FieldAffiliations] {
-		normalized.Fields.Affiliations = false
+		normalized.FieldModes[FieldAffiliations] = FieldModeHidden
 	}
 	if hidden[FieldLocations] {
-		normalized.Fields.Locations = false
+		normalized.FieldModes[FieldLocations] = FieldModeHidden
 	}
 	if hidden[FieldHairColors] {
-		normalized.Fields.HairColors = false
+		normalized.FieldModes[FieldHairColors] = FieldModeHidden
 	}
 	if rules.TurnSeconds != nil {
 		normalized.TurnLimit.Enabled = true
 		normalized.TurnLimit.Seconds = *rules.TurnSeconds
 	}
-	return normalizeQuestionScopeRules(normalized)
+	normalized = normalizeQuestionScopeRules(normalized)
+	if custom {
+		hideFieldsMissingFromLegacySchema(normalized.FieldModes)
+	}
+	return normalized
 }
 
 func sameQuestionScopeRules(left, right QuestionScopeRules) bool {
 	left = normalizeQuestionScopeRules(left)
 	right = normalizeQuestionScopeRules(right)
-	return left.Fields == right.Fields &&
+	return sameFieldModes(left.FieldModes, right.FieldModes) &&
 		left.TurnLimit.Enabled == right.TurnLimit.Enabled &&
 		(!left.TurnLimit.Enabled || left.TurnLimit.Seconds == right.TurnLimit.Seconds) &&
 		left.GuessLimit.Enabled == right.GuessLimit.Enabled &&
 		left.GuessLimit.MaxGuesses == right.GuessLimit.MaxGuesses
+}
+
+func sameFieldModes(left, right map[GuessFieldKey]string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for key, mode := range left {
+		if right[key] != mode {
+			return false
+		}
+	}
+	return true
 }
 
 func sameIds(left, right []string) bool {
@@ -379,50 +459,18 @@ func inferDifficulty(
 	return QuestionDifficultyCustom
 }
 
-func questionScopeFieldVisible(rules QuestionScopeRules, field GuessFieldKey) bool {
-	switch field {
-	case FieldFirstAppearance:
-		return rules.Fields.FirstAppearance
-	case FieldReleaseYear:
-		return rules.Fields.ReleaseYear != QuestionScopeReleaseYearHidden
-	case FieldSpecies:
-		return rules.Fields.Species
-	case FieldAffiliations:
-		return rules.Fields.Affiliations
-	case FieldLocations:
-		return rules.Fields.Locations
-	case FieldHairColors:
-		return rules.Fields.HairColors
-	default:
-		return true
-	}
-}
-
 func FieldsForQuestionScope(config QuestionScopeConfig) []GuessField {
 	rules := normalizeQuestionScopeRules(config.Rules)
-	fields := make([]GuessField, 0, len(CharacterGuessFields))
-	for _, field := range CharacterGuessFields {
-		if !questionScopeFieldVisible(rules, field.Key) {
-			continue
-		}
-		if field.Key == FieldReleaseYear && rules.Fields.ReleaseYear == QuestionScopeReleaseYearExactOnly {
-			field.CompareStrategy = "numberExact"
-		}
-		fields = append(fields, field)
-	}
-	return fields
+	return CharacterFields.FieldsForModes(rules.FieldModes)
 }
 
 func StorageFieldsForQuestionScope(config QuestionScopeConfig) []GuessField {
 	rules := normalizeQuestionScopeRules(config.Rules)
-	fields := make([]GuessField, 0, len(CharacterGuessFields))
-	for _, field := range CharacterGuessFields {
-		if field.Key == FieldReleaseYear && rules.Fields.ReleaseYear == QuestionScopeReleaseYearExactOnly {
-			field.CompareStrategy = "numberExact"
-		}
-		fields = append(fields, field)
+	storageModes := CharacterFields.DefaultFieldModes()
+	if rules.FieldModes[FieldReleaseYear] == FieldModeExactOnly {
+		storageModes[FieldReleaseYear] = FieldModeExactOnly
 	}
-	return fields
+	return CharacterFields.FieldsForModes(storageModes)
 }
 
 func QuestionScopeAnswerPool(config QuestionScopeConfig) []string {
@@ -526,9 +574,16 @@ func NormalizeQuestionScope(input *QuestionScopeConfig, catalogVersion string, w
 		requestedPreset = input.Difficulty
 	}
 
+	missingMode := ""
+	if input.Mode == QuestionScopeModeCustom {
+		missingMode = FieldModeHidden
+	}
 	rules := normalizeQuestionScopeRules(input.Rules)
+	if len(input.Rules.FieldModes) > 0 {
+		rules.FieldModes = normalizeQuestionScopeFieldModes(input.Rules, missingMode)
+	}
 	if input.SchemaVersion < QuestionScopeSchemaVersion {
-		rules = legacyQuestionScopeRules(input.Rules, requestedPreset)
+		rules = legacyQuestionScopeRules(input.Rules, requestedPreset, input.SchemaVersion, input.Mode == QuestionScopeModeCustom)
 	}
 
 	incoming := input.SelectedCharacterIDs

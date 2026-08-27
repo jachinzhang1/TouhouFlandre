@@ -58,7 +58,7 @@ func normalizeQuestionScopeForCatalog(input *game.QuestionScopeConfig, version s
 	return game.NormalizeQuestionScope(input, version, questionScopeWorksForSnapshot(works, characters), characters)
 }
 
-func questionScopeFromOpenAPI(input *openapi.QuestionScopeConfig) *game.QuestionScopeConfig {
+func questionScopeFromOpenAPI(input *openapi.QuestionScopeConfigInput) *game.QuestionScopeConfig {
 	if input == nil {
 		return nil
 	}
@@ -73,7 +73,13 @@ func questionScopeFromOpenAPI(input *openapi.QuestionScopeConfig) *game.Question
 	}
 }
 
-func questionScopeRulesFromOpenAPI(input openapi.QuestionScopeRules) game.QuestionScopeRules {
+func questionScopeRulesFromOpenAPI(input openapi.QuestionScopeRulesInput) game.QuestionScopeRules {
+	fieldModes := map[game.GuessFieldKey]string{}
+	if input.FieldModes != nil {
+		for key, mode := range *input.FieldModes {
+			fieldModes[game.GuessFieldKey(key)] = mode
+		}
+	}
 	hiddenFields := []game.GuessFieldKey{}
 	if input.HiddenFields != nil {
 		hiddenFields = make([]game.GuessFieldKey, 0, len(*input.HiddenFields))
@@ -81,23 +87,31 @@ func questionScopeRulesFromOpenAPI(input openapi.QuestionScopeRules) game.Questi
 			hiddenFields = append(hiddenFields, game.GuessFieldKey(field))
 		}
 	}
-	guessLimit := game.QuestionScopeGuessLimit{
-		Enabled:    input.GuessLimit.Enabled,
-		MaxGuesses: input.GuessLimit.MaxGuesses,
+	guessLimit := game.QuestionScopeGuessLimit{}
+	if input.GuessLimit != nil {
+		guessLimit.Enabled = input.GuessLimit.Enabled
+		guessLimit.MaxGuesses = input.GuessLimit.MaxGuesses
 	}
-	return game.QuestionScopeRules{
-		Fields: game.QuestionScopeFieldRules{
+	var legacyFields *game.QuestionScopeFieldRules
+	if input.Fields != nil {
+		legacyFields = &game.QuestionScopeFieldRules{
 			FirstAppearance: input.Fields.FirstAppearance,
 			ReleaseYear:     game.QuestionScopeReleaseYearMode(input.Fields.ReleaseYear),
 			Species:         input.Fields.Species,
 			Affiliations:    input.Fields.Affiliations,
 			Locations:       input.Fields.Locations,
 			HairColors:      input.Fields.HairColors,
-		},
-		TurnLimit: game.QuestionScopeTurnLimit{
-			Enabled: input.TurnLimit.Enabled,
-			Seconds: input.TurnLimit.Seconds,
-		},
+		}
+	}
+	turnLimit := game.QuestionScopeTurnLimit{}
+	if input.TurnLimit != nil {
+		turnLimit.Enabled = input.TurnLimit.Enabled
+		turnLimit.Seconds = input.TurnLimit.Seconds
+	}
+	return game.QuestionScopeRules{
+		FieldModes:   fieldModes,
+		Fields:       legacyFields,
+		TurnLimit:    turnLimit,
 		GuessLimit:   guessLimit,
 		HiddenFields: hiddenFields,
 		TurnSeconds:  input.TurnSeconds,
@@ -131,15 +145,12 @@ func toOpenAPIQuestionScope(config game.QuestionScopeConfig) openapi.QuestionSco
 
 func toOpenAPIQuestionScopeRules(rules game.QuestionScopeRules) openapi.QuestionScopeRules {
 	rules = game.NormalizeQuestionScopeRules(rules)
+	fieldModes := make(map[string]string, len(rules.FieldModes))
+	for key, mode := range rules.FieldModes {
+		fieldModes[string(key)] = mode
+	}
 	return openapi.QuestionScopeRules{
-		Fields: openapi.QuestionScopeFieldRules{
-			FirstAppearance: rules.Fields.FirstAppearance,
-			ReleaseYear:     openapi.QuestionScopeReleaseYearMode(rules.Fields.ReleaseYear),
-			Species:         rules.Fields.Species,
-			Affiliations:    rules.Fields.Affiliations,
-			Locations:       rules.Fields.Locations,
-			HairColors:      rules.Fields.HairColors,
-		},
+		FieldModes: fieldModes,
 		TurnLimit: openapi.QuestionScopeTurnLimit{
 			Enabled: rules.TurnLimit.Enabled,
 			Seconds: rules.TurnLimit.Seconds,

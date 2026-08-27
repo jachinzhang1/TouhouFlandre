@@ -434,6 +434,7 @@ func (s *Server) CatalogFull(ctx context.Context, _ openapi.CatalogFullRequestOb
 		Version:              version,
 		Characters:           openapiCharacters,
 		Works:                openapiWorks,
+		FieldDefinitions:     toOpenAPIGuessFieldDefinitions(game.CharacterFields.Definitions()),
 		DefaultQuestionScope: toOpenAPIQuestionScope(defaultScope),
 	}), nil
 }
