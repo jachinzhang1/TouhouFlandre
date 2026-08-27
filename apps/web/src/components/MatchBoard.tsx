@@ -31,7 +31,6 @@ export function MatchBoard({
   memberId,
   members,
   roundResult,
-  catalogVersion,
   onGuess,
   disabled,
   roundActions,
@@ -44,7 +43,6 @@ export function MatchBoard({
   memberId?: string | null;
   members?: components["schemas"]["MemberView"][];
   roundResult: RoundEndedPayload | null;
-  catalogVersion?: string;
   onGuess: (guessId: string) => void;
   disabled?: boolean;
   roundActions?: ReactNode;

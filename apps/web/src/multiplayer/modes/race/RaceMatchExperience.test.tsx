@@ -8,6 +8,15 @@ import {
 } from "../../../hooks/useRoom";
 import { RaceMatchExperience } from "./RaceMatchExperience";
 
+const characterSearchMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../../hooks/useCharacterSearch", () => ({
+  useCharacterSearch: (query: string, options: unknown) => {
+    characterSearchMock(query, options);
+    return { results: [], loading: false, error: "" };
+  },
+}));
+
 const members = [
   {
     memberId: "one",
@@ -147,6 +156,16 @@ describe("RaceMatchExperience", () => {
     const opponentRow = container.querySelector("[data-member-board] tbody tr");
     expect(opponentRow?.textContent).not.toContain("博丽灵梦");
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(characterSearchMock).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        context: {
+          kind: "multiplayer-match",
+          roomId: "room-1",
+          matchIndex: 0,
+        },
+      }),
+    );
   });
 
   it("mounts the shared pulse class on the initial countdown", () => {

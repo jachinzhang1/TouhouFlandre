@@ -283,8 +283,9 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   } = useCharacterSearch(query, {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
-    sessionId: session?.id,
-    version: session?.catalogVersion ?? undefined,
+    context: session
+      ? { kind: "single-session", sessionId: session.id }
+      : undefined,
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");

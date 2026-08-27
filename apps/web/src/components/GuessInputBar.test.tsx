@@ -24,6 +24,11 @@ vi.mock("../hooks/useCharacterSearch", () => {
 
 describe("GuessInputBar", () => {
   const onGuess = vi.fn();
+  const searchContext = {
+    kind: "multiplayer-match" as const,
+    roomId: "room-1",
+    matchIndex: 0,
+  };
 
   beforeEach(() => {
     onGuess.mockClear();
@@ -33,7 +38,7 @@ describe("GuessInputBar", () => {
   });
 
   it("默认高亮第一项，下键移动高亮，回车提交高亮项", async () => {
-    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} searchContext={searchContext} guessedIds={new Set()} />);
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "白" } });
 
@@ -57,7 +62,7 @@ describe("GuessInputBar", () => {
   });
 
   it("直接回车提交默认第一项", async () => {
-    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} searchContext={searchContext} guessedIds={new Set()} />);
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "灵梦" } });
     await waitFor(() => expect(screen.getAllByRole("button").some((b) => b.id === "suggestion-0")).toBe(true));
@@ -78,7 +83,7 @@ describe("GuessInputBar", () => {
             await Promise.resolve();
             setDisabled(false);
           }}
-          catalogVersion="v1"
+          searchContext={searchContext}
           guessedIds={new Set()}
           disabled={disabled}
         />
@@ -104,7 +109,7 @@ describe("GuessInputBar", () => {
   });
 
   it("在多人底部输入栏展示共用反馈图例", () => {
-    render(<GuessInputBar onGuess={onGuess} catalogVersion="v1" guessedIds={new Set()} />);
+    render(<GuessInputBar onGuess={onGuess} searchContext={searchContext} guessedIds={new Set()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "查看图例" }));
 
@@ -122,7 +127,7 @@ describe("GuessInputBar", () => {
     const { rerender } = render(
       <GuessInputBar
         onGuess={onGuess}
-        catalogVersion="v1"
+        searchContext={searchContext}
         guessedIds={new Set()}
       />,
     );
@@ -134,7 +139,7 @@ describe("GuessInputBar", () => {
     rerender(
       <GuessInputBar
         onGuess={onGuess}
-        catalogVersion="v1"
+        searchContext={searchContext}
         guessedIds={new Set()}
         disabled
         statusMessage="你已放弃本局"

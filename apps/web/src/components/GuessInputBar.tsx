@@ -6,20 +6,23 @@ import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
-import { useCharacterSearch } from "../hooks/useCharacterSearch";
+import {
+  useCharacterSearch,
+  type MultiplayerCharacterSearchContext,
+} from "../hooks/useCharacterSearch";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
 
 export function GuessInputBar({
   onGuess,
   disabled,
-  catalogVersion,
+  searchContext,
   guessedIds,
   statusMessage,
 }: {
   onGuess: (guessId: string) => void;
   disabled?: boolean;
-  catalogVersion?: string;
+  searchContext?: MultiplayerCharacterSearchContext;
   guessedIds: ReadonlySet<string>;
   statusMessage?: string | null;
 }) {
@@ -27,9 +30,9 @@ export function GuessInputBar({
   const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { results, loading, error } = useCharacterSearch(query, {
-    enabled: Boolean(catalogVersion) && !disabled,
+    enabled: Boolean(searchContext) && !disabled,
+    context: searchContext,
     limit: GAME_SEARCH_RESULT_LIMIT,
-    version: catalogVersion,
   });
   const filtered = results.filter((r) => !guessedIds.has(r.id));
   const showSuggestions =
