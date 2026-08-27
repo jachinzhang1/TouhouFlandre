@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
@@ -455,6 +457,16 @@ func createMRX005Fixture(t *testing.T, playerCount int) mrx005Fixture {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if match.AnswerMatchPolicy != string(game.AnswerMatchStrict) {
+		t.Fatalf("legacy CreateMatch policy = %q, want strict", match.AnswerMatchPolicy)
+	}
+	var frozenRules map[string]any
+	if err := json.Unmarshal(match.RuleConfigSnapshot, &frozenRules); err != nil {
+		t.Fatal(err)
+	}
+	if frozenRules["answerMatchPolicy"] != string(game.AnswerMatchStrict) {
+		t.Fatalf("legacy CreateMatch rule snapshot = %s", match.RuleConfigSnapshot)
 	}
 	t.Cleanup(func() {
 		if _, err := pool.Exec(ctx, `

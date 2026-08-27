@@ -144,6 +144,7 @@ func TestMain(m *testing.M) {
 		ChatSendEnabled: true, SystemAnnouncementsEnabled: true,
 	}
 	ts := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithAnswerMatchPolicy(game.AnswerMatchPublicFieldsV1),
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithCharacterSearchConfig(handler.CharacterSearchConfig{QuestionScopeFilterEnabled: true}),
 		handler.WithRolloutConfig(enabledRollout)))
@@ -161,6 +162,7 @@ func TestMain(m *testing.M) {
 	}
 	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"), 24*time.Hour, []byte("integration-test-chat-cursor-secret"))
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithAnswerMatchPolicy(game.AnswerMatchPublicFieldsV1),
 		handler.WithJoinRateLimit(10000, time.Minute),
 		handler.WithCharacterSearchConfig(handler.CharacterSearchConfig{QuestionScopeFilterEnabled: true}),
 		handler.WithMultiTiming(fastTiming),
@@ -550,6 +552,96 @@ func TestSinglePlayerSearchUsesFrozenQuestionScope(t *testing.T) {
 				t.Fatalf("%s scoped search status %d: %s", mode, searchResp.StatusCode, searchPayload)
 			}
 			assertSearchResultIDs(t, searchPayload, expected)
+		})
+	}
+}
+
+func TestLegacyQuestionScopeRequestsNormalizeToV3(t *testing.T) {
+	var version string
+	if err := pool.QueryRow(ctx, `SELECT current_version FROM catalog_state WHERE id = 'current'`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	characters := catalogCharactersForVersion(t, version)
+	selectedIDs := make([]string, 0, len(characters))
+	for _, character := range characters {
+		if character.EnabledAsAnswer {
+			selectedIDs = append(selectedIDs, character.ID)
+		}
+	}
+	if len(selectedIDs) == 0 {
+		t.Fatal("test catalog has no answerable characters")
+	}
+
+	tests := []struct {
+		name         string
+		schema       int
+		rules        map[string]any
+		assertFields func(*testing.T, map[string]string)
+	}{
+		{
+			name:   "v1",
+			schema: 1,
+			rules: map[string]any{
+				"hiddenFields": []string{"locations"},
+				"turnSeconds":  60,
+			},
+			assertFields: func(t *testing.T, modes map[string]string) {
+				if modes["locations"] != "hidden" {
+					t.Fatalf("v1 locations mode = %q, want hidden", modes["locations"])
+				}
+			},
+		},
+		{
+			name:   "v2",
+			schema: 2,
+			rules: map[string]any{
+				"fields": map[string]any{
+					"firstAppearance": true,
+					"releaseYear":     "exactOnly",
+					"species":         true,
+					"affiliations":    true,
+					"locations":       true,
+					"hairColors":      false,
+				},
+				"turnLimit":  map[string]any{"enabled": false, "seconds": 30},
+				"guessLimit": map[string]any{"enabled": true, "maxGuesses": 9},
+			},
+			assertFields: func(t *testing.T, modes map[string]string) {
+				if modes["releaseYear"] != "exactOnly" || modes["hairColors"] != "hidden" {
+					t.Fatalf("v2 field modes were not migrated: %+v", modes)
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp, payload := request(http.MethodPost, "/api/puzzles/random", map[string]any{
+				"questionScope": map[string]any{
+					"schemaVersion":        test.schema,
+					"catalogVersion":       version,
+					"mode":                 "custom",
+					"difficulty":           "custom",
+					"selectedCharacterIds": selectedIDs,
+					"workStates":           []any{},
+					"rules":                test.rules,
+				},
+			})
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("legacy config status %d: %s", resp.StatusCode, payload)
+			}
+			var created openapi.PuzzleResponse
+			if err := json.Unmarshal(payload, &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.Session.QuestionScope == nil {
+				t.Fatal("normalized question scope is missing")
+			}
+			scope := created.Session.QuestionScope
+			if scope.SchemaVersion != 3 {
+				t.Fatalf("schema version = %d, want 3", scope.SchemaVersion)
+			}
+			test.assertFields(t, scope.Rules.FieldModes)
 		})
 	}
 }
