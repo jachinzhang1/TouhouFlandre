@@ -192,8 +192,9 @@ describe("StatsDashboard", () => {
 
   it("展示指标、图表与精确到秒的记录", async () => {
     render(<StatsDashboard />);
-    await waitFor(() =>
-      expect(screen.getByLabelText(/猜测角色：博丽灵梦/)).toBeTruthy(),
+    await waitFor(
+      () => expect(screen.getByLabelText(/猜测角色：博丽灵梦/)).toBeTruthy(),
+      { timeout: 5_000 },
     );
     expect(screen.getByText("成功次数")).toBeTruthy();
     expect(

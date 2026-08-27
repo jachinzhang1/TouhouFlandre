@@ -215,8 +215,8 @@ describe("MusicPlayerProvider", () => {
     expect(adapter.setSource).toHaveBeenCalledTimes(2);
 
     act(() => adapter.emit("canplay"));
-    await waitFor(() => expect(adapter.play).toHaveBeenCalledTimes(1));
-    expect(player.state.status).toBe("playing");
+    await waitFor(() => expect(player.state.status).toBe("playing"));
+    expect(adapter.play).toHaveBeenCalledTimes(1);
 
     act(() => player.commands.playTrack("missing-track"));
     expect(player.state.currentTrack).toBe(MUSIC_CATALOG[2]);
