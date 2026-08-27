@@ -914,12 +914,14 @@ test.describe("MRX-013 接力结算流程", () => {
     await expect(page.locator("[data-relay-board]")).toHaveCount(1);
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page.getByLabel("选择轮次").selectOption("history:1");
-    await expect(page.locator("[data-relay-status]")).toContainText(
-      "第 1 轮历史",
-      { timeout: 20_000 },
-    );
-    await expect(page.locator("[data-relay-board]")).toHaveCount(1);
+    const roundSelector = page.getByLabel("选择轮次");
+    await roundSelector.selectOption("history:1");
+    await expect(roundSelector).toHaveValue("history:1");
+    const historyBoard = page.locator("[data-relay-board]");
+    await expect(historyBoard).toHaveCount(1, { timeout: 20_000 });
+    await expect(
+      historyBoard.getByRole("region", { name: "接力回合记录" }),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "再来一局" }).click();
     const guestRematch = await request.post(
@@ -962,11 +964,14 @@ test.describe("MRX-013 接力结算流程", () => {
         .locator("xpath=ancestor::section[1]"),
     ).toContainText("第 1 名");
     await expect(page.locator("[data-relay-board]")).toHaveCount(1);
-    await page.getByLabel("选择轮次").selectOption("history:1");
-    await expect(page.locator("[data-relay-status]")).toContainText(
-      "第 1 轮历史",
-      { timeout: 20_000 },
-    );
+    const roundSelector = page.getByLabel("选择轮次");
+    await roundSelector.selectOption("history:1");
+    await expect(roundSelector).toHaveValue("history:1");
+    const historyBoard = page.locator("[data-relay-board]");
+    await expect(historyBoard).toHaveCount(1, { timeout: 20_000 });
+    await expect(
+      historyBoard.getByRole("region", { name: "接力回合记录" }),
+    ).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
