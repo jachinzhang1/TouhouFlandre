@@ -71,5 +71,5 @@ export const HAIR_COLOR_LABELS: Record<HairColor, string> = {
   gray: "灰",
   multicolor: "多色",
   other: "其他",
-  none: "光头",
+  none: "无",
 };

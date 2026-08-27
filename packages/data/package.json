@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./music": "./src/music/index.ts"
   },
   "scripts": {
     "validate": "tsx src/validate.ts",

@@ -147,6 +147,24 @@ docker compose --profile monitoring up -d prometheus grafana
 
 Prometheus 和 Grafana 默认只绑定 `127.0.0.1:${PROMETHEUS_PORT:-9090}` 与 `127.0.0.1:${GRAFANA_PORT:-3001}`。公开 Grafana 前必须修改 `GRAFANA_ADMIN_PASSWORD` 并置于受控反向代理后。配置位于 `monitoring/prometheus.yml`、`monitoring/alerts.yml` 和 `monitoring/grafana/`；`docker compose --profile monitoring config` 可在部署前验证装配。
 
+## 音乐静态资源
+
+音乐播放器使用 `web` 服务下的本地 `/music/` 静态资源。公开部署前应确认反向代理没有改写或吞掉媒体响应头：
+
+- MP3 返回 `Content-Type: audio/mpeg`；
+- 带 `Range: bytes=<start>-<end>` 的请求返回 `206` 和正确的 `Content-Range`；
+- 非 Range 请求仍返回完整文件，缓存策略不会把旧曲目路径改写成其他内容；
+- 默认播放器只请求当前曲目的 metadata/range，不应在首屏并行下载全部 MP3。
+
+可在部署环境使用类似请求检查响应（路径替换为实际曲目）：
+
+```bash
+curl -I https://example.com/music/tracks/<track>.mp3
+curl -i -H 'Range: bytes=0-31' https://example.com/music/tracks/<track>.mp3
+```
+
+如果代理需要单独的 MIME 或 Range 配置，应在发布前完成并记录验证结果；不要通过外部 CDN 或远程热链绕过本地资源发布约束。
+
 ## 素材与合规
 
 公开部署前需要核对第三方素材授权和署名信息。素材清单见 [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md)，内容规范见[数据规范](./data-guidelines.md)。

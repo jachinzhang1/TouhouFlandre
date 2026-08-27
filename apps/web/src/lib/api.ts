@@ -1,9 +1,9 @@
 import createClient from "openapi-fetch";
 import type { components, paths } from "../generated/api";
 import type {
+  DailyQuestionDifficulty,
   MultiRoomFormat,
   MultiplayerMode,
-  QuestionDifficultyPreset,
   QuestionScopeConfig,
 } from "@touhouflandre/shared";
 
@@ -89,7 +89,7 @@ export const api = {
     mode: "daily" | "random",
     body?: {
       questionScope?: QuestionScopeConfig;
-      difficulty?: QuestionDifficultyPreset;
+      difficulty?: DailyQuestionDifficulty;
     },
   ) =>
     requestApi(

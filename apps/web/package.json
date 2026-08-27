@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript ../../contracts/openapi/openapi.yaml -o src/generated/api.ts"
   },
   "dependencies": {
+    "@touhouflandre/data": "workspace:*",
     "@touhouflandre/shared": "workspace:*",
     "antd": "^6.5.4",
     "dayjs": "^1.11.21",
@@ -22,6 +23,7 @@
     "next": "16.3.0",
     "openapi-fetch": "^0.17.0",
     "react": "19.2.8",
+    "react-bootstrap-icons": "^1.11.6",
     "react-dom": "19.2.8",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",

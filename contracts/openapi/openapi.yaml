@@ -111,6 +111,8 @@ components:
       $ref: ./schemas/character.yaml#/CatalogSummary
     QuestionDifficultyPreset:
       $ref: ./schemas/question-scope.yaml#/QuestionDifficultyPreset
+    DailyQuestionDifficulty:
+      $ref: ./schemas/question-scope.yaml#/DailyQuestionDifficulty
     QuestionDifficulty:
       $ref: ./schemas/question-scope.yaml#/QuestionDifficulty
     QuestionScopeMode:

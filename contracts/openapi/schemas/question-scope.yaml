@@ -5,6 +5,15 @@ QuestionDifficultyPreset:
     - normal
     - hard
     - lunatic
+    - extra
+
+DailyQuestionDifficulty:
+  type: string
+  enum:
+    - easy
+    - normal
+    - hard
+    - lunatic
 
 QuestionDifficulty:
   type: string
@@ -13,6 +22,7 @@ QuestionDifficulty:
     - normal
     - hard
     - lunatic
+    - extra
     - custom
 
 QuestionScopeMode:
@@ -185,4 +195,4 @@ PuzzleCreateRequest:
     questionScope:
       $ref: "#/QuestionScopeConfig"
     difficulty:
-      $ref: "#/QuestionDifficultyPreset"
+      $ref: "#/DailyQuestionDifficulty"

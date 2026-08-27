@@ -26,6 +26,7 @@ import {
   buildQuestionScopeWorkStates,
   normalizeQuestionScope,
   normalizeQuestionScopeRules,
+  presetQuestionScopeIds,
   QUESTION_DIFFICULTY_DESCRIPTIONS,
   QUESTION_DIFFICULTY_LABELS,
   QUESTION_DIFFICULTY_PRESETS,
@@ -379,19 +380,22 @@ export function QuestionScopeDialog({
             <div className="grid gap-4">
               <section>
                 <h3 className="mb-2 text-sm font-black text-ink">预设难度选择</h3>
-                <div className="grid gap-2 md:grid-cols-4">
+                <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-5">
                   {QUESTION_DIFFICULTY_PRESETS.map((preset) => {
                     const active = currentDifficulty === preset;
+                    const available =
+                      presetQuestionScopeIds(preset, snapshot.characters).length > 0;
                     return (
                       <button
                         key={preset}
                         type="button"
-                        disabled={readOnly}
+                        disabled={readOnly || !available}
+                        title={available ? undefined : "当前题库暂无此难度角色"}
                         className={`min-h-[84px] rounded-[6px] border px-3 py-2.5 text-left transition ${
                           active
                             ? "border-vermilion bg-vermilion-soft text-vermilion"
                             : "border-line bg-paper-muted text-ink hover:bg-paper"
-                        } disabled:cursor-default`}
+                        } disabled:cursor-default disabled:opacity-60`}
                         onClick={() => applyPreset(preset)}
                       >
                         <strong className="flex items-center gap-1 text-[0.9rem]">

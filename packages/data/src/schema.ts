@@ -6,6 +6,7 @@ import {
 } from "@touhouflandre/shared";
 
 export const hairColorSchema = z.enum(HAIR_COLORS);
+export const difficultyTierSchema = z.enum(DIFFICULTY_TIERS);
 const uniqueStringArray = z
   .array(z.string().trim().min(1))
   .min(1)
@@ -56,7 +57,7 @@ export const characterSourceSchema = z.object({
   playable: z.boolean(),
   enabledAsAnswer: z.boolean(),
   enabledAsGuess: z.boolean(),
-  difficultyTier: z.enum(DIFFICULTY_TIERS),
+  difficultyTier: difficultyTierSchema,
   sourceRefs: z.array(z.string().url()).min(1),
 });
 

@@ -409,7 +409,7 @@ describe("SingleGamePage", () => {
     confirm.mockRestore();
   });
 
-  it("falls back to the raw hair color and labels none as 光头", async () => {
+  it("falls back to the raw hair color and labels none as 无", async () => {
     searchHookMock.mockReturnValue({
       results: [
         {
@@ -440,7 +440,7 @@ describe("SingleGamePage", () => {
     await screen.findByText(dailyTitle);
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "测试");
 
-    expect(await screen.findByText("teal、光头")).toBeTruthy();
+    expect(await screen.findByText("teal、无")).toBeTruthy();
   });
 
   it("selects a search suggestion with the keyboard", async () => {

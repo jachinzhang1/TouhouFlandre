@@ -22,7 +22,10 @@ import {
   X,
 } from "lucide-react";
 import { useEffect } from "react";
-import { QUESTION_DIFFICULTY_LABELS } from "@touhouflandre/shared";
+import {
+  QUESTION_DIFFICULTY_LABELS,
+  QUESTION_DIFFICULTY_PRESETS,
+} from "@touhouflandre/shared";
 import {
   MULTIPLAYER_MODE_LABELS,
   ROOM_FORMAT_SHORT,
@@ -72,10 +75,10 @@ const DIFFICULTY_OPTIONS: {
   label: string;
 }[] = [
   { value: "all", label: "全部难度" },
-  { value: "easy", label: QUESTION_DIFFICULTY_LABELS.easy },
-  { value: "normal", label: QUESTION_DIFFICULTY_LABELS.normal },
-  { value: "hard", label: QUESTION_DIFFICULTY_LABELS.hard },
-  { value: "lunatic", label: QUESTION_DIFFICULTY_LABELS.lunatic },
+  ...QUESTION_DIFFICULTY_PRESETS.map((difficulty) => ({
+    value: difficulty,
+    label: QUESTION_DIFFICULTY_LABELS[difficulty],
+  })),
   { value: "custom", label: QUESTION_DIFFICULTY_LABELS.custom },
   { value: "unknown", label: "未知" },
 ];
