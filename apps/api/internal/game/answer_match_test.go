@@ -2,6 +2,7 @@ package game_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -124,24 +125,107 @@ func TestGuessEvaluatorUsesFullPublicSignature(t *testing.T) {
 
 func TestCatalogRuntimeProviderMergesConcurrentLoads(t *testing.T) {
 	var loads atomic.Int32
-	provider := game.NewCatalogRuntimeProvider(func(context.Context, string) ([]game.Character, error) {
+	loader := func(context.Context, string) ([]game.Character, error) {
 		loads.Add(1)
 		time.Sleep(20 * time.Millisecond)
 		return []game.Character{equivalentFixture("answer")}, nil
+	}
+	var defaultLoads atomic.Int32
+	provider := game.NewCatalogRuntimeProvider(func(context.Context, string) ([]game.Character, error) {
+		defaultLoads.Add(1)
+		return nil, errors.New("default loader used")
 	})
 	var wait sync.WaitGroup
 	for range 24 {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			if _, err := provider.Get(context.Background(), "same", game.AnswerMatchPublicFieldsV1); err != nil {
-				t.Errorf("Get: %v", err)
+			if _, err := provider.GetWithLoader(context.Background(), "same", game.AnswerMatchPublicFieldsV1, loader); err != nil {
+				t.Errorf("GetWithLoader: %v", err)
 			}
 		}()
 	}
 	wait.Wait()
 	if got := loads.Load(); got != 1 {
 		t.Fatalf("loader called %d times, want 1", got)
+	}
+	if got := defaultLoads.Load(); got != 0 {
+		t.Fatalf("default loader called %d times, want 0", got)
+	}
+}
+
+func TestCatalogRuntimeProviderUsesCustomLoaderAndCachesResult(t *testing.T) {
+	var defaultLoads atomic.Int32
+	provider := game.NewCatalogRuntimeProvider(func(context.Context, string) ([]game.Character, error) {
+		defaultLoads.Add(1)
+		return []game.Character{equivalentFixture("default")}, nil
+	})
+	var customLoads atomic.Int32
+	customLoader := func(_ context.Context, version string) ([]game.Character, error) {
+		customLoads.Add(1)
+		if version != "custom-version" {
+			t.Fatalf("loader version = %q", version)
+		}
+		return []game.Character{equivalentFixture("custom")}, nil
+	}
+
+	runtime, err := provider.GetWithLoader(context.Background(), "custom-version", game.AnswerMatchPublicFieldsV1, customLoader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := runtime.ByID["custom"]; !ok {
+		t.Fatalf("custom runtime characters = %+v", runtime.Characters)
+	}
+	cached, err := provider.Get(context.Background(), "custom-version", game.AnswerMatchPublicFieldsV1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cached != runtime {
+		t.Fatal("default Get did not reuse the custom-loaded runtime")
+	}
+	if got := customLoads.Load(); got != 1 {
+		t.Fatalf("custom loader called %d times, want 1", got)
+	}
+	if got := defaultLoads.Load(); got != 0 {
+		t.Fatalf("default loader called %d times, want 0", got)
+	}
+}
+
+func TestCatalogRuntimeProviderRetriesAfterCustomLoaderFailure(t *testing.T) {
+	wantErr := errors.New("load failed")
+	provider := game.NewCatalogRuntimeProvider(func(context.Context, string) ([]game.Character, error) {
+		t.Fatal("default loader must not be used")
+		return nil, nil
+	})
+	var loads atomic.Int32
+	loader := func(context.Context, string) ([]game.Character, error) {
+		if loads.Add(1) == 1 {
+			return nil, wantErr
+		}
+		return []game.Character{equivalentFixture("answer")}, nil
+	}
+
+	if _, err := provider.GetWithLoader(context.Background(), "retry", game.AnswerMatchPublicFieldsV1, loader); !errors.Is(err, wantErr) {
+		t.Fatalf("first load error = %v, want %v", err, wantErr)
+	}
+	runtime, err := provider.GetWithLoader(context.Background(), "retry", game.AnswerMatchPublicFieldsV1, loader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := runtime.ByID["answer"]; !ok {
+		t.Fatalf("retry runtime characters = %+v", runtime.Characters)
+	}
+	if got := loads.Load(); got != 2 {
+		t.Fatalf("loader called %d times, want 2", got)
+	}
+}
+
+func TestCatalogRuntimeProviderRejectsNilCustomLoader(t *testing.T) {
+	provider := game.NewCatalogRuntimeProvider(func(context.Context, string) ([]game.Character, error) {
+		return []game.Character{equivalentFixture("default")}, nil
+	})
+	if _, err := provider.GetWithLoader(context.Background(), "fixture", game.AnswerMatchPublicFieldsV1, nil); !errors.Is(err, game.ErrCatalogRuntimeLoaderMissing) {
+		t.Fatalf("nil loader error = %v", err)
 	}
 }
 
