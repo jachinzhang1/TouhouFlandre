@@ -62,6 +62,7 @@ services:
       API_PORT: "4000"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED: ${CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED:-true}
+      ANSWER_MATCH_POLICY: ${ANSWER_MATCH_POLICY:-public_fields_v1}
       # WS 升级校验 Origin ∈ WEB_ORIGINS（逗号分隔，含协议与端口）：
       #   cloudflared：https://<隧道公网域名>（浏览器 Origin）
       #   本地直连调试：http://localhost:3000
