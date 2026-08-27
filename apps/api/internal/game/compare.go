@@ -20,7 +20,7 @@ var HairColorLabels = map[string]string{
 	"gray":       "灰",
 	"multicolor": "多色",
 	"other":      "其他",
-	"none":       "光头",
+	"none":       "无",
 }
 
 // CHARACTER_GUESS_FIELDS 对应 shared 的 CHARACTER_GUESS_FIELDS。

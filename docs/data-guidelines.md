@@ -119,9 +119,17 @@
 | `easy` | 主要主角或辨识度很高的角色。 |
 | `normal` | 正作中的常见角色，资料较完整。 |
 | `hard` | 出场较少或需要更多作品知识的角色。 |
-| `lunatic` | 旧作、书籍、音乐 CD 等较深范围的角色。 |
+| `lunatic` | 书籍、音乐 CD 等较深范围的角色。 |
+| `extra` | 仅在旧作中登场的角色。 |
 
 难度调整应基于题库区分度和实际游玩反馈，不应仅按个人印象决定。
+
+题库预设的标签、说明、选池范围和规则集中定义在
+`packages/shared/src/questionScope.ts` 的 `QUESTION_DIFFICULTY_PRESET_DEFINITIONS`；
+服务端权威规则集中定义在 `apps/api/internal/game/question_scope.go` 的
+`questionScopePresetDefinitions`。增删预设时还应同步 OpenAPI 枚举并重新生成契约类型。
+每日题可用难度由共享层的 `DAILY_QUESTION_DIFFICULTY_PRESETS` 与服务端定义中的
+`AvailableInDaily` 独立控制；Extra 当前不开放每日题。
 
 ## 来源与争议处理
 

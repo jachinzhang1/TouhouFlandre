@@ -24,6 +24,7 @@ const (
 	QuestionDifficultyNormal  QuestionDifficulty = "normal"
 	QuestionDifficultyHard    QuestionDifficulty = "hard"
 	QuestionDifficultyLunatic QuestionDifficulty = "lunatic"
+	QuestionDifficultyExtra   QuestionDifficulty = "extra"
 	QuestionDifficultyCustom  QuestionDifficulty = "custom"
 )
 
@@ -104,23 +105,70 @@ type QuestionScopeCorrection struct {
 	Reason  string
 }
 
-var questionScopePresets = []QuestionDifficulty{
-	QuestionDifficultyEasy,
-	QuestionDifficultyNormal,
-	QuestionDifficultyHard,
-	QuestionDifficultyLunatic,
+type questionScopePresetDefinition struct {
+	Difficulty              QuestionDifficulty
+	IncludedDifficultyTiers []string
+	IncludeAllTiers         bool
+	AvailableInDaily        bool
+	UnlimitedGuesses        bool
+	HideFirstAppearance     bool
+	TurnSeconds             int
+}
+
+var questionScopePresetDefinitions = []questionScopePresetDefinition{
+	{
+		Difficulty:              QuestionDifficultyEasy,
+		IncludedDifficultyTiers: []string{"easy"},
+		AvailableInDaily:        true,
+		UnlimitedGuesses:        true,
+	},
+	{
+		Difficulty:              QuestionDifficultyNormal,
+		IncludedDifficultyTiers: []string{"easy", "normal"},
+		AvailableInDaily:        true,
+	},
+	{
+		Difficulty:              QuestionDifficultyHard,
+		IncludedDifficultyTiers: []string{"easy", "normal", "hard"},
+		AvailableInDaily:        true,
+		TurnSeconds:             QuestionScopeHardTurnSeconds,
+	},
+	{
+		Difficulty:              QuestionDifficultyLunatic,
+		IncludedDifficultyTiers: []string{"easy", "normal", "hard", "lunatic"},
+		AvailableInDaily:        true,
+		HideFirstAppearance:     true,
+		TurnSeconds:             QuestionScopeMinTurnSeconds,
+	},
+	{
+		Difficulty:          QuestionDifficultyExtra,
+		IncludeAllTiers:     true,
+		HideFirstAppearance: true,
+		TurnSeconds:         QuestionScopeMinTurnSeconds,
+	},
+}
+
+func questionScopePresetDefinitionFor(value QuestionDifficulty) (questionScopePresetDefinition, bool) {
+	for _, definition := range questionScopePresetDefinitions {
+		if definition.Difficulty == value {
+			return definition, true
+		}
+	}
+	return questionScopePresetDefinition{}, false
 }
 
 func IsQuestionDifficultyPreset(value QuestionDifficulty) bool {
-	switch value {
-	case QuestionDifficultyEasy, QuestionDifficultyNormal, QuestionDifficultyHard, QuestionDifficultyLunatic:
-		return true
-	default:
-		return false
-	}
+	_, ok := questionScopePresetDefinitionFor(value)
+	return ok
+}
+
+func IsDailyQuestionDifficulty(value QuestionDifficulty) bool {
+	definition, ok := questionScopePresetDefinitionFor(value)
+	return ok && definition.AvailableInDaily
 }
 
 func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
+	definition, _ := questionScopePresetDefinitionFor(preset)
 	rules := QuestionScopeRules{
 		Fields: QuestionScopeFieldRules{
 			FirstAppearance: true,
@@ -139,38 +187,43 @@ func PresetQuestionScopeRules(preset QuestionDifficulty) QuestionScopeRules {
 			MaxGuesses: QuestionScopeDefaultGuesses,
 		},
 	}
-	if preset == QuestionDifficultyEasy {
+	if definition.UnlimitedGuesses {
 		rules.GuessLimit.Enabled = false
 	}
-	if preset == QuestionDifficultyHard {
+	if definition.TurnSeconds > 0 {
 		rules.TurnLimit.Enabled = true
-		rules.TurnLimit.Seconds = QuestionScopeHardTurnSeconds
+		rules.TurnLimit.Seconds = definition.TurnSeconds
 	}
-	if preset == QuestionDifficultyLunatic {
+	if definition.HideFirstAppearance {
 		rules.Fields.FirstAppearance = false
-		rules.TurnLimit.Enabled = true
-		rules.TurnLimit.Seconds = QuestionScopeMinTurnSeconds
 	}
 	return rules
 }
 
+func presetIncludesDifficultyTier(definition questionScopePresetDefinition, tier string) bool {
+	if definition.IncludeAllTiers {
+		return true
+	}
+	for _, includedTier := range definition.IncludedDifficultyTiers {
+		if tier == includedTier {
+			return true
+		}
+	}
+	return false
+}
+
 func PresetQuestionScopeIDs(preset QuestionDifficulty, characters []Character) []string {
+	definition, ok := questionScopePresetDefinitionFor(preset)
+	if !ok {
+		return []string{}
+	}
 	pool := make([]Character, 0, len(characters))
 	for _, character := range characters {
 		if !character.EnabledAsAnswer {
 			continue
 		}
-		switch preset {
-		case QuestionDifficultyHard, QuestionDifficultyLunatic:
+		if presetIncludesDifficultyTier(definition, character.DifficultyTier) {
 			pool = append(pool, character)
-		case QuestionDifficultyNormal:
-			if character.DifficultyTier == "easy" || character.DifficultyTier == "normal" {
-				pool = append(pool, character)
-			}
-		case QuestionDifficultyEasy:
-			if character.DifficultyTier == "easy" {
-				pool = append(pool, character)
-			}
 		}
 	}
 	sort.Slice(pool, func(i, j int) bool {
@@ -190,7 +243,7 @@ func DefaultQuestionScope(catalogVersion string, works []QuestionScopeWork, char
 	if !IsQuestionDifficultyPreset(preset) {
 		preset = QuestionDifficultyNormal
 	}
-	return canonicalQuestionScope(catalogVersion, works, characters, PresetQuestionScopeIDs(preset, characters), PresetQuestionScopeRules(preset))
+	return canonicalQuestionScope(catalogVersion, works, characters, PresetQuestionScopeIDs(preset, characters), PresetQuestionScopeRules(preset), preset)
 }
 
 func normalizeQuestionScopeFieldRules(fields QuestionScopeFieldRules) QuestionScopeFieldRules {
@@ -308,10 +361,18 @@ func inferDifficulty(
 	selectedCharacterIds []string,
 	rules QuestionScopeRules,
 	characters []Character,
+	preferredPreset QuestionDifficulty,
 ) QuestionDifficulty {
-	for _, preset := range questionScopePresets {
-		if sameIds(selectedCharacterIds, PresetQuestionScopeIDs(preset, characters)) &&
-			sameQuestionScopeRules(rules, PresetQuestionScopeRules(preset)) {
+	matchesPreset := func(preset QuestionDifficulty) bool {
+		return sameIds(selectedCharacterIds, PresetQuestionScopeIDs(preset, characters)) &&
+			sameQuestionScopeRules(rules, PresetQuestionScopeRules(preset))
+	}
+	if IsQuestionDifficultyPreset(preferredPreset) && matchesPreset(preferredPreset) {
+		return preferredPreset
+	}
+	for _, definition := range questionScopePresetDefinitions {
+		preset := definition.Difficulty
+		if matchesPreset(preset) {
 			return preset
 		}
 	}
@@ -368,10 +429,10 @@ func QuestionScopeAnswerPool(config QuestionScopeConfig) []string {
 	return append([]string{}, config.SelectedCharacterIDs...)
 }
 
-func canonicalQuestionScope(catalogVersion string, works []QuestionScopeWork, characters []Character, selectedIDs []string, rules QuestionScopeRules) QuestionScopeConfig {
+func canonicalQuestionScope(catalogVersion string, works []QuestionScopeWork, characters []Character, selectedIDs []string, rules QuestionScopeRules, preferredPreset QuestionDifficulty) QuestionScopeConfig {
 	selectedIDs = normalizeQuestionScopeIDs(selectedIDs, characters)
 	rules = normalizeQuestionScopeRules(rules)
-	difficulty := inferDifficulty(selectedIDs, rules, characters)
+	difficulty := inferDifficulty(selectedIDs, rules, characters, preferredPreset)
 	mode := QuestionScopeModePreset
 	if difficulty == QuestionDifficultyCustom {
 		mode = QuestionScopeModeCustom
@@ -471,7 +532,9 @@ func NormalizeQuestionScope(input *QuestionScopeConfig, catalogVersion string, w
 	}
 
 	incoming := input.SelectedCharacterIDs
-	if len(incoming) == 0 && requestedPreset != "" {
+	if input.CatalogVersion != catalogVersion && input.Mode == QuestionScopeModePreset && requestedPreset != "" {
+		incoming = PresetQuestionScopeIDs(requestedPreset, characters)
+	} else if len(incoming) == 0 && requestedPreset != "" {
 		incoming = PresetQuestionScopeIDs(requestedPreset, characters)
 	}
 	selected := normalizeQuestionScopeIDs(incoming, characters)
@@ -479,12 +542,13 @@ func NormalizeQuestionScope(input *QuestionScopeConfig, catalogVersion string, w
 	if len(selected) == 0 {
 		selected = PresetQuestionScopeIDs(QuestionDifficultyNormal, characters)
 		rules = PresetQuestionScopeRules(QuestionDifficultyNormal)
+		requestedPreset = QuestionDifficultyNormal
 		reason = "empty-pool-fallback"
 	} else if len(selected) != len(incoming) {
 		reason = "invalid-ids-dropped"
 	}
 
-	config := canonicalQuestionScope(catalogVersion, works, characters, selected, rules)
+	config := canonicalQuestionScope(catalogVersion, works, characters, selected, rules, requestedPreset)
 	changed := input.CatalogVersion != catalogVersion ||
 		input.SchemaVersion != QuestionScopeSchemaVersion ||
 		input.Mode != config.Mode ||

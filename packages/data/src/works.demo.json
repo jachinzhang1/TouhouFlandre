@@ -30,6 +30,21 @@
     "era": "pc98"
   },
   {
+    "id": "th03_podd",
+    "titleZh": "东方梦时空",
+    "titleJa": "東方夢時空",
+    "titleEn": "Phantasmagoria of Dim.Dream.",
+    "shortName": "TH03",
+    "pinyinInitials": [
+      "msk",
+      "dfmsk"
+    ],
+    "type": "stg",
+    "releaseYear": 1997,
+    "mainlineIndex": 3,
+    "era": "pc98"
+  },
+  {
     "id": "th04_lls",
     "titleZh": "东方幻想乡",
     "titleJa": "東方幻想郷",

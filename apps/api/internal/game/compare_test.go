@@ -92,8 +92,8 @@ func TestCompareCharacterHairMiss(t *testing.T) {
 }
 
 func TestHairColorLabels(t *testing.T) {
-	if got := game.HairColorLabels["none"]; got != "光头" {
-		t.Fatalf("expected 光头 for none, got %q", got)
+	if got := game.HairColorLabels["none"]; got != "无" {
+		t.Fatalf("expected 无 for none, got %q", got)
 	}
 }
 
@@ -103,7 +103,7 @@ func TestHairColorDisplayFallsBackToRaw(t *testing.T) {
 		c.HairColors = []string{"none", "teal"}
 	})
 	values := game.DisplayValuesForField(character, game.FieldHairColors)
-	want := []string{"光头", "teal"}
+	want := []string{"无", "teal"}
 	if len(values) != len(want) {
 		t.Fatalf("expected %v, got %v", want, values)
 	}

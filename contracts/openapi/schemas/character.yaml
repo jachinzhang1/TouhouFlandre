@@ -27,6 +27,7 @@ DifficultyTier:
     - normal
     - hard
     - lunatic
+    - extra
 
 Era:
   type: string

@@ -756,6 +756,18 @@ func TestSinglePlayerSessionsStayOpenBeforeGuessLimit(t *testing.T) {
 	}
 }
 
+func TestDailyPuzzleRejectsExtraDifficulty(t *testing.T) {
+	resp, payload := request(http.MethodPost, "/api/puzzles/daily", map[string]string{
+		"difficulty": "extra",
+	})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("daily extra status %d: %s, want 400", resp.StatusCode, payload)
+	}
+	if apiErr := decodeError(t, payload); apiErr.Code != "INVALID_REQUEST" {
+		t.Fatalf("daily extra error = %+v, want INVALID_REQUEST", apiErr)
+	}
+}
+
 func TestForfeitSessionRevealsAnswer(t *testing.T) {
 	_, createPayload := request(http.MethodPost, "/api/puzzles/random", nil)
 	var created openapi.PuzzleResponse
