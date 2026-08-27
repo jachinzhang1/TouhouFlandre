@@ -104,10 +104,27 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 			"questionScope":           scope,
 			"raceEliminationEnabled":  room.RaceEliminationEnabled,
 			"relayEliminationEnabled": relayConfig.EliminationEnabled,
+			"answerMatchPolicy":       s.answerMatchPolicy,
 		})
 		if err != nil {
 			return internalError(err)
 		}
+	}
+	var ruleSnapshot map[string]any
+	if err := json.Unmarshal(plan.RuleConfigSnapshot, &ruleSnapshot); err != nil {
+		return internalError(err)
+	}
+	if ruleSnapshot == nil {
+		ruleSnapshot = map[string]any{}
+	}
+	ruleSnapshot["answerMatchPolicy"] = s.answerMatchPolicy
+	plan.RuleConfigSnapshot, err = json.Marshal(ruleSnapshot)
+	if err != nil {
+		return internalError(err)
+	}
+	runtime, err := s.catalogRuntimes.Get(ctx, state.CurrentVersion, s.answerMatchPolicy)
+	if err != nil {
+		return internalError(err)
 	}
 	targetWins := plan.TargetWins
 	scoringMode := multi.ScoringMode(plan.ScoringMode)
@@ -125,6 +142,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		RuleSetKey:         plan.RuleSet.Key,
 		RuleSetVersion:     int32(plan.RuleSet.Version),
 		RuleConfigSnapshot: plan.RuleConfigSnapshot,
+		AnswerMatchPolicy:  string(s.answerMatchPolicy),
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
@@ -183,7 +201,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 				TargetWins: targetWins, MaxStages: maxRounds,
 			},
 			StageIndex: 1, ActivePlayers: players, StartsAt: plan.StartsAt,
-			CandidateAnswerIDs: game.QuestionScopeAnswerPool(scope), TurnSeconds: int(room.TurnSeconds),
+			CandidateAnswerIDs: runtime.DistinctIDsByGroup(game.QuestionScopeAnswerPool(scope)), TurnSeconds: int(room.TurnSeconds),
 			EncounterDuration: s.timing.RoundSeconds,
 		})
 		if err != nil {
@@ -195,7 +213,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 			return internalError(err)
 		}
 	} else {
-		answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
+		answerID, err := multi.DrawAnswerByGroup(game.QuestionScopeAnswerPool(scope), nil, runtime.GroupKey, s.rng)
 		if err != nil {
 			return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
 		}
@@ -361,26 +379,28 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 }
 
 // computeFeedback 校验角色并计算反馈（真实列序状态数组）。
-func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVersion, answerID, guessID string, fields []game.GuessField) (game.Character, []string, bool, *ApiError) {
-	characters, err := multi.CharactersForVersion(ctx, q, catalogVersion)
+func (s *Server) computeFeedback(ctx context.Context, catalogVersion, answerID, guessID string, policy game.AnswerMatchPolicy, fields []game.GuessField) (game.Character, []string, game.MatchKind, bool, *ApiError) {
+	result, err := s.guessEvaluator.Evaluate(ctx, catalogVersion, policy, answerID, guessID, fields)
 	if err != nil {
-		return game.Character{}, nil, false, internalError(err)
+		switch {
+		case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
+			return game.Character{}, nil, game.MatchNone, false, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "该角色不在本局题库中。"}
+		case errors.Is(err, game.ErrAnswerCharacterMissing):
+			return game.Character{}, nil, game.MatchNone, false, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "本局答案缺失。"}
+		default:
+			return game.Character{}, nil, game.MatchNone, false, internalError(err)
+		}
 	}
-	byID := multi.CharactersByID(characters)
-	guess, ok := byID[guessID]
-	if !ok || !guess.EnabledAsGuess {
-		return game.Character{}, nil, false, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "该角色不在本局题库中。"}
+	runtime, err := s.catalogRuntimes.Get(ctx, catalogVersion, policy)
+	if err != nil {
+		return game.Character{}, nil, game.MatchNone, false, internalError(err)
 	}
-	answer, ok := byID[answerID]
-	if !ok {
-		return game.Character{}, nil, false, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "本局答案缺失。"}
-	}
-	result := game.CompareCharacter(guess, answer, fields)
+	guess := runtime.ByID[guessID]
 	statuses := make([]string, len(result.Feedback))
 	for i, fb := range result.Feedback {
 		statuses[i] = string(fb.Status)
 	}
-	return guess, statuses, guess.ID == answer.ID, nil
+	return guess, statuses, result.MatchKind, result.IsCorrect, nil
 }
 
 // settleTimeoutInTxn 猜测事务内的超时结算（§9.2 步骤 4b）：本局判平，本次猜测不写入。
@@ -404,7 +424,7 @@ func (s *Server) settleTimeoutInTxn(ctx context.Context, q *repo.Queries, roomID
 
 // guessAcceptedResponse 组装 200 响应（自视角完整反馈，按快照水合）。
 // q 须绑定在未提交的事务上（幂等重放路径与正常路径均在提交前调用）。
-func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion string, guess repo.MultiGuess, fields []game.GuessField) (openapi.RoomsSubmitGuessResponseObject, error) {
+func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *repo.Queries, catalogVersion, answerID string, guess repo.MultiGuess, fields []game.GuessField) (openapi.RoomsSubmitGuessResponseObject, error) {
 	var statuses []string
 	if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
 		return nil, internalError(err)
@@ -417,7 +437,7 @@ func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *r
 	if !ok {
 		return nil, internalError(errors.New("guess character missing from snapshot"))
 	}
-	hydrated := multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields)
+	hydrated := multi.HydrateGuessResultWithFields(guessChar, statuses, guess.IsCorrect, fields, game.MatchKindForStoredGuess(guess.IsCorrect, answerID, guess.GuessID))
 	return openapi.RoomsSubmitGuess200JSONResponse{
 		RoundIndex: roundIndex,
 		Guess:      toOpenAPIGuessResult(hydrated),

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
@@ -73,7 +74,11 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		return submitGuessResult{}, roundNotActiveError(message)
 	}
 
-	guessChar, statuses, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, storageFields)
+	policy, err := game.ParseAnswerMatchPolicy(match.AnswerMatchPolicy)
+	if err != nil {
+		return submitGuessResult{}, internalError(err)
+	}
+	guessChar, statuses, _, isCorrect, apiErr := s.computeFeedback(ctx, match.CatalogVersion, round.AnswerID, request.Body.GuessId, policy, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}
@@ -103,7 +108,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		RoundID: round.ID, MemberID: member.ID, IdempotencyKey: request.Body.IdempotencyKey,
 	})
 	if err == nil {
-		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, existing, fields)
+		response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, round.AnswerID, existing, fields)
 		return submitGuessResult{response: response, commit: true}, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -203,7 +208,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 		}
 	}
 
-	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, repo.MultiGuess{
+	response, err := s.guessAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, round.AnswerID, repo.MultiGuess{
 		GuessID:   guessChar.ID,
 		Statuses:  statusesJSON,
 		IsCorrect: isCorrect,
