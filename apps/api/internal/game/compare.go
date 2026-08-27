@@ -1,9 +1,5 @@
 package game
 
-import (
-	"strconv"
-)
-
 // HairColorLabel 对应 shared 的 HAIR_COLOR_LABELS。
 var HairColorLabels = map[string]string{
 	"black":      "黑",
@@ -24,14 +20,7 @@ var HairColorLabels = map[string]string{
 }
 
 // CHARACTER_GUESS_FIELDS 对应 shared 的 CHARACTER_GUESS_FIELDS。
-var CharacterGuessFields = []GuessField{
-	{Key: FieldFirstAppearance, Label: "初登场作品", Type: "hierarchy", Visible: true, CompareStrategy: "firstAppearance", HelpText: "具体作品相同为命中，同类媒介为部分匹配。"},
-	{Key: FieldReleaseYear, Label: "初登场年份", Type: "number", Visible: true, CompareStrategy: "numberDirection", HelpText: "箭头指向答案所在年份。"},
-	{Key: FieldSpecies, Label: "种族", Type: "multi_enum", Visible: true, CompareStrategy: "multiSet"},
-	{Key: FieldAffiliations, Label: "阵营", Type: "multi_enum", Visible: true, CompareStrategy: "multiSet"},
-	{Key: FieldLocations, Label: "地点", Type: "multi_enum", Visible: true, CompareStrategy: "multiSet"},
-	{Key: FieldHairColors, Label: "头发颜色", Type: "multi_enum", Visible: true, CompareStrategy: "multiSet"},
-}
+var CharacterGuessFields = CharacterFields.AllFields()
 
 // GameContentDefinition 对应 shared 的 GAME_CONTENT_DEFINITIONS.character。
 var GameContentDefinition = struct {
@@ -61,141 +50,14 @@ func StatusToSymbol(status FeedbackStatus) string {
 	}
 }
 
-func sameSet(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	rightSet := make(map[string]struct{}, len(right))
-	for _, item := range right {
-		rightSet[item] = struct{}{}
-	}
-	for _, item := range left {
-		if _, ok := rightSet[item]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func hasIntersection(left, right []string) bool {
-	rightSet := make(map[string]struct{}, len(right))
-	for _, item := range right {
-		rightSet[item] = struct{}{}
-	}
-	for _, item := range left {
-		if _, ok := rightSet[item]; ok {
-			return true
-		}
-	}
-	return false
-}
-
-func compareMultiSet(guessValues, answerValues []string) FeedbackStatus {
-	if len(guessValues) == 0 || len(answerValues) == 0 {
-		return FeedbackUnknown
-	}
-	if sameSet(guessValues, answerValues) {
-		return FeedbackExact
-	}
-	if hasIntersection(guessValues, answerValues) {
-		return FeedbackPartial
-	}
-	return FeedbackMiss
-}
-
 // displayValuesForField 返回展示用值（发色为中文标签，年份为字符串）。
 func DisplayValuesForField(character Character, field GuessFieldKey) []string {
-	switch field {
-	case FieldFirstAppearance:
-		return []string{character.FirstAppearance.WorkTitle}
-	case FieldReleaseYear:
-		return []string{itoa(character.FirstAppearance.ReleaseYear)}
-	case FieldHairColors:
-		labels := make([]string, 0, len(character.HairColors))
-		for _, color := range character.HairColors {
-			if label, ok := HairColorLabels[color]; ok {
-				labels = append(labels, label)
-			} else {
-				// 未知发色回退为原始值，与前端 HAIR_COLOR_LABELS[color] ?? color 对齐。
-				labels = append(labels, color)
-			}
-		}
-		return labels
-	default:
-		return characterFieldValues(character, field)
-	}
-}
-
-// valuesForField 返回比较用值（首登场为作品 id，年份为字符串）。
-func valuesForField(character Character, field GuessFieldKey) []string {
-	switch field {
-	case FieldFirstAppearance:
-		return []string{character.FirstAppearance.WorkID}
-	case FieldReleaseYear:
-		return []string{itoa(character.FirstAppearance.ReleaseYear)}
-	default:
-		return characterFieldValues(character, field)
-	}
-}
-
-func characterFieldValues(character Character, field GuessFieldKey) []string {
-	switch field {
-	case FieldSpecies:
-		return character.Species
-	case FieldAbilityTags:
-		return character.AbilityTags
-	case FieldAffiliations:
-		return character.Affiliations
-	case FieldLocations:
-		return character.Locations
-	case FieldRoles:
-		return character.Roles
-	case FieldHairColors:
-		return character.HairColors
-	default:
-		return nil
-	}
-}
-
-func itoa(value int) string {
-	return strconv.Itoa(value)
+	return CharacterFields.DisplayValues(character, field)
 }
 
 // CompareField 对应 shared 的 compareField。
 func CompareField(guess, answer Character, field GuessField) FieldFeedback {
-	status := FeedbackUnknown
-
-	switch field.CompareStrategy {
-	case "firstAppearance":
-		if guess.FirstAppearance.WorkID == answer.FirstAppearance.WorkID {
-			status = FeedbackExact
-		} else if guess.FirstAppearance.WorkType == answer.FirstAppearance.WorkType {
-			status = FeedbackPartial
-		} else {
-			status = FeedbackMiss
-		}
-	case "numberDirection":
-		guessYear := guess.FirstAppearance.ReleaseYear
-		answerYear := answer.FirstAppearance.ReleaseYear
-		if guessYear == answerYear {
-			status = FeedbackExact
-		} else if guessYear < answerYear {
-			status = FeedbackHigher
-		} else {
-			status = FeedbackLower
-		}
-	case "numberExact":
-		if guess.FirstAppearance.ReleaseYear == answer.FirstAppearance.ReleaseYear {
-			status = FeedbackExact
-		} else {
-			status = FeedbackMiss
-		}
-	case "multiSet":
-		status = compareMultiSet(
-			valuesForField(guess, field.Key),
-			valuesForField(answer, field.Key),
-		)
-	}
+	status := CharacterFields.CompareFeedback(guess, answer, field)
 
 	return FieldFeedback{
 		Field:        field.Key,
@@ -206,8 +68,7 @@ func CompareField(guess, answer Character, field GuessField) FieldFeedback {
 	}
 }
 
-// CompareCharacter 对应 shared 的 compareCharacter。
-func CompareCharacter(guess, answer Character, fields []GuessField) GuessResult {
+func CompareCharacterWithMatch(guess, answer Character, fields []GuessField, match MatchResult) GuessResult {
 	if fields == nil {
 		fields = CharacterGuessFields
 	}
@@ -222,7 +83,8 @@ func CompareCharacter(guess, answer Character, fields []GuessField) GuessResult 
 		GuessID:        guess.ID,
 		GuessName:      guess.Names.ZhHans,
 		GuessAvatarURL: guess.AvatarURL,
-		IsCorrect:      guess.ID == answer.ID,
+		IsCorrect:      match.Correct,
+		MatchKind:      match.Kind,
 		Feedback:       feedback,
 	}
 }

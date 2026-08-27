@@ -158,3 +158,33 @@ func DrawAnswer(pool []string, used map[string]bool, rng interface{ IntN(int) in
 	}
 	return candidates[rng.IntN(len(candidates))], nil
 }
+
+// DrawAnswerByGroup excludes every candidate whose equivalence group has
+// already appeared in the match. Exhaustion is reported instead of silently
+// reusing an equivalent answer.
+func DrawAnswerByGroup(pool, usedIDs []string, groupKey func(string) string, rng interface{ IntN(int) int }) (string, error) {
+	if len(pool) == 0 {
+		return "", ErrNoAnswerPool
+	}
+	usedGroups := make(map[string]struct{}, len(usedIDs))
+	for _, id := range usedIDs {
+		usedGroups[groupKey(id)] = struct{}{}
+	}
+	seenGroups := make(map[string]struct{}, len(pool))
+	candidates := make([]string, 0, len(pool))
+	for _, id := range pool {
+		group := groupKey(id)
+		if _, used := usedGroups[group]; used {
+			continue
+		}
+		if _, duplicate := seenGroups[group]; duplicate {
+			continue
+		}
+		seenGroups[group] = struct{}{}
+		candidates = append(candidates, id)
+	}
+	if len(candidates) == 0 {
+		return "", ErrNoAnswerPool
+	}
+	return candidates[rng.IntN(len(candidates))], nil
+}

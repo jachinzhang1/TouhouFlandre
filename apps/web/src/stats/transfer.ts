@@ -25,6 +25,7 @@ const actorSchema = z.enum(["self", "other"]);
 const guessSchema = characterSchema.extend({
   durationMs: z.number().nonnegative().optional(),
   correct: z.boolean(),
+  matchKind: z.enum(["none", "exact", "equivalent"]).optional(),
   memberSlot: memberSlotSchema.optional(),
 });
 const relayTurnSchema = z.discriminatedUnion("kind", [
@@ -97,6 +98,7 @@ const schemaVersion = z.union([
   z.literal(3),
   z.literal(4),
   z.literal(5),
+  z.literal(6),
   z.literal(STATS_SCHEMA_VERSION),
 ]);
 const baseShape = {
@@ -154,13 +156,13 @@ const multiplayerSchema = z
       if (!record.ruleSetKey || !record.ruleSetVersion) {
         context.addIssue({
           code: "custom",
-          message: "stats v6 多人记录缺少完整 rule-set discriminator",
+          message: "stats v7 多人记录缺少完整 rule-set discriminator",
         });
       }
       if (record.multiplayerMode === "relay" && !record.relayStages) {
         context.addIssue({
           code: "custom",
-          message: "stats v6 relay 记录缺少 stage 明细",
+          message: "stats v7 relay 记录缺少 stage 明细",
         });
       }
     }
@@ -188,6 +190,17 @@ const exportSchema = z.object({
 export function normalizeStatsRecord(
   record: z.infer<typeof recordSchema> | StatsRecord,
 ): StatsRecord {
+  const normalizeGuess = <T extends { correct: boolean; matchKind?: string }>(
+    guess: T,
+  ) => ({
+    ...guess,
+    matchKind:
+      guess.matchKind === "equivalent" || guess.matchKind === "exact"
+        ? guess.matchKind
+        : guess.correct
+          ? ("exact" as const)
+          : ("none" as const),
+  });
   if (record.kind === "multiplayer") {
     const parsed = record as z.infer<typeof multiplayerSchema>;
     const {
@@ -198,7 +211,9 @@ export function normalizeStatsRecord(
     } = parsed;
     const normalizeRound = (round: (typeof safe.rounds)[number]) => ({
       ...round,
-      guesses: round.guesses.map(({ memberSlot: _slot, ...guess }) => guess),
+      guesses: round.guesses.map(({ memberSlot: _slot, ...guess }) =>
+        normalizeGuess(guess),
+      ),
       turns: round.turns?.map((turn) => {
         const actor =
           turn.actor ?? (turn.memberSlot === legacySlot ? "self" : "other");
@@ -208,7 +223,7 @@ export function normalizeStatsRecord(
         }
         const { memberSlot: _slot, guess, ...rest } = turn;
         const { memberSlot: _guessSlot, ...safeGuess } = guess;
-        return { ...rest, actor, guess: safeGuess };
+        return { ...rest, actor, guess: normalizeGuess(safeGuess) };
       }),
     });
     const rounds = safe.rounds.map(normalizeRound);
@@ -254,6 +269,15 @@ export function normalizeStatsRecord(
     ...record,
     schemaVersion: STATS_SCHEMA_VERSION,
     difficulty: record.difficulty ?? "unknown",
+    round: {
+      ...record.round,
+      guesses: record.round.guesses.map(normalizeGuess),
+      turns: record.round.turns?.map((turn) =>
+        turn.kind === "guess"
+          ? { ...turn, guess: normalizeGuess(turn.guess) }
+          : turn,
+      ),
+    },
   } as StatsRecord;
 }
 

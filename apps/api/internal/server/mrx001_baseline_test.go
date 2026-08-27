@@ -261,8 +261,8 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT coalesce(max(version_id), 0)::int FROM goose_db_version WHERE is_applied`).Scan(&migrationTail); err != nil {
 		t.Fatal(err)
 	}
-	if migrationTail != 20 {
-		t.Fatalf("migration tail = %d, want system announcement migration 20", migrationTail)
+	if migrationTail != 21 {
+		t.Fatalf("migration tail = %d, want answer match policy migration 21", migrationTail)
 	}
 	tableNames := []string{"multi_room", "multi_match", "multi_round", "multi_turn", "multi_chat_message"}
 	tables := make([]map[string]any, 0, len(tableNames))
@@ -282,7 +282,7 @@ func TestMRX001NormalizedContractFixtures(t *testing.T) {
 				rows.Close()
 				t.Fatal(err)
 			}
-			if tableName == "multi_match" && (column == "rule_set_key" || column == "rule_set_version" || column == "rule_config_snapshot") {
+			if tableName == "multi_match" && (column == "rule_set_key" || column == "rule_set_version" || column == "rule_config_snapshot" || column == "answer_match_policy") {
 				continue
 			}
 			columns = append(columns, column)

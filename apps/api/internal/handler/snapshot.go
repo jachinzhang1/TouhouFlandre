@@ -343,6 +343,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 			RematchReady:   rematchReady,
 			CatalogVersion: state.Match.CatalogVersion,
 			QuestionScope:  &openapiMatchScope,
+			ActiveFields:   toOpenAPIGuessFields(game.FieldsForQuestionScope(matchScope)),
 			RuleSetRef: openapi.RuleSetRef{
 				Mode: openapi.MultiplayerMode(ref.Mode), Key: ref.Key, Version: ref.Version,
 			},

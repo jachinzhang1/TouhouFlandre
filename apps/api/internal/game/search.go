@@ -89,13 +89,57 @@ func MatchCharacterQuery(character Character, query string) bool {
 }
 
 type CharacterSearchOptions struct {
-	Query        string
-	WorkIDs      []string
-	FilterByWork bool
-	SortBy       string
-	Descending   bool
-	Offset       int
-	Limit        int
+	Query      string
+	Filters    []CharacterSearchFilter
+	SortBy     string
+	Descending bool
+	Offset     int
+	Limit      int
+}
+
+// CharacterSearchFilter is one independently composable search restriction.
+// SearchCharacters applies every configured filter before matching and paging.
+type CharacterSearchFilter func(Character) bool
+
+func EnabledAsGuessSearchFilter() CharacterSearchFilter {
+	return func(character Character) bool {
+		return character.EnabledAsGuess
+	}
+}
+
+func CharacterIDsSearchFilter(characterIDs []string) CharacterSearchFilter {
+	allowed := make(map[string]struct{}, len(characterIDs))
+	for _, characterID := range characterIDs {
+		if characterID != "" {
+			allowed[characterID] = struct{}{}
+		}
+	}
+	return func(character Character) bool {
+		_, ok := allowed[character.ID]
+		return ok
+	}
+}
+
+func WorkIDsSearchFilter(workIDs []string) CharacterSearchFilter {
+	allowed := make(map[string]struct{}, len(workIDs))
+	for _, workID := range workIDs {
+		if workID != "" {
+			allowed[workID] = struct{}{}
+		}
+	}
+	return func(character Character) bool {
+		_, ok := allowed[character.FirstAppearance.WorkID]
+		return ok
+	}
+}
+
+func matchesCharacterSearchFilters(character Character, filters []CharacterSearchFilter) bool {
+	for _, filter := range filters {
+		if filter != nil && !filter(character) {
+			return false
+		}
+	}
+	return true
 }
 
 type CharacterSearchPage struct {
@@ -105,24 +149,9 @@ type CharacterSearchPage struct {
 
 // SearchCharacters is the only authoritative character search implementation.
 func SearchCharacters(characters []Character, options CharacterSearchOptions) CharacterSearchPage {
-	allowedWorks := make(map[string]struct{}, len(options.WorkIDs))
-	for _, workID := range options.WorkIDs {
-		if workID != "" {
-			allowedWorks[workID] = struct{}{}
-		}
-	}
-
 	matches := make([]Character, 0, len(characters))
 	for _, character := range characters {
-		if !character.EnabledAsGuess {
-			continue
-		}
-		if options.FilterByWork {
-			if _, allowed := allowedWorks[character.FirstAppearance.WorkID]; !allowed {
-				continue
-			}
-		}
-		if MatchCharacterQuery(character, options.Query) {
+		if matchesCharacterSearchFilters(character, options.Filters) && MatchCharacterQuery(character, options.Query) {
 			matches = append(matches, character)
 		}
 	}

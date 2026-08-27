@@ -221,7 +221,15 @@ export function RaceMatchExperience({
             <GuessInputBar
               onGuess={actions.submitGuess}
               disabled={!hasOpponent || raceReadOnly}
-              catalogVersion={state.catalogVersion ?? undefined}
+              searchContext={
+                state.room
+                  ? {
+                      kind: "multiplayer-match",
+                      roomId: state.room.roomId,
+                      matchIndex: match.matchIndex,
+                    }
+                  : undefined
+              }
               guessedIds={guessedIds}
             />
           ) : undefined
@@ -343,7 +351,6 @@ export function RaceMatchExperience({
             memberId={memberId}
             members={state.members}
             roundResult={selectedArchive ?? state.roundResult}
-            catalogVersion={state.catalogVersion ?? undefined}
             onGuess={actions.submitGuess}
             disabled={!hasOpponent}
             fields={fields}
@@ -454,6 +461,7 @@ function SpectatorRaceBoards({
       name: guess.guessName,
       avatarUrl: guess.guessAvatarUrl,
       isCorrect: guess.isCorrect,
+      matchKind: guess.matchKind,
       cells: guess.feedback.map((field) => ({
         field: field.field,
         status: field.status,

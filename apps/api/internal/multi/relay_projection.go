@@ -46,16 +46,17 @@ func GuessResultViewFromGame(result game.GuessResult) GuessResultView {
 		GuessName:      result.GuessName,
 		GuessAvatarURL: result.GuessAvatarURL,
 		IsCorrect:      result.IsCorrect,
+		MatchKind:      result.MatchKind,
 		Feedback:       feedback,
 	}
 }
 
-func HydrateGuessResultView(guess game.Character, statuses []string, isCorrect bool) GuessResultView {
-	return GuessResultViewFromGame(HydrateGuessResult(guess, statuses, isCorrect))
+func HydrateGuessResultView(guess game.Character, statuses []string, isCorrect bool, matchKinds ...game.MatchKind) GuessResultView {
+	return GuessResultViewFromGame(HydrateGuessResult(guess, statuses, isCorrect, matchKinds...))
 }
 
-func HydrateGuessResultViewWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField) GuessResultView {
-	return GuessResultViewFromGame(HydrateGuessResultWithFields(guess, statuses, isCorrect, fields))
+func HydrateGuessResultViewWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField, matchKinds ...game.MatchKind) GuessResultView {
+	return GuessResultViewFromGame(HydrateGuessResultWithFields(guess, statuses, isCorrect, fields, matchKinds...))
 }
 
 // HydrateRelayTurnRows rebuilds relay's shared board from stored turn rows.

@@ -37,6 +37,33 @@ type GuessField struct {
 	HelpText        string        `json:"helpText,omitempty"`
 }
 
+type GuessFieldModeDefinition struct {
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Enabled bool   `json:"enabled"`
+}
+
+// GuessFieldDefinition describes one configurable public feedback field.
+// Comparison and canonicalization functions remain server-owned.
+type GuessFieldDefinition struct {
+	Key          GuessFieldKey              `json:"key"`
+	Label        string                     `json:"label"`
+	Type         string                     `json:"type"`
+	HelpText     string                     `json:"helpText,omitempty"`
+	Configurable bool                       `json:"configurable"`
+	DefaultMode  string                     `json:"defaultMode"`
+	Modes        []GuessFieldModeDefinition `json:"modes"`
+	Equivalence  bool                       `json:"equivalence"`
+}
+
+type MatchKind string
+
+const (
+	MatchNone       MatchKind = "none"
+	MatchExact      MatchKind = "exact"
+	MatchEquivalent MatchKind = "equivalent"
+)
+
 // FieldFeedback 对应 shared 的 FieldFeedback。
 type FieldFeedback struct {
 	Field        GuessFieldKey  `json:"field"`
@@ -53,6 +80,7 @@ type GuessResult struct {
 	GuessName      string          `json:"guessName"`
 	GuessAvatarURL string          `json:"guessAvatarUrl,omitempty"`
 	IsCorrect      bool            `json:"isCorrect"`
+	MatchKind      MatchKind       `json:"matchKind"`
 	Feedback       []FieldFeedback `json:"feedback"`
 }
 

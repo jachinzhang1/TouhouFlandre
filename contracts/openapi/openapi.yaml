@@ -155,6 +155,8 @@ components:
       $ref: ./schemas/session.yaml#/FieldFeedback
     GuessResult:
       $ref: ./schemas/session.yaml#/GuessResult
+    MatchKind:
+      $ref: ./schemas/session.yaml#/MatchKind
     PublicGameSession:
       $ref: ./schemas/session.yaml#/PublicGameSession
     PuzzleResponse:
@@ -163,6 +165,10 @@ components:
       $ref: ./schemas/guess.yaml#/GuessFieldKey
     GuessField:
       $ref: ./schemas/guess.yaml#/GuessField
+    GuessFieldModeDefinition:
+      $ref: ./schemas/guess.yaml#/GuessFieldModeDefinition
+    GuessFieldDefinition:
+      $ref: ./schemas/guess.yaml#/GuessFieldDefinition
     RoomFormat:
       $ref: ./schemas/multi-common.yaml#/RoomFormat
     MultiplayerMode:

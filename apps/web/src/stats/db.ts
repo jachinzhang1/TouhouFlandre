@@ -10,6 +10,31 @@ import { assertStatsPrivacy } from "./privacy";
 const DB_NAME = "touhouflandre-stats";
 const CHANNEL_NAME = "touhouflandre:stats";
 
+function normalizeGuessMatchKind(value: unknown): void {
+  if (!value || typeof value !== "object") return;
+  const guess = value as Record<string, unknown>;
+  if (
+    guess.matchKind !== "none" &&
+    guess.matchKind !== "exact" &&
+    guess.matchKind !== "equivalent"
+  ) {
+    guess.matchKind = guess.correct === true ? "exact" : "none";
+  }
+}
+
+function normalizeRoundMatchKinds(value: unknown): void {
+  if (!value || typeof value !== "object") return;
+  const round = value as Record<string, unknown>;
+  if (Array.isArray(round.guesses)) round.guesses.forEach(normalizeGuessMatchKind);
+  if (Array.isArray(round.turns)) {
+    round.turns.forEach((turn) => {
+      if (turn && typeof turn === "object") {
+        normalizeGuessMatchKind((turn as Record<string, unknown>).guess);
+      }
+    });
+  }
+}
+
 class StatsDatabase extends Dexie {
   records!: EntityTable<StatsRecord, "id">;
   drafts!: EntityTable<StatsDraft, "id">;
@@ -90,6 +115,53 @@ class StatsDatabase extends Dexie {
                 ? record.scoringMode
                 : "wins";
             record.tiedForFirst = record.tiedForFirst === true;
+          });
+      });
+    this.version(7)
+      .stores({
+        records: "id,kind,mode,startedAt,endedAt,outcome,format,difficulty",
+        drafts: "id,kind,updatedAt",
+        metadata: "key",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table("records")
+          .toCollection()
+          .modify((record: Record<string, unknown>) => {
+            record.schemaVersion = STATS_SCHEMA_VERSION;
+            normalizeRoundMatchKinds(record.round);
+            if (Array.isArray(record.rounds)) {
+              record.rounds.forEach(normalizeRoundMatchKinds);
+            }
+            if (Array.isArray(record.relayStages)) {
+              record.relayStages.forEach((stage) => {
+                if (stage && typeof stage === "object") {
+                  normalizeRoundMatchKinds(
+                    (stage as Record<string, unknown>).encounter,
+                  );
+                }
+              });
+            }
+          });
+        await transaction
+          .table("drafts")
+          .toCollection()
+          .modify((draft: Record<string, unknown>) => {
+            if (!Array.isArray(draft.relayStages)) return;
+            draft.relayStages.forEach((stage) => {
+              if (!stage || typeof stage !== "object") return;
+              const relayStage = stage as Record<string, unknown>;
+              normalizeRoundMatchKinds(relayStage.encounter);
+              if (Array.isArray(relayStage.turns)) {
+                relayStage.turns.forEach((turn) => {
+                  if (turn && typeof turn === "object") {
+                    normalizeGuessMatchKind(
+                      (turn as Record<string, unknown>).guess,
+                    );
+                  }
+                });
+              }
+            });
           });
       });
   }

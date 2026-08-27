@@ -48,7 +48,6 @@ export function RelayStageView({
   projection,
   members,
   viewer,
-  catalogVersion,
   fields,
   roomStatus,
   retentionEndsAt,
@@ -64,7 +63,6 @@ export function RelayStageView({
   projection: RelayProjectionState;
   members: readonly MemberView[];
   viewer: ParticipantView;
-  catalogVersion?: string;
   fields: readonly GuessField[];
   roomStatus: string;
   retentionEndsAt?: string | null;
@@ -343,7 +341,11 @@ export function RelayStageView({
                 );
               }}
               disabled={!canGuess}
-              catalogVersion={catalogVersion}
+              searchContext={{
+                kind: "multiplayer-match",
+                roomId,
+                matchIndex: projection.matchIndex,
+              }}
               guessedIds={guessedIds}
               statusMessage={!canGuess ? statusMessage : null}
             />

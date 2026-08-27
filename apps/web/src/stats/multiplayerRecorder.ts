@@ -100,6 +100,8 @@ function relayTurnSnapshot(
       name: row.guess.guessName,
       avatarUrl: row.guess.guessAvatarUrl,
       correct: row.guess.isCorrect,
+      matchKind:
+        row.guess.matchKind ?? (row.guess.isCorrect ? "exact" : "none"),
       ...(durationMs === undefined ? {} : { durationMs }),
     },
   };
@@ -464,6 +466,9 @@ export async function recordMultiplayerEvent(
             name: turn.guess.guessName,
             avatarUrl: turn.guess.guessAvatarUrl,
             correct: turn.guess.isCorrect,
+            matchKind:
+              turn.guess.matchKind ??
+              (turn.guess.isCorrect ? "exact" : "none"),
           },
         };
       });
@@ -476,6 +481,7 @@ export async function recordMultiplayerEvent(
         name: guess.guessName,
         avatarUrl: guess.guessAvatarUrl,
         correct: guess.isCorrect,
+        matchKind: guess.matchKind ?? (guess.isCorrect ? "exact" : "none"),
         durationMs: durations[index],
       }));
     }

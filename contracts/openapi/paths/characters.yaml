@@ -14,15 +14,29 @@ get:
     - name: sessionId
       in: query
       required: false
-      description: 游戏会话 id；提供后按该会话绑定的题库快照搜索。
+      description: 单人游戏会话 id；提供后按该会话冻结的题库版本和题库范围搜索。
       schema:
         type: string
     - name: catalogVersion
       in: query
       required: false
-      description: 题库版本；供多人题局按绑定快照搜索。与 sessionId 互斥。
+      description: 题库版本；仅绑定版本快照，不应用游戏题库范围。与游戏上下文参数互斥。
       schema:
         type: string
+    - name: roomId
+      in: query
+      required: false
+      description: 多人房间 id；必须与 matchIndex 同时提供，并按该场冻结的题库版本和题库范围搜索。
+      schema:
+        type: string
+    - name: matchIndex
+      in: query
+      required: false
+      description: 多人场次序号；必须与 roomId 同时提供。
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 2147483647
     - name: workIds
       in: query
       required: false
@@ -72,7 +86,7 @@ get:
           schema:
             $ref: "../schemas/common.yaml#/ErrorResponse"
     "404":
-      description: 游戏会话或题库版本不存在
+      description: 游戏会话、多人场次或题库版本不存在
       content:
         application/json:
           schema:

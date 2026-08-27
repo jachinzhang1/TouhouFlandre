@@ -102,15 +102,20 @@ flowchart LR
     S --> R[Character / Work 行表]
     S --> V[CatalogSnapshot 版本化快照]
     S --> T[CatalogState.currentVersion]
-    V --> G[GameSession.catalogVersion]
-    V --> M[MultiMatch.catalogVersion]
+    V --> P[CatalogRuntimeProvider<br/>版本 + 判定策略缓存]
+    P --> G[GameSession<br/>题库版本 + 判定策略]
+    P --> M[MultiMatch<br/>题库版本 + 判定策略]
 ```
 
-seed 会在单事务内 upsert 行表、写版本化快照并更新当前版本。会话和多人场次记录题库版本，恢复时按版本读取快照，因此题库更新不会改变已开始题局。
+seed 会在单事务内 upsert 行表、写不可变的版本化快照并更新当前版本。同版本同内容幂等成功，同版本不同内容立即失败。会话、每日题和多人场次同时记录题库版本与答案判定策略，恢复时按冻结值读取快照，因此题库更新或环境配置变化不会改变已开始题局。
+
+`internal/game.CharacterFieldRegistry` 是公开词条的服务端权威来源。每个版本化字段定义集中登记 key、标签、类型、可选模式、默认模式、规范值、反馈比较、展示值以及是否参与等价判定。`CatalogFull.fieldDefinitions` 驱动前端通用设置界面；对局投影返回冻结的 `activeFields`，棋盘、分享文本和字段数量均读取该列表。QuestionScope schema v3 使用 `fieldModes`，导入层继续读取 v1/v2 固定字段并规范化为 v3；预设缺少新字段时使用注册表默认值，自定义配置缺少字段时隐藏该字段。
+
+`CatalogRuntimeProvider` 按 `catalogVersion + answerMatchPolicy` 缓存角色索引和等价组，并合并同一键的并发首次加载。`GuessEvaluator` 是单人、竞速、兼容接力和 encounter 接力的唯一字段反馈与答案匹配入口。`public_fields_v1` 只对全部等价字段均为已知值的 `enabledAsGuess` 角色分组，多值字段按规范集合签名；本局启用字段和答案池不参与分组。`MatchResult.kind` 区分 `none`、`exact` 与 `equivalent`，终局投影始终保留实际抽中的答案 ID。
 
 ## 角色搜索
 
-角色搜索采用单一权威实现。角色目录、单人猜测和多人猜测都通过前端 `useCharacterSearch` 调用 `GET /api/characters/search`；handler 负责确定题库范围，匹配、过滤、排序和分页统一由 `internal/game.SearchCharacters` 完成。前端只负责防抖、取消过期请求和展示结果，Postgres 负责保存题库数据与快照，不定义另一套搜索语义。
+角色搜索采用单一权威实现。角色目录、单人猜测和多人猜测都通过前端 `useCharacterSearch` 调用 `GET /api/characters/search`；handler 负责根据游戏身份确定冻结的题库版本与角色范围，匹配、过滤、排序和分页统一由 `internal/game.SearchCharacters` 完成。前端只负责防抖、取消过期请求和展示结果，Postgres 负责保存题库数据与快照，不定义另一套搜索语义。
 
 ```mermaid
 flowchart LR
@@ -119,22 +124,24 @@ flowchart LR
     M["多人猜测"] --> H
     H --> A["GET /api/characters/search"]
     A --> R{"选择搜索范围"}
-    R -->|"无版本参数"| V1["当前题库快照"]
-    R -->|"sessionId"| V2["单人会话快照"]
-    R -->|"catalogVersion"| V3["多人场次快照"]
+    R -->|"无游戏上下文"| V1["当前或指定版本快照"]
+    R -->|"sessionId"| V2["单人会话快照 + 题库范围"]
+    R -->|"roomId + matchIndex"| V3["多人场次快照 + 题库范围"]
     V1 --> G["game.SearchCharacters"]
     V2 --> G
     V3 --> G
     G --> O["搜索结果与总数"]
 ```
 
-这种范围选择与题局的版本约束一致：题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍搜索各自绑定的旧快照。
+这种范围选择与题局的版本约束一致：题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍搜索各自绑定的旧快照与 `selectedCharacterIds`。只传 `catalogVersion` 的非游戏搜索仅绑定版本，不应用题局角色范围。
+
+搜索限制由命名过滤器按 AND 组合，并在文本匹配、排序和分页之前执行。默认过滤器包括 `enabledAsGuess`，请求可追加作品范围；游戏上下文在 `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED=true` 时再追加当前局题库角色范围。该环境变量默认开启，设为 `false` 并重启 API 后只移除题库范围过滤器，保留版本绑定和其他搜索条件。
 
 ### 匹配模型
 
 这里的“模糊搜索”特指归一化后的连续子串匹配，不包含拼写纠错、自动拼音转换或跨字段分词查询。处理顺序如下：
 
-1. 从所选题库快照中排除不可猜角色，并应用初登场作品筛选条件。
+1. 从所选题库快照中排除不可猜角色，应用初登场作品筛选条件，并在游戏搜索中限制为该局 `selectedCharacterIds`。
 2. 查询串和每个候选字段分别转为小写、执行 Unicode NFKC 归一化，并移除空白及 `_`、`.`、`・`、`·`、`-`。
 3. 每个字段保留为独立搜索词元；每个别名和每个作品拼音缩写也分别形成词元。
 4. 归一化后的完整查询串是任一词元的连续子串时，角色命中。
@@ -187,6 +194,8 @@ Go API 的关键目录：
 - 服务器是答案、猜测结果和多人状态的权威来源。
 - 进行中的公开会话不返回答案。
 - 会话和多人场次绑定创建时的题库快照。
+- 每日题、会话和多人场次冻结答案判定策略；所有猜测入口通过 `GuessEvaluator`，不得直接比较答案 ID。
+- 公开词条定义由版本化字段注册表提供，前端不维护独立业务字段列表。
 - 每日题同一天答案固定。
 - 同一角色不能在同一局中重复提交。
 - 并发提交不能覆盖已经成功的猜测。

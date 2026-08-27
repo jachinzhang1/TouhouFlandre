@@ -8,8 +8,8 @@ import type {
   FeedbackStatus,
   GuessField,
   GuessFieldKey,
+  MatchKind,
 } from "@touhouflandre/shared";
-import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 
@@ -37,6 +37,7 @@ export type GuessRow = {
   name?: string;
   avatarUrl?: string;
   isCorrect?: boolean;
+  matchKind?: MatchKind;
   cells?: GuessCell[];
 };
 
@@ -49,7 +50,7 @@ export function GuessTable({
   rows,
   emptyLabel,
   variant = "self",
-  fields = CHARACTER_GUESS_FIELDS,
+  fields = [],
   highlight = false,
   highlightTone = "success",
 }: {
@@ -171,7 +172,9 @@ export function GuessTable({
                             {row.name}
                             {row.isCorrect && (
                               <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                                命中
+                                {row.matchKind === "equivalent"
+                                  ? "等价命中"
+                                  : "命中"}
                               </span>
                             )}
                           </span>

@@ -3,9 +3,10 @@ import type {
   MultiRoomFormat,
   MultiplayerMode,
   QuestionDifficulty,
+  MatchKind,
 } from "@touhouflandre/shared";
 
-export const STATS_SCHEMA_VERSION = 6 as const;
+export const STATS_SCHEMA_VERSION = 7 as const;
 
 export type StatsMode = "daily" | "random" | "multiplayer";
 export type StatsDifficulty = QuestionDifficulty | "unknown";
@@ -34,6 +35,8 @@ export interface StatsCharacterSnapshot {
 export interface StatsGuessSnapshot extends StatsCharacterSnapshot {
   durationMs?: number;
   correct: boolean;
+  /** Optional only while reading records written before stats v7. */
+  matchKind?: MatchKind;
 }
 
 export type StatsRelayTurnSnapshot =

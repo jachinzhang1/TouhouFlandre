@@ -27,7 +27,7 @@ func TestPresetQuestionScopeRulesHardTurnLimit(t *testing.T) {
 	if rules.TurnLimit.Seconds != 45 {
 		t.Fatalf("hard turn limit = %d, want 45", rules.TurnLimit.Seconds)
 	}
-	if !rules.Fields.FirstAppearance {
+	if rules.FieldModes[game.FieldFirstAppearance] == game.FieldModeHidden {
 		t.Fatal("hard preset should keep first appearance visible")
 	}
 }
@@ -39,6 +39,67 @@ func TestNormalizeQuestionScopeRulesAllowsOneGuess(t *testing.T) {
 
 	if rules.GuessLimit.MaxGuesses != 1 {
 		t.Fatalf("guess limit = %d, want 1", rules.GuessLimit.MaxGuesses)
+	}
+}
+
+func TestNormalizeCustomQuestionScopeHidesMissingAndInvalidModes(t *testing.T) {
+	characters := []game.Character{questionScopeCharacter("one", "easy", 1)}
+	scope := game.QuestionScopeConfig{
+		SchemaVersion:        game.QuestionScopeSchemaVersion,
+		CatalogVersion:       "catalog",
+		Mode:                 game.QuestionScopeModeCustom,
+		Difficulty:           game.QuestionDifficultyCustom,
+		SelectedCharacterIDs: []string{"one"},
+		Rules: game.QuestionScopeRules{
+			FieldModes: map[game.GuessFieldKey]string{
+				game.FieldSpecies:     game.FieldModeDefault,
+				game.FieldReleaseYear: "not-a-mode",
+			},
+			GuessLimit: game.QuestionScopeGuessLimit{Enabled: true, MaxGuesses: 8},
+		},
+	}
+
+	normalized := game.NormalizeQuestionScope(&scope, "catalog", nil, characters).Config.Rules.FieldModes
+	if normalized[game.FieldSpecies] != game.FieldModeDefault {
+		t.Fatalf("explicit species mode = %q, want default", normalized[game.FieldSpecies])
+	}
+	for _, definition := range game.CharacterFields.Definitions() {
+		if definition.Key != game.FieldSpecies && normalized[definition.Key] != game.FieldModeHidden {
+			t.Fatalf("custom missing or invalid mode for %s = %q, want hidden", definition.Key, normalized[definition.Key])
+		}
+	}
+}
+
+func TestNormalizeLegacyV2QuestionScopeUsesFixedFields(t *testing.T) {
+	characters := []game.Character{questionScopeCharacter("one", "easy", 1)}
+	scope := game.QuestionScopeConfig{
+		SchemaVersion:        2,
+		CatalogVersion:       "catalog",
+		Mode:                 game.QuestionScopeModeCustom,
+		Difficulty:           game.QuestionDifficultyCustom,
+		SelectedCharacterIDs: []string{"one"},
+		Rules: game.QuestionScopeRules{
+			Fields: &game.QuestionScopeFieldRules{
+				FirstAppearance: true,
+				ReleaseYear:     game.QuestionScopeReleaseYearExactOnly,
+				Species:         false,
+				Affiliations:    true,
+				Locations:       false,
+				HairColors:      true,
+			},
+			TurnLimit:  game.QuestionScopeTurnLimit{Enabled: true, Seconds: 60},
+			GuessLimit: game.QuestionScopeGuessLimit{Enabled: true, MaxGuesses: 4},
+		},
+	}
+
+	normalized := game.NormalizeQuestionScope(&scope, "catalog", nil, characters).Config.Rules
+	if normalized.FieldModes[game.FieldReleaseYear] != game.FieldModeExactOnly ||
+		normalized.FieldModes[game.FieldSpecies] != game.FieldModeHidden ||
+		normalized.FieldModes[game.FieldAffiliations] != game.FieldModeDefault {
+		t.Fatalf("legacy v2 field modes = %+v", normalized.FieldModes)
+	}
+	if normalized.TurnLimit.Seconds != 60 || normalized.GuessLimit.MaxGuesses != 4 {
+		t.Fatalf("legacy v2 limits = turn %+v, guess %+v", normalized.TurnLimit, normalized.GuessLimit)
 	}
 }
 
@@ -59,7 +120,7 @@ func TestExtraQuestionScopePreset(t *testing.T) {
 		t.Fatalf("extra ids = %v, want %v", ids, want)
 	}
 	rules := game.PresetQuestionScopeRules(game.QuestionDifficultyExtra)
-	if rules.Fields.FirstAppearance {
+	if rules.FieldModes[game.FieldFirstAppearance] != game.FieldModeHidden {
 		t.Fatal("extra preset should hide first appearance")
 	}
 	if !rules.GuessLimit.Enabled || rules.GuessLimit.MaxGuesses != 8 {

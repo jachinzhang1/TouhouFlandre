@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -143,7 +144,9 @@ func TestMain(m *testing.M) {
 		ChatSendEnabled: true, SystemAnnouncementsEnabled: true,
 	}
 	ts := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithAnswerMatchPolicy(game.AnswerMatchPublicFieldsV1),
 		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithCharacterSearchConfig(handler.CharacterSearchConfig{QuestionScopeFilterEnabled: true}),
 		handler.WithRolloutConfig(enabledRollout)))
 	baseURL = ts.URL
 	client = ts.Client()
@@ -159,7 +162,9 @@ func TestMain(m *testing.M) {
 	}
 	fastHub = hub.New(pool, fastTiming.DisconnectGrace, 4096, 64, []byte("integration-test-projection-secret"), 24*time.Hour, []byte("integration-test-chat-cursor-secret"))
 	fastTS := httptest.NewServer(server.NewWithOptions(pool,
+		handler.WithAnswerMatchPolicy(game.AnswerMatchPublicFieldsV1),
 		handler.WithJoinRateLimit(10000, time.Minute),
+		handler.WithCharacterSearchConfig(handler.CharacterSearchConfig{QuestionScopeFilterEnabled: true}),
 		handler.WithMultiTiming(fastTiming),
 		handler.WithChatConfig(24*time.Hour, multi.DefaultChatRateConfig(), []byte("integration-test-chat-cursor-secret")),
 		handler.WithRolloutConfig(enabledRollout),
@@ -429,6 +434,311 @@ func TestSearchCatalogVersionAndScopeValidation(t *testing.T) {
 	}
 	if apiErr := decodeError(t, missingPayload); apiErr.Code != "CATALOG_VERSION_NOT_FOUND" {
 		t.Fatalf("unexpected missing version error: %+v", apiErr)
+	}
+
+	invalidPaths := []string{
+		"/api/characters/search?roomId=room-only",
+		"/api/characters/search?matchIndex=0",
+		"/api/characters/search?roomId=room-1&matchIndex=0&sessionId=session-1",
+		"/api/characters/search?roomId=room-1&matchIndex=0&catalogVersion=" + version,
+	}
+	for _, path := range invalidPaths {
+		invalidResp, invalidPayload := request(http.MethodGet, path, nil)
+		if invalidResp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("invalid context %s status %d: %s", path, invalidResp.StatusCode, invalidPayload)
+		}
+		if apiErr := decodeError(t, invalidPayload); apiErr.Code != "INVALID_REQUEST" {
+			t.Fatalf("invalid context %s error: %+v", path, apiErr)
+		}
+	}
+
+	missingMatchResp, missingMatchPayload := request(
+		http.MethodGet,
+		"/api/characters/search?roomId=missing&matchIndex=0",
+		nil,
+	)
+	if missingMatchResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing match status %d: %s", missingMatchResp.StatusCode, missingMatchPayload)
+	}
+	if apiErr := decodeError(t, missingMatchPayload); apiErr.Code != "ROOM_NOT_FOUND" {
+		t.Fatalf("unexpected missing match error: %+v", apiErr)
+	}
+}
+
+func catalogCharactersForVersion(t *testing.T, version string) []game.Character {
+	t.Helper()
+	var raw []byte
+	if err := pool.QueryRow(ctx, `SELECT characters FROM catalog_snapshot WHERE version = $1`, version).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var characters []game.Character
+	if err := json.Unmarshal(raw, &characters); err != nil {
+		t.Fatal(err)
+	}
+	return characters
+}
+
+func expectedQuestionScopeSearchIDs(characters []game.Character, selectedIDs []string) map[string]bool {
+	selected := make(map[string]bool, len(selectedIDs))
+	for _, characterID := range selectedIDs {
+		selected[characterID] = true
+	}
+	expected := map[string]bool{}
+	for _, character := range characters {
+		if character.EnabledAsGuess && selected[character.ID] {
+			expected[character.ID] = true
+		}
+	}
+	return expected
+}
+
+func assertSearchResultIDs(t *testing.T, payload []byte, expected map[string]bool) {
+	t.Helper()
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if search.Total != len(expected) || len(search.Results) != len(expected) {
+		t.Fatalf("search result count = %d/%d, want %d: %+v", search.Total, len(search.Results), len(expected), search)
+	}
+	for _, result := range search.Results {
+		if !expected[result.Id] {
+			t.Fatalf("search returned out-of-scope character %s", result.Id)
+		}
+		delete(expected, result.Id)
+	}
+	if len(expected) != 0 {
+		t.Fatalf("search omitted in-scope characters: %+v", expected)
+	}
+}
+
+func outOfScopeGuessableCharacter(t *testing.T, characters []game.Character, selectedIDs []string) game.Character {
+	t.Helper()
+	selected := make(map[string]bool, len(selectedIDs))
+	for _, characterID := range selectedIDs {
+		selected[characterID] = true
+	}
+	for _, character := range characters {
+		if character.EnabledAsGuess && !selected[character.ID] {
+			return character
+		}
+	}
+	t.Fatal("test catalog has no guessable character outside the selected question scope")
+	return game.Character{}
+}
+
+func TestSinglePlayerSearchUsesFrozenQuestionScope(t *testing.T) {
+	for _, mode := range []string{"daily", "random"} {
+		t.Run(mode, func(t *testing.T) {
+			resp, payload := request(http.MethodPost, "/api/puzzles/"+mode, nil)
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("create %s status %d: %s", mode, resp.StatusCode, payload)
+			}
+			var created openapi.PuzzleResponse
+			if err := json.Unmarshal(payload, &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.Session.QuestionScope == nil || created.Session.CatalogVersion == nil {
+				t.Fatalf("created %s session lacks frozen search context: %+v", mode, created.Session)
+			}
+			characters := catalogCharactersForVersion(t, *created.Session.CatalogVersion)
+			expected := expectedQuestionScopeSearchIDs(characters, created.Session.QuestionScope.SelectedCharacterIds)
+			searchResp, searchPayload := request(
+				http.MethodGet,
+				"/api/characters/search?limit=250&sessionId="+url.QueryEscape(created.Session.Id),
+				nil,
+			)
+			if searchResp.StatusCode != http.StatusOK {
+				t.Fatalf("%s scoped search status %d: %s", mode, searchResp.StatusCode, searchPayload)
+			}
+			assertSearchResultIDs(t, searchPayload, expected)
+		})
+	}
+}
+
+func TestLegacyQuestionScopeRequestsNormalizeToV3(t *testing.T) {
+	var version string
+	if err := pool.QueryRow(ctx, `SELECT current_version FROM catalog_state WHERE id = 'current'`).Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	characters := catalogCharactersForVersion(t, version)
+	selectedIDs := make([]string, 0, len(characters))
+	for _, character := range characters {
+		if character.EnabledAsAnswer {
+			selectedIDs = append(selectedIDs, character.ID)
+		}
+	}
+	if len(selectedIDs) == 0 {
+		t.Fatal("test catalog has no answerable characters")
+	}
+
+	tests := []struct {
+		name         string
+		schema       int
+		rules        map[string]any
+		assertFields func(*testing.T, map[string]string)
+	}{
+		{
+			name:   "v1",
+			schema: 1,
+			rules: map[string]any{
+				"hiddenFields": []string{"locations"},
+				"turnSeconds":  60,
+			},
+			assertFields: func(t *testing.T, modes map[string]string) {
+				if modes["locations"] != "hidden" {
+					t.Fatalf("v1 locations mode = %q, want hidden", modes["locations"])
+				}
+			},
+		},
+		{
+			name:   "v2",
+			schema: 2,
+			rules: map[string]any{
+				"fields": map[string]any{
+					"firstAppearance": true,
+					"releaseYear":     "exactOnly",
+					"species":         true,
+					"affiliations":    true,
+					"locations":       true,
+					"hairColors":      false,
+				},
+				"turnLimit":  map[string]any{"enabled": false, "seconds": 30},
+				"guessLimit": map[string]any{"enabled": true, "maxGuesses": 9},
+			},
+			assertFields: func(t *testing.T, modes map[string]string) {
+				if modes["releaseYear"] != "exactOnly" || modes["hairColors"] != "hidden" {
+					t.Fatalf("v2 field modes were not migrated: %+v", modes)
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resp, payload := request(http.MethodPost, "/api/puzzles/random", map[string]any{
+				"questionScope": map[string]any{
+					"schemaVersion":        test.schema,
+					"catalogVersion":       version,
+					"mode":                 "custom",
+					"difficulty":           "custom",
+					"selectedCharacterIds": selectedIDs,
+					"workStates":           []any{},
+					"rules":                test.rules,
+				},
+			})
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("legacy config status %d: %s", resp.StatusCode, payload)
+			}
+			var created openapi.PuzzleResponse
+			if err := json.Unmarshal(payload, &created); err != nil {
+				t.Fatal(err)
+			}
+			if created.Session.QuestionScope == nil {
+				t.Fatal("normalized question scope is missing")
+			}
+			scope := created.Session.QuestionScope
+			if scope.SchemaVersion != 3 {
+				t.Fatalf("schema version = %d, want 3", scope.SchemaVersion)
+			}
+			test.assertFields(t, scope.Rules.FieldModes)
+		})
+	}
+}
+
+func TestMultiplayerSearchUsesFrozenQuestionScope(t *testing.T) {
+	for _, mode := range []string{"race", "relay"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := createMatchFixtureMode(t, "bo1", mode, 30)
+			snapshot := startMatch(t, fixture)
+			if snapshot.Match == nil || snapshot.Match.QuestionScope == nil {
+				t.Fatalf("%s match lacks frozen search context: %+v", mode, snapshot.Match)
+			}
+			characters := catalogCharactersForVersion(t, snapshot.Match.CatalogVersion)
+			expected := expectedQuestionScopeSearchIDs(characters, snapshot.Match.QuestionScope.SelectedCharacterIds)
+			path := fmt.Sprintf(
+				"/api/characters/search?limit=250&roomId=%s&matchIndex=%d",
+				url.QueryEscape(fixture.roomID),
+				snapshot.Match.MatchIndex,
+			)
+			searchResp, searchPayload := fastRequest(http.MethodGet, path, nil)
+			if searchResp.StatusCode != http.StatusOK {
+				t.Fatalf("%s scoped search status %d: %s", mode, searchResp.StatusCode, searchPayload)
+			}
+			assertSearchResultIDs(t, searchPayload, expected)
+		})
+	}
+}
+
+func TestQuestionScopeSearchFilterCanBeDisabled(t *testing.T) {
+	resp, payload := request(http.MethodPost, "/api/puzzles/random", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("create random status %d: %s", resp.StatusCode, payload)
+	}
+	var created openapi.PuzzleResponse
+	if err := json.Unmarshal(payload, &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Session.QuestionScope == nil || created.Session.CatalogVersion == nil {
+		t.Fatalf("created session lacks frozen search context: %+v", created.Session)
+	}
+	characters := catalogCharactersForVersion(t, *created.Session.CatalogVersion)
+	outside := outOfScopeGuessableCharacter(t, characters, created.Session.QuestionScope.SelectedCharacterIds)
+	query := url.QueryEscape(outside.Names.ZhHans)
+
+	enabledResp, enabledPayload := request(
+		http.MethodGet,
+		"/api/characters/search?sessionId="+url.QueryEscape(created.Session.Id)+"&q="+query,
+		nil,
+	)
+	if enabledResp.StatusCode != http.StatusOK {
+		t.Fatalf("enabled scoped search status %d: %s", enabledResp.StatusCode, enabledPayload)
+	}
+	var enabledSearch openapi.CharacterSearchResponse
+	if err := json.Unmarshal(enabledPayload, &enabledSearch); err != nil {
+		t.Fatal(err)
+	}
+	if searchContainsCharacter(enabledSearch, outside.ID) {
+		t.Fatalf("enabled scope filter returned %s", outside.ID)
+	}
+
+	disabledServer := httptest.NewServer(server.NewWithOptions(
+		pool,
+		handler.WithCharacterSearchConfig(handler.CharacterSearchConfig{QuestionScopeFilterEnabled: false}),
+	))
+	defer disabledServer.Close()
+	disabledResp, err := disabledServer.Client().Get(
+		disabledServer.URL + "/api/characters/search?sessionId=" + url.QueryEscape(created.Session.Id) + "&q=" + query,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer disabledResp.Body.Close()
+	disabledPayload, err := io.ReadAll(disabledResp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabledResp.StatusCode != http.StatusOK {
+		t.Fatalf("disabled scoped search status %d: %s", disabledResp.StatusCode, disabledPayload)
+	}
+	var disabledSearch openapi.CharacterSearchResponse
+	if err := json.Unmarshal(disabledPayload, &disabledSearch); err != nil {
+		t.Fatal(err)
+	}
+	if !searchContainsCharacter(disabledSearch, outside.ID) {
+		t.Fatalf("disabled scope filter should restore %s: %+v", outside.ID, disabledSearch)
+	}
+
+	catalogResp, catalogPayload := request(http.MethodGet, "/api/characters/search?q="+query, nil)
+	if catalogResp.StatusCode != http.StatusOK {
+		t.Fatalf("catalog search status %d: %s", catalogResp.StatusCode, catalogPayload)
+	}
+	var catalogSearch openapi.CharacterSearchResponse
+	if err := json.Unmarshal(catalogPayload, &catalogSearch); err != nil {
+		t.Fatal(err)
+	}
+	if !searchContainsCharacter(catalogSearch, outside.ID) {
+		t.Fatalf("catalog search should remain unscoped for %s", outside.ID)
 	}
 }
 

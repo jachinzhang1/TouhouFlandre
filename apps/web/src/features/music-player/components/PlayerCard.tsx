@@ -14,7 +14,15 @@ import {
   VolumeOffFill,
   VolumeUpFill,
 } from "react-bootstrap-icons";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Ref,
+  type RefObject,
+} from "react";
 import {
   clampMediaTime,
   getVolumeIconLevel,
@@ -32,6 +40,10 @@ export type PlayerCardProps = {
   cardId: string;
   onOpenPlaylist: () => void;
   playlistSettingsButtonRef?: RefObject<HTMLButtonElement | null>;
+  cardRef?: Ref<HTMLElement>;
+  placementStyle?: CSSProperties;
+  placementVertical?: "above" | "below";
+  placementHorizontal?: "left" | "right";
 };
 
 function formatTime(seconds: number, unknown = "--:--"): string {
@@ -65,6 +77,10 @@ export function PlayerCard({
   cardId,
   onOpenPlaylist,
   playlistSettingsButtonRef,
+  cardRef,
+  placementStyle,
+  placementVertical,
+  placementHorizontal,
 }: PlayerCardProps) {
   const { state, commands } = useMusicPlayer();
   const [isTrackListOpen, setIsTrackListOpen] = useState(false);
@@ -127,10 +143,14 @@ export function PlayerCard({
 
   return (
     <section
+      ref={cardRef}
       id={cardId}
       className="music-player-card"
       data-music-player-card="true"
       data-open={open}
+      data-vertical={placementVertical}
+      data-horizontal={placementHorizontal}
+      style={placementStyle}
       aria-hidden={!open}
       aria-labelledby={`${cardId}-title`}
       aria-describedby={statusMessage ? `${cardId}-status` : undefined}

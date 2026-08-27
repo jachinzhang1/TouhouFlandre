@@ -1,16 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  CalendarDays,
-  Search,
-  Shuffle,
-} from "lucide-react";
-import { GAME_CONTENT_DEFINITIONS } from "@touhouflandre/shared";
+import { ArrowRight, CalendarDays, Search, Shuffle } from "lucide-react";
 import { useCatalogSummary } from "../hooks/useCatalogSummary";
-
-const CHARACTER_GAME = GAME_CONTENT_DEFINITIONS.character;
 
 export function HomePage() {
   const catalog = useCatalogSummary();
@@ -33,7 +25,7 @@ export function HomePage() {
             东方芙一把
           </h1>
           <p className="mt-[22px] mb-0 max-w-[540px] text-[1.04rem] leading-[1.85] text-[var(--hero-copy)] max-[680px]:max-w-[420px] max-[680px]:text-[0.94rem] max-[680px]:leading-[1.7]">
-            从初登场作品、年份、种族、阵营、地点和头发颜色里一点点缩小范围，猜出今天的东方角色。
+            根据公开词条的反馈一点点缩小范围，猜出今天的东方角色。
           </p>
           <div className="mt-7 flex flex-wrap gap-[9px] max-[420px]:grid">
             <Link
@@ -57,13 +49,13 @@ export function HomePage() {
           >
             <span className="flex items-baseline gap-[5px] max-[420px]:grid max-[420px]:gap-0">
               <strong className="font-brand text-[1.08rem] text-ink">
-                {CHARACTER_GAME.maxGuesses}
+                {characterSummary?.maxGuesses ?? "-"}
               </strong>{" "}
               次机会
             </span>
             <span className="flex items-baseline gap-[5px] max-[420px]:grid max-[420px]:gap-0">
               <strong className="font-brand text-[1.08rem] text-ink">
-                {CHARACTER_GAME.fields.filter((field) => field.visible).length}
+                {characterSummary?.visibleFieldCount ?? "-"}
               </strong>{" "}
               项线索
             </span>

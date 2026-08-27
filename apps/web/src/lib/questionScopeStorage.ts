@@ -45,5 +45,6 @@ export function catalogFullToSnapshot(value: unknown): FullCatalogSnapshot {
     version: catalog.version,
     works: catalog.works ?? [],
     characters: catalog.characters ?? [],
+    fieldDefinitions: catalog.fieldDefinitions ?? [],
   };
 }

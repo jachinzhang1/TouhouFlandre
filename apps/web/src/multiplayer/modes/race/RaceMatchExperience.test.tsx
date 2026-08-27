@@ -1,12 +1,36 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
+import type { GuessField } from "@touhouflandre/shared";
 import {
   initialRoomState,
   type RoomActions,
   type RoomUiState,
 } from "../../../hooks/useRoom";
 import { RaceMatchExperience } from "./RaceMatchExperience";
+
+const characterSearchMock = vi.hoisted(() => vi.fn());
+
+const fields = [
+  "firstAppearance",
+  "releaseYear",
+  "species",
+  "affiliations",
+  "locations",
+  "hairColors",
+].map((key) => ({
+  key,
+  label: key,
+  type: "multi_enum" as const,
+  visible: true,
+  compareStrategy: "multiSet",
+})) satisfies GuessField[];
+
+vi.mock("../../../hooks/useCharacterSearch", () => ({
+  useCharacterSearch: (query: string, options: unknown) => {
+    characterSearchMock(query, options);
+    return { results: [], loading: false, error: "" };
+  },
+}));
 
 const members = [
   {
@@ -93,11 +117,11 @@ function state(): RoomUiState {
         {
           memberId: "two",
           seat: 2,
-          fieldOrder: CHARACTER_GUESS_FIELDS.map((field) => field.key),
+          fieldOrder: fields.map((field) => field.key),
           rows: [
             {
               index: 1,
-              statuses: CHARACTER_GUESS_FIELDS.map(() => "exact" as const),
+              statuses: fields.map(() => "exact" as const),
             },
           ],
         },
@@ -130,7 +154,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={state()}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="one"
         role="player"
         actions={actions}
@@ -147,6 +171,16 @@ describe("RaceMatchExperience", () => {
     const opponentRow = container.querySelector("[data-member-board] tbody tr");
     expect(opponentRow?.textContent).not.toContain("博丽灵梦");
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(characterSearchMock).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        context: {
+          kind: "multiplayer-match",
+          roomId: "room-1",
+          matchIndex: 0,
+        },
+      }),
+    );
   });
 
   it("mounts the shared pulse class on the initial countdown", () => {
@@ -161,7 +195,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={countdownState}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="one"
         role="player"
         actions={actions}
@@ -196,7 +230,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={spectatorState}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="watcher"
         role="spectator"
         actions={actions}
@@ -243,7 +277,7 @@ describe("RaceMatchExperience", () => {
       <RaceMatchExperience
         state={finished}
         format="bo3"
-        fields={CHARACTER_GUESS_FIELDS}
+        fields={fields}
         memberId="three"
         role="player"
         actions={actions}

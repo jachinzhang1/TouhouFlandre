@@ -90,11 +90,11 @@ func StatusesForFields(statuses []string, fields []game.GuessField) []string {
 // HydrateGuessResult 由存储的状态序列（真实列序）重建完整猜测反馈
 // （08 §4.3：标签/符号/展示值按快照在投影时恢复，与单人旧猜测恢复同源）。
 // isCorrect 来自存储行（自视角展示；对手匿名矩阵不渲染该字段）。
-func HydrateGuessResult(guess game.Character, statuses []string, isCorrect bool) game.GuessResult {
-	return HydrateGuessResultWithFields(guess, statuses, isCorrect, game.CharacterGuessFields)
+func HydrateGuessResult(guess game.Character, statuses []string, isCorrect bool, matchKinds ...game.MatchKind) game.GuessResult {
+	return HydrateGuessResultWithFields(guess, statuses, isCorrect, game.CharacterGuessFields, matchKinds...)
 }
 
-func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField) game.GuessResult {
+func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCorrect bool, fields []game.GuessField, matchKinds ...game.MatchKind) game.GuessResult {
 	visibleStatuses := StatusesForFields(statuses, fields)
 	feedback := make([]game.FieldFeedback, 0, len(fields))
 	for i, field := range fields {
@@ -113,11 +113,19 @@ func HydrateGuessResultWithFields(guess game.Character, statuses []string, isCor
 			DisplayValue: game.DisplayValuesForField(guess, field.Key),
 		})
 	}
+	matchKind := game.MatchNone
+	if isCorrect {
+		matchKind = game.MatchExact
+	}
+	if len(matchKinds) > 0 {
+		matchKind = matchKinds[0]
+	}
 	return game.GuessResult{
 		GuessID:        guess.ID,
 		GuessName:      guess.Names.ZhHans,
 		GuessAvatarURL: guess.AvatarURL,
 		IsCorrect:      isCorrect,
+		MatchKind:      matchKind,
 		Feedback:       feedback,
 	}
 }
@@ -386,23 +394,21 @@ func projectSpectatorGuess(ctx context.Context, q *repo.Queries, roomID string, 
 	}
 	guessID := payload.GuessID
 	statuses := append([]string{}, payload.Statuses...)
-	isCorrect := guessID != "" && guessID == round.AnswerID
-	if guessID == "" {
-		guesses, err := q.ListGuessesForRound(ctx, payload.RoundID)
-		if err != nil {
+	isCorrect := false
+	guesses, err := q.ListGuessesForRound(ctx, payload.RoundID)
+	if err != nil {
+		return ProjectedEvent{}, err
+	}
+	for _, guess := range guesses {
+		if int(memberSlotByID[guess.MemberID]) != payload.MemberSlot || int(guess.Sequence) != payload.RowIndex {
+			continue
+		}
+		guessID = guess.GuessID
+		isCorrect = guess.IsCorrect
+		if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
 			return ProjectedEvent{}, err
 		}
-		for _, guess := range guesses {
-			if int(memberSlotByID[guess.MemberID]) != payload.MemberSlot || int(guess.Sequence) != payload.RowIndex {
-				continue
-			}
-			guessID = guess.GuessID
-			isCorrect = guess.IsCorrect
-			if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
-				return ProjectedEvent{}, err
-			}
-			break
-		}
+		break
 	}
 	chars, err := charactersForVersionCached(ctx, q, match.CatalogVersion, charsCache)
 	if err != nil {
@@ -421,7 +427,7 @@ func projectSpectatorGuess(ctx context.Context, q *repo.Queries, roomID string, 
 			MemberID:   payload.MemberID,
 			Seat:       payload.MemberSlot,
 			RowIndex:   payload.RowIndex,
-			Guess:      HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields),
+			Guess:      HydrateGuessResultViewWithFields(guessChar, statuses, isCorrect, fields, game.MatchKindForStoredGuess(isCorrect, round.AnswerID, guessID)),
 		},
 	}, nil
 }

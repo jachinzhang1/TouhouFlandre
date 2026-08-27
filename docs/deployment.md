@@ -46,6 +46,8 @@ cp .env.example .env
 | `WEB_ORIGINS`                                                                              | 浏览器实际访问源，例如 `https://game.example.com`。                                |
 | `NEXT_PUBLIC_API_BASE_URL`                                                                 | 通常留空，使用同源 `/api`。                                                        |
 | `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                  |
+| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                            | 默认 `true`；游戏内搜索只显示该局题库角色。设为 `false` 并重启 API 可恢复全快照候选。 |
+| `ANSWER_MATCH_POLICY`                                                                      | 新对局答案判定，默认 `public_fields_v1`；可设为 `strict`，未知值会阻止 API 启动。   |
 | `MULTI_MODE_REGISTRY`                                                                      | 默认 `full`；仅隔离演练可设为 `race-only` 或 `relay-only`，未知值会阻止 API 启动。 |
 | `MULTI_N_PLAYER_RELAY_ENABLED` / `MULTI_RELAY_ELIMINATION_ENABLED`                         | API 多人 relay 固定积分和淘汰赛入口默认均为 `true`；可分别关闭。                   |
 | `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。        |
@@ -110,7 +112,11 @@ git pull
 task prod:up
 ```
 
-`migrate` 和 `seed` 每次启动都会作为一次性服务运行。题库 seed 会写入新的版本化快照；已经开始的会话继续引用旧版本，不受新题库影响。
+`migrate` 和 `seed` 每次启动都会作为一次性服务运行。题库 seed 会写入新的版本化快照；已经开始的会话继续引用旧版本和已冻结的答案判定策略，不受新题库影响。
+
+API 运行中也可以单独执行版本化 seed。`catalog_state.current_version` 更新后，新建对局会按需加载新题库索引，无需重启 API；进行中的对局继续使用旧索引。直接修改 `character` 行表不是受支持的热更新方式，也不会改变已经缓存或冻结的题库。`catalog_snapshot` 不允许同版本覆盖：同版本同内容可幂等重跑，同版本不同内容会使 seed 失败并回滚事务。
+
+紧急关闭等价判定时，将 `ANSWER_MATCH_POLICY=strict` 后重启 API。该操作只影响重启后创建的新随机题、新多人 match 和尚未创建的每日题；已有会话、已有 match 及已创建每日题保持原策略。恢复默认策略时使用相同步骤改回 `public_fields_v1`。
 
 多人接力迁移 `0015` 至 `0019` 采用 expand-only：应用回滚时保留新表和旧可读列，不执行 Down。部署不理解 WS v3 或新 `RuleSetRef` 的旧 binary 前，必须先关闭新入口并让所有 v3 lobby/playing/finished 房间排空或收到明确 close 事件；不能让旧 binary 猜测新表状态。
 

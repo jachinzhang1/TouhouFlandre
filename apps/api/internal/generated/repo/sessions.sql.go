@@ -13,23 +13,26 @@ import (
 
 const createSession = `-- name: CreateSession :one
 INSERT INTO game_session (
-    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, question_scope
+    id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, question_scope,
+    answer_match_policy
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,
+    COALESCE(NULLIF($10::text, ''), 'strict')
 )
-RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope
+RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope, answer_match_policy
 `
 
 type CreateSessionParams struct {
-	ID             string      `json:"id"`
-	Mode           string      `json:"mode"`
-	ContentType    string      `json:"content_type"`
-	AnswerID       string      `json:"answer_id"`
-	CatalogVersion string      `json:"catalog_version"`
-	PuzzleKey      pgtype.Text `json:"puzzle_key"`
-	Status         string      `json:"status"`
-	MaxGuesses     int32       `json:"max_guesses"`
-	QuestionScope  []byte      `json:"question_scope"`
+	ID                string      `json:"id"`
+	Mode              string      `json:"mode"`
+	ContentType       string      `json:"content_type"`
+	AnswerID          string      `json:"answer_id"`
+	CatalogVersion    string      `json:"catalog_version"`
+	PuzzleKey         pgtype.Text `json:"puzzle_key"`
+	Status            string      `json:"status"`
+	MaxGuesses        int32       `json:"max_guesses"`
+	QuestionScope     []byte      `json:"question_scope"`
+	AnswerMatchPolicy string      `json:"answer_match_policy"`
 }
 
 // 会话：创建、查询、乐观锁更新
@@ -44,6 +47,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (G
 		arg.Status,
 		arg.MaxGuesses,
 		arg.QuestionScope,
+		arg.AnswerMatchPolicy,
 	)
 	var i GameSession
 	err := row.Scan(
@@ -62,12 +66,13 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (G
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.QuestionScope,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope FROM game_session WHERE id = $1
+SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope, answer_match_policy FROM game_session WHERE id = $1
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (GameSession, error) {
@@ -89,6 +94,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (GameSession, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.QuestionScope,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -101,7 +107,7 @@ SET guesses = $1::jsonb,
     version = version + 1,
     updated_at = now()
 WHERE id = $4 AND version = $5 AND status = 'playing'
-RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope
+RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at, created_at, updated_at, question_scope, answer_match_policy
 `
 
 type UpdateSessionGuessParams struct {
@@ -137,6 +143,7 @@ func (q *Queries) UpdateSessionGuess(ctx context.Context, arg UpdateSessionGuess
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.QuestionScope,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }

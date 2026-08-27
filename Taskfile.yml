@@ -57,7 +57,7 @@ tasks:
   gen:repo:
     dir: apps/api
     cmds:
-      - sqlc generate
+      - go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
 
   gen:web:
     cmds:

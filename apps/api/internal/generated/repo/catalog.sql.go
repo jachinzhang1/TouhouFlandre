@@ -133,7 +133,7 @@ func (q *Queries) UpsertCatalogState(ctx context.Context, currentVersion string)
 const upsertSnapshot = `-- name: UpsertSnapshot :exec
 INSERT INTO catalog_snapshot (version, characters)
 VALUES ($1, $2)
-ON CONFLICT (version) DO UPDATE SET characters = EXCLUDED.characters
+ON CONFLICT (version) DO NOTHING
 `
 
 type UpsertSnapshotParams struct {

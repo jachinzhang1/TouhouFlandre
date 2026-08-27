@@ -9,7 +9,7 @@ func TestTargetWinsAndRoundCaps(t *testing.T) {
 	cases := []struct {
 		format       RoomFormat
 		targetWins   int
-		totalRounds   int
+		totalRounds  int
 		placementCap int
 	}{
 		{RoomFormatBO1, 1, 1, 3},
@@ -32,12 +32,12 @@ func TestTargetWinsAndRoundCaps(t *testing.T) {
 
 func TestFrozenRaceScoringModeAndRoundCaps(t *testing.T) {
 	cases := []struct {
-		name            string
-		rosterSize      int
-		elimination     bool
-		format          RoomFormat
-		wantMode        ScoringMode
-		wantMaxRounds   int
+		name          string
+		rosterSize    int
+		elimination   bool
+		format        RoomFormat
+		wantMode      ScoringMode
+		wantMaxRounds int
 	}{
 		{name: "two player ignores toggle", rosterSize: 2, elimination: true, format: RoomFormatBO5, wantMode: ScoringModeWins, wantMaxRounds: 5},
 		{name: "three player points", rosterSize: 3, elimination: false, format: RoomFormatBO5, wantMode: ScoringModePoints, wantMaxRounds: 5},
@@ -178,5 +178,23 @@ func TestDrawAnswer(t *testing.T) {
 	}
 	if id == "" {
 		t.Fatal("兜底返回空")
+	}
+}
+
+func TestDrawAnswerByGroup(t *testing.T) {
+	pool := []string{"a1", "a2", "b", "c"}
+	groups := map[string]string{"a1": "a", "a2": "a", "b": "b", "c": "c"}
+	rng := rand.New(rand.NewPCG(1, 2))
+	for range 20 {
+		answer, err := DrawAnswerByGroup(pool, []string{"a2", "b"}, func(id string) string { return groups[id] }, rng)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if answer != "c" {
+			t.Fatalf("answer = %s, want the only unused group c", answer)
+		}
+	}
+	if _, err := DrawAnswerByGroup(pool, []string{"a1", "b", "c"}, func(id string) string { return groups[id] }, rng); err != ErrNoAnswerPool {
+		t.Fatalf("exhausted group error = %v, want ErrNoAnswerPool", err)
 	}
 }

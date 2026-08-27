@@ -53,7 +53,7 @@ describe("useCharacterSearch", () => {
     );
   });
 
-  it("passes the multiplayer catalog version to character search", async () => {
+  it("passes a version-only catalog lookup to character search", async () => {
     vi.mocked(api.searchCharacters).mockResolvedValue({
       results: [],
       total: 0,
@@ -74,6 +74,36 @@ describe("useCharacterSearch", () => {
     );
   });
 
+  it("passes the multiplayer match context to character search", async () => {
+    vi.mocked(api.searchCharacters).mockResolvedValue({
+      results: [],
+      total: 0,
+    });
+
+    const { result: hook } = renderHook(() =>
+      useCharacterSearch("hmx", {
+        delay: 0,
+        context: {
+          kind: "multiplayer-match",
+          roomId: "room-1",
+          matchIndex: 2,
+        },
+      }),
+    );
+
+    await waitFor(() => expect(hook.current.loading).toBe(false));
+    expect(api.searchCharacters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: "hmx",
+        roomId: "room-1",
+        matchIndex: 2,
+        sessionId: undefined,
+        catalogVersion: undefined,
+      }),
+      expect.any(AbortSignal),
+    );
+  });
+
   it("passes the game session id to character search", async () => {
     vi.mocked(api.searchCharacters).mockResolvedValue({
       results: [result("reimu")],
@@ -81,7 +111,10 @@ describe("useCharacterSearch", () => {
     });
 
     const { result: hook } = renderHook(() =>
-      useCharacterSearch("灵梦", { delay: 0, sessionId: "session-1" }),
+      useCharacterSearch("灵梦", {
+        delay: 0,
+        context: { kind: "single-session", sessionId: "session-1" },
+      }),
     );
 
     await waitFor(() => expect(hook.current.loading).toBe(false));
@@ -104,7 +137,7 @@ describe("useCharacterSearch", () => {
     const { result: hook } = renderHook(() =>
       useCharacterSearch("灵梦", {
         delay: 0,
-        sessionId: "session-1",
+        context: { kind: "single-session", sessionId: "session-1" },
         workIds: "th06_eosd",
       }),
     );
@@ -155,7 +188,11 @@ describe("useCharacterSearch", () => {
       .mockReturnValueOnce(second);
 
     const { rerender, result: hook } = renderHook(
-      ({ sessionId }) => useCharacterSearch("灵梦", { delay: 0, sessionId }),
+      ({ sessionId }) =>
+        useCharacterSearch("灵梦", {
+          delay: 0,
+          context: { kind: "single-session", sessionId },
+        }),
       { initialProps: { sessionId: "session-1" } },
     );
     await waitFor(() => expect(api.searchCharacters).toHaveBeenCalledTimes(1));

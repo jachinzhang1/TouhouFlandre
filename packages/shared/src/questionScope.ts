@@ -1,6 +1,12 @@
-import type { Character, DifficultyTier, GuessFieldKey, Work } from "./types";
+import type {
+  Character,
+  DifficultyTier,
+  GuessFieldDefinition,
+  GuessFieldKey,
+  Work,
+} from "./types";
 
-export const QUESTION_SCOPE_SCHEMA_VERSION = 2 as const;
+export const QUESTION_SCOPE_SCHEMA_VERSION = 3 as const;
 export const QUESTION_SCOPE_MIN_TURN_SECONDS = 30;
 export const QUESTION_SCOPE_HARD_TURN_SECONDS = 45;
 export const QUESTION_SCOPE_MAX_TURN_SECONDS = 120;
@@ -9,19 +15,8 @@ export const QUESTION_SCOPE_DEFAULT_GUESSES = 8;
 export const QUESTION_SCOPE_MAX_GUESSES = 20;
 export const QUESTION_SCOPE_UNLIMITED_GUESSES = 999;
 
-export const QUESTION_SCOPE_CONFIGURABLE_FIELDS = [
-  "firstAppearance",
-  "releaseYear",
-  "species",
-  "affiliations",
-  "locations",
-  "hairColors",
-] as const;
-
 export type QuestionScopeMode = "preset" | "custom";
 export type QuestionScopeWorkSelection = "all" | "partial" | "none";
-export type QuestionScopeConfigurableField =
-  (typeof QUESTION_SCOPE_CONFIGURABLE_FIELDS)[number];
 export type QuestionScopeReleaseYearMode =
   "hidden" | "exactOnly" | "directional";
 export type QuestionScopeGuessLimit = {
@@ -30,7 +25,9 @@ export type QuestionScopeGuessLimit = {
 };
 
 export type QuestionScopeRules = {
-  fields: {
+  fieldModes: Record<string, string>;
+  /** Legacy v2 input. Normalized configs do not write this field. */
+  fields?: {
     firstAppearance: boolean;
     releaseYear: QuestionScopeReleaseYearMode;
     species: boolean;
@@ -57,7 +54,7 @@ export type QuestionScopeWorkState = {
 };
 
 export type QuestionScopeConfig = {
-  schemaVersion: typeof QUESTION_SCOPE_SCHEMA_VERSION;
+  schemaVersion: 1 | 2 | typeof QUESTION_SCOPE_SCHEMA_VERSION;
   catalogVersion: string;
   mode: QuestionScopeMode;
   difficulty: QuestionDifficulty;
@@ -77,6 +74,7 @@ export type FullCatalogSnapshot = {
   version: string;
   works: Work[];
   characters: Character[];
+  fieldDefinitions?: GuessFieldDefinition[];
 };
 
 export type QuestionScopeCorrection = {
@@ -85,7 +83,9 @@ export type QuestionScopeCorrection = {
   reason?: "catalog-updated" | "invalid-ids-dropped" | "empty-pool-fallback";
 };
 
-const allFieldsEnabled: QuestionScopeRules["fields"] = {
+type LegacyQuestionScopeFields = NonNullable<QuestionScopeRules["fields"]>;
+
+const legacyDefaultFields: LegacyQuestionScopeFields = {
   firstAppearance: true,
   releaseYear: "directional",
   species: true,
@@ -113,7 +113,9 @@ type QuestionDifficultyPresetDefinition = {
   label: string;
   description: string;
   includedDifficultyTiers: "all" | readonly DifficultyTier[];
-  rules: QuestionScopeRules;
+  turnLimit: QuestionScopeRules["turnLimit"];
+  guessLimit: QuestionScopeGuessLimit;
+  hideFirstAppearance?: boolean;
 };
 
 export const QUESTION_DIFFICULTY_PRESET_DEFINITIONS = {
@@ -121,53 +123,40 @@ export const QUESTION_DIFFICULTY_PRESET_DEFINITIONS = {
     label: "Easy",
     description: "仅包含高人气整数作角色，不限制猜测次数",
     includedDifficultyTiers: ["easy"],
-    rules: {
-      fields: allFieldsEnabled,
-      turnLimit: defaultTurnLimit,
-      guessLimit: unlimitedGuessLimit,
-    },
+    turnLimit: defaultTurnLimit,
+    guessLimit: unlimitedGuessLimit,
   },
   normal: {
     label: "Normal",
     description:
       "包含官作（游戏、出版物、音乐 CD）的部分高人气角色，限制 8 次猜测",
     includedDifficultyTiers: ["easy", "normal"],
-    rules: {
-      fields: allFieldsEnabled,
-      turnLimit: defaultTurnLimit,
-      guessLimit: defaultGuessLimit,
-    },
+    turnLimit: defaultTurnLimit,
+    guessLimit: defaultGuessLimit,
   },
   hard: {
     label: "Hard",
     description:
       "包含所有官作角色，限制 8 次猜测，每手限时 45 秒",
     includedDifficultyTiers: ["easy", "normal", "hard"],
-    rules: {
-      fields: allFieldsEnabled,
-      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
-      guessLimit: defaultGuessLimit,
-    },
+    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_HARD_TURN_SECONDS },
+    guessLimit: defaultGuessLimit,
   },
   lunatic: {
     label: "Lunatic",
     description: "禁用初登场作品属性，限制 8 次猜测，每手限时 30 秒",
     includedDifficultyTiers: ["easy", "normal", "hard", "lunatic"],
-    rules: {
-      fields: { ...allFieldsEnabled, firstAppearance: false },
-      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
-      guessLimit: defaultGuessLimit,
-    },
+    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
+    guessLimit: defaultGuessLimit,
+    hideFirstAppearance: true,
   },
   extra: {
     label: "Extra",
     description: "包含仅在旧作中登场的角色",
     includedDifficultyTiers: "all",
-    rules: {
-      fields: { ...allFieldsEnabled, firstAppearance: false },
-      turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
-      guessLimit: defaultGuessLimit,
-    },
+    turnLimit: { enabled: true, seconds: QUESTION_SCOPE_MIN_TURN_SECONDS },
+    guessLimit: defaultGuessLimit,
+    hideFirstAppearance: true,
   },
 } as const satisfies Record<string, QuestionDifficultyPresetDefinition>;
 
@@ -239,12 +228,18 @@ export function presetQuestionScopeIds(
 
 export function questionScopePresetRules(
   preset: QuestionDifficultyPreset,
+  definitions: readonly GuessFieldDefinition[] = [],
 ): QuestionScopeRules {
-  const rules = QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset].rules;
+  const definition: QuestionDifficultyPresetDefinition =
+    QUESTION_DIFFICULTY_PRESET_DEFINITIONS[preset];
+  const fieldModes = defaultFieldModes(definitions);
+  if (definition.hideFirstAppearance && "firstAppearance" in fieldModes) {
+    fieldModes.firstAppearance = "hidden";
+  }
   return {
-    fields: { ...rules.fields },
-    turnLimit: { ...rules.turnLimit },
-    guessLimit: { ...rules.guessLimit },
+    fieldModes,
+    turnLimit: { ...definition.turnLimit },
+    guessLimit: { ...definition.guessLimit },
   };
 }
 
@@ -287,28 +282,52 @@ function normalizeQuestionScopeGuessLimit(
 
 export function normalizeQuestionScopeRules(
   rules?: Partial<QuestionScopeRules>,
+  definitions: readonly GuessFieldDefinition[] = [],
+  missingMode?: string,
 ): QuestionScopeRules {
-  const fields = { ...allFieldsEnabled };
+  const defaults = defaultFieldModes(definitions);
+  const fieldModes: Record<string, string> = {};
+  const registered = new Map(definitions.map((definition) => [definition.key, definition]));
+  const configuredModes = rules?.fieldModes;
+  const keys = definitions.length
+    ? definitions.map((definition) => definition.key)
+    : [...new Set([...Object.keys(defaults), ...Object.keys(configuredModes ?? {})])];
+
+  if (configuredModes && Object.keys(configuredModes).length > 0) {
+    for (const key of keys) {
+      const requested = configuredModes[key];
+      const fallback = missingMode ?? defaults[key] ?? "hidden";
+      const definition = registered.get(key as GuessFieldKey);
+      fieldModes[key] =
+        requested &&
+        (!definition || definition.modes.some((mode) => mode.key === requested))
+          ? requested
+          : fallback;
+    }
+  } else {
+    Object.assign(fieldModes, defaults);
+    const legacyFields = rules?.fields;
+    if (legacyFields) {
+      fieldModes.firstAppearance = legacyFields.firstAppearance === false ? "hidden" : "default";
+      fieldModes.releaseYear = releaseYearModes.has(legacyFields.releaseYear)
+        ? legacyFields.releaseYear
+        : "directional";
+      fieldModes.species = legacyFields.species === false ? "hidden" : "default";
+      fieldModes.affiliations = legacyFields.affiliations === false ? "hidden" : "default";
+      fieldModes.locations = legacyFields.locations === false ? "hidden" : "default";
+      fieldModes.hairColors = legacyFields.hairColors === false ? "hidden" : "default";
+    }
+  }
   const legacyHidden = new Set(
     Array.isArray(rules?.hiddenFields) ? rules.hiddenFields : [],
   );
+  for (const field of legacyHidden) fieldModes[field] = "hidden";
 
-  if (rules?.fields) {
-    fields.firstAppearance = rules.fields.firstAppearance !== false;
-    fields.releaseYear = releaseYearModes.has(rules.fields.releaseYear)
-      ? rules.fields.releaseYear
-      : "directional";
-    fields.species = rules.fields.species !== false;
-    fields.affiliations = rules.fields.affiliations !== false;
-    fields.locations = rules.fields.locations !== false;
-    fields.hairColors = rules.fields.hairColors !== false;
-  } else {
-    if (legacyHidden.has("firstAppearance")) fields.firstAppearance = false;
-    if (legacyHidden.has("releaseYear")) fields.releaseYear = "hidden";
-    if (legacyHidden.has("species")) fields.species = false;
-    if (legacyHidden.has("affiliations")) fields.affiliations = false;
-    if (legacyHidden.has("locations")) fields.locations = false;
-    if (legacyHidden.has("hairColors")) fields.hairColors = false;
+  if (missingMode && definitions.length && !configuredModes) {
+    const legacyKeys = new Set(Object.keys(legacyDefaultFields));
+    for (const definition of definitions) {
+      if (!legacyKeys.has(definition.key)) fieldModes[definition.key] = missingMode;
+    }
   }
 
   const legacyTurnSeconds =
@@ -324,12 +343,30 @@ export function normalizeQuestionScopeRules(
   );
 
   return {
-    fields,
+    fieldModes,
     turnLimit: {
       enabled,
       seconds,
     },
     guessLimit: normalizeQuestionScopeGuessLimit(rules?.guessLimit),
+  };
+}
+
+function defaultFieldModes(
+  definitions: readonly GuessFieldDefinition[],
+): Record<string, string> {
+  if (definitions.length) {
+    return Object.fromEntries(
+      definitions.map((definition) => [definition.key, definition.defaultMode]),
+    );
+  }
+  return {
+    firstAppearance: "default",
+    releaseYear: "directional",
+    species: "default",
+    affiliations: "default",
+    locations: "default",
+    hairColors: "default",
   };
 }
 
@@ -354,13 +391,10 @@ function rulesEqual(
 ): boolean {
   left = normalizeQuestionScopeRules(left);
   right = normalizeQuestionScopeRules(right);
+  const leftModes = Object.entries(left.fieldModes);
   return (
-    left.fields.firstAppearance === right.fields.firstAppearance &&
-    left.fields.releaseYear === right.fields.releaseYear &&
-    left.fields.species === right.fields.species &&
-    left.fields.affiliations === right.fields.affiliations &&
-    left.fields.locations === right.fields.locations &&
-    left.fields.hairColors === right.fields.hairColors &&
+    leftModes.length === Object.keys(right.fieldModes).length &&
+    leftModes.every(([key, mode]) => right.fieldModes[key] === mode) &&
     left.turnLimit.enabled === right.turnLimit.enabled &&
     (!left.turnLimit.enabled ||
       left.turnLimit.seconds === right.turnLimit.seconds) &&
@@ -378,11 +412,12 @@ function inferDifficulty(
   selectedCharacterIds: string[],
   rules: QuestionScopeRules,
   characters: Character[],
+  definitions: readonly GuessFieldDefinition[],
   preferredPreset?: QuestionDifficultyPreset,
 ): QuestionDifficulty {
   const matchesPreset = (preset: QuestionDifficultyPreset) =>
     sameIds(selectedCharacterIds, presetQuestionScopeIds(preset, characters)) &&
-    rulesEqual(rules, questionScopePresetRules(preset));
+    rulesEqual(rules, questionScopePresetRules(preset, definitions));
 
   if (preferredPreset && matchesPreset(preferredPreset)) {
     return preferredPreset;
@@ -414,22 +449,7 @@ export function questionScopeFieldVisible(
   field: GuessFieldKey,
 ): boolean {
   const normalized = normalizeQuestionScopeRules(rules);
-  switch (field) {
-    case "firstAppearance":
-      return normalized.fields.firstAppearance;
-    case "releaseYear":
-      return normalized.fields.releaseYear !== "hidden";
-    case "species":
-      return normalized.fields.species;
-    case "affiliations":
-      return normalized.fields.affiliations;
-    case "locations":
-      return normalized.fields.locations;
-    case "hairColors":
-      return normalized.fields.hairColors;
-    default:
-      return true;
-  }
+  return normalized.fieldModes[field] !== "hidden";
 }
 
 export function buildQuestionScopeWorkStates(
@@ -482,6 +502,7 @@ function canonicalConfig(
     selectedCharacterIds,
     rules,
     snapshot.characters,
+    snapshot.fieldDefinitions ?? [],
     preferredPreset,
   );
   return {
@@ -495,7 +516,7 @@ function canonicalConfig(
       snapshot.characters,
       selectedCharacterIds,
     ),
-    rules: normalizeQuestionScopeRules(rules),
+    rules: normalizeQuestionScopeRules(rules, snapshot.fieldDefinitions ?? []),
   };
 }
 
@@ -506,7 +527,7 @@ export function defaultQuestionScope(
   return canonicalConfig(
     snapshot,
     presetQuestionScopeIds(preset, snapshot.characters),
-    questionScopePresetRules(preset),
+    questionScopePresetRules(preset, snapshot.fieldDefinitions ?? []),
     preset,
   );
 }
@@ -523,11 +544,16 @@ export function normalizeQuestionScope(
     ? input.difficulty
     : undefined;
   let preferredPreset = requestedPreset;
+  const missingMode = input.mode === "custom" ? "hidden" : undefined;
   let requestedRules = input.rules
-    ? normalizeQuestionScopeRules(input.rules)
+    ? normalizeQuestionScopeRules(
+        input.rules,
+        snapshot.fieldDefinitions ?? [],
+        missingMode,
+      )
     : requestedPreset
-      ? questionScopePresetRules(requestedPreset)
-      : questionScopePresetRules("normal");
+      ? questionScopePresetRules(requestedPreset, snapshot.fieldDefinitions ?? [])
+      : questionScopePresetRules("normal", snapshot.fieldDefinitions ?? []);
   const catalogChanged = input.catalogVersion !== snapshot.version;
   const incomingIds =
     catalogChanged && input.mode === "preset" && requestedPreset
@@ -542,7 +568,7 @@ export function normalizeQuestionScope(
   let reason: QuestionScopeCorrection["reason"] | undefined;
   if (selectedIds.length === 0) {
     selectedIds = presetQuestionScopeIds("normal", snapshot.characters);
-    requestedRules = questionScopePresetRules("normal");
+    requestedRules = questionScopePresetRules("normal", snapshot.fieldDefinitions ?? []);
     preferredPreset = "normal";
     reason = "empty-pool-fallback";
   } else if (selectedIds.length !== incomingIds.length) {
@@ -561,7 +587,14 @@ export function normalizeQuestionScope(
     input.mode !== config.mode ||
     input.difficulty !== config.difficulty ||
     !sameIds(input.selectedCharacterIds ?? [], config.selectedCharacterIds) ||
-    !rulesEqual(normalizeQuestionScopeRules(input.rules), config.rules);
+    !rulesEqual(
+      normalizeQuestionScopeRules(
+        input.rules,
+        snapshot.fieldDefinitions ?? [],
+        missingMode,
+      ),
+      config.rules,
+    );
 
   return {
     config,
@@ -624,7 +657,7 @@ export function updateQuestionScopeRules(
   return canonicalConfig(
     snapshot,
     normalizeSelectedIds(config.selectedCharacterIds, snapshot.characters),
-    normalizeQuestionScopeRules(rules),
+    normalizeQuestionScopeRules(rules, snapshot.fieldDefinitions ?? [], "hidden"),
     isPreset(config.difficulty) ? config.difficulty : undefined,
   );
 }
@@ -636,7 +669,7 @@ export function applyQuestionScopePreset(
   return canonicalConfig(
     snapshot,
     presetQuestionScopeIds(preset, snapshot.characters),
-    questionScopePresetRules(preset),
+    questionScopePresetRules(preset, snapshot.fieldDefinitions ?? []),
     preset,
   );
 }

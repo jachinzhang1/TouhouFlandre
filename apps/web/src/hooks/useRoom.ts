@@ -65,11 +65,12 @@ import {
 type GuessResult = components["schemas"]["GuessResult"];
 type MatchView = Omit<
   components["schemas"]["MatchView"],
-  "scores" | "scoringMode" | "rosterSize"
+  "scores" | "scoringMode" | "rosterSize" | "activeFields"
 > & {
   scores: MemberScoreView[];
   scoringMode?: "wins" | "points" | "placement";
   rosterSize?: number;
+  activeFields?: components["schemas"]["GuessField"][];
 };
 type MemberView = components["schemas"]["MemberView"];
 type RoomSnapshot = components["schemas"]["RoomSnapshot"];

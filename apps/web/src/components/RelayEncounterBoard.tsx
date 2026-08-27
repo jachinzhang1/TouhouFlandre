@@ -184,7 +184,7 @@ function RelayTurn({
             {row.guess.guessName}
             {row.guess.isCorrect ? (
               <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                命中
+                {row.guess.matchKind === "equivalent" ? "等价命中" : "命中"}
               </span>
             ) : null}
           </span>

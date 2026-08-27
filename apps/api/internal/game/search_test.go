@@ -105,7 +105,8 @@ func TestSearchCharactersByWorkInitialsAndPage(t *testing.T) {
 	})
 
 	page := game.SearchCharacters([]game.Character{marisa, disabled, reimu}, game.CharacterSearchOptions{
-		Query: "ＤＦＨＭＸ", SortBy: "appearance", Offset: 1, Limit: 1,
+		Query: "ＤＦＨＭＸ", Filters: []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()},
+		SortBy: "appearance", Offset: 1, Limit: 1,
 	})
 	if page.Total != 2 || len(page.Characters) != 1 || page.Characters[0].ID != "marisa" {
 		t.Fatalf("unexpected search page: %+v", page)
@@ -129,12 +130,68 @@ func TestSearchCharactersReturnsEveryCharacterSharingAlias(t *testing.T) {
 	})
 
 	page := game.SearchCharacters([]game.Character{shizuha, minoriko}, game.CharacterSearchOptions{
-		Query: "秋姐妹", SortBy: "appearance", Limit: -1,
+		Query: "秋姐妹", Filters: []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()},
+		SortBy: "appearance", Limit: -1,
 	})
 	if page.Total != 2 || len(page.Characters) != 2 {
 		t.Fatalf("shared alias should return both characters: %+v", page)
 	}
 	if page.Characters[0].ID != "minoriko_aki" || page.Characters[1].ID != "shizuha_aki" {
 		t.Fatalf("shared alias results should use ID as a stable tie-breaker: %+v", page.Characters)
+	}
+}
+
+func TestSearchCharactersComposesFiltersBeforePaging(t *testing.T) {
+	reimu := withPatch(baseCharacter(), func(c *game.Character) {
+		c.ID = "reimu"
+		c.AppearanceOrder = 1
+	})
+	patchouli := withPatch(baseCharacter(), func(c *game.Character) {
+		c.ID = "patchouli"
+		c.AppearanceOrder = 2
+	})
+	outsideScope := withPatch(baseCharacter(), func(c *game.Character) {
+		c.ID = "outside-scope"
+		c.AppearanceOrder = 3
+	})
+	wrongWork := withPatch(baseCharacter(), func(c *game.Character) {
+		c.ID = "wrong-work"
+		c.AppearanceOrder = 4
+		c.FirstAppearance.WorkID = "th07"
+	})
+	disabled := withPatch(baseCharacter(), func(c *game.Character) {
+		c.ID = "disabled"
+		c.AppearanceOrder = 5
+		c.EnabledAsGuess = false
+	})
+
+	page := game.SearchCharacters(
+		[]game.Character{disabled, wrongWork, outsideScope, patchouli, reimu},
+		game.CharacterSearchOptions{
+			Query: "",
+			Filters: []game.CharacterSearchFilter{
+				game.EnabledAsGuessSearchFilter(),
+				game.CharacterIDsSearchFilter([]string{"reimu", "patchouli", "wrong-work", "disabled"}),
+				game.WorkIDsSearchFilter([]string{"th06"}),
+			},
+			SortBy: "appearance",
+			Limit:  1,
+		},
+	)
+	if page.Total != 2 || len(page.Characters) != 1 || page.Characters[0].ID != "reimu" {
+		t.Fatalf("filters must run before paging: %+v", page)
+	}
+}
+
+func TestCharacterIDsSearchFilterWithEmptyScopeDeniesEveryCharacter(t *testing.T) {
+	page := game.SearchCharacters([]game.Character{baseCharacter()}, game.CharacterSearchOptions{
+		Filters: []game.CharacterSearchFilter{
+			game.EnabledAsGuessSearchFilter(),
+			game.CharacterIDsSearchFilter(nil),
+		},
+		Limit: -1,
+	})
+	if page.Total != 0 || len(page.Characters) != 0 {
+		t.Fatalf("empty allowed scope must not fall back to the full catalog: %+v", page)
 	}
 }

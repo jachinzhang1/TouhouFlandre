@@ -27,29 +27,59 @@ import (
 
 // Server 实现 StrictServerInterface。
 type Server struct {
-	pool             *pgxpool.Pool
-	q                *repo.Queries
-	now              func() time.Time
-	rng              core.RandomSource
-	modeRegistry     *core.Registry
-	relayCoordinator *relaydomain.StageCoordinator
-	relayEncounters  *relayadapter.EncounterService
-	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
-	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
-	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
-	historyLimiter   *ipRateLimiter     // relay history 按 member 限流
-	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
-	chatRetention    time.Duration
-	chatRate         multi.ChatRateConfig
-	chatCursor       *multi.ChatCursorCodec
-	announcements    *multi.SystemAnnouncementWriter
-	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
-	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
-	rollout          RolloutConfig
+	pool              *pgxpool.Pool
+	q                 *repo.Queries
+	now               func() time.Time
+	rng               core.RandomSource
+	modeRegistry      *core.Registry
+	relayCoordinator  *relaydomain.StageCoordinator
+	relayEncounters   *relayadapter.EncounterService
+	lobbyTTL          time.Duration      // 大厅 TTL（创建时 expires_at 基准）
+	eventRetention    time.Duration      // closed 保留期（关闭时 expires_at）
+	joinLimiter       *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	historyLimiter    *ipRateLimiter     // relay history 按 member 限流
+	timing            multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
+	chatRetention     time.Duration
+	chatRate          multi.ChatRateConfig
+	chatCursor        *multi.ChatCursorCodec
+	announcements     *multi.SystemAnnouncementWriter
+	hub               *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
+	projectionSecret  []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
+	rollout           RolloutConfig
+	characterSearch   CharacterSearchConfig
+	answerMatchPolicy game.AnswerMatchPolicy
+	catalogRuntimes   *game.CatalogRuntimeProvider
+	guessEvaluator    *game.GuessEvaluator
 }
 
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
+
+// CharacterSearchConfig controls optional filters assembled around the shared
+// character search implementation.
+type CharacterSearchConfig struct {
+	QuestionScopeFilterEnabled bool
+}
+
+func characterSearchConfigFromEnv() CharacterSearchConfig {
+	return CharacterSearchConfig{
+		QuestionScopeFilterEnabled: config.CharacterSearchQuestionScopeFilterEnabled(),
+	}
+}
+
+// WithCharacterSearchConfig overrides character search filters for tests and
+// staged deployments.
+func WithCharacterSearchConfig(searchConfig CharacterSearchConfig) Option {
+	return func(s *Server) {
+		s.characterSearch = searchConfig
+	}
+}
+
+func WithAnswerMatchPolicy(policy game.AnswerMatchPolicy) Option {
+	return func(s *Server) {
+		s.answerMatchPolicy = policy
+	}
+}
 
 // RolloutConfig 定义多人玩法灰度开关。固定积分 relay 默认开启；淘汰赛和
 // 其他可选入口仍可独立关闭。服务端开关是最终授权边界。
@@ -153,27 +183,44 @@ func (s *Server) publishChatRoom(roomID string) {
 
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	clock := core.SystemClock{}
+	answerMatchPolicy, err := game.ParseAnswerMatchPolicy(config.AnswerMatchPolicy())
+	if err != nil {
+		panic("handler: " + err.Error())
+	}
 	s := &Server{
-		pool:             pool,
-		q:                repo.New(pool),
-		now:              clock.Now,
-		rng:              core.NewRandomSource(),
-		modeRegistry:     assembly.MustProduction(),
-		lobbyTTL:         config.MultiLobbyTTL(),
-		eventRetention:   config.MultiEventRetention(),
-		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
-		historyLimiter:   newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
-		timing:           multi.DefaultTimingConfig(),
-		chatRetention:    config.MultiChatRetention(),
-		chatRate:         config.MultiChatRate(),
-		chatCursor:       multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
-		projectionSecret: config.MultiProjectionSecret(),
-		rollout:          rolloutConfigFromEnv(),
+		pool:              pool,
+		q:                 repo.New(pool),
+		now:               clock.Now,
+		rng:               core.NewRandomSource(),
+		modeRegistry:      assembly.MustProduction(),
+		lobbyTTL:          config.MultiLobbyTTL(),
+		eventRetention:    config.MultiEventRetention(),
+		joinLimiter:       newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		historyLimiter:    newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
+		timing:            multi.DefaultTimingConfig(),
+		chatRetention:     config.MultiChatRetention(),
+		chatRate:          config.MultiChatRate(),
+		chatCursor:        multi.NewChatCursorCodec(config.MultiChatCursorSecret()),
+		projectionSecret:  config.MultiProjectionSecret(),
+		rollout:           rolloutConfigFromEnv(),
+		characterSearch:   characterSearchConfigFromEnv(),
+		answerMatchPolicy: answerMatchPolicy,
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
 	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
+	s.catalogRuntimes = game.NewCatalogRuntimeProvider(func(ctx context.Context, version string) ([]game.Character, error) {
+		return multi.CharactersForVersion(ctx, s.q, version)
+	})
+	s.guessEvaluator = game.NewGuessEvaluator(s.catalogRuntimes)
+	if state, err := s.q.GetCatalogState(context.Background()); err == nil {
+		if _, err := s.catalogRuntimes.Get(context.Background(), state.CurrentVersion, s.answerMatchPolicy); err != nil {
+			panic("handler: prewarm catalog runtime: " + err.Error())
+		}
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		panic("handler: load catalog state: " + err.Error())
+	}
 	s.configureRelayEngine()
 	return s
 }
@@ -187,6 +234,7 @@ func (s *Server) configureRelayEngine() {
 	if err != nil {
 		panic("handler: configure relay encounter engine: " + err.Error())
 	}
+	encounters.SetGuessEvaluator(s.guessEvaluator)
 	s.relayCoordinator = coordinator
 	s.relayEncounters = encounters
 }
@@ -236,8 +284,17 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.SessionId != nil && request.Params.CatalogVersion != nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "sessionId 与 catalogVersion 不能同时提供。"}
 	}
+	hasRoomID := request.Params.RoomId != nil
+	hasMatchIndex := request.Params.MatchIndex != nil
+	if hasRoomID != hasMatchIndex {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "roomId 与 matchIndex 必须同时提供。"}
+	}
+	if hasRoomID && (request.Params.SessionId != nil || request.Params.CatalogVersion != nil) {
+		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "多人场次上下文不能与 sessionId 或 catalogVersion 同时提供。"}
+	}
 
 	var characters []game.Character
+	var questionScope *game.QuestionScopeConfig
 	if request.Params.SessionId != nil {
 		session, err := s.q.GetSession(ctx, *request.Params.SessionId)
 		if err != nil {
@@ -249,6 +306,35 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		characters, err = s.charactersForVersion(ctx, session.CatalogVersion)
 		if err != nil {
 			return nil, err
+		}
+		if s.characterSearch.QuestionScopeFilterEnabled {
+			scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
+			if err != nil {
+				return nil, internalError(err)
+			}
+			questionScope = &scope
+		}
+	} else if hasRoomID {
+		match, err := s.q.GetMatchByIndex(ctx, repo.GetMatchByIndexParams{
+			RoomID:     *request.Params.RoomId,
+			MatchIndex: int32(*request.Params.MatchIndex),
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, &ApiError{Status: http.StatusNotFound, Code: codeRoomNotFound, Message: "没有找到这一场游戏。"}
+			}
+			return nil, internalError(err)
+		}
+		characters, err = s.charactersForVersion(ctx, match.CatalogVersion)
+		if err != nil {
+			return nil, err
+		}
+		if s.characterSearch.QuestionScopeFilterEnabled {
+			scope, err := questionScopeFromJSON(match.QuestionScope, match.CatalogVersion, nil, characters)
+			if err != nil {
+				return nil, internalError(err)
+			}
+			questionScope = &scope
 		}
 	} else if request.Params.CatalogVersion != nil {
 		var err error
@@ -268,8 +354,15 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
 		sortBy = "appearance"
 	}
+	filters := []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()}
+	if filterByWork {
+		filters = append(filters, game.WorkIDsSearchFilter(workIDs))
+	}
+	if questionScope != nil {
+		filters = append(filters, game.CharacterIDsSearchFilter(questionScope.SelectedCharacterIDs))
+	}
 	page := game.SearchCharacters(characters, game.CharacterSearchOptions{
-		Query: query, WorkIDs: workIDs, FilterByWork: filterByWork,
+		Query: query, Filters: filters,
 		SortBy: sortBy, Descending: direction == "desc", Offset: offset, Limit: limit,
 	})
 	results := make([]openapi.CharacterSearchResult, 0, len(page.Characters))
@@ -367,6 +460,7 @@ func (s *Server) CatalogFull(ctx context.Context, _ openapi.CatalogFullRequestOb
 		Version:              version,
 		Characters:           openapiCharacters,
 		Works:                openapiWorks,
+		FieldDefinitions:     toOpenAPIGuessFieldDefinitions(game.CharacterFields.Definitions()),
 		DefaultQuestionScope: toOpenAPIQuestionScope(defaultScope),
 	}), nil
 }
@@ -463,27 +557,25 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 		if session.ContentType != string(game.GameContentCharacter) {
 			return nil, &ApiError{Status: http.StatusNotImplemented, Code: codeUnsupportedContentType, Message: fmt.Sprintf("暂不支持 %s 类型的猜测。", session.ContentType)}
 		}
-		var guess, answer *game.Character
-		for i := range characters {
-			if characters[i].ID == guessID && characters[i].EnabledAsGuess {
-				guess = &characters[i]
-			}
-			if characters[i].ID == session.AnswerID {
-				answer = &characters[i]
-			}
-		}
-		if guess == nil {
-			return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "请选择本局题库中的角色。"}
-		}
-		if answer == nil {
-			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "本局题库快照中缺少答案角色。"}
-		}
-
 		scope, err := questionScopeFromJSON(session.QuestionScope, session.CatalogVersion, nil, characters)
 		if err != nil {
 			return nil, internalError(err)
 		}
-		result := game.CompareCharacter(*guess, *answer, game.FieldsForQuestionScope(scope))
+		policy, err := game.ParseAnswerMatchPolicy(session.AnswerMatchPolicy)
+		if err != nil {
+			return nil, internalError(err)
+		}
+		result, err := s.guessEvaluator.Evaluate(ctx, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
+		if err != nil {
+			switch {
+			case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
+				return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidGuess, Message: "请选择本局题库中的角色。"}
+			case errors.Is(err, game.ErrAnswerCharacterMissing):
+				return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "本局题库快照中缺少答案角色。"}
+			default:
+				return nil, internalError(err)
+			}
+		}
 		nextGuesses := append(guesses, result)
 		nextStatus := game.SessionPlaying
 		if result.IsCorrect {

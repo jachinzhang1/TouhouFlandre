@@ -133,6 +133,43 @@ func toOpenAPIWork(work repo.Work) openapi.Work {
 	return result
 }
 
+func toOpenAPIGuessFields(fields []game.GuessField) []openapi.GuessField {
+	result := make([]openapi.GuessField, 0, len(fields))
+	for _, field := range fields {
+		var helpText *string
+		if field.HelpText != "" {
+			helpText = &field.HelpText
+		}
+		result = append(result, openapi.GuessField{
+			Key: openapi.GuessFieldKey(field.Key), Label: field.Label,
+			Type: openapi.GuessFieldType(field.Type), Visible: field.Visible,
+			CompareStrategy: field.CompareStrategy, HelpText: helpText,
+		})
+	}
+	return result
+}
+
+func toOpenAPIGuessFieldDefinitions(definitions []game.GuessFieldDefinition) []openapi.GuessFieldDefinition {
+	result := make([]openapi.GuessFieldDefinition, 0, len(definitions))
+	for _, definition := range definitions {
+		modes := make([]openapi.GuessFieldModeDefinition, 0, len(definition.Modes))
+		for _, mode := range definition.Modes {
+			modes = append(modes, openapi.GuessFieldModeDefinition{Key: mode.Key, Label: mode.Label, Enabled: mode.Enabled})
+		}
+		var helpText *string
+		if definition.HelpText != "" {
+			helpText = &definition.HelpText
+		}
+		result = append(result, openapi.GuessFieldDefinition{
+			Key: openapi.GuessFieldKey(definition.Key), Label: definition.Label,
+			Type: openapi.GuessFieldDefinitionType(definition.Type), HelpText: helpText,
+			Configurable: definition.Configurable, DefaultMode: definition.DefaultMode,
+			Modes: modes, Equivalence: definition.Equivalence,
+		})
+	}
+	return result
+}
+
 // toSearchResult 对应 shared 的 toSearchResult。
 func toSearchResult(character game.Character, searchText, nameSortKey string) openapi.CharacterSearchResult {
 	hairColors := make([]openapi.HairColor, 0, len(character.HairColors))
@@ -189,6 +226,7 @@ func toOpenAPIGuessResult(result game.GuessResult) openapi.GuessResult {
 		GuessName:      result.GuessName,
 		GuessAvatarUrl: avatarURL,
 		IsCorrect:      result.IsCorrect,
+		MatchKind:      openapi.MatchKind(result.MatchKind),
 		Feedback:       feedback,
 	}
 }
@@ -208,7 +246,7 @@ func toOpenAPIGuessResultView(result multi.GuessResultView) openapi.GuessResult 
 	}
 	return openapi.GuessResult{
 		Kind: openapi.GuessResultKindGuess, GuessId: result.GuessID, GuessName: result.GuessName,
-		GuessAvatarUrl: avatarURL, IsCorrect: result.IsCorrect, Feedback: feedback,
+		GuessAvatarUrl: avatarURL, IsCorrect: result.IsCorrect, MatchKind: openapi.MatchKind(result.MatchKind), Feedback: feedback,
 	}
 }
 
@@ -220,13 +258,16 @@ func guessKind(kind string) openapi.GuessResultKind {
 }
 
 // hydrateGuessAvatars 对应 db.ts 的 hydrateGuessAvatars：为旧猜测补充头像。
-func hydrateGuessAvatars(guesses []game.GuessResult, characters []game.Character) []openapi.GuessResult {
+func hydrateGuessAvatars(guesses []game.GuessResult, answerID string, characters []game.Character) []openapi.GuessResult {
 	avatarsByID := make(map[string]string, len(characters))
 	for _, character := range characters {
 		avatarsByID[character.ID] = character.AvatarURL
 	}
 	results := make([]openapi.GuessResult, 0, len(guesses))
 	for _, guess := range guesses {
+		if guess.MatchKind == "" {
+			guess.MatchKind = game.MatchKindForStoredGuess(guess.IsCorrect, answerID, guess.GuessID)
+		}
 		converted := toOpenAPIGuessResult(guess)
 		if converted.GuessAvatarUrl == nil {
 			if avatar, ok := avatarsByID[guess.GuessID]; ok {
@@ -244,7 +285,7 @@ func toPublicSession(session repo.GameSession, characters []game.Character) (ope
 	if err := json.Unmarshal(session.Guesses, &guesses); err != nil {
 		return openapi.PublicGameSession{}, fmt.Errorf("decode guesses for %s: %w", session.ID, err)
 	}
-	hydrated := hydrateGuessAvatars(guesses, characters)
+	hydrated := hydrateGuessAvatars(guesses, session.AnswerID, characters)
 
 	result := openapi.PublicGameSession{
 		Id:          session.ID,
@@ -263,6 +304,7 @@ func toPublicSession(session repo.GameSession, characters []game.Character) (ope
 	}
 	convertedScope := toOpenAPIQuestionScope(scope)
 	result.QuestionScope = &convertedScope
+	result.ActiveFields = toOpenAPIGuessFields(game.FieldsForQuestionScope(scope))
 	if session.PuzzleKey.Valid {
 		result.PuzzleKey = &session.PuzzleKey.String
 	}

@@ -694,7 +694,12 @@ export interface components {
             maxGuesses: number;
         };
         QuestionScopeRules: {
-            fields: components["schemas"]["QuestionScopeFieldRules"];
+            /** @description schemaVersion 3 的通用字段配置；key 来自 CatalogFull.fieldDefinitions。 */
+            fieldModes: {
+                [key: string]: string;
+            };
+            /** @description Legacy schemaVersion 2 input. Normalized responses use fieldModes. */
+            fields?: components["schemas"]["QuestionScopeFieldRules"];
             turnLimit: components["schemas"]["QuestionScopeTurnLimit"];
             guessLimit: components["schemas"]["QuestionScopeGuessLimit"];
             /** @description Legacy schemaVersion 1 input. Normalized responses use fields. */
@@ -710,7 +715,7 @@ export interface components {
         };
         QuestionScopeConfig: {
             /** @enum {integer} */
-            schemaVersion: 2;
+            schemaVersion: 1 | 2 | 3;
             catalogVersion: string;
             mode: components["schemas"]["QuestionScopeMode"];
             difficulty: components["schemas"]["QuestionDifficulty"];
@@ -723,10 +728,11 @@ export interface components {
             version: string;
             works: components["schemas"]["Work"][];
             characters: components["schemas"]["Character"][];
+            fieldDefinitions: components["schemas"]["GuessFieldDefinition"][];
             defaultQuestionScope: components["schemas"]["QuestionScopeConfig"];
         };
         PuzzleCreateRequest: {
-            questionScope?: components["schemas"]["QuestionScopeConfig"];
+            questionScope?: components["schemas"]["QuestionScopeConfigInput"];
             difficulty?: components["schemas"]["DailyQuestionDifficulty"];
         };
         /** @enum {string} */
@@ -775,8 +781,11 @@ export interface components {
             /** @description 旧记录可能缺少该字段。 */
             guessAvatarUrl?: string;
             isCorrect: boolean;
+            matchKind: components["schemas"]["MatchKind"];
             feedback: components["schemas"]["FieldFeedback"][];
         };
+        /** @enum {string} */
+        MatchKind: "none" | "exact" | "equivalent";
         /** @description 公开会话视图。answer 仅在会话结束后返回。 */
         PublicGameSession: {
             id: string;
@@ -787,6 +796,8 @@ export interface components {
             /** @description 会话绑定的题库版本（客户端本地搜索按版本缓存/刷新）。 */
             catalogVersion?: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
+            /** @description 本局冻结且实际显示的反馈词条，顺序即棋盘列顺序。 */
+            activeFields: components["schemas"]["GuessField"][];
             puzzleKey?: string;
             guesses: components["schemas"]["GuessResult"][];
             /** Format: date-time */
@@ -804,17 +815,34 @@ export interface components {
             puzzleLabel: string;
             session: components["schemas"]["PublicGameSession"];
         };
-        /** @enum {string} */
-        GuessFieldKey: "firstAppearance" | "releaseYear" | "species" | "abilityTags" | "affiliations" | "locations" | "roles" | "hairColors";
+        /** @description 服务端字段注册表提供的稳定字段 key。 */
+        GuessFieldKey: string;
         GuessField: {
             key: components["schemas"]["GuessFieldKey"];
             label: string;
             /** @enum {string} */
             type: "string" | "enum" | "multi_enum" | "number" | "hierarchy";
             visible: boolean;
-            /** @enum {string} */
-            compareStrategy: "firstAppearance" | "numberDirection" | "numberExact" | "multiSet";
+            /** @description 服务端字段注册表提供的反馈比较策略标识。 */
+            compareStrategy: string;
             helpText?: string;
+        };
+        GuessFieldModeDefinition: {
+            key: string;
+            label: string;
+            enabled: boolean;
+        };
+        /** @description 服务端字段注册表中的可配置公开词条定义；比较和规范化语义由服务端持有。 */
+        GuessFieldDefinition: {
+            key: components["schemas"]["GuessFieldKey"];
+            label: string;
+            /** @enum {string} */
+            type: "string" | "enum" | "multi_enum" | "number" | "hierarchy";
+            helpText?: string;
+            configurable: boolean;
+            defaultMode: string;
+            modes: components["schemas"]["GuessFieldModeDefinition"][];
+            equivalence: boolean;
         };
         /**
          * @description 赛制。BO_N = 先胜 (N+1)/2 局（bo1→1、bo3→2、bo5→3、bo7→4）。
@@ -1034,6 +1062,8 @@ export interface components {
             /** @description 本场绑定的题库版本。 */
             catalogVersion: string;
             questionScope?: components["schemas"]["QuestionScopeConfig"];
+            /** @description 本场冻结且实际显示的反馈词条，顺序即棋盘列顺序。 */
+            activeFields: components["schemas"]["GuessField"][];
             ruleSetRef: components["schemas"]["RuleSetRef"];
             /** @description mode=relay 时的 relay-owned fragment；race 不返回此字段。 */
             relay?: components["schemas"]["RelayMatchFragment"];
@@ -1166,6 +1196,30 @@ export interface components {
             /** @description 当前题库版本哈希（seed 时更新；客户端以此检测表更新）。 */
             version: string;
             characters: components["schemas"]["CharacterSearchResult"][];
+        };
+        /**
+         * @description 题库配置导入结构。schemaVersion 3 使用 fieldModes、turnLimit 和 guessLimit；
+         *     schemaVersion 1/2 可继续提交旧 fields、hiddenFields 与 turnSeconds，缺省值由服务端迁移。
+         */
+        QuestionScopeRulesInput: {
+            fieldModes?: {
+                [key: string]: string;
+            };
+            fields?: components["schemas"]["QuestionScopeFieldRules"];
+            turnLimit?: components["schemas"]["QuestionScopeTurnLimit"];
+            guessLimit?: components["schemas"]["QuestionScopeGuessLimit"];
+            hiddenFields?: components["schemas"]["GuessFieldKey"][];
+            turnSeconds?: number;
+        };
+        QuestionScopeConfigInput: {
+            /** @enum {integer} */
+            schemaVersion: 1 | 2 | 3;
+            catalogVersion: string;
+            mode: components["schemas"]["QuestionScopeMode"];
+            difficulty: components["schemas"]["QuestionDifficulty"];
+            selectedCharacterIds: string[];
+            workStates: components["schemas"]["QuestionScopeWorkState"][];
+            rules: components["schemas"]["QuestionScopeRulesInput"];
         };
         /**
          * @description 服务端计算的当前开局阻塞原因；缺省表示没有可公开的额外原因。
@@ -1429,10 +1483,14 @@ export interface operations {
             query?: {
                 /** @description 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。 */
                 q?: string;
-                /** @description 游戏会话 id；提供后按该会话绑定的题库快照搜索。 */
+                /** @description 单人游戏会话 id；提供后按该会话冻结的题库版本和题库范围搜索。 */
                 sessionId?: string;
-                /** @description 题库版本；供多人题局按绑定快照搜索。与 sessionId 互斥。 */
+                /** @description 题库版本；仅绑定版本快照，不应用游戏题库范围。与游戏上下文参数互斥。 */
                 catalogVersion?: string;
+                /** @description 多人房间 id；必须与 matchIndex 同时提供，并按该场冻结的题库版本和题库范围搜索。 */
+                roomId?: string;
+                /** @description 多人场次序号；必须与 roomId 同时提供。 */
+                matchIndex?: number;
                 /** @description 逗号分隔的作品 id 列表；仅用于收窄搜索结果。 */
                 workIds?: string;
                 limit?: number;
@@ -1464,7 +1522,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description 游戏会话或题库版本不存在 */
+            /** @description 游戏会话、多人场次或题库版本不存在 */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1880,7 +1938,7 @@ export interface operations {
                     turnSeconds?: 30 | 60 | 90 | 120;
                     /** @description 可选昵称：trim + 去控制字符 + ≤16 字符；空则服务端给「匿名玩家」。 */
                     displayName?: string;
-                    questionScope?: components["schemas"]["QuestionScopeConfig"];
+                    questionScope?: components["schemas"]["QuestionScopeConfigInput"];
                 };
             };
         };

@@ -295,13 +295,17 @@ const createMatch = `-- name: CreateMatch :one
 INSERT INTO multi_match (
     id, room_id, match_index, catalog_version, target_wins, status,
     started_at, question_scope, scoring_mode, roster_size, max_rounds,
-    rule_set_key, rule_set_version, rule_config_snapshot
+    rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 )
 SELECT
     $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing',
-    $5, $6, $7, $8, $9, $10, $11, $12
+    $5, $6, $7, $8, $9, $10, $11,
+    COALESCE($12::jsonb, '{}'::jsonb) || jsonb_build_object(
+        'answerMatchPolicy', COALESCE(NULLIF($13::text, ''), 'strict')
+    ),
+    COALESCE(NULLIF($13::text, ''), 'strict')
 FROM multi_match WHERE room_id = $2
-RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 `
 
 type CreateMatchParams struct {
@@ -317,6 +321,7 @@ type CreateMatchParams struct {
 	RuleSetKey         string             `json:"rule_set_key"`
 	RuleSetVersion     int32              `json:"rule_set_version"`
 	RuleConfigSnapshot []byte             `json:"rule_config_snapshot"`
+	AnswerMatchPolicy  string             `json:"answer_match_policy"`
 }
 
 // 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
@@ -334,6 +339,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 		arg.RuleSetKey,
 		arg.RuleSetVersion,
 		arg.RuleConfigSnapshot,
+		arg.AnswerMatchPolicy,
 	)
 	var i MultiMatch
 	err := row.Scan(
@@ -356,6 +362,7 @@ func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Multi
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -673,7 +680,7 @@ SET status = 'finished',
         WHERE roster.match_id = match.id AND roster.seat = $3
     )
 WHERE match.id = $1
-RETURNING match.id, match.room_id, match.match_index, match.catalog_version, match.target_wins, match.score_slot1, match.score_slot2, match.round_count, match.status, match.started_at, match.ended_at, match.question_scope, match.winner_member_id, match.scoring_mode, match.roster_size, match.max_rounds, match.rule_set_key, match.rule_set_version, match.rule_config_snapshot
+RETURNING match.id, match.room_id, match.match_index, match.catalog_version, match.target_wins, match.score_slot1, match.score_slot2, match.round_count, match.status, match.started_at, match.ended_at, match.question_scope, match.winner_member_id, match.scoring_mode, match.roster_size, match.max_rounds, match.rule_set_key, match.rule_set_version, match.rule_config_snapshot, match.answer_match_policy
 `
 
 type EndMatchParams struct {
@@ -705,6 +712,7 @@ func (q *Queries) EndMatch(ctx context.Context, arg EndMatchParams) (MultiMatch,
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -715,7 +723,7 @@ SET status = 'finished',
     ended_at = $1,
     winner_member_id = $2
 WHERE id = $3
-RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 `
 
 type EndRaceMatchParams struct {
@@ -747,6 +755,7 @@ func (q *Queries) EndRaceMatch(ctx context.Context, arg EndRaceMatchParams) (Mul
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -877,7 +886,7 @@ func (q *Queries) ForfeitRoundPlayer(ctx context.Context, arg ForfeitRoundPlayer
 }
 
 const getActiveMatchForUpdate = `-- name: GetActiveMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match
 WHERE room_id = $1 AND status = 'playing'
 ORDER BY match_index DESC
 LIMIT 1
@@ -908,6 +917,7 @@ func (q *Queries) GetActiveMatchForUpdate(ctx context.Context, roomID string) (M
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -1056,7 +1066,7 @@ func (q *Queries) GetGuessByIdempotencyKey(ctx context.Context, arg GetGuessById
 }
 
 const getLatestFinishedMatchForRoomForUpdate = `-- name: GetLatestFinishedMatchForRoomForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 FROM multi_match
 WHERE room_id = $1 AND status = 'finished'
 ORDER BY match_index DESC
@@ -1087,12 +1097,13 @@ func (q *Queries) GetLatestFinishedMatchForRoomForUpdate(ctx context.Context, ro
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
 
 const getMatchByIndex = `-- name: GetMatchByIndex :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE room_id = $1 AND match_index = $2
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match WHERE room_id = $1 AND match_index = $2
 `
 
 type GetMatchByIndexParams struct {
@@ -1124,12 +1135,13 @@ func (q *Queries) GetMatchByIndex(ctx context.Context, arg GetMatchByIndexParams
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
 
 const getMatchForUpdate = `-- name: GetMatchForUpdate :one
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE id = $1 FOR UPDATE
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch, error) {
@@ -1155,6 +1167,7 @@ func (q *Queries) GetMatchForUpdate(ctx context.Context, id string) (MultiMatch,
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }
@@ -1413,7 +1426,7 @@ func (q *Queries) GetRoomForUpdate(ctx context.Context, id string) (MultiRoom, e
 
 const getRoomSnapshotState = `-- name: GetRoomSnapshotState :one
 WITH latest_match AS (
-    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
+    SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match WHERE room_id = $1 ORDER BY match_index DESC LIMIT 1
 ),
 active_round AS (
     SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at, r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r
@@ -1831,7 +1844,7 @@ func (q *Queries) ListActiveMatchPlayers(ctx context.Context, matchID string) ([
 }
 
 const listActiveMatches = `-- name: ListActiveMatches :many
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM multi_match WHERE status = 'playing' ORDER BY started_at
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM multi_match WHERE status = 'playing' ORDER BY started_at
 `
 
 // 全部进行中场（服务重启终止扫描；§4.6 明确终止）。
@@ -1864,6 +1877,7 @@ func (q *Queries) ListActiveMatches(ctx context.Context) ([]MultiMatch, error) {
 			&i.RuleSetKey,
 			&i.RuleSetVersion,
 			&i.RuleConfigSnapshot,
+			&i.AnswerMatchPolicy,
 		); err != nil {
 			return nil, err
 		}
@@ -2229,7 +2243,7 @@ func (q *Queries) ListExpiredRounds(ctx context.Context) ([]MultiRound, error) {
 }
 
 const listFinishedMatches = `-- name: ListFinishedMatches :many
-SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at, m.question_scope, m.winner_member_id, m.scoring_mode, m.roster_size, m.max_rounds, m.rule_set_key, m.rule_set_version, m.rule_config_snapshot
+SELECT m.id, m.room_id, m.match_index, m.catalog_version, m.target_wins, m.score_slot1, m.score_slot2, m.round_count, m.status, m.started_at, m.ended_at, m.question_scope, m.winner_member_id, m.scoring_mode, m.roster_size, m.max_rounds, m.rule_set_key, m.rule_set_version, m.rule_config_snapshot, m.answer_match_policy
 FROM multi_match m
 JOIN multi_room r ON r.id = m.room_id
 WHERE m.status = 'finished' AND r.status = 'finished' AND r.expires_at <= now()
@@ -2266,6 +2280,7 @@ func (q *Queries) ListFinishedMatches(ctx context.Context) ([]MultiMatch, error)
 			&i.RuleSetKey,
 			&i.RuleSetVersion,
 			&i.RuleConfigSnapshot,
+			&i.AnswerMatchPolicy,
 		); err != nil {
 			return nil, err
 		}
@@ -2932,7 +2947,7 @@ WITH updated AS (
     UPDATE multi_match
     SET score_slot1 = $2, score_slot2 = $3
     WHERE id = $1
-    RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot
+    RETURNING id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
 ), roster_scores AS (
     UPDATE multi_match_player AS roster
     SET wins = CASE roster.seat
@@ -2943,7 +2958,7 @@ WITH updated AS (
     FROM updated
     WHERE roster.match_id = updated.id AND roster.seat IN (1, 2)
 )
-SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot FROM updated
+SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM updated
 `
 
 type UpdateMatchScoreParams struct {
@@ -2972,6 +2987,7 @@ type UpdateMatchScoreRow struct {
 	RuleSetKey         string             `json:"rule_set_key"`
 	RuleSetVersion     int32              `json:"rule_set_version"`
 	RuleConfigSnapshot []byte             `json:"rule_config_snapshot"`
+	AnswerMatchPolicy  string             `json:"answer_match_policy"`
 }
 
 func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (UpdateMatchScoreRow, error) {
@@ -2997,6 +3013,7 @@ func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScorePara
 		&i.RuleSetKey,
 		&i.RuleSetVersion,
 		&i.RuleConfigSnapshot,
+		&i.AnswerMatchPolicy,
 	)
 	return i, err
 }

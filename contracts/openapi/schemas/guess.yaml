@@ -3,15 +3,7 @@
 
 GuessFieldKey:
   type: string
-  enum:
-    - firstAppearance
-    - releaseYear
-    - species
-    - abilityTags
-    - affiliations
-    - locations
-    - roles
-    - hairColors
+  description: 服务端字段注册表提供的稳定字段 key。
 
 GuessField:
   type: object
@@ -38,10 +30,57 @@ GuessField:
       type: boolean
     compareStrategy:
       type: string
-      enum:
-        - firstAppearance
-        - numberDirection
-        - numberExact
-        - multiSet
+      description: 服务端字段注册表提供的反馈比较策略标识。
     helpText:
       type: string
+
+GuessFieldModeDefinition:
+  type: object
+  required:
+    - key
+    - label
+    - enabled
+  properties:
+    key:
+      type: string
+    label:
+      type: string
+    enabled:
+      type: boolean
+
+GuessFieldDefinition:
+  type: object
+  description: 服务端字段注册表中的可配置公开词条定义；比较和规范化语义由服务端持有。
+  required:
+    - key
+    - label
+    - type
+    - configurable
+    - defaultMode
+    - modes
+    - equivalence
+  properties:
+    key:
+      $ref: "#/GuessFieldKey"
+    label:
+      type: string
+    type:
+      type: string
+      enum:
+        - string
+        - enum
+        - multi_enum
+        - number
+        - hierarchy
+    helpText:
+      type: string
+    configurable:
+      type: boolean
+    defaultMode:
+      type: string
+    modes:
+      type: array
+      items:
+        $ref: "#/GuessFieldModeDefinition"
+    equivalence:
+      type: boolean

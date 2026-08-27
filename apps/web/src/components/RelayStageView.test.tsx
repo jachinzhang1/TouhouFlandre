@@ -29,15 +29,19 @@ vi.mock("./GuessInputBar", () => ({
   GuessInputBar: ({
     disabled,
     onGuess,
+    searchContext,
     statusMessage,
   }: {
     disabled: boolean;
     onGuess: (guessId: string) => Promise<unknown>;
+    searchContext?: { roomId: string; matchIndex: number };
     statusMessage?: string | null;
   }) => (
     <button
       type="button"
       data-testid="relay-guess-input"
+      data-search-room-id={searchContext?.roomId}
+      data-search-match-index={searchContext?.matchIndex}
       disabled={disabled}
       title={statusMessage ?? "可猜测"}
       onClick={() => void onGuess("reimu")}
@@ -137,7 +141,6 @@ function renderRelay(
       projection={nextProjection}
       members={members}
       viewer={viewer}
-      catalogVersion="catalog-v1"
       fields={[]}
       roomStatus="playing"
       retentionEndsAt={null}
@@ -172,6 +175,14 @@ describe("RelayStageView", () => {
     expect(
       (screen.getByTestId("relay-guess-input") as HTMLButtonElement).disabled,
     ).toBe(false);
+    expect(
+      screen.getByTestId("relay-guess-input").getAttribute("data-search-room-id"),
+    ).toBe("room-1");
+    expect(
+      screen
+        .getByTestId("relay-guess-input")
+        .getAttribute("data-search-match-index"),
+    ).toBe("0");
     expect(screen.queryByText("9", { selector: "strong" })).not.toBeNull();
     expect(
       screen
@@ -477,7 +488,6 @@ describe("RelayStageView", () => {
           displayName: "同名玩家",
           status: "connected",
         }}
-        catalogVersion="catalog-v1"
         fields={[]}
         roomStatus="finished"
         retentionEndsAt="2099-08-25T00:00:00Z"

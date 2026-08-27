@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
@@ -546,11 +547,15 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	if err != nil {
 		return err
 	}
-	usedSet := map[string]bool{}
-	for _, id := range usedRows {
-		usedSet[id] = true
+	policy, err := game.ParseAnswerMatchPolicy(match.AnswerMatchPolicy)
+	if err != nil {
+		return err
 	}
-	answer, err := DrawAnswer(AnswerPoolForMatch(match, characters), usedSet, s.rng)
+	runtime, err := game.BuildCatalogRuntime(match.CatalogVersion, policy, characters)
+	if err != nil {
+		return err
+	}
+	answer, err := DrawAnswerByGroup(AnswerPoolForMatch(match, characters), usedRows, runtime.GroupKey, s.rng)
 	if err != nil {
 		return err
 	}

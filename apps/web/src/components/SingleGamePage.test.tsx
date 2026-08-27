@@ -222,9 +222,7 @@ describe("SingleGamePage", () => {
     expect(screen.getByText("该属性正确答案的数值高于本条猜测")).toBeTruthy();
     expect(screen.getByText("该属性正确答案的数值低于本条猜测")).toBeTruthy();
     expect(screen.getByText("该属性完全未命中")).toBeTruthy();
-    expect(
-      screen.getByText("属性值缺失或无法判断，若遇到请反馈"),
-    ).toBeTruthy();
+    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-triangle")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
@@ -289,7 +287,9 @@ describe("SingleGamePage", () => {
     await userEvent.click(screen.getByLabelText("放弃本局"));
 
     expect(await screen.findByText("本次游戏结束")).toBeTruthy();
-    expect(screen.getByText("帕秋莉·诺蕾姬", { selector: "strong" })).toBeTruthy();
+    expect(
+      screen.getByText("帕秋莉·诺蕾姬", { selector: "strong" }),
+    ).toBeTruthy();
     expect(
       screen.getByText("--:--", { selector: ".guess-duration" }),
     ).toBeTruthy();
@@ -465,7 +465,9 @@ describe("SingleGamePage", () => {
     await waitFor(() =>
       expect(searchHookMock).toHaveBeenCalledWith(
         "帕秋莉·诺蕾姬",
-        expect.objectContaining({ sessionId: "sess-1" }),
+        expect.objectContaining({
+          context: { kind: "single-session", sessionId: "sess-1" },
+        }),
       ),
     );
   });
