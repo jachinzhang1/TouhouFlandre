@@ -263,12 +263,11 @@ func (s *EncounterService) Act(ctx context.Context, input EncounterActionInput) 
 		Kind: relaydomain.TurnKind(input.Action), GuessID: input.GuessID, IdempotencyKey: input.IdempotencyKey,
 	}
 	if input.Action == EncounterActionGuess {
-		guess, statuses, correct, err := s.compareGuess(ctx, q, match, encounter.AnswerID, input.GuessID)
+		statuses, correct, err := s.compareGuess(ctx, q, match, encounter.AnswerID, input.GuessID)
 		if err != nil {
 			return result, err
 		}
 		turn.Statuses, turn.Correct = statuses, correct
-		_ = guess
 	}
 	turnSeconds, err := roomTurnSeconds(ctx, q, match.RoomID)
 	if err != nil {
@@ -1073,34 +1072,34 @@ func encounterState(match repo.MultiMatch, encounter repo.MultiRelayEncounter, m
 	return state
 }
 
-func (s *EncounterService) compareGuess(ctx context.Context, q *repo.Queries, match repo.MultiMatch, answerID, guessID string) (game.Character, []string, bool, error) {
+func (s *EncounterService) compareGuess(ctx context.Context, q *repo.Queries, match repo.MultiMatch, answerID, guessID string) ([]string, bool, error) {
 	policy, err := game.ParseAnswerMatchPolicy(match.AnswerMatchPolicy)
 	if err != nil {
-		return game.Character{}, nil, false, err
+		return nil, false, err
 	}
-	feedback, err := s.guessEvaluator.Evaluate(ctx, match.CatalogVersion, policy, answerID, guessID, legacy.StorageFieldsForMatch(match))
+	feedback, err := s.guessEvaluator.EvaluateWithLoader(
+		ctx, match.CatalogVersion, policy, answerID, guessID, legacy.StorageFieldsForMatch(match),
+		func(ctx context.Context, version string) ([]game.Character, error) {
+			return legacy.CharactersForVersion(ctx, q, version)
+		},
+	)
 	if errors.Is(err, game.ErrGuessCharacterMissing) || errors.Is(err, game.ErrGuessCharacterDisabled) {
-		return game.Character{}, nil, false, relaydomain.ErrInvalidGuess
+		return nil, false, relaydomain.ErrInvalidGuess
 	}
 	if errors.Is(err, game.ErrAnswerCharacterMissing) {
-		return game.Character{}, nil, false, errors.New("relay answer is absent from the frozen catalog")
+		return nil, false, errors.New("relay answer is absent from the frozen catalog")
 	}
 	if err != nil {
-		return game.Character{}, nil, false, err
+		return nil, false, err
 	}
-	characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
-	if err != nil {
-		return game.Character{}, nil, false, err
-	}
-	guess := legacy.CharactersByID(characters)[guessID]
 	statuses := make([]string, len(feedback.Feedback))
 	for index, field := range feedback.Feedback {
 		statuses[index] = string(field.Status)
 	}
 	if err := legacy.ValidateStoredStatuses(match, statuses); err != nil {
-		return game.Character{}, nil, false, err
+		return nil, false, err
 	}
-	return guess, statuses, feedback.IsCorrect, nil
+	return statuses, feedback.IsCorrect, nil
 }
 
 func hydrateTurn(ctx context.Context, q *repo.Queries, match repo.MultiMatch, answerID string, members []repo.MultiRelayEncounterMember, turn repo.MultiRelayTurn) (legacy.RelayTurnRow, *legacy.GuessResultView, error) {

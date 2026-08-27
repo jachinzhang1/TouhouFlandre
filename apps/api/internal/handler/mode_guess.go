@@ -78,7 +78,7 @@ func (raceGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Queri
 	if err != nil {
 		return submitGuessResult{}, internalError(err)
 	}
-	guessChar, statuses, _, isCorrect, apiErr := s.computeFeedback(ctx, match.CatalogVersion, round.AnswerID, request.Body.GuessId, policy, storageFields)
+	guessChar, statuses, _, isCorrect, apiErr := s.computeFeedback(ctx, q, match.CatalogVersion, round.AnswerID, request.Body.GuessId, policy, storageFields)
 	if apiErr != nil {
 		return submitGuessResult{}, apiErr
 	}

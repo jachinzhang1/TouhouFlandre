@@ -108,7 +108,13 @@ func TestMain(m *testing.M) {
 	}
 	adminPool.Close()
 
-	pool, err = pgxpool.New(ctx, testURL)
+	poolConfig, err := pgxpool.ParseConfig(testURL)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "parse test db config:", err)
+		os.Exit(1)
+	}
+	poolConfig.MaxConns = 4
+	pool, err = pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "connect test db:", err)
 		os.Exit(1)

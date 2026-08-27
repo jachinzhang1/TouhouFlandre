@@ -366,6 +366,8 @@ func TestMRX006SameGuessIsScopedToEncounter(t *testing.T) {
 }
 
 func TestMRX006FourConcurrentTerminalsSettleOnce(t *testing.T) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	scoring := &mrx005Scoring{}
 	fixture := createMRX006Fixture(t, 8, scoring, "")
 	if _, err := fixture.service.Sweep(ctx, 20); err != nil {
