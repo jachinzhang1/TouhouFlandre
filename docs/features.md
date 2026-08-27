@@ -24,7 +24,7 @@ TouhouFlandre 是浏览器端东方角色推理游戏。服务端负责角色搜
 | 结果分享 | 复制无剧透的纯文本摘要。 |
 | 答案资料 | 单人题结束后展示答案角色的日文名、首次登场、种族、能力、地点和身份。 |
 | 会话恢复 | Postgres 保存游戏会话，浏览器保存会话标识。 |
-| 多人房间 | 创建/加入房间、BO1/3/5/7 赛制、竞速、接力、再来一局和 WebSocket 实时同步。 |
+| 多人房间 | 创建/加入房间、总局数与积分赛淘汰开关、竞速、接力、再来一局和 WebSocket 实时同步。 |
 | 本地统计 | 浏览器本地记录单人/多人游玩、作品、猜测次数、有效耗时与历史；支持筛选、清除和 JSON 导入导出。 |
 | 公告 | 通过仓库内 Markdown 内容提供站点公告。 |
 | 站点访问数 | 页脚展示全站访问次数；每次完整页面加载或刷新记录一次。 |
@@ -95,7 +95,7 @@ TouhouFlandre 是浏览器端东方角色推理游戏。服务端负责角色搜
 | `GET` | `/api/sessions/{sessionId}` | 恢复公开会话状态。 |
 | `POST` | `/api/sessions/{sessionId}/guess` | 提交猜测并获取更新后的会话。 |
 | `POST` | `/api/sessions/{sessionId}/forfeit` | 主动放弃单人会话并进入终态。 |
-| `POST` | `/api/rooms` | 创建多人房间。 |
+| `POST` | `/api/rooms` | 创建多人房间（race 可配置玩家上限与积分赛淘汰开关）。 |
 | `GET` | `/api/rooms/{roomCode}` | 加入前读取公开房间信息。 |
 | `POST` | `/api/rooms/{roomCode}/join` | 加入多人房间。 |
 | `POST` | `/api/rooms/{roomId}/ready` | 设置多人房间准备状态。 |

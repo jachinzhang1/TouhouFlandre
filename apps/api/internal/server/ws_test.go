@@ -18,7 +18,7 @@ import (
 
 const (
 	wsTestOrigin  = "http://localhost:5173"
-	wsTestProto   = "touhouflandre-multi.v2"
+	wsTestProto   = "touhouflandre-multi.v3"
 	wsInvalidOrig = "http://evil.example.com"
 )
 
@@ -263,17 +263,25 @@ func TestMultiWSUpgradeRejections(t *testing.T) {
 		t.Fatal("missing subprotocol should be closed by server")
 	}
 
-	// v1 页面不得与 v2 服务端表面连接成功。
-	v1, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
+	// v2 页面收到明确刷新提示，再由 v3 服务端关闭连接。
+	v2, _, err := websocket.Dial(ctx, wsURL(fixture.roomID), &websocket.DialOptions{
 		HTTPHeader:   http.Header{"Origin": []string{wsTestOrigin}},
-		Subprotocols: []string{"touhouflandre-multi.v1"},
+		Subprotocols: []string{"touhouflandre-multi.v2"},
 	})
 	if err != nil {
-		return
+		t.Fatalf("v2 protocol should upgrade for refresh hint: %v", err)
 	}
-	defer v1.CloseNow()
-	if _, _, err := v1.Read(ctx); err == nil {
-		t.Fatal("v1 protocol should be rejected by v2 server")
+	defer v2.CloseNow()
+	_, data, err := v2.Read(ctx)
+	if err != nil {
+		t.Fatalf("v2 protocol should receive refresh hint: %v", err)
+	}
+	var refresh map[string]any
+	if err := json.Unmarshal(data, &refresh); err != nil {
+		t.Fatalf("decode refresh hint: %v", err)
+	}
+	if refresh["type"] != "protocol.refresh_required" || refresh["reason"] != "protocol_version_unsupported" || refresh["requiredSubprotocol"] != wsTestProto {
+		t.Fatalf("v2 refresh hint = %v", refresh)
 	}
 }
 
@@ -318,7 +326,7 @@ func TestMultiWSRejectsInvalidGameWatermarks(t *testing.T) {
 			}
 			conn := wsDial(t, fixture.roomID, fixture.hostToken, test.sequence, nil)
 			msg := wsRead(t, conn)
-			if msg["type"] != "resync.required" || msg["scope"] != "game" || msg["reason"] != test.wantReason {
+			if msg["type"] != "protocol.refresh_required" || msg["scope"] != "game" || msg["reason"] != test.wantReason {
 				t.Fatalf("resync frame = %v, want reason %s", msg, test.wantReason)
 			}
 			if msg["gameSequence"] == nil {
@@ -628,8 +636,8 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	if err := fastSweeper().SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	hostPlaying := readUntilType(t, hostConn, "round.playing", 12)
-	joinerPlaying := readUntilType(t, joinerConn, "round.playing", 12)
+	hostPlaying := readUntilType(t, hostConn, "relay.encounter.started", 12)
+	joinerPlaying := readUntilType(t, joinerConn, "relay.encounter.started", 12)
 
 	answer := currentAnswer(t, fixture.roomID)
 	wrong := guessableIDs(t, answer, 1)[0]
@@ -639,7 +647,7 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	}
 	hostFirst := wsRead(t, hostConn)
 	joinerFirst := wsRead(t, joinerConn)
-	if hostFirst["type"] != "round.shared.guess" || joinerFirst["type"] != "round.shared.guess" ||
+	if hostFirst["type"] != "relay.encounter.turn.guess" || joinerFirst["type"] != "relay.encounter.turn.guess" ||
 		hostFirst["eventId"] != joinerFirst["eventId"] ||
 		hostFirst["sequence"] != hostPlaying["sequence"].(float64)+1 ||
 		joinerFirst["sequence"] != joinerPlaying["sequence"].(float64)+1 {
@@ -652,12 +660,14 @@ func TestMultiWSRelayBroadcast(t *testing.T) {
 	}
 	for name, conn := range map[string]*websocket.Conn{"host": hostConn, "joiner": joinerConn} {
 		shared := wsRead(t, conn)
-		roundEnded := wsRead(t, conn)
+		encounterEnded := wsRead(t, conn)
 		matchEnded := wsRead(t, conn)
-		if shared["type"] != "round.shared.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
-			roundEnded["type"] != "round.ended" || roundEnded["sequence"] != shared["sequence"].(float64)+1 ||
-			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != roundEnded["sequence"].(float64)+1 {
-			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v round=%v match=%v", name, shared, roundEnded, matchEnded)
+		stageEnded := wsRead(t, conn)
+		if shared["type"] != "relay.encounter.turn.guess" || shared["sequence"] != hostFirst["sequence"].(float64)+1 ||
+			encounterEnded["type"] != "relay.encounter.ended" || encounterEnded["sequence"] != shared["sequence"].(float64)+1 ||
+			matchEnded["type"] != "match.ended" || matchEnded["sequence"] != encounterEnded["sequence"].(float64)+1 ||
+			stageEnded["type"] != "relay.stage.ended" || stageEnded["sequence"] != matchEnded["sequence"].(float64)+1 {
+			t.Fatalf("%s relay terminal sequence is not continuous: shared=%v encounter=%v stage=%v match=%v", name, shared, encounterEnded, stageEnded, matchEnded)
 		}
 		p, _ := matchEnded["payload"].(map[string]any)
 		wantResult := "loss"

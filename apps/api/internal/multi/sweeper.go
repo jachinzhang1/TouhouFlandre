@@ -11,8 +11,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // SweeperConfig sweeper 配置。
@@ -29,14 +30,53 @@ type SweeperConfig struct {
 	ChatRetention  time.Duration    // 聊天消息独立保留期（MULTI_CHAT_RETENTION）
 	Interval       time.Duration    // tick 间隔（默认 1s）
 	Broadcaster    EventBroadcaster // 事件入库后广播（先入库后广播，07 §7.2；nil 时空转）
+	Registry       *core.Registry
+	Clock          core.Clock
+	Random         core.RandomSource
+	ModeRecoveries []ModeRecovery
+	ModeForfeiters []ModeMemberForfeiter
+	Announcements  *SystemAnnouncementWriter
+}
+
+type ModeRecovery interface {
+	Sweep(context.Context, int) ([]string, error)
+}
+
+type ModeRecoveryEffect struct {
+	RoomID      string
+	ChatChanged bool
+}
+
+type ModeRecoveryWithEffects interface {
+	SweepWithEffects(context.Context, int) ([]ModeRecoveryEffect, error)
+}
+
+// ModeMemberForfeiter lets a mode-owned storage adapter handle permanent
+// player departure without making the shared sweeper query mode tables.
+type ModeMemberForfeiter interface {
+	ForfeitMatchMember(context.Context, repo.MultiMember, MatchEndReason) (bool, error)
+}
+
+type ModeMemberBatchForfeiter interface {
+	ForfeitMatchMembers(context.Context, []repo.MultiMember, MatchEndReason) (bool, error)
+}
+
+type ModeMemberForfeitResult struct {
+	Handled     bool
+	ChatChanged bool
+}
+
+type ModeMemberBatchForfeiterWithEffects interface {
+	ForfeitMatchMembersWithEffects(context.Context, []repo.MultiMember, MatchEndReason) (ModeMemberForfeitResult, error)
 }
 
 // Sweeper 后台调度器（唯一）。
 type Sweeper struct {
-	pool *pgxpool.Pool
-	now  func() time.Time
-	rng  *rand.Rand
-	cfg  SweeperConfig
+	pool     *pgxpool.Pool
+	now      func() time.Time
+	rng      core.RandomSource
+	registry *core.Registry
+	cfg      SweeperConfig
 }
 
 // NewSweeper 构造 sweeper。Interval 非正数时使用 1s。
@@ -47,12 +87,49 @@ func NewSweeper(pool *pgxpool.Pool, cfg SweeperConfig) *Sweeper {
 	if cfg.ChatRetention <= 0 {
 		cfg.ChatRetention = 24 * time.Hour
 	}
-	return &Sweeper{
-		pool: pool,
-		now:  time.Now,
-		rng:  rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
-		cfg:  cfg,
+	defaults := DefaultTimingConfig()
+	if cfg.Timing.RoundCountdown <= 0 {
+		cfg.Timing.RoundCountdown = defaults.RoundCountdown
 	}
+	if cfg.Timing.Intermission <= 0 {
+		cfg.Timing.Intermission = defaults.Intermission
+	}
+	if cfg.Timing.RoundSeconds <= 0 {
+		cfg.Timing.RoundSeconds = defaults.RoundSeconds
+	}
+	if cfg.Timing.RaceRoundSeconds <= 0 {
+		cfg.Timing.RaceRoundSeconds = defaults.RaceRoundSeconds
+	}
+	if cfg.Timing.TurnSeconds <= 0 {
+		cfg.Timing.TurnSeconds = defaults.TurnSeconds
+	}
+	if cfg.Timing.FinishedRetention <= 0 {
+		cfg.Timing.FinishedRetention = defaults.FinishedRetention
+	}
+	clock := cfg.Clock
+	if clock == nil {
+		clock = core.SystemClock{}
+	}
+	random := cfg.Random
+	if random == nil {
+		random = core.NewRandomSource()
+	}
+	return &Sweeper{pool: pool, now: clock.Now, rng: random, registry: cfg.Registry, cfg: cfg}
+}
+
+func (s *Sweeper) completionRoute(room repo.MultiRoom, match repo.MultiMatch) (core.CompletionRoute, error) {
+	if s.registry == nil {
+		return "", &core.DomainError{Code: core.ErrorMissingCapability, Mode: core.Mode(room.Mode), Capability: "completion_driver"}
+	}
+	ref, err := ResolveMatchRuleSet(s.registry, room, match)
+	if err != nil {
+		return "", err
+	}
+	driver, err := s.registry.CompletionDriver(ref.Mode)
+	if err != nil {
+		return "", err
+	}
+	return driver.Route(ref)
 }
 
 // Run 阻塞运行 tick 循环；ctx 取消即退出（跟随 server 生命周期）。
@@ -83,26 +160,76 @@ func (s *Sweeper) notify(roomID string) {
 	}
 }
 
+func (s *Sweeper) notifyChat(roomID string) {
+	if broadcaster, ok := s.cfg.Broadcaster.(interface{ PublishChat(string) }); ok {
+		broadcaster.PublishChat(roomID)
+	}
+}
+
 // SweepOnce 执行一轮清扫（幂等；供测试与启动补扫）。
 func (s *Sweeper) SweepOnce(ctx context.Context) error {
-	steps := []func(context.Context) error{
-		s.startCountdownRounds,
-		s.settleExpiredRelayTurns,
-		s.settleTimedOutRounds,
-		s.advanceRounds,
-		s.expireDisconnectedMembers,
-		s.closeExpiredLobbies,
-		s.closeExpiredFinishedRooms,
-		s.deleteExpiredChatMessages,
-		s.deleteExpiredClosedRooms,
-		s.updateStatusMetrics,
+	steps := []sweepStep{
+		{name: "recover mode units", run: s.recoverModeUnits},
+		{name: "start countdown rounds", run: s.startCountdownRounds},
+		{name: "settle expired relay turns", run: s.settleExpiredRelayTurns},
+		{name: "settle timed out rounds", run: s.settleTimedOutRounds},
+		{name: "advance rounds", run: s.advanceRounds},
+		{name: "expire disconnected members", run: s.expireDisconnectedMembers},
+		{name: "close expired lobbies", run: s.closeExpiredLobbies},
+		{name: "close expired finished rooms", run: s.closeExpiredFinishedRooms},
+		{name: "delete expired chat messages", run: s.deleteExpiredChatMessages},
+		{name: "delete expired closed rooms", run: s.deleteExpiredClosedRooms},
+		{name: "update status metrics", run: s.updateStatusMetrics},
 	}
+	return runSweepSteps(ctx, steps)
+}
+
+type sweepStep struct {
+	name string
+	run  func(context.Context) error
+}
+
+func runSweepSteps(ctx context.Context, steps []sweepStep) error {
+	var sweepErr error
 	for _, step := range steps {
-		if err := step(ctx); err != nil {
-			return err
+		if ctx.Err() != nil {
+			return errors.Join(sweepErr, ctx.Err())
+		}
+		if err := step.run(ctx); err != nil {
+			sweepErr = errors.Join(sweepErr, fmt.Errorf("%s: %w", step.name, err))
 		}
 	}
-	return nil
+	return sweepErr
+}
+
+func (s *Sweeper) recoverModeUnits(ctx context.Context) error {
+	var recoveryErr error
+	for _, recovery := range s.cfg.ModeRecoveries {
+		if recovery == nil {
+			continue
+		}
+		if detailed, ok := recovery.(ModeRecoveryWithEffects); ok {
+			effects, err := detailed.SweepWithEffects(ctx, 100)
+			for _, effect := range effects {
+				s.notify(effect.RoomID)
+				if effect.ChatChanged {
+					s.notifyChat(effect.RoomID)
+				}
+			}
+			if err != nil {
+				recoveryErr = errors.Join(recoveryErr, err)
+			}
+			continue
+		}
+		roomIDs, err := recovery.Sweep(ctx, 100)
+		for _, roomID := range roomIDs {
+			s.notify(roomID)
+		}
+		if err != nil {
+			recoveryErr = errors.Join(recoveryErr, err)
+		}
+	}
+	return recoveryErr
 }
 
 func (s *Sweeper) deleteExpiredChatMessages(ctx context.Context) error {
@@ -133,6 +260,18 @@ func (s *Sweeper) updateStatusMetrics(ctx context.Context) error {
 	}
 	if active, err := q.CountActiveRounds(ctx); err == nil {
 		DefaultMetrics.SetActiveRounds(int64(active))
+	}
+	if _, err := s.cfg.Registry.CommandHandler(core.ModeRelay); err == nil {
+		if rows, err := q.CountActiveRelayEncountersByRuleSet(ctx); err == nil {
+			counts := make(map[MetricLabels]int64, len(rows))
+			for _, row := range rows {
+				labels := NewMetricLabels(row.Mode, row.RuleSetKey, int(row.RuleSetVersion))
+				counts[labels] = int64(row.Count)
+			}
+			DefaultMetrics.SetActiveEncounters(counts)
+		}
+	} else {
+		DefaultMetrics.SetActiveEncounters(nil)
 	}
 	return nil
 }
@@ -229,11 +368,16 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) != MultiplayerModeRelay {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route != core.CompletionRouteLegacyRelay {
 		return tx.Commit(ctx)
 	}
 
 	changed := false
+	chatChanged := false
 	for RelayTurnExpired(round, s.now()) {
 		result, err := SettleExpiredRelayTurnTx(ctx, q, room, round, match, s.now(), s.cfg.Timing)
 		if err != nil {
@@ -242,6 +386,10 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 		changed = true
 		round = result.Round
 		if result.RoundEnded {
+			chatChanged, err = AppendLegacyRelayRoundAnnouncement(ctx, q, s.cfg.Announcements, round, match, result.WinnerSlot, s.now())
+			if err != nil {
+				return err
+			}
 			break
 		}
 	}
@@ -250,6 +398,9 @@ func (s *Sweeper) settleExpiredRelayTurn(ctx context.Context, roundID string) er
 	}
 	if changed {
 		s.notify(room.ID)
+	}
+	if chatChanged {
+		s.notifyChat(room.ID)
 	}
 	return nil
 }
@@ -294,7 +445,11 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route == core.CompletionRouteRace {
 		if _, err := CompleteRaceRoundTx(ctx, q, room, round, match, "", now, s.cfg.Timing); err != nil {
 			return err
 		}
@@ -323,10 +478,17 @@ func (s *Sweeper) settleTimeout(ctx context.Context, roundID string) error {
 	}); err != nil {
 		return err
 	}
+	chatChanged, err := AppendLegacyRelayRoundAnnouncement(ctx, q, s.cfg.Announcements, round, match, 0, now)
+	if err != nil {
+		return err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
 	s.notify(match.RoomID)
+	if chatChanged {
+		s.notifyChat(match.RoomID)
+	}
 	return nil
 }
 
@@ -392,16 +554,32 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	if err != nil {
 		return err
 	}
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
 	format := RoomFormat(room.Format)
 	maxRounds := int(match.MaxRounds)
 	if maxRounds <= 0 {
-		maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
-		if ScoringMode(match.ScoringMode) == ScoringModePlacement {
-			maxRounds = int(match.RosterSize) * s.cfg.Timing.MaxRoundsFactor
+		rules := RaceRulesForMatch(match)
+		if route == core.CompletionRouteRace {
+			maxRounds = rules.MatchMaxRounds(format, int(match.RosterSize), s.cfg.Timing.MaxRoundsFactor)
+		} else {
+			maxRounds = MaxRounds(format, s.cfg.Timing.MaxRoundsFactor)
 		}
 	}
 	startsAt := round.EndedAt.Time.Add(s.cfg.Timing.Intermission)
-	turnSlot, turnDeadline := InitialTurnParams(room, int(round.RoundIndex+1), startsAt)
+	var turnSlot pgtype.Int4
+	var turnDeadline pgtype.Timestamptz
+	if route == core.CompletionRouteLegacyRelay {
+		seat, deadline := InitialRelayTurn(int(round.RoundIndex+1), int(room.TurnSeconds), startsAt)
+		turnSlot = pgtype.Int4{Int32: int32(seat), Valid: true}
+		turnDeadline = pgtype.Timestamptz{Time: deadline, Valid: true}
+	}
+	roundDuration := s.cfg.Timing.RoundSeconds
+	if route == core.CompletionRouteRace && s.cfg.Timing.RaceRoundSeconds > 0 {
+		roundDuration = s.cfg.Timing.RaceRoundSeconds
+	}
 	newRound, err := q.CreateRound(ctx, repo.CreateRoundParams{
 		ID:           NewID(),
 		MatchID:      match.ID,
@@ -409,7 +587,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		RoundIndex:   round.RoundIndex + 1,
 		AnswerID:     answer,
 		StartsAt:     pgtypeTimestamptz(startsAt),
-		Deadline:     pgtypeTimestamptz(startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing))),
+		Deadline:     pgtypeTimestamptz(startsAt.Add(roundDuration)),
 		TurnSlot:     turnSlot,
 		TurnDeadline: turnDeadline,
 	})
@@ -437,7 +615,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 		MatchIndex: int(match.MatchIndex),
 		RoundIndex: int(newRound.RoundIndex),
 		StartsAt:   startsAt,
-		Deadline:   startsAt.Add(RoundDurationForMode(MultiplayerMode(room.Mode), s.cfg.Timing)),
+		Deadline:   startsAt.Add(roundDuration),
 		MaxGuesses: MaxGuessesForMatch(match),
 	}
 	activeMatchPlayers, err := q.ListActiveMatchPlayers(ctx, match.ID)
@@ -462,7 +640,11 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 
 // endMatchByCap 3×N 上限判平：场次与房间 finished + match.ended(reason=round_cap, draw)。
 func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.MultiRoom, match repo.MultiMatch, now time.Time) error {
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	route, err := s.completionRoute(room, match)
+	if err != nil {
+		return err
+	}
+	if route == core.CompletionRouteRace {
 		_, err := EndRaceMatchTx(ctx, q, room, match, "", MatchEndReasonRoundCap, now, s.cfg.Timing)
 		return err
 	}
@@ -486,6 +668,51 @@ func (s *Sweeper) endMatchByCap(ctx context.Context, q *repo.Queries, room repo.
 	})
 }
 
+func (s *Sweeper) forfeitModeMemberBatch(ctx context.Context, members []repo.MultiMember, reason MatchEndReason, now time.Time) error {
+	if len(members) == 0 {
+		return nil
+	}
+	roomID := members[0].RoomID
+	handled := false
+	for _, forfeiter := range s.cfg.ModeForfeiters {
+		if forfeiter == nil {
+			continue
+		}
+		if batch, ok := forfeiter.(ModeMemberBatchForfeiterWithEffects); ok {
+			result, err := batch.ForfeitMatchMembersWithEffects(ctx, members, reason)
+			if err != nil {
+				return err
+			}
+			handled = result.Handled
+			if handled {
+				s.notify(roomID)
+				if result.ChatChanged {
+					s.notifyChat(roomID)
+				}
+				return nil
+			}
+		} else if batch, ok := forfeiter.(ModeMemberBatchForfeiter); ok {
+			var err error
+			handled, err = batch.ForfeitMatchMembers(ctx, members, reason)
+			if err != nil {
+				return err
+			}
+			if handled {
+				break
+			}
+		}
+	}
+	if !handled {
+		for _, member := range members {
+			if err := ForfeitMemberMatch(ctx, s.pool, member, reason, now, s.cfg.Timing, s.registry); err != nil {
+				return err
+			}
+		}
+	}
+	s.notify(roomID)
+	return nil
+}
+
 // expireDisconnectedMembers 断线宽限逾期（08 §4.6/§6.2）：
 // lobby：房主 → 房间关闭（host_left）、加入者 → 删行释放 slot；
 // 对局中：race 按房间批量标记 roster left 并套用 N 人终态表，relay 判对方胜；
@@ -497,6 +724,7 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		return err
 	}
 	raceBatches := map[string][]repo.MultiMember{}
+	modeBatches := map[string][]repo.MultiMember{}
 	for _, member := range members {
 		room, err := repo.New(s.pool).GetRoom(ctx, member.RoomID)
 		if err != nil {
@@ -513,14 +741,19 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		}
 		switch room.Status {
 		case string(RoomStatusPlaying):
-			if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+			match, err := repo.New(s.pool).GetActiveMatchForUpdate(ctx, room.ID)
+			if err != nil {
+				return err
+			}
+			route, err := s.completionRoute(room, match)
+			if err != nil {
+				return err
+			}
+			if route == core.CompletionRouteRace {
 				raceBatches[room.ID] = append(raceBatches[room.ID], member)
 				continue
 			}
-			if err := ForfeitMemberMatch(ctx, s.pool, member, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
-				return err
-			}
-			s.notify(room.ID)
+			modeBatches[room.ID] = append(modeBatches[room.ID], member)
 		case string(RoomStatusLobby):
 			if err := s.expireLobbyMember(ctx, member); err != nil {
 				return err
@@ -532,10 +765,19 @@ func (s *Sweeper) expireDisconnectedMembers(ctx context.Context) error {
 		}
 	}
 	for roomID, batch := range raceBatches {
-		if err := ForfeitRaceMembersMatch(ctx, s.pool, batch, MatchEndReasonDisconnect, now, s.cfg.Timing); err != nil {
+		chatChanged, err := ForfeitRaceMembersMatchWithEffects(ctx, s.pool, batch, MatchEndReasonDisconnect, now, s.cfg.Timing, s.cfg.Announcements)
+		if err != nil {
 			return err
 		}
 		s.notify(roomID)
+		if chatChanged {
+			s.notifyChat(roomID)
+		}
+	}
+	for _, batch := range modeBatches {
+		if err := s.forfeitModeMemberBatch(ctx, batch, MatchEndReasonDisconnect, now); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -582,7 +824,11 @@ func (s *Sweeper) expireLobbyMember(ctx context.Context, member repo.MultiMember
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount))); err != nil {
+	relayConfig, err := RelayRoomConfigForRoom(ctx, q, room)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, remaining, int(spectatorCount), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -666,7 +912,11 @@ func (s *Sweeper) markDisconnectedMemberLeft(ctx context.Context, room repo.Mult
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount))); err != nil {
+	relayConfig, err := RelayRoomConfigForRoom(ctx, q, lockedRoom)
+	if err != nil {
+		return err
+	}
+	if err := AppendEvent(ctx, q, lockedRoom.ID, EventRoomUpdated, NewRoomUpdatedPayload(lockedRoom, players, int(spectatorCount), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {

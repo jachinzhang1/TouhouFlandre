@@ -11,7 +11,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint:openapi": "redocly lint contracts/openapi/openapi.yaml",
     "check:openapi-refs": "node scripts/check-openapi-refs.mjs",
-    "check:ws-protocol": "node scripts/check-ws-protocol.mjs"
+    "check:ws-protocol": "node scripts/check-ws-protocol.mjs",
+    "check:multiplayer-boundaries": "cd apps/api && go run ./cmd/check-multiplayer-boundaries"
   },
   "keywords": [
     "touhou",

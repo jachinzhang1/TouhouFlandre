@@ -90,7 +90,7 @@
   --surface-glass: rgba(251, 252, 251, 0.9);
   --surface-strong: #e7edeb;
   --muted-text: #64726d;
-  --subtle-text: #73817c;
+  --subtle-text: #52615b;
   --placeholder-text: #87938e;
   --disabled-text: #f2f4f3;
   --disabled-bg: #8e9b96;
@@ -2824,6 +2824,28 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   z-index: 1;
 }
 
+.match-countdown-band {
+  isolation: isolate;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-countdown-band::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--amber-soft);
+  content: "";
+  opacity: 0.24;
+  pointer-events: none;
+  animation: match-countdown-pulse 1s ease-in-out infinite;
+}
+
+.match-countdown-band > * {
+  position: relative;
+  z-index: 1;
+}
+
 .empty-state {
   height: 150px;
   color: var(--subtle-text);
@@ -2989,6 +3011,16 @@ html[data-theme-mode="dark"] .mode-rule-popover::after {
   }
   50% {
     opacity: 0.62;
+  }
+}
+
+@keyframes match-countdown-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.88;
   }
 }
 

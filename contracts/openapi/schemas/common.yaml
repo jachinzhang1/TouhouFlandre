@@ -44,5 +44,11 @@ ErrorResponse:
         - CHAT_IDEMPOTENCY_CONFLICT
         - CHAT_CURSOR_AHEAD
         - CHAT_RESYNC_REQUIRED
+        - FEATURE_DISABLED
+        - ENCOUNTER_NOT_FOUND
+        - NOT_ENCOUNTER_PLAYER
+        - ENCOUNTER_ENDED
+        - IDEMPOTENCY_CONFLICT
+        - QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS
     error:
       type: string

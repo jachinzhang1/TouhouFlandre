@@ -71,17 +71,30 @@ export function GuessTable({
     : "border-line";
 
   return (
-    <div className={`rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}>
+    <div
+      className={`rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}
+    >
       {(title || subtitle || headerExtra) && (
         <div className="mb-2 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            {title && <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">{title}</h3>}
-            {subtitle && <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>}
+            {title && (
+              <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>
+            )}
           </div>
           {headerExtra}
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label={title ?? "猜测记录"}
+      >
         <table
           className={`w-full border-collapse text-[0.78rem] ${
             isOpponent ? "min-w-[430px]" : "min-w-[560px]"
@@ -178,7 +191,9 @@ export function GuessTable({
                           } feedback-${cell.status}`}
                           title={STATUS_LABEL[cell.status]}
                           role={row.name ? undefined : "img"}
-                          aria-label={row.name ? undefined : STATUS_LABEL[cell.status]}
+                          aria-label={
+                            row.name ? undefined : STATUS_LABEL[cell.status]
+                          }
                         >
                           <b>
                             <FeedbackStatusIcon
@@ -186,7 +201,9 @@ export function GuessTable({
                               decorative={!row.name}
                             />
                           </b>
-                          {!isOpponent && cell.value && <span>{cell.value}</span>}
+                          {!isOpponent && cell.value && (
+                            <span>{cell.value}</span>
+                          )}
                         </span>
                       </td>
                     ))}
@@ -205,7 +222,9 @@ function cellsForFields(
   cells: GuessRow["cells"],
   fields: readonly GuessField[],
 ): GuessCell[] {
-  const fallback = fields.map((_, index) => cells?.[index] ?? { status: "unknown" as const });
+  const fallback = fields.map(
+    (_, index) => cells?.[index] ?? { status: "unknown" as const },
+  );
   if (!cells?.some((cell) => cell.field)) return fallback;
 
   const byField = new Map<GuessFieldKey, GuessCell>();

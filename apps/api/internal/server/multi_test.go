@@ -16,6 +16,7 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
 
@@ -574,7 +575,7 @@ func TestMultiSweeperLobbyTTLAndCleanup(t *testing.T) {
 	if _, err := pool.Exec(ctx, "UPDATE multi_room SET expires_at = now() - interval '1 second' WHERE id = $1", fixture.RoomId); err != nil {
 		t.Fatal(err)
 	}
-	sw := multi.NewSweeper(pool, multi.SweeperConfig{EventRetention: time.Hour})
+	sw := multi.NewSweeper(pool, multi.SweeperConfig{EventRetention: time.Hour, Registry: assembly.MustProduction()})
 	if err := sw.SweepOnce(ctx); err != nil {
 		t.Fatal(err)
 	}

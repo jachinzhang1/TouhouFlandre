@@ -107,9 +107,34 @@ func MultiNPlayerRaceEnabled() bool {
 	return boolFromEnv("MULTI_N_PLAYER_RACE_ENABLED", true)
 }
 
+func MultiNPlayerRelayEnabled() bool {
+	return boolFromEnv("MULTI_N_PLAYER_RELAY_ENABLED", true)
+}
+
+func MultiRelayEliminationEnabled() bool {
+	return boolFromEnv("MULTI_RELAY_ELIMINATION_ENABLED", true)
+}
+
+// MultiModeRegistry controls which multiplayer modules are assembled by the
+// production composition root. Rollout flags remain independent: they only
+// gate new configuration while a registered module can finish frozen matches.
+func MultiModeRegistry() string {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv("MULTI_MODE_REGISTRY")))
+	if value == "" {
+		return "full"
+	}
+	return value
+}
+
 // MultiChatSendEnabled 控制是否允许写入新聊天消息。历史读取和已授权实时投影不受影响。
 func MultiChatSendEnabled() bool {
 	return boolFromEnv("MULTI_CHAT_SEND_ENABLED", true)
+}
+
+// MultiSystemAnnouncementsEnabled controls creation of new server-authored
+// chat announcements. Existing history remains readable when disabled.
+func MultiSystemAnnouncementsEnabled() bool {
+	return boolFromEnv("MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED", true)
 }
 
 // MultiChatRate 两级聊天 token bucket 配置。
@@ -141,6 +166,12 @@ func MultiJoinRateLimit() int {
 		}
 	}
 	return 10
+}
+
+// MultiRelayHistoryRateLimit limits authenticated relay history page requests
+// per member and minute. It does not limit current snapshot recovery.
+func MultiRelayHistoryRateLimit() int {
+	return positiveIntFromEnv("MULTI_RELAY_HISTORY_RATE_LIMIT", 60)
 }
 
 // MultiRoundCountdown 首局倒计时（MULTI_ROUND_COUNTDOWN，默认 3s，08 §4.7）。

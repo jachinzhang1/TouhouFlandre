@@ -1,0 +1,50 @@
+groups:
+  - name: multiplayer-relay
+    rules:
+      - alert: MultiplayerAPIDown
+        expr: up{job="touhouflandre-api"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Multiplayer API metrics target is unavailable
+
+      - alert: MultiplayerDeadlockDetected
+        expr: increase(touhouflandre_multi_deadlocks_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: page
+        annotations:
+          summary: PostgreSQL reported a multiplayer deadlock
+
+      - alert: RelaySettlementRecoveryRequired
+        expr: increase(touhouflandre_multi_settlement_retries_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: Relay settlement required recovery processing
+
+      - alert: RelayHistoryLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le, mode, rule_set_key, rule_set_version) (rate(touhouflandre_multi_history_latency_seconds_bucket[10m]))) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Relay history p95 exceeds the 1500ms rollout threshold
+
+      - alert: MultiplayerSlowConsumerDrops
+        expr: increase(touhouflandre_multi_ws_queue_drops_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: WebSocket clients were disconnected because their send queue filled
+
+      - alert: RelayQuestionPoolTooSmall
+        expr: increase(touhouflandre_multi_pool_too_small_total[15m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: A relay stage could not allocate distinct answers

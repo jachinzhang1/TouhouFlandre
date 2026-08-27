@@ -17,6 +17,9 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 // startMatchTx 在调用方事务（已锁房间行）内开局：绑当前题库版本 → 抽题 → 建 round 1（countdown）
@@ -57,67 +60,95 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		}
 		room = updatedRoom
 	}
-	answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
-	if err != nil {
-		return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
-	}
-
 	now := s.now()
-	targetWins := multi.TargetWins(format)
 	members, err := q.ListMembers(ctx, room.ID)
 	if err != nil {
 		return internalError(err)
 	}
 	rosterSize := len(members)
-	scoringMode := multi.ScoringModeWins
-	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace && rosterSize > 2 {
-		scoringMode = multi.ScoringModePlacement
+	relayConfig, err := s.relayRoomConfigForState(ctx, room, q)
+	if err != nil {
+		return internalError(err)
 	}
-	maxRounds := multi.MaxRounds(format, s.timing.MaxRoundsFactor)
-	if scoringMode == multi.ScoringModePlacement {
-		maxRounds = rosterSize * s.timing.MaxRoundsFactor
+	factory, err := s.modeRegistry.MatchFactory(modeFromStored(room.Mode))
+	if err != nil {
+		return internalError(err)
 	}
+	plan, err := factory.Plan(core.MatchPlanInput{
+		Mode:                    modeFromStored(room.Mode),
+		Format:                  string(format),
+		RosterSize:              rosterSize,
+		RaceEliminationEnabled:  room.RaceEliminationEnabled,
+		RelayEliminationEnabled: relayConfig.EliminationEnabled,
+		MaxRoundsFactor:         s.timing.MaxRoundsFactor,
+		Now:                     now,
+		RoundCountdown:          s.timing.RoundCountdown,
+		RoundSeconds:            s.timing.RoundSeconds,
+		RaceRoundSeconds:        s.timing.RaceRoundSeconds,
+		TurnSeconds:             int(room.TurnSeconds),
+	})
+	if err != nil {
+		return internalError(err)
+	}
+	if err := s.modeRegistry.ValidateRuleSet(plan.RuleSet); err != nil {
+		return internalError(err)
+	}
+	if len(plan.RuleConfigSnapshot) == 0 {
+		plan.RuleConfigSnapshot, err = json.Marshal(map[string]any{
+			"mode":                    room.Mode,
+			"format":                  string(format),
+			"turnSeconds":             room.TurnSeconds,
+			"rosterSize":              rosterSize,
+			"targetWins":              plan.TargetWins,
+			"maxRounds":               plan.MaxRounds,
+			"questionScope":           scope,
+			"raceEliminationEnabled":  room.RaceEliminationEnabled,
+			"relayEliminationEnabled": relayConfig.EliminationEnabled,
+		})
+		if err != nil {
+			return internalError(err)
+		}
+	}
+	targetWins := plan.TargetWins
+	scoringMode := multi.ScoringMode(plan.ScoringMode)
+	maxRounds := plan.MaxRounds
 	match, err := q.CreateMatch(ctx, repo.CreateMatchParams{
-		ID:             multi.NewID(),
-		RoomID:         room.ID,
-		CatalogVersion: state.CurrentVersion,
-		TargetWins:     int32(targetWins),
-		StartedAt:      timestamptz(now),
-		QuestionScope:  scopeJSON,
-		ScoringMode:    string(scoringMode),
-		RosterSize:     int32(rosterSize),
-		MaxRounds:      int32(maxRounds),
+		ID:                 multi.NewID(),
+		RoomID:             room.ID,
+		CatalogVersion:     state.CurrentVersion,
+		TargetWins:         int32(targetWins),
+		StartedAt:          timestamptz(now),
+		QuestionScope:      scopeJSON,
+		ScoringMode:        string(scoringMode),
+		RosterSize:         int32(rosterSize),
+		MaxRounds:          int32(maxRounds),
+		RuleSetKey:         plan.RuleSet.Key,
+		RuleSetVersion:     int32(plan.RuleSet.Version),
+		RuleConfigSnapshot: plan.RuleConfigSnapshot,
 	})
 	if err != nil {
 		return mapRoomWriteError(err)
 	}
-	startsAt := now.Add(s.timing.RoundCountdown)
-	turnSlot, turnDeadline := multi.InitialTurnParams(room, 1, startsAt)
-	round, err := q.CreateRound(ctx, repo.CreateRoundParams{
-		ID:           multi.NewID(),
-		MatchID:      match.ID,
-		MaxRounds:    int32(maxRounds),
-		RoundIndex:   1,
-		AnswerID:     answerID,
-		StartsAt:     timestamptz(startsAt),
-		Deadline:     timestamptz(startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing))),
-		TurnSlot:     turnSlot,
-		TurnDeadline: turnDeadline,
-	})
-	if err != nil {
-		return mapRoomWriteError(err)
+	var plannedStages *int
+	if plan.RuleSet == relaydomain.FixedPointsRuleSet() {
+		value := maxRounds
+		plannedStages = &value
 	}
 	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventMatchStarted, multi.MatchStartedPayload{
 		Format:         format,
 		Mode:           multi.MultiplayerMode(room.Mode),
 		TurnSeconds:    int(room.TurnSeconds),
 		TargetWins:     targetWins,
+		PlannedStages:  plannedStages,
 		CatalogVersion: state.CurrentVersion,
 		MatchIndex:     int(match.MatchIndex),
 		QuestionScope:  scope,
 		ScoringMode:    scoringMode,
-		RosterSize:     rosterSize,
-		MaxRounds:      maxRounds,
+		RuleSetRef: multi.RuleSetRefView{
+			Mode: multi.MultiplayerMode(plan.RuleSet.Mode), Key: plan.RuleSet.Key, Version: plan.RuleSet.Version,
+		},
+		RosterSize: rosterSize,
+		MaxRounds:  maxRounds,
 	}); err != nil {
 		return internalError(err)
 	}
@@ -131,23 +162,70 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 			return mapRoomWriteError(err)
 		}
 	}
-	if err := q.CreateRoundPlayersForMatch(ctx, repo.CreateRoundPlayersForMatchParams{
-		RoundID: round.ID,
-		MatchID: match.ID,
-	}); err != nil {
-		return mapRoomWriteError(err)
-	}
-	roundStarted := multi.RoundStartedPayload{
-		MatchIndex:        int(match.MatchIndex),
-		RoundIndex:        int(round.RoundIndex),
-		StartsAt:          startsAt,
-		Deadline:          startsAt.Add(multi.RoundDurationForMode(multi.MultiplayerMode(room.Mode), s.timing)),
-		MaxGuesses:        maxGuesses,
-		ActivePlayerCount: rosterSize,
-	}
-	multi.AddRelayRoundStartedFields(&roundStarted, room, members, int(round.RoundIndex), startsAt)
-	if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {
-		return internalError(err)
+	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRelay {
+		initialScore, err := relaydomain.InitialScoreForRuleSet(plan.RuleSet)
+		if err != nil {
+			return internalError(err)
+		}
+		players := make([]relaydomain.PlayerSnapshot, 0, len(members))
+		for _, member := range members {
+			if _, err := q.CreateRelayMatchPlayerState(ctx, repo.CreateRelayMatchPlayerStateParams{
+				MatchID: match.ID, MemberID: member.ID, Score: int32(initialScore), LifeState: string(relaydomain.LifeStateHealthy),
+			}); err != nil {
+				return mapRoomWriteError(err)
+			}
+			players = append(players, relaydomain.PlayerSnapshot{MemberID: member.ID, Seat: multi.MemberSeat(member)})
+		}
+		_, err = s.relayCoordinator.CreateStageInTransaction(ctx, relayadapter.NewStageTransactionFromQueries(q, s.timing.FinishedRetention), relaydomain.CreateStageRequest{
+			Match: relaydomain.MatchContext{
+				MatchID: match.ID, RoomID: room.ID, MatchIndex: int(match.MatchIndex),
+				RuleSet:    plan.RuleSet,
+				TargetWins: targetWins, MaxStages: maxRounds,
+			},
+			StageIndex: 1, ActivePlayers: players, StartsAt: plan.StartsAt,
+			CandidateAnswerIDs: game.QuestionScopeAnswerPool(scope), TurnSeconds: int(room.TurnSeconds),
+			EncounterDuration: s.timing.RoundSeconds,
+		})
+		if err != nil {
+			if errors.Is(err, relaydomain.ErrQuestionPoolTooSmall) {
+				multi.DefaultMetrics.IncPoolTooSmall(multi.NewMetricLabels(string(plan.RuleSet.Mode), plan.RuleSet.Key, plan.RuleSet.Version))
+				return &ApiError{Status: http.StatusConflict, Code: codeQuestionPoolTooSmall, Message: "题库中的可用答案不足以创建本轮对局。"}
+			}
+			multi.DefaultMetrics.IncPairingFailure(multi.NewMetricLabels(string(plan.RuleSet.Mode), plan.RuleSet.Key, plan.RuleSet.Version))
+			return internalError(err)
+		}
+	} else {
+		answerID, err := multi.DrawAnswer(game.QuestionScopeAnswerPool(scope), map[string]bool{}, s.rng)
+		if err != nil {
+			return &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库中没有可作为答案的角色。"}
+		}
+		startsAt := plan.StartsAt
+		var turnSlot pgtype.Int4
+		var turnDeadline pgtype.Timestamptz
+		if plan.FirstTurnSeat != nil {
+			turnSlot = pgtype.Int4{Int32: int32(*plan.FirstTurnSeat), Valid: true}
+		}
+		if plan.TurnDeadline != nil {
+			turnDeadline = pgtype.Timestamptz{Time: *plan.TurnDeadline, Valid: true}
+		}
+		round, err := q.CreateRound(ctx, repo.CreateRoundParams{
+			ID: multi.NewID(), MatchID: match.ID, MaxRounds: int32(maxRounds), RoundIndex: 1,
+			AnswerID: answerID, StartsAt: timestamptz(startsAt), Deadline: timestamptz(plan.Deadline),
+			TurnSlot: turnSlot, TurnDeadline: turnDeadline,
+		})
+		if err != nil {
+			return mapRoomWriteError(err)
+		}
+		if err := q.CreateRoundPlayersForMatch(ctx, repo.CreateRoundPlayersForMatchParams{RoundID: round.ID, MatchID: match.ID}); err != nil {
+			return mapRoomWriteError(err)
+		}
+		roundStarted := multi.RoundStartedPayload{
+			MatchIndex: int(match.MatchIndex), RoundIndex: int(round.RoundIndex), StartsAt: startsAt,
+			Deadline: plan.Deadline, MaxGuesses: maxGuesses, ActivePlayerCount: rosterSize,
+		}
+		if err := multi.AppendEvent(ctx, q, room.ID, multi.EventRoundStarted, roundStarted); err != nil {
+			return internalError(err)
+		}
 	}
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
 		ID:        room.ID,
@@ -173,6 +251,42 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	}
 	if request.Body == nil {
 		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "缺少请求体。"}
+	}
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
+		}
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionGuess,
+				GuessID: request.Body.GuessId, IdempotencyKey: request.Body.IdempotencyKey,
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
+			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			if result.Guess == nil {
+				return nil, internalError(errors.New("relay guess action returned no feedback"))
+			}
+			return openapi.RoomsSubmitGuess200JSONResponse{
+				RoundIndex: request.RoundIndex, Guess: toOpenAPIGuessResultView(*result.Guess),
+			}, nil
+		}
 	}
 
 	tx, err := s.pool.Begin(ctx)
@@ -214,9 +328,13 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 	if err != nil {
 		return nil, internalError(err)
 	}
-	module, ok := guessModeModules[multi.MultiplayerMode(room.Mode)]
+	route, routeErr := s.commandRoute(room, match, core.CommandGuess, member.ID)
+	if routeErr != nil {
+		return nil, routeErr
+	}
+	module, ok := guessCommandRoutes[route]
 	if !ok {
-		return nil, &ApiError{Status: http.StatusBadRequest, Code: codeInvalidRequest, Message: "未知多人玩法。"}
+		return nil, internalError(errors.New("multiplayer command route is not executable"))
 	}
 	result, err := module.SubmitGuess(ctx, s, q, submitGuessInput{
 		request: request,
@@ -231,6 +349,9 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 		}
 		if result.publish {
 			s.publish(request.RoomId)
+		}
+		if result.chatChanged {
+			s.publishChatRoom(request.RoomId)
 		}
 	}
 	if err != nil {
@@ -333,29 +454,41 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if room.Status != string(multi.RoomStatusFinished) {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "对局未结束，无法再来一局。"}
 	}
-	alreadyConfirmed := false
+	finishedMatch, err := q.GetLatestFinishedMatchForRoomForUpdate(ctx, request.RoomId)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "没有可再来的已结束对局。"}
+		}
+		return nil, internalError(err)
+	}
+	frozenRoster, err := q.ListMatchPlayers(ctx, finishedMatch.ID)
+	if err != nil {
+		return nil, internalError(err)
+	}
 	members, err := q.ListMembers(ctx, request.RoomId)
 	if err != nil {
 		return nil, internalError(err)
 	}
-	requesterConnected := false
+	memberByID := make(map[string]repo.MultiMember, len(members))
 	for _, rosterMember := range members {
-		if rosterMember.Status == string(multi.MemberStatusLeft) {
+		memberByID[rosterMember.ID] = rosterMember
+	}
+	requesterConnected := false
+	requesterInFrozenRoster := false
+	for _, frozen := range frozenRoster {
+		rosterMember, ok := memberByID[frozen.MemberID]
+		if !ok || rosterMember.Status == string(multi.MemberStatusLeft) {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "原对局阵容已有成员离开，无法再来一局。"}
 		}
-		if rosterMember.ID == member.ID && rosterMember.Status == string(multi.MemberStatusConnected) {
-			requesterConnected = true
+		if rosterMember.ID == member.ID {
+			requesterInFrozenRoster = true
+			requesterConnected = rosterMember.Status == string(multi.MemberStatusConnected)
 		}
 	}
-	if !requesterConnected {
+	if !requesterInFrozenRoster || !requesterConnected {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeRematchNotAvailable, Message: "请先重新连接房间后再确认。"}
 	}
-	for _, m := range members {
-		if m.ID == member.ID && m.RematchReady {
-			alreadyConfirmed = true
-			break
-		}
-	}
+	alreadyConfirmed := memberByID[member.ID].RematchReady
 	if !alreadyConfirmed {
 		if _, err := q.SetMemberRematchReady(ctx, repo.SetMemberRematchReadyParams{ID: member.ID, RematchReady: true}); err != nil {
 			return nil, internalError(err)
@@ -371,8 +504,20 @@ func (s *Server) RoomsRematch(ctx context.Context, request openapi.RoomsRematchR
 	if err != nil {
 		return nil, internalError(err)
 	}
+	afterByID := make(map[string]repo.MultiMember, len(after))
+	for _, rosterMember := range after {
+		afterByID[rosterMember.ID] = rosterMember
+	}
+	allConfirmed := true
+	for _, frozen := range frozenRoster {
+		rosterMember, ok := afterByID[frozen.MemberID]
+		if !ok || rosterMember.Status != string(multi.MemberStatusConnected) || !rosterMember.RematchReady {
+			allConfirmed = false
+			break
+		}
+	}
 	// 原冻结 player 集合全员 connected + confirmed → 按原阵容开新场。
-	if multi.RematchRosterReady(after, int(room.PlayerLimit)) {
+	if allConfirmed {
 		format := multi.RoomFormat(room.Format)
 		if err := s.startMatchTx(ctx, q, room, format); err != nil {
 			return nil, err

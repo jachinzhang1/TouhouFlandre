@@ -19,10 +19,38 @@ func ValidPlayerLimit(mode MultiplayerMode, playerLimit int) bool {
 	case MultiplayerModeRace:
 		return playerLimit >= DefaultPlayerLimit && playerLimit <= ServerMaxRacePlayers
 	case MultiplayerModeRelay:
-		return playerLimit == RelayPlayerLimit
+		return playerLimit == 2 || playerLimit == 4 || playerLimit == 6 || playerLimit == 8
 	default:
 		return false
 	}
+}
+
+func RelayReadyDecision(players []repo.MultiMember, playerLimit int) (allowed bool, reason string) {
+	if len(players) < MinPlayers {
+		return false, "not_enough_players"
+	}
+	if len(players) > playerLimit {
+		return false, "invalid_player_count"
+	}
+	if len(players)%2 != 0 {
+		return false, "odd_player_count"
+	}
+	hostReady := false
+	for _, player := range players {
+		if player.Status != string(MemberStatusConnected) {
+			return false, "player_disconnected"
+		}
+		if !player.Ready {
+			return false, "player_not_ready"
+		}
+		if MemberSeat(player) == 1 {
+			hostReady = true
+		}
+	}
+	if !hostReady {
+		return false, "host_missing"
+	}
+	return true, ""
 }
 
 // ReadyRoster reports whether the room's current player collection may be

@@ -6,6 +6,11 @@ ChatChannel:
   type: string
   enum: [room, spectator]
 
+ChatSenderRole:
+  type: string
+  enum: [player, spectator, system]
+  x-enum-varnames: [ChatSenderPlayer, ChatSenderSpectator, ChatSenderSystem]
+
 ChatMessage:
   type: object
   additionalProperties: false
@@ -31,7 +36,7 @@ ChatMessage:
     senderDisplayName:
       type: string
     senderRole:
-      $ref: ./multi-common.yaml#/ParticipantRole
+      $ref: "#/ChatSenderRole"
     senderSeat:
       type: integer
       minimum: 1

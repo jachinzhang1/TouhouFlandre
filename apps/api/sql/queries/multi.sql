@@ -2,7 +2,7 @@
 -- 锁序纪律（§9.2）：触碰局/场行的路径统一 局 → 场 → 房间；大厅命令只锁房间行。
 
 -- name: CreateRoom :one
-INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, status, expires_at, question_scope)
+INSERT INTO multi_room (id, code, format, mode, turn_seconds, player_limit, race_elimination_enabled, status, expires_at, question_scope)
 VALUES (
     sqlc.arg(id),
     sqlc.arg(code),
@@ -10,6 +10,7 @@ VALUES (
     sqlc.arg(mode),
     sqlc.arg(turn_seconds),
     sqlc.arg(player_limit),
+    sqlc.arg(race_elimination_enabled),
     'lobby',
     sqlc.arg(expires_at),
     sqlc.arg(question_scope)
@@ -72,6 +73,24 @@ SELECT jsonb_build_object(
                 FROM multi_turn t WHERE t.round_id = (SELECT ar.id FROM active_round ar))
 )::jsonb AS snapshot;
 
+-- name: CreateRelayRoomConfig :exec
+INSERT INTO multi_relay_room_config (room_id, elimination_enabled)
+VALUES (sqlc.arg(room_id), sqlc.arg(elimination_enabled))
+ON CONFLICT (room_id) DO UPDATE
+SET elimination_enabled = EXCLUDED.elimination_enabled;
+
+-- name: GetRelayRoomConfig :one
+SELECT * FROM multi_relay_room_config WHERE room_id = $1;
+
+-- name: GetRelayRoomConfigForUpdate :one
+SELECT * FROM multi_relay_room_config WHERE room_id = $1 FOR UPDATE;
+
+-- name: UpdateRelayRoomConfig :one
+UPDATE multi_relay_room_config
+SET elimination_enabled = sqlc.arg(elimination_enabled)
+WHERE room_id = sqlc.arg(room_id)
+RETURNING *;
+
 -- name: UpdateRoomStatus :one
 UPDATE multi_room SET status = $2, expires_at = $3 WHERE id = $1 RETURNING *;
 
@@ -80,6 +99,9 @@ UPDATE multi_room SET question_scope = $2 WHERE id = $1 RETURNING *;
 
 -- name: UpdateRoomPlayerLimit :one
 UPDATE multi_room SET player_limit = $2 WHERE id = $1 RETURNING *;
+
+-- name: UpdateRoomRaceEliminationEnabled :one
+UPDATE multi_room SET race_elimination_enabled = $2 WHERE id = $1 RETURNING *;
 
 -- name: CloseRoom :one
 UPDATE multi_room SET status = 'closed', expires_at = $2 WHERE id = $1 RETURNING *;
@@ -158,16 +180,25 @@ UPDATE multi_member SET rematch_ready = $2 WHERE id = $1 RETURNING *;
 -- 首场与再来一局共用；事务内算 match_index = MAX+1（无行时 0）。
 INSERT INTO multi_match (
     id, room_id, match_index, catalog_version, target_wins, status,
-    started_at, question_scope, scoring_mode, roster_size, max_rounds
+    started_at, question_scope, scoring_mode, roster_size, max_rounds,
+    rule_set_key, rule_set_version, rule_config_snapshot
 )
 SELECT
     $1, $2, COALESCE(MAX(match_index), -1) + 1, $3, $4, 'playing',
-    $5, $6, $7, $8, $9
+    $5, $6, $7, $8, $9, $10, $11, $12
 FROM multi_match WHERE room_id = $2
 RETURNING *;
 
 -- name: GetMatchForUpdate :one
 SELECT * FROM multi_match WHERE id = $1 FOR UPDATE;
+
+-- name: GetLatestFinishedMatchForRoomForUpdate :one
+SELECT *
+FROM multi_match
+WHERE room_id = $1 AND status = 'finished'
+ORDER BY match_index DESC
+LIMIT 1
+FOR UPDATE;
 
 -- name: CreateMatchPlayer :one
 INSERT INTO multi_match_player (match_id, member_id, seat, wins, status, score, best_round_score)

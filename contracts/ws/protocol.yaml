@@ -1,4 +1,4 @@
-# touhouflandre-multi.v2 WebSocket 子协议规范
+# touhouflandre-multi.v3 WebSocket 子协议规范
 #
 # 依据：docs/multiplayer.md（WebSocket 协议）
 # 校验：scripts/check-ws-protocol.mjs（`task check:ws-protocol` / CI）
@@ -7,10 +7,10 @@
 #   - TS 类型（packages/shared/src/multi.ts）payload 字段名集合与 events/clientMessages 对齐
 
 info:
-  version: "2.0"
+  version: "3.0"
   description: |
-    touhouflandre-multi.v2：多人房间游戏事件同步协议。
-    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v2）。
+    touhouflandre-multi.v3：多人房间游戏事件同步协议。
+    传输：GET /api/rooms/{roomId}/ws 升级（Origin ∈ WEB_ORIGINS、子协议 touhouflandre-multi.v3）。
     鉴权：建连后第一条消息必须是 hello{token, lastGameSequence}；鉴权前不收发房间事件。
     令牌只在首帧出现，不进 URL/查询参数/日志。
 
@@ -57,6 +57,7 @@ cursorEnvelope:
       format: date-time
 
 # 独立聊天帧；不使用 room event 信封，也没有游戏 sequence。
+# senderRole=system 仅由服务端生成，使用 room channel 对玩家和观战者可见。
 chatFrame:
   type: object
   additionalProperties: false
@@ -88,7 +89,7 @@ chatFrame:
       type: string
     senderRole:
       type: string
-      enum: [player, spectator]
+      enum: [player, spectator, system]
     senderSeat:
       type: integer
       minimum: 1
@@ -110,7 +111,7 @@ chatFrame:
 # 握手流程：升级校验 → hello → 注册缓冲 → 捕获水位 → hello-ok → 重放/排空 → sync.complete → 实时流
 handshake:
   - step: upgrade
-    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v2；不符拒绝升级。"
+    detail: "校验 Origin 与 Sec-WebSocket-Protocol: touhouflandre-multi.v3；不符拒绝升级。"
   - step: hello
     detail: 第一条消息必须是 hello{token, lastGameSequence}；鉴权失败/非首帧 → 关闭连接。
   - step: buffer
@@ -139,6 +140,7 @@ events:
           mode,
           turnSeconds,
           playerLimit,
+          raceEliminationEnabled,
           minPlayers,
           playerCount,
           availableSeats,
@@ -159,6 +161,21 @@ events:
           type: integer
           minimum: 2
           maximum: 8
+        raceEliminationEnabled:
+          type: boolean
+        relayEliminationEnabled:
+          type: boolean
+        startBlockedReason:
+          type: string
+          enum:
+            [
+              not_enough_players,
+              odd_player_count,
+              player_not_ready,
+              player_disconnected,
+              host_missing,
+              invalid_player_count,
+            ]
         minPlayers:
           type: integer
           enum: [2]
@@ -211,6 +228,7 @@ events:
           matchIndex,
           questionScope,
           scoringMode,
+          ruleSetRef,
           rosterSize,
           maxRounds,
         ]
@@ -227,6 +245,11 @@ events:
         targetWins:
           type: integer
           minimum: 1
+        plannedStages:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: relay fixed_points 规则冻结的 stage 总数；其他规则省略。
         catalogVersion:
           type: string
           description: 本场绑定的题库版本（07 §2 快照不变量按每场对局界定）。
@@ -238,8 +261,10 @@ events:
           additionalProperties: true
         scoringMode:
           type: string
-          enum: [wins, placement]
-          description: placement 仅用于实际 roster 人数大于 2 的 race。
+          enum: [wins, points, placement]
+          description: wins 仅用于 2 人 race；points 为积分累计不淘汰；placement 为当前积分淘汰。
+        ruleSetRef:
+          $ref: "#/definitions/RuleSetRef"
         rosterSize:
           type: integer
           minimum: 2
@@ -602,9 +627,19 @@ events:
           description: 终局总积分排行榜；rank 可共享。
           items:
             $ref: "#/definitions/MemberRanking"
+        relay:
+          $ref: "#/definitions/RelayMatchEnded"
         reason:
           type: string
-          enum: [normal, forfeit, disconnect, server_restart, round_cap]
+          enum:
+            [
+              normal,
+              forfeit,
+              disconnect,
+              server_restart,
+              round_cap,
+              insufficient_active_players,
+            ]
         retentionEndsAt:
           type: string
           format: date-time
@@ -621,6 +656,202 @@ events:
         reason:
           type: string
           enum: [host_left, member_left, ttl, retention]
+
+  - type: relay.stage.started
+    observer: all
+    summary: relay stage 建立并发布稳定排序的 encounter 摘要；不包含答案。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, stageId, stageIndex, status, encounters]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        stageId:
+          type: string
+        stageIndex:
+          type: integer
+          minimum: 1
+        startsAt:
+          type: string
+          format: date-time
+          description: stage 的服务端计划开始时间；旧事件可缺失。
+        status:
+          type: string
+          enum: [planned, playing, settling, ended]
+        encounters:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            $ref: "#/definitions/RelayEncounterSummary"
+        byeMemberId:
+          type: string
+
+  - type: relay.encounter.started
+    observer: all
+    summary: 单张 relay 棋盘进入 countdown/playing；进行中 payload 不含答案。
+    payload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          matchIndex,
+          stageId,
+          stageIndex,
+          encounterId,
+          encounterIndex,
+          status,
+          members,
+          maxTurnsPerPlayer,
+          maxSkipsPerPlayer,
+        ]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        stageId:
+          type: string
+        stageIndex:
+          type: integer
+          minimum: 1
+        encounterId:
+          type: string
+        encounterIndex:
+          type: integer
+          minimum: 1
+          maximum: 4
+        status:
+          type: string
+          enum: [planned, countdown, playing, ended]
+        members:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: "#/definitions/RelayEncounterMember"
+        startsAt:
+          type: string
+          format: date-time
+        deadline:
+          type: string
+          format: date-time
+        turnMemberId:
+          type: string
+        turnSeat:
+          type: integer
+          minimum: 1
+          maximum: 8
+        turnDeadline:
+          type: string
+          format: date-time
+        maxTurnsPerPlayer:
+          type: integer
+          minimum: 1
+        maxSkipsPerPlayer:
+          type: integer
+          minimum: 0
+
+  - type: relay.encounter.turn.guess
+    observer: all
+    summary: 单张 relay 棋盘接受一次猜测并推进 turn；不广播其他 encounter。
+    payload:
+      $ref: "#/definitions/RelayEncounterTurnPayload"
+
+  - type: relay.encounter.turn.pass
+    observer: all
+    summary: 单张 relay 棋盘接受主动空过并推进 turn。
+    payload:
+      $ref: "#/definitions/RelayEncounterTurnPayload"
+
+  - type: relay.encounter.turn.timeout
+    observer: all
+    summary: 单张 relay 棋盘记录超时空过并推进 turn。
+    payload:
+      $ref: "#/definitions/RelayEncounterTurnPayload"
+
+  - type: relay.encounter.ended
+    observer: all
+    summary: 单张 relay 棋盘进入终态；终态才允许携带完整 turns/答案投影。
+    payload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          matchIndex,
+          stageId,
+          stageIndex,
+          encounterId,
+          status,
+          outcome,
+          winnerMemberId,
+          answer,
+        ]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        stageId:
+          type: string
+        stageIndex:
+          type: integer
+          minimum: 1
+        encounterId:
+          type: string
+        status:
+          type: string
+          const: ended
+        outcome:
+          type: string
+          enum: [win, loss, draw, forfeit, timeout]
+        winnerMemberId:
+          oneOf:
+            - type: string
+            - type: "null"
+        answer:
+          $ref: "#/definitions/RelayAnswer"
+        turns:
+          type: array
+          items:
+            $ref: "#/definitions/RelayTurnRow"
+
+  - type: relay.stage.ended
+    observer: all
+    summary: stage barrier 完成后的原子结算，包含比分/生命/淘汰/轮空与下一阶段信息。
+    payload:
+      type: object
+      additionalProperties: false
+      required: [matchIndex, stageId, stageIndex, status, settlement, standings]
+      properties:
+        matchIndex:
+          type: integer
+          minimum: 0
+        stageId:
+          type: string
+        stageIndex:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          const: ended
+        settlement:
+          type: array
+          items:
+            $ref: "#/definitions/RelayStageSettlement"
+        standings:
+          type: array
+          items:
+            $ref: "#/definitions/RelayStanding"
+        eliminatedMemberIds:
+          type: array
+          items:
+            type: string
+        nextStageIndex:
+          type: integer
+          minimum: 1
+        byeMemberId:
+          type: string
 
 # 服务端控制帧（非事件，无 sequence；平铺消息含 type）
 control:
@@ -656,7 +887,7 @@ control:
           minimum: 0
         chatCursor:
           type: string
-  - type: resync.required
+  - type: protocol.refresh_required
     summary: hello 水位无法连续恢复；客户端必须拉取权威 snapshot 后重新握手。
     payload:
       type: object
@@ -665,7 +896,7 @@ control:
       properties:
         type:
           type: string
-          const: resync.required
+          const: protocol.refresh_required
         scope:
           type: string
           enum: [game, chat, all]
@@ -677,6 +908,7 @@ control:
               invalid_cursor,
               ahead_of_server,
               history_unavailable,
+              protocol_version_unsupported,
             ]
         gameSequence:
           type: integer
@@ -684,6 +916,8 @@ control:
         oldestAvailableChatCursor:
           type: string
         targetChatCursor:
+          type: string
+        requiredSubprotocol:
           type: string
   - type: replaced
     summary: 同成员新连接注册，或当前连接缓存的 member role/seat 已失效。
@@ -904,6 +1138,205 @@ definitions:
       result:
         type: string
         enum: [win, loss, draw]
+  RuleSetRef:
+    type: object
+    additionalProperties: false
+    required: [mode, key, version]
+    properties:
+      mode:
+        type: string
+        enum: [race, relay]
+      key:
+        type: string
+      version:
+        type: integer
+        minimum: 1
+  RelayStanding:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, score, status, lifeState]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      score:
+        type: integer
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      lifeState:
+        type: string
+        enum: [healthy, near_death]
+      eliminatedStage:
+        type: integer
+        minimum: 1
+  RelayRanking:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, rank, score, status, lifeState]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      rank:
+        type: integer
+        minimum: 1
+      score:
+        type: integer
+      status:
+        type: string
+        enum: [active, eliminated, left]
+      lifeState:
+        type: string
+        enum: [healthy, near_death]
+      eliminatedStage:
+        type: integer
+        minimum: 1
+      survivedStages:
+        type: integer
+        minimum: 0
+  RelayMatchEnded:
+    type: object
+    additionalProperties: false
+    required: [standings, ranking]
+    properties:
+      standings:
+        type: array
+        items:
+          $ref: "#/definitions/RelayStanding"
+      ranking:
+        type: array
+        items:
+          $ref: "#/definitions/RelayRanking"
+  RelayEncounterMember:
+    type: object
+    additionalProperties: false
+    required: [memberId, seat, side]
+    properties:
+      memberId:
+        type: string
+      seat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      side:
+        type: integer
+        enum: [1, 2]
+  RelayEncounterSummary:
+    type: object
+    additionalProperties: false
+    required: [encounterId, encounterIndex, status, members]
+    properties:
+      encounterId:
+        type: string
+      encounterIndex:
+        type: integer
+        minimum: 1
+        maximum: 4
+      status:
+        type: string
+        enum: [planned, countdown, playing, ended]
+      members:
+        type: array
+        minItems: 2
+        maxItems: 2
+        items:
+          $ref: "#/definitions/RelayEncounterMember"
+  RelayStageSettlement:
+    type: object
+    additionalProperties: false
+    required:
+      [
+        memberId,
+        assignment,
+        outcome,
+        scoreBefore,
+        scoreDelta,
+        scoreAfter,
+        lifeBefore,
+        lifeAfter,
+        lifeTransition,
+      ]
+    properties:
+      memberId:
+        type: string
+      encounterId:
+        type: string
+      assignment:
+        type: string
+        enum: [paired, bye]
+      outcome:
+        type: string
+        enum: [win, loss, draw, bye]
+      scoreBefore:
+        type: integer
+      scoreDelta:
+        type: integer
+      scoreAfter:
+        type: integer
+      lifeBefore:
+        type: string
+        enum: [healthy, near_death]
+      lifeAfter:
+        type: string
+        enum: [healthy, near_death]
+      lifeTransition:
+        type: string
+        enum: [none, entered_near_death, eliminated]
+      eliminatedStage:
+        type: integer
+        minimum: 1
+  RelayEncounterTurnPayload:
+    type: object
+    additionalProperties: false
+    required: [matchIndex, stageId, stageIndex, encounterId, memberId, row]
+    properties:
+      matchIndex:
+        type: integer
+        minimum: 0
+      stageId:
+        type: string
+      stageIndex:
+        type: integer
+        minimum: 1
+      encounterId:
+        type: string
+      memberId:
+        type: string
+      row:
+        $ref: "#/definitions/RelayTurnRow"
+      nextTurnMemberId:
+        type: string
+      nextTurnSeat:
+        type: integer
+        minimum: 1
+        maximum: 8
+      nextTurnDeadline:
+        type: string
+        format: date-time
+  RelayAnswer:
+    type: object
+    additionalProperties: false
+    required: [id, name, avatarUrl, workId, workTitle, workCode]
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      avatarUrl:
+        type: string
+      workId:
+        type: string
+      workTitle:
+        type: string
+      workCode:
+        type: string
 
 # 有效示例：每个事件 1 个 + hello/ack/hello-ok/replaced 各 1 个
 examples:
@@ -920,6 +1353,7 @@ examples:
           mode: race
           turnSeconds: 60
           playerLimit: 2
+          raceEliminationEnabled: false
           minPlayers: 2
           playerCount: 2
           availableSeats: 0
@@ -951,6 +1385,10 @@ examples:
           catalogVersion: 66b0a79b
           matchIndex: 0
           scoringMode: wins
+          ruleSetRef:
+            mode: race
+            key: wins
+            version: 1
           rosterSize: 2
           maxRounds: 9
           questionScope:
@@ -1265,6 +1703,200 @@ examples:
         payload:
           reason: host_left
 
+    - label: relay.stage.started（stage 建立）
+      message:
+        type: relay.stage.started
+        eventId: evt_01J8ZR0
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 40
+        occurredAt: "2026-08-06T12:40:00Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          startsAt: "2026-08-06T12:40:01Z"
+          status: playing
+          encounters:
+            - encounterId: encounter-01
+              encounterIndex: 1
+              status: countdown
+              members:
+                - memberId: member-host
+                  seat: 1
+                  side: 1
+                - memberId: member-guest
+                  seat: 2
+                  side: 2
+
+    - label: relay.encounter.started（棋盘开始）
+      message:
+        type: relay.encounter.started
+        eventId: evt_01J8ZR1
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 41
+        occurredAt: "2026-08-06T12:40:01Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          encounterId: encounter-01
+          encounterIndex: 1
+          status: playing
+          members:
+            - memberId: member-host
+              seat: 1
+              side: 1
+            - memberId: member-guest
+              seat: 2
+              side: 2
+          startsAt: "2026-08-06T12:40:01Z"
+          deadline: "2026-08-06T12:45:01Z"
+          turnMemberId: member-host
+          turnSeat: 1
+          turnDeadline: "2026-08-06T12:41:01Z"
+          maxTurnsPerPlayer: 8
+          maxSkipsPerPlayer: 2
+
+    - label: relay.encounter.turn.guess（棋盘猜测）
+      message:
+        type: relay.encounter.turn.guess
+        eventId: evt_01J8ZR2
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 42
+        occurredAt: "2026-08-06T12:40:02Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          encounterId: encounter-01
+          memberId: member-host
+          row:
+            index: 1
+            memberId: member-host
+            seat: 1
+            kind: guess
+            guess:
+              guessId: marisa_kirisame
+              guessName: 雾雨魔理沙
+              isCorrect: false
+              feedback: []
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
+          nextTurnDeadline: "2026-08-06T12:41:02Z"
+
+    - label: relay.encounter.turn.pass（棋盘空过）
+      message:
+        type: relay.encounter.turn.pass
+        eventId: evt_01J8ZR3
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 43
+        occurredAt: "2026-08-06T12:40:03Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          encounterId: encounter-01
+          memberId: member-guest
+          row:
+            index: 2
+            memberId: member-guest
+            seat: 2
+            kind: pass
+          nextTurnMemberId: member-host
+          nextTurnSeat: 1
+          nextTurnDeadline: "2026-08-06T12:41:03Z"
+
+    - label: relay.encounter.turn.timeout（棋盘超时）
+      message:
+        type: relay.encounter.turn.timeout
+        eventId: evt_01J8ZR4
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 44
+        occurredAt: "2026-08-06T12:40:04Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          encounterId: encounter-01
+          memberId: member-host
+          row:
+            index: 3
+            memberId: member-host
+            seat: 1
+            kind: timeout
+          nextTurnMemberId: member-guest
+          nextTurnSeat: 2
+          nextTurnDeadline: "2026-08-06T12:41:04Z"
+
+    - label: relay.encounter.ended（棋盘结束）
+      message:
+        type: relay.encounter.ended
+        eventId: evt_01J8ZR5
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 45
+        occurredAt: "2026-08-06T12:40:05Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          encounterId: encounter-01
+          status: ended
+          outcome: win
+          winnerMemberId: member-guest
+          answer:
+            id: reimu_hakurei
+            name: 博丽灵梦
+            avatarUrl: /avatars/reimu.png
+            workId: th01
+            workTitle: 东方灵异传
+            workCode: TH01
+          turns: []
+
+    - label: relay.stage.ended（stage 结算）
+      message:
+        type: relay.stage.ended
+        eventId: evt_01J8ZR6
+        roomId: a1b2c3d4e5f6a7b8c9d0e1f2a
+        sequence: 46
+        occurredAt: "2026-08-06T12:40:06Z"
+        payload:
+          matchIndex: 0
+          stageId: stage-01
+          stageIndex: 3
+          status: ended
+          settlement:
+            - memberId: member-host
+              encounterId: encounter-01
+              assignment: paired
+              outcome: loss
+              scoreBefore: 2
+              scoreDelta: -2
+              scoreAfter: 0
+              lifeBefore: healthy
+              lifeAfter: near_death
+              lifeTransition: entered_near_death
+            - memberId: member-guest
+              encounterId: encounter-01
+              assignment: paired
+              outcome: win
+              scoreBefore: 9
+              scoreDelta: 1
+              scoreAfter: 10
+              lifeBefore: healthy
+              lifeAfter: healthy
+              lifeTransition: none
+          standings:
+            - memberId: member-host
+              seat: 1
+              score: 0
+              status: active
+              lifeState: near_death
+            - memberId: member-guest
+              seat: 2
+              score: 10
+              status: active
+              lifeState: healthy
+
     - label: room.cursor（无权消费业务 payload）
       message:
         type: room.cursor
@@ -1301,12 +1933,13 @@ examples:
         gameSequence: 23
         chatCursor: chat_cursor_after_24
 
-    - label: resync.required（历史不可连续恢复）
+    - label: protocol.refresh_required（历史不可连续恢复）
       message:
-        type: resync.required
+        type: protocol.refresh_required
         scope: game
         reason: history_unavailable
         gameSequence: 23
+        requiredSubprotocol: touhouflandre-multi.v3
 
     - label: replaced（旧连接被替换）
       message:

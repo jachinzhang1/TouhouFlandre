@@ -57,13 +57,16 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				if !s.joinLimiter.allow(clientIP(ctx), s.now()) {
 					return nil, &ApiError{Status: http.StatusTooManyRequests, Code: codeRateLimited, Message: "尝试过于频繁，请稍后再试。"}
 				}
-			case "RoomsGetSnapshot":
+			case "RoomsGetSnapshot", "RoomsListRelayStageHistory":
 				member, apiErr := s.authenticateGuestForSnapshot(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
 				}
 				if roomID, ok := roomIDFromRequest(request); ok && member.RoomID != roomID {
 					return nil, guestUnauthorized("令牌不属于该房间。")
+				}
+				if operationID == "RoomsListRelayStageHistory" && !s.historyLimiter.allow(member.ID, s.now()) {
+					return nil, &ApiError{Status: http.StatusTooManyRequests, Code: codeRateLimited, Message: "历史请求过于频繁，请稍后再试。"}
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
@@ -77,7 +80,7 @@ func (s *Server) RoomGuardMiddleware() openapi.StrictMiddlewareFunc {
 				}
 				req := ctx.Request().WithContext(context.WithValue(ctx.Request().Context(), guestMemberKey{}, member))
 				ctx.SetRequest(req)
-			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn":
+			case "RoomsClaimSeat", "RoomsSetReady", "RoomsUpdateSettings", "RoomsRematch", "RoomsSubmitGuess", "RoomsLeave", "RoomsClose", "RoomsForfeitRound", "RoomsPassRelayTurn", "RoomsRelayEncounterAction":
 				member, apiErr := s.authenticateGuest(ctx.Request().Context(), ctx.Request().Header.Get("Authorization"))
 				if apiErr != nil {
 					return nil, apiErr
@@ -171,6 +174,10 @@ func roomIDFromRequest(request any) (string, bool) {
 	case openapi.RoomsForfeitRoundRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsPassRelayTurnRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsRelayEncounterActionRequestObject:
+		return r.RoomId, true
+	case openapi.RoomsListRelayStageHistoryRequestObject:
 		return r.RoomId, true
 	case openapi.RoomsListMessagesRequestObject:
 		return r.RoomId, true

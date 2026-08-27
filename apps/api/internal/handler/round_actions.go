@@ -10,6 +10,9 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 func (s *Server) currentRoundCommandState(ctx context.Context, q *repo.Queries, roomID string, roundIndex int) (repo.MultiRoom, repo.MultiRound, repo.MultiMatch, *ApiError) {
@@ -63,34 +66,93 @@ func (s *Server) RoomsForfeitRound(ctx context.Context, request openapi.RoomsFor
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
+		}
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionForfeit,
+				IdempotencyKey:              "legacy-forfeit/" + member.ID + "/" + encounter.ID,
+				AllowLegacyOutOfTurnForfeit: true,
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
+			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			return openapi.RoomsForfeitRound204Response{}, nil
+		}
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
+	chatChanged := false
 
 	room, round, match, apiErr := s.currentRoundCommandState(ctx, q, request.RoomId, request.RoundIndex)
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	if multi.MultiplayerMode(room.Mode) == multi.MultiplayerModeRace {
+	route, err := s.commandRoute(room, match, core.CommandForfeit, member.ID)
+	if err != nil {
+		return nil, err
+	}
+	switch route {
+	case core.CommandRouteRace:
 		if _, _, err := multi.ForfeitRaceRoundTx(ctx, q, room, round, match, member.ID, s.now(), s.timing); err != nil {
 			if errors.Is(err, multi.ErrRaceRoundPlayerInactive) {
 				return nil, roundNotActiveError("你已放弃本局。")
 			}
 			return nil, internalError(err)
 		}
-	} else {
+		announcement, err := (multi.RaceAnnouncement{
+			RoomID: room.ID, RoundID: round.ID, RoundIndex: int(round.RoundIndex), RosterSize: int(match.RosterSize),
+			MemberID: member.ID, DisplayName: member.DisplayName, Seat: multi.MemberSeat(*member),
+			Reason: multi.RaceAnnouncementForfeited, CreatedAt: s.now(),
+		}).SystemAnnouncement()
+		if err != nil {
+			return nil, internalError(err)
+		}
+		chatChanged, err = s.announcements.Append(ctx, q, announcement)
+		if err != nil {
+			return nil, internalError(err)
+		}
+	case core.CommandRouteLegacyRelay:
 		winnerSlot := multi.OtherSlot(multi.MemberSeat(*member))
 		if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, winnerSlot, s.now(), s.timing, multi.MemberSeat(*member)); err != nil {
 			return nil, internalError(err)
 		}
+		chatChanged, err = multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, winnerSlot, s.now())
+		if err != nil {
+			return nil, internalError(err)
+		}
+	default:
+		return nil, internalError(errors.New("multiplayer forfeit route is not executable"))
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
 	s.publish(request.RoomId)
+	if chatChanged {
+		s.publishChatRoom(request.RoomId)
+	}
 	return openapi.RoomsForfeitRound204Response{}, nil
 }
 
@@ -102,6 +164,37 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if apiErr := requirePlayer(member); apiErr != nil {
 		return nil, apiErr
 	}
+	if s.relayEncounters == nil {
+		if room, err := s.q.GetRoom(ctx, request.RoomId); err == nil && modeFromStored(room.Mode) == core.ModeRelay {
+			return nil, internalError(errors.New("relay command runtime is not registered"))
+		}
+	}
+	if s.relayEncounters != nil {
+		encounter, found, lookupErr := s.relayEncounterForLegacyRound(ctx, request.RoomId, request.RoundIndex)
+		if lookupErr != nil {
+			return nil, internalError(lookupErr)
+		}
+		if found {
+			result, actionErr := s.relayEncounters.Act(ctx, relayadapter.EncounterActionInput{
+				RoomID: request.RoomId, StageIndex: request.RoundIndex, EncounterID: encounter.ID,
+				ActorMemberID: member.ID, Action: relayadapter.EncounterActionPass,
+				IdempotencyKey: "legacy-pass/" + multi.NewID(),
+			})
+			if result.Changed {
+				s.publish(request.RoomId)
+			}
+			if result.ChatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
+			if actionErr != nil {
+				if errors.Is(actionErr, relaydomain.ErrEncounterEnded) {
+					return nil, roundEndedError("本局已结束。")
+				}
+				return nil, mapRelayEncounterError(actionErr)
+			}
+			return openapi.RoomsPassRelayTurn204Response{}, nil
+		}
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, internalError(err)
@@ -113,8 +206,15 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if apiErr != nil {
 		return nil, apiErr
 	}
-	if multi.MultiplayerMode(room.Mode) != multi.MultiplayerModeRelay {
+	ref, err := s.ruleSetForState(room, match)
+	if err != nil {
+		return nil, err
+	}
+	if ref.Mode != core.ModeRelay {
 		return nil, &ApiError{Status: http.StatusConflict, Code: codeInvalidRequest, Message: "只有接力模式可以主动空过。"}
+	}
+	if _, err := s.commandRoute(room, match, core.CommandPass, member.ID); err != nil {
+		return nil, err
 	}
 	now := s.now()
 	expiredOwnTurn := false
@@ -128,10 +228,17 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 		}
 		round = result.Round
 		if result.RoundEnded {
+			chatChanged, err := multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, result.WinnerSlot, now)
+			if err != nil {
+				return nil, internalError(err)
+			}
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return nil, internalError(commitErr)
 			}
 			s.publish(request.RoomId)
+			if chatChanged {
+				s.publishChatRoom(request.RoomId)
+			}
 			return nil, turnExpiredError("本轮已超时空过，本局已结算。")
 		}
 	}
@@ -145,12 +252,23 @@ func (s *Server) RoomsPassRelayTurn(ctx context.Context, request openapi.RoomsPa
 	if !round.TurnSlot.Valid || int(round.TurnSlot.Int32) != multi.MemberSeat(*member) {
 		return nil, notYourTurnError()
 	}
-	if _, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing); err != nil {
+	result, err := multi.SettlePassedRelayTurnTx(ctx, q, room, round, match, *member, now, s.timing)
+	if err != nil {
 		return nil, internalError(err)
+	}
+	chatChanged := false
+	if result.RoundEnded {
+		chatChanged, err = multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, result.WinnerSlot, now)
+		if err != nil {
+			return nil, internalError(err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, internalError(err)
 	}
 	s.publish(request.RoomId)
+	if chatChanged {
+		s.publishChatRoom(request.RoomId)
+	}
 	return openapi.RoomsPassRelayTurn204Response{}, nil
 }

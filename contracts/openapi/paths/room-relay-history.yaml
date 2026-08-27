@@ -1,0 +1,70 @@
+# GET /api/rooms/{roomId}/matches/{matchIndex}/stages
+get:
+  operationId: rooms_listRelayStageHistory
+  tags:
+    - rooms
+  summary: 接力 stage 历史
+  description: |
+    成员令牌鉴权。按稳定 stageIndex 分页返回已结束 stage，并在每次请求重新校验
+    room、match 与 viewer 身份。cursor 为不透明字符串；响应中的 encounter 均为终态
+    详情，因此允许揭示对应答案。进行中的 encounter 不会出现在历史响应中。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: matchIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+    - name: after
+      in: query
+      required: false
+      schema:
+        type: string
+    - name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 20
+        default: 10
+  responses:
+    "200":
+      description: relay stage 历史响应
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [stages]
+            properties:
+              stages:
+                type: array
+                items:
+                  $ref: "../schemas/multi-match.yaml#/RelayStageHistoryView"
+              nextCursor:
+                type: string
+    "400":
+      description: cursor 或分页参数无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "401":
+      description: 令牌缺失或无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: room 或 match 不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

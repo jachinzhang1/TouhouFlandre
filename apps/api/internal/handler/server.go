@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
@@ -20,6 +19,10 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relaydomain "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 )
 
 // Server 实现 StrictServerInterface。
@@ -27,14 +30,19 @@ type Server struct {
 	pool             *pgxpool.Pool
 	q                *repo.Queries
 	now              func() time.Time
-	rng              *rand.Rand
+	rng              core.RandomSource
+	modeRegistry     *core.Registry
+	relayCoordinator *relaydomain.StageCoordinator
+	relayEncounters  *relayadapter.EncounterService
 	lobbyTTL         time.Duration      // 大厅 TTL（创建时 expires_at 基准）
 	eventRetention   time.Duration      // closed 保留期（关闭时 expires_at）
 	joinLimiter      *ipRateLimiter     // 加入/预检按 IP 限流（08 §8.5）
+	historyLimiter   *ipRateLimiter     // relay history 按 member 限流
 	timing           multi.TimingConfig // 对局时间常量（Phase 6 统一接 config）
 	chatRetention    time.Duration
 	chatRate         multi.ChatRateConfig
 	chatCursor       *multi.ChatCursorCodec
+	announcements    *multi.SystemAnnouncementWriter
 	hub              *hub.Hub // 实时通道（事件先入库后广播；nil 时 Publish 空转）
 	projectionSecret []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 	rollout          RolloutConfig
@@ -43,16 +51,23 @@ type Server struct {
 // Option 定制 Server（测试注入用）。
 type Option func(*Server)
 
-// RolloutConfig 定义 MPX-010 灰度开关。默认关闭新增暴露面，测试/灰度环境显式开启。
+// RolloutConfig 定义多人玩法灰度开关。固定积分 relay 默认开启；淘汰赛和
+// 其他可选入口仍可独立关闭。服务端开关是最终授权边界。
 type RolloutConfig struct {
-	NPlayerRaceEnabled bool
-	ChatSendEnabled    bool
+	NPlayerRaceEnabled         bool
+	NPlayerRelayEnabled        bool
+	RelayEliminationEnabled    bool
+	ChatSendEnabled            bool
+	SystemAnnouncementsEnabled bool
 }
 
 func rolloutConfigFromEnv() RolloutConfig {
 	return RolloutConfig{
-		NPlayerRaceEnabled: config.MultiNPlayerRaceEnabled(),
-		ChatSendEnabled:    config.MultiChatSendEnabled(),
+		NPlayerRaceEnabled:         config.MultiNPlayerRaceEnabled(),
+		NPlayerRelayEnabled:        config.MultiNPlayerRelayEnabled(),
+		RelayEliminationEnabled:    config.MultiRelayEliminationEnabled(),
+		ChatSendEnabled:            config.MultiChatSendEnabled(),
+		SystemAnnouncementsEnabled: config.MultiSystemAnnouncementsEnabled(),
 	}
 }
 
@@ -67,6 +82,13 @@ func WithRolloutConfig(rollout RolloutConfig) Option {
 func WithJoinRateLimit(limit int, window time.Duration) Option {
 	return func(s *Server) {
 		s.joinLimiter = newIPRateLimiter(limit, window)
+	}
+}
+
+// WithRelayHistoryRateLimit overrides the authenticated history limiter.
+func WithRelayHistoryRateLimit(limit int, window time.Duration) Option {
+	return func(s *Server) {
+		s.historyLimiter = newIPRateLimiter(limit, window)
 	}
 }
 
@@ -94,6 +116,22 @@ func WithHub(h *hub.Hub) Option {
 	}
 }
 
+// WithMultiplayerKernel injects one registry, clock, and random source for
+// deterministic assembly and rule tests. Nil ports keep production defaults.
+func WithMultiplayerKernel(registry *core.Registry, clock core.Clock, random core.RandomSource) Option {
+	return func(s *Server) {
+		if registry != nil {
+			s.modeRegistry = registry
+		}
+		if clock != nil {
+			s.now = clock.Now
+		}
+		if random != nil {
+			s.rng = random
+		}
+	}
+}
+
 // publish 事件事务提交后广播（先入库后广播，07 §7.2；hub 未注入时空转）。
 func (s *Server) publish(roomID string) {
 	if s.hub != nil {
@@ -107,15 +145,24 @@ func (s *Server) publishChat(message repo.MultiChatMessage) {
 	}
 }
 
+func (s *Server) publishChatRoom(roomID string) {
+	if s.hub != nil {
+		s.hub.PublishChat(roomID)
+	}
+}
+
 func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
+	clock := core.SystemClock{}
 	s := &Server{
 		pool:             pool,
 		q:                repo.New(pool),
-		now:              time.Now,
-		rng:              rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano())^0x9e3779b97f4a7c15)),
+		now:              clock.Now,
+		rng:              core.NewRandomSource(),
+		modeRegistry:     assembly.MustProduction(),
 		lobbyTTL:         config.MultiLobbyTTL(),
 		eventRetention:   config.MultiEventRetention(),
 		joinLimiter:      newIPRateLimiter(config.MultiJoinRateLimit(), time.Minute),
+		historyLimiter:   newIPRateLimiter(config.MultiRelayHistoryRateLimit(), time.Minute),
 		timing:           multi.DefaultTimingConfig(),
 		chatRetention:    config.MultiChatRetention(),
 		chatRate:         config.MultiChatRate(),
@@ -126,7 +173,22 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
+	s.configureRelayEngine()
 	return s
+}
+
+func (s *Server) configureRelayEngine() {
+	if _, err := s.modeRegistry.CommandHandler(core.ModeRelay); err != nil {
+		return
+	}
+	clock := core.ClockFunc(s.now)
+	coordinator, encounters, err := relayadapter.NewRuntime(s.pool, clock, s.rng, s.timing, s.announcements)
+	if err != nil {
+		panic("handler: configure relay encounter engine: " + err.Error())
+	}
+	s.relayCoordinator = coordinator
+	s.relayEncounters = encounters
 }
 
 // HealthCheck 健康检查。

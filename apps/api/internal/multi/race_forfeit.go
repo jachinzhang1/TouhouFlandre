@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -52,11 +53,12 @@ func settleRaceRoundRosterTx(
 	now time.Time,
 	timing TimingConfig,
 ) (RaceMatchAdvance, bool, error) {
+	rules := RaceRulesForMatch(match)
 	active, err := q.ListActiveRoundPlayers(ctx, round.ID)
 	if err != nil {
 		return RaceMatchAdvance{}, false, err
 	}
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+	if rules.UsesPlacementScoring() {
 		if len(active) > 0 {
 			return RaceMatchAdvance{}, false, nil
 		}
@@ -103,7 +105,7 @@ func EndRaceRoundWithoutScoreTx(
 	timing TimingConfig,
 ) error {
 	var placements []RoundPlacementView
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
+	if RaceRulesForMatch(match).UsesPlacementScoring() {
 		if _, err := q.MarkRoundPlayerTimedOut(ctx, repo.MarkRoundPlayerTimedOutParams{
 			RoundID: round.ID, CompletedAt: pgtypeTimestamptz(now),
 		}); err != nil {
@@ -185,9 +187,18 @@ func EndRaceMatchTx(
 	scores := MemberScoresForRoster(players)
 	var ranking []MemberRankingView
 	var winnerView *string
-	if ScoringMode(match.ScoringMode) == ScoringModePlacement {
-		winnerView = uniqueTop(raceStandingsForRoster(players))
+	rules := RaceRulesForMatch(match)
+	if rules.ScoringMode() == ScoringModePlacement {
 		ranking = raceRankingForRoster(players)
+		winnerView = uniqueTop(raceStandingsForRoster(players))
+	} else if rules.ScoringMode() == ScoringModePoints {
+		ranking = raceRankingForRoster(players)
+		if winnerMemberID != "" {
+			value := winnerMemberID
+			winnerView = &value
+		} else {
+			winnerView = uniqueTop(raceStandingsForRoster(players))
+		}
 	} else if winnerMemberID != "" {
 		value := winnerMemberID
 		winnerView = &value
@@ -234,6 +245,35 @@ func ForfeitRaceMembersMatch(
 	reason MatchEndReason,
 	now time.Time,
 	timing TimingConfig,
+	announcers ...*SystemAnnouncementWriter,
+) error {
+	_, err := ForfeitRaceMembersMatchWithEffects(ctx, pool, members, reason, now, timing, announcers...)
+	return err
+}
+
+func ForfeitRaceMembersMatchWithEffects(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	members []repo.MultiMember,
+	reason MatchEndReason,
+	now time.Time,
+	timing TimingConfig,
+	announcers ...*SystemAnnouncementWriter,
+) (bool, error) {
+	chatChanged := false
+	err := forfeitRaceMembersMatch(ctx, pool, members, reason, now, timing, &chatChanged, announcers...)
+	return chatChanged, err
+}
+
+func forfeitRaceMembersMatch(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	members []repo.MultiMember,
+	reason MatchEndReason,
+	now time.Time,
+	timing TimingConfig,
+	chatChanged *bool,
+	announcers ...*SystemAnnouncementWriter,
 ) error {
 	if len(members) == 0 {
 		return nil
@@ -311,7 +351,8 @@ func ForfeitRaceMembersMatch(
 	if err != nil {
 		return err
 	}
-	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, membersAfter, int(spectators))); err != nil {
+	relayConfig := RelayRoomConfigView{}
+	if err := AppendEvent(ctx, q, room.ID, EventRoomUpdated, NewRoomUpdatedPayload(room, membersAfter, int(spectators), RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		return err
 	}
 
@@ -347,6 +388,33 @@ func ForfeitRaceMembersMatch(
 		}
 		if _, _, err := settleRaceRoundRosterTx(ctx, q, room, round, match, forfeitedMemberID, now, timing); err != nil {
 			return err
+		}
+	}
+	if reason == MatchEndReasonDisconnect && hasRound && len(announcers) > 0 && announcers[0] != nil {
+		memberByID := make(map[string]repo.MultiMember, len(members))
+		for _, member := range members {
+			memberByID[member.ID] = member
+		}
+		sort.Slice(changed, func(i, j int) bool {
+			return MemberSeat(memberByID[changed[i]]) < MemberSeat(memberByID[changed[j]])
+		})
+		for _, memberID := range changed {
+			member := memberByID[memberID]
+			announcement, err := (RaceAnnouncement{
+				RoomID: room.ID, RoundID: round.ID, RoundIndex: int(round.RoundIndex), RosterSize: int(match.RosterSize),
+				MemberID: member.ID, DisplayName: member.DisplayName, Seat: MemberSeat(member),
+				Reason: RaceAnnouncementDisconnect, CreatedAt: now,
+			}).SystemAnnouncement()
+			if err != nil {
+				return err
+			}
+			appended, err := announcers[0].Append(ctx, q, announcement)
+			if err != nil {
+				return err
+			}
+			if appended {
+				*chatChanged = true
+			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

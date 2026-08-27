@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -76,7 +77,7 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 			//    超出 kin-openapi gorillamux 路由能力（ErrMethodNotAllowed 短路，见 redocly 例外注释）；
 			// 2) 游客鉴权在 handler 中间件（RoomGuardMiddleware）执行，契约 security 仅作文档。
 			// 参数/body 校验由 oapi-codegen 生成的 wrapper 与 handler 层等价完成。
-			if path == "/livez" || path == "/readyz" || strings.HasPrefix(path, "/api/rooms") {
+			if path == "/livez" || path == "/readyz" || path == "/metrics" || strings.HasPrefix(path, "/api/rooms") {
 				return next(c)
 			}
 			return validator(next)(c)
@@ -98,6 +99,11 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 		}
 		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	})
+	e.GET("/metrics", func(c *echo.Context) error {
+		c.Response().Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		c.Response().Header().Set("Cache-Control", "no-store")
+		return c.String(http.StatusOK, multi.DefaultMetrics.PrometheusText())
+	})
 
 	e.HTTPErrorHandler = errorHandler
 	return e
@@ -111,7 +117,7 @@ func errorHandler(c *echo.Context, err error) {
 	}
 
 	var apiErr *handler.ApiError
-	if errors.As(err, &apiErr) {
+	if errors.As(err, &apiErr) && apiErr != nil {
 		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
 			multi.DefaultMetrics.IncChatRejected(string(apiErr.Code))
 		}
@@ -128,9 +134,13 @@ func errorHandler(c *echo.Context, err error) {
 		if httpErr.Code >= http.StatusInternalServerError {
 			code = "INTERNAL"
 		}
+		message := fmt.Sprint(httpErr.Message)
+		if httpErr.Code >= http.StatusInternalServerError {
+			message = "服务器暂时无法处理请求。"
+		}
 		_ = c.JSON(httpErr.Code, openapi.ErrorResponse{
 			Code:  code,
-			Error: fmt.Sprint(httpErr.Message),
+			Error: message,
 		})
 		return
 	}
@@ -142,9 +152,13 @@ func errorHandler(c *echo.Context, err error) {
 		if sc.StatusCode() >= http.StatusInternalServerError {
 			code = "INTERNAL"
 		}
+		message := err.Error()
+		if sc.StatusCode() >= http.StatusInternalServerError {
+			message = "服务器暂时无法处理请求。"
+		}
 		_ = c.JSON(sc.StatusCode(), openapi.ErrorResponse{
 			Code:  code,
-			Error: err.Error(),
+			Error: message,
 		})
 		return
 	}
@@ -172,10 +186,12 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 	}
 	if v.Error != nil {
 		attrs = append(attrs, slog.String("error_code", requestErrorCode(v.Error)))
+		var pgErr *pgconn.PgError
+		if errors.As(v.Error, &pgErr) && pgErr.Code == "40P01" {
+			multi.DefaultMetrics.IncDeadlock(multi.NewMetricLabels("unknown", "unknown", 0))
+		}
 		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
 			attrs = append(attrs, slog.String("reason", "chat_request_rejected"))
-		} else {
-			attrs = append(attrs, slog.Any("error", v.Error))
 		}
 		slog.Default().LogAttrs(context.Background(), slog.LevelError, "request failed", attrs...)
 		return nil
@@ -191,7 +207,7 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 // requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。
 func requestErrorCode(err error) string {
 	var apiErr *handler.ApiError
-	if errors.As(err, &apiErr) {
+	if errors.As(err, &apiErr) && apiErr != nil {
 		return string(apiErr.Code)
 	}
 	var httpErr *echo.HTTPError

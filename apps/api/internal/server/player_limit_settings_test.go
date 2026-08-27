@@ -48,6 +48,19 @@ func roomPlayerLimit(t *testing.T, roomCode string) int {
 	return info.PlayerLimit
 }
 
+func roomRaceEliminationEnabled(t *testing.T, roomCode string) bool {
+	t.Helper()
+	resp, payload := fastRequest(http.MethodGet, "/api/rooms/"+roomCode, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("get room info: %d %s", resp.StatusCode, payload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(payload, &info); err != nil {
+		t.Fatal(err)
+	}
+	return info.RaceEliminationEnabled
+}
+
 func requirePlayerLimitError(t *testing.T, status int, code string, resp *http.Response, payload []byte) {
 	t.Helper()
 	if resp.StatusCode != status {
@@ -62,6 +75,9 @@ func TestMultiRacePlayerLimitCreateValidation(t *testing.T) {
 	defaultRoom := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race"})
 	if got := roomPlayerLimit(t, defaultRoom.roomCode); got != 2 {
 		t.Fatalf("default race playerLimit = %d, want 2", got)
+	}
+	if roomRaceEliminationEnabled(t, defaultRoom.roomCode) {
+		t.Fatal("default race elimination toggle = true, want false")
 	}
 
 	for limit := 2; limit <= 8; limit++ {
@@ -81,7 +97,46 @@ func TestMultiRacePlayerLimitCreateValidation(t *testing.T) {
 		t.Fatalf("relay playerLimit = %d, want 2", got)
 	}
 	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{"format": "bo1", "mode": "relay", "playerLimit": 2})
-	requirePlayerLimitError(t, http.StatusBadRequest, "INVALID_PLAYER_LIMIT", resp, payload)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("explicit relay playerLimit=2: %d %s", resp.StatusCode, payload)
+	}
+}
+
+func TestMultiRacePlayerLimitToggleAndSnapshot(t *testing.T) {
+	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "race", "playerLimit": 4})
+	if roomRaceEliminationEnabled(t, room.roomCode) {
+		t.Fatal("room elimination toggle = true, want false")
+	}
+
+	settingsPath := "/api/rooms/" + room.roomID + "/settings"
+	resp, payload := fastRequestAuth(http.MethodPatch, settingsPath, room.hostToken, map[string]any{
+		"playerLimit":            5,
+		"raceEliminationEnabled": true,
+	})
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("update elimination toggle: %d %s", resp.StatusCode, payload)
+	}
+	if got := roomPlayerLimit(t, room.roomCode); got != 5 {
+		t.Fatalf("updated playerLimit = %d, want 5", got)
+	}
+	if !roomRaceEliminationEnabled(t, room.roomCode) {
+		t.Fatal("updated race elimination toggle = false, want true")
+	}
+	if payload := latestPlayerLimitRoomUpdated(t, room.roomID); !payload.RaceEliminationEnabled {
+		t.Fatalf("room.updated race elimination toggle = %t, want true", payload.RaceEliminationEnabled)
+	}
+
+	snapshotResp, snapshotPayload := fastRequestAuth(http.MethodGet, "/api/rooms/"+room.roomID+"/snapshot", room.hostToken, nil)
+	if snapshotResp.StatusCode != http.StatusOK {
+		t.Fatalf("snapshot: %d %s", snapshotResp.StatusCode, snapshotPayload)
+	}
+	var snapshot openapi.RoomSnapshot
+	if err := json.Unmarshal(snapshotPayload, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.PlayerLimit != 5 || !snapshot.RaceEliminationEnabled {
+		t.Fatalf("snapshot toggle = limit:%d elimination:%t", snapshot.PlayerLimit, snapshot.RaceEliminationEnabled)
+	}
 }
 
 func TestMultiRacePlayerLimitHostAuthorizationAndLocking(t *testing.T) {
@@ -196,7 +251,20 @@ func TestMultiRacePlayerLimitHostAuthorizationAndLocking(t *testing.T) {
 func TestMultiRelayRejectsPlayerLimitSettings(t *testing.T) {
 	room := createPlayerLimitRoom(t, map[string]any{"format": "bo1", "mode": "relay"})
 	resp, payload := fastRequestAuth(http.MethodPatch, "/api/rooms/"+room.roomID+"/settings", room.hostToken, map[string]int{"playerLimit": 2})
-	requirePlayerLimitError(t, http.StatusBadRequest, "INVALID_PLAYER_LIMIT", resp, payload)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("relay playerLimit=2: %d %s", resp.StatusCode, payload)
+	}
+	resp, payload = fastRequest(http.MethodGet, "/api/rooms/"+room.roomCode, nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("relay room info: %d %s", resp.StatusCode, payload)
+	}
+	var info openapi.RoomInfo
+	if err := json.Unmarshal(payload, &info); err != nil {
+		t.Fatal(err)
+	}
+	if info.PlayerLimit != 2 {
+		t.Fatalf("relay playerLimit = %d, want 2", info.PlayerLimit)
+	}
 }
 
 func playerLimitEventPayload(t *testing.T, conn *websocket.Conn, wantLimit int) (map[string]any, int64) {

@@ -90,6 +90,10 @@ export const ROOM_FORMAT_SHORT: Record<MultiRoomFormat, string> = {
   bo7: "BO7",
 };
 
+export function totalRoundsForFormat(format: MultiRoomFormat): number {
+  return Number(format.slice(2)) || 1;
+}
+
 export const MULTIPLAYER_MODE_LABELS: Record<MultiplayerMode, string> = {
   race: "竞速",
   relay: "接力",
@@ -99,6 +103,67 @@ export const MULTIPLAYER_MODE_DESCRIPTIONS: Record<MultiplayerMode, string> = {
   race: "两边同时猜，先猜中者赢下本局。",
   relay: "共用一栏轮流猜，猜中者赢下本局。",
 };
+
+export const PLAYER_LIMIT_ADAPTERS = {
+  race: {
+    allowedValues: [2, 3, 4, 5, 6, 7, 8],
+    min: 2,
+    max: 8,
+    step: 1,
+  },
+  relay: {
+    allowedValues: [2, 4, 6, 8],
+    min: 2,
+    max: 8,
+    step: 2,
+  },
+} as const satisfies Record<
+  MultiplayerMode,
+  {
+    allowedValues: readonly number[];
+    min: number;
+    max: number;
+    step: number;
+  }
+>;
+
+export function minimumPlayerLimitFor(
+  mode: MultiplayerMode,
+  playerCount: number,
+): number {
+  const adapter = PLAYER_LIMIT_ADAPTERS[mode];
+  return (
+    adapter.allowedValues.find((limit) => limit >= playerCount) ?? adapter.max
+  );
+}
+
+export function raceSettingsSummary(
+  format: MultiRoomFormat,
+  playerLimit: number,
+  raceEliminationEnabled: boolean,
+): string {
+  if (playerLimit < 3) {
+    const totalRounds = totalRoundsForFormat(format);
+    const targetWins = Math.floor(totalRounds / 2) + 1;
+    return `${playerLimit} 人 · ${totalRounds} 局 ${targetWins} 胜`;
+  }
+  return `${playerLimit} 人 · 积分赛 · ${
+    raceEliminationEnabled ? "中途末位淘汰" : "不淘汰"
+  }`;
+}
+
+export function relaySettingsSummary(
+  format: MultiRoomFormat,
+  playerLimit: number,
+  relayEliminationEnabled: boolean,
+): string {
+  if (playerLimit === 2) {
+    return `2 人 · 接力 · ${ROOM_FORMAT_SHORT[format]}`;
+  }
+  return `${playerLimit} 人 · 接力 · ${
+    relayEliminationEnabled ? "淘汰赛" : "固定积分"
+  }`;
+}
 
 export const TURN_SECONDS_OPTIONS = [30, 60, 90, 120] as const;
 export type RelayTurnSeconds = (typeof TURN_SECONDS_OPTIONS)[number];

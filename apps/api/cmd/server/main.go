@@ -16,6 +16,9 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
+	relayadapter "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/relay/adapter"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
 
@@ -32,7 +35,13 @@ func main() {
 
 	// 服务重启明确终止（08 §4.6）：启动时对进行中对局（含 countdown 态局）判平终止，不静默丢失。
 	timing := config.MultiTiming()
-	terminated, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
+	registry, err := assembly.ForProfile(config.MultiModeRegistry())
+	if err != nil {
+		fatal("configure multiplayer registry", err)
+	}
+	clock := core.SystemClock{}
+	random := core.NewRandomSource()
+	terminated, err := multi.TerminateActiveMatches(ctx, pool, clock.Now(), timing, registry)
 	if err != nil {
 		fatal("terminate active matches", err)
 	}
@@ -41,8 +50,19 @@ func main() {
 	}
 
 	// 实时通道（handler 与 sweeper 共享单实例：事件先入库后广播）。
-	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret())
-	e := server.NewWithOptions(pool, handler.WithMultiTiming(timing), handler.WithHub(h))
+	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret(), registry)
+	e := server.NewWithOptions(pool, handler.WithMultiTiming(timing), handler.WithHub(h), handler.WithMultiplayerKernel(registry, clock, random))
+	modeRecoveries := []multi.ModeRecovery{}
+	modeForfeiters := []multi.ModeMemberForfeiter{}
+	announcements := multi.NewSystemAnnouncementWriter(config.MultiSystemAnnouncementsEnabled())
+	if _, capabilityErr := registry.CommandHandler(core.ModeRelay); capabilityErr == nil {
+		_, relayRecovery, runtimeErr := relayadapter.NewRuntime(pool, clock, random, timing, announcements)
+		if runtimeErr != nil {
+			fatal("configure relay recovery", runtimeErr)
+		}
+		modeRecoveries = append(modeRecoveries, relayRecovery)
+		modeForfeiters = append(modeForfeiters, relayRecovery)
+	}
 
 	// 唯一后台调度器（08 §6.3）：对局推进 + 房间 TTL/展示期/清理。
 	sweeper := multi.NewSweeper(pool, multi.SweeperConfig{
@@ -51,6 +71,12 @@ func main() {
 		ChatRetention:  config.MultiChatRetention(),
 		Interval:       time.Second,
 		Broadcaster:    h,
+		Registry:       registry,
+		Clock:          clock,
+		Random:         random,
+		ModeRecoveries: modeRecoveries,
+		ModeForfeiters: modeForfeiters,
+		Announcements:  announcements,
 	})
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
 	defer stopSweeper()
@@ -72,7 +98,7 @@ func main() {
 	<-quit
 
 	// 优雅排空（08 §11.2）：终止进行中对局 → 关 WS(1012) → 停 sweeper → shutdown。
-	_, _ = multi.TerminateActiveMatches(ctx, pool, time.Now(), timing)
+	_, _ = multi.TerminateActiveMatches(ctx, pool, clock.Now(), timing, registry)
 	h.CloseAll()
 	stopSweeper()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

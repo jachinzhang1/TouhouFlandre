@@ -1,10 +1,12 @@
 package multi
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
 
 func TestColumnPermutationDeterministic(t *testing.T) {
@@ -97,6 +99,93 @@ func TestPermuteStatuses(t *testing.T) {
 		if out[i] != statuses[p] {
 			t.Fatalf("out[%d] = %s, want statuses[%d]=%s", i, out[i], p, statuses[p])
 		}
+	}
+}
+
+func TestMatchStartedV2PayloadNormalizesRuleSetRefV3(t *testing.T) {
+	tests := []struct {
+		name    string
+		mode    string
+		scoring string
+		key     string
+	}{
+		{name: "race placement", mode: "race", scoring: "placement", key: "placement"},
+		{name: "legacy relay", mode: "relay", scoring: "wins", key: "legacy_wins"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			payload, err := json.Marshal(map[string]any{"mode": test.mode, "scoringMode": test.scoring})
+			if err != nil {
+				t.Fatal(err)
+			}
+			projected, skip, err := ProjectEvent(context.Background(), nil, nil, repo.RoomEvent{
+				Type: string(EventMatchStarted), Payload: payload,
+			}, "room-1", repo.MultiMember{}, nil, nil)
+			if err != nil || skip {
+				t.Fatalf("project legacy match.started = skip:%v err:%v", skip, err)
+			}
+			got := projected.Payload.(MatchStartedPayload).RuleSetRef
+			if got.Mode != MultiplayerMode(test.mode) || got.Key != test.key || got.Version != 1 {
+				t.Fatalf("normalized RuleSetRef = %+v", got)
+			}
+		})
+	}
+}
+
+func TestRelayEventProjectionDropsAnswersFromActivePayloads(t *testing.T) {
+	payload, err := json.Marshal(map[string]any{
+		"matchIndex":     0,
+		"stageId":        "stage-1",
+		"stageIndex":     1,
+		"encounterId":    "encounter-1",
+		"encounterIndex": 1,
+		"status":         "playing",
+		"members":        []map[string]any{},
+		"answer": map[string]any{
+			"id": "secret-answer",
+		},
+		"maxTurnsPerPlayer": 10,
+		"maxSkipsPerPlayer": 2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, skip, err := ProjectEvent(context.Background(), nil, nil, repo.RoomEvent{
+		Type: string(EventRelayEncounterStarted), Payload: payload,
+	}, "room-1", repo.MultiMember{}, nil, nil)
+	if err != nil || skip {
+		t.Fatalf("project active relay event = skip:%v err:%v", skip, err)
+	}
+	data, err := json.Marshal(projected.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := fields["answer"]; exists {
+		t.Fatalf("active relay event leaked answer: %s", data)
+	}
+}
+
+func TestRelayEncounterEndedProjectionKeepsTerminalAnswer(t *testing.T) {
+	payload, err := json.Marshal(RelayEncounterEndedPayload{
+		Status: "ended",
+		Answer: AnswerView{ID: "terminal-answer", Name: "Terminal"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, skip, err := ProjectEvent(context.Background(), nil, nil, repo.RoomEvent{
+		Type: string(EventRelayEncounterEnded), Payload: payload,
+	}, "room-1", repo.MultiMember{}, nil, nil)
+	if err != nil || skip {
+		t.Fatalf("project terminal relay event = skip:%v err:%v", skip, err)
+	}
+	got := projected.Payload.(RelayEncounterEndedPayload)
+	if got.Answer.ID != "terminal-answer" {
+		t.Fatalf("terminal answer = %+v", got.Answer)
 	}
 }
 

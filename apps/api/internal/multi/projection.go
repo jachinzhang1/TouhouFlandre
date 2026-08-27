@@ -137,6 +137,16 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 	observer repo.MultiMember, memberSlotByID map[string]int32, charsCache map[string]map[string]game.Character) (ProjectedEvent, bool, error) {
 
 	switch EventType(event.Type) {
+	case EventMatchStarted:
+		var payload MatchStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		if err := normalizeMatchStartedRuleSet(&payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventMatchStarted, Payload: payload}, false, nil
+
 	case EventRoundOpponentGuess:
 		var payload RoundGuessPayload
 		if err := json.Unmarshal(event.Payload, &payload); err != nil {
@@ -257,6 +267,9 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 			scores = MemberScoresForLegacy(payload.Scores, memberSlotByID)
 		}
 		results := MemberResultsForRanking(winnerMemberID, payload.Ranking, memberSlotByID)
+		if payload.Relay != nil {
+			results = MemberResultsForRelayRanking(winnerMemberID, payload.Relay.Ranking, memberSlotByID)
+		}
 		var viewerResult *MatchResult
 		if IsPlayer(observer) {
 			viewerResult = ViewerResultForMember(observer.ID, results)
@@ -272,8 +285,49 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 				Reason:          payload.Reason,
 				RetentionEndsAt: payload.RetentionEndsAt,
 				Ranking:         payload.Ranking,
+				Relay:           payload.Relay,
 			},
 		}, false, nil
+
+	case EventRelayStageStarted:
+		var payload RelayStageStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventRelayStageStarted, Payload: payload}, false, nil
+
+	case EventRelayEncounterStarted:
+		var payload RelayEncounterStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		// Decode into the active shape and re-encode it so an accidentally
+		// persisted answer field cannot cross the realtime/replay boundary.
+		return ProjectedEvent{Type: EventRelayEncounterStarted, Payload: payload}, false, nil
+
+	case EventRelayEncounterTurnGuess, EventRelayEncounterTurnPass, EventRelayEncounterTurnTimeout:
+		var payload RelayEncounterTurnPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
+
+	case EventRelayEncounterEnded:
+		var payload RelayEncounterEndedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		if payload.Status != string(relayEncounterEndedStatus) || payload.Answer.ID == "" {
+			return ProjectedEvent{}, false, fmt.Errorf("relay.encounter.ended has incomplete terminal payload")
+		}
+		return ProjectedEvent{Type: EventRelayEncounterEnded, Payload: payload}, false, nil
+
+	case EventRelayStageEnded:
+		var payload RelayStageEndedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil {
+			return ProjectedEvent{}, false, err
+		}
+		return ProjectedEvent{Type: EventRelayStageEnded, Payload: payload}, false, nil
 
 	default:
 		var payload map[string]any
@@ -282,6 +336,30 @@ func ProjectEvent(ctx context.Context, q *repo.Queries, projectionSecret []byte,
 		}
 		return ProjectedEvent{Type: EventType(event.Type), Payload: payload}, false, nil
 	}
+}
+
+const relayEncounterEndedStatus = "ended"
+
+func normalizeMatchStartedRuleSet(payload *MatchStartedPayload) error {
+	ref := payload.RuleSetRef
+	if ref.Mode == "" && ref.Key == "" && ref.Version == 0 {
+		ref.Mode = payload.Mode
+		ref.Version = 1
+		switch {
+		case payload.Mode == MultiplayerModeRace && (payload.ScoringMode == ScoringModeWins || payload.ScoringMode == ScoringModePoints || payload.ScoringMode == ScoringModePlacement):
+			ref.Key = string(payload.ScoringMode)
+		case payload.Mode == MultiplayerModeRelay && payload.ScoringMode == ScoringModeWins:
+			ref.Key = "legacy_wins"
+		default:
+			return fmt.Errorf("match.started legacy rule-set mapping rejected: mode=%s scoring_mode=%s", payload.Mode, payload.ScoringMode)
+		}
+		payload.RuleSetRef = ref
+		return nil
+	}
+	if ref.Mode == "" || ref.Key == "" || ref.Version <= 0 || ref.Mode != payload.Mode {
+		return fmt.Errorf("match.started has invalid ruleSetRef: mode=%s key=%s version=%d", ref.Mode, ref.Key, ref.Version)
+	}
+	return nil
 }
 
 // AnswerViewForCharacter 从场绑定题库快照构造稳定的局末答案视图。

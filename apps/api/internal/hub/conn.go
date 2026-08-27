@@ -257,7 +257,7 @@ func (c *Conn) replayChat(room repo.MultiRoom, targetChatPosition int64) (int64,
 					return delivered, err
 				}
 			}
-			ok, invalidated := c.deliverReplayChatFrame(message.Position, frame, visible)
+			ok, invalidated := c.deliverReplayChatFrame(ctx, message.Position, frame, visible)
 			if invalidated {
 				return delivered, nil
 			}
@@ -271,14 +271,20 @@ func (c *Conn) replayChat(room repo.MultiRoom, targetChatPosition int64) (int64,
 	return delivered, nil
 }
 
-func (c *Conn) deliverReplayChatFrame(position int64, frame []byte, visible bool) (delivered bool, invalidated bool) {
+func (c *Conn) deliverReplayChatFrame(ctx context.Context, position int64, frame []byte, visible bool) (delivered bool, invalidated bool) {
 	c.barrierMu.Lock()
 	defer c.barrierMu.Unlock()
 	if c.invalidated.Load() {
 		return false, true
 	}
-	if visible && !c.enqueue(frame) {
-		return false, false
+	if visible {
+		select {
+		case c.send <- outboundFrame{data: frame}:
+		case <-c.closed:
+			return false, true
+		case <-ctx.Done():
+			return false, false
+		}
 	}
 	delete(c.bufferedChat, position)
 	return true, false
@@ -296,6 +302,9 @@ func (c *Conn) replay(targetGameSequence int64) (int64, error) {
 	}
 	if len(events) == 0 {
 		return c.lastGameSequence, nil
+	}
+	if err := c.hub.validateModeHistory(ctx, c.roomID); err != nil {
+		return c.lastGameSequence, err
 	}
 	members, err := c.hub.q.ListMembers(ctx, c.roomID)
 	if err != nil {
@@ -414,6 +423,7 @@ func (c *Conn) writeLoop() {
 				return
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
+			multi.DefaultMetrics.RecordWSPayloadBytes(multi.NewMetricLabels("unknown", "unknown", 0), len(frame.data))
 			err := c.ws.Write(ctx, websocket.MessageText, frame.data)
 			cancel()
 			if err != nil {
@@ -468,6 +478,7 @@ func (c *Conn) writeText(v any) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), WriteTimeout)
 	defer cancel()
+	multi.DefaultMetrics.RecordWSPayloadBytes(multi.NewMetricLabels("unknown", "unknown", 0), len(data))
 	return c.ws.Write(ctx, websocket.MessageText, data)
 }
 
@@ -510,6 +521,7 @@ func (c *Conn) sendMemberChangedAndClose() {
 // closeSlow 慢消费者：发送队列写满 → 1013（08 §8.5），不阻塞房间广播。
 func (c *Conn) closeSlow() {
 	c.setCloseReason("slow_consumer")
+	multi.DefaultMetrics.IncWSQueueDrop(multi.NewMetricLabels("unknown", "unknown", 0))
 	c.closeWith(websocket.StatusTryAgainLater, "slow consumer")
 }
 

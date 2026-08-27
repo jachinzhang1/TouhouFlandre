@@ -139,6 +139,8 @@ export const api = {
     format: MultiRoomFormat;
     mode: MultiplayerMode;
     playerLimit?: number;
+    raceEliminationEnabled?: boolean;
+    relayEliminationEnabled?: boolean;
     turnSeconds: RelayTurnSeconds;
     displayName?: string;
     questionScope?: QuestionScopeConfig;
@@ -169,12 +171,20 @@ export const api = {
         body: { ready },
       }),
     ),
-  updateRoomSettings: (roomId: string, token: string, playerLimit: number) =>
+  updateRoomSettings: (
+    roomId: string,
+    token: string,
+    body: {
+      playerLimit?: number;
+      raceEliminationEnabled?: boolean;
+      relayEliminationEnabled?: boolean;
+    },
+  ) =>
     requestApi(
       client.PATCH("/api/rooms/{roomId}/settings", {
         params: { path: { roomId } },
         headers: guestAuthHeader(token),
-        body: { playerLimit },
+        body,
       }),
     ),
   claimSeat: (roomId: string, token: string) =>
@@ -216,6 +226,35 @@ export const api = {
     requestApi(
       client.POST("/api/rooms/{roomId}/rounds/{roundIndex}/pass", {
         params: { path: { roomId, roundIndex } },
+        headers: guestAuthHeader(token),
+      }),
+    ),
+  relayEncounterAction: (
+    roomId: string,
+    token: string,
+    stageIndex: number,
+    encounterId: string,
+    body: components["schemas"]["RelayEncounterActionRequest"],
+  ) =>
+    requestApi(
+      client.POST(
+        "/api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions",
+        {
+          params: { path: { roomId, stageIndex, encounterId } },
+          headers: guestAuthHeader(token),
+          body,
+        },
+      ),
+    ),
+  listRelayStageHistory: (
+    roomId: string,
+    token: string,
+    matchIndex: number,
+    query: { after?: string; limit?: number } = {},
+  ) =>
+    requestApi(
+      client.GET("/api/rooms/{roomId}/matches/{matchIndex}/stages", {
+        params: { path: { roomId, matchIndex }, query },
         headers: guestAuthHeader(token),
       }),
     ),

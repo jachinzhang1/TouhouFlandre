@@ -1,4 +1,4 @@
-const flagEnabled = (value: string | undefined) => {
+const flagEnabled = (value: string | undefined, fallback = true) => {
   switch (value?.trim().toLowerCase()) {
     case "1":
     case "true":
@@ -15,12 +15,18 @@ const flagEnabled = (value: string | undefined) => {
     case "off":
       return false;
     default:
-      return true;
+      return fallback;
   }
 };
 
 export const isNPlayerRaceUiEnabled = () =>
   flagEnabled(process.env.NEXT_PUBLIC_MULTI_N_PLAYER_RACE_ENABLED);
+
+export const isNPlayerRelayUiEnabled = () =>
+  flagEnabled(process.env.NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED);
+
+export const isRelayEliminationUiEnabled = () =>
+  flagEnabled(process.env.NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED);
 
 export const isChatUiEnabled = () =>
   flagEnabled(process.env.NEXT_PUBLIC_MULTI_CHAT_UI_ENABLED);

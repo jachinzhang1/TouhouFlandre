@@ -69,7 +69,12 @@ services:
       # 多人玩法可调参数（默认值与 apps/api/internal/config/config.go 一致）
       MULTI_LOBBY_TTL: ${MULTI_LOBBY_TTL:-30m}
       MULTI_EVENT_RETENTION: ${MULTI_EVENT_RETENTION:-24h}
+      MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED: ${MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED:-true}
       MULTI_JOIN_RATE_LIMIT: ${MULTI_JOIN_RATE_LIMIT:-10}
+      MULTI_RELAY_HISTORY_RATE_LIMIT: ${MULTI_RELAY_HISTORY_RATE_LIMIT:-60}
+      MULTI_MODE_REGISTRY: ${MULTI_MODE_REGISTRY:-full}
+      MULTI_N_PLAYER_RELAY_ENABLED: ${MULTI_N_PLAYER_RELAY_ENABLED:-true}
+      MULTI_RELAY_ELIMINATION_ENABLED: ${MULTI_RELAY_ELIMINATION_ENABLED:-true}
       MULTI_ROUND_COUNTDOWN: ${MULTI_ROUND_COUNTDOWN:-3s}
       MULTI_INTERMISSION: ${MULTI_INTERMISSION:-5s}
       MULTI_ROUND_SECONDS: ${MULTI_ROUND_SECONDS:-900s}
@@ -103,6 +108,8 @@ services:
         API_PROXY_TARGET: http://api:4000
         # 留空 = 同源 rewrites 代理（默认）；非空则客户端直连该 API 基址（构建时内联）
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED: ${NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED:-true}
+        NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED: ${NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED:-true}
     environment:
       NODE_ENV: production
       API_PROXY_TARGET: http://api:4000
@@ -118,5 +125,43 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  prometheus_data:
+  grafana_data:

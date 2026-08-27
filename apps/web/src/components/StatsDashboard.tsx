@@ -47,6 +47,7 @@ import {
   applyStatsImport,
   createStatsExport,
   downloadStatsExport,
+  normalizeStatsRecord,
   parseStatsImport,
   previewStatsImport,
 } from "../stats/transfer";
@@ -152,7 +153,10 @@ export function StatsDashboard() {
   const [importError, setImportError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const records = useLiveQuery(
-    () => statsDb.records.orderBy("startedAt").reverse().toArray(),
+    async () =>
+      (await statsDb.records.orderBy("startedAt").reverse().toArray()).map(
+        normalizeStatsRecord,
+      ),
     [revision],
     [],
   );
@@ -954,11 +958,16 @@ function HistoryRow({ record }: { record: StatsRecord }) {
     record.kind === "multiplayer" && (record.rosterSize ?? 2) > 2
       ? ` · ${record.rosterSize} 人/${record.playerLimit ?? record.rosterSize}`
       : "";
+  const scoringMode = record.kind === "multiplayer" ? record.scoringMode : "";
   const multiplayerSummary =
     record.kind === "multiplayer"
-      ? record.scoringMode === "placement"
-        ? `${modeLabel} · 积分制 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedRound ? ` · 第 ${record.eliminatedRound} 局淘汰` : ""}${rosterLabel}`
-        : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`
+      ? record.multiplayerMode === "relay"
+        ? `${modeLabel} · ${relayRuleSetLabel(record.ruleSetKey)} · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedStage ? ` · 第 ${record.eliminatedStage} 轮淘汰` : ""}${rosterLabel}`
+        : scoringMode === "placement"
+          ? `${modeLabel} · 积分淘汰 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${record.eliminatedRound ? ` · 第 ${record.eliminatedRound} 局淘汰` : ""}${rosterLabel}`
+          : scoringMode === "points"
+            ? `${modeLabel} · 积分累计 · ${record.scoreSelf} 分${record.finalRank ? ` · ${record.tiedForFirst ? "并列" : ""}第 ${record.finalRank} 名` : ""}${rosterLabel}`
+            : `${modeLabel} · ${ROOM_FORMAT_SHORT[record.format]} · ${selfScore(record)}${rosterLabel}`
       : "";
   return (
     <>
@@ -1084,7 +1093,11 @@ function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
 }
 
 function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
-  const placement = record.scoringMode === "placement";
+  if (record.multiplayerMode === "relay") {
+    return <RelayStageDetails record={record} />;
+  }
+  const scoringMode = record.scoringMode ?? "wins";
+  const scored = scoringMode !== "wins";
   return (
     <div className="grid gap-2">
       {record.rounds.map((round) => (
@@ -1095,7 +1108,7 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
           <strong className="text-ink">第 {round.roundIndex} 局</strong>
           <span
             className={
-              placement
+              scored
                 ? round.pointsAwarded
                   ? "font-bold text-jade"
                   : "text-ink-soft"
@@ -1104,7 +1117,7 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
                   : "text-[var(--error-text)]"
             }
           >
-            {placement
+            {scored
               ? `+${round.pointsAwarded ?? 0} 分 · ${participationLabel(round.participationStatus)}`
               : round.result === "win"
                 ? "胜"
@@ -1127,6 +1140,57 @@ function RoundDetails({ record }: { record: MultiplayerStatsRecord }) {
               答案：{round.answer.name} · {round.answer.work?.code ?? "TH--"}
             </span>
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function relayRuleSetLabel(ruleSetKey: string): string {
+  switch (ruleSetKey) {
+    case "fixed_points":
+      return "固定积分";
+    case "elimination":
+      return "淘汰接力";
+    case "legacy_wins":
+      return "传统接力";
+    default:
+      return ruleSetKey;
+  }
+}
+
+function RelayStageDetails({ record }: { record: MultiplayerStatsRecord }) {
+  return (
+    <div className="grid gap-2">
+      {(record.relayStages ?? []).map((stage) => (
+        <div
+          key={stage.stageIndex}
+          className="grid grid-cols-[72px_120px_120px_minmax(0,1fr)] items-center gap-3 text-xs max-[680px]:grid-cols-[60px_104px_minmax(0,1fr)]"
+        >
+          <strong className="text-ink">第 {stage.stageIndex} 轮</strong>
+          <span className="font-bold text-ink-soft">
+            {stage.assignment === "bye"
+              ? "轮空"
+              : stage.outcome === "win"
+                ? "胜"
+                : stage.outcome === "loss"
+                  ? "负"
+                  : "平"}
+          </span>
+          <span className="tabular-nums text-ink-soft max-[680px]:hidden">
+            {stage.scoreDelta === undefined
+              ? "积分未记录"
+              : `${stage.scoreDelta >= 0 ? "+" : ""}${stage.scoreDelta} 分`}
+          </span>
+          <span className="min-w-0 truncate text-ink">
+            {stage.lifeTransition === "entered_near_death"
+              ? "进入濒死"
+              : stage.lifeTransition === "eliminated"
+                ? "本轮淘汰"
+                : stage.encounter
+                  ? `答案：${stage.encounter.answer.name} · ${stage.encounter.answer.work?.code ?? "TH--"}`
+                  : "无需对局"}
+          </span>
         </div>
       ))}
     </div>

@@ -13,16 +13,36 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
-// ForfeitMemberMatch 处理对局级弃赛/断线：race 委托 N 人 roster 终态表；
-// relay 保持两人规则（结束当前局、对方胜、整场 finished），08 §4.6。
-func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig) error {
+// ForfeitMemberMatch resolves persisted mode/ruleset state before
+// choosing a completion driver. Unknown combinations fail before any write.
+func ForfeitMemberMatch(ctx context.Context, pool *pgxpool.Pool, member repo.MultiMember, reason MatchEndReason, now time.Time, timing TimingConfig, registry *core.Registry) error {
 	room, err := repo.New(pool).GetRoom(ctx, member.RoomID)
 	if err != nil {
 		return err
 	}
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	if registry == nil {
+		return &core.DomainError{Code: core.ErrorMissingCapability, Mode: core.Mode(room.Mode), Capability: "completion_driver"}
+	}
+	activeMatch, err := repo.New(pool).GetActiveMatchForUpdate(ctx, member.RoomID)
+	if err != nil {
+		return err
+	}
+	ref, err := ResolveMatchRuleSet(registry, room, activeMatch)
+	if err != nil {
+		return err
+	}
+	driver, err := registry.CompletionDriver(ref.Mode)
+	if err != nil {
+		return err
+	}
+	route, err := driver.Route(ref)
+	if err != nil {
+		return err
+	}
+	if route == core.CompletionRouteRace {
 		return ForfeitRaceMembersMatch(ctx, pool, []repo.MultiMember{member}, reason, now, timing)
 	}
 	DefaultMetrics.IncForfeits(string(reason))

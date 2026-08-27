@@ -1,0 +1,72 @@
+# POST /api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions
+# MRX-003 只建立契约骨架；实际动作由 MRX-006 接管。
+post:
+  operationId: rooms_relayEncounterAction
+  tags:
+    - rooms
+  summary: 接力 encounter 动作
+  description: |
+    成员令牌鉴权。目标显式携带 stageIndex 与 encounterId。服务端校验 encounter
+    归属、行动者、当前 turn 与幂等键；guess 成功时响应携带该手完整反馈，进行中不返回答案。
+  security:
+    - GuestBearer: []
+  parameters:
+    - name: roomId
+      in: path
+      required: true
+      schema:
+        type: string
+    - name: stageIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    - name: encounterId
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/multi-round.yaml#/RelayEncounterActionRequest"
+  responses:
+    "200":
+      description: 动作已接受，重复提交相同幂等请求返回首次结果
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/multi-round.yaml#/RelayEncounterActionResponse"
+    "400":
+      description: 请求格式或 guessId 无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "401":
+      description: 令牌缺失或无效
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "403":
+      description: spectator 只读
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: encounter 不存在或不属于目标 stage
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 非 encounter 玩家、非当前 turn、encounter 已结束或幂等冲突
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

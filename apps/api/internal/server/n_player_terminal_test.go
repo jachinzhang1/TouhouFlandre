@@ -12,6 +12,7 @@ import (
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
 )
 
 func TestMultiRaceRoundForfeitTerminalTable(t *testing.T) {
@@ -342,7 +343,7 @@ func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 			t.Fatalf("pre-restart score = %d %s", resp.StatusCode, payload)
 		}
 		advanceRounds(t)
-		if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming); err != nil {
+		if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming, assembly.MustProduction()); err != nil {
 			t.Fatal(err)
 		}
 		var status string
@@ -367,7 +368,7 @@ func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 	})
 
 	t.Run("placement restart publishes terminal placements and ranking", func(t *testing.T) {
-		fixture := createNPlayerRaceFixture(t, 4, "bo3")
+		fixture := createNPlayerRaceFixture(t, 4, "bo3", true)
 		answer := currentAnswer(t, fixture.roomID)
 		for index, participant := range fixture.participants {
 			if resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "placement-restart-"+strconv.Itoa(index)); resp.StatusCode != http.StatusOK {
@@ -375,7 +376,7 @@ func TestMultiRaceTimeoutAndRestartTerminalTable(t *testing.T) {
 			}
 		}
 		advanceRounds(t)
-		if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming); err != nil {
+		if _, err := multi.TerminateActiveMatches(ctx, pool, time.Now(), fastTiming, assembly.MustProduction()); err != nil {
 			t.Fatal(err)
 		}
 

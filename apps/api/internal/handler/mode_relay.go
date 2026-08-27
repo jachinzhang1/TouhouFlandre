@@ -40,7 +40,11 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 			if _, err := multi.CompleteRoundTx(ctx, q, room, round, match, 0, now, s.timing); err != nil {
 				return submitGuessResult{}, internalError(err)
 			}
-			return submitGuessResult{commit: true, publish: true}, roundNotActiveError("本局已超时（按平局结算）。")
+			chatChanged, err := multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, 0, now)
+			if err != nil {
+				return submitGuessResult{}, internalError(err)
+			}
+			return submitGuessResult{commit: true, publish: true, chatChanged: chatChanged}, roundNotActiveError("本局已超时（按平局结算）。")
 		}
 		if now.Before(round.StartsAt.Time) {
 			return submitGuessResult{}, roundNotActiveError("本局尚未到开猜时间。")
@@ -73,7 +77,11 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 		}
 		round = result.Round
 		if result.RoundEnded {
-			return submitGuessResult{commit: true, publish: true}, turnExpiredError("本轮已超时空过，本局已结束。")
+			chatChanged, err := multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, result.WinnerSlot, now)
+			if err != nil {
+				return submitGuessResult{}, internalError(err)
+			}
+			return submitGuessResult{commit: true, publish: true, chatChanged: chatChanged}, turnExpiredError("本轮已超时空过，本局已结束。")
 		}
 	}
 	if expiredOwnTurn {
@@ -207,12 +215,19 @@ func (relayGuessModule) SubmitGuess(ctx context.Context, s *Server, q *repo.Quer
 			return submitGuessResult{}, internalError(err)
 		}
 	}
+	chatChanged := false
+	if advance.RoundEnded {
+		chatChanged, err = multi.AppendLegacyRelayRoundAnnouncement(ctx, q, s.announcements, round, match, advance.WinnerSlot, now)
+		if err != nil {
+			return submitGuessResult{}, internalError(err)
+		}
+	}
 
 	response, err := s.relayTurnAcceptedResponse(ctx, request.RoundIndex, q, match.CatalogVersion, turn, fields)
 	if err != nil {
 		return submitGuessResult{}, err
 	}
-	return submitGuessResult{response: response, commit: true, publish: true}, nil
+	return submitGuessResult{response: response, commit: true, publish: true, chatChanged: chatChanged}, nil
 }
 
 func nextGuessSequence(ctx context.Context, q *repo.Queries, roundID, memberID string) (int, error) {

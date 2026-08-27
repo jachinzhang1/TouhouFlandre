@@ -114,6 +114,37 @@ describe("ChatDock", () => {
     expect((input as HTMLInputElement).value).toBe("");
   });
 
+  it("leaves viewport placement to the multiplayer dock host", () => {
+    renderDock(baseChat);
+
+    const dock = document.querySelector("[data-chat-dock]");
+    expect(dock?.className).toContain("relative");
+    expect(dock?.className).not.toContain("fixed");
+    expect(dock?.className).not.toContain("bottom-");
+    expect(screen.getByLabelText("展开聊天记录").className).not.toContain(
+      "shadow-sm",
+    );
+    expect(screen.getByLabelText("聊天输入").className).not.toContain(
+      "shadow-sm",
+    );
+    expect(screen.getByLabelText("闭麦").className).not.toContain("shadow-sm");
+  });
+
+  it("opens history above the controls without changing the dock box", async () => {
+    const user = userEvent.setup();
+    renderDock(baseChat);
+    const dock = document.querySelector("[data-chat-dock]");
+    const dockClassName = dock?.className;
+
+    await user.click(screen.getByLabelText("展开聊天记录"));
+
+    const history = document.querySelector("[data-chat-history]");
+    expect(history?.className).toContain("absolute");
+    expect(history?.className).toContain("bottom-full");
+    expect(history?.getAttribute("aria-hidden")).toBe("false");
+    expect(dock?.className).toBe(dockClassName);
+  });
+
   it("disables history, input, and emoji controls while muted", async () => {
     const user = userEvent.setup();
     renderDock(baseChat);
@@ -186,6 +217,29 @@ describe("ChatDock", () => {
     expect(label.closest("li")).not.toBeNull();
     expect(label.closest("li")?.className).not.toContain("border");
     expect(label.closest("li")?.className).not.toContain("rounded");
+  });
+
+  it("renders the system sender in theme color, bold, and underlined", async () => {
+    const user = userEvent.setup();
+    renderDock({
+      ...baseChat,
+      messages: [
+        message({
+          senderMemberId: "system",
+          senderDisplayName: "系统",
+          senderRole: "system",
+          senderSeat: undefined,
+          content: "[第 1 轮]灵梦(P1)已猜中",
+        }),
+      ],
+    });
+
+    await user.click(screen.getByLabelText("展开聊天记录"));
+
+    const label = screen.getByText("系统:");
+    expect(label.tagName).toBe("STRONG");
+    expect(label.className).toContain("text-vermilion");
+    expect(label.className).toContain("underline");
   });
 
   it("does not replay messages received while muted after unmuting", async () => {

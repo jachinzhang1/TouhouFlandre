@@ -19,8 +19,11 @@ import {
   MULTIPLAYER_MODE_DESCRIPTIONS,
   MULTIPLAYER_MODE_LABELS,
   normalizeRoomCode,
+  PLAYER_LIMIT_ADAPTERS,
+  relaySettingsSummary,
   ROOM_FORMAT_LABELS,
   ROOM_FORMAT_SHORT,
+  raceSettingsSummary,
   saveMultiRoom,
   TURN_SECONDS_OPTIONS,
   type RelayTurnSeconds,
@@ -30,22 +33,29 @@ import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
 } from "../lib/questionScopeStorage";
-import { isNPlayerRaceUiEnabled } from "../config/multiplayerRollout";
+import {
+  isNPlayerRaceUiEnabled,
+  isNPlayerRelayUiEnabled,
+  isRelayEliminationUiEnabled,
+} from "../config/multiplayerRollout";
 import { QuestionScopeDialog } from "./QuestionScopeDialog";
+import { RaceEliminationSwitch } from "./RaceEliminationSwitch";
+import { PlayerLimitControl } from "./PlayerLimitControl";
+import { RelayEliminationSwitch } from "./RelayEliminationSwitch";
 
 const FORMATS: MultiRoomFormat[] = ["bo1", "bo3", "bo5", "bo7"];
 const MODES: MultiplayerMode[] = ["race", "relay"];
 const MODE_RULES: Record<MultiplayerMode, string> = {
   race: `**竞速模式**中，2 至 8 名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
 
-实际开局为 2 人时使用所选双人赛制，率先猜中者赢得本局。实际开局超过 2 人时使用积分淘汰制：猜中越快，本局得分越高；放弃、次数耗尽或超时得 0 分。达到淘汰轮次后，每局会淘汰累计积分最低的玩家，直至决出最终排行榜。`,
+实际开局为 2 人时按所选总局数进行双人赛，率先猜中者赢得本局。实际开局超过 2 人时，若开启积分赛淘汰，则使用积分淘汰制：猜中越快，本局得分越高；放弃、次数耗尽或超时得 0 分。达到淘汰轮次后，每局会淘汰累计积分最低的玩家，直至决出最终排行榜。`,
   relay: `**接力模式**中，双方共用同一张棋盘并轮流行动，出题范围和猜测次数限制**由房主决定**。当前轮到的玩家可以提交一次猜测或主动选择空过。猜测、主动空过和超时空过都会计入自己的轮次。提交正确角色的一方赢得本局；若双方都用尽轮次仍无人猜中，或本局总倒计时结束，则本局判为平局。
 
 接力房间会为每一手设置单独限时。轮到自己时若在限时内没有提交，会自动记为超时空过并轮到对方；主动空过与超时空过共享每人每局 **2 次**空过额度，额度耗尽后再次空过会导致该玩家本局判负。`,
 };
 const DUO_RACE_RULE = `**竞速模式**中，两名玩家会同时竞猜同一个隐藏角色，每局限时 **5 分钟**。出题范围和猜测次数限制**由房主决定**。己方棋盘可以看到完整的猜测记录和字段反馈，对手棋盘则只显示标签命中情况。
 
-率先猜中者赢得本局，并按所选双人赛制决定整场胜负。`;
+率先猜中者赢得本局，并按所选总局数决定整场胜负。`;
 
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : "操作失败。";
@@ -55,7 +65,12 @@ export function MultiLobby() {
   const [format, setFormat] = useState<MultiRoomFormat>("bo3");
   const [mode, setMode] = useState<MultiplayerMode>("race");
   const [turnSeconds, setTurnSeconds] = useState<RelayTurnSeconds>(60);
-  const [playerLimit, setPlayerLimit] = useState(2);
+  const [racePlayerLimit, setRacePlayerLimit] = useState(2);
+  // Keep the legacy two-player setup as the initial draft while exposing the
+  // N-player controls whenever the relay rollout is enabled.
+  const [relayPlayerLimit, setRelayPlayerLimit] = useState(2);
+  const [raceEliminationEnabled, setRaceEliminationEnabled] = useState(false);
+  const [relayEliminationEnabled, setRelayEliminationEnabled] = useState(false);
   const [nickname, setNickname] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [joinNickname, setJoinNickname] = useState("");
@@ -67,6 +82,9 @@ export function MultiLobby() {
   const [scopeOpen, setScopeOpen] = useState(false);
   const [hostScopeOpen, setHostScopeOpen] = useState(false);
   const nPlayerRaceEnabled = isNPlayerRaceUiEnabled();
+  const nPlayerRelayEnabled = isNPlayerRelayUiEnabled();
+  const relayEliminationUiEnabled = isRelayEliminationUiEnabled();
+  const playerLimit = mode === "relay" ? relayPlayerLimit : racePlayerLimit;
 
   const normalizedCode = normalizeRoomCode(joinCode);
   const codeValid = isValidRoomCode(normalizedCode);
@@ -99,7 +117,25 @@ export function MultiLobby() {
       const created = await api.createRoom({
         format,
         mode,
-        ...(mode === "race" && nPlayerRaceEnabled ? { playerLimit } : {}),
+        ...(mode === "race" && nPlayerRaceEnabled
+          ? { playerLimit: racePlayerLimit }
+          : {}),
+        ...(mode === "race"
+          ? {
+              raceEliminationEnabled:
+                racePlayerLimit >= 3 && raceEliminationEnabled,
+            }
+          : nPlayerRelayEnabled
+            ? {
+                playerLimit: relayPlayerLimit,
+                ...(relayEliminationUiEnabled
+                  ? {
+                      relayEliminationEnabled:
+                        relayPlayerLimit >= 4 && relayEliminationEnabled,
+                    }
+                  : {}),
+              }
+            : {}),
         turnSeconds,
         displayName: nickname || undefined,
         questionScope,
@@ -252,43 +288,60 @@ export function MultiLobby() {
                 </div>
               </fieldset>
             )}
-            {mode === "race" && nPlayerRaceEnabled && (
-              <label className="mb-4 block">
-                <span className="mb-1 flex items-center justify-between text-[0.75rem] text-ink-soft">
-                  <span>玩家上限</span>
-                  <output
-                    htmlFor="create-player-limit"
-                    className="font-bold tabular-nums text-ink"
-                  >
-                    {playerLimit} 人
-                  </output>
-                </span>
-                <input
+            {mode === "race" && nPlayerRaceEnabled ? (
+              <div className="mb-4 flex items-end gap-4">
+                <PlayerLimitControl
                   id="create-player-limit"
-                  aria-label="玩家上限（2-8）"
-                  type="range"
-                  min={2}
-                  max={8}
-                  step={1}
-                  value={playerLimit}
-                  onChange={(event) =>
-                    setPlayerLimit(
-                      Math.min(8, Math.max(2, Number(event.target.value) || 2)),
-                    )
-                  }
-                  className="w-full accent-vermilion"
+                  ariaLabel="玩家上限（2-8）"
+                  value={racePlayerLimit}
+                  {...PLAYER_LIMIT_ADAPTERS.race}
+                  onChange={setRacePlayerLimit}
                 />
-              </label>
-            )}
+                <RaceEliminationSwitch
+                  checked={raceEliminationEnabled}
+                  disabled={racePlayerLimit < 3}
+                  onChange={setRaceEliminationEnabled}
+                  className="shrink-0 pb-1"
+                />
+              </div>
+            ) : null}
+            {mode === "relay" && nPlayerRelayEnabled ? (
+              <div className="mb-4 grid gap-3">
+                <div className="flex items-end gap-4">
+                  <PlayerLimitControl
+                    id="create-relay-player-limit"
+                    ariaLabel="接力玩家上限（2/4/6/8）"
+                    value={relayPlayerLimit}
+                    {...PLAYER_LIMIT_ADAPTERS.relay}
+                    onChange={setRelayPlayerLimit}
+                  />
+                  {relayEliminationUiEnabled ? (
+                    <RelayEliminationSwitch
+                      checked={relayEliminationEnabled}
+                      disabled={relayPlayerLimit < 4}
+                      onChange={setRelayEliminationEnabled}
+                      className="shrink-0 pb-1"
+                    />
+                  ) : null}
+                </div>
+                <p className="m-0 text-[0.78rem] leading-6 text-ink-soft">
+                  {relaySettingsSummary(
+                    format,
+                    relayPlayerLimit,
+                    relayEliminationEnabled,
+                  )}
+                </p>
+              </div>
+            ) : null}
             <fieldset className="mb-4">
               <legend className="mb-1 text-[0.75rem] text-ink-soft">
-                双人赛制
+                总局数
               </legend>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {FORMATS.map((f) => (
                   <label
                     key={f}
-                    className={`flex cursor-pointer items-center justify-between rounded-[6px] border px-3 py-2 text-[0.8rem] font-semibold ${
+                    className={`flex min-h-[54px] cursor-pointer items-center justify-center rounded-[6px] border px-3 py-2 text-center text-[0.9rem] font-semibold ${
                       format === f
                         ? "border-vermilion bg-vermilion-soft text-vermilion"
                         : "border-line bg-paper-muted hover:bg-paper"
@@ -302,14 +355,22 @@ export function MultiLobby() {
                       onChange={() => setFormat(f)}
                       className="sr-only"
                     />
-                    <span>{ROOM_FORMAT_SHORT[f]}</span>
-                    <span className="text-[0.68rem] font-normal text-ink-soft">
-                      {ROOM_FORMAT_LABELS[f].split(" · ")[1]}
+                    <span className="tracking-[0.04em]">
+                      {ROOM_FORMAT_SHORT[f]}
                     </span>
                   </label>
                 ))}
               </div>
             </fieldset>
+            <p className="mb-4 text-[0.78rem] leading-6 text-ink-soft">
+              {mode === "race"
+                ? raceSettingsSummary(
+                    format,
+                    racePlayerLimit,
+                    raceEliminationEnabled,
+                  )
+                : `${ROOM_FORMAT_SHORT[format]} · 接力对局`}
+            </p>
             <label className="mb-4 block">
               <span className="mb-1 block text-[0.75rem] text-ink-soft">
                 昵称（可选，≤16 字符）

@@ -1,0 +1,46 @@
+{
+  "contract": "touhouflandre-multi.v2",
+  "events": [
+    {
+      "type": "room.updated",
+      "payloadKeys": [
+        "availableSeats",
+        "format",
+        "members",
+        "minPlayers",
+        "mode",
+        "playerCount",
+        "playerLimit",
+        "raceEliminationEnabled",
+        "spectatorCount",
+        "turnSeconds"
+      ]
+    },
+    {
+      "type": "match.started",
+      "payloadKeys": [
+        "catalogVersion",
+        "format",
+        "matchIndex",
+        "maxRounds",
+        "mode",
+        "questionScope",
+        "rosterSize",
+        "scoringMode",
+        "targetWins",
+        "turnSeconds"
+      ]
+    },
+    {
+      "type": "round.started",
+      "payloadKeys": [
+        "activePlayerCount",
+        "deadline",
+        "matchIndex",
+        "maxGuesses",
+        "roundIndex",
+        "startsAt"
+      ]
+    }
+  ]
+}

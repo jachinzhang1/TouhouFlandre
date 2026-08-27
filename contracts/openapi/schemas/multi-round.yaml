@@ -230,3 +230,39 @@ GuessResponse:
     finishRank:
       type: integer
       minimum: 1
+
+RelayEncounterActionRequest:
+  type: object
+  required:
+    - action
+    - idempotencyKey
+  properties:
+    action:
+      type: string
+      enum: [guess, pass, forfeit]
+    guessId:
+      type: string
+      description: action=guess 时必填；进行中 answer 不会出现在响应中。
+    idempotencyKey:
+      type: string
+      minLength: 1
+
+RelayEncounterActionResponse:
+  type: object
+  required:
+    - stageIndex
+    - encounterId
+    - accepted
+    - ended
+  properties:
+    stageIndex:
+      type: integer
+      minimum: 1
+    encounterId:
+      type: string
+    accepted:
+      type: boolean
+    ended:
+      type: boolean
+    turn:
+      $ref: "#/RelayTurnRow"

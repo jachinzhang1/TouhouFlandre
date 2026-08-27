@@ -28,11 +28,12 @@ type nPlayerRaceFixture struct {
 	snapshot     openapi.RoomSnapshot
 }
 
-func createNPlayerRaceFixture(t *testing.T, playerCount int, format string) nPlayerRaceFixture {
+func createNPlayerRaceFixture(t *testing.T, playerCount int, format string, raceEliminationEnabled bool) nPlayerRaceFixture {
 	t.Helper()
 	resp, payload := fastRequest(http.MethodPost, "/api/rooms", map[string]any{
-		"format": format,
-		"mode":   "race",
+		"format":                 format,
+		"mode":                   "race",
+		"raceEliminationEnabled": raceEliminationEnabled,
 	})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("create %d-player race: %d %s", playerCount, resp.StatusCode, payload)
@@ -94,11 +95,11 @@ func createNPlayerRaceFixture(t *testing.T, playerCount int, format string) nPla
 }
 
 // Legacy N-player terminal-table tests exercise the pre-MPX-6 wins engine
-// against migrated rows. New rooms created by the public API remain placement
-// matches whenever the frozen roster is larger than two.
+// against migrated rows. New rooms created by the public API now freeze to
+// points for 3+ player races unless the room toggle enables elimination.
 func createLegacyNPlayerRaceFixture(t *testing.T, playerCount int, format string) nPlayerRaceFixture {
 	t.Helper()
-	fixture := createNPlayerRaceFixture(t, playerCount, format)
+	fixture := createNPlayerRaceFixture(t, playerCount, format, false)
 	if _, err := pool.Exec(ctx, `UPDATE multi_match SET scoring_mode = 'wins' WHERE room_id = $1`, fixture.roomID); err != nil {
 		t.Fatal(err)
 	}
@@ -204,11 +205,11 @@ func TestMultiTwoPlayerRaceRosterCompatibility(t *testing.T) {
 func TestMultiRaceStartsThreeFourAndEightPlayerRosters(t *testing.T) {
 	for _, playerCount := range []int{3, 4, 8} {
 		t.Run(strconv.Itoa(playerCount)+" players", func(t *testing.T) {
-			fixture := createNPlayerRaceFixture(t, playerCount, "bo3")
+			fixture := createNPlayerRaceFixture(t, playerCount, "bo3", false)
 			if fixture.snapshot.Status != openapi.RoomStatusPlaying || len(fixture.snapshot.Members) != playerCount || fixture.snapshot.Match == nil || len(fixture.snapshot.Match.Scores) != playerCount {
 				t.Fatalf("%d-player started snapshot = %+v", playerCount, fixture.snapshot)
 			}
-			if string(fixture.snapshot.Match.ScoringMode) != "placement" || fixture.snapshot.Match.RosterSize != playerCount || fixture.snapshot.Match.MaxRounds != playerCount*fastTiming.MaxRoundsFactor {
+			if string(fixture.snapshot.Match.ScoringMode) != "points" || fixture.snapshot.Match.RosterSize != playerCount || fixture.snapshot.Match.MaxRounds != 3 {
 				t.Fatalf("%d-player scoring snapshot = %+v", playerCount, fixture.snapshot.Match)
 			}
 			var matchPlayers, roundPlayers, distinctSeats int
@@ -228,7 +229,7 @@ func TestMultiRaceStartsThreeFourAndEightPlayerRosters(t *testing.T) {
 }
 
 func TestMultiRacePlacementRoundAwardsPointsAndEliminatesLowest(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 3, "bo3")
+	fixture := createNPlayerRaceFixture(t, 3, "bo3", true)
 	answer := currentAnswer(t, fixture.roomID)
 	for index, participant := range fixture.participants {
 		resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "placement-"+strconv.Itoa(index))
@@ -272,7 +273,7 @@ func TestMultiRacePlacementRoundAwardsPointsAndEliminatesLowest(t *testing.T) {
 }
 
 func TestMultiRacePlacementConcurrentCorrectGuessesHaveUniqueRanks(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	fixture := createNPlayerRaceFixture(t, 4, "bo3", true)
 	answer := currentAnswer(t, fixture.roomID)
 	type guessResult struct {
 		status  int
@@ -320,7 +321,7 @@ func TestMultiRacePlacementConcurrentCorrectGuessesHaveUniqueRanks(t *testing.T)
 }
 
 func TestMultiRaceEliminatedPlayerGetsReadOnlyFullProjection(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 3, "bo3")
+	fixture := createNPlayerRaceFixture(t, 3, "bo3", true)
 	answer := currentAnswer(t, fixture.roomID)
 	for index, participant := range fixture.participants {
 		resp, payload := guess(t, fixture.roomID, participant.token, 1, answer, "elimination-round-"+strconv.Itoa(index))
@@ -479,7 +480,7 @@ func TestLegacyMultiRaceConcurrentCorrectGuessHasOneMemberWinner(t *testing.T) {
 }
 
 func TestMultiRacePlayerProjectionPrivacyAndSpectatorBoards(t *testing.T) {
-	fixture := createNPlayerRaceFixture(t, 4, "bo3")
+	fixture := createNPlayerRaceFixture(t, 4, "bo3", false)
 	answer := currentAnswer(t, fixture.roomID)
 	wrong := guessableIDs(t, answer, 1)[0]
 

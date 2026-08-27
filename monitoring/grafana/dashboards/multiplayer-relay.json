@@ -1,0 +1,107 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [{ "expr": "sum by (rule_set_key, rule_set_version) (touhouflandre_multi_active_encounters)", "legendFormat": "{{rule_set_key}}@{{rule_set_version}}", "refId": "A" }],
+      "title": "Active Relay Encounters",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, mode, rule_set_key, rule_set_version) (rate(touhouflandre_multi_guess_latency_seconds_bucket[5m])))", "legendFormat": "p95 {{mode}}/{{rule_set_key}}@{{rule_set_version}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, sum by (le, mode, rule_set_key, rule_set_version) (rate(touhouflandre_multi_guess_latency_seconds_bucket[5m])))", "legendFormat": "p99 {{mode}}/{{rule_set_key}}@{{rule_set_version}}", "refId": "B" }
+      ],
+      "title": "Guess Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, rule_set_key, rule_set_version) (rate(touhouflandre_multi_history_latency_seconds_bucket[10m])))", "legendFormat": "p95 {{rule_set_key}}@{{rule_set_version}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, sum by (le, rule_set_key, rule_set_version) (rate(touhouflandre_multi_history_latency_seconds_bucket[10m])))", "legendFormat": "p99 {{rule_set_key}}@{{rule_set_version}}", "refId": "B" }
+      ],
+      "title": "History Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, rule_set_key, rule_set_version) (rate(touhouflandre_multi_stage_duration_seconds_bucket[10m])))", "legendFormat": "stage p95 {{rule_set_key}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, sum by (le, rule_set_key, rule_set_version) (rate(touhouflandre_multi_stage_barrier_wait_seconds_bucket[10m])))", "legendFormat": "barrier p99 {{rule_set_key}}", "refId": "B" }
+      ],
+      "title": "Stage And Barrier Duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 5,
+      "targets": [
+        { "expr": "histogram_quantile(0.99, sum by (le, mode, rule_set_key, rule_set_version) (rate(touhouflandre_multi_snapshot_bytes_bucket[10m])))", "legendFormat": "snapshot {{mode}}/{{rule_set_key}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(touhouflandre_multi_ws_payload_bytes_bucket[10m])))", "legendFormat": "WS payload", "refId": "B" }
+      ],
+      "title": "Snapshot And WS Payload p99",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "id": 6,
+      "targets": [
+        { "expr": "sum(increase(touhouflandre_multi_settlement_retries_total[10m]))", "legendFormat": "settlement retry", "refId": "A" },
+        { "expr": "sum(increase(touhouflandre_multi_deadlocks_total[10m]))", "legendFormat": "deadlock", "refId": "B" },
+        { "expr": "sum(increase(touhouflandre_multi_ws_queue_drops_total[10m]))", "legendFormat": "WS queue drop", "refId": "C" },
+        { "expr": "sum(increase(touhouflandre_multi_turn_timeouts_total[10m]))", "legendFormat": "turn timeout", "refId": "D" }
+      ],
+      "title": "Rollout Safety Signals",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 7,
+      "targets": [{ "expr": "touhouflandre_multi_rooms", "legendFormat": "rooms {{status}}", "refId": "A" }],
+      "title": "Rooms",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 8,
+      "targets": [{ "expr": "touhouflandre_multi_members", "legendFormat": "members {{status}}", "refId": "A" }],
+      "title": "Members",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["multiplayer", "relay", "MRX-013"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Multiplayer Relay Rollout",
+  "uid": "mrx-relay-rollout",
+  "version": 1
+}

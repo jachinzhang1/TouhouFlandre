@@ -12,29 +12,36 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
-// TerminateActiveMatches 终止全部进行中场次（幂等：match 已 finished 的不再处理）。
-// 返回终止的场次数。锁序 局→场→房间。
-func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Time, timing TimingConfig) (int, error) {
+// TerminateActiveMatches resolves persisted rules before recovery.
+// Unknown mode/key/version returns without writing a guessed terminal state.
+func TerminateActiveMatches(ctx context.Context, pool *pgxpool.Pool, now time.Time, timing TimingConfig, registry *core.Registry) (int, error) {
+	if registry == nil {
+		return 0, &core.DomainError{Code: core.ErrorMissingCapability, Capability: "recovery_driver"}
+	}
 	matches, err := repo.New(pool).ListActiveMatches(ctx)
 	if err != nil {
 		return 0, err
 	}
 	terminated := 0
 	for _, match := range matches {
-		if err := terminateMatch(ctx, pool, match, now, timing); err != nil {
+		didTerminate, err := terminateMatch(ctx, pool, match, now, timing, registry)
+		if err != nil {
 			return terminated, err
 		}
-		terminated++
+		if didTerminate {
+			terminated++
+		}
 	}
 	return terminated, nil
 }
 
-func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMatch, now time.Time, timing TimingConfig) error {
+func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMatch, now time.Time, timing TimingConfig, registry *core.Registry) (bool, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := repo.New(tx)
@@ -46,31 +53,46 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		if errors.Is(err, pgx.ErrNoRows) {
 			hasRound = false
 		} else {
-			return err
+			return false, err
 		}
 	}
 	// 2. 锁场行并复核仍 playing（幂等：重启后再重启不重复终止）
 	locked, err := q.GetMatchForUpdate(ctx, match.ID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if locked.Status != string(MatchStatusPlaying) {
-		return tx.Commit(ctx)
+		return false, tx.Commit(ctx)
 	}
 	room, err := q.GetRoomForUpdate(ctx, locked.RoomID)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if MultiplayerMode(room.Mode) == MultiplayerModeRace {
+	ref, err := ResolveMatchRuleSet(registry, room, locked)
+	if err != nil {
+		return false, err
+	}
+	driver, err := registry.RecoveryDriver(ref.Mode)
+	if err != nil {
+		return false, err
+	}
+	route, err := driver.Route(ref)
+	if err != nil {
+		return false, err
+	}
+	if route == core.RecoveryRouteRace {
 		if hasRound {
 			if err := EndRaceRoundWithoutScoreTx(ctx, q, room, round, locked, "", "", now, timing); err != nil {
-				return err
+				return false, err
 			}
 		}
 		if _, err := EndRaceMatchTx(ctx, q, room, locked, "", MatchEndReasonServerRestart, now, timing); err != nil {
-			return err
+			return false, err
 		}
-		return tx.Commit(ctx)
+		return true, tx.Commit(ctx)
+	}
+	if route == core.RecoveryRouteModeOwned {
+		return false, tx.Commit(ctx)
 	}
 	// 3. 终止当前局（平局；含 countdown 态局）
 	if hasRound {
@@ -79,7 +101,7 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 			WinnerSlot: pgtype.Int4{},
 			EndedAt:    pgtypeTimestamptz(now),
 		}); err != nil {
-			return err
+			return false, err
 		}
 		nextStarts := now.Add(timing.Intermission)
 		if err := AppendEvent(ctx, q, match.RoomID, EventRoundEnded, RoundEndedEventPayload{
@@ -91,12 +113,12 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 			Scores:       ScoresView{Slot1: int(match.ScoreSlot1), Slot2: int(match.ScoreSlot2)},
 			NextStartsAt: &nextStarts,
 		}); err != nil {
-			return err
+			return false, err
 		}
 	}
 	// 4. 场次与房间 finished
 	if _, err := q.EndMatch(ctx, repo.EndMatchParams{ID: match.ID, EndedAt: pgtypeTimestamptz(now), WinnerSeat: pgtype.Int4{}}); err != nil {
-		return err
+		return false, err
 	}
 	retentionEndsAt := now.Add(timing.FinishedRetention)
 	if _, err := q.UpdateRoomStatus(ctx, repo.UpdateRoomStatusParams{
@@ -104,7 +126,7 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		Status:    string(RoomStatusFinished),
 		ExpiresAt: pgtypeTimestamptz(retentionEndsAt),
 	}); err != nil {
-		return err
+		return false, err
 	}
 	if err := AppendEvent(ctx, q, match.RoomID, EventMatchEnded, MatchEndedEventPayload{
 		MatchIndex:      int(match.MatchIndex),
@@ -113,7 +135,7 @@ func terminateMatch(ctx context.Context, pool *pgxpool.Pool, match repo.MultiMat
 		Reason:          MatchEndReasonServerRestart,
 		RetentionEndsAt: retentionEndsAt,
 	}); err != nil {
-		return err
+		return false, err
 	}
-	return tx.Commit(ctx)
+	return true, tx.Commit(ctx)
 }

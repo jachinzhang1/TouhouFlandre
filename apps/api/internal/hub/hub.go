@@ -16,6 +16,8 @@ import (
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/assembly"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
 )
 
 // Hub 房间事件广播器（单实例，进程内）。
@@ -28,6 +30,7 @@ type Hub struct {
 	projectionSecret []byte        // 对手匿名矩阵 HMAC 密钥
 	chatRetention    time.Duration
 	chatCursor       *multi.ChatCursorCodec
+	modeRegistry     *core.Registry
 
 	mu    sync.Mutex
 	rooms map[string]*roomHub // roomID → 连接与广播水位
@@ -47,7 +50,11 @@ type roomHub struct {
 }
 
 // New 构造 hub（grace/readLimit/sendQueue 由 internal/config 注入，08 §4.7/§8.5）。
-func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int, projectionSecret []byte, chatRetention time.Duration, chatCursorSecret []byte) *Hub {
+func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int, projectionSecret []byte, chatRetention time.Duration, chatCursorSecret []byte, registries ...*core.Registry) *Hub {
+	registry := assembly.MustProduction()
+	if len(registries) > 0 && registries[0] != nil {
+		registry = registries[0]
+	}
 	return &Hub{
 		pool:             pool,
 		q:                repo.New(pool),
@@ -57,6 +64,7 @@ func New(pool *pgxpool.Pool, grace time.Duration, readLimit int64, sendQueue int
 		projectionSecret: append([]byte(nil), projectionSecret...),
 		chatRetention:    chatRetention,
 		chatCursor:       multi.NewChatCursorCodec(chatCursorSecret),
+		modeRegistry:     registry,
 		rooms:            map[string]*roomHub{},
 	}
 }
@@ -155,7 +163,7 @@ func (h *Hub) chatFrame(message repo.MultiChatMessage, room repo.MultiRoom) ([]b
 	frame := multi.ChatMessageFrame{
 		Type: "chat.message", MessageID: message.ID, RoomID: message.RoomID,
 		SenderMemberID: message.SenderMemberID, SenderDisplayName: message.SenderDisplayName,
-		SenderRole: multi.ParticipantRole(message.SenderRole), Kind: multi.ChatKind(message.Kind),
+		SenderRole: multi.ChatSenderRole(message.SenderRole), Kind: multi.ChatKind(message.Kind),
 		Content: message.Content, Channel: multi.ChatChannel(message.Channel),
 		Cursor:    h.chatCursor.Encode(room.ID, room.CreatedAt.Time, message.Position, multi.ChatCursorAfter),
 		CreatedAt: message.CreatedAt.Time,
@@ -245,7 +253,12 @@ func (h *Hub) markDisconnected(memberID, roomID string) {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
-	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectatorCount))); err != nil {
+	relayConfig, err := multi.RelayRoomConfigForRoom(ctx, q, room)
+	if err != nil {
+		slog.Error("hub: load relay room config", "member_id", memberID, "room_id", roomID, "error", err)
+		return
+	}
+	if err := multi.AppendEvent(ctx, q, roomID, multi.EventRoomUpdated, multi.NewRoomUpdatedPayload(room, members, int(spectatorCount), multi.RelayRoomProjectionConfig(relayConfig.EliminationEnabled))); err != nil {
 		slog.Error("hub: mark member disconnected", "member_id", memberID, "room_id", roomID, "error", err)
 		return
 	}
@@ -288,6 +301,14 @@ func (h *Hub) Publish(roomID string) {
 		return
 	}
 	if len(events) == 0 {
+		return
+	}
+	if err := h.validateModeHistory(ctx, roomID); err != nil {
+		slog.Error("hub publish: resolve mode history", "room_id", roomID, "error", err)
+		for _, c := range conns {
+			c.setCloseReason("projection_error")
+			c.closeQuietly()
+		}
 		return
 	}
 	members, err := h.q.ListMembers(ctx, roomID)

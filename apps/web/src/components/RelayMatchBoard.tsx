@@ -166,7 +166,12 @@ export function RelayMatchBoard({
               : `已消耗 ${rows.length} / ${maxTurnsPerPlayer * 2} 手`}
           </span>
         </div>
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-x-auto"
+          tabIndex={0}
+          role="region"
+          aria-label="接力共享棋盘"
+        >
           <table className="w-full min-w-[640px] border-collapse text-[0.78rem]">
             <thead>
               <tr>
@@ -376,9 +381,7 @@ function RelayTurn({
 }
 
 function feedbackForFields(
-  feedback:
-    | NonNullable<RelayTurnRow["guess"]>["feedback"]
-    | undefined,
+  feedback: NonNullable<RelayTurnRow["guess"]>["feedback"] | undefined,
   fields: readonly GuessField[],
 ) {
   const fallback = fields.map(

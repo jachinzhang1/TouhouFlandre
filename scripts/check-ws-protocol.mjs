@@ -163,11 +163,17 @@ const checkMessage = (message) => {
 // ---------- 结构检查 ----------
 console.log("[check-ws-protocol] 结构检查");
 if (!doc.info?.version) fail("缺少 info.version");
-if (doc.info?.version !== "2.0")
-  fail(`WS 协议版本必须为 2.0，实际 ${doc.info?.version}`);
+if (doc.info?.version !== "3.0")
+  fail(`WS 协议版本必须为 3.0，实际 ${doc.info?.version}`);
 if (!doc.envelope) fail("缺少 envelope");
 if (!doc.cursorEnvelope) fail("缺少 cursorEnvelope");
 if (!doc.chatFrame) fail("缺少 chatFrame");
+if (definitions.MemberScore?.properties?.score?.minimum !== 0) {
+  fail("race MemberScore.score 必须保持 minimum=0");
+}
+if (definitions.RelayStanding?.properties?.score?.minimum !== undefined) {
+  fail("relay RelayStanding.score 必须允许负数");
+}
 const envelopeKeys = Object.keys(doc.envelope.properties ?? {});
 if (
   JSON.stringify(envelopeKeys) !==
@@ -211,10 +217,22 @@ const expectedEventTypes = [
   "round.ended",
   "match.ended",
   "room.closed",
+  "relay.stage.started",
+  "relay.encounter.started",
+  "relay.encounter.turn.guess",
+  "relay.encounter.turn.pass",
+  "relay.encounter.turn.timeout",
+  "relay.encounter.ended",
+  "relay.stage.ended",
 ];
 const actualEventTypes = doc.events.map((e) => e.type);
+if (new Set(actualEventTypes).size !== actualEventTypes.length) {
+  fail(`事件类型必须唯一: ${actualEventTypes.join(", ")}`);
+}
 if (JSON.stringify(actualEventTypes) !== JSON.stringify(expectedEventTypes)) {
-  fail(`事件类型集合与 08 §8.3 不一致: ${actualEventTypes.join(", ")}`);
+  fail(
+    `v3 事件清单不一致: actual=[${actualEventTypes.join(", ")}] expected=[${expectedEventTypes.join(", ")}]`,
+  );
 }
 for (const e of doc.events) {
   if (!e.payload) fail(`事件 ${e.type} 缺 payload schema`);
@@ -230,7 +248,12 @@ for (const t of ["hello", "ack"]) {
   if (!doc.clientMessages.some((m) => m.type === t))
     fail(`客户端消息 ${t} 缺失`);
 }
-for (const t of ["hello-ok", "sync.complete", "resync.required", "replaced"]) {
+for (const t of [
+  "hello-ok",
+  "sync.complete",
+  "protocol.refresh_required",
+  "replaced",
+]) {
   if (!doc.control.some((m) => m.type === t)) fail(`控制帧 ${t} 缺失`);
 }
 
@@ -302,7 +325,9 @@ if (!existsSync(tsPath)) {
 } else {
   const tsSource = readFileSync(tsPath, "utf8");
   const interfaceProps = (name) => {
-    const start = tsSource.search(new RegExp(`interface\\s+${name}\\s*\\{`));
+    const start = tsSource.search(
+      new RegExp(`interface\\s+${name}(?:<[^\\n{]+>)?\\s*\\{`),
+    );
     if (start === -1) return null;
     const open = tsSource.indexOf("{", start);
     let depth = 0;
@@ -326,7 +351,10 @@ if (!existsSync(tsPath)) {
     }
     return props.sort();
   };
-  const schemaProps = (schema) => Object.keys(schema.properties ?? {}).sort();
+  const schemaProps = (schema) => {
+    const resolved = schema?.$ref ? resolveRef(schema.$ref) : schema;
+    return Object.keys(resolved?.properties ?? {}).sort();
+  };
 
   const tsTypeFor = {
     "room.updated": "RoomUpdatedPayload",
@@ -346,8 +374,15 @@ if (!existsSync(tsPath)) {
     ack: "AckMessage",
     "hello-ok": "HelloOkMessage",
     "sync.complete": "SyncCompleteMessage",
-    "resync.required": "ResyncRequiredMessage",
+    "protocol.refresh_required": "ProtocolRefreshRequiredMessage",
     replaced: "ReplacedMessage",
+    "relay.stage.started": "RelayStageStartedPayload",
+    "relay.encounter.started": "RelayEncounterStartedPayload",
+    "relay.encounter.turn.guess": "RelayEncounterTurnGuessPayload",
+    "relay.encounter.turn.pass": "RelayEncounterTurnPassPayload",
+    "relay.encounter.turn.timeout": "RelayEncounterTurnTimeoutPayload",
+    "relay.encounter.ended": "RelayEncounterEndedPayload",
+    "relay.stage.ended": "RelayStageEndedPayload",
     "chat.message": "ChatMessageFrame",
   };
   const entries = [
@@ -371,6 +406,27 @@ if (!existsSync(tsPath)) {
     if (JSON.stringify(props) !== JSON.stringify(expected)) {
       fail(
         `${tsName} 字段与协议不一致: TS=[${props.join(", ")}] schema=[${expected.join(", ")}]`,
+      );
+    }
+  }
+  for (const [definitionName, tsName] of [
+    ["RuleSetRef", "RuleSetRef"],
+    ["RelayStanding", "RelayStandingView"],
+    ["RelayEncounterMember", "RelayEncounterMemberView"],
+    ["RelayEncounterSummary", "RelayEncounterSummary"],
+    ["RelayStageSettlement", "RelayStageSettlementView"],
+    ["RelayTurnRow", "RelayTurnRow"],
+    ["RelayAnswer", "RelayAnswerView"],
+  ]) {
+    const props = interfaceProps(tsName);
+    if (!props) {
+      fail(`TS 缺少 interface ${tsName}`);
+      continue;
+    }
+    const expected = schemaProps(definitions[definitionName]);
+    if (JSON.stringify(props) !== JSON.stringify(expected)) {
+      fail(
+        `${tsName} 字段与 definition ${definitionName} 不一致: TS=[${props.join(", ")}] schema=[${expected.join(", ")}]`,
       );
     }
   }
