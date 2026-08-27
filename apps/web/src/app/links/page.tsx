@@ -23,7 +23,7 @@ const platformStyles = {
 
 const assetCredits = [
   {
-    eyebrow: "像素肖像素材",
+    eyebrow: "角色肖像素材",
     title: "苗库里 - 哔哩哔哩个人空间",
     description: "东方全角色像素肖像素材包原作者",
     href: "https://space.bilibili.com/152309938",
@@ -32,9 +32,17 @@ const assetCredits = [
   },
   {
     eyebrow: "首页封面图",
-    title: "pixiv 作品 56866592",
-    description: "首页视觉素材来源",
+    title: "羽々斬 - pixiv 作品页",
+    description: "Work ID: 56866592",
     href: "https://www.pixiv.net/artworks/56866592",
+    Icon: PixivIcon,
+    iconClassName: platformStyles.pixiv,
+  },
+  {
+    eyebrow: "部分旧作角色立绘素材",
+    title: "dairi - pixiv 主页",
+    description: "User ID: 4920496",
+    href: "https://www.pixiv.net/users/4920496",
     Icon: PixivIcon,
     iconClassName: platformStyles.pixiv,
   },
@@ -147,9 +155,9 @@ const developers: Array<{ name: string; role: string; links: Platform[] }> = [
 
 const friendLinks = [
   {
-    eyebrow: "友情链接",
-    title: "西电 Shining 动漫社 B站主页",
-    description: "西电 Shining 动漫社官方哔哩哔哩空间",
+    eyebrow: "推广支持",
+    title: "西电 Shining 动漫社",
+    description: "西电 Shining 动漫社哔哩哔哩主页",
     href: "https://space.bilibili.com/30032438",
     Icon: BilibiliIcon,
     iconClassName: platformStyles.bilibili,
