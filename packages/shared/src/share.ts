@@ -3,8 +3,7 @@ import type {
   GuessResult,
   PublicGameSession,
 } from "./types";
-import { GAME_CONTENT_DEFINITIONS } from "./fields";
-import { isUnlimitedGuessLimit, visibleQuestionFields } from "./questionScope";
+import { isUnlimitedGuessLimit } from "./questionScope";
 
 const SHARE_SYMBOLS: Record<FeedbackStatus, string> = {
   exact: "🟩",
@@ -32,10 +31,8 @@ export const createShareText = (
     session.status === "won"
       ? `${session.guesses.length}/${maxGuessLabel}`
       : `X/${maxGuessLabel}`;
-  const fieldCount = visibleQuestionFields(
-    session.questionScope?.rules,
-    GAME_CONTENT_DEFINITIONS[session.contentType].fields,
-  ).length;
+  const fieldCount =
+    session.activeFields?.length ?? session.guesses[0]?.feedback.length ?? 0;
   const lines = [
     `东方芙一把 ${puzzleLabel}`,
     result,

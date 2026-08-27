@@ -41,6 +41,6 @@ describe("HomePage", () => {
   it("falls back to placeholder when catalog request fails", async () => {
     vi.mocked(api.catalog).mockRejectedValue(new Error("down"));
     render(<HomePage />);
-    expect(await screen.findByText("-")).toBeTruthy();
+    expect(await screen.findAllByText("-")).toHaveLength(3);
   });
 });
