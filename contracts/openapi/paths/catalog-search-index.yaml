@@ -1,0 +1,60 @@
+# GET /api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}
+get:
+  operationId: catalog_search_index
+  tags:
+    - catalog
+  summary: 获取版本化角色搜索索引
+  parameters:
+    - name: catalogVersion
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    - name: indexSchemaVersion
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    "200":
+      description: 不可变角色搜索索引
+      headers:
+        ETag:
+          schema:
+            type: string
+        Cache-Control:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/character.yaml#/CatalogSearchIndex"
+    "304":
+      description: 索引内容未变化
+      headers:
+        ETag:
+          schema:
+            type: string
+        Cache-Control:
+          schema:
+            type: string
+    "400":
+      description: 索引 schema 版本不支持
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "404":
+      description: 题库版本不存在
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "503":
+      description: 题库未初始化或快照不可读
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"

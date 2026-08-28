@@ -207,7 +207,29 @@ export type CatalogContentSummary = {
 };
 
 export type CatalogSummary = {
+  version?: string;
   dailyDateKey: string;
   contents: CatalogContentSummary[];
   works: Work[];
+};
+
+export type CatalogSearchIndexEntry = Omit<
+  CharacterSearchResult,
+  "searchText"
+> & {
+  searchTerms: string[];
+};
+
+export type CatalogSearchIndex = {
+  catalogVersion: string;
+  indexSchemaVersion: number;
+  entries: CatalogSearchIndexEntry[];
+};
+
+export type CharacterSearchPolicy = {
+  mode: "remote" | "local-primary";
+  indexSchemaVersion: number;
+  revision: string;
+  gameScopeMode: "strict" | "full";
+  revalidateAfterSeconds: 60;
 };
