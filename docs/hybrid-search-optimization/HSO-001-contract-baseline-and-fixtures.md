@@ -3,7 +3,7 @@
 **类型**：契约/基线 Issue  
 **优先级**：P0  
 **依赖**：无  
-**状态**：未开始  
+**状态**：已完成
 **建议标签**：`type:architecture` `area:api` `area:web` `area:test` `area:performance`
 
 ## 要解决的问题
@@ -72,3 +72,13 @@
 ## 依赖与后续
 
 本 Issue 完成后，HSO-002 与 HSO-003 可以基于同一契约并行；HSO-005 在 HSO-002 生成物稳定后实现新增 resolve 端点。任何后续语义调整必须先更新黄金样例并说明兼容影响。
+
+## 实施与验收记录（2026-08-28）
+
+- 已交付语言无关 fixture：`search-parity-v1.json`、`failure-matrix-v1.json`、`compatibility-matrix-v1.json`，Go 和 Web 测试直接读取同一份 JSON。
+- 已将 Playwright 基线脚本移入 `apps/web/e2e/hso-001-baseline.spec.ts`，使用显式 Playwright 类型、独立页面、真实冷热连接采样和会话清理。
+- 已新增 `docs/hybrid-search-optimization/baseline.md`，记录日期、提交、环境、网络条件、命令、体积与采样结果。
+- 已用 `gofmt`、`pnpm --filter @touhouflandre/web typecheck`、`go test ./internal/game -count=1`、`pnpm --filter @touhouflandre/web exec vitest run src/fixtures/hso-001-fixtures.test.ts` 和 Playwright 基线命令验证。
+- Playwright 基线结果：`/api/characters/search` 热连接和冷连接均返回 200，热样本 `p50=33.56ms`、`p95=41.49ms`、`p99=46.17ms`，冷样本 `p50=40.12ms`、`p95=91.90ms`、`p99=294.08ms`；桌面与移动视口的建议可见时间也已记录在 `baseline.md`。
+- 单人加载基线使用本地 disposable 数据库并在每轮后 `forfeit` 清理；fresh 场景的 session 创建和恢复都保持了 200 的 cleanup 状态。
+- 本 Issue 未修改生产 OpenAPI、handler、WebSocket 或生成物；后续混合搜索实现仍由 HSO-002/003/004/005 承接。
