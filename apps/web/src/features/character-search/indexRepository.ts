@@ -6,6 +6,13 @@ export type IndexRepositoryOptions = {
   fetch?: typeof globalThis.fetch;
 };
 
+export class SearchIndexHttpError extends Error {
+  constructor(readonly status: number, readonly retryAfterMs?: number) {
+    super(`search index request failed: ${status}`);
+    this.name = "SearchIndexHttpError";
+  }
+}
+
 type Key = `${string}:${number}`;
 
 export class CatalogSearchIndexRepository {
@@ -62,7 +69,11 @@ export class CatalogSearchIndexRepository {
   private async fetchAndValidate(version: string, schemaVersion: number, cache?: RequestCache, signal?: AbortSignal): Promise<CatalogSearchIndex> {
     const url = `${this.baseUrl}/api/catalog/${encodeURIComponent(version)}/search-index/${schemaVersion}`;
     const response = await this.fetcher(url, cache ? { cache, signal } : { signal });
-    if (!response.ok) throw new Error(`search index request failed: ${response.status}`);
+    if (!response.ok) {
+      const retryAfter = response.headers.get("Retry-After");
+      const seconds = retryAfter && /^\d+(?:\.\d+)?$/.test(retryAfter) ? Number(retryAfter) * 1000 : undefined;
+      throw new SearchIndexHttpError(response.status, seconds);
+    }
     let body: unknown;
     try {
       body = await response.json();
