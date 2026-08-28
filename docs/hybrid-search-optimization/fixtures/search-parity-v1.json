@@ -1,0 +1,471 @@
+{
+  "contract": "hso.search-parity.v1",
+  "catalogVersion": "catalog-v1",
+  "indexSchemaVersion": 1,
+  "characters": [
+    {
+      "id": "reimu_hakurei",
+      "enabledAsGuess": true,
+      "appearanceOrder": 1,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "博丽灵梦",
+        "zhHant": "博麗靈夢",
+        "ja": "博麗霊夢",
+        "en": "Reimu Hakurei",
+        "romaji": "Hakurei Reimu",
+        "aliases": ["灵梦", "紅白", "bllm"]
+      },
+      "firstAppearance": {
+        "workId": "th06_eosd",
+        "workTitle": "东方红魔乡",
+        "workType": "game",
+        "releaseYear": 2002,
+        "mainlineIndex": 6,
+        "workPinyinInitials": ["dfhx", "th06"]
+      },
+      "species": ["human"],
+      "affiliations": ["hakurei_shrine"],
+      "locations": ["hakurei_shrine"],
+      "hairColors": ["brown"]
+    },
+    {
+      "id": "marisa_kirisame",
+      "enabledAsGuess": true,
+      "appearanceOrder": 2,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "雾雨魔理沙",
+        "zhHant": "霧雨魔理沙",
+        "ja": "霧雨魔理沙",
+        "en": "Marisa Kirisame",
+        "romaji": "Kirisame Marisa",
+        "aliases": ["魔理沙"]
+      },
+      "firstAppearance": {
+        "workId": "th06_eosd",
+        "workTitle": "东方红魔乡",
+        "workType": "game",
+        "releaseYear": 2002,
+        "mainlineIndex": 6,
+        "workPinyinInitials": ["dfhx", "th06"]
+      },
+      "species": ["human"],
+      "affiliations": ["kirisame_house"],
+      "locations": ["kirisame_house"],
+      "hairColors": ["blonde"]
+    },
+    {
+      "id": "patchouli_knowledge",
+      "enabledAsGuess": true,
+      "appearanceOrder": 3,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "帕秋莉·诺蕾姬",
+        "zhHant": "帕秋莉·諾蕾姬",
+        "ja": "パチュリー・ノーレッジ",
+        "en": "Patchouli Knowledge",
+        "romaji": "Patchouli Knowledge",
+        "aliases": ["帕秋莉"]
+      },
+      "firstAppearance": {
+        "workId": "th06_eosd",
+        "workTitle": "东方红魔乡",
+        "workType": "game",
+        "releaseYear": 2002,
+        "mainlineIndex": 6,
+        "workPinyinInitials": ["dfhx", "th06"]
+      },
+      "species": ["magician"],
+      "affiliations": ["scarlet_devil_mansion"],
+      "locations": ["scarlet_devil_mansion"],
+      "hairColors": ["purple"]
+    },
+    {
+      "id": "alice_margatroid",
+      "enabledAsGuess": true,
+      "appearanceOrder": 4,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "爱丽丝·玛格特洛依德",
+        "zhHant": "愛麗絲·瑪格特羅依德",
+        "ja": "アリス・マーガトロイド",
+        "en": "Alice Margatroid",
+        "romaji": "Alice Margatroid",
+        "aliases": ["爱丽丝"]
+      },
+      "firstAppearance": {
+        "workId": "th07_pcb",
+        "workTitle": "东方妖妖梦",
+        "workType": "game",
+        "releaseYear": 2003,
+        "mainlineIndex": 7,
+        "workPinyinInitials": ["dfyym", "th07"]
+      },
+      "species": ["magician"],
+      "affiliations": ["forest_of_magic"],
+      "locations": ["forest_of_magic"],
+      "hairColors": ["blonde"]
+    },
+    {
+      "id": "minoriko_aki",
+      "enabledAsGuess": true,
+      "appearanceOrder": 1001,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "秋穰子",
+        "zhHant": "秋穰子",
+        "ja": "秋 穣子",
+        "en": "Minoriko Aki",
+        "romaji": "Aki Minoriko",
+        "aliases": ["秋姐妹"]
+      },
+      "firstAppearance": {
+        "workId": "th09_pofv",
+        "workTitle": "东方花映塚",
+        "workType": "game",
+        "releaseYear": 2005,
+        "mainlineIndex": 9,
+        "workPinyinInitials": ["dfhyz", "th09"]
+      },
+      "species": ["harvest_goddess"],
+      "affiliations": ["aki_sisters"],
+      "locations": ["human_village"],
+      "hairColors": ["brown"]
+    },
+    {
+      "id": "shizuha_aki",
+      "enabledAsGuess": true,
+      "appearanceOrder": 1001,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "秋静叶",
+        "zhHant": "秋靜葉",
+        "ja": "秋 静葉",
+        "en": "Shizuha Aki",
+        "romaji": "Aki Shizuha",
+        "aliases": ["秋姐妹"]
+      },
+      "firstAppearance": {
+        "workId": "th09_pofv",
+        "workTitle": "东方花映塚",
+        "workType": "game",
+        "releaseYear": 2005,
+        "mainlineIndex": 9,
+        "workPinyinInitials": ["dfhyz", "th09"]
+      },
+      "species": ["harvest_goddess"],
+      "affiliations": ["aki_sisters"],
+      "locations": ["human_village"],
+      "hairColors": ["brown"]
+    },
+    {
+      "id": "eirin_yagokoro",
+      "enabledAsGuess": false,
+      "appearanceOrder": 5,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "八意永琳",
+        "zhHant": "八意永琳",
+        "ja": "八意 永琳",
+        "en": "Eirin Yagokoro",
+        "romaji": "Yagokoro Eirin",
+        "aliases": ["永琳"]
+      },
+      "firstAppearance": {
+        "workId": "th08_imperishable_night",
+        "workTitle": "东方永夜抄",
+        "workType": "game",
+        "releaseYear": 2004,
+        "mainlineIndex": 8,
+        "workPinyinInitials": ["dfyyc", "th08"]
+      },
+      "species": ["lunarian"],
+      "affiliations": ["bamboo_forest"],
+      "locations": ["bamboo_forest"],
+      "hairColors": ["white"]
+    }
+  ],
+  "cases": [
+    {
+      "name": "simplified chinese name",
+      "query": "博丽灵梦",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "traditional chinese name",
+      "query": "博麗靈夢",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "japanese name",
+      "query": "博麗霊夢",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "english name",
+      "query": "Reimu Hakurei",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "romaji name",
+      "query": "Hakurei Reimu",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "hyphen stripping",
+      "query": "Reimu-Hakurei",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "middle dot stripping",
+      "query": "Reimu・Hakurei",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 1
+      }
+    },
+    {
+      "name": "fullwidth th code",
+      "query": "ＴＨ０６",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge"],
+        "total": 3
+      }
+    },
+    {
+      "name": "work title",
+      "query": "东方红魔乡",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge"],
+        "total": 3
+      }
+    },
+    {
+      "name": "work id",
+      "query": "th06_eosd",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge"],
+        "total": 3
+      }
+    },
+    {
+      "name": "work pinyin initials",
+      "query": "DFHX",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge"],
+        "total": 3
+      }
+    },
+    {
+      "name": "boundary negative",
+      "query": "梦东",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": [],
+        "total": 0
+      }
+    },
+    {
+      "name": "disabled guesser excluded",
+      "query": "永琳",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": [],
+        "total": 0
+      }
+    },
+    {
+      "name": "shared alias tie-break",
+      "query": "秋姐妹",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["minoriko_aki", "shizuha_aki"],
+        "total": 2
+      }
+    },
+    {
+      "name": "empty selected ids deny all",
+      "query": "",
+      "selectedCharacterIds": [],
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": [],
+        "total": 0
+      }
+    },
+    {
+      "name": "filters before paging",
+      "query": "",
+      "selectedCharacterIds": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge", "alice_margatroid"],
+      "workIds": ["th06_eosd"],
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 1,
+      "expected": {
+        "ids": ["reimu_hakurei"],
+        "total": 3
+      }
+    },
+    {
+      "name": "appearance pagination",
+      "query": "",
+      "selectedCharacterIds": ["reimu_hakurei", "marisa_kirisame", "alice_margatroid"],
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 1,
+      "limit": 1,
+      "expected": {
+        "ids": ["marisa_kirisame"],
+        "total": 3
+      }
+    },
+    {
+      "name": "appearance descending",
+      "query": "",
+      "selectedCharacterIds": ["minoriko_aki", "shizuha_aki", "alice_margatroid"],
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": true,
+      "offset": 0,
+      "limit": 3,
+      "expected": {
+        "ids": ["minoriko_aki", "shizuha_aki", "alice_margatroid"],
+        "total": 3
+      }
+    },
+    {
+      "name": "name ascending",
+      "query": "",
+      "selectedCharacterIds": ["alice_margatroid", "marisa_kirisame", "reimu_hakurei"],
+      "workIds": null,
+      "sortBy": "name",
+      "descending": false,
+      "offset": 0,
+      "limit": 3,
+      "expected": {
+        "ids": ["alice_margatroid", "reimu_hakurei", "marisa_kirisame"],
+        "total": 3
+      }
+    },
+    {
+      "name": "name descending",
+      "query": "",
+      "selectedCharacterIds": ["alice_margatroid", "marisa_kirisame", "reimu_hakurei"],
+      "workIds": null,
+      "sortBy": "name",
+      "descending": true,
+      "offset": 0,
+      "limit": 3,
+      "expected": {
+        "ids": ["marisa_kirisame", "reimu_hakurei", "alice_margatroid"],
+        "total": 3
+      }
+    }
+  ]
+}

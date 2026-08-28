@@ -1,0 +1,109 @@
+{
+  "contract": "hso.compatibility-matrix.v1",
+  "cases": [
+    {
+      "name": "old web with old api",
+      "web": "old",
+      "api": "old",
+      "policyMode": "remote",
+      "indexState": "missing",
+      "policyState": "missing",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "legacy",
+        "compatibilityReason": "old-stack-keeps-current-search-path"
+      }
+    },
+    {
+      "name": "old web with new api",
+      "web": "old",
+      "api": "new",
+      "policyMode": "remote",
+      "indexState": "healthy",
+      "policyState": "healthy",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "legacy",
+        "compatibilityReason": "old-web-uses-remote-search"
+      }
+    },
+    {
+      "name": "new web with old api",
+      "web": "new",
+      "api": "old",
+      "policyMode": "remote",
+      "indexState": "missing",
+      "policyState": "missing",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "legacy",
+        "compatibilityReason": "old-api-falls-back-to-current-search"
+      }
+    },
+    {
+      "name": "new web with new api remote",
+      "web": "new",
+      "api": "new",
+      "policyMode": "remote",
+      "indexState": "healthy",
+      "policyState": "healthy",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "modern",
+        "compatibilityReason": "remote-policy-keeps-go-as-authority"
+      }
+    },
+    {
+      "name": "new web with new api local-primary",
+      "web": "new",
+      "api": "new",
+      "policyMode": "local-primary",
+      "indexState": "healthy",
+      "policyState": "healthy",
+      "expected": {
+        "searchRoute": "local",
+        "puzzleFlow": "modern",
+        "compatibilityReason": "healthy-index-uses-local-search"
+      }
+    },
+    {
+      "name": "new web with new api local-primary and index failure",
+      "web": "new",
+      "api": "new",
+      "policyMode": "local-primary",
+      "indexState": "failed",
+      "policyState": "healthy",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "modern",
+        "compatibilityReason": "index-failure-forces-go-fallback"
+      }
+    },
+    {
+      "name": "new web with new api local-primary and policy failure",
+      "web": "new",
+      "api": "new",
+      "policyMode": "local-primary",
+      "indexState": "healthy",
+      "policyState": "failed",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "modern",
+        "compatibilityReason": "policy-failure-keeps-remote-safe"
+      }
+    },
+    {
+      "name": "old web with new api local-primary",
+      "web": "old",
+      "api": "new",
+      "policyMode": "local-primary",
+      "indexState": "healthy",
+      "policyState": "healthy",
+      "expected": {
+        "searchRoute": "remote",
+        "puzzleFlow": "legacy",
+        "compatibilityReason": "old-web-lacks-local-search-path"
+      }
+    }
+  ]
+}
