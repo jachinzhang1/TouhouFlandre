@@ -3,7 +3,7 @@
 **类型**：功能/Web 基础 Issue  
 **优先级**：P0  
 **依赖**：HSO-001  
-**状态**：未开始  
+**状态**：已完成
 **建议标签**：`type:feature` `area:web` `area:architecture` `area:test` `area:performance`
 
 ## 要解决的问题
@@ -71,3 +71,16 @@
 ## 依赖与后续
 
 依赖 HSO-001 的 fixture 和冻结语义。HSO-004 负责把本内核与 HSO-002 的真实端点、动态策略、远程请求和 React 生命周期组合起来。
+
+## 实施与验收记录（2026-08-28）
+
+- 已交付独立的 `schema.ts`、`engine.ts` 与 `indexRepository.ts`：索引运行时校验、Go 一致的查询归一化/字段边界匹配/过滤/排序/分页，以及按 `(catalogVersion, indexSchemaVersion)` 的内存实例与共享加载。
+- 索引仓库使用自身 `AbortController` 管理共享 fetch；消费者取消只终止自身订阅。失败 in-flight 会清理并允许重试；普通缓存内容损坏、schema/版本校验失败时，同一 policy revision 只执行一次 `cache: "reload"` repair，修复失败不会循环下载。
+- 新增 `engine.test.ts`、`schema.test.ts`、`indexRepository.test.ts`。测试直接读取 HSO-001 `search-parity-v1.json` 的全部黄金样例，并覆盖空允许集合、term 边界、重复 ID/坏字段、并发去重、消费者取消、repair 成功/失败和版本隔离；固定规模 8 倍 fixture 的同步搜索 P95 断言小于 16ms。
+- 验证通过：
+  - `pnpm --filter @touhouflandre/web exec vitest run src/fixtures/hso-001-fixtures.test.ts`
+  - `pnpm --filter @touhouflandre/web typecheck`
+  - `pnpm --filter @touhouflandre/web test`（56 个文件，279 个测试）
+  - `pnpm --filter @touhouflandre/web build`
+  - `pnpm --filter @touhouflandre/web exec vitest run src/features/character-search`
+- 未修改 `useCharacterSearch`、页面、OpenAPI/生成物、Go 搜索、数据库或浏览器持久化 schema；HSO-004 继续负责路由与回退接入。未引入新的运行时依赖。
