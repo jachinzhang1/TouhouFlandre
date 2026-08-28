@@ -3,7 +3,7 @@
 **类型**：功能/Web 架构 Issue  
 **优先级**：P0  
 **依赖**：HSO-002、HSO-003  
-**状态**：未开始  
+**状态**：已完成（2026-08-28）
 **建议标签**：`type:feature` `area:web` `area:architecture` `area:reliability` `area:test`
 
 ## 要解决的问题
@@ -87,3 +87,19 @@
 ## 依赖与后续
 
 依赖 HSO-002 的端点和 HSO-003 的纯内核。完成后 HSO-006 只需要补齐各模式的版本、允许范围和 scope mode，不能绕过 Provider 直接调用 engine 或 index repository。搜索请求封装由本 Issue 的独立 adapter 所有，HSO-005 不修改同一路径。
+
+## 实施与验收记录（2026-08-28）
+
+- 新增 `CharacterSearchProvider`、`CharacterSearchRouter` 与独立 `searchApi` adapter，并在根布局挂载单例 Provider；策略请求、索引请求和页面查询分别保持各自取消层级。
+- `useCharacterSearch` 现通过 Provider 统一路由，扩展单人/多人上下文的可选 `catalogVersion` 与 `selectedCharacterIds`；未提供本地字段的既有调用方继续使用远程 API 和原 120ms 防抖。
+- 实现策略冷启动/重验/visibility 重验、3 秒策略超时、5 分钟 last-known-good、local-primary/remote 切换，以及 `strict`/`full` 游戏范围 fail-closed 规则。
+- 实现索引加载 5 秒超时、瞬时故障单次远程 fallback、5 秒/30 秒/2 分钟/5 分钟抖动退避与单探针半开；支持 429 `Retry-After` 上限处理。坏缓存 repair 仍由 HSO-003 仓库按同键同 revision 去重，repair/校验/引擎故障进入结构性熔断。
+- 远程 adapter 保持原业务参数，按固定 fallback reason 发送观测 header；策略 404/405 省略 header，跨源预检以无 header 重试一次。迟到的本地/索引 Promise 不会覆盖已发布结果。
+- 新增 `router.test.ts`，覆盖冷启动策略故障、旧 API route-missing、完整本地上下文、strict 空范围、full 强制远程、瞬时退避和策略 3 秒边界；既有索引、引擎与 Hook 测试继续通过。
+- 验证通过：
+  - `pnpm --filter @touhouflandre/web typecheck`
+  - `pnpm --filter @touhouflandre/web exec vitest run src/features/character-search src/hooks/useCharacterSearch.test.tsx`（24 tests）
+  - `pnpm --filter @touhouflandre/web test`（57 files，287 tests）
+  - `pnpm --filter @touhouflandre/web build`
+  - Windows Git `diff --check`
+- 未新增迁移、OpenAPI 契约或生成物；角色目录、SingleGamePage、GuessInputBar、竞速/接力调用参数仍由 HSO-006 接入。后续需由 HSO-006 为各模式补齐真实版本、允许 ID 与 scope mode。
