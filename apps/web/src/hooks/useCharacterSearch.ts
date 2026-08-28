@@ -7,16 +7,23 @@ import type {
   SortDirection,
 } from "@touhouflandre/shared";
 import { api } from "../lib/api";
+import {
+  useCharacterSearchRouter,
+} from "../features/character-search/CharacterSearchProvider";
 
 export type SinglePlayerCharacterSearchContext = {
   kind: "single-session";
   sessionId: string;
+  catalogVersion?: string;
+  selectedCharacterIds?: readonly string[];
 };
 
 export type MultiplayerCharacterSearchContext = {
   kind: "multiplayer-match";
   roomId: string;
   matchIndex: number;
+  catalogVersion?: string;
+  selectedCharacterIds?: readonly string[];
 };
 
 export type CharacterSearchContext =
@@ -60,6 +67,7 @@ export function useCharacterSearch(
     sort = "appearance",
     version,
   } = options;
+  const router = useCharacterSearchRouter();
   const sessionId =
     context?.kind === "single-session" ? context.sessionId : undefined;
   const roomId =
@@ -90,23 +98,40 @@ export function useCharacterSearch(
     setResults([]);
     setTotal(0);
 
-    const timeout = window.setTimeout(async () => {
+    const request = {
+      q: query,
+      sessionId,
+      roomId,
+      matchIndex,
+      catalogVersion: context?.catalogVersion ?? (context ? undefined : version),
+      workIds,
+      limit,
+      offset,
+      sort,
+      direction,
+      contextKind: context?.kind ?? "catalog",
+      selectedCharacterIds: context?.selectedCharacterIds,
+      retry: requestVersion > 0,
+    } as const;
+    const run = async () => {
       try {
-        const payload = await api.searchCharacters(
-          {
-            q: query,
-            sessionId,
-            roomId,
-            matchIndex,
-            catalogVersion: context ? undefined : version,
-            workIds,
-            limit,
-            offset,
-            sort,
-            direction,
-          },
-          controller.signal,
-        );
+        const payload = router
+          ? await router.search(request, controller.signal)
+          : await api.searchCharacters(
+              {
+                q: query,
+                sessionId,
+                roomId,
+                matchIndex,
+                catalogVersion: context ? undefined : version,
+                workIds,
+                limit,
+                offset,
+                sort,
+                direction,
+              },
+              controller.signal,
+            );
         if (controller.signal.aborted) return;
         setResults(payload.results);
         setTotal(payload.total);
@@ -119,7 +144,9 @@ export function useCharacterSearch(
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, delay);
+    };
+    const localCapable = router?.prefersLocal(request) ?? false;
+    const timeout = window.setTimeout(() => void run(), localCapable ? 0 : delay);
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
@@ -138,6 +165,10 @@ export function useCharacterSearch(
     sort,
     version,
     workIds,
+    router,
+    requestVersion,
+    context?.catalogVersion,
+    context?.selectedCharacterIds,
   ]);
 
   return { results, total, error, loading, retry };
