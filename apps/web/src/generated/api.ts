@@ -109,6 +109,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取版本化角色搜索索引 */
+        get: operations["catalog_search_index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog/search-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取角色搜索策略 */
+        get: operations["catalog_search_policy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/puzzles/{mode}": {
         parameters: {
             query?: never;
@@ -660,10 +694,47 @@ export interface components {
             visibleFieldCount: number;
         };
         CatalogSummary: {
+            /** @description 当前题库版本；旧 API 可以省略，新 API 必须返回非空值。 */
+            version?: string;
             /** @description 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。 */
             dailyDateKey: string;
             contents: components["schemas"]["CatalogContentSummary"][];
             works: components["schemas"]["Work"][];
+        };
+        /** @description 版本化角色搜索索引中的公开角色条目，不包含答案专用字段。 */
+        CatalogSearchIndexEntry: {
+            id: string;
+            name: string;
+            subtitle: string;
+            initials: string;
+            avatarUrl: string;
+            appearanceOrder: number;
+            workId: string;
+            firstAppearance: {
+                workTitle: string;
+                releaseYear: number;
+            };
+            species: string[];
+            locations: string[];
+            affiliations: string[];
+            hairColors: components["schemas"]["HairColor"][];
+            searchTerms: string[];
+            nameSortKey: string;
+        };
+        CatalogSearchIndex: {
+            catalogVersion: string;
+            indexSchemaVersion: number;
+            entries: components["schemas"]["CatalogSearchIndexEntry"][];
+        };
+        CatalogSearchPolicy: {
+            /** @enum {string} */
+            mode: "remote" | "local-primary";
+            indexSchemaVersion: number;
+            revision: string;
+            /** @enum {string} */
+            gameScopeMode: "strict" | "full";
+            /** @enum {integer} */
+            revalidateAfterSeconds: 60;
         };
         /** @enum {string} */
         QuestionDifficultyPreset: "easy" | "normal" | "hard" | "lunatic" | "extra";
@@ -1498,7 +1569,10 @@ export interface operations {
                 sort?: "name" | "appearance";
                 direction?: "asc" | "desc";
             };
-            header?: never;
+            header?: {
+                /** @description 可选的低基数远程回退观测原因；不参与搜索语义。 */
+                "X-Character-Search-Fallback-Reason"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1625,6 +1699,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    catalog_search_index: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogVersion: string;
+                indexSchemaVersion: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 不可变角色搜索索引 */
+            200: {
+                headers: {
+                    ETag?: string;
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSearchIndex"];
+                };
+            };
+            /** @description 索引内容未变化 */
+            304: {
+                headers: {
+                    ETag?: string;
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 索引 schema 版本不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库版本不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库未初始化或快照不可读 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    catalog_search_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前角色搜索策略 */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSearchPolicy"];
                 };
             };
         };

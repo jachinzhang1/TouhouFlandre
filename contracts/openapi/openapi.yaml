@@ -39,6 +39,10 @@ paths:
     $ref: ./paths/catalog-full.yaml
   /api/catalog/characters:
     $ref: ./paths/catalog-characters.yaml
+  /api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}:
+    $ref: ./paths/catalog-search-index.yaml
+  /api/catalog/search-policy:
+    $ref: ./paths/catalog-search-policy.yaml
   /api/puzzles/{mode}:
     $ref: ./paths/puzzles.yaml
   /api/sessions/{sessionId}/guess:
@@ -109,6 +113,12 @@ components:
       $ref: ./schemas/character.yaml#/CatalogContentSummary
     CatalogSummary:
       $ref: ./schemas/character.yaml#/CatalogSummary
+    CatalogSearchIndexEntry:
+      $ref: ./schemas/character.yaml#/CatalogSearchIndexEntry
+    CatalogSearchIndex:
+      $ref: ./schemas/character.yaml#/CatalogSearchIndex
+    CatalogSearchPolicy:
+      $ref: ./schemas/character.yaml#/CatalogSearchPolicy
     QuestionDifficultyPreset:
       $ref: ./schemas/question-scope.yaml#/QuestionDifficultyPreset
     DailyQuestionDifficulty:

@@ -289,6 +289,9 @@ CatalogSummary:
     - contents
     - works
   properties:
+    version:
+      type: string
+      description: 当前题库版本；旧 API 可以省略，新 API 必须返回非空值。
     dailyDateKey:
       type: string
       description: 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。
@@ -316,3 +319,121 @@ CatalogCharacters:
       type: array
       items:
         $ref: "#/CharacterSearchResult"
+
+CatalogSearchIndexEntry:
+  type: object
+  description: 版本化角色搜索索引中的公开角色条目，不包含答案专用字段。
+  required:
+    - id
+    - name
+    - subtitle
+    - initials
+    - avatarUrl
+    - appearanceOrder
+    - workId
+    - firstAppearance
+    - species
+    - locations
+    - affiliations
+    - hairColors
+    - searchTerms
+    - nameSortKey
+  properties:
+    id:
+      type: string
+      minLength: 1
+    name:
+      type: string
+    subtitle:
+      type: string
+    initials:
+      type: string
+    avatarUrl:
+      type: string
+    appearanceOrder:
+      type: integer
+    workId:
+      type: string
+    firstAppearance:
+      type: object
+      required:
+        - workTitle
+        - releaseYear
+      properties:
+        workTitle:
+          type: string
+        releaseYear:
+          type: integer
+    species:
+      type: array
+      items:
+        type: string
+    locations:
+      type: array
+      items:
+        type: string
+    affiliations:
+      type: array
+      items:
+        type: string
+    hairColors:
+      type: array
+      items:
+        $ref: "#/HairColor"
+    searchTerms:
+      type: array
+      minItems: 1
+      items:
+        type: string
+        minLength: 1
+    nameSortKey:
+      type: string
+      minLength: 1
+
+CatalogSearchIndex:
+  type: object
+  required:
+    - catalogVersion
+    - indexSchemaVersion
+    - entries
+  properties:
+    catalogVersion:
+      type: string
+      minLength: 1
+    indexSchemaVersion:
+      type: integer
+      minimum: 1
+    entries:
+      type: array
+      items:
+        $ref: "#/CatalogSearchIndexEntry"
+
+CatalogSearchPolicy:
+  type: object
+  required:
+    - mode
+    - indexSchemaVersion
+    - revision
+    - gameScopeMode
+    - revalidateAfterSeconds
+  properties:
+    mode:
+      type: string
+      enum:
+        - remote
+        - local-primary
+    indexSchemaVersion:
+      type: integer
+      minimum: 1
+    revision:
+      type: string
+      minLength: 1
+    gameScopeMode:
+      type: string
+      enum:
+        - strict
+        - full
+    revalidateAfterSeconds:
+      type: integer
+      enum:
+        - 60

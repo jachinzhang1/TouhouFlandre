@@ -3,7 +3,7 @@
 **类型**：功能/服务端基础 Issue  
 **优先级**：P0  
 **依赖**：HSO-001  
-**状态**：未开始  
+**状态**：已完成
 **建议标签**：`type:feature` `area:api` `area:contracts` `area:web-proxy` `area:performance`
 
 ## 要解决的问题
@@ -86,3 +86,22 @@ GET /api/catalog/search-policy
 ## 依赖与后续
 
 依赖 HSO-001 冻结索引 v1 和测试样例。完成后 HSO-004 可以消费策略与索引；HSO-005 在其后增加单人 resolve 契约，避免两个 Issue 同时修改同一生成物和 handler 接口面。
+
+## 实施与验收记录（2026-08-28）
+
+- 已交付版本化搜索索引与策略契约：新增 `/api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}` 和 `/api/catalog/search-policy`，同步 OpenAPI 源、Go/TypeScript 生成物与 shared 类型；`CatalogSummary.version` 保持 additive 可选声明，新接口返回非空当前版本。
+- 已实现相互隔离的 `CatalogSearchSourceProvider` 与 `CatalogSearchSnapshotProvider`：按版本/版本加 schema 缓存、并发首次加载合并、容量 8 LRU、失败可重试与防御性复制；索引仅投影 `enabledAsGuess` 公开字段，复用 Go 搜索 terms/sort key，稳定 JSON/ETag，source 故障不受 snapshot 投影失败影响。
+- 已将 Go 远程搜索切换到 source Provider 并保留 `game.SearchCharacters` 语义；增加策略环境变量解析、revision、索引条件 304/immutable 头、错误 `no-store`、fallback reason 归一化、CORS 与 Prometheus 低基数观测。Next 同源代理透传状态、缓存头、ETag、条件请求和 fallback reason，代理错误不缓存。
+- 已更新 `.env.example`、生产 Compose API 环境注入和 `docs/deployment.md`，说明首次保持 `remote`、切换/回滚顺序、schema/revision 提升方式。本 Issue 未新增数据库表或迁移，也未实现 HSO-003 浏览器本地搜索、HSO-004 混合路由或 HSO-005 resolve。
+- 验证通过：
+  - `go test ./internal/game -count=1`
+  - `go test ./internal/handler ./internal/config -count=1`
+  - `go test ./internal/server -run 'TestCatalogSearch|TestCharacterSearchFallbackReasonCorsAndSemantics' -count=1`
+  - `task test:go`（Go 全量）
+  - `pnpm --filter @touhouflandre/web typecheck`
+  - `pnpm --filter @touhouflandre/web test`（53 个文件，269 个测试）
+  - 新增三组 Next 代理测试（索引/策略/远程搜索）及索引条件请求测试
+  - `pnpm build`
+  - `pnpm lint:openapi`、`pnpm check:openapi-refs`
+  - Go/Web OpenAPI 产物连续二次生成校验和一致；`git diff --check` 通过。
+- 部署/回滚保持可逆：搜索策略默认 `remote`；切换时先确认全 API fleet 支持新契约再设 `local-primary`，回滚先改回 `remote`，等待策略重验后再回滚 binary。索引内容变化提升 `indexSchemaVersion`，仅结构修复提升 `CHARACTER_SEARCH_POLICY_REVISION`。

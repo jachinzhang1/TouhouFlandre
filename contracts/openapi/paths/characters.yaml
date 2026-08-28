@@ -72,6 +72,12 @@ get:
         enum:
           - asc
           - desc
+    - name: X-Character-Search-Fallback-Reason
+      in: header
+      required: false
+      description: 可选的低基数远程回退观测原因；不参与搜索语义。
+      schema:
+        type: string
   responses:
     "200":
       description: 搜索结果

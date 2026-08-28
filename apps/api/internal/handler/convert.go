@@ -205,6 +205,28 @@ func toSearchResult(character game.Character, searchText, nameSortKey string) op
 	}
 }
 
+func toOpenAPICatalogSearchIndex(index game.CatalogSearchIndex) openapi.CatalogSearchIndex {
+	entries := make([]openapi.CatalogSearchIndexEntry, 0, len(index.Entries))
+	for _, entry := range index.Entries {
+		hairColors := make([]openapi.HairColor, 0, len(entry.HairColors))
+		for _, color := range entry.HairColors {
+			hairColors = append(hairColors, openapi.HairColor(color))
+		}
+		entries = append(entries, openapi.CatalogSearchIndexEntry{
+			Id: entry.ID, Name: entry.Name, Subtitle: entry.Subtitle, Initials: entry.Initials,
+			AvatarUrl: entry.AvatarURL, AppearanceOrder: entry.AppearanceOrder, WorkId: entry.WorkID,
+			FirstAppearance: struct {
+				ReleaseYear int    `json:"releaseYear"`
+				WorkTitle   string `json:"workTitle"`
+			}{ReleaseYear: entry.FirstAppearance.ReleaseYear, WorkTitle: entry.FirstAppearance.WorkTitle},
+			Species: append([]string(nil), entry.Species...), Locations: append([]string(nil), entry.Locations...),
+			Affiliations: append([]string(nil), entry.Affiliations...), HairColors: hairColors,
+			SearchTerms: append([]string(nil), entry.SearchTerms...), NameSortKey: entry.NameSortKey,
+		})
+	}
+	return openapi.CatalogSearchIndex{CatalogVersion: index.CatalogVersion, IndexSchemaVersion: index.IndexSchemaVersion, Entries: entries}
+}
+
 func toOpenAPIGuessResult(result game.GuessResult) openapi.GuessResult {
 	feedback := make([]openapi.FieldFeedback, 0, len(result.Feedback))
 	for _, field := range result.Feedback {
