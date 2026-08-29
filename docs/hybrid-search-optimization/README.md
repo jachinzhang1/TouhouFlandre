@@ -121,15 +121,15 @@ flowchart TD
 
 HSO-002 与 HSO-003 在 HSO-001 完成后可以并行。HSO-002 完成后，HSO-004 与 HSO-005 可分别处理搜索路由和单人加载；两者分别拥有搜索/题局 adapter，不共同扩展 `apps/web/src/lib/api.ts`。HSO-006 才统一修改各调用方，避免多个 Issue 同时争用 `SingleGamePage` 和生成契约。
 
-| 阶段          | Issue                                                        | 独立交付物                                              | 依赖             |
-| ------------- | ------------------------------------------------------------ | ------------------------------------------------------- | ---------------- |
-| M0 契约与基线 | [HSO-001](./HSO-001-contract-baseline-and-fixtures.md)       | 搜索快照/策略契约、黄金样例、可重复性能基线             | 无               |
-| M1A 服务端    | [HSO-002](./HSO-002-versioned-search-snapshot-and-policy.md) | 版本化搜索快照 Provider/API、动态策略、远程搜索缓存复用 | HSO-001          |
-| M1B Web 内核  | [HSO-003](./HSO-003-browser-search-engine.md)                | 纯 TypeScript 搜索内核、索引仓库、Go 语义一致性测试     | HSO-001          |
-| M2B 单人加载  | [HSO-005](./HSO-005-single-session-resolve-or-create.md)     | 一次请求恢复或创建每日/随机题局，保留统计语义           | HSO-002          |
-| M2 搜索路由   | [HSO-004](./HSO-004-hybrid-routing-and-fallback.md)          | 服务端开关、本地优先、自动回退和旧请求保真              | HSO-002、HSO-003 |
-| M3 全模式接入 | [HSO-006](./HSO-006-all-mode-search-integration.md)          | 目录、单人、竞速、接力统一使用混合搜索                  | HSO-004、HSO-005 |
-| M4 发布收口   | [HSO-007](./HSO-007-integration-performance-and-rollout.md)  | 性能证据、兼容矩阵、紧急回退演练和发布文档              | HSO-006          |
+| 阶段          | Issue                                                        | 状态                 | 独立交付物                                              | 依赖             |
+| ------------- | ------------------------------------------------------------ | -------------------- | ------------------------------------------------------- | ---------------- |
+| M0 契约与基线 | [HSO-001](./HSO-001-contract-baseline-and-fixtures.md)       | 已完成               | 搜索快照/策略契约、黄金样例、可重复性能基线             | 无               |
+| M1A 服务端    | [HSO-002](./HSO-002-versioned-search-snapshot-and-policy.md) | 已完成               | 版本化搜索快照 Provider/API、动态策略、远程搜索缓存复用 | HSO-001          |
+| M1B Web 内核  | [HSO-003](./HSO-003-browser-search-engine.md)                | 已完成               | 纯 TypeScript 搜索内核、索引仓库、Go 语义一致性测试     | HSO-001          |
+| M2B 单人加载  | [HSO-005](./HSO-005-single-session-resolve-or-create.md)     | 已完成               | 一次请求恢复或创建每日/随机题局，保留统计语义           | HSO-002          |
+| M2 搜索路由   | [HSO-004](./HSO-004-hybrid-routing-and-fallback.md)          | 已完成               | 服务端开关、本地优先、自动回退和旧请求保真              | HSO-002、HSO-003 |
+| M3 全模式接入 | [HSO-006](./HSO-006-all-mode-search-integration.md)          | 已完成               | 目录、单人、竞速、接力统一使用混合搜索                  | HSO-004、HSO-005 |
+| M4 发布收口   | [HSO-007](./HSO-007-integration-performance-and-rollout.md)  | 已完成（2026-08-29） | 性能证据、兼容矩阵、紧急回退演练和发布文档              | HSO-006          |
 
 ## 明确不纳入
 

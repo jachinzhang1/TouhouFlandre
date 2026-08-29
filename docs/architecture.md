@@ -41,9 +41,9 @@ WebSocket 事件协议记录在 `contracts/ws/protocol.yaml`，Go/TS 类型与�
 
 ## 权威边界
 
-- Go API 是角色搜索、答案选择、字段比较、每日题、随机题、会话和多人状态的权威来源。
-- 前端只展示服务端返回状态，不选择答案，不重新计算反馈。
-- `packages/shared` 保留前端类型、展示工具、模式配置、题库校验辅助和分享文本；运行时角色搜索由 Go API 统一执行。
+- Go API 是搜索源数据和范围、答案选择、字段比较、每日题、随机题、会话和多人状态的权威来源；浏览器本地搜索只产生候选项，提交后仍由 API 校验。
+- 前端只展示服务端返回状态，不选择答案，不重新计算反馈。`local-primary` 下前端可以对服务端发布的公开版本化索引执行与 Go 一致的匹配、过滤、排序和分页。
+- `packages/shared` 保留前端类型、展示工具、模式配置、题库校验辅助和分享文本；搜索语义由 Go 实现和跨语言 fixture 冻结，浏览器引擎必须通过同一黄金样例。
 - `packages/data` 负责源数据结构校验，seed 后以 Postgres 和题库快照作为运行时读取来源。
 - 多人 match 以完整 `RuleSetRef`（`mode + ruleSetKey + ruleSetVersion`）选择权威实现。race 的 `scoringMode`（`wins | points | placement`）只保留为兼容投影；relay 使用 `legacy_wins | fixed_points | elimination`，共享 core 不解析任一模式的计分字段。
 
@@ -115,25 +115,28 @@ seed 会在单事务内 upsert 行表、写不可变的版本化快照并更新�
 
 ## 角色搜索
 
-角色搜索采用单一权威实现。角色目录、单人猜测和多人猜测都通过前端 `useCharacterSearch` 调用 `GET /api/characters/search`；handler 负责根据游戏身份确定冻结的题库版本与角色范围，匹配、过滤、排序和分页统一由 `internal/game.SearchCharacters` 完成。前端只负责防抖、取消过期请求和展示结果，Postgres 负责保存题库数据与快照，不定义另一套搜索语义。
+角色目录、单人猜测和多人猜测都只依赖前端 `useCharacterSearch`。根布局中的 `CharacterSearchProvider` 读取 `GET /api/catalog/search-policy`：`local-primary` 且上下文完整时加载版本化公开索引并在浏览器执行搜索；`remote`、策略不可用、范围不完整、索引故障或本地引擎故障时调用既有 `GET /api/characters/search`。Go 的 `internal/game.SearchCharacters` 仍是远程权威实现，Go/TypeScript 共同消费同一黄金 fixture，不能在页面或玩法目录复制搜索规则。
 
 ```mermaid
 flowchart LR
     C["角色目录"] --> H["useCharacterSearch"]
     S["单人猜测"] --> H
     M["多人猜测"] --> H
-    H --> A["GET /api/characters/search"]
-    A --> R{"选择搜索范围"}
-    R -->|"无游戏上下文"| V1["当前或指定版本快照"]
-    R -->|"sessionId"| V2["单人会话快照 + 题库范围"]
-    R -->|"roomId + matchIndex"| V3["多人场次快照 + 题库范围"]
-    V1 --> G["game.SearchCharacters"]
-    V2 --> G
-    V3 --> G
-    G --> O["搜索结果与总数"]
+    H --> P["CharacterSearchProvider"]
+    P --> D{"动态策略与上下文完整?"}
+    D -->|"local-primary"| I["版本化 immutable 搜索索引"]
+    I --> T["TypeScript 本地引擎"]
+    D -->|"remote / fallback"| A["GET /api/characters/search"]
+    A --> R{"服务端选择冻结版本与范围"}
+    R --> G["game.SearchCharacters"]
+    T --> O["搜索结果与总数"]
+    G --> O
+    O --> V["提交 guessId 后由服务端最终校验"]
 ```
 
-这种范围选择与题局的版本约束一致：题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍搜索各自绑定的旧快照与 `selectedCharacterIds`。只传 `catalogVersion` 的非游戏搜索仅绑定版本，不应用题局角色范围。
+本地索引 URL 同时包含 `catalogVersion` 与 `indexSchemaVersion`，响应使用长期 immutable 缓存和 ETag；策略响应 `no-store`，浏览器在 45 至 60 秒内分散重验，并在页面重新可见时立即重验。题库重新 seed 后，角色目录使用新快照，已经开始的单人会话和多人场次仍使用各自绑定的旧版本与 `selectedCharacterIds`。`gameScopeMode=strict` 要求非空允许 ID 才能本地搜索；`full` 或上下文缺失时游戏入口强制远程，不能扩大范围。
+
+瞬时索引故障按 5 秒、30 秒、2 分钟、5 分钟有界退避，并只允许单个半开探针；结构性错误在相同 policy revision 下保持远程，直到 revision/索引键变化或用户显式重试。策略瞬时失败时，仅同一页面已经验证的内存索引可在最多 5 分钟内继续使用；超过宽限、刷新页面或没有内存索引时回到远程，不承诺离线搜索。合法本地空结果不会触发远程请求。
 
 搜索限制由命名过滤器按 AND 组合，并在文本匹配、排序和分页之前执行。默认过滤器包括 `enabledAsGuess`，请求可追加作品范围；游戏上下文在 `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED=true` 时再追加当前局题库角色范围。该环境变量默认开启，设为 `false` 并重启 API 后只移除题库范围过滤器，保留版本绑定和其他搜索条件。
 
@@ -157,7 +160,7 @@ flowchart LR
 
 ## 数据库
 
-数据库迁移位于 `apps/api/migrations`，由 goose 管理。查询源位于 `apps/api/sql/queries`，由 sqlc 生成 Go 访问代码。迁移和查询变更必须同步生成并测试。
+数据库迁移位于 `apps/api/migrations`，由 goose 管理。查询源位于 `apps/api/sql/queries`，由 sqlc 生成 Go 访问代码。迁移和查询变更必须同步生成并测试。单人 `POST /api/puzzles/{mode}/resolve` 使用 `puzzle_resolve_idempotency` 绑定请求指纹与公开 session 引用；相同键重试/并发返回同一结果，不在幂等表存答案。
 
 多人房间状态、成员、场次、回合、猜测与事件均持久化在 Postgres。race 继续拥有 `multi_round` 及其计分表；relay 新 match 使用 `multi_relay_stage`、`multi_relay_encounter`、`multi_relay_encounter_member`、`multi_relay_turn`、`multi_relay_stage_player` 和 `multi_relay_match_player_state`。迁移 `0015` 至 `0019` 为 expand-only，旧列与旧双人读取路径保留供应用回滚。Go 内存中的 hub 只保存 WebSocket 连接和热点投影，不作为权威状态。
 
@@ -209,9 +212,9 @@ Go API 的关键目录：
 API 提供：
 
 - `/livez`：进程探活。
-- `/readyz`：数据库 readiness。
+- `/readyz`：数据库与当前 CatalogSnapshot 搜索源 readiness；snapshot wire 投影失败不影响远程搜索 readiness，共享底层题库不可读时返回 503。
 - `/api/health`：公开健康检查。
 
-生产环境通过 `/metrics` 暴露 Prometheus 文本指标。低基数标签固定为 `mode + rule_set_key + rule_set_version`，未知持久化值折叠为 `unknown`；标签不得包含 room、match、stage、encounter、昵称、token、聊天正文或答案。仓库提供可选 Compose `monitoring` profile、Prometheus 告警和 Grafana `Multiplayer Relay Rollout` 面板，覆盖 active encounter、guess/history p95/p99、stage/barrier duration、snapshot/WS bytes、settlement retry、deadlock、queue drop 和 pool-too-small。
+生产环境通过 `/metrics` 暴露 Prometheus 文本指标。多人标签固定为 `mode + rule_set_key + rule_set_version`；搜索指标按固定枚举记录 policy、source/snapshot outcome、fallback reason、远程 outcome/latency 和索引构建耗时，未知值折叠为 `unknown`。标签不得包含查询词、题库版本、session、room、match、stage、encounter、角色 ID、昵称、token、聊天正文或答案。HTTP 结构化日志使用路由模板而非原始 URI，避免查询值和资源 ID 进入日志。仓库提供可选 Compose `monitoring` profile、Prometheus 告警和 Grafana `Multiplayer Relay Rollout` 面板。
 
 生产环境还必须配置结构化日志、数据库备份与恢复演练。Docker 命名卷不是备份。多人 relay 固定积分和淘汰赛入口默认开启；发生灰度问题时先关闭 Web/API 新入口、排空 v3 房间，再回滚不理解新规则集的旧 binary，同时保留 expand schema。
