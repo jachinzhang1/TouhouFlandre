@@ -294,6 +294,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadRequestIdRef = useRef(0);
+  const initialLoadModeRef = useRef<SinglePlayerGameMode | null>(null);
+  const loadCleanupVersionRef = useRef(0);
   const puzzleApi = useMemo(() => createPuzzleApi(), []);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
@@ -765,9 +767,21 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   useEffect(() => {
-    void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    // React StrictMode probes effects in development. Keep the probe from
+    // starting a second resolve request; real mode changes still start a new
+    // request and advance loadRequestIdRef inside loadSession.
+    loadCleanupVersionRef.current += 1;
+    if (initialLoadModeRef.current !== mode) {
+      initialLoadModeRef.current = mode;
+      void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    }
     return () => {
-      loadRequestIdRef.current += 1;
+      const cleanupVersion = ++loadCleanupVersionRef.current;
+      queueMicrotask(() => {
+        if (loadCleanupVersionRef.current === cleanupVersion) {
+          loadRequestIdRef.current += 1;
+        }
+      });
     };
   }, [mode]);
 
