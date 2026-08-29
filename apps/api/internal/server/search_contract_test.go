@@ -1,13 +1,20 @@
 package server_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
+	apiserver "github.com/TouhouFlandre/touhouflandre/apps/api/internal/server"
 )
 
 func requestWithHeaders(method, path string, headers map[string]string) (*http.Response, []byte) {
@@ -136,5 +143,134 @@ func TestCharacterSearchFallbackReasonCorsAndSemantics(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(preflight.Header.Get("Access-Control-Allow-Headers")), "x-character-search-fallback-reason") {
 		t.Fatalf("allow-headers=%q", preflight.Header.Get("Access-Control-Allow-Headers"))
+	}
+}
+
+func TestSearchMetricsExposeOnlyLowCardinalityObservations(t *testing.T) {
+	resp, payload := requestWithHeaders(
+		http.MethodGet,
+		"/api/characters/search?q=secret-query",
+		map[string]string{"X-Character-Search-Fallback-Reason": "secret-reason"},
+	)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("search status=%d payload=%s", resp.StatusCode, payload)
+	}
+
+	metricsResp, metricsPayload := request(http.MethodGet, "/metrics", nil)
+	if metricsResp.StatusCode != http.StatusOK {
+		t.Fatalf("metrics status=%d payload=%s", metricsResp.StatusCode, metricsPayload)
+	}
+	metrics := string(metricsPayload)
+	for _, sensitive := range []string{"secret-query", "secret-reason"} {
+		if strings.Contains(metrics, sensitive) {
+			t.Fatalf("metrics leaked %q: %s", sensitive, metrics)
+		}
+	}
+	if !strings.Contains(metrics, `touhouflandre_search_fallback_reason_total{reason="unknown"}`) {
+		t.Fatalf("metrics did not normalize unknown fallback reason: %s", metrics)
+	}
+	if got := metricsResp.Header.Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("metrics cache-control=%q", got)
+	}
+}
+
+func TestSnapshotProjectionFailureKeepsRemoteSearchAndReadinessAvailable(t *testing.T) {
+	version := currentCatalogVersion(t)
+	var loads atomic.Int32
+	source := game.NewCatalogSearchSourceProvider(func(context.Context, string) ([]game.Character, error) {
+		loads.Add(1)
+		return []game.Character{searchContractCharacter("reimu")}, nil
+	})
+	snapshot := game.NewCatalogSearchSnapshotProvider(source, func(string, int, []game.Character) (game.CatalogSearchSnapshot, error) {
+		return game.CatalogSearchSnapshot{}, errors.New("injected projection failure")
+	})
+	ts := httptest.NewServer(apiserver.NewWithOptions(pool, handler.WithCatalogSearchProviders(source, snapshot)))
+	defer ts.Close()
+
+	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/1")
+	if indexResp.StatusCode != http.StatusServiceUnavailable || decodeError(t, indexPayload).Code != "CATALOG_NOT_READY" {
+		t.Fatalf("index status=%d payload=%s", indexResp.StatusCode, indexPayload)
+	}
+	searchResp, searchPayload := requestAt(t, ts.Client(), ts.URL, "/api/characters/search?catalogVersion="+version+"&q=reimu")
+	if searchResp.StatusCode != http.StatusOK {
+		t.Fatalf("remote search status=%d payload=%s", searchResp.StatusCode, searchPayload)
+	}
+	var result openapi.CharacterSearchResponse
+	if err := json.Unmarshal(searchPayload, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 1 || len(result.Results) != 1 || result.Results[0].Id != "reimu" {
+		t.Fatalf("unexpected remote search result: %+v", result)
+	}
+	readyResp, readyPayload := requestAt(t, ts.Client(), ts.URL, "/readyz")
+	if readyResp.StatusCode != http.StatusOK {
+		t.Fatalf("readyz status=%d payload=%s", readyResp.StatusCode, readyPayload)
+	}
+	if got := loads.Load(); got != 1 {
+		t.Fatalf("source loads=%d, want cached source to be reused", got)
+	}
+}
+
+func TestSharedCatalogSnapshotFailureSurfacesFinalErrorsReadinessAndMetrics(t *testing.T) {
+	version := currentCatalogVersion(t)
+	var loads atomic.Int32
+	source := game.NewCatalogSearchSourceProvider(func(context.Context, string) ([]game.Character, error) {
+		loads.Add(1)
+		return nil, errors.New("injected catalog snapshot failure")
+	})
+	snapshot := game.NewCatalogSearchSnapshotProvider(source, nil)
+	ts := httptest.NewServer(apiserver.NewWithOptions(pool, handler.WithCatalogSearchProviders(source, snapshot)))
+	defer ts.Close()
+
+	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/1")
+	if indexResp.StatusCode != http.StatusServiceUnavailable || decodeError(t, indexPayload).Code != "CATALOG_NOT_READY" {
+		t.Fatalf("index status=%d payload=%s", indexResp.StatusCode, indexPayload)
+	}
+	searchResp, searchPayload := requestAt(t, ts.Client(), ts.URL, "/api/characters/search?catalogVersion="+version+"&q=reimu")
+	if searchResp.StatusCode != http.StatusInternalServerError || decodeError(t, searchPayload).Code != "INTERNAL" {
+		t.Fatalf("remote search status=%d payload=%s", searchResp.StatusCode, searchPayload)
+	}
+	readyResp, readyPayload := requestAt(t, ts.Client(), ts.URL, "/readyz")
+	if readyResp.StatusCode != http.StatusServiceUnavailable || !strings.Contains(string(readyPayload), "catalog search unavailable") {
+		t.Fatalf("readyz status=%d payload=%s", readyResp.StatusCode, readyPayload)
+	}
+	if got := loads.Load(); got != 3 {
+		t.Fatalf("source loads=%d, want one bounded attempt per request", got)
+	}
+	metricsResp, metricsPayload := requestAt(t, ts.Client(), ts.URL, "/metrics")
+	if metricsResp.StatusCode != http.StatusOK {
+		t.Fatalf("metrics status=%d payload=%s", metricsResp.StatusCode, metricsPayload)
+	}
+	metrics := string(metricsPayload)
+	for _, sample := range []string{
+		`touhouflandre_search_source_total{outcome="load_error"}`,
+		`touhouflandre_search_snapshot_total{outcome="load_error"}`,
+		`touhouflandre_search_remote_total{outcome="error"}`,
+	} {
+		if !strings.Contains(metrics, sample) {
+			t.Fatalf("metrics missing %q: %s", sample, metrics)
+		}
+	}
+}
+
+func requestAt(t *testing.T, httpClient *http.Client, serverURL, path string) (*http.Response, []byte) {
+	t.Helper()
+	resp, err := httpClient.Get(serverURL + path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp, payload
+}
+
+func searchContractCharacter(id string) game.Character {
+	return game.Character{
+		ID: id, EnabledAsGuess: true, AvatarURL: "/characters/" + id + ".png",
+		Names:           game.LocalizedNames{ZhHans: "博丽灵梦", Ja: "博麗霊夢", En: "Reimu Hakurei", Aliases: []string{"reimu"}},
+		FirstAppearance: game.FirstAppearance{WorkID: "th06", WorkTitle: "东方红魔乡", ReleaseYear: 2002},
 	}
 }

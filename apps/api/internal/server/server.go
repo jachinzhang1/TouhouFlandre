@@ -107,6 +107,9 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 		if err := pool.Ping(pingCtx); err != nil {
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "database unavailable"})
 		}
+		if err := api.SearchReadiness(pingCtx); err != nil {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "catalog search unavailable"})
+		}
 		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	})
 	e.GET("/metrics", func(c *echo.Context) error {
@@ -197,10 +200,7 @@ func isNonCacheableSearchPath(path string) bool {
 
 // requestLogValues 把 echo 请求日志映射到 slog（LevelError 用于 5xx/错误请求，其余 Info）。
 func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
-	uri := v.URI
-	if strings.HasSuffix(c.Request().URL.Path, "/messages") {
-		uri = c.Request().URL.Path
-	}
+	uri := safeRequestLogURI(c, v.RoutePath)
 	attrs := []slog.Attr{
 		slog.String("method", v.Method),
 		slog.String("uri", uri),
@@ -228,6 +228,18 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 	}
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, "request", attrs...)
 	return nil
+}
+
+// safeRequestLogURI keeps request logs aggregateable without copying query
+// values or concrete resource identifiers (session/room/catalog/character).
+func safeRequestLogURI(c *echo.Context, routePath string) string {
+	if strings.TrimSpace(routePath) != "" {
+		return routePath
+	}
+	if strings.HasPrefix(c.Request().URL.Path, "/api/") {
+		return "api.unmatched"
+	}
+	return c.Request().URL.Path
 }
 
 // requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。

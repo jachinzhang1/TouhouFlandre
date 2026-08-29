@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import type { PublicGameSession } from "@touhouflandre/shared";
 import { SingleGamePage } from "./SingleGamePage";
 
@@ -258,6 +259,44 @@ describe("SingleGamePage", () => {
     expect(localStorage.getItem("touhouflandre:question-scope")).toContain(
       "server-v3",
     );
+  });
+
+  it("does not resolve twice during a React StrictMode effect probe", async () => {
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: { ...playingSession, mode: "random", puzzleKey: undefined },
+      puzzleLabel: "随机题",
+    } as never);
+
+    render(
+      <StrictMode>
+        <SingleGamePage mode="random" />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(puzzleResolveMock).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a resolve response that arrives after the page unmounts", async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    puzzleResolveMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }) as never,
+    );
+
+    const view = render(<SingleGamePage mode="random" />);
+    await waitFor(() => expect(puzzleResolveMock).toHaveBeenCalledOnce());
+    view.unmount();
+    await Promise.resolve();
+
+    resolveRequest!({
+      session: { ...playingSession, mode: "random", puzzleKey: undefined },
+      puzzleLabel: "随机题",
+      resolution: "created",
+    });
+    await Promise.resolve();
+    expect(localStorage.getItem("touhouflandre:random-session")).toBeNull();
   });
 
   it("omits an invalid stored scope from a random resolve request", async () => {

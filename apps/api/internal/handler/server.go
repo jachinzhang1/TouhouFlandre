@@ -274,6 +274,17 @@ func (s *Server) HealthCheck(ctx context.Context, _ openapi.HealthCheckRequestOb
 	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhouflandre-api"}, nil
 }
 
+// SearchReadiness verifies the shared CatalogSnapshot dependency used by both
+// local index construction and authoritative remote search.
+func (s *Server) SearchReadiness(ctx context.Context) error {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = s.searchSource.GetContext(ctx, state.CurrentVersion)
+	return err
+}
+
 // SiteVisitsCreate 记录一次完整页面访问并返回递增后的全站访问数。
 func (s *Server) SiteVisitsCreate(ctx context.Context, _ openapi.SiteVisitsCreateRequestObject) (openapi.SiteVisitsCreateResponseObject, error) {
 	count, err := s.q.IncrementSiteVisitCount(ctx)
