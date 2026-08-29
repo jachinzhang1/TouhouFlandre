@@ -16,6 +16,7 @@ type Querier interface {
 	AwardRoundPlayerPoints(ctx context.Context, arg AwardRoundPlayerPointsParams) (MultiRoundPlayer, error)
 	ClaimMemberSeat(ctx context.Context, arg ClaimMemberSeatParams) (MultiMember, error)
 	CloseRoom(ctx context.Context, arg CloseRoomParams) (MultiRoom, error)
+	CompletePuzzleResolveIdempotency(ctx context.Context, arg CompletePuzzleResolveIdempotencyParams) error
 	CountActiveRelayEncountersByRuleSet(ctx context.Context) ([]CountActiveRelayEncountersByRuleSetRow, error)
 	// 指标采集（active_rounds）。
 	CountActiveRounds(ctx context.Context) (int32, error)
@@ -92,6 +93,7 @@ type Querier interface {
 	GetMember(ctx context.Context, id string) (MultiMember, error)
 	GetMemberByTokenHash(ctx context.Context, tokenHash string) (MultiMember, error)
 	GetMemberForUpdate(ctx context.Context, id string) (MultiMember, error)
+	GetPuzzleResolveIdempotencyForUpdate(ctx context.Context, idempotencyKey string) (PuzzleResolveIdempotency, error)
 	GetRelayEncounter(ctx context.Context, id string) (MultiRelayEncounter, error)
 	GetRelayEncounterForLegacyRound(ctx context.Context, arg GetRelayEncounterForLegacyRoundParams) (MultiRelayEncounter, error)
 	GetRelayEncounterForUpdate(ctx context.Context, id string) (MultiRelayEncounter, error)
@@ -124,6 +126,7 @@ type Querier interface {
 	GetRoundForUpdate(ctx context.Context, id string) (MultiRound, error)
 	GetRoundPlayer(ctx context.Context, arg GetRoundPlayerParams) (MultiRoundPlayer, error)
 	GetSession(ctx context.Context, id string) (GameSession, error)
+	GetSessionForUpdate(ctx context.Context, id string) (GameSession, error)
 	GetSnapshot(ctx context.Context, version string) (CatalogSnapshot, error)
 	GetTurnByIdempotencyKey(ctx context.Context, arg GetTurnByIdempotencyKeyParams) (MultiTurn, error)
 	HasRoomMatch(ctx context.Context, roomID string) (bool, error)
@@ -139,6 +142,8 @@ type Querier interface {
 	// 0 行 → 按幂等键重读首次结果（GetGuessByIdempotencyKey）；
 	// UNIQUE(round_id, member_id, guess_id) 冲突 → 23505 → DUPLICATE_GUESS（handler 层判定）。
 	InsertGuess(ctx context.Context, arg InsertGuessParams) (MultiGuess, error)
+	// 单人 resolve 幂等记录。记录只绑定公开 session 引用，不存答案。
+	InsertPuzzleResolveIdempotency(ctx context.Context, arg InsertPuzzleResolveIdempotencyParams) (PuzzleResolveIdempotency, error)
 	InsertRelayStagePlayer(ctx context.Context, arg InsertRelayStagePlayerParams) (MultiRelayStagePlayer, error)
 	InsertRelayTurn(ctx context.Context, arg InsertRelayTurnParams) (MultiRelayTurn, error)
 	InsertRoomEvent(ctx context.Context, arg InsertRoomEventParams) (RoomEvent, error)
@@ -199,6 +204,7 @@ type Querier interface {
 	MarkRoundPlayerCorrect(ctx context.Context, arg MarkRoundPlayerCorrectParams) (MultiRoundPlayer, error)
 	MarkRoundPlayerExhausted(ctx context.Context, arg MarkRoundPlayerExhaustedParams) (int64, error)
 	MarkRoundPlayerTimedOut(ctx context.Context, arg MarkRoundPlayerTimedOutParams) (int64, error)
+	ReuseExpiredPuzzleResolveIdempotency(ctx context.Context, arg ReuseExpiredPuzzleResolveIdempotencyParams) error
 	SetMemberReady(ctx context.Context, arg SetMemberReadyParams) (MultiMember, error)
 	SetMemberRematchReady(ctx context.Context, arg SetMemberRematchReadyParams) (MultiMember, error)
 	StartRelayEncounter(ctx context.Context, id string) (MultiRelayEncounter, error)

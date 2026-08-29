@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
@@ -160,21 +159,13 @@ func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string, dif
 		AnswerID:          answer.ID,
 		AnswerMatchPolicy: string(s.answerMatchPolicy),
 	}); err != nil {
-		// 并发创建冲突时重读已有记录。
-		if isUniqueViolation(err) {
+		// 并发创建由 ON CONFLICT 合并；未插入时重读权威记录。
+		if errors.Is(err, pgx.ErrNoRows) {
 			return s.getOrCreateDailyPuzzle(ctx, dateKey, difficulty, scope)
 		}
 		return game.Character{}, "", "", internalError(err)
 	}
 	return answer, version, s.answerMatchPolicy, nil
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
 }
 
 // selectAnswer 按模式选择答案。

@@ -1,0 +1,52 @@
+# POST /api/puzzles/:mode/resolve
+post:
+  operationId: puzzles_resolve
+  tags:
+    - puzzles
+  summary: 恢复或创建单人题局
+  parameters:
+    - name: mode
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+          - daily
+          - random
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/question-scope.yaml#/PuzzleResolveRequest"
+  responses:
+    "200":
+      description: 题局恢复或创建成功
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/session.yaml#/PuzzleResolveResponse"
+    "400":
+      description: 请求或模式不合法
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "409":
+      description: 幂等键已被其他请求指纹使用
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "500":
+      description: 题库中没有可作为答案的角色
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
+    "503":
+      description: 题库未初始化
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/common.yaml#/ErrorResponse"
