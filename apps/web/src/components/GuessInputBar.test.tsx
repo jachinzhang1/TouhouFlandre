@@ -178,6 +178,55 @@ describe("GuessInputBar", () => {
     expect((input as HTMLInputElement).value).toBe("灵梦");
   });
 
+  it("搜索路由切换后仍过滤已猜角色并阻止重复提交", async () => {
+    const guessed = new Set(["reimu_hakurei"]);
+    const { rerender } = render(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={{ ...searchContext, roomId: "local-room" }}
+        guessedIds={guessed}
+      />,
+    );
+    const input = screen.getByLabelText("搜索角色");
+    fireEvent.change(input, { target: { value: "白" } });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /圣白莲/ })).toBeTruthy(),
+    );
+    expect(screen.queryByRole("button", { name: /博丽灵梦/ })).toBeNull();
+
+    rerender(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={{ ...searchContext, roomId: "remote-room" }}
+        guessedIds={guessed}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /博丽灵梦/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /圣白莲/ }));
+    await waitFor(() =>
+      expect(onGuess).toHaveBeenCalledWith("byakuren_hijiri"),
+    );
+
+    rerender(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={{ ...searchContext, roomId: "remote-room" }}
+        guessedIds={new Set(["reimu_hakurei", "byakuren_hijiri"])}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("搜索角色"), {
+      target: { value: "白" },
+    });
+    await waitFor(() =>
+      expect(
+        screen
+          .queryAllByRole("button")
+          .filter((button) => button.id.startsWith("suggestion-")),
+      ).toHaveLength(0),
+    );
+    expect(onGuess).toHaveBeenCalledTimes(1);
+  });
+
   it("在多人底部输入栏展示共用反馈图例", () => {
     render(
       <GuessInputBar

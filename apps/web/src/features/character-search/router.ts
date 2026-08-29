@@ -39,6 +39,7 @@ type Circuit = {
   stage: number;
   nextProbeAt: number;
   probing: boolean;
+  fallbackReason?: FallbackReason;
 };
 
 export const POLICY_TIMEOUT_MS = 3_000;
@@ -50,6 +51,15 @@ export class SearchTimeoutError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "SearchTimeoutError";
+  }
+}
+
+class SearchEngineError extends Error {
+  readonly code = "ENGINE_ERROR";
+
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "SearchEngineError";
   }
 }
 
@@ -136,6 +146,10 @@ export type SearchRouterOptions = {
   policyClient?: SearchPolicyClient;
   indexRepository?: CatalogSearchIndexRepository;
   remoteSearch?: RemoteSearchAdapter;
+  localSearch?: (
+    index: CatalogSearchIndex,
+    request: HybridSearchRequest,
+  ) => CharacterSearchResponse;
   now?: Clock;
   jitter?: Jitter;
 };
@@ -144,6 +158,10 @@ export class CharacterSearchRouter {
   private readonly policyClient: SearchPolicyClient;
   private readonly indexRepository: CatalogSearchIndexRepository;
   private readonly remoteSearch: RemoteSearchAdapter;
+  private readonly localSearch: (
+    index: CatalogSearchIndex,
+    request: HybridSearchRequest,
+  ) => CharacterSearchResponse;
   private readonly now: Clock;
   private readonly jitter: Jitter;
   private policy: ValidPolicy | null = null;
@@ -168,6 +186,7 @@ export class CharacterSearchRouter {
     this.indexRepository =
       options.indexRepository ?? new CatalogSearchIndexRepository();
     this.remoteSearch = options.remoteSearch ?? defaultRemoteSearchAdapter;
+    this.localSearch = options.localSearch ?? resultFromIndex;
     this.now = options.now ?? (() => Date.now());
     this.jitter =
       options.jitter ?? ((value) => value * (0.8 + Math.random() * 0.4));
@@ -209,6 +228,7 @@ export class CharacterSearchRouter {
         ) {
           return this.searchLocal(request, signal, this.policy!, false);
         }
+        policy = null;
       }
     }
     if (!policy)
@@ -411,7 +431,7 @@ export class CharacterSearchRouter {
         return this.remoteSearch.search(
           this.remoteParams(request),
           signal,
-          "index_invalid",
+          circuit.fallbackReason,
         );
       circuit.probing = true;
     }
@@ -443,7 +463,17 @@ export class CharacterSearchRouter {
       signal.removeEventListener("abort", forwardAbort);
       this.loadedIndexes.add(key);
       this.circuits.delete(key);
-      return resultFromIndex(index, request);
+      try {
+        return this.localSearch(index, request);
+      } catch (error) {
+        const engineError = new SearchEngineError(error);
+        this.recordIndexFailure(key, circuit, engineError);
+        return this.remoteSearch.search(
+          this.remoteParams(request),
+          signal,
+          "engine_error",
+        );
+      }
     } catch (error) {
       signal.removeEventListener("abort", forwardAbort);
       if (isAbort(error)) throw error;
@@ -453,7 +483,7 @@ export class CharacterSearchRouter {
         return this.remoteSearch.search(
           this.remoteParams(request),
           signal,
-          "index_invalid",
+          this.fallbackReasonFor(error),
         );
       }
       this.recordIndexFailure(key, circuit, error);
@@ -478,6 +508,7 @@ export class CharacterSearchRouter {
         stage: 0,
         nextProbeAt: Number.POSITIVE_INFINITY,
         probing: false,
+        fallbackReason: this.fallbackReasonFor(error),
       });
       return;
     }
@@ -513,6 +544,7 @@ export class CharacterSearchRouter {
         "VERSION_MISMATCH",
         "DUPLICATE_ID",
         "INVALID_ENTRY",
+        "ENGINE_ERROR",
       ].includes(code)
     )
       return true;
@@ -520,9 +552,23 @@ export class CharacterSearchRouter {
       error && typeof error === "object" && "status" in error
         ? Number((error as { status?: unknown }).status)
         : Number.NaN;
-    if ([400, 404].includes(status)) return true;
+    if ([400, 404, 405].includes(status)) return true;
     return (
       error instanceof Error && /(?:failed: )?(?:400|404)\b/.test(error.message)
+    );
+  }
+
+  private fallbackReasonFor(error: unknown): FallbackReason | undefined {
+    if (error instanceof SearchEngineError) return "engine_error";
+    if (this.isCompatibilityRouteMissing(error)) return undefined;
+    return "index_invalid";
+  }
+
+  private isCompatibilityRouteMissing(error: unknown): boolean {
+    return (
+      error instanceof SearchIndexHttpError &&
+      (error.status === 404 || error.status === 405) &&
+      error.code === "COMPATIBILITY_ROUTE_MISSING"
     );
   }
 
