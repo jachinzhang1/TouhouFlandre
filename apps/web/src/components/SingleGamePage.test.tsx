@@ -9,6 +9,7 @@ const playingSession = {
   mode: "daily",
   contentType: "character",
   status: "playing",
+  catalogVersion: "v2",
   puzzleKey: "2026-08-05",
   maxGuesses: 8,
   questionScope: {
@@ -91,13 +92,17 @@ const forfeitedSession = {
   },
 } as unknown as PublicGameSession;
 
-const { puzzleResolveMock, searchHookMock, timerCheckpointMock } = vi.hoisted(
-  () => ({
-    puzzleResolveMock: vi.fn(),
-    searchHookMock: vi.fn(),
-    timerCheckpointMock: vi.fn(() => 65_000),
-  }),
-);
+const {
+  puzzleResolveMock,
+  searchHookMock,
+  searchPrefetchMock,
+  timerCheckpointMock,
+} = vi.hoisted(() => ({
+  puzzleResolveMock: vi.fn(),
+  searchHookMock: vi.fn(),
+  searchPrefetchMock: vi.fn(),
+  timerCheckpointMock: vi.fn(() => 65_000),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -125,6 +130,7 @@ vi.mock("../lib/puzzleApi", () => {
 
 vi.mock("../hooks/useCharacterSearch", () => ({
   useCharacterSearch: searchHookMock,
+  useCharacterSearchPrefetch: searchPrefetchMock,
 }));
 
 vi.mock("../stats/timer", () => ({
@@ -163,6 +169,7 @@ describe("SingleGamePage", () => {
       characters: [],
     } as never);
     searchHookMock.mockReset();
+    searchPrefetchMock.mockReset();
     searchHookMock.mockReturnValue({
       results: [
         {
@@ -208,6 +215,14 @@ describe("SingleGamePage", () => {
     );
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
     expect(api.catalog).not.toHaveBeenCalled();
+    expect(searchPrefetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "single-session",
+        sessionId: "sess-1",
+        catalogVersion: "v2",
+        selectedCharacterIds: [],
+      }),
+    );
   });
 
   it("creates a random puzzle without catalog/full and saves normalized scope", async () => {
@@ -615,7 +630,12 @@ describe("SingleGamePage", () => {
       expect(searchHookMock).toHaveBeenCalledWith(
         "帕秋莉·诺蕾姬",
         expect.objectContaining({
-          context: { kind: "single-session", sessionId: "sess-1" },
+          context: {
+            kind: "single-session",
+            sessionId: "sess-1",
+            catalogVersion: "v2",
+            selectedCharacterIds: [],
+          },
         }),
       ),
     );
