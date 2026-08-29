@@ -262,3 +262,20 @@ PuzzleCreateRequest:
       $ref: "#/QuestionScopeConfigInput"
     difficulty:
       $ref: "#/DailyQuestionDifficulty"
+
+PuzzleResolveRequest:
+  type: object
+  required:
+    - idempotencyKey
+  properties:
+    idempotencyKey:
+      type: string
+      minLength: 1
+      maxLength: 200
+    resumeSessionId:
+      type: string
+      minLength: 1
+    questionScope:
+      $ref: "#/QuestionScopeConfigInput"
+    difficulty:
+      $ref: "#/DailyQuestionDifficulty"

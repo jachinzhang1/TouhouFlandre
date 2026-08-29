@@ -9,6 +9,7 @@ import {
 import { RaceMatchExperience } from "./RaceMatchExperience";
 
 const characterSearchMock = vi.hoisted(() => vi.fn());
+const searchPrefetchMock = vi.hoisted(() => vi.fn());
 
 const fields = [
   "firstAppearance",
@@ -30,6 +31,7 @@ vi.mock("../../../hooks/useCharacterSearch", () => ({
     characterSearchMock(query, options);
     return { results: [], loading: false, error: "" };
   },
+  useCharacterSearchPrefetch: searchPrefetchMock,
 }));
 
 const members = [
@@ -100,6 +102,9 @@ function state(): RoomUiState {
       rosterSize: 3,
       rematchReady: [],
       catalogVersion: "v1",
+      questionScope: {
+        selectedCharacterIds: ["reimu"],
+      } as never,
       activeFields: fields,
       ruleSetRef: { mode: "race" as const, key: "placement", version: 1 },
     },
@@ -179,7 +184,18 @@ describe("RaceMatchExperience", () => {
           kind: "multiplayer-match",
           roomId: "room-1",
           matchIndex: 0,
+          catalogVersion: "v1",
+          selectedCharacterIds: ["reimu"],
         },
+      }),
+    );
+    expect(searchPrefetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "multiplayer-match",
+        roomId: "room-1",
+        matchIndex: 0,
+        catalogVersion: "v1",
+        selectedCharacterIds: ["reimu"],
       }),
     );
   });

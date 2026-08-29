@@ -40,20 +40,22 @@ cp .env.example .env
 
 部署前至少配置：
 
-| 变量                                                                                       | 建议                                                                               |
-| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`                                                                        | 使用生产强密码。                                                                   |
-| `WEB_ORIGINS`                                                                              | 浏览器实际访问源，例如 `https://game.example.com`。                                |
-| `NEXT_PUBLIC_API_BASE_URL`                                                                 | 通常留空，使用同源 `/api`。                                                        |
-| `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                  |
-| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                            | 默认 `true`；游戏内搜索只显示该局题库角色。设为 `false` 并重启 API 可恢复全快照候选。 |
-| `ANSWER_MATCH_POLICY`                                                                      | 新对局答案判定，默认 `public_fields_v1`；可设为 `strict`，未知值会阻止 API 启动。   |
-| `MULTI_MODE_REGISTRY`                                                                      | 默认 `full`；仅隔离演练可设为 `race-only` 或 `relay-only`，未知值会阻止 API 启动。 |
-| `MULTI_N_PLAYER_RELAY_ENABLED` / `MULTI_RELAY_ELIMINATION_ENABLED`                         | API 多人 relay 固定积分和淘汰赛入口默认均为 `true`；可分别关闭。                   |
-| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。        |
-| `MULTI_RELAY_HISTORY_RATE_LIMIT`                                                           | 每名已鉴权成员每分钟 relay 历史请求上限，默认 60。                                 |
-| `MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED`                                                       | 默认 `true`；紧急时可停止生成新系统播报，已保存聊天历史继续可读。                  |
-| `MULTI_*`                                                                                  | 其余 TTL、回合时长、聊天、投影密钥和 WebSocket 限制按 `.env.example` 调整。        |
+| 变量                                                                                       | 建议                                                                                                                           |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `POSTGRES_PASSWORD`                                                                        | 使用生产强密码。                                                                                                               |
+| `WEB_ORIGINS`                                                                              | 浏览器实际访问源，例如 `https://game.example.com`。                                                                            |
+| `NEXT_PUBLIC_API_BASE_URL`                                                                 | 通常留空，使用同源 `/api`。                                                                                                    |
+| `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                                                              |
+| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                           | 默认 `true`；对应 `gameScopeMode=strict`。设为 `false` 时游戏入口强制远程以保持 full 语义。                                    |
+| `CHARACTER_SEARCH_MODE`                                                                    | 当前生产 Compose 默认 `local-primary`；首次混合部署或紧急回滚时显式设为 `remote`。API 收到非法/留空值仍按 `remote` fail-safe。 |
+| `CHARACTER_SEARCH_POLICY_REVISION`                                                         | 默认 `v1`；索引 schema 不变但部署结构性修复时显式提升，确保浏览器丢弃旧策略/熔断状态。                                         |
+| `ANSWER_MATCH_POLICY`                                                                      | 新对局答案判定，默认 `public_fields_v1`；可设为 `strict`，未知值会阻止 API 启动。                                              |
+| `MULTI_MODE_REGISTRY`                                                                      | 默认 `full`；仅隔离演练可设为 `race-only` 或 `relay-only`，未知值会阻止 API 启动。                                             |
+| `MULTI_N_PLAYER_RELAY_ENABLED` / `MULTI_RELAY_ELIMINATION_ENABLED`                         | API 多人 relay 固定积分和淘汰赛入口默认均为 `true`；可分别关闭。                                                               |
+| `NEXT_PUBLIC_MULTI_N_PLAYER_RELAY_ENABLED` / `NEXT_PUBLIC_MULTI_RELAY_ELIMINATION_ENABLED` | Web 构建期入口必须与 API 对应开关一致；多人 relay 和淘汰赛默认均为 `true`。                                                    |
+| `MULTI_RELAY_HISTORY_RATE_LIMIT`                                                           | 每名已鉴权成员每分钟 relay 历史请求上限，默认 60。                                                                             |
+| `MULTI_SYSTEM_ANNOUNCEMENTS_ENABLED`                                                       | 默认 `true`；紧急时可停止生成新系统播报，已保存聊天历史继续可读。                                                              |
+| `MULTI_*`                                                                                  | 其余 TTL、回合时长、聊天、投影密钥和 WebSocket 限制按 `.env.example` 调整。                                                    |
 
 如果使用 cloudflared、nginx 或其他反向代理，公网入口通常指向宿主机 `http://localhost:3000`。API 的宿主机 `4000` 端口主要用于直连调试或单独代理。
 
@@ -82,6 +84,8 @@ docker compose up -d --build --wait api web
 
 平时使用单条 `task prod:up` 即可；拆分命令主要用于排查具体失败环节。
 
+HSO-007 发布门禁已完成，因此当前 Compose 在未覆盖 `CHARACTER_SEARCH_MODE` 时默认启用 `local-primary`。首次部署仍应按下文灰度顺序先显式设置 `CHARACTER_SEARCH_MODE=remote`；紧急回滚同样显式设置为 `remote` 后重新创建 API 容器。
+
 查看状态和日志：
 
 ```bash
@@ -91,17 +95,17 @@ task prod:logs
 
 ## 运行检查
 
-| 地址                                      | 用途                               |
-| ----------------------------------------- | ---------------------------------- |
-| `http://localhost:3000`                   | Web 入口。                         |
-| `http://localhost:3000/api/health`        | 经 Web 同源代理访问 API 健康检查。 |
-| `http://localhost:3000/api/announcements` | 经 Web 服务读取公告内容。          |
-| `http://localhost:4000/livez`             | API 进程探活。                     |
-| `http://localhost:4000/readyz`            | API 数据库 readiness。             |
+| 地址                                      | 用途                                   |
+| ----------------------------------------- | -------------------------------------- |
+| `http://localhost:3000`                   | Web 入口。                             |
+| `http://localhost:3000/api/health`        | 经 Web 同源代理访问 API 健康检查。     |
+| `http://localhost:3000/api/announcements` | 经 Web 服务读取公告内容。              |
+| `http://localhost:4000/livez`             | API 进程探活。                         |
+| `http://localhost:4000/readyz`            | API 数据库与当前题库搜索源 readiness。 |
 
-`readyz` 失败通常表示数据库不可达、迁移未完成或题库未就绪。
+`readyz` 失败通常表示数据库不可达、迁移未完成、当前 CatalogSnapshot 缺失/不可解析或题库未就绪。浏览器索引的独立 wire 投影失败由索引 503 和 snapshot 指标暴露，不会把仍可工作的 Go 远程搜索实例摘出 readiness。
 
-`http://localhost:4000/metrics` 输出 Prometheus 文本格式。该端点的标签只有低基数玩法维度，不包含令牌、昵称、内部对象 ID、聊天正文或未揭示答案；仍建议只在受信网络内暴露。
+`http://localhost:4000/metrics` 输出 Prometheus 文本格式。多人和搜索指标都只使用固定低基数枚举；搜索覆盖 policy、source/snapshot、fallback reason、远程 outcome/latency 和索引构建耗时。标签与结构化日志不得包含查询词、题库版本、session/room/match/角色 ID、令牌、昵称、聊天正文或答案；仍建议只在受信网络内暴露。
 
 ## 更新
 
@@ -115,6 +119,33 @@ task prod:up
 `migrate` 和 `seed` 每次启动都会作为一次性服务运行。题库 seed 会写入新的版本化快照；已经开始的会话继续引用旧版本和已冻结的答案判定策略，不受新题库影响。
 
 API 运行中也可以单独执行版本化 seed。`catalog_state.current_version` 更新后，新建对局会按需加载新题库索引，无需重启 API；进行中的对局继续使用旧索引。直接修改 `character` 行表不是受支持的热更新方式，也不会改变已经缓存或冻结的题库。`catalog_snapshot` 不允许同版本覆盖：同版本同内容可幂等重跑，同版本不同内容会使 seed 失败并回滚事务。
+
+角色搜索索引使用 `GET /api/catalog/{catalogVersion}/search-index/1`，响应为版本化 immutable 资源；策略使用 `GET /api/catalog/search-policy`，响应始终 `no-store`。若索引投影或 wire shape 改变，提升 URL 中的 `indexSchemaVersion`；仅修复策略/索引结构而不改 schema 时提升 `CHARACTER_SEARCH_POLICY_REVISION`。
+
+### 角色搜索灰度与回滚
+
+首次发布按以下顺序执行：
+
+1. 备份数据库并先应用 additive 迁移 `0023_puzzle_resolve_idempotency.sql`。应用回滚时保留该表，不在生产执行 Down。
+2. 以 `CHARACTER_SEARCH_MODE=remote` 部署全部 API 实例。fleet 尚有旧实例时不得启用 `local-primary`。
+3. 逐实例检查策略、当前题库版本索引、真实缺失版本的结构化 `CATALOG_VERSION_NOT_FOUND`、错误 `Cache-Control: no-store`、CORS fallback header 和旧 `/api/characters/search`。
+4. 从 Go 直连、Next 同源和最终代理/CDN 分别抽查索引的 `ETag`、`Cache-Control: public, max-age=31536000, immutable`、条件请求 `304`、实际 `Content-Encoding` 和传输体积。CDN 可压缩，但不得改变解压后的 JSON、ETag 语义或错误 no-store。
+5. 先完成 Web 部署和 remote 冒烟，再把所有 API 实例统一改为 `local-primary`。观察角色目录、单人、竞速和接力；索引就绪后的输入不应继续请求 `/api/characters/search`。
+
+可用以下只读请求取得抽查基线，版本替换为 `/api/catalog` 返回值：
+
+```bash
+curl -i https://game.example.com/api/catalog/search-policy
+curl -i -H 'Accept-Encoding: gzip' https://game.example.com/api/catalog/<version>/search-index/1
+curl -i -H 'If-None-Match: "<etag>"' https://game.example.com/api/catalog/<version>/search-index/1
+curl -i https://game.example.com/api/catalog/missing-version/search-index/1
+```
+
+紧急回滚只改服务端配置：先把所有实例切回 `CHARACTER_SEARCH_MODE=remote`，确认策略 revision 已变化并等待最多 60 秒或让页面重新获得焦点，再抽查已打开页面停止本地搜索。之后才允许回滚 API binary；不发布 Web、不清浏览器缓存、不回滚迁移，也不结束当前题局。新 Web 遇到旧 API 的策略/索引 404/405 会省略新观测 header 并继续远程搜索，旧 Web 对新 API 仍使用原搜索和 create/get-session 接口。
+
+观察窗口至少关注 `touhouflandre_search_policy_total`、`touhouflandre_search_source_total`、`touhouflandre_search_snapshot_total`、`touhouflandre_search_fallback_reason_total`、`touhouflandre_search_remote_total`、远程延迟和索引构建耗时。fallback、结构性错误或远程错误率出现无法解释的上升时立即切回 `remote`，保存指标/日志证据后再调查。
+
+默认 Prometheus 规则同时提供三个搜索告警：`CharacterSearchFallbackSpike` 在 5 分钟内出现超过 5 次非正常 fallback 时告警，`CharacterSearchProviderFailure` 捕获 source/snapshot 加载、构建或 schema 故障，`CharacterSearchRemoteError` 捕获远程权威回退失败。发布演练可以用受控低频请求验证告警查询，但不得在生产注入高流量或把查询词、版本和题局标识加入标签。
 
 紧急关闭等价判定时，将 `ANSWER_MATCH_POLICY=strict` 后重启 API。该操作只影响重启后创建的新随机题、新多人 match 和尚未创建的每日题；已有会话、已有 match 及已创建每日题保持原策略。恢复默认策略时使用相同步骤改回 `public_fields_v1`。
 

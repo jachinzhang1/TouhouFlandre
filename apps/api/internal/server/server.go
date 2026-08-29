@@ -16,6 +16,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/handler"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/hub"
@@ -33,6 +34,13 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 	h := hub.New(pool, config.MultiDisconnectGrace(), config.MultiWSReadLimit(), config.MultiWSSendQueue(), config.MultiProjectionSecret(), config.MultiChatRetention(), config.MultiChatCursorSecret())
 	opts = append([]handler.Option{handler.WithHub(h)}, opts...)
 	e := echo.New()
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			request := c.Request()
+			c.SetRequest(request.WithContext(handler.WithIfNoneMatch(request.Context(), request.Header.Get("If-None-Match"))))
+			return next(c)
+		}
+	})
 	// 请求日志走 slog（echo v5 已移除 middleware.Logger()，统一用 RequestLoggerWithConfig）。
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogLatency:    true,
@@ -47,7 +55,9 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 	}))
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: config.WebOrigins(),
+		AllowOrigins:  config.WebOrigins(),
+		AllowHeaders:  []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Character-Search-Fallback-Reason"},
+		ExposeHeaders: []string{"ETag", "Cache-Control"},
 	}))
 
 	swagger, err := openapi.GetSwagger()
@@ -97,12 +107,15 @@ func NewWithOptions(pool *pgxpool.Pool, opts ...handler.Option) *echo.Echo {
 		if err := pool.Ping(pingCtx); err != nil {
 			return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "database unavailable"})
 		}
+		if err := api.SearchReadiness(pingCtx); err != nil {
+			return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "catalog search unavailable"})
+		}
 		return c.JSON(http.StatusOK, map[string]bool{"ok": true})
 	})
 	e.GET("/metrics", func(c *echo.Context) error {
 		c.Response().Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 		c.Response().Header().Set("Cache-Control", "no-store")
-		return c.String(http.StatusOK, multi.DefaultMetrics.PrometheusText())
+		return c.String(http.StatusOK, multi.DefaultMetrics.PrometheusText()+game.DefaultSearchMetrics.PrometheusText())
 	})
 
 	e.HTTPErrorHandler = errorHandler
@@ -121,6 +134,9 @@ func errorHandler(c *echo.Context, err error) {
 		if strings.HasSuffix(c.Request().URL.Path, "/messages") {
 			multi.DefaultMetrics.IncChatRejected(string(apiErr.Code))
 		}
+		if isNonCacheableSearchPath(c.Request().URL.Path) {
+			c.Response().Header().Set("Cache-Control", "no-store")
+		}
 		_ = c.JSON(apiErr.Status, apiErr.Response())
 		return
 	}
@@ -137,6 +153,9 @@ func errorHandler(c *echo.Context, err error) {
 		message := fmt.Sprint(httpErr.Message)
 		if httpErr.Code >= http.StatusInternalServerError {
 			message = "服务器暂时无法处理请求。"
+		}
+		if isNonCacheableSearchPath(c.Request().URL.Path) {
+			c.Response().Header().Set("Cache-Control", "no-store")
 		}
 		_ = c.JSON(httpErr.Code, openapi.ErrorResponse{
 			Code:  code,
@@ -156,6 +175,9 @@ func errorHandler(c *echo.Context, err error) {
 		if sc.StatusCode() >= http.StatusInternalServerError {
 			message = "服务器暂时无法处理请求。"
 		}
+		if isNonCacheableSearchPath(c.Request().URL.Path) {
+			c.Response().Header().Set("Cache-Control", "no-store")
+		}
 		_ = c.JSON(sc.StatusCode(), openapi.ErrorResponse{
 			Code:  code,
 			Error: message,
@@ -163,18 +185,22 @@ func errorHandler(c *echo.Context, err error) {
 		return
 	}
 
+	if isNonCacheableSearchPath(c.Request().URL.Path) {
+		c.Response().Header().Set("Cache-Control", "no-store")
+	}
 	_ = c.JSON(http.StatusInternalServerError, openapi.ErrorResponse{
 		Code:  "INTERNAL",
 		Error: "服务器暂时无法处理请求。",
 	})
 }
 
+func isNonCacheableSearchPath(path string) bool {
+	return strings.Contains(path, "/search-index/") || path == "/api/catalog/search-policy"
+}
+
 // requestLogValues 把 echo 请求日志映射到 slog（LevelError 用于 5xx/错误请求，其余 Info）。
 func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
-	uri := v.URI
-	if strings.HasSuffix(c.Request().URL.Path, "/messages") {
-		uri = c.Request().URL.Path
-	}
+	uri := safeRequestLogURI(c, v.RoutePath)
 	attrs := []slog.Attr{
 		slog.String("method", v.Method),
 		slog.String("uri", uri),
@@ -202,6 +228,18 @@ func requestLogValues(c *echo.Context, v middleware.RequestLoggerValues) error {
 	}
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, "request", attrs...)
 	return nil
+}
+
+// safeRequestLogURI keeps request logs aggregateable without copying query
+// values or concrete resource identifiers (session/room/catalog/character).
+func safeRequestLogURI(c *echo.Context, routePath string) string {
+	if strings.TrimSpace(routePath) != "" {
+		return routePath
+	}
+	if strings.HasPrefix(c.Request().URL.Path, "/api/") {
+		return "api.unmatched"
+	}
+	return c.Request().URL.Path
 }
 
 // requestErrorCode 提取契约错误码供日志聚合（ApiError 取 code；HTTPError 按状态映射，与 errorHandler 一致）。

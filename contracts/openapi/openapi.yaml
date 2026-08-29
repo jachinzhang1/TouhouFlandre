@@ -39,8 +39,14 @@ paths:
     $ref: ./paths/catalog-full.yaml
   /api/catalog/characters:
     $ref: ./paths/catalog-characters.yaml
+  /api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}:
+    $ref: ./paths/catalog-search-index.yaml
+  /api/catalog/search-policy:
+    $ref: ./paths/catalog-search-policy.yaml
   /api/puzzles/{mode}:
     $ref: ./paths/puzzles.yaml
+  /api/puzzles/{mode}/resolve:
+    $ref: ./paths/puzzles-resolve.yaml
   /api/sessions/{sessionId}/guess:
     $ref: ./paths/sessions-guess.yaml
   /api/sessions/{sessionId}/timeout:
@@ -109,6 +115,12 @@ components:
       $ref: ./schemas/character.yaml#/CatalogContentSummary
     CatalogSummary:
       $ref: ./schemas/character.yaml#/CatalogSummary
+    CatalogSearchIndexEntry:
+      $ref: ./schemas/character.yaml#/CatalogSearchIndexEntry
+    CatalogSearchIndex:
+      $ref: ./schemas/character.yaml#/CatalogSearchIndex
+    CatalogSearchPolicy:
+      $ref: ./schemas/character.yaml#/CatalogSearchPolicy
     QuestionDifficultyPreset:
       $ref: ./schemas/question-scope.yaml#/QuestionDifficultyPreset
     DailyQuestionDifficulty:
@@ -137,6 +149,8 @@ components:
       $ref: ./schemas/question-scope.yaml#/CatalogFull
     PuzzleCreateRequest:
       $ref: ./schemas/question-scope.yaml#/PuzzleCreateRequest
+    PuzzleResolveRequest:
+      $ref: ./schemas/question-scope.yaml#/PuzzleResolveRequest
     WorkType:
       $ref: ./schemas/work.yaml#/WorkType
     Work:
@@ -161,6 +175,10 @@ components:
       $ref: ./schemas/session.yaml#/PublicGameSession
     PuzzleResponse:
       $ref: ./schemas/session.yaml#/PuzzleResponse
+    PuzzleResolution:
+      $ref: ./schemas/session.yaml#/PuzzleResolution
+    PuzzleResolveResponse:
+      $ref: ./schemas/session.yaml#/PuzzleResolveResponse
     GuessFieldKey:
       $ref: ./schemas/guess.yaml#/GuessFieldKey
     GuessField:

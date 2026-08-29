@@ -166,3 +166,28 @@ PuzzleResponse:
       type: string
     session:
       $ref: "#/PublicGameSession"
+
+PuzzleResolution:
+  type: string
+  enum:
+    - created
+    - resumed
+
+PuzzleResolveResponse:
+  type: object
+  description: 单人题局恢复或创建结果。
+  required:
+    - puzzleLabel
+    - session
+    - resolution
+  properties:
+    puzzleLabel:
+      type: string
+    session:
+      $ref: "#/PublicGameSession"
+    resolution:
+      $ref: "#/PuzzleResolution"
+    supersededSession:
+      description: 请求的旧会话与当前 mode、日期或难度不匹配时返回。
+      allOf:
+        - $ref: "#/PublicGameSession"

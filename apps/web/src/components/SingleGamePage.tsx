@@ -40,8 +40,16 @@ import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { modeConfig } from "../gameModes";
-import { useCharacterSearch } from "../hooks/useCharacterSearch";
+import {
+  useCharacterSearch,
+  useCharacterSearchPrefetch,
+} from "../hooks/useCharacterSearch";
 import { api } from "../lib/api";
+import {
+  createPuzzleApi,
+  PuzzleResolveUnsupportedError,
+} from "../lib/puzzleApi";
+import type { PuzzleResolveResponse } from "../lib/puzzleApi";
 import { useForegroundTimer, useWallClockTimer } from "../stats/timer";
 import {
   deleteSingleStatsDraft,
@@ -52,11 +60,18 @@ import {
 import {
   catalogFullToSnapshot,
   loadLocalQuestionScope,
+  readLocalQuestionScopeInput,
+  saveLocalQuestionScope,
 } from "../lib/questionScopeStorage";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
 const DEFAULT_DAILY_DIFFICULTY: DailyQuestionDifficulty = "normal";
 const DAILY_DIFFICULTIES = DAILY_QUESTION_DIFFICULTY_PRESETS;
+
+const newResolveIdempotencyKey = () =>
+  typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const writeStatsInBackground = (operation: Promise<unknown>) => {
   void operation.catch((error) => console.error("本地单人统计写入失败", error));
@@ -279,9 +294,29 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const loadRequestIdRef = useRef(0);
+  const initialLoadModeRef = useRef<SinglePlayerGameMode | null>(null);
+  const loadCleanupVersionRef = useRef(0);
+  const puzzleApi = useMemo(() => createPuzzleApi(), []);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
+  const searchContext = useMemo(
+    () =>
+      session
+        ? {
+            kind: "single-session" as const,
+            sessionId: session.id,
+            catalogVersion: session.catalogVersion,
+            selectedCharacterIds: session.questionScope?.selectedCharacterIds,
+          }
+        : undefined,
+    [
+      session?.catalogVersion,
+      session?.id,
+      session?.questionScope?.selectedCharacterIds,
+    ],
+  );
+  useCharacterSearchPrefetch(searchContext);
   const {
     error: searchError,
     loading: searchLoading,
@@ -290,9 +325,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   } = useCharacterSearch(query, {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
-    context: session
-      ? { kind: "single-session", sessionId: session.id }
-      : undefined,
+    context: searchContext,
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");
@@ -415,9 +448,17 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     setDailyStatuses((current) => ({ ...current, [difficulty]: status }));
   };
 
-  const refreshDailyStatuses = async (dateKey: string) => {
+  const refreshDailyStatuses = async (
+    dateKey: string,
+    activeDifficulty: DailyQuestionDifficulty,
+    activeStatus: DailySessionStatus,
+    requestId: number,
+  ) => {
     const entries = await Promise.all(
       DAILY_DIFFICULTIES.map(async (difficulty) => {
+        if (difficulty === activeDifficulty) {
+          return [difficulty, activeStatus] as const;
+        }
         const storedValue = localStorage.getItem(dailyStorageKey(difficulty));
         if (!storedValue) return [difficulty, null] as const;
         try {
@@ -431,6 +472,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         }
       }),
     );
+    if (loadRequestIdRef.current !== requestId) return;
     setDailyStatuses(
       entries.reduce((acc, [difficulty, status]) => {
         acc[difficulty] = status;
@@ -461,149 +503,196 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     if (nextMode === "daily") setDailyDifficulty(difficulty);
 
     try {
-      let dailyDateKey: string | undefined;
-      if (nextMode === "daily") {
-        dailyDateKey = (await api.catalog()).dailyDateKey;
-        if (!isCurrentRequest()) return;
-        void refreshDailyStatuses(dailyDateKey);
-      }
       const storedValue = localStorage.getItem(
         storageKeyForMode(nextMode, difficulty),
       );
-      if (storedValue) {
-        try {
-          const storedSession = parseStoredSession(storedValue);
-          const restored = await api.getSession(storedSession.id);
+      const storedSession = storedValue
+        ? parseStoredSession(storedValue)
+        : undefined;
+      const requestBody = {
+        idempotencyKey: newResolveIdempotencyKey(),
+        resumeSessionId: storedSession?.id,
+        ...(nextMode === "daily"
+          ? { difficulty }
+          : { questionScope: readLocalQuestionScopeInput() }),
+      };
+
+      let resolved: PuzzleResolveResponse;
+      try {
+        resolved = await puzzleApi.resolvePuzzle(nextMode, requestBody);
+      } catch (error) {
+        if (!(error instanceof PuzzleResolveUnsupportedError)) throw error;
+
+        let dailyDateKey: string | undefined;
+        if (nextMode === "daily") {
+          dailyDateKey = (await api.catalog()).dailyDateKey;
           if (!isCurrentRequest()) return;
-          const restoredDifficulty = restored.questionScope?.difficulty;
-          const mismatchedSession =
-            restored.mode !== nextMode ||
-            (nextMode === "daily" &&
-              (restored.puzzleKey !== dailyDateKey ||
-                restoredDifficulty !== difficulty));
-          if (mismatchedSession) {
-            const oldTimings = normalizeGuessTimings(
-              storedSession.guessCompletedElapsedMs ??
-                storedSession.guessCompletedElapsedSeconds?.map(
-                  (value) => value * 1000,
-                ),
-              restored.guesses.length,
-            );
-            const oldElapsed = Math.max(
-              0,
-              storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0,
-            );
-            if (restored.status !== "playing") {
-              writeStatsInBackground(
-                recordSingleSession(restored, nextMode, oldElapsed, oldTimings),
-              );
-            } else {
-              writeStatsInBackground(deleteSingleStatsDraft(restored.id));
+        }
+        let restored: PublicGameSession | undefined;
+        if (storedSession) {
+          try {
+            restored = await api.getSession(storedSession.id);
+          } catch (restoreError) {
+            if (
+              typeof restoreError !== "object" ||
+              restoreError === null ||
+              !("status" in restoreError) ||
+              restoreError.status !== 404
+            ) {
+              throw restoreError;
             }
-            localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
-          } else {
-            const localTimings = normalizeGuessTimings(
-              storedSession.guessCompletedElapsedMs ??
-                storedSession.guessCompletedElapsedSeconds?.map(
-                  (value) => value * 1000,
-                ),
-              restored.guesses.length,
-            );
-            const draft = await loadSingleStatsDraft(restored.id);
-            const restoredTimings = localTimings.length
-              ? localTimings
-              : normalizeGuessTimings(
-                  draft?.guessCompletedElapsedMs,
-                  restored.guesses.length,
-                );
-            const baseElapsed = Math.max(
-              storedSession.activeElapsedMs ?? 0,
-              draft?.activeElapsedMs ?? 0,
-              restoredTimings.at(-1) ?? 0,
-            );
-            const savedAtMs =
-              validTimestamp(storedSession.savedAtMs) ??
-              validTimestamp(
-                draft?.updatedAt ? Date.parse(draft.updatedAt) : undefined,
-              );
-            const restoredElapsed =
-              nextMode === "daily" &&
-              restored.status === "playing" &&
-              restored.guesses.length > 0 &&
-              savedAtMs
-                ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
-                : baseElapsed;
-            setSession(restored);
-            setGuessCompletedElapsedMs(restoredTimings);
-            setInitialElapsedMs(restoredElapsed);
-            setPuzzleLabel(
+          }
+        }
+        if (!isCurrentRequest()) return;
+        const restoredDifficulty = restored?.questionScope?.difficulty;
+        const resumable =
+          restored !== undefined &&
+          restored.mode === nextMode &&
+          (nextMode === "random" ||
+            (restored.puzzleKey === dailyDateKey &&
+              restoredDifficulty === difficulty));
+        if (resumable && restored) {
+          resolved = {
+            puzzleLabel:
               nextMode === "daily"
                 ? dailyPuzzleLabel(restored.puzzleKey, difficulty)
                 : modeConfig[nextMode].puzzleLabel,
-            );
-            if (nextMode === "daily")
-              setDailyStatus(difficulty, restored.status);
-            if (restored.status !== "playing") {
-              writeStatsInBackground(
-                recordSingleSession(
-                  restored,
-                  nextMode,
-                  restoredElapsed,
-                  restoredTimings,
-                ),
-              );
-            } else {
-              writeStatsInBackground(
-                saveSingleStatsDraft(
-                  restored,
-                  nextMode,
-                  restoredElapsed,
-                  restoredTimings,
-                ),
-              );
-            }
-            return;
-          }
-        } catch (error) {
-          if (
-            typeof error !== "object" ||
-            error === null ||
-            !("status" in error) ||
-            error.status !== 404
-          ) {
-            throw error;
-          }
-          localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
+            resolution: "resumed" as const,
+            session: restored,
+          };
+        } else {
+          const createBody =
+            nextMode === "daily"
+              ? { difficulty }
+              : {
+                  questionScope: loadLocalQuestionScope(
+                    catalogFullToSnapshot(await api.catalogFull()),
+                  ).config,
+                };
+          const created = await api.createPuzzle(nextMode, createBody);
+          if (!isCurrentRequest()) return;
+          resolved = {
+            ...created,
+            resolution: "created" as const,
+            supersededSession: restored,
+          };
+        }
+      }
+      if (!isCurrentRequest()) return;
+
+      if (resolved.supersededSession && storedSession) {
+        const oldTimings = normalizeGuessTimings(
+          storedSession.guessCompletedElapsedMs ??
+            storedSession.guessCompletedElapsedSeconds?.map(
+              (value) => value * 1000,
+            ),
+          resolved.supersededSession.guesses.length,
+        );
+        const oldElapsed = Math.max(
+          0,
+          storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0,
+        );
+        if (resolved.supersededSession.status !== "playing") {
+          writeStatsInBackground(
+            recordSingleSession(
+              resolved.supersededSession,
+              nextMode,
+              oldElapsed,
+              oldTimings,
+            ),
+          );
+        } else {
+          writeStatsInBackground(
+            deleteSingleStatsDraft(resolved.supersededSession.id),
+          );
         }
       }
 
-      const createBody =
-        nextMode === "daily"
-          ? { difficulty }
-          : {
-              questionScope: loadLocalQuestionScope(
-                catalogFullToSnapshot(await api.catalogFull()),
-              ).config,
-            };
-      const created = await api.createPuzzle(nextMode, createBody);
-      if (!isCurrentRequest()) return;
-      setSession(created.session);
-      setGuessCompletedElapsedMs([]);
-      setInitialElapsedMs(0);
+      let restoredTimings: number[] = [];
+      let restoredElapsed = 0;
+      if (resolved.resolution === "resumed" && storedSession) {
+        const localTimings = normalizeGuessTimings(
+          storedSession.guessCompletedElapsedMs ??
+            storedSession.guessCompletedElapsedSeconds?.map(
+              (value) => value * 1000,
+            ),
+          resolved.session.guesses.length,
+        );
+        const draft = await loadSingleStatsDraft(resolved.session.id);
+        if (!isCurrentRequest()) return;
+        restoredTimings = localTimings.length
+          ? localTimings
+          : normalizeGuessTimings(
+              draft?.guessCompletedElapsedMs,
+              resolved.session.guesses.length,
+            );
+        const baseElapsed = Math.max(
+          storedSession.activeElapsedMs ?? 0,
+          draft?.activeElapsedMs ?? 0,
+          restoredTimings.at(-1) ?? 0,
+        );
+        const savedAtMs =
+          validTimestamp(storedSession.savedAtMs) ??
+          validTimestamp(
+            draft?.updatedAt ? Date.parse(draft.updatedAt) : undefined,
+          );
+        restoredElapsed =
+          nextMode === "daily" &&
+          resolved.session.status === "playing" &&
+          resolved.session.guesses.length > 0 &&
+          savedAtMs
+            ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
+            : baseElapsed;
+      }
+
+      setSession(resolved.session);
+      setGuessCompletedElapsedMs(restoredTimings);
+      setInitialElapsedMs(restoredElapsed);
       setPuzzleLabel(
         nextMode === "daily"
-          ? dailyPuzzleLabel(
-              created.session.puzzleKey ?? dailyDateKey,
-              difficulty,
-            )
-          : created.puzzleLabel,
+          ? dailyPuzzleLabel(resolved.session.puzzleKey, difficulty)
+          : resolved.puzzleLabel,
       );
-      persistSession(nextMode, created.session, [], 0, difficulty);
-      if (nextMode === "daily")
-        setDailyStatus(difficulty, created.session.status);
-      writeStatsInBackground(
-        saveSingleStatsDraft(created.session, nextMode, 0, []),
+      persistSession(
+        nextMode,
+        resolved.session,
+        restoredTimings,
+        restoredElapsed,
+        difficulty,
       );
+      if (nextMode === "random" && resolved.session.questionScope) {
+        saveLocalQuestionScope(resolved.session.questionScope);
+      }
+      if (nextMode === "daily") {
+        setDailyStatus(difficulty, resolved.session.status);
+        if (resolved.session.puzzleKey) {
+          void refreshDailyStatuses(
+            resolved.session.puzzleKey,
+            difficulty,
+            resolved.session.status,
+            requestId,
+          );
+        }
+      }
+      if (resolved.session.status !== "playing") {
+        writeStatsInBackground(
+          recordSingleSession(
+            resolved.session,
+            nextMode,
+            restoredElapsed,
+            restoredTimings,
+          ),
+        );
+      } else {
+        writeStatsInBackground(
+          saveSingleStatsDraft(
+            resolved.session,
+            nextMode,
+            restoredElapsed,
+            restoredTimings,
+          ),
+        );
+      }
     } catch (error) {
       if (!isCurrentRequest()) return;
       setMessage(error instanceof Error ? error.message : "加载游戏失败。");
@@ -678,9 +767,21 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   useEffect(() => {
-    void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    // React StrictMode probes effects in development. Keep the probe from
+    // starting a second resolve request; real mode changes still start a new
+    // request and advance loadRequestIdRef inside loadSession.
+    loadCleanupVersionRef.current += 1;
+    if (initialLoadModeRef.current !== mode) {
+      initialLoadModeRef.current = mode;
+      void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    }
     return () => {
-      loadRequestIdRef.current += 1;
+      const cleanupVersion = ++loadCleanupVersionRef.current;
+      queueMicrotask(() => {
+        if (loadCleanupVersionRef.current === cleanupVersion) {
+          loadRequestIdRef.current += 1;
+        }
+      });
     };
   }, [mode]);
 
@@ -1175,7 +1276,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               {searchLoading ? (
                 <div className="suggestion-state" role="status">
                   <Loader2 className="spin" size={17} aria-hidden="true" />
-                  <span>正在搜索</span>
+                  <span>正在加载搜索索引</span>
                 </div>
               ) : searchError ? (
                 <div className="suggestion-state suggestion-error" role="alert">
@@ -1338,7 +1439,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                           size={20}
                           aria-hidden="true"
                         />{" "}
-                        正在连接本地题库
+                        正在准备题局
                       </span>
                     ) : !session && message ? (
                       <span>

@@ -15,6 +15,11 @@ const historyMocks = vi.hoisted(() => ({
   loadStage: vi.fn(() => Promise.resolve()),
   retryStage: vi.fn(() => Promise.resolve()),
 }));
+const searchPrefetchMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../hooks/useCharacterSearch", () => ({
+  useCharacterSearchPrefetch: searchPrefetchMock,
+}));
 
 vi.mock("../hooks/useRelayHistory", () => ({
   useRelayHistory: () => ({
@@ -34,7 +39,12 @@ vi.mock("./GuessInputBar", () => ({
   }: {
     disabled: boolean;
     onGuess: (guessId: string) => Promise<unknown>;
-    searchContext?: { roomId: string; matchIndex: number };
+    searchContext?: {
+      roomId: string;
+      matchIndex: number;
+      catalogVersion?: string;
+      selectedCharacterIds?: readonly string[];
+    };
     statusMessage?: string | null;
   }) => (
     <button
@@ -42,6 +52,8 @@ vi.mock("./GuessInputBar", () => ({
       data-testid="relay-guess-input"
       data-search-room-id={searchContext?.roomId}
       data-search-match-index={searchContext?.matchIndex}
+      data-search-catalog-version={searchContext?.catalogVersion}
+      data-search-selected-ids={searchContext?.selectedCharacterIds?.join(",")}
       disabled={disabled}
       title={statusMessage ?? "可猜测"}
       onClick={() => void onGuess("reimu")}
@@ -141,6 +153,8 @@ function renderRelay(
       projection={nextProjection}
       members={members}
       viewer={viewer}
+      catalogVersion="catalog-v1"
+      selectedCharacterIds={["reimu"]}
       fields={[]}
       roomStatus="playing"
       retentionEndsAt={null}
@@ -176,13 +190,34 @@ describe("RelayStageView", () => {
       (screen.getByTestId("relay-guess-input") as HTMLButtonElement).disabled,
     ).toBe(false);
     expect(
-      screen.getByTestId("relay-guess-input").getAttribute("data-search-room-id"),
+      screen
+        .getByTestId("relay-guess-input")
+        .getAttribute("data-search-room-id"),
     ).toBe("room-1");
     expect(
       screen
         .getByTestId("relay-guess-input")
         .getAttribute("data-search-match-index"),
     ).toBe("0");
+    expect(
+      screen
+        .getByTestId("relay-guess-input")
+        .getAttribute("data-search-catalog-version"),
+    ).toBe("catalog-v1");
+    expect(
+      screen
+        .getByTestId("relay-guess-input")
+        .getAttribute("data-search-selected-ids"),
+    ).toBe("reimu");
+    expect(searchPrefetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "multiplayer-match",
+        roomId: "room-1",
+        matchIndex: 0,
+        catalogVersion: "catalog-v1",
+        selectedCharacterIds: ["reimu"],
+      }),
+    );
     expect(screen.queryByText("9", { selector: "strong" })).not.toBeNull();
     expect(
       screen

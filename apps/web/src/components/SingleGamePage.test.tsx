@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import type { PublicGameSession } from "@touhouflandre/shared";
 import { SingleGamePage } from "./SingleGamePage";
 
@@ -9,6 +10,7 @@ const playingSession = {
   mode: "daily",
   contentType: "character",
   status: "playing",
+  catalogVersion: "v2",
   puzzleKey: "2026-08-05",
   maxGuesses: 8,
   questionScope: {
@@ -91,8 +93,15 @@ const forfeitedSession = {
   },
 } as unknown as PublicGameSession;
 
-const { searchHookMock, timerCheckpointMock } = vi.hoisted(() => ({
+const {
+  puzzleResolveMock,
+  searchHookMock,
+  searchPrefetchMock,
+  timerCheckpointMock,
+} = vi.hoisted(() => ({
+  puzzleResolveMock: vi.fn(),
   searchHookMock: vi.fn(),
+  searchPrefetchMock: vi.fn(),
   timerCheckpointMock: vi.fn(() => 65_000),
 }));
 
@@ -112,8 +121,17 @@ vi.mock("../lib/api", () => ({
   },
 }));
 
+vi.mock("../lib/puzzleApi", () => {
+  class PuzzleResolveUnsupportedError extends Error {}
+  return {
+    createPuzzleApi: () => ({ resolvePuzzle: puzzleResolveMock }),
+    PuzzleResolveUnsupportedError,
+  };
+});
+
 vi.mock("../hooks/useCharacterSearch", () => ({
   useCharacterSearch: searchHookMock,
+  useCharacterSearchPrefetch: searchPrefetchMock,
 }));
 
 vi.mock("../stats/timer", () => ({
@@ -128,6 +146,8 @@ vi.mock("../stats/timer", () => ({
 }));
 
 import { api } from "../lib/api";
+import { PuzzleResolveUnsupportedError } from "../lib/puzzleApi";
+import { stableRecordId, statsDb } from "../stats/db";
 
 describe("SingleGamePage", () => {
   beforeEach(() => {
@@ -138,6 +158,11 @@ describe("SingleGamePage", () => {
     vi.mocked(api.submitGuess).mockReset();
     vi.mocked(api.timeoutSession).mockReset();
     vi.mocked(api.forfeitSession).mockReset();
+    puzzleResolveMock.mockReset();
+    puzzleResolveMock.mockImplementation(async (mode, body) => {
+      const created = await api.createPuzzle(mode, body);
+      return { ...created, resolution: "created" };
+    });
     timerCheckpointMock.mockClear();
     vi.mocked(api.catalogFull).mockResolvedValue({
       version: "v2",
@@ -145,6 +170,7 @@ describe("SingleGamePage", () => {
       characters: [],
     } as never);
     searchHookMock.mockReset();
+    searchPrefetchMock.mockReset();
     searchHookMock.mockReturnValue({
       results: [
         {
@@ -189,6 +215,189 @@ describe("SingleGamePage", () => {
       "sess-1",
     );
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
+    expect(api.catalog).not.toHaveBeenCalled();
+    expect(searchPrefetchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "single-session",
+        sessionId: "sess-1",
+        catalogVersion: "v2",
+        selectedCharacterIds: [],
+      }),
+    );
+  });
+
+  it("creates a random puzzle without catalog/full and saves normalized scope", async () => {
+    const storedScope = playingSession.questionScope!;
+    const normalizedScope = {
+      ...storedScope,
+      catalogVersion: "server-v3",
+      selectedCharacterIds: ["reimu_hakurei"],
+    };
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify(storedScope),
+    );
+    puzzleResolveMock.mockResolvedValue({
+      session: {
+        ...playingSession,
+        mode: "random",
+        puzzleKey: undefined,
+        questionScope: normalizedScope,
+      },
+      puzzleLabel: "随机题",
+      resolution: "created",
+    });
+
+    render(<SingleGamePage mode="random" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(api.catalogFull).not.toHaveBeenCalled();
+    expect(puzzleResolveMock).toHaveBeenCalledWith(
+      "random",
+      expect.objectContaining({ questionScope: storedScope }),
+    );
+    expect(localStorage.getItem("touhouflandre:question-scope")).toContain(
+      "server-v3",
+    );
+  });
+
+  it("does not resolve twice during a React StrictMode effect probe", async () => {
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: { ...playingSession, mode: "random", puzzleKey: undefined },
+      puzzleLabel: "随机题",
+    } as never);
+
+    render(
+      <StrictMode>
+        <SingleGamePage mode="random" />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(puzzleResolveMock).toHaveBeenCalledOnce();
+  });
+
+  it("ignores a resolve response that arrives after the page unmounts", async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    puzzleResolveMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }) as never,
+    );
+
+    const view = render(<SingleGamePage mode="random" />);
+    await waitFor(() => expect(puzzleResolveMock).toHaveBeenCalledOnce());
+    view.unmount();
+    await Promise.resolve();
+
+    resolveRequest!({
+      session: { ...playingSession, mode: "random", puzzleKey: undefined },
+      puzzleLabel: "随机题",
+      resolution: "created",
+    });
+    await Promise.resolve();
+    expect(localStorage.getItem("touhouflandre:random-session")).toBeNull();
+  });
+
+  it("omits an invalid stored scope from a random resolve request", async () => {
+    localStorage.setItem("touhouflandre:question-scope", "not-json");
+    puzzleResolveMock.mockResolvedValue({
+      session: { ...playingSession, mode: "random", puzzleKey: undefined },
+      puzzleLabel: "随机题",
+      resolution: "created",
+    });
+
+    render(<SingleGamePage mode="random" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(puzzleResolveMock).toHaveBeenCalledWith(
+      "random",
+      expect.not.objectContaining({ questionScope: expect.anything() }),
+    );
+    expect(api.catalogFull).not.toHaveBeenCalled();
+  });
+
+  it("uses the legacy session-to-create flow once after resolve 404", async () => {
+    localStorage.setItem(
+      "touhouflandre:daily-session",
+      JSON.stringify({ id: "missing-session", puzzleKey: "2026-08-04" }),
+    );
+    puzzleResolveMock.mockRejectedValue(new PuzzleResolveUnsupportedError(404));
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.getSession).mockRejectedValue({ status: 404 });
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+
+    render(<SingleGamePage mode="daily" />);
+
+    expect(await screen.findByText(dailyTitle)).toBeTruthy();
+    expect(puzzleResolveMock).toHaveBeenCalledOnce();
+    expect(api.catalog).toHaveBeenCalledOnce();
+    expect(api.getSession).toHaveBeenCalledOnce();
+    expect(api.createPuzzle).toHaveBeenCalledOnce();
+  });
+
+  it("does not run the legacy flow for other resolve failures", async () => {
+    puzzleResolveMock.mockRejectedValue(new Error("服务器失败"));
+
+    render(<SingleGamePage mode="daily" />);
+
+    expect(await screen.findByText("服务器失败")).toBeTruthy();
+    expect(api.catalog).not.toHaveBeenCalled();
+    expect(api.getSession).not.toHaveBeenCalled();
+    expect(api.createPuzzle).not.toHaveBeenCalled();
+  });
+
+  it("keeps the main daily session usable when background status refresh fails", async () => {
+    localStorage.setItem(
+      "touhouflandre:daily-session:hard",
+      JSON.stringify({ id: "hard-session", puzzleKey: "2026-08-05" }),
+    );
+    puzzleResolveMock.mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+      resolution: "created",
+    });
+    vi.mocked(api.getSession).mockRejectedValue(new Error("offline"));
+
+    render(<SingleGamePage mode="daily" />);
+
+    expect(await screen.findByText(dailyTitle)).toBeTruthy();
+    await waitFor(() => expect(api.getSession).toHaveBeenCalledOnce());
+    expect(screen.getByText("进行中")).toBeTruthy();
+    expect(screen.queryByText("offline")).toBeNull();
+  });
+
+  it("archives a completed superseded session", async () => {
+    const superseded = { ...wonSession, id: "sess-superseded" };
+    localStorage.setItem(
+      "touhouflandre:daily-session",
+      JSON.stringify({
+        id: superseded.id,
+        puzzleKey: superseded.puzzleKey,
+        activeElapsedMs: 65_000,
+        guessCompletedElapsedMs: [65_000],
+      }),
+    );
+    puzzleResolveMock.mockResolvedValue({
+      session: nextDailySession,
+      puzzleLabel: "每日题 2026-08-06",
+      resolution: "created",
+      supersededSession: superseded,
+    });
+
+    render(<SingleGamePage mode="daily" />);
+    expect(await screen.findByText(nextDailyTitle)).toBeTruthy();
+
+    const recordId = await stableRecordId(`single:${superseded.id}`);
+    await waitFor(async () => {
+      expect(await statsDb.records.get(recordId)).toBeTruthy();
+    });
   });
 
   it("shows the feedback icon legend from the guess form", async () => {
@@ -323,11 +532,11 @@ describe("SingleGamePage", () => {
       "touhouflandre:daily-session",
       JSON.stringify({ id: "sess-1", puzzleKey: "2026-08-05" }),
     );
-    vi.mocked(api.catalog).mockResolvedValue({
-      dailyDateKey: "2026-08-05",
-      contents: [],
-    } as never);
-    vi.mocked(api.getSession).mockResolvedValue(sessionWithGuess as never);
+    puzzleResolveMock.mockResolvedValue({
+      session: sessionWithGuess,
+      puzzleLabel: "每日题 2026-08-05",
+      resolution: "resumed",
+    });
 
     render(<SingleGamePage mode="daily" />);
 
@@ -341,16 +550,12 @@ describe("SingleGamePage", () => {
       "touhouflandre:daily-session",
       JSON.stringify({ id: "sess-1", puzzleKey: "2026-08-05" }),
     );
-    vi.mocked(api.catalog).mockResolvedValue({
-      dailyDateKey: "2026-08-06",
-      contents: [],
-    } as never);
-    vi.mocked(api.getSession).mockResolvedValue(sessionWithGuess as never);
-    vi.mocked(api.forfeitSession).mockResolvedValue(forfeitedSession as never);
-    vi.mocked(api.createPuzzle).mockResolvedValue({
+    puzzleResolveMock.mockResolvedValue({
       session: nextDailySession,
       puzzleLabel: "每日题 2026-08-06",
-    } as never);
+      resolution: "created",
+      supersededSession: sessionWithGuess,
+    });
 
     render(<SingleGamePage mode="daily" />);
 
@@ -367,22 +572,20 @@ describe("SingleGamePage", () => {
       "touhouflandre:daily-session",
       JSON.stringify({ id: "sess-hard", puzzleKey: "2026-08-05" }),
     );
-    vi.mocked(api.catalog).mockResolvedValue({
-      dailyDateKey: "2026-08-05",
-      contents: [],
-    } as never);
-    vi.mocked(api.getSession).mockResolvedValue({
+    const hardSession = {
       ...sessionWithGuess,
       id: "sess-hard",
       questionScope: {
         ...sessionWithGuess.questionScope,
         difficulty: "hard",
       },
-    } as never);
-    vi.mocked(api.createPuzzle).mockResolvedValue({
+    } as PublicGameSession;
+    puzzleResolveMock.mockResolvedValue({
       session: nextDailySession,
       puzzleLabel: "每日题 2026-08-05",
-    } as never);
+      resolution: "created",
+      supersededSession: hardSession,
+    });
 
     render(<SingleGamePage mode="daily" />);
 
@@ -466,7 +669,12 @@ describe("SingleGamePage", () => {
       expect(searchHookMock).toHaveBeenCalledWith(
         "帕秋莉·诺蕾姬",
         expect.objectContaining({
-          context: { kind: "single-session", sessionId: "sess-1" },
+          context: {
+            kind: "single-session",
+            sessionId: "sess-1",
+            catalogVersion: "v2",
+            selectedCharacterIds: [],
+          },
         }),
       ),
     );
