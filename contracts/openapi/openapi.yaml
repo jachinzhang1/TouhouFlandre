@@ -45,6 +45,8 @@ paths:
     $ref: ./paths/catalog-search-policy.yaml
   /api/puzzles/{mode}:
     $ref: ./paths/puzzles.yaml
+  /api/puzzles/{mode}/resolve:
+    $ref: ./paths/puzzles-resolve.yaml
   /api/sessions/{sessionId}/guess:
     $ref: ./paths/sessions-guess.yaml
   /api/sessions/{sessionId}/timeout:
@@ -147,6 +149,8 @@ components:
       $ref: ./schemas/question-scope.yaml#/CatalogFull
     PuzzleCreateRequest:
       $ref: ./schemas/question-scope.yaml#/PuzzleCreateRequest
+    PuzzleResolveRequest:
+      $ref: ./schemas/question-scope.yaml#/PuzzleResolveRequest
     WorkType:
       $ref: ./schemas/work.yaml#/WorkType
     Work:
@@ -171,6 +175,10 @@ components:
       $ref: ./schemas/session.yaml#/PublicGameSession
     PuzzleResponse:
       $ref: ./schemas/session.yaml#/PuzzleResponse
+    PuzzleResolution:
+      $ref: ./schemas/session.yaml#/PuzzleResolution
+    PuzzleResolveResponse:
+      $ref: ./schemas/session.yaml#/PuzzleResolveResponse
     GuessFieldKey:
       $ref: ./schemas/guess.yaml#/GuessFieldKey
     GuessField:

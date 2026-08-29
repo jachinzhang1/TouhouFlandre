@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/puzzles/{mode}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 恢复或创建单人题局 */
+        post: operations["puzzles_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions/{sessionId}/guess": {
         parameters: {
             query?: never;
@@ -599,7 +616,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT" | "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT" | "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -806,6 +823,12 @@ export interface components {
             questionScope?: components["schemas"]["QuestionScopeConfigInput"];
             difficulty?: components["schemas"]["DailyQuestionDifficulty"];
         };
+        PuzzleResolveRequest: {
+            idempotencyKey: string;
+            resumeSessionId?: string;
+            questionScope?: components["schemas"]["QuestionScopeConfigInput"];
+            difficulty?: components["schemas"]["DailyQuestionDifficulty"];
+        };
         /** @enum {string} */
         WorkType: "game" | "ftg" | "stg" | "print" | "music_cd" | "other";
         Work: {
@@ -885,6 +908,16 @@ export interface components {
         PuzzleResponse: {
             puzzleLabel: string;
             session: components["schemas"]["PublicGameSession"];
+        };
+        /** @enum {string} */
+        PuzzleResolution: "created" | "resumed";
+        /** @description 单人题局恢复或创建结果。 */
+        PuzzleResolveResponse: {
+            puzzleLabel: string;
+            session: components["schemas"]["PublicGameSession"];
+            resolution: components["schemas"]["PuzzleResolution"];
+            /** @description 请求的旧会话与当前 mode、日期或难度不匹配时返回。 */
+            supersededSession?: components["schemas"]["PublicGameSession"];
         };
         /** @description 服务端字段注册表提供的稳定字段 key。 */
         GuessFieldKey: string;
@@ -1811,6 +1844,68 @@ export interface operations {
             };
             /** @description 模式不合法 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库中没有可作为答案的角色 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库未初始化 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    puzzles_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mode: "daily" | "random";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PuzzleResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description 题局恢复或创建成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PuzzleResolveResponse"];
+                };
+            };
+            /** @description 请求或模式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 幂等键已被其他请求指纹使用 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
