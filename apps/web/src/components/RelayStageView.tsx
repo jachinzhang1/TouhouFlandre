@@ -32,6 +32,8 @@ import {
   MultiplayerMatchFrame,
 } from "../multiplayer/framework";
 import { GuessInputBar } from "./GuessInputBar";
+import { useCharacterSearchPrefetch } from "../hooks/useCharacterSearch";
+import type { MultiplayerCharacterSearchContext } from "../hooks/useCharacterSearch";
 import type { MemberScoreStripEntry } from "./MemberScoreStrip";
 import {
   RelayEncounterBoard,
@@ -48,6 +50,8 @@ export function RelayStageView({
   projection,
   members,
   viewer,
+  catalogVersion,
+  selectedCharacterIds,
   fields,
   roomStatus,
   retentionEndsAt,
@@ -63,6 +67,8 @@ export function RelayStageView({
   projection: RelayProjectionState;
   members: readonly MemberView[];
   viewer: ParticipantView;
+  catalogVersion?: string;
+  selectedCharacterIds?: readonly string[];
   fields: readonly GuessField[];
   roomStatus: string;
   retentionEndsAt?: string | null;
@@ -82,6 +88,17 @@ export function RelayStageView({
   const [actionBusy, setActionBusy] = useState<"pass" | "forfeit" | null>(null);
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const history = useRelayHistory(roomId, token, projection.matchIndex);
+  const searchContext: MultiplayerCharacterSearchContext = useMemo(
+    () => ({
+      kind: "multiplayer-match",
+      roomId,
+      matchIndex: projection.matchIndex,
+      catalogVersion,
+      selectedCharacterIds,
+    }),
+    [catalogVersion, projection.matchIndex, roomId, selectedCharacterIds],
+  );
+  useCharacterSearchPrefetch(searchContext);
   const projectedCurrentStage = currentRelayStage(projection);
   const projectedStageStartsAt =
     projectedCurrentStage?.startsAt ??
@@ -332,6 +349,7 @@ export function RelayStageView({
           selected.standing?.status === "active" &&
           isCurrent ? (
             <GuessInputBar
+              key={`${roomId}:${projection.matchIndex}:${currentStage?.stageIndex ?? "none"}`}
               onGuess={(guessId) => {
                 if (!canGuess || !actionTarget) return Promise.resolve(false);
                 return actions.relayEncounterAction(
@@ -341,11 +359,7 @@ export function RelayStageView({
                 );
               }}
               disabled={!canGuess}
-              searchContext={{
-                kind: "multiplayer-match",
-                roomId,
-                matchIndex: projection.matchIndex,
-              }}
+              searchContext={searchContext}
               guessedIds={guessedIds}
               statusMessage={!canGuess ? statusMessage : null}
             />

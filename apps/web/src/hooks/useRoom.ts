@@ -215,7 +215,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
       return {
         ...state,
         catalogVersion: payload.catalogVersion ?? null,
-        questionScope: payload.questionScope ?? state.questionScope,
+        questionScope: payload.questionScope ?? null,
         room: state.room
           ? {
               ...state.room,
@@ -244,6 +244,7 @@ export function roomReducer(state: RoomUiState, event: Envelope): RoomUiState {
             ready: false,
           })),
           catalogVersion: payload.catalogVersion,
+          questionScope: payload.questionScope,
           activeFields: payload.activeFields,
           ruleSetRef: payload.ruleSetRef,
         },
@@ -577,9 +578,10 @@ export function applySnapshot(
           ? next.relay
           : null,
     catalogVersion: snapshot.match?.catalogVersion ?? next.catalogVersion,
-    questionScope: (snapshot.match?.questionScope ??
-      snapshot.questionScope ??
-      next.questionScope) as QuestionScopeConfig | null,
+    questionScope: (snapshot.match
+      ? (snapshot.match.questionScope ?? snapshot.questionScope ?? null)
+      : (snapshot.questionScope ??
+        next.questionScope)) as QuestionScopeConfig | null,
     round: snapshot.round ?? null,
     rematchReady: snapshot.match?.rematchReady ?? [],
     appliedGameSequence: Math.max(
