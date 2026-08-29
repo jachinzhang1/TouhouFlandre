@@ -2639,7 +2639,8 @@
     },
     "species": [
       "入道",
-      "妖怪"
+      "妖怪",
+      "魔法使"
     ],
     "abilityDisplay": "使用入道程度的能力",
     "abilityTags": [
@@ -6163,7 +6164,7 @@
       "店员"
     ],
     "hairColors": [
-      "brown"
+      "orange"
     ],
     "playable": false,
     "enabledAsAnswer": true,
