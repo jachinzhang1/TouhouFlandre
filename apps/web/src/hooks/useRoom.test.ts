@@ -277,6 +277,42 @@ describe("roomReducer", () => {
     expect(state.round).toBeNull();
   });
 
+  it("clears a previous match scope when the new projection omits it", () => {
+    const previousScope = {
+      schemaVersion: 3,
+      catalogVersion: "v1",
+      mode: "custom",
+      difficulty: "custom",
+      selectedCharacterIds: ["old-answer"],
+      workStates: [],
+      rules: {
+        fieldModes: {},
+        turnLimit: { enabled: false, seconds: 30 },
+        guessLimit: { enabled: true, maxGuesses: 8 },
+      },
+    } as never;
+    const state = roomReducer(
+      {
+        ...playerState(),
+        questionScope: previousScope,
+      },
+      event("match.started", 3, {
+        format: "bo3",
+        mode: "race",
+        turnSeconds: 60,
+        targetWins: 2,
+        catalogVersion: "v2",
+        matchIndex: 1,
+        activeFields: activeFieldsFixture,
+        ruleSetRef: { mode: "race", key: "wins", version: 1 },
+      }),
+    );
+
+    expect(state.catalogVersion).toBe("v2");
+    expect(state.questionScope).toBeNull();
+    expect(state.match?.questionScope).toBeUndefined();
+  });
+
   it("builds rounds and clears the result once playing starts", () => {
     let state: RoomUiState = { ...playerState(), match: matchFixture };
 

@@ -3,7 +3,7 @@
 **类型**：功能/跨模式集成 Issue  
 **优先级**：P0  
 **依赖**：HSO-004、HSO-005  
-**状态**：未开始  
+**状态**：已完成（2026-08-29）
 **建议标签**：`type:feature` `area:web` `area:single-player` `area:multi` `area:test`
 
 ## 要解决的问题
@@ -81,3 +81,21 @@ HSO-004 为兼容旧调用方会在缺少本地上下文时继续远程搜索。
 ## 依赖与后续
 
 依赖 HSO-004 的混合路由和 HSO-005 的单人 session 输出。完成后 HSO-007 只负责跨模块缺陷收口、性能证据和发布演练，不新增模式特有搜索实现。
+
+## 实施与验收记录（2026-08-29）
+
+- 角色目录将 CatalogSummary.version 传入统一 useCharacterSearch；单人将 HSO-005 返回的 sessionId、catalogVersion 与 questionScope.selectedCharacterIds 组装为搜索上下文。竞速和接力分别使用当前 roomId + matchIndex、比赛版本与允许角色范围，接力不同 encounter 共用 match 范围，已猜角色仍由输入栏过滤。
+- 为单人 session、竞速 match 和接力 stage 增加 best-effort 本地索引预取。预取不发远程搜索、不阻塞题局/棋盘/计时或 WebSocket；索引失败复用 HSO-004 的 transient/structural circuit，后续输入直接遵守退避或显式 retry 半开探针。
+- 版本、scope、matchIndex/stage 变化时通过稳定上下文和输入栏 remount 清理旧候选；useRoom 在 match.started 与带 match 的 snapshot 中不再复用上一场 scope。缺少版本或范围时保持远程身份回退，strict 空范围 fail closed，full 游戏范围强制远程。
+- 搜索区域显示“正在加载搜索索引”，题局主体显示“正在准备题局”；GuessInputBar 的已猜过滤、键盘上下/Enter、点击提交、disabled/submitting 与焦点恢复行为保持不变。
+- 新增/扩展角色目录、单人、GuessInputBar、路由、useRoom、竞速和接力测试；补充预取失败进入 transient circuit 的回归测试。未修改搜索算法、索引 schema、OpenAPI、WebSocket、服务端题局逻辑或生成物。
+- 验证通过：
+  - 改动前定向 Web 基线：59/59 tests passed
+  - pnpm --filter @touhouflandre/web exec vitest run src/app/search/page.test.tsx src/components/GuessInputBar.test.tsx src/components/RelayStageView.test.tsx src/components/SingleGamePage.test.tsx src/features/character-search/router.test.ts src/hooks/useRoom.test.ts src/hooks/useCharacterSearch.test.tsx src/multiplayer/modes/race/RaceMatchExperience.test.tsx（8 files，73 tests）
+  - pnpm --filter @touhouflandre/web exec vitest run --no-file-parallelism --maxWorkers=1（60 files，309 tests）
+  - pnpm --filter @touhouflandre/web typecheck
+  - pnpm --filter @touhouflandre/web build
+  - task check:generated
+  - Windows Git diff --check
+  - Playwright Chromium smoke：/search 首屏正常渲染；无后端时显示可重试错误且页面外壳不被索引加载阻塞；当前源码 API 4400 的 search policy 与版本化 index 端点均返回 200。
+- 未新增迁移、OpenAPI 契约或生成物；未改变远程 fallback 参数和 HSO-004/HSO-005 adapter 边界。默认并行 Vitest 在高负载下曾出现 6 个无关的 5 秒超时，串行全量重跑通过。由于仓库 Playwright E2E 需要完整多人后端场景和稳定 CLI 会话，本轮未执行可变数据的 multiplayer E2E；HSO-007 继续负责真实环境网络计数、跨模式性能证据与发布演练。

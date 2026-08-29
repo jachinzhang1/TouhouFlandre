@@ -39,6 +39,7 @@ export function GuessInputBar({
   const filtered = results.filter((r) => !guessedIds.has(r.id));
   const showSuggestions =
     query.trim().length > 0 && !loading && !submitting && filtered.length > 0;
+  const showSearchLoading = loading && !disabled && !submitting;
 
   // 键盘指针：默认指向第一项；查询/结果变化时回到第一项
   const [highlightIndex, setHighlightIndex] = useState(0);
@@ -140,6 +141,11 @@ export function GuessInputBar({
           )}
           {error && (
             <p className="mt-1 text-[0.75rem] text-vermilion">{error}</p>
+          )}
+          {showSearchLoading && (
+            <p className="mt-1 text-[0.75rem] text-ink-soft" role="status">
+              正在加载搜索索引
+            </p>
           )}
           {showSuggestions && (
             <ul className="absolute right-0 bottom-full left-0 z-40 mb-2 max-h-44 overflow-y-auto rounded-[6px] border border-line bg-paper-muted shadow-lg">

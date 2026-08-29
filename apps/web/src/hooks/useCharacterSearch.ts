@@ -1,15 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CharacterSearchResult,
   CharacterSort,
   SortDirection,
 } from "@touhouflandre/shared";
 import { api } from "../lib/api";
-import {
-  useCharacterSearchRouter,
-} from "../features/character-search/CharacterSearchProvider";
+import { useCharacterSearchRouter } from "../features/character-search/CharacterSearchProvider";
 
 export type SinglePlayerCharacterSearchContext = {
   kind: "single-session";
@@ -103,7 +101,8 @@ export function useCharacterSearch(
       sessionId,
       roomId,
       matchIndex,
-      catalogVersion: context?.catalogVersion ?? (context ? undefined : version),
+      catalogVersion:
+        context?.catalogVersion ?? (context ? undefined : version),
       workIds,
       limit,
       offset,
@@ -146,7 +145,10 @@ export function useCharacterSearch(
       }
     };
     const localCapable = router?.prefersLocal(request) ?? false;
-    const timeout = window.setTimeout(() => void run(), localCapable ? 0 : delay);
+    const timeout = window.setTimeout(
+      () => void run(),
+      localCapable ? 0 : delay,
+    );
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
@@ -166,10 +168,49 @@ export function useCharacterSearch(
     version,
     workIds,
     router,
-    requestVersion,
     context?.catalogVersion,
     context?.selectedCharacterIds,
   ]);
 
   return { results, total, error, loading, retry };
+}
+
+/** Best-effort local index warmup for game surfaces before the input is active. */
+export function useCharacterSearchPrefetch(
+  context: CharacterSearchContext | undefined,
+): void {
+  const router = useCharacterSearchRouter();
+  const contextKind = context?.kind;
+  const sessionId =
+    context?.kind === "single-session" ? context.sessionId : undefined;
+  const roomId =
+    context?.kind === "multiplayer-match" ? context.roomId : undefined;
+  const matchIndex =
+    context?.kind === "multiplayer-match" ? context.matchIndex : undefined;
+  const catalogVersion = context?.catalogVersion;
+  const selectedCharacterIds = context?.selectedCharacterIds;
+  const request = useMemo(() => {
+    if (!context) return undefined;
+    return {
+      q: "",
+      sessionId,
+      roomId,
+      matchIndex,
+      catalogVersion,
+      contextKind,
+      selectedCharacterIds,
+    } as const;
+  }, [
+    catalogVersion,
+    contextKind,
+    matchIndex,
+    roomId,
+    selectedCharacterIds,
+    sessionId,
+  ]);
+
+  useEffect(() => {
+    if (!router || !request?.catalogVersion) return;
+    void router.prefetch(request);
+  }, [request, router]);
 }

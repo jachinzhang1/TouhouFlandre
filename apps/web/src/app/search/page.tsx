@@ -14,11 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type {
-  CharacterSort,
-  SortDirection,
-  Work,
-} from "@touhouflandre/shared";
+import type { CharacterSort, SortDirection, Work } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../../components/CharacterAvatar";
 import { useCatalogSummary } from "../../hooks/useCatalogSummary";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
@@ -75,6 +71,7 @@ export default function SearchPage() {
 
   const { error, loading, results, retry, total } = useCharacterSearch(query, {
     limit: 250,
+    version: catalog?.version,
     sort,
     direction,
     workIds: selectedWorkIdsParam,
@@ -295,7 +292,7 @@ export default function SearchPage() {
       {loading ? (
         <div className="catalog-state" role="status">
           <Loader2 className="spin" size={20} aria-hidden="true" />
-          <span>正在加载题库</span>
+          <span>正在加载搜索索引</span>
         </div>
       ) : error ? null : !results.length ? (
         <div className="mt-[10px] grid min-h-[180px] place-items-center rounded-[4px] border border-line bg-paper text-ink-soft">

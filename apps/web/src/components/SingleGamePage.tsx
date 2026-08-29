@@ -40,7 +40,10 @@ import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
 import { modeConfig } from "../gameModes";
-import { useCharacterSearch } from "../hooks/useCharacterSearch";
+import {
+  useCharacterSearch,
+  useCharacterSearchPrefetch,
+} from "../hooks/useCharacterSearch";
 import { api } from "../lib/api";
 import {
   createPuzzleApi,
@@ -295,6 +298,23 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
+  const searchContext = useMemo(
+    () =>
+      session
+        ? {
+            kind: "single-session" as const,
+            sessionId: session.id,
+            catalogVersion: session.catalogVersion,
+            selectedCharacterIds: session.questionScope?.selectedCharacterIds,
+          }
+        : undefined,
+    [
+      session?.catalogVersion,
+      session?.id,
+      session?.questionScope?.selectedCharacterIds,
+    ],
+  );
+  useCharacterSearchPrefetch(searchContext);
   const {
     error: searchError,
     loading: searchLoading,
@@ -303,9 +323,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   } = useCharacterSearch(query, {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
-    context: session
-      ? { kind: "single-session", sessionId: session.id }
-      : undefined,
+    context: searchContext,
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");
@@ -1244,7 +1262,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               {searchLoading ? (
                 <div className="suggestion-state" role="status">
                   <Loader2 className="spin" size={17} aria-hidden="true" />
-                  <span>正在搜索</span>
+                  <span>正在加载搜索索引</span>
                 </div>
               ) : searchError ? (
                 <div className="suggestion-state suggestion-error" role="alert">
@@ -1407,7 +1425,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                           size={20}
                           aria-hidden="true"
                         />{" "}
-                        正在连接本地题库
+                        正在准备题局
                       </span>
                     ) : !session && message ? (
                       <span>

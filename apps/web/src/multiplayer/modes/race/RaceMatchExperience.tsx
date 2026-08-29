@@ -19,6 +19,10 @@ import type { components } from "../../../generated/api";
 import type { RoomActions, RoomUiState } from "../../../hooks/useRoom";
 import { formatRemaining, useRoomClock } from "../../../hooks/useRoomClock";
 import { GuessInputBar } from "../../../components/GuessInputBar";
+import {
+  useCharacterSearchPrefetch,
+  type MultiplayerCharacterSearchContext,
+} from "../../../hooks/useCharacterSearch";
 import { GuessTable, type GuessRow } from "../../../components/GuessTable";
 import { MatchBoard } from "../../../components/MatchBoard";
 import { MemberPaginator } from "../../../components/MemberPaginator";
@@ -82,6 +86,19 @@ export function RaceMatchExperience({
   const match = state.match;
   const round = state.round;
   const roomStatus = state.room?.status;
+  const searchContext: MultiplayerCharacterSearchContext | undefined =
+    match && state.room
+      ? {
+          kind: "multiplayer-match",
+          roomId: state.room.roomId,
+          matchIndex: match.matchIndex,
+          catalogVersion: match.catalogVersion,
+          selectedCharacterIds:
+            match.questionScope?.selectedCharacterIds ??
+            state.questionScope?.selectedCharacterIds,
+        }
+      : undefined;
+  useCharacterSearchPrefetch(searchContext);
   const viewerStatus = match?.scores.find(
     (score) => score.memberId === memberId,
   )?.status;
@@ -219,17 +236,10 @@ export function RaceMatchExperience({
           round?.status === "playing" &&
           !selectedArchive ? (
             <GuessInputBar
+              key={`${state.room?.roomId ?? ""}:${match.matchIndex}`}
               onGuess={actions.submitGuess}
               disabled={!hasOpponent || raceReadOnly}
-              searchContext={
-                state.room
-                  ? {
-                      kind: "multiplayer-match",
-                      roomId: state.room.roomId,
-                      matchIndex: match.matchIndex,
-                    }
-                  : undefined
-              }
+              searchContext={searchContext}
               guessedIds={guessedIds}
             />
           ) : undefined

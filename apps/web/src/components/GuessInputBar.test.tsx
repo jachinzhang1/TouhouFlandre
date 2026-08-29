@@ -90,6 +90,20 @@ describe("GuessInputBar", () => {
     );
   });
 
+  it("在搜索区域展示索引加载状态", () => {
+    render(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={searchContext}
+        guessedIds={new Set()}
+      />,
+    );
+
+    expect(screen.getByRole("status").textContent).toContain(
+      "正在加载搜索索引",
+    );
+  });
+
   it("直接回车提交默认第一项", async () => {
     render(
       <GuessInputBar
