@@ -48,3 +48,29 @@ groups:
           severity: warning
         annotations:
           summary: A relay stage could not allocate distinct answers
+
+  - name: hybrid-search
+    rules:
+      - alert: CharacterSearchFallbackSpike
+        expr: sum(increase(touhouflandre_search_fallback_reason_total{reason=~"policy_unavailable|index_transient|index_invalid|engine_error|unknown"}[5m])) > 5
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: Character search fallbacks increased unexpectedly
+
+      - alert: CharacterSearchProviderFailure
+        expr: sum(increase(touhouflandre_search_source_total{outcome="load_error"}[5m])) + sum(increase(touhouflandre_search_snapshot_total{outcome=~"load_error|build_error|unsupported_schema"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: page
+        annotations:
+          summary: Character search source or snapshot provider failed
+
+      - alert: CharacterSearchRemoteError
+        expr: sum(increase(touhouflandre_search_remote_total{outcome="error"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: Character search remote fallback returned an error
