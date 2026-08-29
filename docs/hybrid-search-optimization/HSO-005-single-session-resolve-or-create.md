@@ -3,7 +3,8 @@
 **类型**：性能/单人流程 Issue  
 **优先级**：P0  
 **依赖**：HSO-002  
-**状态**：未开始  
+**状态**：已完成
+
 **建议标签**：`type:performance` `area:api` `area:web` `area:contracts` `area:test`
 
 ## 要解决的问题
@@ -88,3 +89,25 @@ POST /api/puzzles/{mode}/resolve
 ## 依赖与后续
 
 依赖 HSO-002 已完成第一批 OpenAPI/handler 生成物，避免并行修改同一接口面。HSO-005 独占 `puzzleApi.ts` 与幂等迁移；HSO-004 不修改这些路径。HSO-006 在本 Issue 之后把返回的 catalogVersion/scope 同时接入本地搜索上下文。
+
+## 实施与验收记录（2026-08-28）
+
+- 已新增 `POST /api/puzzles/{mode}/resolve` 的 OpenAPI 源契约、Go/TypeScript 生成物与 strict handler。服务端在一个数据库事务内恢复匹配的 random/当天 daily（包括已结束题局），或创建新题局并返回公开 `supersededSession`；旧 create-only 和 session GET 端点保持原义。
+- 已新增 additive 迁移 `0023_puzzle_resolve_idempotency.sql` 与 SQLC 查询。幂等记录用主键唯一约束、请求 SHA-256 指纹和公开 session 引用绑定首次结果，不保存答案或响应 payload；并发同 key 通过插入冲突与行锁串行化，不同指纹返回 `409 IDEMPOTENCY_KEY_REUSED`。记录默认 `expires_at=infinity`，只有维护方显式设置为已过期后才允许复用。
+- daily puzzle 插入改为 `ON CONFLICT DO NOTHING RETURNING`，使 resolve 事务内的并发唯一冲突可以重读权威记录而不使事务进入 aborted 状态；旧创建 API 的行为不变。迁移测试验证 `22 -> 23 -> 22 -> 23`、重复 key 的 PostgreSQL `23505` 和表内无 answer/payload 字段。
+- Web 新增独立 `apps/web/src/lib/puzzleApi.ts`：网络 `TypeError` 使用相同 idempotency key 自动重试一次，只有 404/405 在当前页面生命周期内记忆为不支持并进入旧流程，其他 4xx/5xx 不 fallback。`SingleGamePage` 的 daily/random 主流程均只等待一次 resolve；daily 其他难度在主 session 可用后后台刷新，random 不再预取 `/api/catalog/full`，并用响应中的规范化 scope 修正 localStorage。无效 JSON 或不符合请求 schema 的本地 scope 不发送。
+- 现有恢复计时、猜测耗时、finished 展示、统计归档、草稿保存/删除和显式重新开始语义已保留；server/component 测试覆盖 random playing/finished、四档 daily/finished、session 缺失及日期/难度/mode mismatch、superseded 处理、请求数量、后台失败和旧 API 兼容路径。
+- 验证通过：
+  - `pnpm lint:openapi`
+  - `pnpm check:openapi-refs`
+  - 连续两次 `task gen`，比较 `apps/api/internal/generated`、`apps/web/src/generated` 和 `apps/api/.openapi.bundled.yaml` 共 15 个文件的 SHA-256，结果一致
+  - `go test ./internal/game ./internal/handler`
+  - `go test ./internal/server -run TestPuzzleResolve -count=1`
+  - `task test:go`（Go 全量，含 server 集成与迁移测试）
+  - `pnpm --filter @touhouflandre/web exec vitest run src/lib/questionScopeStorage.test.ts src/lib/puzzleApi.test.ts src/components/SingleGamePage.test.tsx`（3 个文件，28 个测试）
+  - `pnpm --filter @touhouflandre/web test`（59 个文件，302 个测试）
+  - `pnpm --filter @touhouflandre/web typecheck`
+  - `pnpm --filter @touhouflandre/web build`
+  - `git diff --check`
+- 部署顺序为先应用 additive 0023 迁移，再部署新 API，最后部署新 Web；旧 Web/旧端点可继续工作。binary 回滚不要求删除新表，生产环境不执行 down；`22 -> 23 -> 22 -> 23` 只在 disposable 测试数据库验证。幂等记录清理由后续维护任务负责，HSO-006 的本地搜索上下文接入继续按原计划延后。
+- 实施未扩展到角色搜索 Hook、本地索引、多人搜索或批量 daily 状态 API。审查中仅补齐了无效 legacy scope 的前端结构校验，并同步既有 server 基线测试中的最新迁移尾号 23；均为本 Issue 验收所需，无其他范围偏离。
