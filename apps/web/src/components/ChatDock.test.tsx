@@ -127,7 +127,9 @@ describe("ChatDock", () => {
     expect(screen.getByLabelText("聊天输入").className).not.toContain(
       "shadow-sm",
     );
-    expect(screen.getByLabelText("闭麦").className).not.toContain("shadow-sm");
+    expect(screen.getByLabelText("关闭聊天").className).not.toContain(
+      "shadow-sm",
+    );
   });
 
   it("opens history above the controls without changing the dock box", async () => {
@@ -149,7 +151,7 @@ describe("ChatDock", () => {
     const user = userEvent.setup();
     renderDock(baseChat);
 
-    await user.click(screen.getByLabelText("闭麦"));
+    await user.click(screen.getByLabelText("关闭聊天"));
 
     expect(
       (screen.getByLabelText("展开聊天记录") as HTMLButtonElement).disabled,
@@ -246,7 +248,7 @@ describe("ChatDock", () => {
     const user = userEvent.setup();
     const { rerender } = renderDock(baseChat);
 
-    await user.click(screen.getByLabelText("闭麦"));
+    await user.click(screen.getByLabelText("关闭聊天"));
     rerender(
       dockElement({
         ...baseChat,

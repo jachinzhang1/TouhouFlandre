@@ -70,8 +70,7 @@ describe("MemberScoreStrip", () => {
       />,
     );
     const item = screen.getByRole("listitem");
-    expect(item.className).toContain("bg-vermilion");
+    expect(item.getAttribute("data-tone")).toBe("danger");
     expect(item.textContent).toContain("已淘汰");
-    expect(item.querySelector("strong")?.className).toContain("text-white");
   });
 });

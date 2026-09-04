@@ -35,7 +35,7 @@ describe("HomePage", () => {
     vi.mocked(api.catalog).mockResolvedValue(catalogSummary as never);
     render(<HomePage />);
     expect(await screen.findByText("29")).toBeTruthy();
-    expect(screen.getByText("开始每日题")).toBeTruthy();
+    expect(screen.getByText("每日题")).toBeTruthy();
   });
 
   it("falls back to placeholder when catalog request fails", async () => {

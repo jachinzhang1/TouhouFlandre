@@ -351,7 +351,7 @@ export function StatsDashboard() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-[1240px] px-[18px] pb-20 pt-8 max-[680px]:pb-24 max-[680px]:pt-5">
+    <main className="stats-page mx-auto w-full max-w-[1240px] pb-20 pt-8 max-[680px]:pb-24 max-[680px]:pt-5">
       <header className="flex flex-wrap items-end justify-between gap-5 border-b border-line pb-5">
         <div>
           <p className="mb-1 text-[0.72rem] font-bold uppercase text-vermilion">

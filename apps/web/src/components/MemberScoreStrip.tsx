@@ -73,25 +73,18 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
       : memberScoreEntries(props);
   return (
     <ol
-      className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 max-[680px]:order-last max-[680px]:w-full max-[680px]:basis-full max-[680px]:justify-start"
+      className="member-score-strip flex min-w-0 flex-1 flex-wrap items-center justify-center gap-1.5 max-[680px]:order-last max-[680px]:w-full max-[680px]:basis-full max-[680px]:justify-start"
       aria-label="玩家积分"
     >
       {entries.map((entry) => {
         const tone = entry.tone ?? "default";
-        const toneClass =
-          tone === "danger"
-            ? "border-vermilion bg-vermilion text-white"
-            : tone === "warning"
-              ? "border-amber bg-amber-soft text-ink"
-              : tone === "success"
-                ? "border-jade bg-jade-soft text-jade"
-                : tone === "accent"
-                  ? "border-vermilion bg-vermilion-soft text-vermilion"
-                  : "border-line bg-paper-muted text-ink-soft";
         return (
           <li
+            className="member-score-item"
+            data-tone={tone}
+            data-viewer={entry.isViewer ? "true" : undefined}
+            data-winner={entry.isWinner ? "true" : undefined}
             key={entry.memberId}
-            className={`flex min-w-0 items-center gap-1.5 rounded border px-2 py-1 text-[0.72rem] ${toneClass}`}
             title={`${entry.displayName}(${entry.isViewer ? "我" : `P${entry.seat}`})`}
           >
             {entry.showSeat === false ? (
@@ -109,11 +102,7 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
                 </span>
               </>
             )}
-            <strong
-              className={`tabular-nums ${tone === "danger" ? "text-white" : "text-ink"}`}
-            >
-              {entry.score}
-            </strong>
+            <strong className="tabular-nums">{entry.score}</strong>
             {entry.isWinner && entry.winnerBeforeStatuses ? (
               <span>胜</span>
             ) : null}

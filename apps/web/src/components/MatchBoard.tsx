@@ -75,12 +75,7 @@ export function MatchBoard({
         : "";
 
   const boards = (
-    <div
-      className={`grid items-start gap-3 max-[900px]:grid-cols-1 ${
-        ended ? "grid-cols-1" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
-      }`}
-      data-race-board-layout
-    >
+    <div className="multiplayer-room-board-grid" data-race-board-layout>
       {ended && roundResult ? (
         <EndedBoards
           roundResult={roundResult}
@@ -90,18 +85,19 @@ export function MatchBoard({
         />
       ) : (
         <>
-          <SelfBoard
-            guesses={round?.self.guesses ?? []}
-            playing={round?.status === "playing"}
-            maxGuesses={round?.maxGuesses}
-            fields={fields}
-          />
           <OpponentPages
             round={round}
             memberId={memberId}
             match={match}
             members={members ?? []}
             fields={fields}
+          />
+          <SelfBoard
+            guesses={round?.self.guesses ?? []}
+            playing={round?.status === "playing"}
+            maxGuesses={round?.maxGuesses}
+            fields={fields}
+            showHeading={false}
           />
         </>
       )}
@@ -175,24 +171,31 @@ function OpponentPages({
         isActiveMatchMember(match.scores, opponent.memberId),
     )
     .sort((a, b) => a.seat - b.seat);
+  const opponentLabel = (opponent: (typeof opponents)[number] | undefined) => {
+    if (!opponent) return "对手棋盘";
+    const member = members.find(
+      (entry) => entry.memberId === opponent.memberId,
+    );
+    return formatBoardTitle(member, opponent.seat);
+  };
   return (
     <MemberPaginator
+      controlsPlacement="item"
+      getPageLabel={({ page, pageCount, visibleItems }) =>
+        `${opponentLabel(visibleItems[0])} · ${page} / ${pageCount}`
+      }
       items={opponents}
       label="对手棋盘"
       pageSize={1}
-      renderItem={(opponent) => {
-        const member = members.find(
-          (entry) => entry.memberId === opponent.memberId,
-        );
-        return (
-          <OpponentBoard
-            title={formatBoardTitle(member, opponent.seat)}
-            rows={opponent.rows}
-            fields={fields}
-            fieldOrder={opponent.fieldOrder}
-          />
-        );
-      }}
+      renderItem={(opponent, controls) => (
+        <OpponentBoard
+          title={opponentLabel(opponent)}
+          rows={opponent.rows}
+          fields={fields}
+          fieldOrder={opponent.fieldOrder}
+          headerExtra={controls}
+        />
+      )}
     />
   );
 }

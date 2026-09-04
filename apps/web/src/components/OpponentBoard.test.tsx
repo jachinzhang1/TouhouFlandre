@@ -105,7 +105,7 @@ describe("OpponentBoard", () => {
       />,
     );
 
-    const headers = Array.from(container.querySelectorAll("thead th")).map(
+    const headers = Array.from(container.querySelectorAll("tfoot th")).map(
       (header) => header.textContent,
     );
     expect(headers).toEqual([

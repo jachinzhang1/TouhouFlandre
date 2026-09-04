@@ -54,18 +54,19 @@ describe("AppearanceSwitcher", () => {
       expect(document.documentElement.dataset.themeMode).toBe("light");
     });
 
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
     await user.click(screen.getByRole("button", { name: "切换到深色模式" }));
 
     expect(document.documentElement.dataset.themeMode).toBe("dark");
-    expect(document.documentElement.classList.contains("theme-transitioning")).toBe(
-      true,
-    );
-    expect(JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? "{}")).toEqual(
-      {
-        color: "scarlet",
-        mode: "dark",
-      },
-    );
+    expect(
+      document.documentElement.classList.contains("theme-transitioning"),
+    ).toBe(true);
+    expect(
+      JSON.parse(localStorage.getItem(APPEARANCE_STORAGE_KEY) ?? "{}"),
+    ).toEqual({
+      color: "scarlet",
+      mode: "dark",
+    });
   });
 
   it("selects a color theme without freezing the system mode default", async () => {
@@ -73,12 +74,15 @@ describe("AppearanceSwitcher", () => {
     render(<AppearanceSwitcher />);
     const sakura = COLOR_THEMES.find((theme) => theme.id === "sakura");
 
-    await user.click(screen.getByRole("button", { name: "樱粉主题" }));
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    await user.click(screen.getByRole("button", { name: "樱粉主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("sakura");
-    expect(screen.getByRole("button", { name: "樱粉主题" }).getAttribute(
-      "aria-pressed",
-    )).toBe("true");
+    expect(
+      document
+        .querySelector('.appearance-swatch[data-theme-color="sakura"]')
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(
       JSON.stringify({ color: sakura?.id }),
     );
@@ -88,7 +92,8 @@ describe("AppearanceSwitcher", () => {
     const user = userEvent.setup();
     render(<AppearanceSwitcher />);
 
-    await user.click(screen.getByRole("button", { name: "蓝色主题" }));
+    await user.click(screen.getByRole("button", { name: "打开主题颜色" }));
+    await user.click(screen.getByRole("button", { name: "蓝色主题色" }));
 
     expect(document.documentElement.dataset.themeColor).toBe("azure");
     expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(

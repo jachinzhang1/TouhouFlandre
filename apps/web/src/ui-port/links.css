@@ -1,0 +1,63 @@
+.credit-avatar {
+  display: block;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--line) 52%, transparent);
+}
+
+.credit-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.brand-icon-link {
+  --brand-icon-color: var(--accent);
+  border: 0;
+  border-radius: 6px;
+  color: var(--brand-icon-color);
+  background: color-mix(in srgb, var(--brand-icon-color) 14%, transparent);
+  transition:
+    background-color 150ms ease,
+    transform 150ms ease;
+}
+
+.brand-icon-bilibili {
+  --brand-icon-color: #fb7299;
+}
+
+.brand-icon-pixiv {
+  --brand-icon-color: #0096fa;
+}
+
+.brand-icon-github {
+  --brand-icon-color: #24292f;
+}
+
+html[data-theme-mode="dark"] .brand-icon-github {
+  --brand-icon-color: #f0f6fc;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .brand-icon-link:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--brand-icon-color) 22%,
+      transparent
+    );
+  }
+}
+
+@media (max-width: 680px) {
+  .credit-entry-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .credit-entry-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

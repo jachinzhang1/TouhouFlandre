@@ -176,8 +176,8 @@ export function MultiLobby() {
   };
 
   return (
-    <section className="px-[18px] pt-12 pb-8">
-      <div className="max-w-[1000px]">
+    <section className="multi-lobby-page px-[18px] pt-12 pb-8">
+      <div className="w-full">
         <div className="max-w-[720px]">
           <p className="mt-0 mb-2 text-[0.69rem] font-black tracking-[0.12em] text-vermilion">
             MULTIPLAYER
@@ -199,8 +199,8 @@ export function MultiLobby() {
           </p>
         )}
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
+        <div className="multi-lobby-grid grid gap-5 md:grid-cols-2">
+          <section className="multi-lobby-pane flex h-full flex-col px-5">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
@@ -392,9 +392,9 @@ export function MultiLobby() {
               <Users size={16} aria-hidden="true" />
               {busy === "create" ? "创建中……" : "创建房间"}
             </button>
-          </div>
+          </section>
 
-          <div className="flex h-full flex-col rounded-[6px] border border-line bg-paper p-5 shadow-sm">
+          <section className="multi-lobby-pane flex h-full flex-col px-5">
             <h2 className="mt-0 mb-1 flex items-center gap-2 text-[1rem] font-bold">
               <DoorOpen size={17} className="text-jade" aria-hidden="true" />
               加入房间
@@ -475,7 +475,7 @@ export function MultiLobby() {
                   ? "进入观战"
                   : "加入房间"}
             </button>
-          </div>
+          </section>
         </div>
       </div>
       <QuestionScopeDialog

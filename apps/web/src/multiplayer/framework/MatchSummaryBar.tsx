@@ -4,10 +4,10 @@ import type { MatchSummaryModel } from "./types";
 export function MatchSummaryBar({ model }: { model: MatchSummaryModel }) {
   return (
     <header
-      className="mb-3 flex flex-wrap items-center justify-between gap-3 border-y border-line bg-paper px-3 py-2.5"
+      className="match-summary-bar flex flex-wrap items-center justify-between gap-3"
       data-match-summary
     >
-      <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
+      <span className="label m-0 text-[0.72rem] font-black">
         {model.identityLabel}
       </span>
       {model.indicators}

@@ -13,17 +13,17 @@ export function MatchStatusBand({
 }) {
   const toneClass =
     model.tone === "warning"
-      ? "border-amber bg-amber-soft"
+      ? "text-amber"
       : model.tone === "success"
-        ? "border-jade bg-jade-soft"
+        ? "text-jade"
         : model.tone === "danger"
-          ? "border-vermilion bg-vermilion-soft"
+          ? "text-vermilion"
           : model.active || model.tone === "accent"
-            ? "border-vermilion bg-paper relay-current-turn-active"
-            : "border-line bg-paper";
+            ? "text-vermilion"
+            : "text-ink";
   return (
     <div
-      className={`mb-3 flex min-h-14 flex-wrap items-center justify-between gap-3 border-y px-3 py-2.5 ${toneClass}`}
+      className={`match-status-band flex min-h-12 flex-wrap items-center justify-between gap-3 ${toneClass}`}
       data-match-status
       role="status"
       aria-live="polite"

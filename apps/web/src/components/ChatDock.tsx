@@ -44,6 +44,7 @@ export function ChatDock({
   const storageKey = `touhouflandre:multi:receive-chat:${roomId}:${viewer?.memberId ?? "anonymous"}`;
   const [draft, setDraft] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [desktopHistory, setDesktopHistory] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [receiveChatPreference, setReceiveChatPreference] = useState({
     storageKey: "",
@@ -58,6 +59,16 @@ export function ChatDock({
     receiveChatPreference.storageKey === storageKey
       ? receiveChatPreference.value
       : true;
+  const historyVisible = receiveChat && (desktopHistory || historyOpen);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(min-width: 900px)");
+    const update = () => setDesktopHistory(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     let value = true;
@@ -129,7 +140,7 @@ export function ChatDock({
         )
       : [];
     previousVisibleIdsRef.current = currentIds;
-    if (!receiveChat || historyOpen || newEntries.length === 0) return;
+    if (!receiveChat || historyVisible || newEntries.length === 0) return;
     setToasts((current) => {
       const next = [
         ...current,
@@ -137,9 +148,7 @@ export function ChatDock({
       ];
       return next.slice(-3);
     });
-  }, [allSentMessages, historyOpen, receiveChat, sentVisibleMessages]);
-
-  const historyVisible = historyOpen && receiveChat;
+  }, [allSentMessages, historyVisible, receiveChat, sentVisibleMessages]);
 
   useEffect(() => {
     if (!historyVisible) return;
@@ -186,7 +195,7 @@ export function ChatDock({
   };
 
   return (
-    <div className="relative" data-chat-dock>
+    <div className="chat-dock-root relative" data-chat-dock>
       <div
         className="pointer-events-none absolute right-12 bottom-full left-10 z-20 mb-2 flex flex-col gap-2"
         style={
@@ -212,7 +221,7 @@ export function ChatDock({
       </div>
 
       <div
-        className={`absolute right-0 bottom-full left-0 z-10 mb-2 overflow-hidden rounded-[6px] border bg-paper shadow-lg transition-[height,opacity,transform,border-color] duration-200 ease-out ${
+        className={`chat-dock-history-paper absolute right-0 bottom-full left-0 z-10 mb-2 overflow-hidden rounded-[6px] border bg-paper shadow-lg transition-[height,opacity,transform,border-color] duration-200 ease-out ${
           historyVisible
             ? "pointer-events-auto translate-y-0 border-line opacity-100"
             : "pointer-events-none h-0 translate-y-2 border-transparent opacity-0"
@@ -228,7 +237,7 @@ export function ChatDock({
         {historyVisible ? (
           <div
             ref={historyRef}
-            className="h-full overflow-y-auto px-3 py-2"
+            className="chat-dock-history-log h-full overflow-y-auto"
             role="log"
             aria-live="polite"
           >
@@ -268,7 +277,7 @@ export function ChatDock({
 
       <form
         onSubmit={handleSubmit}
-        className="pointer-events-auto flex items-center gap-2"
+        className="chat-dock-form pointer-events-auto flex items-center gap-2"
       >
         <button
           type="button"
@@ -277,7 +286,7 @@ export function ChatDock({
           title="聊天记录"
           onClick={() => setHistoryOpen((current) => !current)}
           disabled={historyDisabled}
-          className="inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border border-line bg-paper text-ink-soft hover:bg-paper-muted disabled:cursor-not-allowed disabled:opacity-45"
+          className="chat-dock-history-toggle inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border border-line bg-paper text-ink-soft hover:bg-paper-muted disabled:cursor-not-allowed disabled:opacity-45"
         >
           <History size={18} aria-hidden="true" />
         </button>
@@ -293,7 +302,7 @@ export function ChatDock({
             disabled={inputDisabled}
             maxLength={1024}
             aria-label="聊天输入"
-            placeholder="请输入消息"
+            placeholder={muted ? "聊天已关闭" : "请输入消息"}
             className="h-10 w-full rounded-[6px] border border-line-strong bg-paper pr-11 pl-3 text-[0.86rem] text-ink outline-none focus:border-line-strong focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:bg-paper-muted disabled:text-ink-soft"
           />
           <button
@@ -325,9 +334,9 @@ export function ChatDock({
 
         <button
           type="button"
-          aria-label={muted ? "开启聊天" : "闭麦"}
+          aria-label={muted ? "开启聊天" : "关闭聊天"}
           aria-pressed={muted}
-          title={muted ? "开启聊天" : "闭麦"}
+          title={muted ? "开启聊天" : "关闭聊天"}
           onClick={toggleReceiveChat}
           disabled={disabled || !viewer}
           className={`inline-flex size-10 shrink-0 items-center justify-center rounded-[6px] border disabled:cursor-not-allowed disabled:opacity-45 ${

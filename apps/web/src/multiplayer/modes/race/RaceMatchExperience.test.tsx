@@ -167,7 +167,12 @@ describe("RaceMatchExperience", () => {
       container.querySelector("[data-multiplayer-match-frame]"),
     ).toBeTruthy();
     expect(container.querySelector("[data-race-board-layout]")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "我" })).toBeTruthy();
+    expect(
+      Array.from(container.querySelectorAll("[data-board-variant]")).map(
+        (board) => board.getAttribute("data-board-variant"),
+      ),
+    ).toEqual(["opponent", "self"]);
+    expect(screen.queryByRole("heading", { name: "我" })).toBeNull();
     expect(screen.getByRole("heading", { name: "玩家二(P2)" })).toBeTruthy();
     const opponentRow = container.querySelector("[data-member-board] tbody tr");
     expect(opponentRow?.textContent).not.toContain("博丽灵梦");

@@ -60,26 +60,19 @@ describe("GuessInputBar", () => {
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "白" } });
 
-    const buttons = await waitFor(() =>
-      screen
-        .getAllByRole("button")
-        .filter((b) => b.id.startsWith("suggestion-")),
-    );
-    expect(buttons.length).toBeGreaterThanOrEqual(2);
-    const isHighlighted = (el: HTMLElement) =>
-      el.className.includes("bg-vermilion-soft") &&
-      !el.className.includes("hover:");
+    const options = await screen.findAllByRole("option");
+    expect(options.length).toBeGreaterThanOrEqual(2);
+    const isHighlighted = (element: HTMLElement) =>
+      element.getAttribute("aria-selected") === "true";
     // 默认第一项高亮（非高亮项仅带 hover: 前缀）
-    expect(isHighlighted(buttons[0])).toBe(true);
-    expect(isHighlighted(buttons[1])).toBe(false);
+    expect(isHighlighted(options[0])).toBe(true);
+    expect(isHighlighted(options[1])).toBe(false);
     // 下键 → 高亮移到第二项
     fireEvent.keyDown(input, { key: "ArrowDown" });
-    const fresh = screen
-      .getAllByRole("button")
-      .filter((b) => b.id.startsWith("suggestion-"));
+    const fresh = screen.getAllByRole("option");
 
-    expect(isHighlighted(buttons[1])).toBe(true);
-    expect(isHighlighted(buttons[0])).toBe(false);
+    expect(isHighlighted(fresh[1])).toBe(true);
+    expect(isHighlighted(fresh[0])).toBe(false);
     // 回车 → 提交第二项（圣白莲）并清空输入
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onGuess).toHaveBeenCalledWith("byakuren_hijiri");
@@ -100,11 +93,7 @@ describe("GuessInputBar", () => {
     );
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "灵梦" } });
-    await waitFor(() =>
-      expect(
-        screen.getAllByRole("button").some((b) => b.id === "suggestion-0"),
-      ).toBe(true),
-    );
+    await screen.findByRole("option", { name: /博丽灵梦/ });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onGuess).toHaveBeenCalledWith("reimu_hakurei");
     await waitFor(() => expect((input as HTMLInputElement).value).toBe(""));
@@ -127,13 +116,7 @@ describe("GuessInputBar", () => {
     const input = screen.getByRole("combobox");
     input.focus();
     fireEvent.change(input, { target: { value: "灵梦" } });
-    await waitFor(() =>
-      expect(
-        screen
-          .getAllByRole("button")
-          .some((button) => button.id === "suggestion-0"),
-      ).toBe(true),
-    );
+    await screen.findByRole("option", { name: /博丽灵梦/ });
 
     fireEvent.keyDown(input, { key: "Enter" });
 
@@ -152,11 +135,9 @@ describe("GuessInputBar", () => {
     );
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "灵梦" } });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /博丽灵梦/ })).toBeTruthy(),
-    );
+    await screen.findByRole("option", { name: /博丽灵梦/ });
 
-    fireEvent.click(screen.getByRole("button", { name: /博丽灵梦/ }));
+    fireEvent.click(screen.getByRole("option", { name: /博丽灵梦/ }));
 
     await waitFor(() =>
       expect(rejectGuess).toHaveBeenCalledWith("reimu_hakurei"),
@@ -173,13 +154,9 @@ describe("GuessInputBar", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "查看图例" }));
-
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip.className).toContain("feedback-legend-tooltip-above");
-    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
-    expect(tooltip.querySelector(".feedback-question-mark-icon")).toBeTruthy();
-    expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);
+    expect(screen.getByRole("list", { name: "反馈图例" })).toBeTruthy();
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
+    expect(screen.getByText("未知，遇到请反馈")).toBeTruthy();
 
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("tooltip")).toBeNull();
@@ -196,9 +173,7 @@ describe("GuessInputBar", () => {
     fireEvent.change(screen.getByLabelText("搜索角色"), {
       target: { value: "灵梦" },
     });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /博丽灵梦/ })).toBeTruthy(),
-    );
+    await screen.findByRole("option", { name: /博丽灵梦/ });
 
     rerender(
       <GuessInputBar
@@ -217,6 +192,6 @@ describe("GuessInputBar", () => {
       "",
     );
     expect(screen.getByRole("status").textContent).toContain("你已放弃本局");
-    expect(screen.queryByRole("button", { name: /博丽灵梦/ })).toBeNull();
+    expect(screen.queryByRole("option", { name: /博丽灵梦/ })).toBeNull();
   });
 });

@@ -1,21 +1,37 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { PaperPagination } from "./PaperUI";
 
 type MemberPageItem = { memberId: string; seat: number };
 
 export function MemberPaginator<T extends MemberPageItem>({
+  getPageLabel,
   items,
   label,
+  renderHeader,
   renderItem,
+  controlsPlacement = "before",
   pageSize: fixedPageSize,
 }: {
+  getPageLabel?: (context: {
+    page: number;
+    pageCount: number;
+    visibleItems: readonly T[];
+  }) => ReactNode;
   items: readonly T[];
   label: string;
-  renderItem: (item: T) => ReactNode;
+  renderHeader?: (context: {
+    controls: ReactNode;
+    page: number;
+    pageCount: number;
+    visibleItems: readonly T[];
+  }) => ReactNode;
+  renderItem: (item: T, controls: ReactNode) => ReactNode;
   pageSize?: 1 | 2;
+  controlsPlacement?: "before" | "item";
 }) {
+  const panelId = useId();
   const ordered = useMemo(
     () => [...items].sort((left, right) => left.seat - right.seat),
     [items],
@@ -25,17 +41,11 @@ export function MemberPaginator<T extends MemberPageItem>({
       ? true
       : window.matchMedia("(min-width: 900px)").matches,
   );
-  const [anchorMemberId, setAnchorMemberId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const pageSize = fixedPageSize ?? (wide ? 2 : 1);
-  const anchorIndex = Math.max(
-    0,
-    ordered.findIndex((item) => item.memberId === anchorMemberId),
-  );
-  const pageStart = Math.min(
-    anchorIndex,
-    Math.max(0, ordered.length - pageSize),
-  );
-  const visible = ordered.slice(pageStart, pageStart + pageSize);
+  const pageCount = Math.max(1, Math.ceil(ordered.length / pageSize));
+  const pageStart = (page - 1) * pageSize;
+  const visibleItems = ordered.slice(pageStart, pageStart + pageSize);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
@@ -46,59 +56,46 @@ export function MemberPaginator<T extends MemberPageItem>({
   }, []);
 
   useEffect(() => {
-    if (ordered.length === 0) {
-      setAnchorMemberId(null);
-      return;
-    }
-    if (!ordered.some((item) => item.memberId === anchorMemberId)) {
-      setAnchorMemberId(ordered[0].memberId);
-    }
-  }, [anchorMemberId, ordered]);
+    setPage((current) => Math.min(current, pageCount));
+  }, [pageCount]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [ordered.length, ordered[0]?.memberId, pageSize]);
 
   if (ordered.length === 0) return null;
 
-  const move = (start: number) => {
-    const target = ordered[Math.max(0, Math.min(start, ordered.length - 1))];
-    if (target) setAnchorMemberId(target.memberId);
-  };
+  const context = { page, pageCount, visibleItems };
+  const controls =
+    pageCount > 1 ? (
+      <PaperPagination
+        className="member-paginator-pagination"
+        controlsId={panelId}
+        counterLabel={getPageLabel?.(context)}
+        label={`${label}翻页`}
+        nextLabel={`${label}下一页`}
+        onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        page={page}
+        pageCount={pageCount}
+        previousLabel={`${label}上一页`}
+      />
+    ) : null;
 
   return (
-    <div className="min-w-0" data-page-size={pageSize}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-[0.78rem] font-bold text-ink-soft">{label}</span>
-        <div className="flex items-center gap-1 text-[0.7rem] text-ink-soft">
-          <button
-            type="button"
-            aria-label={`${label}上一页`}
-            title="上一页"
-            disabled={pageStart === 0}
-            onClick={() => move(pageStart - pageSize)}
-            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
-          >
-            <ChevronLeft size={15} aria-hidden="true" />
-          </button>
-          <span className="min-w-16 text-center tabular-nums">
-            {pageStart + 1}-{Math.min(ordered.length, pageStart + pageSize)}/
-            {ordered.length}
-          </span>
-          <button
-            type="button"
-            aria-label={`${label}下一页`}
-            title="下一页"
-            disabled={pageStart + pageSize >= ordered.length}
-            onClick={() => move(pageStart + pageSize)}
-            className="inline-flex size-8 items-center justify-center rounded border border-line disabled:opacity-40"
-          >
-            <ChevronRight size={15} aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+    <div className="member-paginator min-w-0" data-page-size={pageSize}>
+      {renderHeader ? (
+        renderHeader({ ...context, controls })
+      ) : controlsPlacement === "before" && controls ? (
+        <div className="member-paginator-controls">{controls}</div>
+      ) : null}
       <div
-        className={`grid items-start gap-3 ${pageSize === 2 ? "min-[900px]:grid-cols-2" : "grid-cols-1"}`}
+        className={`grid items-start gap-5 ${pageSize === 2 ? "min-[900px]:grid-cols-2" : "grid-cols-1"}`}
+        id={panelId}
       >
-        {visible.map((item) => (
+        {visibleItems.map((item) => (
           <div key={item.memberId} data-member-board={item.memberId}>
-            {renderItem(item)}
+            {renderItem(item, controlsPlacement === "item" ? controls : null)}
           </div>
         ))}
       </div>

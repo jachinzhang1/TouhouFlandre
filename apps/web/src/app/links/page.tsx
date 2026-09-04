@@ -1,7 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { ExternalLink, Github } from "lucide-react";
 import { BilibiliIcon } from "../../components/BilibiliIcon";
 import { PixivIcon } from "../../components/PixivIcon";
+import { Paper } from "../../components/Paper";
+import { PaperPagination } from "../../components/PaperUI";
 
 type IconComponent = (props: {
   "aria-hidden"?: boolean | "true" | "false";
@@ -164,7 +169,15 @@ const friendLinks = [
   },
 ];
 
+const DEVELOPER_PAGE_SIZE = 4;
+
 export default function LinksPage() {
+  const [developerPage, setDeveloperPage] = useState(1);
+  const developerPageCount = Math.ceil(developers.length / DEVELOPER_PAGE_SIZE);
+  const visibleDevelopers = developers.slice(
+    (developerPage - 1) * DEVELOPER_PAGE_SIZE,
+    developerPage * DEVELOPER_PAGE_SIZE,
+  );
   return (
     <section className="min-h-[520px] px-[18px] pt-12 pb-6 max-[680px]:pt-[34px] max-[680px]:pb-[18px]">
       <div className="max-w-[720px]">
@@ -179,11 +192,17 @@ export default function LinksPage() {
         </p>
       </div>
       <CreditSection title="开发者">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,320px))] gap-3">
-          {developers.map((developer) => (
-            <article
-              className="flex min-h-[92px] items-center justify-between gap-4 rounded-[6px] border border-line bg-paper p-4 shadow-sm"
+        <div
+          id="developer-credit-list"
+          className="grid max-w-[720px] grid-cols-1 gap-3"
+        >
+          {visibleDevelopers.map((developer) => (
+            <Paper
+              as="article"
+              className="credit-entry-card flex min-h-[92px] items-center justify-between gap-4 p-4"
+              foldSize={10}
               key={developer.name}
+              pattern
             >
               <div className="min-w-0">
                 <h3 className="m-0 text-[1.05rem] font-black leading-[1.35] text-ink">
@@ -208,9 +227,20 @@ export default function LinksPage() {
                   </a>
                 ))}
               </div>
-            </article>
+            </Paper>
           ))}
         </div>
+        <PaperPagination
+          className="mt-3 w-fit"
+          controlsId="developer-credit-list"
+          label="开发者分页"
+          page={developerPage}
+          pageCount={developerPageCount}
+          onPrevious={() => setDeveloperPage((page) => Math.max(1, page - 1))}
+          onNext={() =>
+            setDeveloperPage((page) => Math.min(developerPageCount, page + 1))
+          }
+        />
       </CreditSection>
       <CreditSection title="素材提供">
         <LinkCardGroup>
@@ -248,11 +278,7 @@ function CreditSection({
 }
 
 function LinkCardGroup({ children }: { children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,420px))] gap-3">
-      {children}
-    </div>
-  );
+  return <div className="grid max-w-[720px] grid-cols-1 gap-3">{children}</div>;
 }
 
 function ResourceCard({
@@ -271,11 +297,13 @@ function ResourceCard({
   title: string;
 }) {
   return (
-    <a
-      className="grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] rounded-[6px] border border-line bg-paper p-4 text-ink no-underline shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-[2px] hover:border-[var(--accent-hover-border)] hover:shadow-lg"
+    <Paper
+      className="credit-entry-card grid min-h-[96px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-[14px] p-4 text-ink no-underline"
+      foldSize={10}
       href={href}
-      target="_blank"
+      pattern
       rel="noreferrer"
+      target="_blank"
     >
       <span
         className={`inline-flex size-[52px] shrink-0 items-center justify-center rounded-[4px] ${iconClassName}`}
@@ -293,6 +321,6 @@ function ResourceCard({
         </span>
       </span>
       <ExternalLink size={18} aria-hidden="true" />
-    </a>
+    </Paper>
   );
 }

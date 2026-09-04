@@ -72,54 +72,24 @@ export function GuessTable({
     : "border-line";
 
   return (
-    <div
-      className={`rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}
+    <section
+      className={`multiplayer-board rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}
+      data-board-variant={variant}
     >
-      {(title || subtitle || headerExtra) && (
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            {title && (
-              <h3 className="m-0 text-[0.8rem] font-bold text-ink-soft">
-                {title}
-              </h3>
-            )}
-            {subtitle && (
-              <span className="text-[0.72rem] text-ink-soft">{subtitle}</span>
-            )}
-          </div>
-          {headerExtra}
-        </div>
-      )}
       <div
-        className="overflow-x-auto"
-        tabIndex={0}
+        aria-label={isOpponent ? (title ?? "对手猜测记录") : "我的猜测记录"}
+        className={`multiplayer-board-scroll${isOpponent ? "" : " single-game-history-scroll"}`}
         role="region"
-        aria-label={title ?? "猜测记录"}
+        tabIndex={0}
       >
+        {!isOpponent ? (
+          <div className="single-game-history-fade-spacer" aria-hidden="true" />
+        ) : null}
         <table
-          className={`w-full border-collapse text-[0.78rem] ${
-            isOpponent ? "min-w-[430px]" : "min-w-[560px]"
+          className={`guess-table multiplayer-guess-table w-full border-collapse text-[0.78rem] ${
+            isOpponent ? "min-w-[940px]" : "min-w-[940px]"
           }`}
         >
-          <thead>
-            <tr>
-              <th
-                className={`border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft ${
-                  isOpponent ? "w-16" : "w-24"
-                }`}
-              >
-                角色
-              </th>
-              {fields.map((field) => (
-                <th
-                  key={field.key}
-                  className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
-                >
-                  {field.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
@@ -215,9 +185,37 @@ export function GuessTable({
               })
             )}
           </tbody>
+          <tfoot className="paper-data-table-header single-game-history-footer multiplayer-board-footer">
+            <tr>
+              <th
+                className={`border-t border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft ${
+                  isOpponent ? "w-16" : "w-24"
+                }`}
+              >
+                角色
+              </th>
+              {fields.map((field) => (
+                <th
+                  key={field.key}
+                  className="border-t border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
+                >
+                  {field.label}
+                </th>
+              ))}
+            </tr>
+          </tfoot>
         </table>
       </div>
-    </div>
+      {title || subtitle || headerExtra ? (
+        <div className="multiplayer-board-heading">
+          <div className="multiplayer-board-heading-copy">
+            {title ? <h3>{title}</h3> : null}
+            {subtitle ? <span>{subtitle}</span> : null}
+          </div>
+          {headerExtra}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

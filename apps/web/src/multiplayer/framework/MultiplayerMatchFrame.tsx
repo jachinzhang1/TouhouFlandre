@@ -14,11 +14,14 @@ export function MultiplayerMatchFrame({
 }) {
   return (
     <section
-      className="px-[18px] pt-4 pb-4"
+      className="multiplayer-match-page px-[18px] pt-4 pb-4"
       data-multiplayer-match-frame
+      data-has-bottom-dock={bottomDock ? "true" : "false"}
       data-testid={testId}
     >
-      <div className="mx-auto max-w-[1280px]">{children}</div>
+      <div className="multiplayer-race-shell mx-auto max-w-[1280px]">
+        {children}
+      </div>
       {bottomDock ? (
         <MultiplayerBottomDockAction>{bottomDock}</MultiplayerBottomDockAction>
       ) : null}

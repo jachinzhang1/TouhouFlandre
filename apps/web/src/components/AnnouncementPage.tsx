@@ -12,6 +12,9 @@ import {
 } from "../announcements/readState";
 import type { Announcement } from "../announcements/types";
 import { AnnouncementMarkdown } from "./AnnouncementMarkdown";
+import { PaperPagination } from "./PaperUI";
+
+const ANNOUNCEMENT_PAGE_SIZE = 4;
 
 export function AnnouncementPage({
   initialAnnouncements,
@@ -22,6 +25,15 @@ export function AnnouncementPage({
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(
+    1,
+    Math.ceil(announcements.length / ANNOUNCEMENT_PAGE_SIZE),
+  );
+  const visibleAnnouncements = announcements.slice(
+    (page - 1) * ANNOUNCEMENT_PAGE_SIZE,
+    page * ANNOUNCEMENT_PAGE_SIZE,
+  );
 
   useEffect(() => {
     const syncReadIds = () => setReadIds(readAnnouncementIds());
@@ -39,7 +51,9 @@ export function AnnouncementPage({
   }, []);
 
   const unreadCount = useMemo(
-    () => announcements.filter((announcement) => !readIds.has(announcement.id)).length,
+    () =>
+      announcements.filter((announcement) => !readIds.has(announcement.id))
+        .length,
     [announcements, readIds],
   );
 
@@ -49,6 +63,7 @@ export function AnnouncementPage({
     try {
       const data = await fetchAnnouncements();
       setAnnouncements(data.announcements);
+      setPage(1);
       notifyAnnouncementsRefreshed();
     } catch (refreshError) {
       setError(
@@ -104,8 +119,8 @@ export function AnnouncementPage({
       ) : null}
 
       {announcements.length ? (
-        <div className="mt-6 grid gap-4">
-          {announcements.map((announcement) => {
+        <div id="announcement-list" className="mt-6 grid gap-4">
+          {visibleAnnouncements.map((announcement) => {
             const unread = !readIds.has(announcement.id);
             return (
               <article
@@ -143,6 +158,19 @@ export function AnnouncementPage({
               </article>
             );
           })}
+          {pageCount > 1 ? (
+            <PaperPagination
+              className="w-fit"
+              controlsId="announcement-list"
+              label="公告分页"
+              page={page}
+              pageCount={pageCount}
+              onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+              onNext={() =>
+                setPage((current) => Math.min(pageCount, current + 1))
+              }
+            />
+          ) : null}
         </div>
       ) : (
         <div className="mt-8 flex min-h-[260px] items-start gap-[18px] rounded-[6px] border border-line bg-paper p-6">

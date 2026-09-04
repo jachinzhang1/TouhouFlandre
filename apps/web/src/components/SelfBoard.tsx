@@ -12,11 +12,13 @@ export function SelfBoard({
   playing,
   maxGuesses,
   fields,
+  showHeading = true,
 }: {
   guesses: GuessResult[];
   playing: boolean;
   maxGuesses?: number;
   fields?: readonly GuessField[];
+  showHeading?: boolean;
 }) {
   const rows: GuessRow[] = useMemo(
     () =>
@@ -43,8 +45,8 @@ export function SelfBoard({
 
   return (
     <GuessTable
-      title="我"
-      subtitle={subtitle}
+      title={showHeading ? "我" : undefined}
+      subtitle={showHeading ? subtitle : undefined}
       rows={rows}
       emptyLabel={playing ? "搜索角色开始猜测。" : "本局尚未猜测。"}
       fields={fields}

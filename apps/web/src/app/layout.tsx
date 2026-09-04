@@ -5,6 +5,7 @@ import { SiteFooter } from "../components/SiteFooter";
 import { SiteNav } from "../components/SiteNav";
 import { MusicPlayerRoot } from "../features/music-player/MusicPlayerRoot";
 import "./globals.css";
+import "./ui-port.css";
 
 export const metadata: Metadata = {
   title: "东方芙一把 · TouhouFlandre",
@@ -60,20 +61,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh-Hans"
-      data-scroll-behavior="smooth"
-      suppressHydrationWarning
-    >
+    <html lang="zh-Hans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="max-[680px]:pb-[68px]">
         <Script
           id="appearance-bootstrap"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: appearanceBootstrapScript }}
         />
-        <div className="mx-auto w-[min(1240px,calc(100%-40px))] min-h-screen max-[680px]:w-full">
+        <div className="site-shell mx-auto w-[min(1240px,calc(100%-40px))] min-h-screen max-[680px]:w-full">
           <SiteNav />
-          <main className="pb-11 pt-[22px] min-h-[calc(100vh-142px)] max-[680px]:min-h-[calc(100vh-128px)] max-[680px]:pb-7 max-[680px]:pt-3">
+          <main className="site-main pb-11 pt-[22px] min-h-[calc(100vh-142px)] max-[680px]:min-h-[calc(100vh-128px)] max-[680px]:pb-7 max-[680px]:pt-3">
             {children}
           </main>
           <SiteFooter />

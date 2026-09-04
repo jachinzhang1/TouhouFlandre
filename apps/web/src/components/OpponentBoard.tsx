@@ -14,11 +14,15 @@ export function OpponentBoard({
   rows,
   fields = [],
   fieldOrder,
+  showHeading = true,
+  headerExtra,
 }: {
   title?: string;
   rows: OpponentRow[];
   fields?: readonly GuessField[];
   fieldOrder?: readonly GuessFieldKey[];
+  showHeading?: boolean;
+  headerExtra?: React.ReactNode;
 }) {
   const tableRows: GuessRow[] = rows.map((row) => ({
     key: String(row.index),
@@ -31,7 +35,13 @@ export function OpponentBoard({
 
   return (
     <GuessTable
-      title={title}
+      title={showHeading ? title : undefined}
+      subtitle={
+        showHeading
+          ? "仅显示反馈状态，具体角色与属性值将在局末揭示。"
+          : undefined
+      }
+      headerExtra={headerExtra}
       variant="opponent"
       rows={tableRows}
       emptyLabel="等待对方猜测……"

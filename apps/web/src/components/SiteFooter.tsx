@@ -37,7 +37,7 @@ export function SiteFooter() {
   }, []);
 
   return (
-    <footer className="flex min-h-[66px] items-center justify-between gap-4 border-t border-line text-[0.72rem] text-[var(--subtle-text)]">
+    <footer className="site-footer flex min-h-[66px] items-center justify-between gap-4 border-t border-line text-[0.72rem] text-[var(--subtle-text)]">
       <span data-site-visit-count>
         TouhouFlandre · 非官方东方 Project 同人项目 · 访问数{" "}
         {visitCount === null ? "--" : visitCount.toLocaleString("zh-CN")}
@@ -52,6 +52,24 @@ export function SiteFooter() {
           rel="noreferrer"
         >
           <Github size={18} aria-hidden="true" />
+        </Link>
+        <Link
+          className="py-[5px] text-[var(--neutral-text)] no-underline hover:text-vermilion"
+          href="/about"
+        >
+          关于
+        </Link>
+        <Link
+          className="py-[5px] text-[var(--neutral-text)] no-underline hover:text-vermilion"
+          href="/rules"
+        >
+          规则
+        </Link>
+        <Link
+          className="py-[5px] text-[var(--neutral-text)] no-underline hover:text-vermilion"
+          href="/settings"
+        >
+          设置
         </Link>
         <Link
           className="py-[5px] text-[var(--neutral-text)] no-underline hover:text-vermilion"
