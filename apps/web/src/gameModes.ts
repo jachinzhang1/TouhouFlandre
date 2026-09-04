@@ -13,29 +13,20 @@ export const modeConfig: Record<
   {
     label: string;
     puzzleLabel: string;
-    eyebrow: string;
     description: string;
-    stateLabel: string;
-    stateClass: string;
     icon: LucideIcon;
     storageKey: string;
   }
 > = {
   daily: {
     ...SINGLE_PLAYER_MODE_DEFINITIONS.daily,
-    eyebrow: "DAILY PUZZLE",
     description: "所有玩家每天面对同一个隐藏角色。",
-    stateLabel: "今日可玩",
-    stateClass: "live",
     icon: CalendarDays,
     storageKey: "touhouflandre:daily-session",
   },
   random: {
     ...SINGLE_PLAYER_MODE_DEFINITIONS.random,
-    eyebrow: "RANDOM PUZZLE",
     description: "从当前题库中随机抽取角色。",
-    stateLabel: "不限次数",
-    stateClass: "live",
     icon: Shuffle,
     storageKey: "touhouflandre:random-session",
   },

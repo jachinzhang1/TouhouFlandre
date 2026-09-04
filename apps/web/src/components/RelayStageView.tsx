@@ -31,8 +31,8 @@ import {
   MatchSummaryBar,
   MultiplayerMatchFrame,
 } from "../multiplayer/framework";
-import { GuessInputBar } from "./GuessInputBar";
-import type { MemberScoreStripEntry } from "./MemberScoreStrip";
+import { GuessInputBar } from "./game/GuessInputBar";
+import type { MemberScoreStripEntry } from "./multiplayer/MemberScoreStrip";
 import {
   RelayEncounterBoard,
   relayEncounterTitle,

@@ -25,7 +25,7 @@ vi.mock("../hooks/useRelayHistory", () => ({
   }),
 }));
 
-vi.mock("./GuessInputBar", () => ({
+vi.mock("./game/GuessInputBar", () => ({
   GuessInputBar: ({
     disabled,
     onGuess,

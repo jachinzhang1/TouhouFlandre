@@ -4,14 +4,14 @@
 
 ## 环境要求
 
-| 工具 | 版本 |
-|---|---|
-| Node.js | 24 或更高 |
-| pnpm | 11 |
-| Go | 1.26 或更高 |
+| 工具             | 版本              |
+| ---------------- | ----------------- |
+| Node.js          | 24 或更高         |
+| pnpm             | 11                |
+| Go               | 1.26 或更高       |
 | Docker + Compose | 用于本地 Postgres |
-| Task | 跨语言任务入口 |
-| Git | 版本控制 |
+| Task             | 跨语言任务入口    |
+| Git              | 版本控制          |
 
 仓库使用 pnpm workspace，Go 为独立 module（`apps/api`）。请在仓库根目录执行本文命令。
 
@@ -28,44 +28,44 @@ pnpm dev
 
 默认服务地址：
 
-| 服务 | 地址 |
-|---|---|
-| Web | `http://localhost:5173` |
-| API | `http://localhost:4000` |
+| 服务         | 地址                                                    |
+| ------------ | ------------------------------------------------------- |
+| Web          | `http://localhost:5173`                                 |
+| API          | `http://localhost:4000`                                 |
 | API 健康检查 | `http://localhost:4000/api/health`、`/livez`、`/readyz` |
 
 Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API。若要让浏览器直连 Go API，可设置 `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`。本地生产栈则通过 `http://localhost:3000` 提供 Web 与 WebSocket 入口。
 
 ## 环境变量
 
-| 变量 | 作用 |
-|---|---|
-| `API_PORT` | API 监听端口。 |
-| `NEXT_PUBLIC_API_BASE_URL` | Web 请求的 API 根地址；留空为同源代理。 |
-| `WEB_ORIGINS` | 允许跨域访问 API 的 Web 来源，逗号分隔。 |
-| `POSTGRES_PASSWORD` | compose Postgres 密码。 |
-| `DATABASE_URL_PG` | Go 服务 Postgres 连接串。 |
-| `GOOSE_DBSTRING` | goose 迁移连接串。 |
-| `GOOSE_DRIVER` | goose 驱动。 |
+| 变量                       | 作用                                     |
+| -------------------------- | ---------------------------------------- |
+| `API_PORT`                 | API 监听端口。                           |
+| `NEXT_PUBLIC_API_BASE_URL` | Web 请求的 API 根地址；留空为同源代理。  |
+| `WEB_ORIGINS`              | 允许跨域访问 API 的 Web 来源，逗号分隔。 |
+| `POSTGRES_PASSWORD`        | compose Postgres 密码。                  |
+| `DATABASE_URL_PG`          | Go 服务 Postgres 连接串。                |
+| `GOOSE_DBSTRING`           | goose 迁移连接串。                       |
+| `GOOSE_DRIVER`             | goose 驱动。                             |
 
 不要提交 `.env`、本地数据库或包含凭据的日志文件。
 
 ## 常用命令
 
-| 命令 | 说明 |
-|---|---|
-| `pnpm dev` / `task dev` | 同时启动 Go API 与 Web。 |
-| `task db:up` / `task db:down` | 启动/停止本地 Postgres 容器。 |
-| `task db:migrate` | 应用 goose 数据库迁移。 |
-| `task db:seed` | 校验题库并写入 Postgres 快照。 |
-| `pnpm build` | 构建所有 workspace 包。 |
-| `pnpm test` | 运行 shared/data/web 的 Vitest 测试。 |
-| `pnpm typecheck` | 对所有包执行 TypeScript 检查。 |
-| `pnpm --filter @touhouflandre/web test:e2e` | Playwright E2E；需 `task dev` 运行中。 |
-| `cd apps/api && go test ./...` | Go 单元与集成测试；需可访问 Postgres。 |
-| `cd apps/api && go vet ./...` | Go 静态检查。 |
-| `task gen` | 重新生成 OpenAPI 类型与 sqlc 查询。 |
-| `pnpm --filter @touhouflandre/data validate` | 校验角色与作品数据。 |
+| 命令                                         | 说明                                   |
+| -------------------------------------------- | -------------------------------------- |
+| `pnpm dev` / `task dev`                      | 同时启动 Go API 与 Web。               |
+| `task db:up` / `task db:down`                | 启动/停止本地 Postgres 容器。          |
+| `task db:migrate`                            | 应用 goose 数据库迁移。                |
+| `task db:seed`                               | 校验题库并写入 Postgres 快照。         |
+| `pnpm build`                                 | 构建所有 workspace 包。                |
+| `pnpm test`                                  | 运行 shared/data/web 的 Vitest 测试。  |
+| `pnpm typecheck`                             | 对所有包执行 TypeScript 检查。         |
+| `pnpm --filter @touhouflandre/web test:e2e`  | Playwright E2E；需 `task dev` 运行中。 |
+| `cd apps/api && go test ./...`               | Go 单元与集成测试；需可访问 Postgres。 |
+| `cd apps/api && go vet ./...`                | Go 静态检查。                          |
+| `task gen`                                   | 重新生成 OpenAPI 类型与 sqlc 查询。    |
+| `pnpm --filter @touhouflandre/data validate` | 校验角色与作品数据。                   |
 
 PR 前至少运行 `pnpm typecheck`、`pnpm test` 和 `cd apps/api && go test ./...`。涉及构建配置或前端资源时还应运行 `pnpm build`。
 
@@ -107,6 +107,26 @@ contracts/ws/              WebSocket 协议
 - 样式以 Tailwind utility 为主，设计 token 定义在 `globals.css` 的 `@theme`。
 - 交互必须覆盖加载、空、错误、禁用和完成状态。
 - 样式相关工作需要检查窄屏布局和 `prefers-reduced-motion`。
+- Paper 视觉组件统一从 `@/components/paper` 导入；该包独占纸张表面、折角、纹理、阴影、分隔线以及 hover、focus、disabled 状态。
+- 页面样式只能组合 Paper 组件的布局几何（宽度、网格、间距、定位），不得覆盖其颜色、背景、纹理、折角或交互状态；缺少能力时先扩展 Paper 包 API 和组件测试。
+- 游戏模式渐变卡、语义化结果单元格、公告/鸣谢签名卡和完成态透明棋盘属于明确视觉例外；站点导航、标签页、隐藏文件输入等非 Paper 语义控件不强制套用 Paper。
+
+#### 多人界面状态调试
+
+开发环境的多人大厅和房间会在浏览器控制台注册只读界面种子：
+
+```js
+// 查看全部可用状态
+__touhouflandreDev.game.presets;
+
+// 切换状态；在大厅调用时会进入 DEV222 调试房间
+__touhouflandreDev.game.seed("race-n-player");
+
+// 清除种子并恢复真实房间流程
+__touhouflandreDev.game.reset();
+```
+
+预设覆盖身份同步、断线、玩家与观战大厅、双人和多人竞速、接力轮次、局末/场末、淘汰、复盘以及聊天加载和发送状态。种子只修改当前标签页的开发状态与 `sessionStorage`，不写入 API 或数据库。
 
 ### API
 

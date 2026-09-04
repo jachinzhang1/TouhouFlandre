@@ -171,6 +171,8 @@ Next.js App Router 管理页面路由。交互组件使用 client component；�
 - `src/generated/api.ts` 是 OpenAPI 生成类型。
 - `src/stats` 只管理浏览器本地统计，不上传历史记录。
 - 样式 token 位于 `src/app/globals.css` 的 `@theme`。
+- `src/components/paper` 是唯一 Paper 视觉组件包，包含表面、按钮、按钮组、输入、选择器、滑块/数字输入、表格和标签组合框；业务组件不得从其他路径实现或导入第二套 Paper 控件。
+- Paper 包负责颜色、纹理、折角、阴影、分隔线与交互状态；页面级 CSS 只负责组合布局和已记录的签名视觉例外。
 
 ## 后端结构
 

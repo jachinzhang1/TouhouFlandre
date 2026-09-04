@@ -7,9 +7,9 @@ import type {
 } from "@touhouflandre/shared";
 import { isUnlimitedGuessLimit } from "@touhouflandre/shared";
 import type { components } from "../generated/api";
-import { CharacterAvatar } from "./CharacterAvatar";
-import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
-import { STATUS_LABEL } from "./GuessTable";
+import { CharacterAvatar } from "./game/CharacterAvatar";
+import { FeedbackStatusIcon } from "./game/FeedbackStatusIcon";
+import { STATUS_LABEL } from "./game/GuessTable";
 
 type MemberView = components["schemas"]["MemberView"];
 

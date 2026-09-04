@@ -1,5 +1,5 @@
 import { Database, Github, HeartHandshake, ShieldCheck } from "lucide-react";
-import { Paper } from "../../components/Paper";
+import { Paper } from "@/components/paper";
 
 const aboutItems = [
   {

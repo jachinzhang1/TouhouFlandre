@@ -18,15 +18,15 @@ import { ROOM_FORMAT_SHORT } from "../../../domain/multiRoom";
 import type { components } from "../../../generated/api";
 import type { RoomActions, RoomUiState } from "../../../hooks/useRoom";
 import { formatRemaining, useRoomClock } from "../../../hooks/useRoomClock";
-import { GuessInputBar } from "../../../components/GuessInputBar";
-import { GuessTable, type GuessRow } from "../../../components/GuessTable";
-import { MatchBoard } from "../../../components/MatchBoard";
-import { MemberPaginator } from "../../../components/MemberPaginator";
-import { memberScoreEntries } from "../../../components/MemberScoreStrip";
+import { GuessInputBar } from "../../../components/game/GuessInputBar";
+import { GuessTable, type GuessRow } from "../../../components/game/GuessTable";
+import { MatchBoard } from "../../../components/multiplayer/MatchBoard";
+import { MemberPaginator } from "../../../components/multiplayer/MemberPaginator";
+import { memberScoreEntries } from "../../../components/multiplayer/MemberScoreStrip";
 import {
   boardResultBadges,
   formatBoardTitle,
-} from "../../../components/boardMeta";
+} from "../../../components/multiplayer/boardMeta";
 import {
   BoardBrowser,
   MatchCountdownBand,

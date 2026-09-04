@@ -1,4 +1,4 @@
-import { MemberScoreStrip } from "../../components/MemberScoreStrip";
+import { MemberScoreStrip } from "../../components/multiplayer/MemberScoreStrip";
 import type { MatchSummaryModel } from "./types";
 
 export function MatchSummaryBar({ model }: { model: MatchSummaryModel }) {

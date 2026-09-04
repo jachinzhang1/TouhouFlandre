@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript ../../contracts/openapi/openapi.yaml -o src/generated/api.ts"
   },
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.13.0",
     "@touhouflandre/data": "workspace:*",
     "@touhouflandre/shared": "workspace:*",
     "antd": "^6.5.4",
@@ -41,6 +42,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agentation": "^3.0.2",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "openapi-typescript": "^7.13.0",

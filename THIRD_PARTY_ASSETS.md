@@ -4,46 +4,66 @@
 
 ## 东方全角色像素肖像素材包
 
-| 项目 | 内容 |
-|---|---|
-| 素材 | 东方全角色像素肖像素材包 |
-| 作者 | 苗库里 |
-| 作者主页 | https://space.bilibili.com/152309938 |
-| 仓库位置 | `apps/web/public/characters` |
-| 用途 | 角色头像、搜索结果、猜测历史和答案展示 |
-| 允许范围 | 个人及非商业用途，包括同人作品、免费游戏和网站 |
+| 项目     | 内容                                                |
+| -------- | --------------------------------------------------- |
+| 素材     | 东方全角色像素肖像素材包                            |
+| 作者     | 苗库里                                              |
+| 作者主页 | https://space.bilibili.com/152309938                |
+| 仓库位置 | `apps/web/public/characters`                        |
+| 用途     | 角色头像、搜索结果、猜测历史和答案展示              |
+| 允许范围 | 个人及非商业用途，包括同人作品、免费游戏和网站      |
 | 仓库处理 | 保留原始编号与角色名称；网站通过 CSS 缩放与裁切展示 |
 
 这些头像版权仍归原作者所有，不适用仓库 MIT License。复用、再分发或迁移到其他项目之前，请确认并遵守作者的使用条件，同时保留署名。
 
 ## 首页视觉素材
 
-| 项目 | 内容 |
-|---|---|
-| 素材 | 首页封面图 |
-| 来源 | pixiv 作品 50752377 |
-| 来源链接 | https://www.pixiv.net/artworks/50752377 |
+| 项目     | 内容                                      |
+| -------- | ----------------------------------------- |
+| 素材     | 首页封面图                                |
+| 来源     | Pixiv 作品 56866592                       |
+| 来源链接 | https://www.pixiv.net/artworks/56866592   |
+| 画师     | 羽々斬（Pixiv 用户 2179695）              |
+| 画师主页 | https://www.pixiv.net/users/2179695       |
 | 仓库位置 | `apps/web/public/hero-touhou-collage.jpg` |
-| 用途 | 首页首屏背景视觉 |
+| 用途     | 首页首屏背景视觉                          |
+| 授权状态 | 需继续核对原作者许可与再分发条件          |
 
 请勿将该图片从本项目中单独抽取、再分发或用于其他项目。
 
+## 404 页面动画素材
+
+| 项目                   | 内容                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| 素材                   | “萃香祈祷中”像素动画                                                                         |
+| Tenor 页面             | https://tenor.com/zh-CN/view/東方-少女讀取中-祈禱-oriental-girl-reading-praying-gif-13519996 |
+| 萌娘共享文件页         | https://commons.moegirl.org.cn/File:萃香祈祷中.gif                                           |
+| 远程展示地址           | https://media.tenor.com/5StiWpbuWx8AAAAj/東方-少女讀取中.gif                                 |
+| Tenor 上传账号         | D15f（未核实为原作者）                                                                       |
+| 可能的原始作品         | 《巫女巫女萃香》                                                                             |
+| 可能的作者/动画作者    | ash256（依据萌娘共享文件分类，尚未独立核实）                                                 |
+| 萌娘共享记录的早期来源 | `http://17woo.tgbusdata.cn/forum/month_1006/1006211942780b1920529f2815.gif`（已失效）        |
+| 仓库处理               | 不保存或再分发 GIF 文件；404 页面直接引用 Tenor 的透明背景远程版本                           |
+| 用途                   | 404 页面状态动画                                                                             |
+| 授权状态               | 原作者与明确授权尚未核实；远程引用不等同于获得展示许可                                       |
+
+该动画版权仍归原作者所有，不适用仓库 MIT License。Tenor 与萌娘共享链接用于记录目前可追溯的传播来源；《巫女巫女萃香》与 ash256 为可能来源，不能视作已经确认的权利声明。
+
 ## 平台图标
 
-| 素材 | 来源 | 许可证 | 仓库位置 |
-|---|---|---|---|
-| Bilibili Mono icon | https://github.com/lobehub/lobe-icons | MIT | `apps/web/src/components/BilibiliIcon.tsx` |
-| pixiv icon | https://simpleicons.org/ | CC0-1.0 | `apps/web/src/components/PixivIcon.tsx` |
+| 素材                         | 来源                                             | 许可证                                          | 仓库位置                              |
+| ---------------------------- | ------------------------------------------------ | ----------------------------------------------- | ------------------------------------- |
+| Bilibili、GitHub、Pixiv 图标 | https://github.com/icons-pack/react-simple-icons | MIT（React 包装）；CC0-1.0（Simple Icons 数据） | `@icons-pack/react-simple-icons` 依赖 |
 
-Bilibili 与 pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
+Bilibili、GitHub 与 Pixiv 标识仅用于指向对应平台主页。相关商标归各自权利方所有。
 
 ## 项目自制图形
 
-| 素材 | 仓库位置 | 说明 |
-|---|---|---|
-| 站点 favicon SVG | `apps/web/public/favicon.svg` | 项目内自制图形。 |
-| 站点 favicon PNG | `apps/web/public/favicon.png` | SVG 的位图版本或配套图标。 |
-| 阴阳标记组件 | `apps/web/src/components/YinYangMark.tsx` | 项目内自制 SVG 组件。 |
+| 素材             | 仓库位置                                  | 说明                       |
+| ---------------- | ----------------------------------------- | -------------------------- |
+| 站点 favicon SVG | `apps/web/public/favicon.svg`             | 项目内自制图形。           |
+| 站点 favicon PNG | `apps/web/public/favicon.png`             | SVG 的位图版本或配套图标。 |
+| 阴阳标记组件     | `apps/web/src/components/YinYangMark.tsx` | 项目内自制 SVG 组件。      |
 
 ## 音乐播放器素材
 

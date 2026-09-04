@@ -13,7 +13,7 @@ export function PlaceholderPage({
 }) {
   return (
     <section className="px-[18px] pt-12 pb-6 max-[680px]:px-[18px] max-[680px]:pt-[34px] max-[680px]:pb-[18px]">
-      <div className="flex min-h-[460px] items-start gap-[22px] pt-[110px] max-[680px]:grid max-[680px]:min-h-[410px] max-[680px]:pt-[70px] max-[420px]:grid">
+      <div className="flex min-h-[460px] items-start gap-[22px] pt-[110px] max-[680px]:grid max-[680px]:min-h-[410px] max-[680px]:content-start max-[680px]:pt-[70px]">
         <span className="inline-flex size-[58px] shrink-0 items-center justify-center rounded-[6px] bg-vermilion-soft text-vermilion">
           <Icon size={28} aria-hidden="true" />
         </span>

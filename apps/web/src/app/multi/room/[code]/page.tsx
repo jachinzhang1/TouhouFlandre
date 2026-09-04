@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
-import { RoomView } from "../../../../components/RoomPage";
-import { isValidRoomCode, normalizeRoomCode } from "../../../../domain/multiRoom";
+import { RoomView } from "../../../../components/multiplayer/RoomPage";
+import {
+  isValidRoomCode,
+  normalizeRoomCode,
+} from "../../../../domain/multiRoom";
 
 export default async function MultiRoomPage({
   params,

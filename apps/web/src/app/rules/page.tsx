@@ -1,4 +1,4 @@
-import { Paper } from "../../components/Paper";
+import { Paper } from "@/components/paper";
 
 const rules = [
   {
