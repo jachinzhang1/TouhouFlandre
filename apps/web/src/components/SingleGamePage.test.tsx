@@ -214,6 +214,7 @@ describe("SingleGamePage", () => {
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-1",
     );
+    expect(localStorage.getItem("touhouflandre:question-scope")).toBeNull();
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
     expect(api.catalog).not.toHaveBeenCalled();
     expect(searchPrefetchMock).toHaveBeenCalledWith(
@@ -258,6 +259,42 @@ describe("SingleGamePage", () => {
     );
     expect(localStorage.getItem("touhouflandre:question-scope")).toContain(
       "server-v3",
+    );
+  });
+
+  it("does not overwrite the current scope when resuming a random puzzle", async () => {
+    const preferredScope = {
+      ...playingSession.questionScope!,
+      difficulty: "hard",
+    };
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify(preferredScope),
+    );
+    localStorage.setItem(
+      "touhouflandre:random-session",
+      JSON.stringify({ id: "random-session" }),
+    );
+    puzzleResolveMock.mockResolvedValue({
+      session: {
+        ...playingSession,
+        mode: "random",
+        puzzleKey: undefined,
+        questionScope: playingSession.questionScope,
+      },
+      puzzleLabel: "随机题",
+      resolution: "resumed",
+    });
+
+    render(<SingleGamePage mode="random" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(localStorage.getItem("touhouflandre:question-scope")).toBe(
+      JSON.stringify(preferredScope),
+    );
+    expect(puzzleResolveMock).toHaveBeenCalledWith(
+      "random",
+      expect.objectContaining({ questionScope: preferredScope }),
     );
   });
 
@@ -340,6 +377,129 @@ describe("SingleGamePage", () => {
     expect(api.catalog).toHaveBeenCalledOnce();
     expect(api.getSession).toHaveBeenCalledOnce();
     expect(api.createPuzzle).toHaveBeenCalledOnce();
+  });
+
+  it("resumes a matching random session through the legacy fallback", async () => {
+    const currentScope = playingSession.questionScope!;
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify(currentScope),
+    );
+    localStorage.setItem(
+      "touhouflandre:random-session",
+      JSON.stringify({ id: "random-session" }),
+    );
+    puzzleResolveMock.mockRejectedValue(new PuzzleResolveUnsupportedError(404));
+    vi.mocked(api.catalogFull).mockResolvedValue({
+      version: currentScope.catalogVersion,
+      works: [],
+      characters: [
+        {
+          id: "reimu_hakurei",
+          enabledAsAnswer: true,
+          appearanceOrder: 1,
+          difficultyTier: "normal",
+          firstAppearance: { workId: "th06_eosd" },
+        },
+      ],
+    } as never);
+    const matchingScope = {
+      ...currentScope,
+      selectedCharacterIds: ["reimu_hakurei"],
+    };
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify(matchingScope),
+    );
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...playingSession,
+      mode: "random",
+      puzzleKey: undefined,
+      questionScope: matchingScope,
+    } as never);
+
+    render(<SingleGamePage mode="random" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(api.catalogFull).toHaveBeenCalledOnce();
+    expect(api.getSession).toHaveBeenCalledWith("random-session");
+    expect(api.createPuzzle).not.toHaveBeenCalled();
+    expect(localStorage.getItem("touhouflandre:question-scope")).toBe(
+      JSON.stringify(matchingScope),
+    );
+  });
+
+  it("creates a random session when the legacy fallback scope differs", async () => {
+    const oldScope = {
+      ...playingSession.questionScope!,
+      selectedCharacterIds: ["reimu_hakurei"],
+    };
+    const currentScope = {
+      ...oldScope,
+      mode: "custom",
+      difficulty: "custom",
+      selectedCharacterIds: ["marisa_kirisame"],
+    };
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify(currentScope),
+    );
+    localStorage.setItem(
+      "touhouflandre:random-session",
+      JSON.stringify({ id: "old-random-session" }),
+    );
+    puzzleResolveMock.mockRejectedValue(new PuzzleResolveUnsupportedError(404));
+    vi.mocked(api.catalogFull).mockResolvedValue({
+      version: currentScope.catalogVersion,
+      works: [],
+      characters: [
+        {
+          id: "reimu_hakurei",
+          enabledAsAnswer: true,
+          appearanceOrder: 1,
+          difficultyTier: "normal",
+          firstAppearance: { workId: "th06_eosd" },
+        },
+        {
+          id: "marisa_kirisame",
+          enabledAsAnswer: true,
+          appearanceOrder: 2,
+          difficultyTier: "hard",
+          firstAppearance: { workId: "th06_eosd" },
+        },
+      ],
+    } as never);
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...playingSession,
+      id: "old-random-session",
+      mode: "random",
+      puzzleKey: undefined,
+      questionScope: oldScope,
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: {
+        ...playingSession,
+        id: "new-random-session",
+        mode: "random",
+        puzzleKey: undefined,
+        questionScope: currentScope,
+      },
+      puzzleLabel: "随机题",
+    } as never);
+
+    render(<SingleGamePage mode="random" />);
+
+    expect(await screen.findByText("0/8")).toBeTruthy();
+    expect(api.createPuzzle).toHaveBeenCalledWith("random", {
+      questionScope: expect.objectContaining({
+        mode: "custom",
+        difficulty: "custom",
+        selectedCharacterIds: ["marisa_kirisame"],
+      }),
+    });
+    expect(localStorage.getItem("touhouflandre:random-session")).toContain(
+      "new-random-session",
+    );
   });
 
   it("does not run the legacy flow for other resolve failures", async () => {

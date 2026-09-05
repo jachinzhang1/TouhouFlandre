@@ -28,12 +28,15 @@ import {
   QUESTION_DIFFICULTY_LABELS,
   DAILY_QUESTION_DIFFICULTY_PRESETS,
   isUnlimitedGuessLimit,
+  normalizeQuestionScope,
+  normalizeQuestionScopeRules,
 } from "@touhouflandre/shared";
 import type {
   CharacterSearchResult,
   DailyQuestionDifficulty,
   FieldFeedback,
   PublicGameSession,
+  QuestionScopeConfig,
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
@@ -59,7 +62,6 @@ import {
 } from "../stats/singleRecorder";
 import {
   catalogFullToSnapshot,
-  loadLocalQuestionScope,
   readLocalQuestionScopeInput,
   saveLocalQuestionScope,
 } from "../lib/questionScopeStorage";
@@ -154,6 +156,37 @@ const validTimestamp = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value > 0
     ? value
     : undefined;
+
+const sameEffectiveQuestionScope = (
+  left: QuestionScopeConfig,
+  right: QuestionScopeConfig | undefined,
+) => {
+  if (
+    !right ||
+    left.mode !== right.mode ||
+    left.difficulty !== right.difficulty ||
+    left.selectedCharacterIds.length !== right.selectedCharacterIds.length ||
+    right.selectedCharacterIds.length === 0
+  ) {
+    return false;
+  }
+  const selected = new Set(left.selectedCharacterIds);
+  if (!right.selectedCharacterIds.every((id) => selected.has(id))) return false;
+
+  const leftRules = normalizeQuestionScopeRules(left.rules);
+  const rightRules = normalizeQuestionScopeRules(right.rules);
+  const leftModes = Object.entries(leftRules.fieldModes);
+  return (
+    leftModes.length === Object.keys(rightRules.fieldModes).length &&
+    leftModes.every(
+      ([key, fieldMode]) => rightRules.fieldModes[key] === fieldMode,
+    ) &&
+    leftRules.turnLimit.enabled === rightRules.turnLimit.enabled &&
+    leftRules.turnLimit.seconds === rightRules.turnLimit.seconds &&
+    leftRules.guessLimit.enabled === rightRules.guessLimit.enabled &&
+    leftRules.guessLimit.maxGuesses === rightRules.guessLimit.maxGuesses
+  );
+};
 
 const formatGuessDuration = (timings: number[], index: number) => {
   const completedAt = timings[index];
@@ -528,6 +561,14 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           dailyDateKey = (await api.catalog()).dailyDateKey;
           if (!isCurrentRequest()) return;
         }
+        const fallbackRandomScope =
+          nextMode === "random"
+            ? normalizeQuestionScope(
+                readLocalQuestionScopeInput(),
+                catalogFullToSnapshot(await api.catalogFull()),
+              ).config
+            : undefined;
+        if (!isCurrentRequest()) return;
         let restored: PublicGameSession | undefined;
         if (storedSession) {
           try {
@@ -548,9 +589,14 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         const resumable =
           restored !== undefined &&
           restored.mode === nextMode &&
-          (nextMode === "random" ||
-            (restored.puzzleKey === dailyDateKey &&
-              restoredDifficulty === difficulty));
+          (nextMode === "random"
+            ? fallbackRandomScope !== undefined &&
+              sameEffectiveQuestionScope(
+                fallbackRandomScope,
+                restored.questionScope,
+              )
+            : restored.puzzleKey === dailyDateKey &&
+              restoredDifficulty === difficulty);
         if (resumable && restored) {
           resolved = {
             puzzleLabel:
@@ -565,9 +611,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             nextMode === "daily"
               ? { difficulty }
               : {
-                  questionScope: loadLocalQuestionScope(
-                    catalogFullToSnapshot(await api.catalogFull()),
-                  ).config,
+                  questionScope: fallbackRandomScope,
                 };
           const created = await api.createPuzzle(nextMode, createBody);
           if (!isCurrentRequest()) return;
@@ -660,7 +704,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         restoredElapsed,
         difficulty,
       );
-      if (nextMode === "random" && resolved.session.questionScope) {
+      if (
+        nextMode === "random" &&
+        resolved.resolution === "created" &&
+        resolved.session.questionScope
+      ) {
         saveLocalQuestionScope(resolved.session.questionScope);
       }
       if (nextMode === "daily") {
