@@ -43,6 +43,52 @@ describe("MultiLobby", () => {
     const body = vi.mocked(api.createRoom).mock.calls[0][0];
     expect(body.mode).toBe("race");
     expect(body).not.toHaveProperty("playerLimit");
+    expect(body.questionScope).toBeTruthy();
+  });
+
+  it("passes the host's current custom question scope when creating a room", async () => {
+    vi.mocked(api.catalogFull).mockResolvedValue({
+      version: "v1",
+      works: [{ id: "th06_eosd" }],
+      characters: [
+        {
+          id: "marisa_kirisame",
+          enabledAsAnswer: true,
+          appearanceOrder: 2,
+          difficultyTier: "hard",
+          firstAppearance: { workId: "th06_eosd" },
+        },
+      ],
+    } as never);
+    localStorage.setItem(
+      "touhouflandre:question-scope",
+      JSON.stringify({
+        schemaVersion: 3,
+        catalogVersion: "v1",
+        mode: "custom",
+        difficulty: "custom",
+        selectedCharacterIds: ["marisa_kirisame"],
+        workStates: [],
+        rules: {
+          fieldModes: {},
+          turnLimit: { enabled: false, seconds: 30 },
+          guessLimit: { enabled: true, maxGuesses: 7 },
+        },
+      }),
+    );
+
+    render(<MultiLobby />);
+    fireEvent.click(screen.getByRole("button", { name: "创建房间" }));
+
+    await waitFor(() => expect(api.createRoom).toHaveBeenCalled());
+    expect(
+      vi.mocked(api.createRoom).mock.calls[0][0].questionScope,
+    ).toMatchObject({
+      mode: "custom",
+      difficulty: "custom",
+      selectedCharacterIds: ["marisa_kirisame"],
+      rules: { guessLimit: { enabled: true, maxGuesses: 7 } },
+    });
   });
 
   it("sends playerLimit for race creation", async () => {
