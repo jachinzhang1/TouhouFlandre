@@ -22,7 +22,8 @@ func TestShouldResumePuzzle(t *testing.T) {
 		wantResume bool
 	}{
 		{name: "missing", input: puzzleResolveDecisionInput{Mode: "random"}},
-		{name: "random", input: puzzleResolveDecisionInput{Mode: "random", Session: &random}, wantResume: true},
+		{name: "random", input: puzzleResolveDecisionInput{Mode: "random", Session: &random, RandomScopeMatches: true}, wantResume: true},
+		{name: "random scope mismatch", input: puzzleResolveDecisionInput{Mode: "random", Session: &random}, wantResume: false},
 		{name: "random mode mismatch", input: puzzleResolveDecisionInput{Mode: "daily", Session: &random}},
 		{name: "daily", input: puzzleResolveDecisionInput{Mode: "daily", DateKey: "2026-08-28", Difficulty: game.QuestionDifficultyNormal, Session: &daily, SessionDifficulty: game.QuestionDifficultyNormal}, wantResume: true},
 		{name: "daily date mismatch", input: puzzleResolveDecisionInput{Mode: "daily", DateKey: "2026-08-29", Difficulty: game.QuestionDifficultyNormal, Session: &daily, SessionDifficulty: game.QuestionDifficultyNormal}},
@@ -34,6 +35,51 @@ func TestShouldResumePuzzle(t *testing.T) {
 				t.Fatalf("shouldResumePuzzle() = %v, want %v", got, test.wantResume)
 			}
 		})
+	}
+}
+
+func TestSameQuestionScopeForResumeIgnoresDerivedState(t *testing.T) {
+	left := game.QuestionScopeConfig{
+		CatalogVersion:       "v1",
+		Mode:                 game.QuestionScopeModePreset,
+		Difficulty:           game.QuestionDifficultyNormal,
+		SelectedCharacterIDs: []string{"a", "b"},
+		WorkStates:           []game.QuestionScopeWorkState{{WorkID: "work", State: game.QuestionScopeWorkAll}},
+		Rules: game.QuestionScopeRules{
+			FieldModes: game.CharacterFields.DefaultFieldModes(),
+			TurnLimit:  game.QuestionScopeTurnLimit{Enabled: false, Seconds: 30},
+			GuessLimit: game.QuestionScopeGuessLimit{Enabled: true, MaxGuesses: 8},
+		},
+	}
+	right := left
+	right.CatalogVersion = "v2"
+	right.WorkStates = nil
+	if !sameQuestionScopeForResume(left, right) {
+		t.Fatal("scope comparison should ignore catalog version and derived work states")
+	}
+
+	right.SelectedCharacterIDs = []string{"a"}
+	if sameQuestionScopeForResume(left, right) {
+		t.Fatal("scope comparison should detect a changed character pool")
+	}
+	right = left
+	right.Rules.GuessLimit.MaxGuesses = 7
+	if sameQuestionScopeForResume(left, right) {
+		t.Fatal("scope comparison should detect changed guess limits")
+	}
+	right = left
+	right.Rules.FieldModes = make(map[game.GuessFieldKey]string, len(left.Rules.FieldModes))
+	for key, mode := range left.Rules.FieldModes {
+		right.Rules.FieldModes[key] = mode
+	}
+	right.Rules.FieldModes[game.FieldSpecies] = game.FieldModeHidden
+	if sameQuestionScopeForResume(left, right) {
+		t.Fatal("scope comparison should detect changed field modes")
+	}
+	right = left
+	right.Rules.TurnLimit = game.QuestionScopeTurnLimit{Enabled: true, Seconds: 60}
+	if sameQuestionScopeForResume(left, right) {
+		t.Fatal("scope comparison should detect changed turn limits")
 	}
 }
 

@@ -26,11 +26,12 @@ type puzzleResolveFingerprint struct {
 }
 
 type puzzleResolveDecisionInput struct {
-	Mode              string
-	DateKey           string
-	Difficulty        game.QuestionDifficulty
-	Session           *repo.GameSession
-	SessionDifficulty game.QuestionDifficulty
+	Mode               string
+	DateKey            string
+	Difficulty         game.QuestionDifficulty
+	Session            *repo.GameSession
+	SessionDifficulty  game.QuestionDifficulty
+	RandomScopeMatches bool
 }
 
 func shouldResumePuzzle(input puzzleResolveDecisionInput) bool {
@@ -38,11 +39,92 @@ func shouldResumePuzzle(input puzzleResolveDecisionInput) bool {
 		return false
 	}
 	if input.Mode == string(game.GameModeRandom) {
-		return true
+		return input.RandomScopeMatches
 	}
 	return input.Session.PuzzleKey.Valid &&
 		input.Session.PuzzleKey.String == input.DateKey &&
 		input.SessionDifficulty == input.Difficulty
+}
+
+func sameQuestionScopeRulesForResume(left, right game.QuestionScopeRules) bool {
+	left = game.NormalizeQuestionScopeRules(left)
+	right = game.NormalizeQuestionScopeRules(right)
+	if left.TurnLimit != right.TurnLimit || left.GuessLimit != right.GuessLimit {
+		return false
+	}
+	if len(left.FieldModes) != len(right.FieldModes) {
+		return false
+	}
+	for key, mode := range left.FieldModes {
+		if right.FieldModes[key] != mode {
+			return false
+		}
+	}
+	return true
+}
+
+func sameQuestionScopeForResume(left, right game.QuestionScopeConfig) bool {
+	if left.Mode != right.Mode || left.Difficulty != right.Difficulty {
+		return false
+	}
+	if len(left.SelectedCharacterIDs) != len(right.SelectedCharacterIDs) {
+		return false
+	}
+	selected := make(map[string]struct{}, len(left.SelectedCharacterIDs))
+	for _, id := range left.SelectedCharacterIDs {
+		selected[id] = struct{}{}
+	}
+	for _, id := range right.SelectedCharacterIDs {
+		if _, ok := selected[id]; !ok {
+			return false
+		}
+	}
+	return sameQuestionScopeRulesForResume(left.Rules, right.Rules)
+}
+
+func (s *Server) randomScopeMatches(
+	ctx context.Context,
+	requested *game.QuestionScopeConfig,
+	stored repo.GameSession,
+) (bool, error) {
+	if len(stored.QuestionScope) == 0 {
+		return false, nil
+	}
+	currentVersion, currentCharacters, currentWorks, err := s.currentCatalogWithWorks(ctx)
+	if err != nil {
+		return false, err
+	}
+	current := normalizeQuestionScopeForCatalog(
+		requested,
+		currentVersion,
+		currentCharacters,
+		currentWorks,
+	).Config
+	storedCharacters, err := s.charactersForVersion(ctx, stored.CatalogVersion)
+	if err != nil {
+		return false, err
+	}
+	storedInput, err := storedQuestionScopeFromJSON(stored.QuestionScope)
+	if err != nil {
+		return false, nil
+	}
+	if storedInput.CatalogVersion == "" ||
+		storedInput.SchemaVersion < 1 ||
+		storedInput.SchemaVersion > game.QuestionScopeSchemaVersion ||
+		(storedInput.Mode != game.QuestionScopeModePreset &&
+			storedInput.Mode != game.QuestionScopeModeCustom) ||
+		(storedInput.Difficulty != game.QuestionDifficultyCustom &&
+			!game.IsQuestionDifficultyPreset(storedInput.Difficulty)) ||
+		len(storedInput.SelectedCharacterIDs) == 0 {
+		return false, nil
+	}
+	storedScope := normalizeQuestionScopeForCatalog(
+		&storedInput,
+		stored.CatalogVersion,
+		storedCharacters,
+		nil,
+	).Config
+	return sameQuestionScopeForResume(current, storedScope), nil
 }
 
 func normalizedResolveFingerprint(
@@ -142,6 +224,7 @@ func (s *Server) resolvePuzzleInTransaction(
 		}
 		if err == nil {
 			sessionDifficulty := game.QuestionDifficulty("")
+			randomScopeMatches := false
 			if mode == string(game.GameModeDaily) && stored.Mode == mode {
 				characters, charactersErr := s.charactersForVersion(ctx, stored.CatalogVersion)
 				if charactersErr != nil {
@@ -153,9 +236,17 @@ func (s *Server) resolvePuzzleInTransaction(
 				}
 				sessionDifficulty = scope.Difficulty
 			}
+			if mode == string(game.GameModeRandom) && stored.Mode == mode {
+				var scopeErr error
+				randomScopeMatches, scopeErr = s.randomScopeMatches(ctx, requestedScope, stored)
+				if scopeErr != nil {
+					return openapi.PuzzleResolveResponse{}, internalError(scopeErr)
+				}
+			}
 			if shouldResumePuzzle(puzzleResolveDecisionInput{
 				Mode: mode, DateKey: dateKey, Difficulty: difficulty,
 				Session: &stored, SessionDifficulty: sessionDifficulty,
+				RandomScopeMatches: randomScopeMatches,
 			}) {
 				public, publicErr := s.publicSession(ctx, stored)
 				if publicErr != nil {

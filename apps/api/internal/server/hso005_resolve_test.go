@@ -37,12 +37,31 @@ func TestPuzzleResolveRandomRetryConflictAndFinishedResume(t *testing.T) {
 	if created.Resolution != openapi.Created || created.SupersededSession != nil {
 		t.Fatalf("unexpected create response: %+v", created)
 	}
-	status, payload = resolvePuzzle(t, "random", key+"-playing-resume", map[string]any{"resumeSessionId": created.Session.Id})
+	if created.Session.QuestionScope == nil {
+		t.Fatal("created random session is missing question scope")
+	}
+	var answerID string
+	if err := pool.QueryRow(ctx, `SELECT answer_id FROM game_session WHERE id = $1`, created.Session.Id).Scan(&answerID); err != nil {
+		t.Fatal(err)
+	}
+	missGuessID := guessableIDs(t, answerID, 1)[0]
+	progressed := submitSingleGuess(t, created.Session.Id, missGuessID)
+	if len(progressed.Guesses) != 1 {
+		t.Fatalf("random progress was not recorded: %+v", progressed)
+	}
+	status, payload = resolvePuzzle(t, "random", key+"-playing-resume", map[string]any{
+		"resumeSessionId": created.Session.Id,
+		"questionScope":   created.Session.QuestionScope,
+	})
 	if status != http.StatusOK {
 		t.Fatalf("playing resume status %d: %s", status, payload)
 	}
 	playing := decodeResolve(t, payload)
-	if playing.Resolution != openapi.Resumed || playing.Session.Id != created.Session.Id || playing.Session.Status != openapi.SessionStatusPlaying {
+	if playing.Resolution != openapi.Resumed ||
+		playing.Session.Id != created.Session.Id ||
+		playing.Session.Status != openapi.SessionStatusPlaying ||
+		len(playing.Session.Guesses) != 1 ||
+		playing.Session.Guesses[0].GuessId != missGuessID {
 		t.Fatalf("playing random was not resumed: %+v", playing)
 	}
 
@@ -74,6 +93,59 @@ func TestPuzzleResolveRandomRetryConflictAndFinishedResume(t *testing.T) {
 	resumed := decodeResolve(t, payload)
 	if resumed.Resolution != openapi.Resumed || resumed.Session.Id != created.Session.Id || resumed.Session.Status != openapi.SessionStatusLost {
 		t.Fatalf("finished random was not resumed: %+v", resumed)
+	}
+}
+
+func TestPuzzleResolveRandomScopeMismatchCreatesNewSession(t *testing.T) {
+	key := fmt.Sprintf("hso005-random-scope-%d", time.Now().UnixNano())
+	status, payload := resolvePuzzle(t, "random", key, map[string]any{})
+	if status != http.StatusOK {
+		t.Fatalf("create status %d: %s", status, payload)
+	}
+	created := decodeResolve(t, payload)
+	if created.Session.QuestionScope == nil {
+		t.Fatal("created random session is missing question scope")
+	}
+
+	customScope := *created.Session.QuestionScope
+	customScope.Mode = openapi.QuestionScopeModeCustom
+	customScope.Difficulty = openapi.QuestionDifficultyCustom
+	customScope.Rules.GuessLimit.MaxGuesses = 7
+	status, payload = resolvePuzzle(t, "random", key+"-custom", map[string]any{
+		"resumeSessionId": created.Session.Id,
+		"questionScope":   customScope,
+	})
+	if status != http.StatusOK {
+		t.Fatalf("scope mismatch status %d: %s", status, payload)
+	}
+	mismatch := decodeResolve(t, payload)
+	if mismatch.Resolution != openapi.Created ||
+		mismatch.Session.Id == created.Session.Id ||
+		mismatch.SupersededSession == nil ||
+		mismatch.SupersededSession.Id != created.Session.Id {
+		t.Fatalf("scope mismatch did not supersede: %+v", mismatch)
+	}
+	if mismatch.Session.QuestionScope == nil ||
+		mismatch.Session.QuestionScope.Difficulty != openapi.QuestionDifficultyCustom ||
+		mismatch.Session.MaxGuesses != 7 {
+		t.Fatalf("new session did not retain requested scope: %+v", mismatch.Session)
+	}
+
+	if _, err := pool.Exec(ctx, `UPDATE game_session SET question_scope = '{}'::jsonb WHERE id = $1`, mismatch.Session.Id); err != nil {
+		t.Fatal(err)
+	}
+	status, payload = resolvePuzzle(t, "random", key+"-missing-scope", map[string]any{
+		"resumeSessionId": mismatch.Session.Id,
+	})
+	if status != http.StatusOK {
+		t.Fatalf("missing scope status %d: %s", status, payload)
+	}
+	missingScope := decodeResolve(t, payload)
+	if missingScope.Resolution != openapi.Created ||
+		missingScope.Session.Id == mismatch.Session.Id ||
+		missingScope.SupersededSession == nil ||
+		missingScope.SupersededSession.Id != mismatch.Session.Id {
+		t.Fatalf("missing scope was incorrectly resumed: %+v", missingScope)
 	}
 }
 
