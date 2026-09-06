@@ -59,10 +59,14 @@ TypeScript 内核必须逐项复现当前 Go 行为：
 - 简体、繁体、日文、英文、罗马字、别名、作品标题/ID、作品拼音首字母和 `THxx` 分字段匹配；
 - 空查询匹配范围内全部角色；
 - `enabledAsGuess`、游戏允许 ID 和作品 ID 过滤先于分页；
-- `appearance` 或 `name` 排序，方向一致，相同主键时用角色 ID 稳定打破平局；
+- `appearance`、`name` 或 `relevance` 排序，方向一致，相同主键时使用稳定兜底；
 - offset/limit 与当前接口一致。
 
 HSO-001 建立同一份语言无关黄金样例，Go 和 TypeScript 测试共同消费。HSO-003 不通过复制当前测试文字来宣称一致，必须对同一输入输出做双端断言。
+
+`relevance` 仅由单人和多人对局显式选择，角色目录仍使用 `appearance` 或 `name`。它不改变包含匹配产生的候选集，只为每个候选选择最优命中词条并按以下 rank 升序排列：完全匹配、前缀匹配、其他连续子串；同级依次比较 Unicode code point 口径的首次匹配位置和词条长度差；仍相同时按 `appearanceOrder`、角色 ID 升序。标准化后的空查询直接使用该稳定兜底顺序。`direction=desc` 只反转 rank，不反转兜底顺序。
+
+两端 rank 计算分别位于独立的 Go 和 TypeScript 纯模块，输入只有已标准化查询和词条数组，不依赖 HTTP、React、索引仓库或角色完整模型；两端共同消费 [`search-ranking-v1.json`](./fixtures/search-ranking-v1.json)。索引继续使用 v1 的扁平 `searchTerms`；第一版不按字段来源加权，也不做编辑距离、错别字或漏字容错。若未来增加字段权重，必须先升级索引 schema 以显式携带词条类别，不能依赖数组位置推断。
 
 本地搜索在索引就绪后同步完成，不保留网络防抖，也不缓存具体查询结果。约 170 个条目不足以证明需要 Web Worker；若后续实测主线程 P95 超过发布预算，再作为独立需求评估。
 
