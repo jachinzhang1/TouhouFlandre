@@ -59,14 +59,17 @@ get:
     - name: sort
       in: query
       required: false
+      description: 排序键；relevance 按输入与单个搜索词条的连续匹配程度排序。
       schema:
         type: string
         enum:
           - name
           - appearance
+          - relevance
     - name: direction
       in: query
       required: false
+      description: 排序方向；relevance 使用 asc 时最优匹配排在前面。
       schema:
         type: string
         enum:

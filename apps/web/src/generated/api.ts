@@ -1599,7 +1599,9 @@ export interface operations {
                 workIds?: string;
                 limit?: number;
                 offset?: number;
-                sort?: "name" | "appearance";
+                /** @description 排序键；relevance 按输入与单个搜索词条的连续匹配程度排序。 */
+                sort?: "name" | "appearance" | "relevance";
+                /** @description 排序方向；relevance 使用 asc 时最优匹配排在前面。 */
                 direction?: "asc" | "desc";
             };
             header?: {

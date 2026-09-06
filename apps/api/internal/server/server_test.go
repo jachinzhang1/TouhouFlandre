@@ -363,6 +363,20 @@ func TestSearchReimu(t *testing.T) {
 	}
 }
 
+func TestSearchRelevanceOrdering(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=aki&sort=relevance&direction=asc", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if len(search.Results) < 2 || search.Results[0].Id != "shizuha_aki" || search.Results[1].Id != "minoriko_aki" {
+		t.Fatalf("expected shorter Aki prefix first, got %+v", search.Results)
+	}
+}
+
 func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
 	for _, result := range search.Results {
 		if result.Id == characterID {
