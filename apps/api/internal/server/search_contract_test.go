@@ -55,14 +55,14 @@ func TestCatalogSearchPolicyContract(t *testing.T) {
 	if err := json.Unmarshal(payload, &policy); err != nil {
 		t.Fatal(err)
 	}
-	if policy.Mode != openapi.Remote || policy.GameScopeMode != openapi.Strict || policy.IndexSchemaVersion != 1 || policy.RevalidateAfterSeconds != 60 || policy.Revision == "" {
+	if policy.Mode != openapi.Remote || policy.GameScopeMode != openapi.Strict || policy.IndexSchemaVersion != game.SearchIndexSchemaVersion || policy.RevalidateAfterSeconds != 60 || policy.Revision == "" {
 		t.Fatalf("unexpected policy: %+v", policy)
 	}
 }
 
 func TestCatalogSearchIndexContractAndConditionalRequest(t *testing.T) {
 	version := currentCatalogVersion(t)
-	resp, payload := request(http.MethodGet, "/api/catalog/"+version+"/search-index/1", nil)
+	resp, payload := request(http.MethodGet, "/api/catalog/"+version+"/search-index/2", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status %d: %s", resp.StatusCode, payload)
 	}
@@ -77,7 +77,7 @@ func TestCatalogSearchIndexContractAndConditionalRequest(t *testing.T) {
 	if err := json.Unmarshal(payload, &index); err != nil {
 		t.Fatal(err)
 	}
-	if index.CatalogVersion != version || index.IndexSchemaVersion != 1 || len(index.Entries) == 0 {
+	if index.CatalogVersion != version || index.IndexSchemaVersion != game.SearchIndexSchemaVersion || len(index.Entries) == 0 {
 		t.Fatalf("unexpected index: version=%q schema=%d entries=%d", index.CatalogVersion, index.IndexSchemaVersion, len(index.Entries))
 	}
 	for _, entry := range index.Entries {
@@ -87,9 +87,14 @@ func TestCatalogSearchIndexContractAndConditionalRequest(t *testing.T) {
 		if strings.Contains(string(payload), `"enabledAsAnswer"`) || strings.Contains(string(payload), `"sourceRefs"`) {
 			t.Fatal("index leaked answer/private fields")
 		}
+		for _, term := range entry.SearchTerms {
+			if term.Value == "" || term.Source == "" {
+				t.Fatalf("incomplete search term: %+v", term)
+			}
+		}
 	}
 
-	conditional, conditionalPayload := requestWithHeaders(http.MethodGet, "/api/catalog/"+version+"/search-index/1", map[string]string{"If-None-Match": etag})
+	conditional, conditionalPayload := requestWithHeaders(http.MethodGet, "/api/catalog/"+version+"/search-index/2", map[string]string{"If-None-Match": etag})
 	if conditional.StatusCode != http.StatusNotModified || len(conditionalPayload) != 0 {
 		t.Fatalf("conditional status=%d payload=%s", conditional.StatusCode, conditionalPayload)
 	}
@@ -99,14 +104,14 @@ func TestCatalogSearchIndexContractAndConditionalRequest(t *testing.T) {
 }
 
 func TestCatalogSearchIndexErrorsAreStableAndUncacheable(t *testing.T) {
-	missing, missingPayload := request(http.MethodGet, "/api/catalog/missing-version/search-index/1", nil)
+	missing, missingPayload := request(http.MethodGet, "/api/catalog/missing-version/search-index/2", nil)
 	if missing.StatusCode != http.StatusNotFound || decodeError(t, missingPayload).Code != "CATALOG_VERSION_NOT_FOUND" {
 		t.Fatalf("missing status=%d payload=%s", missing.StatusCode, missingPayload)
 	}
 	if missing.Header.Get("Cache-Control") != "no-store" {
 		t.Fatalf("missing cache-control=%q", missing.Header.Get("Cache-Control"))
 	}
-	unsupported, unsupportedPayload := request(http.MethodGet, "/api/catalog/"+currentCatalogVersion(t)+"/search-index/2", nil)
+	unsupported, unsupportedPayload := request(http.MethodGet, "/api/catalog/"+currentCatalogVersion(t)+"/search-index/1", nil)
 	if unsupported.StatusCode != http.StatusBadRequest || decodeError(t, unsupportedPayload).Code != "INVALID_REQUEST" {
 		t.Fatalf("unsupported status=%d payload=%s", unsupported.StatusCode, unsupportedPayload)
 	}
@@ -187,7 +192,7 @@ func TestSnapshotProjectionFailureKeepsRemoteSearchAndReadinessAvailable(t *test
 	ts := httptest.NewServer(apiserver.NewWithOptions(pool, handler.WithCatalogSearchProviders(source, snapshot)))
 	defer ts.Close()
 
-	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/1")
+	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/2")
 	if indexResp.StatusCode != http.StatusServiceUnavailable || decodeError(t, indexPayload).Code != "CATALOG_NOT_READY" {
 		t.Fatalf("index status=%d payload=%s", indexResp.StatusCode, indexPayload)
 	}
@@ -222,7 +227,7 @@ func TestSharedCatalogSnapshotFailureSurfacesFinalErrorsReadinessAndMetrics(t *t
 	ts := httptest.NewServer(apiserver.NewWithOptions(pool, handler.WithCatalogSearchProviders(source, snapshot)))
 	defer ts.Close()
 
-	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/1")
+	indexResp, indexPayload := requestAt(t, ts.Client(), ts.URL, "/api/catalog/"+version+"/search-index/2")
 	if indexResp.StatusCode != http.StatusServiceUnavailable || decodeError(t, indexPayload).Code != "CATALOG_NOT_READY" {
 		t.Fatalf("index status=%d payload=%s", indexResp.StatusCode, indexPayload)
 	}

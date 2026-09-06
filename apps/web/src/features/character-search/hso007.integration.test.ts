@@ -4,7 +4,7 @@ import { CharacterSearchRouter } from "./router";
 
 const index: CatalogSearchIndex = {
   catalogVersion: "catalog-v1",
-  indexSchemaVersion: 1,
+  indexSchemaVersion: 2,
   entries: [
     {
       id: "reimu",
@@ -19,7 +19,10 @@ const index: CatalogSearchIndex = {
       locations: [],
       affiliations: [],
       hairColors: [],
-      searchTerms: ["博丽灵梦", "reimu"],
+      searchTerms: [
+        { value: "博丽灵梦", source: "zhHans" },
+        { value: "reimu", source: "en" },
+      ],
       nameSortKey: "reimu",
     },
     {
@@ -35,7 +38,10 @@ const index: CatalogSearchIndex = {
       locations: [],
       affiliations: [],
       hairColors: [],
-      searchTerms: ["雾雨魔理沙", "marisa"],
+      searchTerms: [
+        { value: "雾雨魔理沙", source: "zhHans" },
+        { value: "marisa", source: "en" },
+      ],
       nameSortKey: "marisa",
     },
   ],
@@ -43,7 +49,7 @@ const index: CatalogSearchIndex = {
 
 const localPolicy = {
   mode: "local-primary" as const,
-  indexSchemaVersion: 1,
+  indexSchemaVersion: 2,
   revision: "hso007",
   gameScopeMode: "strict" as const,
   revalidateAfterSeconds: 60,

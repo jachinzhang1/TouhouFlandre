@@ -10,6 +10,7 @@ import {
   useCharacterSearch,
   type MultiplayerCharacterSearchContext,
 } from "../hooks/useCharacterSearch";
+import { useActiveOptionScrollRef } from "../hooks/useActiveOptionScrollRef";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
 
@@ -31,10 +32,13 @@ export function GuessInputBar({
   const [restoreFocusRequested, setRestoreFocusRequested] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const submittingRef = useRef(false);
+  const activeSuggestionScrollRef =
+    useActiveOptionScrollRef<HTMLButtonElement>();
   const { results, loading, error } = useCharacterSearch(query, {
     enabled: Boolean(searchContext) && !disabled && !submitting,
     context: searchContext,
     limit: GAME_SEARCH_RESULT_LIMIT,
+    sort: "relevance",
   });
   const filtered = results.filter((r) => !guessedIds.has(r.id));
   const showSuggestions =
@@ -154,6 +158,11 @@ export function GuessInputBar({
                   <button
                     type="button"
                     id={`suggestion-${index}`}
+                    ref={
+                      highlightIndex === index
+                        ? activeSuggestionScrollRef
+                        : undefined
+                    }
                     disabled={disabled || submitting}
                     onClick={() => void submit(result.id)}
                     onMouseEnter={() => setHighlightIndex(index)}

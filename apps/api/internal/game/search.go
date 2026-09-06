@@ -34,30 +34,40 @@ func CharacterNameSortKey(character Character) string {
 
 // CharacterSearchTerms normalizes each searchable field independently. A
 // query must match one term, so adjacent fields can never create a match.
-func CharacterSearchTerms(character Character) []string {
-	values := []string{character.Names.ZhHans}
+func CharacterSearchTerms(character Character) []SearchTerm {
+	values := []SearchTerm{{Value: character.Names.ZhHans, Source: SearchTermSourceZhHans}}
 	if character.Names.ZhHant != nil {
-		values = append(values, *character.Names.ZhHant)
+		values = append(values, SearchTerm{Value: *character.Names.ZhHant, Source: SearchTermSourceZhHant})
 	}
-	values = append(values, character.Names.Ja, character.Names.En)
-	if character.Names.Romaji != nil {
-		values = append(values, *character.Names.Romaji)
-	}
-	values = append(values, character.Names.Aliases...)
 	values = append(values,
-		character.FirstAppearance.WorkTitle,
-		character.FirstAppearance.WorkID,
+		SearchTerm{Value: character.Names.Ja, Source: SearchTermSourceJa},
+		SearchTerm{Value: character.Names.En, Source: SearchTermSourceEn},
 	)
-	values = append(values, character.FirstAppearance.WorkPinyinInitials...)
+	if character.Names.Romaji != nil {
+		values = append(values, SearchTerm{Value: *character.Names.Romaji, Source: SearchTermSourceRomaji})
+	}
+	for _, alias := range character.Names.Aliases {
+		values = append(values, SearchTerm{Value: alias, Source: SearchTermSourceAlias})
+	}
+	values = append(values,
+		SearchTerm{Value: character.FirstAppearance.WorkTitle, Source: SearchTermSourceWorkTitle},
+		SearchTerm{Value: character.FirstAppearance.WorkID, Source: SearchTermSourceWorkID},
+	)
+	for _, initials := range character.FirstAppearance.WorkPinyinInitials {
+		values = append(values, SearchTerm{Value: initials, Source: SearchTermSourceWorkPinyinInitials})
+	}
 	if character.FirstAppearance.MainlineIndex != nil {
-		values = append(values, fmt.Sprintf("TH%02d", *character.FirstAppearance.MainlineIndex))
+		values = append(values, SearchTerm{
+			Value:  fmt.Sprintf("TH%02d", *character.FirstAppearance.MainlineIndex),
+			Source: SearchTermSourceMainlineIndex,
+		})
 	}
 
-	terms := make([]string, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
+	terms := make([]SearchTerm, 0, len(values))
+	seen := make(map[SearchTerm]struct{}, len(values))
 	for _, value := range values {
-		term := NormalizeSearchText(value)
-		if term == "" {
+		term := SearchTerm{Value: NormalizeSearchText(value.Value), Source: value.Source}
+		if term.Value == "" {
 			continue
 		}
 		if _, exists := seen[term]; exists {
@@ -72,7 +82,12 @@ func CharacterSearchTerms(character Character) []string {
 // CharacterSearchText is retained for the deprecated catalog search payload.
 // Spaces are intentional field boundaries and are never removed here.
 func CharacterSearchText(character Character) string {
-	return strings.Join(CharacterSearchTerms(character), " ")
+	terms := CharacterSearchTerms(character)
+	values := make([]string, 0, len(terms))
+	for _, term := range terms {
+		values = append(values, term.Value)
+	}
+	return strings.Join(values, " ")
 }
 
 func MatchCharacterQuery(character Character, query string) bool {
@@ -81,7 +96,7 @@ func MatchCharacterQuery(character Character, query string) bool {
 		return true
 	}
 	for _, term := range CharacterSearchTerms(character) {
-		if strings.Contains(term, normalizedQuery) {
+		if strings.Contains(term.Value, normalizedQuery) {
 			return true
 		}
 	}
@@ -147,25 +162,58 @@ type CharacterSearchPage struct {
 	Total      int
 }
 
+type characterSearchCandidate struct {
+	character Character
+	rank      SearchMatchRank
+}
+
 // SearchCharacters is the only authoritative character search implementation.
 func SearchCharacters(characters []Character, options CharacterSearchOptions) CharacterSearchPage {
-	matches := make([]Character, 0, len(characters))
+	normalizedQuery := NormalizeSearchText(options.Query)
+	useRelevance := options.SortBy == "relevance" && normalizedQuery != ""
+	matches := make([]characterSearchCandidate, 0, len(characters))
 	for _, character := range characters {
-		if matchesCharacterSearchFilters(character, options.Filters) && MatchCharacterQuery(character, options.Query) {
-			matches = append(matches, character)
+		if !matchesCharacterSearchFilters(character, options.Filters) {
+			continue
 		}
+		candidate := characterSearchCandidate{character: character}
+		if useRelevance {
+			rank, matched := RankSearchTerms(normalizedQuery, CharacterSearchTerms(character))
+			if !matched {
+				continue
+			}
+			candidate.rank = rank
+		} else if !MatchCharacterQuery(character, options.Query) {
+			continue
+		}
+		matches = append(matches, candidate)
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
 		left, right := matches[i], matches[j]
+		if options.SortBy == "relevance" {
+			if useRelevance {
+				comparison := CompareSearchMatchRanks(left.rank, right.rank)
+				if comparison != 0 {
+					if options.Descending {
+						return comparison > 0
+					}
+					return comparison < 0
+				}
+			}
+			if left.character.AppearanceOrder != right.character.AppearanceOrder {
+				return left.character.AppearanceOrder < right.character.AppearanceOrder
+			}
+			return left.character.ID < right.character.ID
+		}
 		comparison := 0
 		if options.SortBy == "appearance" {
-			comparison = left.AppearanceOrder - right.AppearanceOrder
+			comparison = left.character.AppearanceOrder - right.character.AppearanceOrder
 		} else {
-			comparison = strings.Compare(CharacterNameSortKey(left), CharacterNameSortKey(right))
+			comparison = strings.Compare(CharacterNameSortKey(left.character), CharacterNameSortKey(right.character))
 		}
 		if comparison == 0 {
-			return left.ID < right.ID
+			return left.character.ID < right.character.ID
 		}
 		if options.Descending {
 			return comparison > 0
@@ -182,5 +230,9 @@ func SearchCharacters(characters []Character, options CharacterSearchOptions) Ch
 	if options.Limit >= 0 {
 		end = min(start+options.Limit, total)
 	}
-	return CharacterSearchPage{Characters: matches[start:end], Total: total}
+	page := make([]Character, 0, end-start)
+	for _, candidate := range matches[start:end] {
+		page = append(page, candidate.character)
+	}
+	return CharacterSearchPage{Characters: page, Total: total}
 }

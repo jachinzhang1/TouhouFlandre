@@ -407,8 +407,13 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	}
 
 	sortBy := "name"
-	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
-		sortBy = "appearance"
+	if request.Params.Sort != nil {
+		switch *request.Params.Sort {
+		case openapi.Appearance:
+			sortBy = "appearance"
+		case openapi.Relevance:
+			sortBy = "relevance"
+		}
 	}
 	filters := []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()}
 	if filterByWork {

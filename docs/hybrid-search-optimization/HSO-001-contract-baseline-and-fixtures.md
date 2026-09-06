@@ -28,7 +28,7 @@
 
 ## 属于本 Issue
 
-- 在本目录新增未包含答案的 `fixtures/search-parity-v1.json`，定义输入角色、查询参数、允许 ID、期望有序 ID 和 total。
+- 在本目录维护未包含答案的 `fixtures/search-parity-v2.json`，定义输入角色、查询参数、允许 ID、期望有序 ID 和 total；v2 在初版夹具基础上同步当前带来源搜索索引。
 - 新增只读采样脚本或 Playwright 基线用例；生产脚本不得修改数据库、题库或生产数据；可写的 fresh 场景必须显式指向 disposable 数据库并执行 cleanup/rollback。
 - 在 `baseline.md` 记录日期、提交、环境、网络条件、命令、响应体积和结果，不把一次采样写成永久 SLA。
 - 校对并冻结 `decisions.md` 中的端点、schema version、策略模式、请求超时、last-known-good 宽限、瞬时/结构性故障分类、半开退避、缓存强制修复、上下文和回退语义。
@@ -75,7 +75,7 @@
 
 ## 实施与验收记录（2026-08-28）
 
-- 已交付语言无关 fixture：`search-parity-v1.json`、`failure-matrix-v1.json`、`compatibility-matrix-v1.json`，Go 和 Web 测试直接读取同一份 JSON。
+- 已交付语言无关 fixture：`search-parity-v2.json`、`failure-matrix-v1.json`、`compatibility-matrix-v1.json`，Go 和 Web 测试直接读取同一份 JSON。
 - 已将 Playwright 基线脚本移入 `apps/web/e2e/hso-001-baseline.spec.ts`，使用显式 Playwright 类型、独立页面、真实冷热连接采样和会话清理。
 - 已新增 `docs/hybrid-search-optimization/baseline.md`，记录日期、提交、环境、网络条件、命令、体积与采样结果。
 - 已用 `gofmt`、`pnpm --filter @touhouflandre/web typecheck`、`go test ./internal/game -count=1`、`pnpm --filter @touhouflandre/web exec vitest run src/fixtures/hso-001-fixtures.test.ts` 和 Playwright 基线命令验证。

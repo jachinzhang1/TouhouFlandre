@@ -121,7 +121,7 @@ func TestCatalogSearchSnapshotRejectsUnsupportedSchemaBeforeLoading(t *testing.T
 		return []Character{testSearchCharacter("public", true)}, nil
 	})
 	provider := NewCatalogSearchSnapshotProvider(source, nil)
-	if _, err := provider.Get(context.Background(), "catalog-v1", 2); !errors.Is(err, ErrUnsupportedSearchIndexSchema) {
+	if _, err := provider.Get(context.Background(), "catalog-v1", 1); !errors.Is(err, ErrUnsupportedSearchIndexSchema) {
 		t.Fatalf("error=%v, want unsupported schema", err)
 	}
 	if loads.Load() != 0 {

@@ -320,6 +320,34 @@ CatalogCharacters:
       items:
         $ref: "#/CharacterSearchResult"
 
+CatalogSearchTermSource:
+  type: string
+  description: 搜索词条的原始字段来源，用于相关度排序中的字段优先级。
+  enum:
+    - zhHans
+    - zhHant
+    - ja
+    - en
+    - romaji
+    - alias
+    - workTitle
+    - workId
+    - workPinyinInitials
+    - mainlineIndex
+
+CatalogSearchTerm:
+  type: object
+  description: 已标准化且保留字段来源的搜索词条。
+  required:
+    - value
+    - source
+  properties:
+    value:
+      type: string
+      minLength: 1
+    source:
+      $ref: "#/CatalogSearchTermSource"
+
 CatalogSearchIndexEntry:
   type: object
   description: 版本化角色搜索索引中的公开角色条目，不包含答案专用字段。
@@ -384,8 +412,7 @@ CatalogSearchIndexEntry:
       type: array
       minItems: 1
       items:
-        type: string
-        minLength: 1
+        $ref: "#/CatalogSearchTerm"
     nameSortKey:
       type: string
       minLength: 1

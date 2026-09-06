@@ -42,7 +42,7 @@ export const GAME_CONTENT_TYPES = ["character"] as const;
 export type GameContentType = (typeof GAME_CONTENT_TYPES)[number];
 export const SESSION_STATUSES = ["playing", "won", "lost"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
-export const CHARACTER_SORTS = ["name", "appearance"] as const;
+export const CHARACTER_SORTS = ["name", "appearance", "relevance"] as const;
 export type CharacterSort = (typeof CHARACTER_SORTS)[number];
 export const SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type SortDirection = (typeof SORT_DIRECTIONS)[number];
@@ -213,11 +213,30 @@ export type CatalogSummary = {
   works: Work[];
 };
 
+export const SEARCH_TERM_SOURCES = [
+  "zhHans",
+  "zhHant",
+  "ja",
+  "en",
+  "romaji",
+  "alias",
+  "workTitle",
+  "workId",
+  "workPinyinInitials",
+  "mainlineIndex",
+] as const;
+export type SearchTermSource = (typeof SEARCH_TERM_SOURCES)[number];
+
+export type CatalogSearchTerm = {
+  value: string;
+  source: SearchTermSource;
+};
+
 export type CatalogSearchIndexEntry = Omit<
   CharacterSearchResult,
   "searchText"
 > & {
-  searchTerms: string[];
+  searchTerms: CatalogSearchTerm[];
 };
 
 export type CatalogSearchIndex = {

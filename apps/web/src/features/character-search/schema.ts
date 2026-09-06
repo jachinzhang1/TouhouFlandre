@@ -1,7 +1,11 @@
-import type {
+import {
+  SEARCH_TERM_SOURCES,
+  type CatalogSearchTerm,
   CatalogSearchIndex,
   CatalogSearchIndexEntry,
 } from "@touhouflandre/shared";
+
+export const SEARCH_INDEX_SCHEMA_VERSION = 2;
 
 export type SearchIndexErrorCode =
   | "INVALID_INDEX"
@@ -26,24 +30,76 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === "string");
 
+const searchTermSources = new Set<string>(SEARCH_TERM_SOURCES);
+
+const isSearchTermArray = (value: unknown): value is CatalogSearchTerm[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item) =>
+      isRecord(item) &&
+      typeof item.value === "string" &&
+      item.value !== "" &&
+      typeof item.source === "string" &&
+      searchTermSources.has(item.source),
+  );
+
 function validateEntry(value: unknown, index: number): CatalogSearchIndexEntry {
   if (!isRecord(value)) {
-    throw new SearchIndexValidationError("INVALID_ENTRY", `entry ${index} is not an object`);
+    throw new SearchIndexValidationError(
+      "INVALID_ENTRY",
+      `entry ${index} is not an object`,
+    );
   }
-  const requiredStrings = ["id", "name", "subtitle", "initials", "workId", "nameSortKey"];
-  if (requiredStrings.some((key) => typeof value[key] !== "string" || value[key] === "")) {
-    throw new SearchIndexValidationError("INVALID_ENTRY", `entry ${index} has missing display fields`);
+  const requiredStrings = [
+    "id",
+    "name",
+    "subtitle",
+    "initials",
+    "workId",
+    "nameSortKey",
+  ];
+  if (
+    requiredStrings.some(
+      (key) => typeof value[key] !== "string" || value[key] === "",
+    )
+  ) {
+    throw new SearchIndexValidationError(
+      "INVALID_ENTRY",
+      `entry ${index} has missing display fields`,
+    );
   }
-  if (!Number.isInteger(value.appearanceOrder) || !isStringArray(value.searchTerms) || value.searchTerms.length === 0) {
-    throw new SearchIndexValidationError("INVALID_ENTRY", `entry ${index} has invalid search fields`);
+  if (
+    !Number.isInteger(value.appearanceOrder) ||
+    !isSearchTermArray(value.searchTerms) ||
+    value.searchTerms.length === 0
+  ) {
+    throw new SearchIndexValidationError(
+      "INVALID_ENTRY",
+      `entry ${index} has invalid search fields`,
+    );
   }
-  if (new Set(value.searchTerms).size !== value.searchTerms.length || value.searchTerms.some((term) => term === "")) {
-    throw new SearchIndexValidationError("INVALID_ENTRY", `entry ${index} has duplicate or empty terms`);
+  const termKeys = value.searchTerms.map(
+    (term) => `${term.source}\u0000${term.value}`,
+  );
+  if (new Set(termKeys).size !== termKeys.length) {
+    throw new SearchIndexValidationError(
+      "INVALID_ENTRY",
+      `entry ${index} has duplicate terms`,
+    );
   }
-  if (!isRecord(value.firstAppearance) || typeof value.firstAppearance.workTitle !== "string" ||
-      !Number.isFinite(value.firstAppearance.releaseYear) || !isStringArray(value.species) ||
-      !isStringArray(value.locations) || !isStringArray(value.affiliations) || !isStringArray(value.hairColors)) {
-    throw new SearchIndexValidationError("INVALID_ENTRY", `entry ${index} has invalid display data`);
+  if (
+    !isRecord(value.firstAppearance) ||
+    typeof value.firstAppearance.workTitle !== "string" ||
+    !Number.isFinite(value.firstAppearance.releaseYear) ||
+    !isStringArray(value.species) ||
+    !isStringArray(value.locations) ||
+    !isStringArray(value.affiliations) ||
+    !isStringArray(value.hairColors)
+  ) {
+    throw new SearchIndexValidationError(
+      "INVALID_ENTRY",
+      `entry ${index} has invalid display data`,
+    );
   }
   return value as unknown as CatalogSearchIndexEntry;
 }
@@ -51,30 +107,55 @@ function validateEntry(value: unknown, index: number): CatalogSearchIndexEntry {
 export function validateSearchIndex(
   value: unknown,
   expectedCatalogVersion?: string,
-  expectedSchemaVersion = 1,
+  expectedSchemaVersion = SEARCH_INDEX_SCHEMA_VERSION,
 ): CatalogSearchIndex {
   if (!isRecord(value)) {
-    throw new SearchIndexValidationError("INVALID_INDEX", "search index is not an object");
+    throw new SearchIndexValidationError(
+      "INVALID_INDEX",
+      "search index is not an object",
+    );
   }
   if (value.indexSchemaVersion !== expectedSchemaVersion) {
-    throw new SearchIndexValidationError("UNSUPPORTED_SCHEMA", "unsupported search index schema");
+    throw new SearchIndexValidationError(
+      "UNSUPPORTED_SCHEMA",
+      "unsupported search index schema",
+    );
   }
   if (typeof value.catalogVersion !== "string" || value.catalogVersion === "") {
-    throw new SearchIndexValidationError("INVALID_INDEX", "catalog version is missing");
+    throw new SearchIndexValidationError(
+      "INVALID_INDEX",
+      "catalog version is missing",
+    );
   }
-  if (expectedCatalogVersion !== undefined && value.catalogVersion !== expectedCatalogVersion) {
-    throw new SearchIndexValidationError("VERSION_MISMATCH", "catalog version does not match request");
+  if (
+    expectedCatalogVersion !== undefined &&
+    value.catalogVersion !== expectedCatalogVersion
+  ) {
+    throw new SearchIndexValidationError(
+      "VERSION_MISMATCH",
+      "catalog version does not match request",
+    );
   }
   if (!Array.isArray(value.entries)) {
-    throw new SearchIndexValidationError("INVALID_INDEX", "entries are missing");
+    throw new SearchIndexValidationError(
+      "INVALID_INDEX",
+      "entries are missing",
+    );
   }
   const entries = value.entries.map(validateEntry);
   const ids = new Set<string>();
   for (const entry of entries) {
     if (ids.has(entry.id)) {
-      throw new SearchIndexValidationError("DUPLICATE_ID", `duplicate character id: ${entry.id}`);
+      throw new SearchIndexValidationError(
+        "DUPLICATE_ID",
+        `duplicate character id: ${entry.id}`,
+      );
     }
     ids.add(entry.id);
   }
-  return { catalogVersion: value.catalogVersion, indexSchemaVersion: value.indexSchemaVersion, entries } as CatalogSearchIndex;
+  return {
+    catalogVersion: value.catalogVersion,
+    indexSchemaVersion: value.indexSchemaVersion,
+    entries,
+  } as CatalogSearchIndex;
 }

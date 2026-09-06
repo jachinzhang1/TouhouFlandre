@@ -120,7 +120,7 @@ task prod:up
 
 API 运行中也可以单独执行版本化 seed。`catalog_state.current_version` 更新后，新建对局会按需加载新题库索引，无需重启 API；进行中的对局继续使用旧索引。直接修改 `character` 行表不是受支持的热更新方式，也不会改变已经缓存或冻结的题库。`catalog_snapshot` 不允许同版本覆盖：同版本同内容可幂等重跑，同版本不同内容会使 seed 失败并回滚事务。
 
-角色搜索索引使用 `GET /api/catalog/{catalogVersion}/search-index/1`，响应为版本化 immutable 资源；策略使用 `GET /api/catalog/search-policy`，响应始终 `no-store`。若索引投影或 wire shape 改变，提升 URL 中的 `indexSchemaVersion`；仅修复策略/索引结构而不改 schema 时提升 `CHARACTER_SEARCH_POLICY_REVISION`。
+角色搜索索引使用 `GET /api/catalog/{catalogVersion}/search-index/2`，响应为版本化 immutable 资源；v2 的每个标准化词条显式携带字段来源，用于本地相关度排序。策略使用 `GET /api/catalog/search-policy`，响应始终 `no-store`。若索引投影或 wire shape 改变，提升 URL 中的 `indexSchemaVersion`；仅修复策略/索引结构而不改 schema 时提升 `CHARACTER_SEARCH_POLICY_REVISION`。
 
 ### 角色搜索灰度与回滚
 
@@ -136,9 +136,9 @@ API 运行中也可以单独执行版本化 seed。`catalog_state.current_versio
 
 ```bash
 curl -i https://game.example.com/api/catalog/search-policy
-curl -i -H 'Accept-Encoding: gzip' https://game.example.com/api/catalog/<version>/search-index/1
-curl -i -H 'If-None-Match: "<etag>"' https://game.example.com/api/catalog/<version>/search-index/1
-curl -i https://game.example.com/api/catalog/missing-version/search-index/1
+curl -i -H 'Accept-Encoding: gzip' https://game.example.com/api/catalog/<version>/search-index/2
+curl -i -H 'If-None-Match: "<etag>"' https://game.example.com/api/catalog/<version>/search-index/2
+curl -i https://game.example.com/api/catalog/missing-version/search-index/2
 ```
 
 紧急回滚只改服务端配置：先把所有实例切回 `CHARACTER_SEARCH_MODE=remote`，确认策略 revision 已变化并等待最多 60 秒或让页面重新获得焦点，再抽查已打开页面停止本地搜索。之后才允许回滚 API binary；不发布 Web、不清浏览器缓存、不回滚迁移，也不结束当前题局。新 Web 遇到旧 API 的策略/索引 404/405 会省略新观测 header 并继续远程搜索，旧 Web 对新 API 仍使用原搜索和 create/get-session 接口。

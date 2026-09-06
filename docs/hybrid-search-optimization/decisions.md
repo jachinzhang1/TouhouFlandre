@@ -20,7 +20,7 @@
 GET /api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}
 ```
 
-首版 `indexSchemaVersion=1`。响应至少包含：
+当前 `indexSchemaVersion=2`。响应至少包含：
 
 ```text
 catalogVersion
@@ -28,15 +28,17 @@ indexSchemaVersion
 entries[]:
   id
   display fields required by CharacterSearchResult
-  searchTerms[]
+  searchTerms[]:
+    value
+    source
   nameSortKey
 ```
 
-`searchTerms` 必须保留字段边界；一个查询只能完整包含在某一个 term 中，不能跨姓名、别名或作品字段拼接命中。条目只包含 `enabledAsGuess=true` 的公开角色，不包含答案信息。
+`searchTerms` 必须保留字段边界及具体来源；`source` 枚举区分简中、繁中、日文、英文、罗马字、别名、作品标题/ID、作品拼音首字母和正作编号。一个查询只能完整包含在某一个 term 的 `value` 中，不能跨姓名、别名或作品字段拼接命中。条目只包含 `enabledAsGuess=true` 的公开角色，不包含答案信息。
 
 资源 URL 同时含题库版本和索引 schema，因此响应使用长期 `public, max-age=31536000, immutable` 缓存和稳定 ETag。Go API 与 Next 同源代理必须保持一致的内容和缓存头。浏览器以 HTTP 缓存持久化原始响应，并在当前 JavaScript 运行时按同一键缓存校验后的解析结果和进行中的加载 Promise；不新增 IndexedDB schema。
 
-若索引投影规则或 wire shape 变化，必须提升 `indexSchemaVersion`，不能在同一 URL 下替换内容。若只有前端查询实现修复且 v1 数据仍兼容，可仅发布新 Web；旧 Web 仍可使用 v1 或远程搜索。
+若索引投影规则或 wire shape 变化，必须提升 `indexSchemaVersion`，不能在同一 URL 下替换内容。v2 服务端不再提供 v1；新旧 Web/API 组合遇到不兼容索引时使用既有远程搜索回退。
 
 ## 3. 服务端快照缓存与回退隔离
 
@@ -59,10 +61,14 @@ TypeScript 内核必须逐项复现当前 Go 行为：
 - 简体、繁体、日文、英文、罗马字、别名、作品标题/ID、作品拼音首字母和 `THxx` 分字段匹配；
 - 空查询匹配范围内全部角色；
 - `enabledAsGuess`、游戏允许 ID 和作品 ID 过滤先于分页；
-- `appearance` 或 `name` 排序，方向一致，相同主键时用角色 ID 稳定打破平局；
+- `appearance`、`name` 或 `relevance` 排序，方向一致，相同主键时使用稳定兜底；
 - offset/limit 与当前接口一致。
 
 HSO-001 建立同一份语言无关黄金样例，Go 和 TypeScript 测试共同消费。HSO-003 不通过复制当前测试文字来宣称一致，必须对同一输入输出做双端断言。
+
+`relevance` 仅由单人和多人对局显式选择，角色目录仍使用 `appearance` 或 `name`。它不改变包含匹配产生的候选集，只为每个候选选择最优命中词条并按以下 rank 升序排列：完全匹配、前缀匹配、其他连续子串；匹配类型相同时比较字段优先级，再依次比较 Unicode code point 口径的首次匹配位置和词条长度差；仍相同时按 `appearanceOrder`、角色 ID 升序。字段优先级分为四级：简繁中文正式名、日英及罗马字正式名、别名、作品相关词条。标准化后的空查询直接使用稳定兜底顺序。`direction=desc` 只反转 rank，不反转兜底顺序。
+
+两端 rank 计算分别位于独立的 Go 和 TypeScript 纯模块，输入只有已标准化查询和带来源词条数组，不依赖 HTTP、React、索引仓库或角色完整模型；两端共同消费 [`search-ranking-v2.json`](./fixtures/search-ranking-v2.json)。索引 v2 显式携带每个词条的具体来源，排序模块集中将来源映射到四级优先级，不依赖数组位置推断；未来只调整现有来源分组时无需改变索引 shape。算法不做编辑距离、错别字或漏字容错。
 
 本地搜索在索引就绪后同步完成，不保留网络防抖，也不缓存具体查询结果。约 170 个条目不足以证明需要 Web Worker；若后续实测主线程 P95 超过发布预算，再作为独立需求评估。
 

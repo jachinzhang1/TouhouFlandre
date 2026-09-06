@@ -22,17 +22,18 @@ test.describe("single game suggestion layout", () => {
       });
     });
 
-    await page.route("**/api/puzzles/daily", async (route) => {
+    await page.route("**/api/puzzles/daily/resolve", async (route) => {
       await route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({
           puzzleLabel: "Daily 2026-08-06",
           session,
+          resolution: "created",
         }),
       });
     });
 
-    await page.route("**/api/characters/search?**", async (route) => {
+    await page.route("**/api/characters/search**", async (route) => {
       expect(new URL(route.request().url()).searchParams.get("sessionId")).toBe(
         "layout-session",
       );
@@ -108,6 +109,61 @@ test.describe("single game suggestion layout", () => {
         (layout?.listLeft ?? -1) + (layout?.listWidth ?? 0),
       ).toBeLessThanOrEqual(layout?.viewportWidth ?? 0);
     }).toPass();
+
+    await input.press("ArrowDown");
+    await expect(input).toHaveAttribute(
+      "aria-activedescendant",
+      /layout_probe_0/,
+    );
+    await expect
+      .poll(() => suggestionList.evaluate((list) => list.scrollTop))
+      .toBe(0);
+
+    await input.press("ArrowUp");
+    await expect(input).toHaveAttribute(
+      "aria-activedescendant",
+      /layout_probe_11/,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const list = document.querySelector(".suggestion-list");
+          const active = document.querySelector(".suggestion.selected");
+          if (!list || !active) return false;
+          const listRect = list.getBoundingClientRect();
+          const activeRect = active.getBoundingClientRect();
+          return (
+            list.scrollTop > 0 &&
+            activeRect.top >= listRect.top - 1 &&
+            activeRect.bottom <= listRect.bottom + 1
+          );
+        }),
+      )
+      .toBe(true);
+    await expect(input).toBeFocused();
+
+    await input.press("ArrowDown");
+    await expect(input).toHaveAttribute(
+      "aria-activedescendant",
+      /layout_probe_0/,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const list = document.querySelector(".suggestion-list");
+          const active = document.querySelector(".suggestion.selected");
+          if (!list || !active) return false;
+          const listRect = list.getBoundingClientRect();
+          const activeRect = active.getBoundingClientRect();
+          return (
+            list.scrollTop <= 1 &&
+            activeRect.top >= listRect.top - 1 &&
+            activeRect.bottom <= listRect.bottom + 1
+          );
+        }),
+      )
+      .toBe(true);
+    await expect(input).toBeFocused();
   });
 
   test("keyboard selects a suggestion and Escape closes the list", async ({
@@ -122,13 +178,17 @@ test.describe("single game suggestion layout", () => {
       guesses: [],
       startedAt: "2026-08-06T00:00:00.000Z",
     };
-    await page.route("**/api/puzzles/random", (route) =>
+    await page.route("**/api/puzzles/random/resolve", (route) =>
       route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ puzzleLabel: "随机题", session }),
+        body: JSON.stringify({
+          puzzleLabel: "随机题",
+          session,
+          resolution: "created",
+        }),
       }),
     );
-    await page.route("**/api/characters/search?**", (route) =>
+    await page.route("**/api/characters/search**", (route) =>
       route.fulfill({
         contentType: "application/json",
         body: JSON.stringify({

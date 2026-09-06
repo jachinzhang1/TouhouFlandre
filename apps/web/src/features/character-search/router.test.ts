@@ -2,10 +2,11 @@ import type { CatalogSearchIndex } from "@touhouflandre/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CharacterSearchRouter } from "./router";
 import { SearchIndexHttpError } from "./indexRepository";
+import { SearchIndexValidationError } from "./schema";
 
 const index: CatalogSearchIndex = {
   catalogVersion: "catalog-v1",
-  indexSchemaVersion: 1,
+  indexSchemaVersion: 2,
   entries: [
     {
       id: "reimu",
@@ -20,7 +21,10 @@ const index: CatalogSearchIndex = {
       locations: ["shrine"],
       affiliations: ["shrine"],
       hairColors: ["black"],
-      searchTerms: ["reimu", "霊夢"],
+      searchTerms: [
+        { value: "reimu", source: "en" },
+        { value: "霊夢", source: "ja" },
+      ],
       nameSortKey: "reimu",
     },
   ],
@@ -28,7 +32,7 @@ const index: CatalogSearchIndex = {
 
 const localPolicy = {
   mode: "local-primary" as const,
-  indexSchemaVersion: 1,
+  indexSchemaVersion: 2,
   revision: "v1",
   gameScopeMode: "strict" as const,
   revalidateAfterSeconds: 60,
@@ -284,6 +288,36 @@ describe("CharacterSearchRouter", () => {
       expect.anything(),
       expect.any(AbortSignal),
       "engine_error",
+    );
+    router.dispose();
+  });
+
+  it("falls back remotely when the advertised index shape is incompatible", async () => {
+    const remote = vi.fn().mockResolvedValue({ results: [], total: 0 });
+    const router = new CharacterSearchRouter({
+      policyClient: { get: vi.fn().mockResolvedValue(localPolicy) },
+      indexRepository: {
+        load: vi
+          .fn()
+          .mockRejectedValue(
+            new SearchIndexValidationError(
+              "INVALID_ENTRY",
+              "legacy term shape",
+            ),
+          ),
+      } as never,
+      remoteSearch: { search: remote },
+    });
+
+    await router.search(
+      { q: "reimu", catalogVersion: "catalog-v1", contextKind: "catalog" },
+      new AbortController().signal,
+    );
+
+    expect(remote).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(AbortSignal),
+      "index_invalid",
     );
     router.dispose();
   });

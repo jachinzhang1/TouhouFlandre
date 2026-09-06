@@ -168,7 +168,7 @@ func (c searchFixtureCharacter) toGameCharacter() game.Character {
 
 func loadSearchParityFixture(t *testing.T) searchParityFixture {
 	t.Helper()
-	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/search-parity-v1.json")
+	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/search-parity-v2.json")
 }
 
 func loadFailureMatrixFixture(t *testing.T) failureMatrixFixture {
@@ -183,16 +183,16 @@ func loadCompatibilityMatrixFixture(t *testing.T) compatibilityMatrixFixture {
 
 func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 	fixture := loadSearchParityFixture(t)
-	if fixture.Contract != "hso.search-parity.v1" {
+	if fixture.Contract != "hso.search-parity.v2" {
 		t.Fatalf("unexpected search contract %q", fixture.Contract)
 	}
-	if fixture.CatalogVersion == "" || fixture.IndexSchemaVersion != 1 {
+	if fixture.CatalogVersion == "" || fixture.IndexSchemaVersion != game.SearchIndexSchemaVersion {
 		t.Fatalf("unexpected search fixture metadata: %+v", fixture)
 	}
 	if len(fixture.Characters) == 0 {
 		t.Fatal("search fixture needs characters")
 	}
-	if len(fixture.Cases) != 20 {
+	if len(fixture.Cases) != 23 {
 		t.Fatalf("unexpected search case count %d", len(fixture.Cases))
 	}
 
@@ -221,7 +221,7 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 			}
 			seenCaseNames[tc.Name] = struct{}{}
 
-			if tc.SortBy != "appearance" && tc.SortBy != "name" {
+			if tc.SortBy != "appearance" && tc.SortBy != "name" && tc.SortBy != "relevance" {
 				t.Fatalf("unexpected sortBy %q", tc.SortBy)
 			}
 			for _, id := range tc.SelectedCharacterIDs {
@@ -294,6 +294,9 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 		"appearance descending",
 		"name ascending",
 		"name descending",
+		"relevance prefix length",
+		"relevance descending",
+		"empty relevance falls back to appearance",
 	} {
 		if _, exists := seenCaseNames[required]; !exists {
 			t.Fatalf("search parity fixture missing %q", required)
