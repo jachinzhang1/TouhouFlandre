@@ -1,5 +1,9 @@
 import type { CatalogSearchIndex } from "@touhouflandre/shared";
-import { SearchIndexValidationError, validateSearchIndex } from "./schema";
+import {
+  SEARCH_INDEX_SCHEMA_VERSION,
+  SearchIndexValidationError,
+  validateSearchIndex,
+} from "./schema";
 
 export type IndexRepositoryOptions = {
   baseUrl?: string;
@@ -35,7 +39,7 @@ export class CatalogSearchIndexRepository {
 
   load(
     catalogVersion: string,
-    indexSchemaVersion = 1,
+    indexSchemaVersion = SEARCH_INDEX_SCHEMA_VERSION,
     signal?: AbortSignal,
     policyRevision = "v1",
   ): Promise<CatalogSearchIndex> {
@@ -55,9 +59,13 @@ export class CatalogSearchIndexRepository {
       ).catch(async (error) => {
         if (
           !(error instanceof Error) ||
-          !["INVALID_INDEX", "UNSUPPORTED_SCHEMA", "VERSION_MISMATCH"].includes(
-            (error as { code?: string }).code ?? "",
-          )
+          ![
+            "INVALID_INDEX",
+            "UNSUPPORTED_SCHEMA",
+            "VERSION_MISMATCH",
+            "DUPLICATE_ID",
+            "INVALID_ENTRY",
+          ].includes((error as { code?: string }).code ?? "")
         )
           throw error;
         return this.repair(
@@ -81,7 +89,10 @@ export class CatalogSearchIndexRepository {
     return this.consumerPromise(shared, key, signal);
   }
 
-  clear(catalogVersion: string, indexSchemaVersion = 1): void {
+  clear(
+    catalogVersion: string,
+    indexSchemaVersion = SEARCH_INDEX_SCHEMA_VERSION,
+  ): void {
     this.values.delete(`${catalogVersion}:${indexSchemaVersion}` as Key);
   }
 

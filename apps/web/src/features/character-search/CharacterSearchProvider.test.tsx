@@ -21,7 +21,7 @@ describe("CharacterSearchProvider", () => {
           policyClient={{
             get: vi.fn().mockResolvedValue({
               mode: "remote",
-              indexSchemaVersion: 1,
+              indexSchemaVersion: 2,
               revision: "test",
             }),
           }}

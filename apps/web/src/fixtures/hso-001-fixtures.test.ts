@@ -75,7 +75,7 @@ const readJson = <T>(relativePath: string): T =>
   JSON.parse(readFileSync(new URL(relativePath, import.meta.url), "utf8")) as T;
 
 const searchFixture = readJson<SearchParityFixture>(
-  "../../../../docs/hybrid-search-optimization/fixtures/search-parity-v1.json",
+  "../../../../docs/hybrid-search-optimization/fixtures/search-parity-v2.json",
 );
 const failureFixture = readJson<FailureMatrixFixture>(
   "../../../../docs/hybrid-search-optimization/fixtures/failure-matrix-v1.json",
@@ -86,9 +86,9 @@ const compatibilityFixture = readJson<CompatibilityMatrixFixture>(
 
 describe("HSO-001 fixtures", () => {
   it("keeps the search parity sample language-neutral and referentially valid", () => {
-    expect(searchFixture.contract).toBe("hso.search-parity.v1");
+    expect(searchFixture.contract).toBe("hso.search-parity.v2");
     expect(searchFixture.catalogVersion).toBeTruthy();
-    expect(searchFixture.indexSchemaVersion).toBe(1);
+    expect(searchFixture.indexSchemaVersion).toBe(2);
     expect(searchFixture.cases).toHaveLength(23);
 
     const characterIds = new Set(

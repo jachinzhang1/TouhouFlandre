@@ -53,7 +53,9 @@ export function searchCharacters(
       if (useRelevance) {
         rank = rankSearchTerms(query, entry.searchTerms);
         if (rank === null) continue;
-      } else if (!entry.searchTerms.some((term) => term.includes(query))) {
+      } else if (
+        !entry.searchTerms.some((term) => term.value.includes(query))
+      ) {
         continue;
       }
     }

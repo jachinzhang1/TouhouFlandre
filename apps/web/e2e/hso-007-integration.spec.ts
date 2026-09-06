@@ -202,7 +202,7 @@ test.describe("HSO-007 integration gate", () => {
     );
     const catalogVersion = await expectLocalPrimary(request);
     const indexResponse = await request.get(
-      `${API_BASE_URL}/api/catalog/${encodeURIComponent(catalogVersion)}/search-index/1`,
+      `${API_BASE_URL}/api/catalog/${encodeURIComponent(catalogVersion)}/search-index/2`,
     );
     expect(indexResponse.status()).toBe(200);
     const index = (await indexResponse.json()) as CatalogSearchIndex;
@@ -265,7 +265,7 @@ test.describe("HSO-007 integration gate", () => {
   }) => {
     const version = await currentCatalogVersion(request);
     const response = await request.get(
-      `${API_BASE_URL}/api/catalog/${encodeURIComponent(version)}/search-index/1`,
+      `${API_BASE_URL}/api/catalog/${encodeURIComponent(version)}/search-index/2`,
       { headers: { "Accept-Encoding": "gzip" } },
     );
     expect(response.status()).toBe(200);
@@ -280,14 +280,14 @@ test.describe("HSO-007 integration gate", () => {
       entries?: unknown[];
     };
     expect(index.catalogVersion).toBe(version);
-    expect(index.indexSchemaVersion).toBe(1);
+    expect(index.indexSchemaVersion).toBe(2);
     expect(index.entries?.length).toBeGreaterThan(0);
     expect(gzipSync(body).byteLength).toBeLessThanOrEqual(
       INDEX_GZIP_BUDGET_BYTES,
     );
 
     const conditional = await request.get(
-      `${API_BASE_URL}/api/catalog/${encodeURIComponent(version)}/search-index/1`,
+      `${API_BASE_URL}/api/catalog/${encodeURIComponent(version)}/search-index/2`,
       { headers: { "If-None-Match": response.headers().etag } },
     );
     expect(conditional.status()).toBe(304);
@@ -302,7 +302,7 @@ test.describe("HSO-007 integration gate", () => {
     request,
   }) => {
     const catalogVersion = await expectLocalPrimary(request);
-    const indexPath = `/api/catalog/${encodeURIComponent(catalogVersion)}/search-index/1`;
+    const indexPath = `/api/catalog/${encodeURIComponent(catalogVersion)}/search-index/2`;
     const firstIndex = page.waitForResponse((response) =>
       new URL(response.url()).pathname.endsWith(indexPath),
     );

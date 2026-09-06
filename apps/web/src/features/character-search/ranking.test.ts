@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import type { CatalogSearchTerm } from "@touhouflandre/shared";
 import {
   compareSearchMatchRanks,
   rankSearchTerms,
+  searchTermFieldPriority,
   type SearchMatchRank,
 } from "./ranking";
 
@@ -15,7 +17,7 @@ type RankingFixture = {
     entries: Array<{
       id: string;
       appearanceOrder: number;
-      searchTerms: string[];
+      searchTerms: CatalogSearchTerm[];
       expectedRank: SearchMatchRank | null;
     }>;
     expectedIds: string[];
@@ -24,14 +26,40 @@ type RankingFixture = {
 
 const fixture = JSON.parse(
   readFileSync(
-    "../../docs/hybrid-search-optimization/fixtures/search-ranking-v1.json",
+    "../../docs/hybrid-search-optimization/fixtures/search-ranking-v2.json",
     "utf8",
   ),
 ) as RankingFixture;
 
 describe("character search relevance ranking", () => {
+  it("maps every term source into the configured four priority groups", () => {
+    expect({
+      zhHans: searchTermFieldPriority("zhHans"),
+      zhHant: searchTermFieldPriority("zhHant"),
+      ja: searchTermFieldPriority("ja"),
+      en: searchTermFieldPriority("en"),
+      romaji: searchTermFieldPriority("romaji"),
+      alias: searchTermFieldPriority("alias"),
+      workTitle: searchTermFieldPriority("workTitle"),
+      workId: searchTermFieldPriority("workId"),
+      workPinyinInitials: searchTermFieldPriority("workPinyinInitials"),
+      mainlineIndex: searchTermFieldPriority("mainlineIndex"),
+    }).toEqual({
+      zhHans: 0,
+      zhHant: 0,
+      ja: 1,
+      en: 1,
+      romaji: 1,
+      alias: 2,
+      workTitle: 3,
+      workId: 3,
+      workPinyinInitials: 3,
+      mainlineIndex: 3,
+    });
+  });
+
   it("matches every language-neutral ranking case", () => {
-    expect(fixture.contract).toBe("hso.search-ranking.v1");
+    expect(fixture.contract).toBe("hso.search-ranking.v2");
 
     for (const testCase of fixture.cases) {
       const ranked = testCase.entries.flatMap((entry) => {

@@ -3,7 +3,7 @@ import { CatalogSearchIndexRepository } from "./indexRepository";
 
 const payload = {
   catalogVersion: "catalog-v1",
-  indexSchemaVersion: 1,
+  indexSchemaVersion: 2,
   entries: [],
 };
 const response = (body: unknown, ok = true, status = 200) =>
@@ -39,7 +39,7 @@ describe("CatalogSearchIndexRepository", () => {
       .mockResolvedValueOnce(response(payload));
     const repository = new CatalogSearchIndexRepository({ fetch: fetcher });
     await expect(
-      repository.load("catalog-v1", 1, undefined, "r1"),
+      repository.load("catalog-v1", 2, undefined, "r1"),
     ).resolves.toEqual(payload);
     expect(fetcher).toHaveBeenNthCalledWith(
       2,
@@ -55,10 +55,10 @@ describe("CatalogSearchIndexRepository", () => {
       .mockResolvedValueOnce(new Response("still-not-json"));
     const repository = new CatalogSearchIndexRepository({ fetch: fetcher });
     await expect(
-      repository.load("catalog-v1", 1, undefined, "r1"),
+      repository.load("catalog-v1", 2, undefined, "r1"),
     ).rejects.toThrow();
     await expect(
-      repository.load("catalog-v1", 1, undefined, "r1"),
+      repository.load("catalog-v1", 2, undefined, "r1"),
     ).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(fetcher).toHaveBeenNthCalledWith(
@@ -66,6 +66,40 @@ describe("CatalogSearchIndexRepository", () => {
       expect.any(String),
       expect.objectContaining({ cache: "reload" }),
     );
+  });
+
+  it("rejects a legacy v1 term shape after one repair attempt", async () => {
+    const legacyPayload = {
+      catalogVersion: "catalog-v1",
+      indexSchemaVersion: 1,
+      entries: [
+        {
+          id: "reimu",
+          name: "灵梦",
+          subtitle: "Reimu",
+          initials: "灵梦",
+          avatarUrl: "",
+          appearanceOrder: 1,
+          workId: "th06",
+          firstAppearance: { workTitle: "东方红魔乡", releaseYear: 2002 },
+          species: [],
+          locations: [],
+          affiliations: [],
+          hairColors: [],
+          searchTerms: ["reimu"],
+          nameSortKey: "reimu",
+        },
+      ],
+    };
+    const fetcher = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(response(legacyPayload)));
+    const repository = new CatalogSearchIndexRepository({ fetch: fetcher });
+
+    await expect(
+      repository.load("catalog-v1", 1, undefined, "legacy-v1"),
+    ).rejects.toMatchObject({ code: "INVALID_ENTRY" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("does not cancel a shared request when one consumer aborts", async () => {
@@ -79,8 +113,8 @@ describe("CatalogSearchIndexRepository", () => {
     const repository = new CatalogSearchIndexRepository({ fetch: fetcher });
     const firstController = new AbortController();
     const secondController = new AbortController();
-    const first = repository.load("catalog-v1", 1, firstController.signal);
-    const second = repository.load("catalog-v1", 1, secondController.signal);
+    const first = repository.load("catalog-v1", 2, firstController.signal);
+    const second = repository.load("catalog-v1", 2, secondController.signal);
     firstController.abort();
     await expect(first).rejects.toMatchObject({ name: "AbortError" });
     expect(fetcher).toHaveBeenCalledTimes(1);

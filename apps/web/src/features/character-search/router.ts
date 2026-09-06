@@ -137,7 +137,7 @@ function resultFromIndex(
     total: local.total,
     results: local.results.map((entry) => ({
       ...entry,
-      searchText: entry.searchTerms.join(" "),
+      searchText: entry.searchTerms.map((term) => term.value).join(" "),
     })),
   };
 }

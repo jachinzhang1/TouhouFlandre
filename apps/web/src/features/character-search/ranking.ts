@@ -1,7 +1,13 @@
+import type {
+  CatalogSearchTerm,
+  SearchTermSource,
+} from "@touhouflandre/shared";
+
 export type SearchMatchKind = "exact" | "prefix" | "substring";
 
 export type SearchMatchRank = {
   kind: SearchMatchKind;
+  fieldPriority: number;
   position: number;
   lengthGap: number;
 };
@@ -11,6 +17,23 @@ const KIND_ORDER: Record<SearchMatchKind, number> = {
   prefix: 1,
   substring: 2,
 };
+
+const FIELD_PRIORITY: Record<SearchTermSource, number> = {
+  zhHans: 0,
+  zhHant: 0,
+  ja: 1,
+  en: 1,
+  romaji: 1,
+  alias: 2,
+  workTitle: 3,
+  workId: 3,
+  workPinyinInitials: 3,
+  mainlineIndex: 3,
+};
+
+export function searchTermFieldPriority(source: SearchTermSource): number {
+  return FIELD_PRIORITY[source] ?? 4;
+}
 
 function codePointIndex(
   haystack: readonly string[],
@@ -32,14 +55,14 @@ function codePointIndex(
  */
 export function rankSearchTerms(
   normalizedQuery: string,
-  normalizedTerms: readonly string[],
+  normalizedTerms: readonly CatalogSearchTerm[],
 ): SearchMatchRank | null {
   const query = Array.from(normalizedQuery);
   if (query.length === 0) return null;
 
   let best: SearchMatchRank | null = null;
-  for (const value of normalizedTerms) {
-    const term = Array.from(value);
+  for (const searchTerm of normalizedTerms) {
+    const term = Array.from(searchTerm.value);
     const position = codePointIndex(term, query);
     if (position < 0) continue;
 
@@ -51,6 +74,7 @@ export function rankSearchTerms(
           : "substring";
     const rank = {
       kind,
+      fieldPriority: searchTermFieldPriority(searchTerm.source),
       position,
       lengthGap: term.length - query.length,
     } satisfies SearchMatchRank;
@@ -65,6 +89,7 @@ export function compareSearchMatchRanks(
 ): number {
   return (
     KIND_ORDER[left.kind] - KIND_ORDER[right.kind] ||
+    left.fieldPriority - right.fieldPriority ||
     left.position - right.position ||
     left.lengthGap - right.lengthGap
   );

@@ -213,11 +213,30 @@ export type CatalogSummary = {
   works: Work[];
 };
 
+export const SEARCH_TERM_SOURCES = [
+  "zhHans",
+  "zhHant",
+  "ja",
+  "en",
+  "romaji",
+  "alias",
+  "workTitle",
+  "workId",
+  "workPinyinInitials",
+  "mainlineIndex",
+] as const;
+export type SearchTermSource = (typeof SEARCH_TERM_SOURCES)[number];
+
+export type CatalogSearchTerm = {
+  value: string;
+  source: SearchTermSource;
+};
+
 export type CatalogSearchIndexEntry = Omit<
   CharacterSearchResult,
   "searchText"
 > & {
-  searchTerms: string[];
+  searchTerms: CatalogSearchTerm[];
 };
 
 export type CatalogSearchIndex = {
