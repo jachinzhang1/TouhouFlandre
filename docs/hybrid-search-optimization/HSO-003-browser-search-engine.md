@@ -44,7 +44,7 @@
 - `apps/web/src/features/character-search/indexRepository.ts`
 - `apps/web/src/features/character-search/schema.ts`
 - 同目录单元/性能测试
-- `docs/hybrid-search-optimization/fixtures/search-parity-v1.json`
+- `docs/hybrid-search-optimization/fixtures/search-parity-v2.json`
 
 最终文件名可按现有 Web feature 约定小幅调整，但纯内核、索引加载和 React 路由不得重新混在一个文件中。
 
@@ -76,7 +76,7 @@
 
 - 已交付独立的 `schema.ts`、`engine.ts` 与 `indexRepository.ts`：索引运行时校验、Go 一致的查询归一化/字段边界匹配/过滤/排序/分页，以及按 `(catalogVersion, indexSchemaVersion)` 的内存实例与共享加载。
 - 索引仓库使用自身 `AbortController` 管理共享 fetch；消费者取消只终止自身订阅。失败 in-flight 会清理并允许重试；普通缓存内容损坏、schema/版本校验失败时，同一 policy revision 只执行一次 `cache: "reload"` repair，修复失败不会循环下载。
-- 新增 `engine.test.ts`、`schema.test.ts`、`indexRepository.test.ts`。测试直接读取 HSO-001 `search-parity-v1.json` 的全部黄金样例，并覆盖空允许集合、term 边界、重复 ID/坏字段、并发去重、消费者取消、repair 成功/失败和版本隔离；固定规模 8 倍 fixture 的同步搜索 P95 断言小于 16ms。
+- 新增 `engine.test.ts`、`schema.test.ts`、`indexRepository.test.ts`。测试直接读取当前 `search-parity-v2.json` 的全部黄金样例，并覆盖空允许集合、term 边界、重复 ID/坏字段、并发去重、消费者取消、repair 成功/失败和版本隔离；固定规模 8 倍 fixture 的同步搜索 P95 断言小于 16ms。
 - 验证通过：
   - `pnpm --filter @touhouflandre/web exec vitest run src/fixtures/hso-001-fixtures.test.ts`
   - `pnpm --filter @touhouflandre/web typecheck`
