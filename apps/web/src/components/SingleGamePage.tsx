@@ -359,6 +359,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
     context: searchContext,
+    sort: "relevance",
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");

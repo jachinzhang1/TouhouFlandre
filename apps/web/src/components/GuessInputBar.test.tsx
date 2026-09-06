@@ -3,6 +3,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { GuessInputBar } from "./GuessInputBar";
 
+const searchHookCallSpy = vi.hoisted(() => vi.fn());
+
 vi.mock("../hooks/useCharacterSearch", () => {
   // 按 query 缓存稳定引用（真实 hook 的 results 是 state，引用跨渲染稳定，
   // mock 若每次返回新数组会误触组件内「结果变化回第一项」的重置 effect）。
@@ -22,7 +24,8 @@ vi.mock("../hooks/useCharacterSearch", () => {
   ];
   const byQuery = new Map<string, typeof all>();
   return {
-    useCharacterSearch: (query: string) => {
+    useCharacterSearch: (query: string, options: unknown) => {
+      searchHookCallSpy(query, options);
       if (!byQuery.has(query)) {
         byQuery.set(
           query,
@@ -44,9 +47,29 @@ describe("GuessInputBar", () => {
 
   beforeEach(() => {
     onGuess.mockClear();
+    searchHookCallSpy.mockClear();
   });
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("requests relevance ordering for multiplayer suggestions", () => {
+    render(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={searchContext}
+        guessedIds={new Set()}
+      />,
+    );
+
+    expect(searchHookCallSpy).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({
+        context: searchContext,
+        limit: 12,
+        sort: "relevance",
+      }),
+    );
   });
 
   it("默认高亮第一项，下键移动高亮，回车提交高亮项", async () => {

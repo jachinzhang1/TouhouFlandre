@@ -35,6 +35,7 @@ export function GuessInputBar({
     enabled: Boolean(searchContext) && !disabled && !submitting,
     context: searchContext,
     limit: GAME_SEARCH_RESULT_LIMIT,
+    sort: "relevance",
   });
   const filtered = results.filter((r) => !guessedIds.has(r.id));
   const showSuggestions =

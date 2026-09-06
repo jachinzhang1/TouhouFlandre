@@ -829,6 +829,7 @@ describe("SingleGamePage", () => {
       expect(searchHookMock).toHaveBeenCalledWith(
         "帕秋莉·诺蕾姬",
         expect.objectContaining({
+          sort: "relevance",
           context: {
             kind: "single-session",
             sessionId: "sess-1",
