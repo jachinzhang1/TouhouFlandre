@@ -168,7 +168,7 @@ func (c searchFixtureCharacter) toGameCharacter() game.Character {
 
 func loadSearchParityFixture(t *testing.T) searchParityFixture {
 	t.Helper()
-	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/search-parity-v1.json")
+	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/search-parity-v2.json")
 }
 
 func loadFailureMatrixFixture(t *testing.T) failureMatrixFixture {
@@ -183,10 +183,10 @@ func loadCompatibilityMatrixFixture(t *testing.T) compatibilityMatrixFixture {
 
 func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 	fixture := loadSearchParityFixture(t)
-	if fixture.Contract != "hso.search-parity.v1" {
+	if fixture.Contract != "hso.search-parity.v2" {
 		t.Fatalf("unexpected search contract %q", fixture.Contract)
 	}
-	if fixture.CatalogVersion == "" || fixture.IndexSchemaVersion != 1 {
+	if fixture.CatalogVersion == "" || fixture.IndexSchemaVersion != game.SearchIndexSchemaVersion {
 		t.Fatalf("unexpected search fixture metadata: %+v", fixture)
 	}
 	if len(fixture.Characters) == 0 {

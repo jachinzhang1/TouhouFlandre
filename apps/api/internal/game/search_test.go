@@ -85,6 +85,25 @@ func TestCharacterSearchTermsKeepFieldBoundaries(t *testing.T) {
 	}
 }
 
+func TestCharacterSearchTermsPreserveSourcesAndDeduplicateWithinSource(t *testing.T) {
+	character := withPatch(baseCharacter(), func(c *game.Character) {
+		c.Names.ZhHans = "灵梦"
+		c.Names.Aliases = []string{"灵梦", "灵梦"}
+	})
+
+	terms := game.CharacterSearchTerms(character)
+	counts := make(map[game.SearchTerm]int)
+	for _, term := range terms {
+		counts[term]++
+	}
+	if counts[game.SearchTerm{Value: "灵梦", Source: game.SearchTermSourceZhHans}] != 1 {
+		t.Fatalf("missing simplified Chinese source: %+v", terms)
+	}
+	if counts[game.SearchTerm{Value: "灵梦", Source: game.SearchTermSourceAlias}] != 1 {
+		t.Fatalf("alias source should be retained once: %+v", terms)
+	}
+}
+
 func TestSearchCharactersByWorkInitialsAndPage(t *testing.T) {
 	reimu := withPatch(baseCharacter(), func(c *game.Character) {
 		c.ID = "reimu"

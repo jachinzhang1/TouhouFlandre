@@ -735,9 +735,19 @@ export interface components {
             locations: string[];
             affiliations: string[];
             hairColors: components["schemas"]["HairColor"][];
-            searchTerms: string[];
+            searchTerms: components["schemas"]["CatalogSearchTerm"][];
             nameSortKey: string;
         };
+        /** @description 已标准化且保留字段来源的搜索词条。 */
+        CatalogSearchTerm: {
+            value: string;
+            source: components["schemas"]["CatalogSearchTermSource"];
+        };
+        /**
+         * @description 搜索词条的原始字段来源，用于相关度排序中的字段优先级。
+         * @enum {string}
+         */
+        CatalogSearchTermSource: "zhHans" | "zhHant" | "ja" | "en" | "romaji" | "alias" | "workTitle" | "workId" | "workPinyinInitials" | "mainlineIndex";
         CatalogSearchIndex: {
             catalogVersion: string;
             indexSchemaVersion: number;

@@ -35,7 +35,7 @@ func TestSearchSnapshotMatchesHSO001FixtureTermsAndSortKeys(t *testing.T) {
 		} else {
 			for index := range wantTerms {
 				if entry.SearchTerms[index] != wantTerms[index] {
-					t.Errorf("%s term[%d]=%q, want %q", item.ID, index, entry.SearchTerms[index], wantTerms[index])
+					t.Errorf("%s term[%d]=%+v, want %+v", item.ID, index, entry.SearchTerms[index], wantTerms[index])
 				}
 			}
 		}

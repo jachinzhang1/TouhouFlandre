@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SearchIndexSchemaVersion = 1
+	SearchIndexSchemaVersion = 2
 	searchProviderCacheSize  = 8
 )
 
@@ -88,16 +88,16 @@ type CatalogSearchIndexEntry struct {
 		ReleaseYear int    `json:"releaseYear"`
 		WorkTitle   string `json:"workTitle"`
 	} `json:"firstAppearance"`
-	HairColors  []string `json:"hairColors"`
-	ID          string   `json:"id"`
-	Initials    string   `json:"initials"`
-	Locations   []string `json:"locations"`
-	Name        string   `json:"name"`
-	NameSortKey string   `json:"nameSortKey"`
-	SearchTerms []string `json:"searchTerms"`
-	Species     []string `json:"species"`
-	Subtitle    string   `json:"subtitle"`
-	WorkID      string   `json:"workId"`
+	HairColors  []string     `json:"hairColors"`
+	ID          string       `json:"id"`
+	Initials    string       `json:"initials"`
+	Locations   []string     `json:"locations"`
+	Name        string       `json:"name"`
+	NameSortKey string       `json:"nameSortKey"`
+	SearchTerms []SearchTerm `json:"searchTerms"`
+	Species     []string     `json:"species"`
+	Subtitle    string       `json:"subtitle"`
+	WorkID      string       `json:"workId"`
 }
 
 type CatalogSearchIndex struct {
@@ -217,7 +217,7 @@ func BuildCatalogSearchSnapshot(version string, schemaVersion int, characters []
 			Locations:       append([]string(nil), character.Locations...),
 			Affiliations:    append([]string(nil), character.Affiliations...),
 			HairColors:      append([]string(nil), character.HairColors...),
-			SearchTerms:     append([]string(nil), terms...),
+			SearchTerms:     append([]SearchTerm(nil), terms...),
 			NameSortKey:     nameSortKey,
 		}
 		entry.FirstAppearance.WorkTitle = character.FirstAppearance.WorkTitle
@@ -243,7 +243,7 @@ func cloneCatalogSearchSnapshot(snapshot CatalogSearchSnapshot) CatalogSearchSna
 		clone.Index.Entries[index].Locations = append([]string(nil), entry.Locations...)
 		clone.Index.Entries[index].Affiliations = append([]string(nil), entry.Affiliations...)
 		clone.Index.Entries[index].HairColors = append([]string(nil), entry.HairColors...)
-		clone.Index.Entries[index].SearchTerms = append([]string(nil), entry.SearchTerms...)
+		clone.Index.Entries[index].SearchTerms = append([]SearchTerm(nil), entry.SearchTerms...)
 	}
 	return clone
 }

@@ -23,14 +23,15 @@ type searchRankingCase struct {
 type searchRankingEntry struct {
 	ID              string                     `json:"id"`
 	AppearanceOrder int                        `json:"appearanceOrder"`
-	SearchTerms     []string                   `json:"searchTerms"`
+	SearchTerms     []game.SearchTerm          `json:"searchTerms"`
 	ExpectedRank    *searchRankingExpectedRank `json:"expectedRank"`
 }
 
 type searchRankingExpectedRank struct {
-	Kind      string `json:"kind"`
-	Position  int    `json:"position"`
-	LengthGap int    `json:"lengthGap"`
+	Kind          string `json:"kind"`
+	FieldPriority int    `json:"fieldPriority"`
+	Position      int    `json:"position"`
+	LengthGap     int    `json:"lengthGap"`
 }
 
 type rankedSearchEntry struct {
@@ -39,9 +40,32 @@ type rankedSearchEntry struct {
 	found bool
 }
 
+func TestSearchTermFieldPriorityGroups(t *testing.T) {
+	cases := map[game.SearchTermSource]int{
+		game.SearchTermSourceZhHans:             0,
+		game.SearchTermSourceZhHant:             0,
+		game.SearchTermSourceJa:                 1,
+		game.SearchTermSourceEn:                 1,
+		game.SearchTermSourceRomaji:             1,
+		game.SearchTermSourceAlias:              2,
+		game.SearchTermSourceWorkTitle:          3,
+		game.SearchTermSourceWorkID:             3,
+		game.SearchTermSourceWorkPinyinInitials: 3,
+		game.SearchTermSourceMainlineIndex:      3,
+	}
+	for source, expected := range cases {
+		if actual := game.SearchTermFieldPriority(source); actual != expected {
+			t.Errorf("priority for %q = %d, want %d", source, actual, expected)
+		}
+	}
+	if actual := game.SearchTermFieldPriority("unknown"); actual != 4 {
+		t.Errorf("priority for unknown source = %d, want 4", actual)
+	}
+}
+
 func TestSearchRankingFixture(t *testing.T) {
-	fixture := loadJSONFixture[searchRankingFixture](t, "docs/hybrid-search-optimization/fixtures/search-ranking-v1.json")
-	if fixture.Contract != "hso.search-ranking.v1" {
+	fixture := loadJSONFixture[searchRankingFixture](t, "docs/hybrid-search-optimization/fixtures/search-ranking-v2.json")
+	if fixture.Contract != "hso.search-ranking.v2" {
 		t.Fatalf("unexpected ranking contract %q", fixture.Contract)
 	}
 
@@ -107,7 +131,8 @@ func assertExpectedSearchRank(t *testing.T, entry searchRankingEntry, rank game.
 		t.Fatalf("%s has unknown expected kind %q", entry.ID, entry.ExpectedRank.Kind)
 	}
 	expected := game.SearchMatchRank{
-		Kind: expectedKind, Position: entry.ExpectedRank.Position, LengthGap: entry.ExpectedRank.LengthGap,
+		Kind: expectedKind, FieldPriority: entry.ExpectedRank.FieldPriority,
+		Position: entry.ExpectedRank.Position, LengthGap: entry.ExpectedRank.LengthGap,
 	}
 	if rank != expected {
 		t.Fatalf("%s rank = %+v, want %+v", entry.ID, rank, expected)

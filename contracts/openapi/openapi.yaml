@@ -117,6 +117,10 @@ components:
       $ref: ./schemas/character.yaml#/CatalogSummary
     CatalogSearchIndexEntry:
       $ref: ./schemas/character.yaml#/CatalogSearchIndexEntry
+    CatalogSearchTerm:
+      $ref: ./schemas/character.yaml#/CatalogSearchTerm
+    CatalogSearchTermSource:
+      $ref: ./schemas/character.yaml#/CatalogSearchTermSource
     CatalogSearchIndex:
       $ref: ./schemas/character.yaml#/CatalogSearchIndex
     CatalogSearchPolicy:

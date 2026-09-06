@@ -212,6 +212,12 @@ func toOpenAPICatalogSearchIndex(index game.CatalogSearchIndex) openapi.CatalogS
 		for _, color := range entry.HairColors {
 			hairColors = append(hairColors, openapi.HairColor(color))
 		}
+		searchTerms := make([]openapi.CatalogSearchTerm, 0, len(entry.SearchTerms))
+		for _, term := range entry.SearchTerms {
+			searchTerms = append(searchTerms, openapi.CatalogSearchTerm{
+				Value: term.Value, Source: openapi.CatalogSearchTermSource(term.Source),
+			})
+		}
 		entries = append(entries, openapi.CatalogSearchIndexEntry{
 			Id: entry.ID, Name: entry.Name, Subtitle: entry.Subtitle, Initials: entry.Initials,
 			AvatarUrl: entry.AvatarURL, AppearanceOrder: entry.AppearanceOrder, WorkId: entry.WorkID,
@@ -221,7 +227,7 @@ func toOpenAPICatalogSearchIndex(index game.CatalogSearchIndex) openapi.CatalogS
 			}{ReleaseYear: entry.FirstAppearance.ReleaseYear, WorkTitle: entry.FirstAppearance.WorkTitle},
 			Species: append([]string(nil), entry.Species...), Locations: append([]string(nil), entry.Locations...),
 			Affiliations: append([]string(nil), entry.Affiliations...), HairColors: hairColors,
-			SearchTerms: append([]string(nil), entry.SearchTerms...), NameSortKey: entry.NameSortKey,
+			SearchTerms: searchTerms, NameSortKey: entry.NameSortKey,
 		})
 	}
 	return openapi.CatalogSearchIndex{CatalogVersion: index.CatalogVersion, IndexSchemaVersion: index.IndexSchemaVersion, Entries: entries}
