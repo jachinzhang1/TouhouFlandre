@@ -22,14 +22,29 @@ vi.mock("../hooks/useCharacterSearch", () => {
       firstAppearance: { workTitle: "东方星莲船" },
     },
   ];
-  const byQuery = new Map<string, typeof all>();
+  const many = [
+    ...all,
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `character_${index + 3}`,
+      name: `测试角色 ${index + 3}`,
+      avatarUrl: "/c.png",
+      firstAppearance: { workTitle: "测试作品" },
+    })),
+  ];
+  const byQuery = new Map<string, typeof many>();
   return {
     useCharacterSearch: (query: string, options: unknown) => {
       searchHookCallSpy(query, options);
       if (!byQuery.has(query)) {
         byQuery.set(
           query,
-          query === "" ? [] : query === "白" ? all : all.slice(0, 1),
+          query === ""
+            ? []
+            : query === "多"
+              ? many
+              : query === "白"
+                ? all
+                : all.slice(0, 1),
         );
       }
       return { results: byQuery.get(query), loading: query === "", error: "" };
@@ -97,10 +112,6 @@ describe("GuessInputBar", () => {
     expect(isHighlighted(buttons[1])).toBe(false);
     // 下键 → 高亮移到第二项
     fireEvent.keyDown(input, { key: "ArrowDown" });
-    const fresh = screen
-      .getAllByRole("button")
-      .filter((b) => b.id.startsWith("suggestion-"));
-
     expect(isHighlighted(buttons[1])).toBe(true);
     expect(isHighlighted(buttons[0])).toBe(false);
     // 回车 → 提交第二项（圣白莲）并清空输入
@@ -110,6 +121,48 @@ describe("GuessInputBar", () => {
       expect(
         (screen.getByLabelText("搜索角色") as HTMLInputElement).value,
       ).toBe(""),
+    );
+  });
+
+  it("键盘循环切换时将当前高亮项滚动到可视范围", async () => {
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+    render(
+      <GuessInputBar
+        onGuess={onGuess}
+        searchContext={searchContext}
+        guessedIds={new Set()}
+      />,
+    );
+    const input = screen.getByLabelText("搜索角色");
+    input.focus();
+    fireEvent.change(input, { target: { value: "多" } });
+
+    const buttons = await waitFor(() => {
+      const suggestions = screen
+        .getAllByRole("button")
+        .filter((button) => button.id.startsWith("suggestion-"));
+      expect(suggestions).toHaveLength(12);
+      return suggestions;
+    });
+    expect(scrollIntoView.mock.instances.at(-1)).toBe(buttons[0]);
+
+    scrollIntoView.mockClear();
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "auto",
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(scrollIntoView.mock.instances.at(-1)).toBe(buttons.at(-1));
+    });
+    expect(document.activeElement).toBe(input);
+
+    scrollIntoView.mockClear();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    await waitFor(() =>
+      expect(scrollIntoView.mock.instances.at(-1)).toBe(buttons[0]),
     );
   });
 

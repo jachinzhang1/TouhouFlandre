@@ -841,6 +841,57 @@ describe("SingleGamePage", () => {
     );
   });
 
+  it("keeps the active keyboard suggestion within the scrollable list", async () => {
+    const results = Array.from({ length: 12 }, (_, index) => ({
+      id: `keyboard_character_${index}`,
+      name: `键盘角色 ${index + 1}`,
+      subtitle: "键盘滚动测试",
+      avatarUrl: "/characters/keyboard-test.png",
+      initials: "键盘",
+      workId: "th06_eosd",
+      hairColors: ["brown"],
+    }));
+    searchHookMock.mockReturnValue({
+      results,
+      total: results.length,
+      error: "",
+      loading: false,
+      retry: vi.fn(),
+    });
+    vi.mocked(api.catalog).mockResolvedValue({
+      dailyDateKey: "2026-08-05",
+      contents: [],
+    } as never);
+    vi.mocked(api.createPuzzle).mockResolvedValue({
+      session: playingSession,
+      puzzleLabel: "每日题 2026-08-05",
+    } as never);
+    const scrollIntoView = vi.spyOn(Element.prototype, "scrollIntoView");
+
+    render(<SingleGamePage mode="daily" />);
+    const input = await screen.findByLabelText("搜索东方角色");
+    await userEvent.type(input, "键盘");
+    const options = await screen.findAllByRole("option");
+    expect(options).toHaveLength(12);
+
+    await userEvent.keyboard("{ArrowDown}");
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "auto",
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(scrollIntoView.mock.instances.at(-1)).toBe(options[0]);
+    });
+
+    scrollIntoView.mockClear();
+    await userEvent.keyboard("{ArrowUp}");
+    await waitFor(() =>
+      expect(scrollIntoView.mock.instances.at(-1)).toBe(options.at(-1)),
+    );
+    expect(document.activeElement).toBe(input);
+  });
+
   it("restores focus after Enter submits a selected guess", async () => {
     vi.mocked(api.catalog).mockResolvedValue({
       dailyDateKey: "2026-08-05",

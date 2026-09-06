@@ -47,6 +47,7 @@ import {
   useCharacterSearch,
   useCharacterSearchPrefetch,
 } from "../hooks/useCharacterSearch";
+import { useActiveOptionScrollRef } from "../hooks/useActiveOptionScrollRef";
 import { api } from "../lib/api";
 import {
   createPuzzleApi,
@@ -326,6 +327,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [messageApi, messageContextHolder] = antdMessage.useMessage();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeSuggestionScrollRef =
+    useActiveOptionScrollRef<HTMLButtonElement>();
   const loadRequestIdRef = useRef(0);
   const initialLoadModeRef = useRef<SinglePlayerGameMode | null>(null);
   const loadCleanupVersionRef = useRef(0);
@@ -1347,6 +1350,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                       className={active ? "suggestion selected" : "suggestion"}
                       id={`${listboxId}-${result.id}`}
                       key={result.id}
+                      ref={active ? activeSuggestionScrollRef : undefined}
                       type="button"
                       tabIndex={-1}
                       disabled={disabled}
