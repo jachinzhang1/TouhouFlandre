@@ -192,7 +192,7 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 	if len(fixture.Characters) == 0 {
 		t.Fatal("search fixture needs characters")
 	}
-	if len(fixture.Cases) != 20 {
+	if len(fixture.Cases) != 23 {
 		t.Fatalf("unexpected search case count %d", len(fixture.Cases))
 	}
 
@@ -221,7 +221,7 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 			}
 			seenCaseNames[tc.Name] = struct{}{}
 
-			if tc.SortBy != "appearance" && tc.SortBy != "name" {
+			if tc.SortBy != "appearance" && tc.SortBy != "name" && tc.SortBy != "relevance" {
 				t.Fatalf("unexpected sortBy %q", tc.SortBy)
 			}
 			for _, id := range tc.SelectedCharacterIDs {
@@ -294,6 +294,9 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 		"appearance descending",
 		"name ascending",
 		"name descending",
+		"relevance prefix length",
+		"relevance descending",
+		"empty relevance falls back to appearance",
 	} {
 		if _, exists := seenCaseNames[required]; !exists {
 			t.Fatalf("search parity fixture missing %q", required)

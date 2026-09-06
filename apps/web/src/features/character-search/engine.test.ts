@@ -65,7 +65,10 @@ describe("character search engine", () => {
     const scaled = Array.from({ length: 8 }, (_, copy) => fixtureEntries.map((item) => ({ ...item, id: `${item.id}-${copy}` }))).flat();
     const samples = Array.from({ length: 50 }, () => {
       const start = performance.now();
-      searchCharacters({ entries: scaled }, { query: "reimu", limit: 10 });
+      searchCharacters(
+        { entries: scaled },
+        { query: "reimu", sortBy: "relevance", limit: 10 },
+      );
       return performance.now() - start;
     }).sort((left, right) => left - right);
     expect(samples[Math.floor(samples.length * 0.95)]).toBeLessThan(16);

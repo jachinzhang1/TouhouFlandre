@@ -89,7 +89,7 @@ describe("HSO-001 fixtures", () => {
     expect(searchFixture.contract).toBe("hso.search-parity.v1");
     expect(searchFixture.catalogVersion).toBeTruthy();
     expect(searchFixture.indexSchemaVersion).toBe(1);
-    expect(searchFixture.cases).toHaveLength(20);
+    expect(searchFixture.cases).toHaveLength(23);
 
     const characterIds = new Set(
       searchFixture.characters.map((character) => character.id),
@@ -106,7 +106,7 @@ describe("HSO-001 fixtures", () => {
     for (const testCase of searchFixture.cases) {
       expect(caseNames.has(testCase.name)).toBe(false);
       caseNames.add(testCase.name);
-      expect(["appearance", "name"]).toContain(testCase.sortBy);
+      expect(["appearance", "name", "relevance"]).toContain(testCase.sortBy);
       expect(testCase.expected.ids.length).toBeLessThanOrEqual(
         testCase.expected.total,
       );

@@ -400,7 +400,12 @@
     {
       "name": "filters before paging",
       "query": "",
-      "selectedCharacterIds": ["reimu_hakurei", "marisa_kirisame", "patchouli_knowledge", "alice_margatroid"],
+      "selectedCharacterIds": [
+        "reimu_hakurei",
+        "marisa_kirisame",
+        "patchouli_knowledge",
+        "alice_margatroid"
+      ],
       "workIds": ["th06_eosd"],
       "sortBy": "appearance",
       "descending": false,
@@ -414,7 +419,11 @@
     {
       "name": "appearance pagination",
       "query": "",
-      "selectedCharacterIds": ["reimu_hakurei", "marisa_kirisame", "alice_margatroid"],
+      "selectedCharacterIds": [
+        "reimu_hakurei",
+        "marisa_kirisame",
+        "alice_margatroid"
+      ],
       "workIds": null,
       "sortBy": "appearance",
       "descending": false,
@@ -428,7 +437,11 @@
     {
       "name": "appearance descending",
       "query": "",
-      "selectedCharacterIds": ["minoriko_aki", "shizuha_aki", "alice_margatroid"],
+      "selectedCharacterIds": [
+        "minoriko_aki",
+        "shizuha_aki",
+        "alice_margatroid"
+      ],
       "workIds": null,
       "sortBy": "appearance",
       "descending": true,
@@ -442,7 +455,11 @@
     {
       "name": "name ascending",
       "query": "",
-      "selectedCharacterIds": ["alice_margatroid", "marisa_kirisame", "reimu_hakurei"],
+      "selectedCharacterIds": [
+        "alice_margatroid",
+        "marisa_kirisame",
+        "reimu_hakurei"
+      ],
       "workIds": null,
       "sortBy": "name",
       "descending": false,
@@ -456,7 +473,11 @@
     {
       "name": "name descending",
       "query": "",
-      "selectedCharacterIds": ["alice_margatroid", "marisa_kirisame", "reimu_hakurei"],
+      "selectedCharacterIds": [
+        "alice_margatroid",
+        "marisa_kirisame",
+        "reimu_hakurei"
+      ],
       "workIds": null,
       "sortBy": "name",
       "descending": true,
@@ -464,6 +485,52 @@
       "limit": 3,
       "expected": {
         "ids": ["marisa_kirisame", "reimu_hakurei", "alice_margatroid"],
+        "total": 3
+      }
+    },
+    {
+      "name": "relevance prefix length",
+      "query": "aki",
+      "selectedCharacterIds": ["minoriko_aki", "shizuha_aki"],
+      "workIds": null,
+      "sortBy": "relevance",
+      "descending": false,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["shizuha_aki", "minoriko_aki"],
+        "total": 2
+      }
+    },
+    {
+      "name": "relevance descending",
+      "query": "aki",
+      "selectedCharacterIds": ["minoriko_aki", "shizuha_aki"],
+      "workIds": null,
+      "sortBy": "relevance",
+      "descending": true,
+      "offset": 0,
+      "limit": 10,
+      "expected": {
+        "ids": ["minoriko_aki", "shizuha_aki"],
+        "total": 2
+      }
+    },
+    {
+      "name": "empty relevance falls back to appearance",
+      "query": "",
+      "selectedCharacterIds": [
+        "alice_margatroid",
+        "marisa_kirisame",
+        "reimu_hakurei"
+      ],
+      "workIds": null,
+      "sortBy": "relevance",
+      "descending": true,
+      "offset": 0,
+      "limit": 3,
+      "expected": {
+        "ids": ["reimu_hakurei", "marisa_kirisame", "alice_margatroid"],
         "total": 3
       }
     }
