@@ -287,7 +287,7 @@
     },
     {
       "name": "fullwidth th code",
-      "query": "ＴＨ０６",
+      "query": "@ＴＨ０６",
       "selectedCharacterIds": null,
       "workIds": null,
       "sortBy": "appearance",
@@ -301,7 +301,7 @@
     },
     {
       "name": "work title",
-      "query": "东方红魔乡",
+      "query": "@东方红魔乡",
       "selectedCharacterIds": null,
       "workIds": null,
       "sortBy": "appearance",
@@ -315,7 +315,7 @@
     },
     {
       "name": "work id",
-      "query": "th06_eosd",
+      "query": "@th06_eosd",
       "selectedCharacterIds": null,
       "workIds": null,
       "sortBy": "appearance",
@@ -329,7 +329,7 @@
     },
     {
       "name": "work pinyin initials",
-      "query": "DFHX",
+      "query": "@DFHX",
       "selectedCharacterIds": null,
       "workIds": null,
       "sortBy": "appearance",

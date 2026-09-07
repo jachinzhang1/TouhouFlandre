@@ -69,9 +69,17 @@ func TestCharacterSearchTermsKeepFieldBoundaries(t *testing.T) {
 		c.FirstAppearance.WorkPinyinInitials = []string{"lyc", "dflyc"}
 	})
 
-	for _, query := range []string{"博丽灵梦", "靈夢", "霊夢", "Reimu", "Hakurei Reimu", "红白", "bllm", "东方灵异传", "th01_hrtp", "TH01", "lyc", "dflyc", "东方 灵异传"} {
+	for _, query := range []string{"博丽灵梦", "靈夢", "霊夢", "Reimu", "Hakurei Reimu", "红白", "bllm"} {
 		if !game.MatchCharacterQuery(character, query) {
 			t.Errorf("expected %q to match", query)
+		}
+	}
+	for _, query := range []string{"东方灵异传", "th01_hrtp", "TH01", "lyc", "dflyc", "东方 灵异传"} {
+		if game.MatchCharacterQuery(character, query) {
+			t.Errorf("unscoped work query %q must not match", query)
+		}
+		if !game.MatchCharacterQuery(character, "@"+query) {
+			t.Errorf("scoped work query %q should match", query)
 		}
 	}
 	if game.MatchCharacterQuery(character, "梦东") {
@@ -124,7 +132,7 @@ func TestSearchCharactersByWorkInitialsAndPage(t *testing.T) {
 	})
 
 	page := game.SearchCharacters([]game.Character{marisa, disabled, reimu}, game.CharacterSearchOptions{
-		Query: "ＤＦＨＭＸ", Filters: []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()},
+		Query: "@ＤＦＨＭＸ", Filters: []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()},
 		SortBy: "appearance", Offset: 1, Limit: 1,
 	})
 	if page.Total != 2 || len(page.Characters) != 1 || page.Characters[0].ID != "marisa" {
@@ -158,6 +166,40 @@ func TestSearchCharactersReturnsEveryCharacterSharingAlias(t *testing.T) {
 	if page.Characters[0].ID != "minoriko_aki" || page.Characters[1].ID != "shizuha_aki" {
 		t.Fatalf("shared alias results should use ID as a stable tie-breaker: %+v", page.Characters)
 	}
+}
+
+func TestScopedSearchRelevanceRanksCharacterBeforeWork(t *testing.T) {
+	character := func(id, alias, workID string, appearanceOrder int) game.Character {
+		return withPatch(baseCharacter(), func(c *game.Character) {
+			c.ID = id
+			c.Names.Aliases = []string{alias}
+			c.FirstAppearance.WorkID = workID
+			c.AppearanceOrder = appearanceOrder
+		})
+	}
+	characters := []game.Character{
+		character("work-prefix", "mi", "th06", 1),
+		character("character-substring", "xmiy", "th", 2),
+		character("character-prefix", "mima", "xthx", 3),
+		character("work-exact", "mi", "th", 4),
+	}
+
+	assertOrder := func(descending bool, expected []string) {
+		t.Helper()
+		page := game.SearchCharacters(characters, game.CharacterSearchOptions{
+			Query: "mi@th", SortBy: "relevance", Descending: descending, Limit: -1,
+		})
+		if len(page.Characters) != len(expected) {
+			t.Fatalf("returned %d characters, want %d", len(page.Characters), len(expected))
+		}
+		for index, id := range expected {
+			if page.Characters[index].ID != id {
+				t.Fatalf("ids[%d] = %q, want %q", index, page.Characters[index].ID, id)
+			}
+		}
+	}
+	assertOrder(false, []string{"work-exact", "work-prefix", "character-prefix", "character-substring"})
+	assertOrder(true, []string{"character-substring", "character-prefix", "work-prefix", "work-exact"})
 }
 
 func TestSearchCharactersComposesFiltersBeforePaging(t *testing.T) {

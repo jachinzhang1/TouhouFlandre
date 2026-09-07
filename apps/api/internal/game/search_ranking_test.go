@@ -63,6 +63,23 @@ func TestSearchTermFieldPriorityGroups(t *testing.T) {
 	}
 }
 
+func TestCompareSearchMatchRankSequences(t *testing.T) {
+	exact := game.SearchMatchRank{Kind: game.SearchMatchExact}
+	prefix := game.SearchMatchRank{Kind: game.SearchMatchPrefix, LengthGap: 1}
+	if comparison := game.CompareSearchMatchRankSequences(
+		[]game.SearchMatchRank{exact, prefix},
+		[]game.SearchMatchRank{prefix, exact},
+	); comparison >= 0 {
+		t.Fatalf("character rank must compare first, got %d", comparison)
+	}
+	if comparison := game.CompareSearchMatchRankSequences(
+		[]game.SearchMatchRank{exact, exact},
+		[]game.SearchMatchRank{exact, prefix},
+	); comparison >= 0 {
+		t.Fatalf("work rank must break a character-rank tie, got %d", comparison)
+	}
+}
+
 func TestSearchRankingFixture(t *testing.T) {
 	fixture := loadJSONFixture[searchRankingFixture](t, "docs/hybrid-search-optimization/fixtures/search-ranking-v2.json")
 	if fixture.Contract != "hso.search-ranking.v2" {

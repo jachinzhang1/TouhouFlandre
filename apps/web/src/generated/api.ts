@@ -1595,7 +1595,7 @@ export interface operations {
     characters_search: {
         parameters: {
             query?: {
-                /** @description 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。 */
+                /** @description 原始用户查询词（可为空）。不含 ASCII @ 时，仅按角色字段匹配； 包含时以第一个 @ 分隔角色字段查询和初登场作品字段查询，两侧分别匹配并取交集。 */
                 q?: string;
                 /** @description 单人游戏会话 id；提供后按该会话冻结的题库版本和题库范围搜索。 */
                 sessionId?: string;

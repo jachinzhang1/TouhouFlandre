@@ -53,6 +53,41 @@ describe("useCharacterSearch", () => {
     );
   });
 
+  it("debounces evolving scoped queries and aborts the previous request", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(api.searchCharacters).mockImplementation(
+        () => new Promise(() => undefined),
+      );
+      const { rerender, unmount } = renderHook(
+        ({ query }) => useCharacterSearch(query),
+        { initialProps: { query: "mm@" } },
+      );
+
+      await act(async () => vi.advanceTimersByTimeAsync(119));
+      expect(api.searchCharacters).not.toHaveBeenCalled();
+      await act(async () => vi.advanceTimersByTimeAsync(1));
+      expect(api.searchCharacters).toHaveBeenCalledTimes(1);
+      expect(api.searchCharacters).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: "mm@" }),
+        expect.any(AbortSignal),
+      );
+      const firstSignal = vi.mocked(api.searchCharacters).mock.calls[0][1];
+
+      rerender({ query: "mm@lyz" });
+      expect(firstSignal?.aborted).toBe(true);
+      await act(async () => vi.advanceTimersByTimeAsync(120));
+      expect(api.searchCharacters).toHaveBeenCalledTimes(2);
+      expect(api.searchCharacters).toHaveBeenLastCalledWith(
+        expect.objectContaining({ q: "mm@lyz" }),
+        expect.any(AbortSignal),
+      );
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("passes a version-only catalog lookup to character search", async () => {
     vi.mocked(api.searchCharacters).mockResolvedValue({
       results: [],

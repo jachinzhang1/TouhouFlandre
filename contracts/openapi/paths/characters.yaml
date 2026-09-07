@@ -8,7 +8,9 @@ get:
     - name: q
       in: query
       required: false
-      description: 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。
+      description: >-
+        原始用户查询词（可为空）。不含 ASCII @ 时，仅按角色字段匹配；
+        包含时以第一个 @ 分隔角色字段查询和初登场作品字段查询，两侧分别匹配并取交集。
       schema:
         type: string
     - name: sessionId

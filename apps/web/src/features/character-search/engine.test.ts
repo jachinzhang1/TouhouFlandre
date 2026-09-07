@@ -41,67 +41,105 @@ const entries = [
   entry("beta", 1, "beta", terms(["秋姐妹"], "alias")),
 ];
 
+type SearchFixture = {
+  contract: string;
+  characters: Array<Record<string, any>>;
+  cases: Array<Record<string, any>>;
+};
+
 const fixture = JSON.parse(
   readFileSync(
     "../../docs/hybrid-search-optimization/fixtures/search-parity-v2.json",
     "utf8",
   ),
-) as {
-  characters: Array<Record<string, any>>;
-  cases: Array<Record<string, any>>;
-};
-const fixtureEntries = fixture.characters
-  .filter((character) => character.enabledAsGuess)
-  .map((character) => {
-    const names = character.names;
-    const appearance = character.firstAppearance;
-    const values: Array<{ value: unknown; source: SearchTermSource }> = [
-      { value: names.zhHans, source: "zhHans" },
-      { value: names.zhHant, source: "zhHant" },
-      { value: names.ja, source: "ja" },
-      { value: names.en, source: "en" },
-      { value: names.romaji, source: "romaji" },
-      ...names.aliases.map((value: string) => ({
-        value,
-        source: "alias" as const,
-      })),
-      { value: appearance.workTitle, source: "workTitle" },
-      { value: appearance.workId, source: "workId" },
-      ...appearance.workPinyinInitials.map((value: string) => ({
-        value,
-        source: "workPinyinInitials" as const,
-      })),
-      {
-        value:
-          appearance.mainlineIndex == null
-            ? undefined
-            : `TH${String(appearance.mainlineIndex).padStart(2, "0")}`,
-        source: "mainlineIndex",
-      },
-    ];
-    const seen = new Set<string>();
-    const searchTerms = values.flatMap(({ value, source }) => {
-      if (typeof value !== "string") return [];
-      const normalized = normalizeSearchText(value);
-      const key = `${source}\u0000${normalized}`;
-      if (normalized === "" || seen.has(key)) return [];
-      seen.add(key);
-      return [{ value: normalized, source }];
+) as SearchFixture;
+const scopedFixture = JSON.parse(
+  readFileSync(
+    "../../docs/hybrid-search-optimization/fixtures/scoped-search-v1.json",
+    "utf8",
+  ),
+) as SearchFixture;
+
+const fixtureEntriesFrom = (characters: SearchFixture["characters"]) =>
+  characters
+    .filter((character) => character.enabledAsGuess)
+    .map((character) => {
+      const names = character.names;
+      const appearance = character.firstAppearance;
+      const values: Array<{ value: unknown; source: SearchTermSource }> = [
+        { value: names.zhHans, source: "zhHans" },
+        { value: names.zhHant, source: "zhHant" },
+        { value: names.ja, source: "ja" },
+        { value: names.en, source: "en" },
+        { value: names.romaji, source: "romaji" },
+        ...names.aliases.map((value: string) => ({
+          value,
+          source: "alias" as const,
+        })),
+        { value: appearance.workTitle, source: "workTitle" },
+        { value: appearance.workId, source: "workId" },
+        ...appearance.workPinyinInitials.map((value: string) => ({
+          value,
+          source: "workPinyinInitials" as const,
+        })),
+        {
+          value:
+            appearance.mainlineIndex == null
+              ? undefined
+              : `TH${String(appearance.mainlineIndex).padStart(2, "0")}`,
+          source: "mainlineIndex",
+        },
+      ];
+      const seen = new Set<string>();
+      const searchTerms = values.flatMap(({ value, source }) => {
+        if (typeof value !== "string") return [];
+        const normalized = normalizeSearchText(value);
+        const key = `${source}\u0000${normalized}`;
+        if (normalized === "" || seen.has(key)) return [];
+        seen.add(key);
+        return [{ value: normalized, source }];
+      });
+      return entry(
+        character.id,
+        character.appearanceOrder,
+        normalizeSearchText(names.romaji ?? names.en),
+        searchTerms,
+        appearance.workId,
+      );
     });
-    return entry(
-      character.id,
-      character.appearanceOrder,
-      normalizeSearchText(names.romaji ?? names.en),
-      searchTerms,
-      appearance.workId,
-    );
-  });
+const fixtureEntries = fixtureEntriesFrom(fixture.characters);
 
 describe("character search engine", () => {
   it("matches every HSO-001 golden sample", () => {
     for (const testCase of fixture.cases) {
       const result = searchCharacters(
         { entries: fixtureEntries },
+        {
+          query: testCase.query,
+          allowedIds:
+            testCase.selectedCharacterIds === null
+              ? undefined
+              : testCase.selectedCharacterIds,
+          workIds: testCase.workIds ?? undefined,
+          sortBy: testCase.sortBy,
+          direction: testCase.descending ? "desc" : "asc",
+          offset: testCase.offset,
+          limit: testCase.limit,
+        },
+      );
+      expect(
+        { ids: result.results.map((item) => item.id), total: result.total },
+        testCase.name,
+      ).toEqual(testCase.expected);
+    }
+  });
+
+  it("matches every scoped-query parity sample", () => {
+    expect(scopedFixture.contract).toBe("hso.scoped-search.v1");
+    const scopedEntries = fixtureEntriesFrom(scopedFixture.characters);
+    for (const testCase of scopedFixture.cases) {
+      const result = searchCharacters(
+        { entries: scopedEntries },
         {
           query: testCase.query,
           allowedIds:
@@ -164,7 +202,7 @@ describe("character search engine", () => {
     expect(descending).toEqual(["zeta", "alpha", "beta"]);
   });
 
-  it("prefers higher-priority fields after match kind", () => {
+  it("uses only character fields for an unscoped query", () => {
     const weighted = [
       entry("work", 1, "work", terms(["灵梦"], "workTitle")),
       entry("alias", 2, "alias", terms(["灵梦"], "alias")),
@@ -176,7 +214,56 @@ describe("character search engine", () => {
         { entries: weighted },
         { query: "灵梦", sortBy: "relevance" },
       ).results.map((item) => item.id),
-    ).toEqual(["chinese", "other", "alias", "work"]);
+    ).toEqual(["chinese", "other", "alias"]);
+    expect(
+      searchCharacters(
+        { entries: weighted },
+        { query: "@灵梦", sortBy: "relevance" },
+      ).results.map((item) => item.id),
+    ).toEqual(["work"]);
+  });
+
+  it("ranks the character domain before the work domain", () => {
+    const scoped = [
+      entry("work-prefix", 1, "work-prefix", [
+        ...terms(["mi"], "alias"),
+        ...terms(["th06"], "workId"),
+      ]),
+      entry("character-substring", 2, "character-substring", [
+        ...terms(["xmiy"], "alias"),
+        ...terms(["th"], "workId"),
+      ]),
+      entry("character-prefix", 3, "character-prefix", [
+        ...terms(["mima"], "alias"),
+        ...terms(["xthx"], "workId"),
+      ]),
+      entry("work-exact", 4, "work-exact", [
+        ...terms(["mi"], "alias"),
+        ...terms(["th"], "workId"),
+      ]),
+    ];
+    expect(
+      searchCharacters(
+        { entries: scoped },
+        { query: "mi@th", sortBy: "relevance" },
+      ).results.map((item) => item.id),
+    ).toEqual([
+      "work-exact",
+      "work-prefix",
+      "character-prefix",
+      "character-substring",
+    ]);
+    expect(
+      searchCharacters(
+        { entries: scoped },
+        { query: "mi@th", sortBy: "relevance", direction: "desc" },
+      ).results.map((item) => item.id),
+    ).toEqual([
+      "character-substring",
+      "character-prefix",
+      "work-prefix",
+      "work-exact",
+    ]);
   });
 
   it("keeps fixed production-scale synchronous search under the 16ms p95 budget", () => {

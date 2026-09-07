@@ -94,3 +94,15 @@ export function compareSearchMatchRanks(
     left.lengthGap - right.lengthGap
   );
 }
+
+export function compareSearchMatchRankSequences(
+  left: readonly SearchMatchRank[],
+  right: readonly SearchMatchRank[],
+): number {
+  const sharedLength = Math.min(left.length, right.length);
+  for (let index = 0; index < sharedLength; index += 1) {
+    const comparison = compareSearchMatchRanks(left[index], right[index]);
+    if (comparison !== 0) return comparison;
+  }
+  return left.length - right.length;
+}

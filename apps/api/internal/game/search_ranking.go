@@ -92,6 +92,16 @@ func CompareSearchMatchRanks(left, right SearchMatchRank) int {
 	return left.LengthGap - right.LengthGap
 }
 
+func CompareSearchMatchRankSequences(left, right []SearchMatchRank) int {
+	sharedLength := min(len(left), len(right))
+	for index := 0; index < sharedLength; index++ {
+		if comparison := CompareSearchMatchRanks(left[index], right[index]); comparison != 0 {
+			return comparison
+		}
+	}
+	return len(left) - len(right)
+}
+
 // SearchTermFieldPriority maps exact sources into the four product-level
 // priority groups. Lower values rank first.
 func SearchTermFieldPriority(source SearchTermSource) int {
