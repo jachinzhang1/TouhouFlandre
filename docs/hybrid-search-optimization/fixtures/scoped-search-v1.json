@@ -1,0 +1,339 @@
+{
+  "contract": "hso.scoped-search.v1",
+  "catalogVersion": "catalog-v1",
+  "indexSchemaVersion": 2,
+  "characters": [
+    {
+      "id": "mima",
+      "enabledAsGuess": true,
+      "appearanceOrder": 102,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "魅魔",
+        "zhHant": "魅魔",
+        "ja": "魅魔",
+        "en": "Mima",
+        "romaji": "Mima",
+        "aliases": ["mm"]
+      },
+      "firstAppearance": {
+        "workId": "th01_hrtp",
+        "workTitle": "东方灵异传",
+        "workType": "stg",
+        "releaseYear": 1996,
+        "mainlineIndex": 1,
+        "workPinyinInitials": ["lyz", "dflyz"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    },
+    {
+      "id": "yumemi_okazaki",
+      "enabledAsGuess": true,
+      "appearanceOrder": 306,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "冈崎梦美",
+        "zhHant": "岡崎夢美",
+        "ja": "岡崎夢美",
+        "en": "Yumemi Okazaki",
+        "romaji": "Yumemi Okazaki",
+        "aliases": ["gqmm"]
+      },
+      "firstAppearance": {
+        "workId": "th03_podd",
+        "workTitle": "东方梦时空",
+        "workType": "stg",
+        "releaseYear": 1997,
+        "mainlineIndex": 3,
+        "workPinyinInitials": ["msk", "dfmsk"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    },
+    {
+      "id": "mimichan",
+      "enabledAsGuess": true,
+      "appearanceOrder": 307,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "咪咪号",
+        "zhHant": "咪咪號",
+        "ja": "ミミちゃん",
+        "en": "Mimichan",
+        "romaji": "Mimichan",
+        "aliases": ["mmh", "icbm"]
+      },
+      "firstAppearance": {
+        "workId": "th03_podd",
+        "workTitle": "东方梦时空",
+        "workType": "stg",
+        "releaseYear": 1997,
+        "mainlineIndex": 3,
+        "workPinyinInitials": ["msk", "dfmsk"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    },
+    {
+      "id": "rumia",
+      "enabledAsGuess": true,
+      "appearanceOrder": 601,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "露米娅",
+        "zhHant": "露米婭",
+        "ja": "ルーミア",
+        "en": "Rumia",
+        "romaji": "Rumia",
+        "aliases": ["十进制", "lmy", "⑩"]
+      },
+      "firstAppearance": {
+        "workId": "th06_eosd",
+        "workTitle": "东方红魔乡",
+        "workType": "stg",
+        "releaseYear": 2002,
+        "mainlineIndex": 6,
+        "workPinyinInitials": ["hmx", "dfhmx"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    },
+    {
+      "id": "shizuha_aki",
+      "enabledAsGuess": true,
+      "appearanceOrder": 1001,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "秋静叶",
+        "ja": "秋静葉",
+        "en": "Shizuha Aki",
+        "romaji": "Aki Shizuha",
+        "aliases": ["qjy"]
+      },
+      "firstAppearance": {
+        "workId": "th10_mof",
+        "workTitle": "东方风神录",
+        "workType": "stg",
+        "releaseYear": 2007,
+        "mainlineIndex": 10,
+        "workPinyinInitials": ["fsl", "dffsl"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    },
+    {
+      "id": "iku_nagae",
+      "enabledAsGuess": true,
+      "appearanceOrder": 1051,
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "永江衣玖",
+        "zhHant": "永江衣玖",
+        "ja": "永江衣玖",
+        "en": "Iku Nagae",
+        "romaji": "Nagae Iku",
+        "aliases": ["yjyj"]
+      },
+      "firstAppearance": {
+        "workId": "th105_swr",
+        "workTitle": "东方绯想天",
+        "workType": "ftg",
+        "releaseYear": 2008,
+        "workPinyinInitials": ["fxt", "dffxt"]
+      },
+      "species": [],
+      "affiliations": [],
+      "locations": [],
+      "hairColors": []
+    }
+  ],
+  "cases": [
+    {
+      "name": "plain query uses character domain",
+      "query": "mm",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima", "yumemi_okazaki", "mimichan"], "total": 3 }
+    },
+    {
+      "name": "character and work initials",
+      "query": "mm@lyz",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima"], "total": 1 }
+    },
+    {
+      "name": "character and full work initials",
+      "query": "mm@dflyz",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima"], "total": 1 }
+    },
+    {
+      "name": "character and work id",
+      "query": "mm@th01_hrtp",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima"], "total": 1 }
+    },
+    {
+      "name": "empty work query uses character domain only",
+      "query": "mm@",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima", "yumemi_okazaki", "mimichan"], "total": 3 }
+    },
+    {
+      "name": "work-only query excludes character match",
+      "query": "@10",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["shizuha_aki", "iku_nagae"], "total": 2 }
+    },
+    {
+      "name": "plain numeric query excludes work matches",
+      "query": "10",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["rumia"], "total": 1 }
+    },
+    {
+      "name": "plain work id fragment does not match",
+      "query": "th01",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": [], "total": 0 }
+    },
+    {
+      "name": "empty scoped query returns no candidates",
+      "query": "@",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": [], "total": 0 }
+    },
+    {
+      "name": "whitespace around domains is ignored",
+      "query": "  mm  @  lyz  ",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima"], "total": 1 }
+    },
+    {
+      "name": "only the first at sign separates domains",
+      "query": "mm@lyz@ignored",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": [], "total": 0 }
+    },
+    {
+      "name": "full-width at sign is ordinary content",
+      "query": "mm＠lyz",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": [], "total": 0 }
+    },
+    {
+      "name": "normalized-empty character domain is unrestricted",
+      "query": "-@10",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["shizuha_aki", "iku_nagae"], "total": 2 }
+    },
+    {
+      "name": "normalized-empty work domain is unrestricted",
+      "query": "mm@-",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "appearance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima", "yumemi_okazaki", "mimichan"], "total": 3 }
+    },
+    {
+      "name": "name sort keeps scoped candidate set",
+      "query": "mm@",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "name",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima", "mimichan", "yumemi_okazaki"], "total": 3 }
+    },
+    {
+      "name": "relevance sort keeps scoped candidate set",
+      "query": "mm@",
+      "selectedCharacterIds": null,
+      "workIds": null,
+      "sortBy": "relevance",
+      "descending": false,
+      "offset": 0,
+      "limit": 20,
+      "expected": { "ids": ["mima", "mimichan", "yumemi_okazaki"], "total": 3 }
+    }
+  ]
+}

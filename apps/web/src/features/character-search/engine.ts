@@ -4,10 +4,16 @@ import type {
   SortDirection,
 } from "@touhouflandre/shared";
 import {
-  compareSearchMatchRanks,
+  compareSearchMatchRankSequences,
   rankSearchTerms,
   type SearchMatchRank,
 } from "./ranking";
+import {
+  matchesSearchQuery,
+  searchTermsForDomain,
+  type NormalizedSearchQuery,
+} from "./matching";
+import { parseSearchQuery, type ParsedSearchQuery } from "./query";
 
 export type CharacterSearchEngineResult = {
   results: CatalogSearchIndexEntry[];
@@ -30,43 +36,94 @@ export function normalizeSearchText(value: string): string {
     .join("");
 }
 
+function normalizeParsedSearchQuery(
+  query: ParsedSearchQuery,
+): NormalizedSearchQuery {
+  return query.kind === "plain"
+    ? { kind: "plain", text: normalizeSearchText(query.text) }
+    : {
+        kind: "scoped",
+        characterText: normalizeSearchText(query.characterText),
+        workText: normalizeSearchText(query.workText),
+      };
+}
+
+function hasSearchText(query: NormalizedSearchQuery): boolean {
+  return query.kind === "plain"
+    ? query.text !== ""
+    : query.characterText !== "" || query.workText !== "";
+}
+
+function rankSearchQuery(
+  query: NormalizedSearchQuery,
+  terms: readonly CatalogSearchIndexEntry["searchTerms"][number][],
+): SearchMatchRank[] | null {
+  if (query.kind === "plain") {
+    const rank = rankSearchTerms(
+      query.text,
+      searchTermsForDomain(terms, "character"),
+    );
+    return rank === null ? null : [rank];
+  }
+  const ranks: SearchMatchRank[] = [];
+  if (query.characterText !== "") {
+    const rank = rankSearchTerms(
+      query.characterText,
+      searchTermsForDomain(terms, "character"),
+    );
+    if (rank === null) return null;
+    ranks.push(rank);
+  }
+  if (query.workText !== "") {
+    const rank = rankSearchTerms(
+      query.workText,
+      searchTermsForDomain(terms, "work"),
+    );
+    if (rank === null) return null;
+    ranks.push(rank);
+  }
+  return ranks;
+}
+
 export function searchCharacters(
   index: { entries: readonly CatalogSearchIndexEntry[] },
   options: CharacterSearchOptions = {},
 ): CharacterSearchEngineResult {
-  const query = normalizeSearchText(options.query ?? "");
+  const query = normalizeParsedSearchQuery(
+    parseSearchQuery(options.query ?? ""),
+  );
   const allowed =
     options.allowedIds === undefined ? undefined : new Set(options.allowedIds);
   const works =
     options.workIds === undefined ? undefined : new Set(options.workIds);
   const sortBy = options.sortBy ?? "appearance";
-  const useRelevance = sortBy === "relevance" && query !== "";
+  const useRelevance = sortBy === "relevance" && hasSearchText(query);
   const matches: Array<{
     entry: CatalogSearchIndexEntry;
-    rank: SearchMatchRank | null;
+    rank: SearchMatchRank[] | null;
   }> = [];
   for (const entry of index.entries) {
     if (allowed !== undefined && !allowed.has(entry.id)) continue;
     if (works !== undefined && !works.has(entry.workId)) continue;
-    let rank: SearchMatchRank | null = null;
-    if (query !== "") {
-      if (useRelevance) {
-        rank = rankSearchTerms(query, entry.searchTerms);
-        if (rank === null) continue;
-      } else if (
-        !entry.searchTerms.some((term) => term.value.includes(query))
-      ) {
-        continue;
-      }
-    }
+    if (!matchesSearchQuery(query, entry.searchTerms)) continue;
+    const rank = useRelevance
+      ? rankSearchQuery(query, entry.searchTerms)
+      : null;
     matches.push({ entry, rank });
   }
   const descending = options.direction === "desc";
   const sorted = [...matches].sort((left, right) => {
     if (sortBy === "relevance") {
       if (useRelevance) {
-        const comparison = compareSearchMatchRanks(left.rank!, right.rank!);
-        if (comparison !== 0) return descending ? -comparison : comparison;
+        if (left.rank !== null && right.rank === null) return -1;
+        if (left.rank === null && right.rank !== null) return 1;
+        if (left.rank !== null && right.rank !== null) {
+          const comparison = compareSearchMatchRankSequences(
+            left.rank,
+            right.rank,
+          );
+          if (comparison !== 0) return descending ? -comparison : comparison;
+        }
       }
       return (
         left.entry.appearanceOrder - right.entry.appearanceOrder ||

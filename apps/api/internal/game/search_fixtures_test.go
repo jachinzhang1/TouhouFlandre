@@ -171,6 +171,11 @@ func loadSearchParityFixture(t *testing.T) searchParityFixture {
 	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/search-parity-v2.json")
 }
 
+func loadScopedSearchFixture(t *testing.T) searchParityFixture {
+	t.Helper()
+	return loadJSONFixture[searchParityFixture](t, "docs/hybrid-search-optimization/fixtures/scoped-search-v1.json")
+}
+
 func loadFailureMatrixFixture(t *testing.T) failureMatrixFixture {
 	t.Helper()
 	return loadJSONFixture[failureMatrixFixture](t, "docs/hybrid-search-optimization/fixtures/failure-matrix-v1.json")
@@ -301,6 +306,47 @@ func TestSearchParityFixtureMatchesCurrentSearch(t *testing.T) {
 		if _, exists := seenCaseNames[required]; !exists {
 			t.Fatalf("search parity fixture missing %q", required)
 		}
+	}
+}
+
+func TestScopedSearchFixtureMatchesCurrentSearch(t *testing.T) {
+	fixture := loadScopedSearchFixture(t)
+	if fixture.Contract != "hso.scoped-search.v1" {
+		t.Fatalf("unexpected scoped search contract %q", fixture.Contract)
+	}
+	if fixture.CatalogVersion == "" || fixture.IndexSchemaVersion != game.SearchIndexSchemaVersion {
+		t.Fatalf("unexpected scoped search fixture metadata: %+v", fixture)
+	}
+	if len(fixture.Cases) != 16 {
+		t.Fatalf("unexpected scoped search case count %d", len(fixture.Cases))
+	}
+
+	characters := make([]game.Character, 0, len(fixture.Characters))
+	for _, character := range fixture.Characters {
+		characters = append(characters, character.toGameCharacter())
+	}
+	for _, tc := range fixture.Cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			filters := []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()}
+			if tc.SelectedCharacterIDs != nil {
+				filters = append(filters, game.CharacterIDsSearchFilter(tc.SelectedCharacterIDs))
+			}
+			if tc.WorkIDs != nil {
+				filters = append(filters, game.WorkIDsSearchFilter(tc.WorkIDs))
+			}
+			page := game.SearchCharacters(characters, game.CharacterSearchOptions{
+				Query: tc.Query, Filters: filters, SortBy: tc.SortBy,
+				Descending: tc.Descending, Offset: tc.Offset, Limit: tc.Limit,
+			})
+			if page.Total != tc.Expected.Total || len(page.Characters) != len(tc.Expected.IDs) {
+				t.Fatalf("result = %d/%d characters, want %d/%d", len(page.Characters), page.Total, len(tc.Expected.IDs), tc.Expected.Total)
+			}
+			for index, expectedID := range tc.Expected.IDs {
+				if page.Characters[index].ID != expectedID {
+					t.Fatalf("ids[%d] = %q, want %q", index, page.Characters[index].ID, expectedID)
+				}
+			}
+		})
 	}
 }
 

@@ -91,16 +91,8 @@ func CharacterSearchText(character Character) string {
 }
 
 func MatchCharacterQuery(character Character, query string) bool {
-	normalizedQuery := NormalizeSearchText(query)
-	if normalizedQuery == "" {
-		return true
-	}
-	for _, term := range CharacterSearchTerms(character) {
-		if strings.Contains(term.Value, normalizedQuery) {
-			return true
-		}
-	}
-	return false
+	parsed := normalizeParsedSearchQuery(ParseSearchQuery(query))
+	return matchesSearchQuery(parsed, CharacterSearchTerms(character))
 }
 
 type CharacterSearchOptions struct {
@@ -164,27 +156,59 @@ type CharacterSearchPage struct {
 
 type characterSearchCandidate struct {
 	character Character
-	rank      SearchMatchRank
+	ranks     []SearchMatchRank
+	ranked    bool
+}
+
+func hasSearchText(query ParsedSearchQuery) bool {
+	if !query.Scoped {
+		return query.Text != ""
+	}
+	return query.CharacterText != "" || query.WorkText != ""
+}
+
+func rankSearchQuery(query ParsedSearchQuery, terms []SearchTerm) ([]SearchMatchRank, bool) {
+	if !query.Scoped {
+		rank, found := RankSearchTerms(query.Text, searchTermsForDomain(terms, SearchTermDomainCharacter))
+		if !found {
+			return nil, false
+		}
+		return []SearchMatchRank{rank}, true
+	}
+	ranks := make([]SearchMatchRank, 0, 2)
+	if query.CharacterText != "" {
+		rank, found := RankSearchTerms(query.CharacterText, searchTermsForDomain(terms, SearchTermDomainCharacter))
+		if !found {
+			return nil, false
+		}
+		ranks = append(ranks, rank)
+	}
+	if query.WorkText != "" {
+		rank, found := RankSearchTerms(query.WorkText, searchTermsForDomain(terms, SearchTermDomainWork))
+		if !found {
+			return nil, false
+		}
+		ranks = append(ranks, rank)
+	}
+	return ranks, true
 }
 
 // SearchCharacters is the only authoritative character search implementation.
 func SearchCharacters(characters []Character, options CharacterSearchOptions) CharacterSearchPage {
-	normalizedQuery := NormalizeSearchText(options.Query)
-	useRelevance := options.SortBy == "relevance" && normalizedQuery != ""
+	query := normalizeParsedSearchQuery(ParseSearchQuery(options.Query))
+	useRelevance := options.SortBy == "relevance" && hasSearchText(query)
 	matches := make([]characterSearchCandidate, 0, len(characters))
 	for _, character := range characters {
 		if !matchesCharacterSearchFilters(character, options.Filters) {
 			continue
 		}
+		terms := CharacterSearchTerms(character)
+		if !matchesSearchQuery(query, terms) {
+			continue
+		}
 		candidate := characterSearchCandidate{character: character}
 		if useRelevance {
-			rank, matched := RankSearchTerms(normalizedQuery, CharacterSearchTerms(character))
-			if !matched {
-				continue
-			}
-			candidate.rank = rank
-		} else if !MatchCharacterQuery(character, options.Query) {
-			continue
+			candidate.ranks, candidate.ranked = rankSearchQuery(query, terms)
 		}
 		matches = append(matches, candidate)
 	}
@@ -193,12 +217,17 @@ func SearchCharacters(characters []Character, options CharacterSearchOptions) Ch
 		left, right := matches[i], matches[j]
 		if options.SortBy == "relevance" {
 			if useRelevance {
-				comparison := CompareSearchMatchRanks(left.rank, right.rank)
-				if comparison != 0 {
-					if options.Descending {
-						return comparison > 0
+				if left.ranked != right.ranked {
+					return left.ranked
+				}
+				if left.ranked {
+					comparison := CompareSearchMatchRankSequences(left.ranks, right.ranks)
+					if comparison != 0 {
+						if options.Descending {
+							return comparison > 0
+						}
+						return comparison < 0
 					}
-					return comparison < 0
 				}
 			}
 			if left.character.AppearanceOrder != right.character.AppearanceOrder {

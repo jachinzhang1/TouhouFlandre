@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { CatalogSearchTerm } from "@touhouflandre/shared";
 import {
+  compareSearchMatchRankSequences,
   compareSearchMatchRanks,
   rankSearchTerms,
   searchTermFieldPriority,
@@ -32,6 +33,27 @@ const fixture = JSON.parse(
 ) as RankingFixture;
 
 describe("character search relevance ranking", () => {
+  it("compares rank sequences lexicographically", () => {
+    const exact: SearchMatchRank = {
+      kind: "exact",
+      fieldPriority: 0,
+      position: 0,
+      lengthGap: 0,
+    };
+    const prefix: SearchMatchRank = {
+      kind: "prefix",
+      fieldPriority: 0,
+      position: 0,
+      lengthGap: 1,
+    };
+    expect(
+      compareSearchMatchRankSequences([exact, prefix], [prefix, exact]),
+    ).toBeLessThan(0);
+    expect(
+      compareSearchMatchRankSequences([exact, exact], [exact, prefix]),
+    ).toBeLessThan(0);
+  });
+
   it("maps every term source into the configured four priority groups", () => {
     expect({
       zhHans: searchTermFieldPriority("zhHans"),
