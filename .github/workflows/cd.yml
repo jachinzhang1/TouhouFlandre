@@ -1,0 +1,147 @@
+name: CD
+
+# 生产部署只能从 GitHub Actions 页面手动发起；不监听 push 或 pull_request。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一时间只允许一个生产部署，后发起的部署等待而不是取消正在运行的部署。
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+
+    steps:
+      - name: Ensure main branch is selected
+        env:
+          DEPLOY_REF: ${{ github.ref }}
+        run: |
+          set -Eeuo pipefail
+          if [[ "$DEPLOY_REF" != "refs/heads/main" ]]; then
+            echo "Production deployments must be started from the main branch."
+            exit 1
+          fi
+
+      - name: Validate deployment configuration
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          test -n "$DEPLOY_PATH"
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9._:-]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]]
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
+          (( 10#$DEPLOY_PORT >= 1 && 10#$DEPLOY_PORT <= 65535 ))
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy selected revision
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+          ssh \
+            -i ~/.ssh/deploy_key \
+            -p "$DEPLOY_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' sh -s" <<'REMOTE_SCRIPT'
+          set -eu
+          cd "$DEPLOY_PATH"
+
+          if ! command -v docker >/dev/null 2>&1; then
+            echo "Docker is not installed or is not available in the deployment user's PATH."
+            exit 1
+          fi
+
+          if ! docker compose version >/dev/null 2>&1; then
+            echo "The Docker Compose plugin is not available to the deployment user."
+            exit 1
+          fi
+
+          if ! docker info >/dev/null 2>&1; then
+            echo "The deployment user cannot access the Docker daemon. Configure Docker group membership or Rootless Docker; password-based sudo is not supported."
+            exit 1
+          fi
+
+          if ! docker compose up --help | grep -q -- '--wait'; then
+            echo "The installed Docker Compose version does not support the required --wait option."
+            exit 1
+          fi
+
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "Tracked files on the deployment server contain local changes; deployment stopped."
+            git status --short --untracked-files=no
+            exit 1
+          fi
+
+          git fetch --prune origin main
+
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" origin/main; then
+            echo "The selected commit is not part of origin/main; deployment stopped."
+            exit 1
+          fi
+
+          if ! git show-ref --verify --quiet refs/heads/main; then
+            echo "The deployment repository does not have a local main branch."
+            exit 1
+          fi
+
+          current_sha=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$current_sha" "$DEPLOY_SHA"; then
+            echo "The selected commit is older than or unrelated to the currently checked-out revision; refusing to roll back."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor main "$DEPLOY_SHA"; then
+            echo "The local main branch cannot be fast-forwarded to the selected commit; deployment stopped."
+            exit 1
+          fi
+
+          git switch main
+          git merge --ff-only "$DEPLOY_SHA"
+
+          if [ "$(git rev-parse HEAD)" != "$DEPLOY_SHA" ]; then
+            echo "The deployment repository did not reach the selected commit."
+            exit 1
+          fi
+
+          docker compose up -d --build --wait
+          REMOTE_SCRIPT
+
+          printf '### Production deployment\n\n- Commit: `%s`\n' "$DEPLOY_SHA" >> "$GITHUB_STEP_SUMMARY"
