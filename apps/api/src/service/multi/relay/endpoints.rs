@@ -1,3 +1,4 @@
+use crate::repository::models::Match;
 use crate::{
     app::AppState,
     error::{ApiError, room_not_found},
@@ -121,15 +122,33 @@ pub async fn history(
     if room.mode != "relay" {
         return Err(invalid("只有接力场次支持 stage 历史。"));
     }
-    let m = sqlx::query_as("SELECT * FROM multi_match WHERE room_id=$1 AND match_index=$2")
-        .bind(&room_id)
-        .bind(match_index)
+    let m = sqlx::query_as!(
+        Match,
+        r#"
+        SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count,
+        status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size,
+        max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM
+        multi_match WHERE room_id=$1 AND match_index=$2
+        "#,
+        &room_id,
+        match_index,
+    )
         .fetch_optional(&mut *c)
         .await?
         .ok_or_else(room_not_found)?;
     storage::validate_match(&m)?;
     crate::service::multi::validate_ruleset(&state, &room, &m)?;
-    let mut stages:Vec<Stage>=sqlx::query_as("SELECT * FROM multi_relay_stage WHERE match_id=$1 AND status='ended' AND stage_index>$2 ORDER BY stage_index LIMIT $3").bind(&m.id).bind(after).bind(limit+1).fetch_all(&mut *c).await?;
+    let mut stages: Vec<Stage> = sqlx::query_as!(
+        Stage,
+        r#"
+        SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at,
+        settlement_marker FROM multi_relay_stage WHERE match_id=$1 AND status='ended' AND stage_index>$2
+        ORDER BY stage_index LIMIT $3
+        "#,
+        &m.id,
+        after,
+        limit+1,
+    ).fetch_all(&mut *c).await?;
     let next = if stages.len() > limit as usize {
         stages.truncate(limit as usize);
         stages

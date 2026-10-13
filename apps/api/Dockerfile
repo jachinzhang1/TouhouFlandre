@@ -4,6 +4,8 @@
 FROM rust:1.99.0-slim-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY .cargo ./.cargo
+COPY .sqlx ./.sqlx
 COPY apps/api/Cargo.toml apps/api/build.rs ./apps/api/
 COPY apps/api/src ./apps/api/src
 COPY apps/api/db ./apps/api/db

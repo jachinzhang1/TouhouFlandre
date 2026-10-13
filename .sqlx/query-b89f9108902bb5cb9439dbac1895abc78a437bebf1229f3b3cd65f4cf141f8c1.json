@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO multi_relay_stage_bye(stage_id, match_id, member_id, seat) VALUES($1, $2, $3, $4)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b89f9108902bb5cb9439dbac1895abc78a437bebf1229f3b3cd65f4cf141f8c1"
+}

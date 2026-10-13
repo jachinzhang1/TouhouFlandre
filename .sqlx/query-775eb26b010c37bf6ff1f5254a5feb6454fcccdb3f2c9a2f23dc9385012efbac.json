@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, member_id, turn_index, kind, guess_id, statuses, is_correct, idempotency_key FROM\n        multi_relay_turn WHERE encounter_id=$1 ORDER BY turn_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "turn_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "turn_index"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "guess_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "guess_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "statuses",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "statuses"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_correct",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "is_correct"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "idempotency_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_turn",
+            "name": "idempotency_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "775eb26b010c37bf6ff1f5254a5feb6454fcccdb3f2c9a2f23dc9385012efbac"
+}

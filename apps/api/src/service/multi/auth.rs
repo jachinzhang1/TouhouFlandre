@@ -43,8 +43,14 @@ pub async fn authenticate_token(
     if token.is_empty() {
         return Err(unauthorized("令牌为空。"));
     }
-    let member: Member = sqlx::query_as("SELECT * FROM multi_member WHERE token_hash=$1")
-        .bind(hash_token(token))
+    let member: Member = sqlx::query_as!(
+        Member,
+        r#"
+        SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,
+        joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE token_hash=$1
+        "#,
+        hash_token(token),
+    )
         .fetch_optional(pool)
         .await?
         .ok_or_else(|| unauthorized("令牌无效。"))?;

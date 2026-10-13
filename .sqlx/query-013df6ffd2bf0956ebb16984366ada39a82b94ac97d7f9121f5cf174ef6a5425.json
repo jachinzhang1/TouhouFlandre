@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT count(*)+1 AS \"value!\" FROM multi_round_player WHERE round_id=$1 AND status='correct'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "013df6ffd2bf0956ebb16984366ada39a82b94ac97d7f9121f5cf174ef6a5425"
+}

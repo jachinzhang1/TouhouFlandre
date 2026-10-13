@@ -68,6 +68,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Generated Rust contracts are up to date
         run: pnpm check:rust-contracts
+      - name: Install pinned SQLx CLI
+        run: cargo install sqlx-cli --version 0.9.0 --locked --no-default-features --features postgres,rustls
+      - name: SQLx metadata matches a fresh migrated schema
+        env:
+          TEST_DATABASE_URL: postgres://rust_test:rust_test@127.0.0.1:5433/postgres
+        run: node scripts/sqlx-prepare.mjs --check
       - name: Rust formatting
         run: cargo fmt --all --check
       - name: Rust lint

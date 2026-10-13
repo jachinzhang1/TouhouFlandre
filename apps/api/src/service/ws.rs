@@ -142,10 +142,14 @@ async fn current_viewer(
     let Some(frozen) = state.realtime.viewer(registration) else {
         return Ok(None);
     };
-    let current = sqlx::query_as::<_, Member>("SELECT * FROM multi_member WHERE id=$1")
-        .bind(&registration.member_id)
-        .fetch_optional(&state.pool)
-        .await?;
+    let current = sqlx::query_as!(
+        Member,
+        r#"
+        SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,
+        joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id=$1
+        "#,
+        &registration.member_id,
+    ).fetch_optional(&state.pool).await?;
     if current.as_ref().is_none_or(|current| {
         current.role != frozen.role
             || current.seat != frozen.seat
@@ -165,8 +169,18 @@ pub async fn event_rows(
     after: i64,
     high: i64,
 ) -> Result<Vec<RoomEvent>, ApiError> {
-    Ok(sqlx::query_as("SELECT * FROM room_event WHERE room_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence")
-        .bind(room_id).bind(after).bind(high).fetch_all(&state.pool).await?)
+    Ok(sqlx::query_as!(
+        RoomEvent,
+        r#"
+        SELECT id, room_id, sequence, type AS event_type, payload, occurred_at FROM room_event WHERE
+        room_id=$1 AND sequence>$2 AND sequence<=$3 ORDER BY sequence
+        "#,
+        room_id,
+        after,
+        high,
+    )
+    .fetch_all(&state.pool)
+    .await?)
 }
 
 async fn publish_game(state: &AppState, room_id: &str) -> Result<(), ApiError> {
@@ -179,10 +193,14 @@ async fn publish_game(state: &AppState, room_id: &str) -> Result<(), ApiError> {
             continue;
         };
         let after = registration.output.watermarks().game_sequence;
-        let high = sqlx::query_scalar::<_, i64>("SELECT event_seq FROM multi_room WHERE id=$1")
-            .bind(room_id)
-            .fetch_optional(&state.pool)
-            .await?;
+        let high = sqlx::query_scalar!(
+            r#"
+            SELECT event_seq FROM multi_room WHERE id=$1
+            "#,
+            room_id,
+        )
+        .fetch_optional(&state.pool)
+        .await?;
         let Some(high) = high else {
             registration.output.request_close(None, "room_missing");
             continue;
@@ -339,13 +357,19 @@ pub async fn mark_connection(
         "disconnected"
     };
     let grace = (!connected).then(|| (state.clock)() + state.config.multi.disconnect_grace);
-    let updated: Member =
-        sqlx::query_as("UPDATE multi_member SET status=$2,grace_until=$3 WHERE id=$1 RETURNING *")
-            .bind(&member.id)
-            .bind(status)
-            .bind(grace)
-            .fetch_one(&mut *tx)
-            .await?;
+    let updated: Member = sqlx::query_as!(
+        Member,
+        r#"
+        UPDATE multi_member SET status=$2, grace_until=$3 WHERE id=$1 RETURNING id, room_id, seat,
+        display_name, token_hash, status, ready, rematch_ready, grace_until, joined_at, role,
+        chat_rate_tokens, chat_rate_refilled_at
+        "#,
+        &member.id,
+        status,
+        grace,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
     multi::rooms::append_updated(&mut tx, &room, (state.clock)()).await?;
     tx.commit().await?;
     state.realtime.notify_game(&room.id);
@@ -367,10 +391,12 @@ pub async fn oldest_chat(state: &AppState, room_id: &str) -> Result<i64, ApiErro
     .await
 }
 pub async fn min_game_sequence(state: &AppState, room_id: &str) -> Result<i64, ApiError> {
-    Ok(sqlx::query_scalar(
-        "SELECT coalesce(min(sequence),0)::bigint FROM room_event WHERE room_id=$1",
+    Ok(sqlx::query_scalar!(
+        r#"
+        SELECT coalesce(min(sequence), 0)::bigint AS "value!" FROM room_event WHERE room_id=$1
+        "#,
+        room_id,
     )
-    .bind(room_id)
     .fetch_one(&state.pool)
     .await?)
 }

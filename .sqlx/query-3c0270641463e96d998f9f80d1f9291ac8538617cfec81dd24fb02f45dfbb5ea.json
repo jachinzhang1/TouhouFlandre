@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_member SET chat_rate_tokens=$2, chat_rate_refilled_at=$3 WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3c0270641463e96d998f9f80d1f9291ac8538617cfec81dd24fb02f45dfbb5ea"
+}

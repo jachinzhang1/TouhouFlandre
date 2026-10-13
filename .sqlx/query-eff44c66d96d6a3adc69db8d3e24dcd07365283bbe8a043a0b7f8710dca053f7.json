@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO daily_puzzle(date_key, difficulty, catalog_version, answer_id, answer_match_policy)\n                VALUES($1, $2, $3, $4, $5) ON CONFLICT(date_key, difficulty) DO NOTHING RETURNING catalog_version,\n                answer_id, answer_match_policy\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "answer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "answer_match_policy",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "answer_match_policy"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "eff44c66d96d6a3adc69db8d3e24dcd07365283bbe8a043a0b7f8710dca053f7"
+}

@@ -163,7 +163,17 @@ async fn select_answer(
             .unwrap_or("normal");
         let date = puzzle_date_key(&(state.clock)());
         let mut scope = default_question_scope(&version, &works, &characters, difficulty);
-        let existing:Option<(String,String,String)>=sqlx::query_as("SELECT catalog_version,answer_id,answer_match_policy FROM daily_puzzle WHERE date_key=$1 AND difficulty=$2").bind(&date).bind(difficulty).fetch_optional(&mut *connection).await?;
+        let existing: Option<(String, String, String)> = sqlx::query!(
+            r#"
+            SELECT catalog_version, answer_id, answer_match_policy FROM daily_puzzle WHERE date_key=$1 AND
+            difficulty=$2
+            "#,
+            &date,
+            difficulty,
+        )
+            .fetch_optional(&mut *connection)
+            .await?
+            .map(|row| (row.catalog_version, row.answer_id, row.answer_match_policy));
         let (frozen_version, answer_id, policy) = if let Some(existing) = existing {
             existing
         } else {
@@ -182,11 +192,35 @@ async fn select_answer(
                     .with_source(error)
                 },
             )?;
-            let inserted:Option<(String,String,String)>=sqlx::query_as("INSERT INTO daily_puzzle(date_key,difficulty,catalog_version,answer_id,answer_match_policy) VALUES($1,$2,$3,$4,$5) ON CONFLICT(date_key,difficulty) DO NOTHING RETURNING catalog_version,answer_id,answer_match_policy").bind(&date).bind(difficulty).bind(&version).bind(&answer.id).bind(&state.config.answer_match_policy).fetch_optional(&mut *connection).await?;
+            let inserted: Option<(String, String, String)> = sqlx::query!(
+                r#"
+                INSERT INTO daily_puzzle(date_key, difficulty, catalog_version, answer_id, answer_match_policy)
+                VALUES($1, $2, $3, $4, $5) ON CONFLICT(date_key, difficulty) DO NOTHING RETURNING catalog_version,
+                answer_id, answer_match_policy
+                "#,
+                &date,
+                difficulty,
+                &version,
+                &answer.id,
+                &state.config.answer_match_policy,
+            )
+                .fetch_optional(&mut *connection)
+                .await?
+                .map(|row| (row.catalog_version, row.answer_id, row.answer_match_policy));
             if let Some(row) = inserted {
                 row
             } else {
-                sqlx::query_as("SELECT catalog_version,answer_id,answer_match_policy FROM daily_puzzle WHERE date_key=$1 AND difficulty=$2").bind(&date).bind(difficulty).fetch_one(&mut *connection).await?
+                {
+                    let row = sqlx::query!(
+                        r#"
+                        SELECT catalog_version, answer_id, answer_match_policy FROM daily_puzzle WHERE date_key=$1 AND
+                        difficulty=$2
+                        "#,
+                        &date,
+                        difficulty,
+                    ).fetch_one(&mut *connection).await?;
+                    (row.catalog_version, row.answer_id, row.answer_match_policy)
+                }
             }
         };
         policy.parse::<AnswerMatchPolicy>()?;
@@ -260,7 +294,23 @@ async fn create_in(
     } else {
         effective_question_scope_max_guesses(&selection.scope.rules)
     };
-    let row:StoredSession=sqlx::query_as("INSERT INTO game_session(id,mode,content_type,answer_id,catalog_version,puzzle_key,status,max_guesses,question_scope,answer_match_policy) VALUES($1,$2,'character',$3,$4,$5,'playing',$6,$7,$8) RETURNING *").bind(new_session_id()?).bind(mode).bind(&selection.answer.id).bind(&selection.version).bind(&selection.puzzle_key).bind(max_guesses).bind(SqlJson(&selection.scope)).bind(&selection.policy).fetch_one(&mut *connection).await?;
+    let row: StoredSession = sqlx::query_as!(
+        StoredSession,
+        r#"
+        INSERT INTO game_session(id, mode, content_type, answer_id, catalog_version, puzzle_key, status,
+        max_guesses, question_scope, answer_match_policy) VALUES($1, $2, 'character', $3, $4, $5, 'playing',
+        $6, $7, $8) RETURNING id, mode, content_type, answer_id, catalog_version, puzzle_key, status,
+        max_guesses, guesses, version, started_at, ended_at, question_scope, answer_match_policy
+        "#,
+        new_session_id()?,
+        mode,
+        &selection.answer.id,
+        &selection.version,
+        selection.puzzle_key.as_deref(),
+        max_guesses,
+        SqlJson(&selection.scope) as sqlx::types::Json<_>,
+        &selection.policy,
+    ).fetch_one(&mut *connection).await?;
     project(connection, &row).await
 }
 pub async fn create(
@@ -293,7 +343,20 @@ async fn update(
     } else {
         None
     };
-    Ok(sqlx::query_as("UPDATE game_session SET guesses=$1,status=$2,ended_at=$3,version=version+1,updated_at=now() WHERE id=$4 AND version=$5 AND status='playing' RETURNING *").bind(SqlJson(guesses)).bind(status).bind(ended).bind(&session.id).bind(session.version).fetch_optional(connection).await?)
+    Ok(sqlx::query_as!(
+        StoredSession,
+        r#"
+        UPDATE game_session SET guesses=$1, status=$2, ended_at=$3, version=version+1, updated_at=now() WHERE
+        id=$4 AND version=$5 AND status='playing' RETURNING id, mode, content_type, answer_id,
+        catalog_version, puzzle_key, status, max_guesses, guesses, version, started_at, ended_at,
+        question_scope, answer_match_policy
+        "#,
+        SqlJson(guesses) as sqlx::types::Json<_>,
+        status,
+        ended,
+        &session.id,
+        session.version,
+    ).fetch_optional(connection).await?)
 }
 pub async fn guess(
     state: AppState,
@@ -600,10 +663,27 @@ pub async fn resolve(
     }
     let fingerprint = fingerprint(&mode, &input)?;
     let mut tx = state.pool.begin().await?;
-    let mut inserted=sqlx::query("INSERT INTO puzzle_resolve_idempotency(idempotency_key,request_fingerprint,mode) VALUES($1,$2,$3) ON CONFLICT(idempotency_key) DO NOTHING").bind(&key).bind(&fingerprint).bind(&mode).execute(&mut *tx).await?.rows_affected()>0;
+    let mut inserted = sqlx::query!(
+        r#"
+        INSERT INTO puzzle_resolve_idempotency(idempotency_key, request_fingerprint, mode) VALUES($1, $2, $3)
+        ON CONFLICT(idempotency_key) DO NOTHING
+        "#,
+        &key,
+        &fingerprint,
+        &mode,
+    ).execute(&mut *tx).await?.rows_affected() > 0;
     let mut record = read_record(&mut tx, &key, (state.clock)()).await?;
     if !inserted && record.expired {
-        sqlx::query("UPDATE puzzle_resolve_idempotency SET request_fingerprint=$2,mode=$3,session_id=NULL,resolution=NULL,superseded_session_id=NULL,created_at=now(),expires_at='infinity'::timestamptz WHERE idempotency_key=$1 AND expires_at<=now()").bind(&key).bind(&fingerprint).bind(&mode).execute(&mut *tx).await?;
+        sqlx::query!(
+            r#"
+            UPDATE puzzle_resolve_idempotency SET request_fingerprint=$2, mode=$3, session_id=NULL,
+            resolution=NULL, superseded_session_id=NULL, created_at=now(), expires_at='infinity'::timestamptz
+            WHERE idempotency_key=$1 AND expires_at<=now()
+            "#,
+            &key,
+            &fingerprint,
+            &mode,
+        ).execute(&mut *tx).await?;
         record = read_record(&mut tx, &key, (state.clock)()).await?;
         inserted = true;
     }
@@ -652,7 +732,16 @@ pub async fn resolve(
             (create_in(&mut tx, &state, &mode, &input).await?, "created")
         };
         let superseded_id = superseded.as_ref().map(|s| s.id.clone());
-        sqlx::query("UPDATE puzzle_resolve_idempotency SET session_id=$2,resolution=$3,superseded_session_id=$4 WHERE idempotency_key=$1").bind(&key).bind(session["id"].as_str()).bind(resolution).bind(superseded_id).execute(&mut *tx).await?;
+        sqlx::query!(
+            r#"
+            UPDATE puzzle_resolve_idempotency SET session_id=$2, resolution=$3, superseded_session_id=$4 WHERE
+            idempotency_key=$1
+            "#,
+            &key,
+            session["id"].as_str(),
+            resolution,
+            superseded_id,
+        ).execute(&mut *tx).await?;
         let mut result =
             json!({"puzzleLabel":label(&session),"resolution":resolution,"session":session});
         if let Some(stored) = superseded {

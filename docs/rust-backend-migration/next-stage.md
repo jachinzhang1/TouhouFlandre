@@ -25,4 +25,8 @@ This file replaces the earlier integration proposal.
   golden JSON provenance still refer to the baseline implementation deliberately.
 
 The original checkout and unrelated local files are unchanged. This worktree
-contains the Rust rewrite on codex/rust-axum-backend; no deployment was performed.
+contains the Rust rewrite on wtf/rust-rewrite-everything-belike; no deployment was performed.
+
+Business SQL now uses checked SQLx macros with committed `.sqlx` metadata.
+See ../development.md for `task db:queries:prepare` and `task db:queries:check`;
+ordinary Cargo builds use offline metadata and need no database connection.

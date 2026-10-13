@@ -13,7 +13,7 @@ The user subsequently required Rust **1.99** and native local development/test
 processes. Only PostgreSQL may run in Docker locally; do not run Rust, Node,
 builds or the application in Docker for local development.
 
-- Branch: `codex/rust-axum-backend`
+- Branch: `wtf/rust-rewrite-everything-belike` (renamed at the user’s request)
 - Worktree: `/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre`
 - Baseline: `feature/cd` at `7a5679f22a9991bc9a1d937c3e53c3f59653386d`
 - Main checkout's untracked handover reports are excluded and remain untouched.
@@ -102,3 +102,11 @@ caller's connection. Public contracts, SQL statements, lock/commit/publication
 order and the selected dependency versions remain unchanged. Earlier acceptance
 evidence is historical until the R12 verification is complete. Recovery uses the
 local pre-refactor archive recorded in work.json; unrelated user changes stay intact.
+
+## Compile-time SQL follow-up
+
+On 2026-10-13 the user requested using SQLx `query!` macros. R13 covers the local
+business-query conversion, offline metadata, native prepare/check tooling, CI and
+regression verification. Database schema, API contracts, transaction ownership and
+selected dependencies remain unchanged. Commit 6575336 preserves the pre-macro
+implementation. Only disposable local databases are created for verification.

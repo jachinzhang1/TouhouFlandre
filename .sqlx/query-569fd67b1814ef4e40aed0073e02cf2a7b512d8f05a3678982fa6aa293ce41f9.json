@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO multi_match_player(match_id, member_id, seat, wins, status, score, best_round_score)\n            VALUES($1, $2, $3, 0, 'active', 0, 0)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "569fd67b1814ef4e40aed0073e02cf2a7b512d8f05a3678982fa6aa293ce41f9"
+}

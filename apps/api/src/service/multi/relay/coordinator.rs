@@ -37,7 +37,15 @@ pub async fn start_match_tx(
             member_id: member.id.clone(),
             seat,
         });
-        sqlx::query("INSERT INTO multi_relay_match_player_state(match_id,member_id,score,life_state) VALUES($1,$2,$3,'healthy') ON CONFLICT(match_id,member_id) DO NOTHING").bind(&m.id).bind(&member.id).bind(if rule==Rule::Elimination{10}else{0}).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            INSERT INTO multi_relay_match_player_state(match_id, member_id, score, life_state) VALUES($1, $2, $3,
+            'healthy') ON CONFLICT(match_id, member_id) DO NOTHING
+            "#,
+            &m.id,
+            &member.id,
+            if rule==Rule::Elimination{10}else{0},
+        ).execute(&mut *c).await?;
     }
     players.sort_by_key(|p| p.seat);
     create_stage(
@@ -68,24 +76,30 @@ pub async fn create_stage(
     starts: DateTime<Utc>,
     now: DateTime<Utc>,
 ) -> Result<Stage, ApiError> {
-    if let Some(s) = sqlx::query_as::<_, Stage>(
-        "SELECT * FROM multi_relay_stage WHERE match_id=$1 AND stage_index=$2 FOR UPDATE",
+    if let Some(s) = sqlx::query_as!(
+        Stage,
+        r#"
+        SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at,
+        settlement_marker FROM multi_relay_stage WHERE match_id=$1 AND stage_index=$2 FOR UPDATE
+        "#,
+        &m.id,
+        index,
     )
-    .bind(&m.id)
-    .bind(index)
     .fetch_optional(&mut *c)
     .await?
     {
         return Ok(s);
     }
     if index > 1 {
-        let previous: Option<Stage> = sqlx::query_as(
-            "SELECT * FROM multi_relay_stage WHERE match_id=$1 AND stage_index=$2 FOR UPDATE",
-        )
-        .bind(&m.id)
-        .bind(index - 1)
-        .fetch_optional(&mut *c)
-        .await?;
+        let previous: Option<Stage> = sqlx::query_as!(
+            Stage,
+            r#"
+            SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at,
+            settlement_marker FROM multi_relay_stage WHERE match_id=$1 AND stage_index=$2 FOR UPDATE
+            "#,
+            &m.id,
+            index - 1,
+        ).fetch_optional(&mut *c).await?;
         if !previous.is_some_and(|s| s.status == "ended" && s.settlement_marker.is_some()) {
             return Err(ApiError::invariant("previous relay stage not settled"));
         }
@@ -98,7 +112,12 @@ pub async fn create_stage(
         })?;
     let policy = m.answer_match_policy.parse()?;
     let runtime = game::build_catalog_runtime(&m.catalog_version, policy, characters)?;
-    let used:Vec<String>=sqlx::query_scalar("SELECT answer_id FROM multi_relay_encounter WHERE match_id=$1 ORDER BY stage_id,encounter_index").bind(&m.id).fetch_all(&mut *c).await?;
+    let used: Vec<String> = sqlx::query_scalar!(
+        r#"
+        SELECT answer_id FROM multi_relay_encounter WHERE match_id=$1 ORDER BY stage_id, encounter_index
+        "#,
+        &m.id,
+    ).fetch_all(&mut *c).await?;
     let used_groups: std::collections::HashSet<_> =
         used.iter().map(|id| runtime.group_key(id)).collect();
     let candidates = runtime
@@ -128,7 +147,19 @@ pub async fn create_stage(
         ApiError::from_source(error)
     })?;
     let stage_id = new_id();
-    let stage:Stage=sqlx::query_as("INSERT INTO multi_relay_stage(id,match_id,stage_index,status,planned_encounter_count,starts_at) VALUES($1,$2,$3,'planned',$4,$5) RETURNING *").bind(&stage_id).bind(&m.id).bind(index).bind(pairing.pairs.len() as i32).bind(starts).fetch_one(&mut *c).await?;
+    let stage: Stage = sqlx::query_as!(
+        Stage,
+        r#"
+        INSERT INTO multi_relay_stage(id, match_id, stage_index, status, planned_encounter_count, starts_at)
+        VALUES($1, $2, $3, 'planned', $4, $5) RETURNING id, match_id, stage_index, status,
+        planned_encounter_count, starts_at, settled_at, settlement_marker
+        "#,
+        &stage_id,
+        &m.id,
+        index,
+        pairing.pairs.len() as i32,
+        starts,
+    ).fetch_one(&mut *c).await?;
     let mut summaries = Vec::new();
     let deadline = starts + state.config.multi.round_seconds;
     let turn_deadline = (starts + TimeDelta::seconds(room.turn_seconds as i64)).min(deadline);
@@ -138,10 +169,36 @@ pub async fn create_stage(
     for (i, pair) in pairing.pairs.iter().enumerate() {
         let id = new_id();
         let first = domain::first_turn(index, pair)?;
-        sqlx::query("INSERT INTO multi_relay_encounter(id,match_id,stage_id,encounter_index,status,answer_id,starts_at,deadline,turn_member_id,turn_deadline) VALUES($1,$2,$3,$4,'countdown',$5,$6,$7,$8,$9)").bind(&id).bind(&m.id).bind(&stage.id).bind(i as i32+1).bind(&answers[i]).bind(starts).bind(deadline).bind(&first.member_id).bind(turn_deadline).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            INSERT INTO multi_relay_encounter(id, match_id, stage_id, encounter_index, status, answer_id,
+            starts_at, deadline, turn_member_id, turn_deadline) VALUES($1, $2, $3, $4, 'countdown', $5, $6, $7,
+            $8, $9)
+            "#,
+            &id,
+            &m.id,
+            &stage.id,
+            i as i32+1,
+            &answers[i],
+            starts,
+            deadline,
+            &first.member_id,
+            turn_deadline,
+        ).execute(&mut *c).await?;
         let mut members = Vec::new();
         for (side, p) in pair.iter().enumerate() {
-            sqlx::query("INSERT INTO multi_relay_encounter_member(match_id,stage_id,encounter_id,member_id,side,seat) VALUES($1,$2,$3,$4,$5,$6)").bind(&m.id).bind(&stage.id).bind(&id).bind(&p.member_id).bind(side as i32+1).bind(p.seat).execute(&mut *c).await?;
+            sqlx::query!(
+                r#"
+                INSERT INTO multi_relay_encounter_member(match_id, stage_id, encounter_id, member_id, side, seat)
+                VALUES($1, $2, $3, $4, $5, $6)
+                "#,
+                &m.id,
+                &stage.id,
+                &id,
+                &p.member_id,
+                side as i32+1,
+                p.seat,
+            ).execute(&mut *c).await?;
             members.push(json!({"memberId":p.member_id,"seat":p.seat,"side":side+1}));
         }
         summaries.push(
@@ -149,13 +206,25 @@ pub async fn create_stage(
         );
     }
     if let Some(bye) = &pairing.bye {
-        sqlx::query("INSERT INTO multi_relay_stage_bye(stage_id,match_id,member_id,seat) VALUES($1,$2,$3,$4)").bind(&stage.id).bind(&m.id).bind(&bye.member_id).bind(bye.seat).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            INSERT INTO multi_relay_stage_bye(stage_id, match_id, member_id, seat) VALUES($1, $2, $3, $4)
+            "#,
+            &stage.id,
+            &m.id,
+            &bye.member_id,
+            bye.seat,
+        ).execute(&mut *c).await?;
     }
-    sqlx::query("UPDATE multi_match SET round_count=GREATEST(round_count,$2) WHERE id=$1")
-        .bind(&m.id)
-        .bind(index)
-        .execute(&mut *c)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_match SET round_count=GREATEST(round_count, $2) WHERE id=$1
+        "#,
+        &m.id,
+        index,
+    )
+    .execute(&mut *c)
+    .await?;
     let mut payload = json!({"matchIndex":m.match_index,"stageId":stage.id,"stageIndex":index,"startsAt":starts,"status":"planned","encounters":summaries});
     if let Some(bye) = pairing.bye {
         payload["byeMemberId"] = json!(bye.member_id)
@@ -173,13 +242,24 @@ pub async fn try_settle(
     forced: Option<&ForcedEnd>,
     now: DateTime<Utc>,
 ) -> Result<bool, ApiError> {
-    let room_id:String=sqlx::query_scalar("SELECT m.room_id FROM multi_relay_stage s JOIN multi_match m ON m.id=s.match_id WHERE s.id=$1").bind(stage_id).fetch_one(&mut *c).await?;
+    let room_id: String = sqlx::query_scalar!(
+        r#"
+        SELECT m.room_id FROM multi_relay_stage s JOIN multi_match m ON m.id=s.match_id WHERE s.id=$1
+        "#,
+        stage_id,
+    ).fetch_one(&mut *c).await?;
     let _room_lock = store::room(c, &room_id, true).await?;
     let waiting = std::time::Instant::now();
-    let stage: Stage = sqlx::query_as("SELECT * FROM multi_relay_stage WHERE id=$1 FOR UPDATE")
-        .bind(stage_id)
-        .fetch_one(&mut *c)
-        .await?;
+    let stage: Stage = sqlx::query_as!(
+        Stage,
+        r#"
+        SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at,
+        settlement_marker FROM multi_relay_stage WHERE id=$1 FOR UPDATE
+        "#,
+        stage_id,
+    )
+    .fetch_one(&mut *c)
+    .await?;
     if stage.status == "ended" && stage.settlement_marker.is_some() {
         return Ok(false);
     }
@@ -252,16 +332,60 @@ pub async fn try_settle(
         forced,
     )?;
     for s in &decision.players {
-        sqlx::query("INSERT INTO multi_relay_stage_player(match_id,stage_id,member_id,encounter_id,assignment,outcome,score_before,score_delta,score_after,life_before,life_after,eliminated_stage,settled_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)").bind(&m.id).bind(stage_id).bind(&s.member_id).bind(&s.encounter_id).bind(s.assignment).bind(&s.outcome).bind(s.score_before).bind(s.score_delta).bind(s.score_after).bind(&s.life_before).bind(&s.life_after).bind(s.eliminated_stage).bind(now).execute(&mut *c).await?;
-        sqlx::query("UPDATE multi_relay_match_player_state SET score=$3,life_state=$4,eliminated_stage=$5 WHERE match_id=$1 AND member_id=$2").bind(&m.id).bind(&s.member_id).bind(s.score_after).bind(&s.life_after).bind(s.eliminated_stage).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            INSERT INTO multi_relay_stage_player(match_id, stage_id, member_id, encounter_id, assignment,
+            outcome, score_before, score_delta, score_after, life_before, life_after, eliminated_stage,
+            settled_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            "#,
+            &m.id,
+            stage_id,
+            &s.member_id,
+            s.encounter_id.as_deref(),
+            s.assignment,
+            &s.outcome,
+            s.score_before,
+            s.score_delta,
+            s.score_after,
+            &s.life_before,
+            &s.life_after,
+            s.eliminated_stage,
+            now,
+        ).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_relay_match_player_state SET score=$3, life_state=$4, eliminated_stage=$5 WHERE
+            match_id=$1 AND member_id=$2
+            "#,
+            &m.id,
+            &s.member_id,
+            s.score_after,
+            &s.life_after,
+            s.eliminated_stage,
+        ).execute(&mut *c).await?;
         if s.life_transition == "eliminated" {
-            sqlx::query("UPDATE multi_match_player SET status='eliminated' WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(&s.member_id).execute(&mut *c).await?;
+            sqlx::query!(
+                r#"
+                UPDATE multi_match_player SET status='eliminated' WHERE match_id=$1 AND member_id=$2 AND
+                status='active'
+                "#,
+                &m.id,
+                &s.member_id,
+            ).execute(&mut *c).await?;
         }
     }
     if let Some(d) = &decision.match_decision {
         apply_match_decision(state, c, &m, rule, d, &decision.standings, now).await?;
     }
-    sqlx::query("UPDATE multi_relay_stage SET status='ended',settled_at=$2,settlement_marker=$3 WHERE id=$1 AND settlement_marker IS NULL").bind(stage_id).bind(now).bind(format!("relay-stage-settlement/v1:{stage_id}")).execute(&mut *c).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_relay_stage SET status='ended', settled_at=$2, settlement_marker=$3 WHERE id=$1 AND
+        settlement_marker IS NULL
+        "#,
+        stage_id,
+        now,
+        format!("relay-stage-settlement/v1:{stage_id}"),
+    ).execute(&mut *c).await?;
     crate::metrics::METRICS.observe(
         "stage_duration_seconds",
         labels,
@@ -309,31 +433,47 @@ pub async fn apply_match_decision(
     now: DateTime<Utc>,
 ) -> Result<(), ApiError> {
     if rule == Rule::Legacy {
-        sqlx::query("UPDATE multi_match SET score_slot1=$2,score_slot2=$3 WHERE id=$1")
-            .bind(&m.id)
-            .bind(d.scores[0])
-            .bind(d.scores[1])
-            .execute(&mut *c)
-            .await?;
-        sqlx::query("UPDATE multi_match_player p SET score=s.score,wins=s.score FROM multi_relay_match_player_state s WHERE p.match_id=$1 AND s.match_id=p.match_id AND s.member_id=p.member_id").bind(&m.id).execute(&mut *c).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_match SET score_slot1=$2, score_slot2=$3 WHERE id=$1
+            "#,
+            &m.id,
+            d.scores[0],
+            d.scores[1],
+        )
+        .execute(&mut *c)
+        .await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_match_player p SET score=s.score, wins=s.score FROM multi_relay_match_player_state s
+            WHERE p.match_id=$1 AND s.match_id=p.match_id AND s.member_id=p.member_id
+            "#,
+            &m.id,
+        ).execute(&mut *c).await?;
     }
     if !d.ended {
         return Ok(());
     }
-    sqlx::query(
-        "UPDATE multi_match SET status='finished',ended_at=$2,winner_member_id=$3 WHERE id=$1",
+    sqlx::query!(
+        r#"
+        UPDATE multi_match SET status='finished', ended_at=$2, winner_member_id=$3 WHERE id=$1
+        "#,
+        &m.id,
+        now,
+        d.winner.as_deref(),
     )
-    .bind(&m.id)
-    .bind(now)
-    .bind(&d.winner)
     .execute(&mut *c)
     .await?;
     let retention = now + state.config.multi.finished_retention;
-    sqlx::query("UPDATE multi_room SET status='finished',expires_at=$2 WHERE id=$1")
-        .bind(&m.room_id)
-        .bind(retention)
-        .execute(&mut *c)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_room SET status='finished', expires_at=$2 WHERE id=$1
+        "#,
+        &m.room_id,
+        retention,
+    )
+    .execute(&mut *c)
+    .await?;
     let roster = store::match_players(c, &m.id).await?;
     let scores:Vec<_>=standings.iter().map(|s|json!({"memberId":s.player.member_id,"seat":s.player.seat,"score":if rule==Rule::Elimination{roster.iter().find(|p|p.member_id==s.player.member_id).map(|p|p.score).unwrap_or(0)}else{s.score},"status":s.status})).collect();
     let mut payload = json!({"matchIndex":m.match_index,"memberScores":scores,"scores":{"slot1":d.scores[0],"slot2":d.scores[1]},"reason":d.reason,"retentionEndsAt":retention,"relay":{"standings":standings,"ranking":d.ranking}});

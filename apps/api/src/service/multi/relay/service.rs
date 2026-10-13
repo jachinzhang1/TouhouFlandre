@@ -75,7 +75,22 @@ async fn act_tx(
 ) -> Result<ActionResult, ApiError> {
     let started = std::time::Instant::now();
     let mut result = ActionResult::new(input);
-    let mut e:Encounter=sqlx::query_as("SELECT e.* FROM multi_relay_encounter e JOIN multi_relay_stage s ON s.id=e.stage_id JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND s.stage_index=$2 AND e.id=$3 FOR UPDATE OF e").bind(&input.room_id).bind(input.stage_index).bind(&input.encounter_id).fetch_optional(&mut *c).await?.ok_or(Error::NotFound)?;
+    let mut e: Encounter = sqlx::query_as!(
+        Encounter,
+        r#"
+        SELECT e.id, e.match_id, e.stage_id, e.encounter_index, e.status, e.answer_id, e.starts_at,
+        e.deadline, e.turn_member_id, e.turn_deadline, e.winner_member_id, e.outcome, e.ended_at,
+        e.ended_by_member_id, e.end_idempotency_key FROM multi_relay_encounter e JOIN multi_relay_stage s ON
+        s.id=e.stage_id JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND s.stage_index=$2 AND
+        e.id=$3 FOR UPDATE OF e
+        "#,
+        &input.room_id,
+        input.stage_index,
+        &input.encounter_id,
+    )
+        .fetch_optional(&mut *c)
+        .await?
+        .ok_or(Error::NotFound)?;
     let m = store::match_by_id(c, &e.match_id, false).await?;
     storage::validate_match(&m)?;
     let room = store::room(c, &m.room_id, false).await?;
@@ -255,7 +270,15 @@ pub async fn legacy_action(
     key: &str,
     guess: Option<&str>,
 ) -> Result<Value, ApiError> {
-    let encounter:Option<String>=sqlx::query_scalar("SELECT e.id FROM multi_relay_encounter e JOIN multi_relay_stage s ON s.id=e.stage_id JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND s.stage_index=$2 AND e.encounter_index=1 ORDER BY m.match_index DESC LIMIT 1").bind(room_id).bind(stage_index).fetch_optional(&state.pool).await?;
+    let encounter: Option<String> = sqlx::query_scalar!(
+        r#"
+        SELECT e.id FROM multi_relay_encounter e JOIN multi_relay_stage s ON s.id=e.stage_id JOIN multi_match
+        m ON m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND s.stage_index=$2 AND
+        e.encounter_index=1 ORDER BY m.match_index DESC LIMIT 1
+        "#,
+        room_id,
+        stage_index,
+    ).fetch_optional(&state.pool).await?;
     let encounter_id = encounter.ok_or(Error::NotFound)?;
     let key = if action == "forfeit" && key.is_empty() {
         format!("legacy-forfeit/{}/{}", member.id, encounter_id)
@@ -300,11 +323,20 @@ pub async fn start_encounter(
     members: &[Assignment],
     now: DateTime<Utc>,
 ) -> Result<(), ApiError> {
-    sqlx::query("UPDATE multi_relay_encounter SET status='playing' WHERE id=$1 AND status IN ('planned','countdown')").bind(&e.id).execute(&mut *c).await?;
-    sqlx::query("UPDATE multi_relay_stage SET status='playing' WHERE id=$1 AND status='planned'")
-        .bind(&e.stage_id)
-        .execute(&mut *c)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_relay_encounter SET status='playing' WHERE id=$1 AND status IN ('planned', 'countdown')
+        "#,
+        &e.id,
+    ).execute(&mut *c).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_relay_stage SET status='playing' WHERE id=$1 AND status='planned'
+        "#,
+        &e.stage_id,
+    )
+    .execute(&mut *c)
+    .await?;
     e.status = "playing".into();
     let index = stage_index(c, e).await?;
     let seat = e
@@ -413,14 +445,34 @@ async fn store_turn(
         },
         next,
     )?;
-    sqlx::query("INSERT INTO multi_relay_turn(id,match_id,stage_id,encounter_id,member_id,turn_index,kind,guess_id,statuses,is_correct,idempotency_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)").bind(&turn.id).bind(&e.match_id).bind(&e.stage_id).bind(&e.id).bind(&turn.member_id).bind(turn.turn_index).bind(&turn.kind).bind(&turn.guess_id).bind(&turn.statuses).bind(turn.is_correct).bind(&turn.idempotency_key).bind(now).execute(&mut *c).await?;
+    sqlx::query!(
+        r#"
+        INSERT INTO multi_relay_turn(id, match_id, stage_id, encounter_id, member_id, turn_index, kind,
+        guess_id, statuses, is_correct, idempotency_key, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12)
+        "#,
+        &turn.id,
+        &e.match_id,
+        &e.stage_id,
+        &e.id,
+        &turn.member_id,
+        turn.turn_index,
+        &turn.kind,
+        turn.guess_id.as_deref(),
+        turn.statuses.as_ref(),
+        turn.is_correct,
+        &turn.idempotency_key,
+        now,
+    ).execute(&mut *c).await?;
     if !transition.ended {
-        sqlx::query(
-            "UPDATE multi_relay_encounter SET turn_member_id=$2,turn_deadline=$3 WHERE id=$1",
+        sqlx::query!(
+            r#"
+            UPDATE multi_relay_encounter SET turn_member_id=$2, turn_deadline=$3 WHERE id=$1
+            "#,
+            &e.id,
+            transition.next_member.as_deref(),
+            transition.next_deadline,
         )
-        .bind(&e.id)
-        .bind(&transition.next_member)
-        .bind(transition.next_deadline)
         .execute(&mut *c)
         .await?;
         e.turn_member_id = transition.next_member.clone();
@@ -472,7 +524,19 @@ pub async fn end_encounter(
     let reason = transition
         .reason
         .ok_or_else(|| ApiError::invariant("relay terminal reason missing"))?;
-    sqlx::query("UPDATE multi_relay_encounter SET status='ended',winner_member_id=$2,outcome=$3,ended_at=$4,ended_by_member_id=$5,end_idempotency_key=$6,turn_member_id=NULL,turn_deadline=NULL WHERE id=$1 AND status<>'ended'").bind(&e.id).bind(&transition.winner).bind(reason).bind(now).bind(forfeit.map(|v|v.0)).bind(forfeit.map(|v|v.1)).execute(&mut *c).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_relay_encounter SET status='ended', winner_member_id=$2, outcome=$3, ended_at=$4,
+        ended_by_member_id=$5, end_idempotency_key=$6, turn_member_id=NULL, turn_deadline=NULL WHERE id=$1
+        AND status<>'ended'
+        "#,
+        &e.id,
+        transition.winner.as_deref(),
+        reason,
+        now,
+        forfeit.map(|v|v.0),
+        forfeit.map(|v|v.1),
+    ).execute(&mut *c).await?;
     e.status = "ended".into();
     e.winner_member_id = transition.winner.clone();
     e.outcome = Some(reason.into());
@@ -533,12 +597,14 @@ pub async fn end_encounter(
     Ok(chat)
 }
 pub async fn stage_index(c: &mut PgConnection, e: &Encounter) -> Result<i32, ApiError> {
-    Ok(
-        sqlx::query_scalar("SELECT stage_index FROM multi_relay_stage WHERE id=$1")
-            .bind(&e.stage_id)
-            .fetch_one(c)
-            .await?,
+    Ok(sqlx::query_scalar!(
+        r#"
+        SELECT stage_index FROM multi_relay_stage WHERE id=$1
+        "#,
+        &e.stage_id,
     )
+    .fetch_one(c)
+    .await?)
 }
 /// Go's RFC3339Nano trims every fractional trailing zero (chrono AutoSi only
 /// chooses millisecond/microsecond/nanosecond precision). Persist the same key.

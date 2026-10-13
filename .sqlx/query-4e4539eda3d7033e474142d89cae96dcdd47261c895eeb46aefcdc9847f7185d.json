@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM work WHERE id <> ALL($1::text[])\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4e4539eda3d7033e474142d89cae96dcdd47261c895eeb46aefcdc9847f7185d"
+}

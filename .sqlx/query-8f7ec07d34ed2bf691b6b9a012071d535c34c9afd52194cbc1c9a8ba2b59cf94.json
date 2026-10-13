@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT coalesce(min(sequence), 0)::bigint AS \"value!\" FROM room_event WHERE room_id=$1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "8f7ec07d34ed2bf691b6b9a012071d535c34c9afd52194cbc1c9a8ba2b59cf94"
+}

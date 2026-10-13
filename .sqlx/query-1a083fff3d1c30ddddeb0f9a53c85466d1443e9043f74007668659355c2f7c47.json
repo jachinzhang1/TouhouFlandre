@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_match_player SET status='left' WHERE match_id=$1 AND member_id=$2 AND status='active'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1a083fff3d1c30ddddeb0f9a53c85466d1443e9043f74007668659355c2f7c47"
+}

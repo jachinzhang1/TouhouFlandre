@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_match_player p SET score=s.score, wins=s.score FROM multi_relay_match_player_state s\n            WHERE p.match_id=$1 AND s.match_id=p.match_id AND s.member_id=p.member_id\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5799376791659a207a0e323fc4a2bec9c914d74bb20e6d9be999289017eb576d"
+}

@@ -41,6 +41,16 @@ tasks:
     cmds:
       - bash -c 'set -a && . ../../.env && set +a && cargo run --bin migrate -- adopt-goose'
 
+  db:queries:prepare:
+    desc: Refresh checked-in SQLx metadata using a disposable database on TEST_DATABASE_URL
+    cmds:
+      - node scripts/sqlx-prepare.mjs
+
+  db:queries:check:
+    desc: Check SQLx metadata against a fresh migrated disposable database
+    cmds:
+      - node scripts/sqlx-prepare.mjs --check
+
   db:seed:
     deps: [catalog:check]
     dir: apps/api

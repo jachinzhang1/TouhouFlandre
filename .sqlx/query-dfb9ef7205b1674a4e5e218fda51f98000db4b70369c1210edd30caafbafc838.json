@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT s.stage_index FROM multi_relay_stage s WHERE s.match_id=$1 AND s.status<>'ended' AND\n                (EXISTS(SELECT 1 FROM multi_relay_encounter_member a WHERE a.stage_id=s.id AND a.member_id=$2) OR\n                EXISTS(SELECT 1 FROM multi_relay_stage_bye b WHERE b.stage_id=s.id AND b.member_id=$2)) ORDER BY\n                s.stage_index DESC LIMIT 1\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stage_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "stage_index"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "dfb9ef7205b1674a4e5e218fda51f98000db4b70369c1210edd30caafbafc838"
+}

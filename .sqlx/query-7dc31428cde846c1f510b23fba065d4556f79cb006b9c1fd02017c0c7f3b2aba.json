@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO site_metric(key, value) VALUES('visits_total', 1) ON CONFLICT(key) DO UPDATE SET\n        value=site_metric.value+1, updated_at=now() RETURNING value\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "site_metric",
+            "name": "value"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7dc31428cde846c1f510b23fba065d4556f79cb006b9c1fd02017c0c7f3b2aba"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM multi_room WHERE status='closed' AND expires_at<$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bcffddc3b5255c11117c7e1896f4d47fd40e1235cdf0dd567c3966b660a6505a"
+}

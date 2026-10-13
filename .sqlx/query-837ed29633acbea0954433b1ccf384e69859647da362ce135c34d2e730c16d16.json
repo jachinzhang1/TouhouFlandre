@@ -1,0 +1,184 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses,\n            version, started_at, ended_at, question_scope, answer_match_policy FROM game_session WHERE id=$1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "mode"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "content_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "content_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "answer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "puzzle_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "puzzle_key"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "max_guesses",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "max_guesses"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "guesses",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "guesses"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "version"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "ended_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "ended_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "question_scope",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "question_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "answer_match_policy",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_session",
+            "name": "answer_match_policy"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "837ed29633acbea0954433b1ccf384e69859647da362ce135c34d2e730c16d16"
+}

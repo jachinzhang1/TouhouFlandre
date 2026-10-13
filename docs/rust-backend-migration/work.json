@@ -249,9 +249,38 @@
       "recovery": "/tmp/touhouflandre-layers-before-20261013.tar.gz preserves the pre-refactor source; never overwrite unrelated changes",
       "evidence": "evidence.md#layered-architecture--r12-2026-10-13",
       "artifact_identity": "layered-architecture-sha256.json"
+    },
+    {
+      "id": "R13",
+      "outcome": "Compile-time checked business SQL with reproducible offline cache and CI schema validation",
+      "status": "complete",
+      "dependencies": [
+        "R12"
+      ],
+      "owner": "root",
+      "authority": "User follow-up on 2026-10-13: sqlx能不能用query!宏; local implementation and isolated verification in the existing worktree",
+      "write_scope": [
+        "apps/api/**",
+        ".sqlx/**",
+        ".cargo/config.toml",
+        ".github/workflows/ci.yml",
+        "Taskfile.yml",
+        "scripts/**",
+        "docs/**"
+      ],
+      "verification": [
+        "offline build without database",
+        "cargo sqlx prepare --check against fresh migrated PostgreSQL",
+        "all Rust tests including isolated database and WebSocket tests",
+        "Clippy, formatting and architecture checks",
+        "SQL behavior and transaction boundaries preserved"
+      ],
+      "recovery": "Committed baseline 6575336; preserve unrelated untracked files.",
+      "evidence": "evidence.md#sqlx-query-macros--r13-2026-10-13",
+      "artifact_identity": "sqlx-macros-sha256.json"
     }
   ],
-  "evidence": "evidence.md#layered-architecture--r12-2026-10-13",
-  "artifact_identity": "layered-architecture-sha256.json",
-  "completed_at": "2026-10-13T08:20:17.973540+00:00"
+  "evidence": "evidence.md#sqlx-query-macros--r13-2026-10-13",
+  "artifact_identity": "sqlx-macros-sha256.json",
+  "completed_at": "2026-10-13T08:59:12.547223+00:00"
 }

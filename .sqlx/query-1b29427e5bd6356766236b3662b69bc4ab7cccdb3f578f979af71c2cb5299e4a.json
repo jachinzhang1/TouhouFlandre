@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_room SET question_scope=$2 WHERE id=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1b29427e5bd6356766236b3662b69bc4ab7cccdb3f578f979af71c2cb5299e4a"
+}

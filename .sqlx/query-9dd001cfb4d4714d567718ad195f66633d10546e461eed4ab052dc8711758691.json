@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO multi_room(id, code, format, mode, turn_seconds, player_limit, race_elimination_enabled,\n            status, expires_at, question_scope, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, 'lobby', $8, $9,\n            $10)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Bool",
+        "Timestamptz",
+        "Jsonb",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9dd001cfb4d4714d567718ad195f66633d10546e461eed4ab052dc8711758691"
+}

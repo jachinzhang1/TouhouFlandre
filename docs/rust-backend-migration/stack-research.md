@@ -151,3 +151,33 @@ Sources:
 - [Rand 0.10 migration guide](https://rust-random.github.io/book/update-0.10.html)
 - [rand 0.10.3 SysRng](https://docs.rs/rand/0.10.3/rand/rngs/struct.SysRng.html)
 - [Axum 0.8.9 dependency manifest](https://docs.rs/crate/axum/0.8.9/source/Cargo.toml)
+
+
+## Compile-time SQL follow-up — R13 (2026-10-13)
+
+SQLx 0.9.0 already has its `macros` feature enabled in the API crate. The upstream
+[query! reference](https://docs.rs/sqlx/0.9.0/sqlx/macro.query.html) documents literal
+SQL, compile-time parameter/result checking, nullability/type overrides and offline
+metadata. [query_as!](https://docs.rs/sqlx/0.9.0/sqlx/macro.query_as.html) constructs
+named structs from columns without calling `FromRow`.
+The matching [CLI documentation](https://github.com/transact-rs/sqlx/blob/v0.9.0/sqlx-cli/README.md)
+provides `prepare --workspace`, `--check`, and Cargo target selection.
+
+Decision: convert all application, repository and seed queries to checked macros;
+split the finite locking/unlocked variants into literal SQL. Preserve transaction
+ownership and locking clauses. Name count/COALESCE/EXISTS expression columns with
+explicit non-null overrides where SQL guarantees the value; preserve nullable
+columns and the room infinity-to-null projection. Typed JSON uses SQLx's documented
+custom type overrides to retain the existing `Json<T>` encoder/decoder.
+No unchecked query macros are used.
+
+Commit the workspace `.sqlx` metadata and default Cargo to offline checking.
+Pin the native CLI to 0.9.0. Refresh/check metadata only against a freshly created,
+fully migrated disposable database, then drop it even on a normal command failure.
+CI checks this metadata before offline lint/tests/build. The production Dockerfile
+copies Cargo configuration and metadata. No dependency upgrade is needed.
+
+Migration bootstrap SQL remains runtime because Goose/adoption ledgers can be
+absent in valid starting states. Historical-schema, fixture setup and failure
+injection queries in integration tests also stay runtime; their current-schema
+application calls are compile-time checked and execute against real PostgreSQL.

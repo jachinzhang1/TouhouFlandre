@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO multi_relay_match_player_state(match_id, member_id, score, life_state) VALUES($1, $2, $3,\n            'healthy') ON CONFLICT(match_id, member_id) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66ed81331ade93db0bcb52124e2cd7b42312e1c2b1076f5415ed7eb69cdf6883"
+}

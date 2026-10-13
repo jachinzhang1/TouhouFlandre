@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_relay_match_player_state SET score=$3, life_state=$4, eliminated_stage=$5 WHERE\n            match_id=$1 AND member_id=$2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e1641323c098b3ecf1f1c02dde068562fde6af8597c6f104a1ad217aa6c147dd"
+}

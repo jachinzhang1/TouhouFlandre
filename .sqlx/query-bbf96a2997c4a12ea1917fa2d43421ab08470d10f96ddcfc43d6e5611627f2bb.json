@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_round SET status='ended', ended_at=$3, winner_member_id=$2, winner_slot=(SELECT seat\n        FROM multi_match_player WHERE match_id=$4 AND member_id=$2) WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bbf96a2997c4a12ea1917fa2d43421ab08470d10f96ddcfc43d6e5611627f2bb"
+}

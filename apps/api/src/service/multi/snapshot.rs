@@ -39,9 +39,13 @@ pub async fn build(
     after: i64,
 ) -> Result<Value, ApiError> {
     let mut tx = state.pool.begin().await?;
-    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        r#"
+        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY
+        "#,
+    )
+    .execute(&mut *tx)
+    .await?;
     let room = store::room(&mut tx, id, false).await?;
     super::validate_mode(state, &room.mode)?;
     let members = store::members(&mut tx, id).await?;
@@ -66,7 +70,15 @@ pub async fn build(
     if let Some(m) = m.as_ref() {
         super::validate_ruleset(state, &room, m)?;
         let players = store::match_players(&mut tx, &m.id).await?;
-        let round=sqlx::query_as::<_,Round>("SELECT * FROM multi_round WHERE match_id=$1 AND status IN ('countdown','playing') ORDER BY round_index DESC LIMIT 1").bind(&m.id).fetch_optional(&mut *tx).await?;
+        let round = sqlx::query_as!(
+            Round,
+            r#"
+            SELECT id, match_id, round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at,
+            turn_slot, turn_deadline, winner_member_id FROM multi_round WHERE match_id=$1 AND status IN
+            ('countdown', 'playing') ORDER BY round_index DESC LIMIT 1
+            "#,
+            &m.id,
+        ).fetch_optional(&mut *tx).await?;
         let scope = m
             .question_scope
             .as_ref()
@@ -77,10 +89,12 @@ pub async fn build(
         // Upgraded legacy relay matches can retain only multi_round/multi_turn
         // history after restart recovery. They have no stage fragment to load.
         let has_stages = room.mode == "relay"
-            && sqlx::query_scalar::<_, bool>(
-                "SELECT EXISTS(SELECT 1 FROM multi_relay_stage WHERE match_id=$1)",
+            && sqlx::query_scalar!(
+                r#"
+            SELECT EXISTS(SELECT 1 FROM multi_relay_stage WHERE match_id=$1) AS "value!"
+            "#,
+                &m.id,
             )
-            .bind(&m.id)
             .fetch_one(&mut *tx)
             .await?;
         if has_stages && round.is_none() {
@@ -160,11 +174,15 @@ pub async fn build(
         }
         v["match"] = mv;
     }
-    let events: Vec<RoomEvent> = sqlx::query_as(
-        "SELECT * FROM room_event WHERE room_id=$1 AND sequence>$2 ORDER BY sequence",
+    let events: Vec<RoomEvent> = sqlx::query_as!(
+        RoomEvent,
+        r#"
+        SELECT id, room_id, sequence, type AS event_type, payload, occurred_at FROM room_event WHERE
+        room_id=$1 AND sequence>$2 ORDER BY sequence
+        "#,
+        id,
+        after,
     )
-    .bind(id)
-    .bind(after)
     .fetch_all(&mut *tx)
     .await?;
     let mut projected = vec![];

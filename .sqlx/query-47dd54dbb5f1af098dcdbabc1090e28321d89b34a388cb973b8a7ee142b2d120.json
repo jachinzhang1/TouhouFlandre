@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COALESCE(min(position), 0)::bigint AS \"value!\" FROM multi_chat_message WHERE room_id=$1 AND\n        created_at>=$2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "47dd54dbb5f1af098dcdbabc1090e28321d89b34a388cb973b8a7ee142b2d120"
+}

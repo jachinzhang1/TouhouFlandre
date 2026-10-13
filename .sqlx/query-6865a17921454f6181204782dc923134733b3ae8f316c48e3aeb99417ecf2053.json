@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE multi_member SET seat=$2 WHERE id=$1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6865a17921454f6181204782dc923134733b3ae8f316c48e3aeb99417ecf2053"
+}

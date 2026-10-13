@@ -1,0 +1,126 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, round_id, member_id, sequence, guess_id, statuses, is_correct, idempotency_key, created_at\n        FROM multi_guess WHERE round_id=$1 AND member_id=$2 AND idempotency_key=$3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "round_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "round_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sequence",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "sequence"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "guess_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "guess_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "statuses",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "statuses"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_correct",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "is_correct"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "idempotency_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "idempotency_key"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_guess",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4b09c34cfc8b3628c8184e030509e578ca3971e7c146230002b0a55da586144d"
+}

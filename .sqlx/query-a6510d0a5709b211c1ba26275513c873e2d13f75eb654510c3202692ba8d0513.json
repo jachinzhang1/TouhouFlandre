@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO multi_relay_room_config(room_id, elimination_enabled) VALUES($1, $2) ON CONFLICT(room_id)\n                DO UPDATE SET elimination_enabled=EXCLUDED.elimination_enabled\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a6510d0a5709b211c1ba26275513c873e2d13f75eb654510c3202692ba8d0513"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_member SET rematch_ready=true WHERE id=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c1eed4016de78ae9e0c060986ec74d33a1dc44a68c0d792e86e83bbc32490243"
+}

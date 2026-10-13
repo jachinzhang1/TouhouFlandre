@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT characters FROM catalog_snapshot WHERE version=$1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "characters",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "catalog_snapshot",
+            "name": "characters"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "59dafbdaf213399baf8a5bb867f1a329fdb1d5516fa0a5234b34ac4ed65cacf0"
+}

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.id FROM multi_relay_encounter e JOIN multi_relay_stage s ON s.id=e.stage_id JOIN multi_match\n        m ON m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND s.stage_index=$2 AND\n        e.encounter_index=1 ORDER BY m.match_index DESC LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0026268b41210b694643343c95bc2fcf9708dba6eda9371b1d67f1ce130b88c1"
+}

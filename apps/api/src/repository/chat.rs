@@ -23,7 +23,14 @@ pub async fn min_position(
     room_id: &str,
     cutoff: DateTime<Utc>,
 ) -> Result<i64, ApiError> {
-    Ok(sqlx::query_scalar("SELECT COALESCE(min(position),0)::bigint FROM multi_chat_message WHERE room_id=$1 AND created_at>=$2").bind(room_id).bind(cutoff).fetch_one(pool).await?)
+    Ok(sqlx::query_scalar!(
+        r#"
+        SELECT COALESCE(min(position), 0)::bigint AS "value!" FROM multi_chat_message WHERE room_id=$1 AND
+        created_at>=$2
+        "#,
+        room_id,
+        cutoff,
+    ).fetch_one(pool).await?)
 }
 
 pub async fn after_rows(
@@ -33,5 +40,16 @@ pub async fn after_rows(
     high: i64,
     cutoff: DateTime<Utc>,
 ) -> Result<Vec<Message>, ApiError> {
-    Ok(sqlx::query_as("SELECT * FROM multi_chat_message WHERE room_id=$1 AND position>$2 AND position<=$3 AND created_at>=$4 ORDER BY position LIMIT 200").bind(room_id).bind(after).bind(high).bind(cutoff).fetch_all(pool).await?)
+    Ok(sqlx::query_as!(
+        Message,
+        r#"
+        SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat,
+        client_message_id, kind, content, channel, created_at FROM multi_chat_message WHERE room_id=$1 AND
+        position>$2 AND position<=$3 AND created_at>=$4 ORDER BY position LIMIT 200
+        "#,
+        room_id,
+        after,
+        high,
+        cutoff,
+    ).fetch_all(pool).await?)
 }

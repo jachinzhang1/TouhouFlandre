@@ -149,12 +149,17 @@ pub async fn project_event_tx(
     let mut event_type = event.event_type.as_str();
     let payload = match event_type {
         "round.opponent.guess" => {
-            let m: Match =
-                sqlx::query_as("SELECT * FROM multi_match WHERE room_id=$1 AND match_index=$2")
-                    .bind(&event.room_id)
-                    .bind(p["matchIndex"].as_i64().unwrap_or(0) as i32)
-                    .fetch_one(&mut *conn)
-                    .await?;
+            let m: Match = sqlx::query_as!(
+                Match,
+                r#"
+                SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count,
+                status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size,
+                max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM
+                multi_match WHERE room_id=$1 AND match_index=$2
+                "#,
+                &event.room_id,
+                p["matchIndex"].as_i64().unwrap_or(0) as i32,
+            ).fetch_one(&mut *conn).await?;
             let roster = store::match_players(conn, &m.id).await?;
             let read_only = viewer.is_spectator()
                 || roster
@@ -166,14 +171,16 @@ pub async fn project_event_tx(
             if read_only {
                 event_type = "round.spectator.guess";
                 let round = store::round_by_id(conn, text(p, "roundId"), false).await?;
-                let guess: Option<Guess> = sqlx::query_as(
-                    "SELECT * FROM multi_guess WHERE round_id=$1 AND member_id=$2 AND sequence=$3",
-                )
-                .bind(&round.id)
-                .bind(subject)
-                .bind(p["rowIndex"].as_i64().unwrap_or(0) as i32)
-                .fetch_optional(&mut *conn)
-                .await?;
+                let guess: Option<Guess> = sqlx::query_as!(
+                    Guess,
+                    r#"
+                    SELECT id, round_id, member_id, sequence, guess_id, statuses, is_correct, idempotency_key, created_at
+                    FROM multi_guess WHERE round_id=$1 AND member_id=$2 AND sequence=$3
+                    "#,
+                    &round.id,
+                    subject,
+                    p["rowIndex"].as_i64().unwrap_or(0) as i32,
+                ).fetch_optional(&mut *conn).await?;
                 let id = guess
                     .as_ref()
                     .map(|g| g.guess_id.as_str())
@@ -298,12 +305,12 @@ pub async fn project_event_tx(
                 {
                     v["forfeitedMemberId"] = json!(member.id);
                 }
-                let turns: Vec<Value> = sqlx::query_scalar(
-                    "SELECT to_jsonb(t) FROM multi_turn t WHERE round_id=$1 ORDER BY turn_index",
-                )
-                .bind(&round.id)
-                .fetch_all(&mut *conn)
-                .await?;
+                let turns: Vec<Value> = sqlx::query_scalar!(
+                    r#"
+                    SELECT to_jsonb(t) AS "value!" FROM multi_turn t WHERE round_id=$1 ORDER BY turn_index
+                    "#,
+                    &round.id,
+                ).fetch_all(&mut *conn).await?;
                 if !turns.is_empty() {
                     let mut rows = vec![];
                     for turn in turns {

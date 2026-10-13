@@ -10,7 +10,7 @@ use axum::http::StatusCode;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
-use sqlx::{PgConnection, PgPool, Row};
+use sqlx::{PgConnection, PgPool};
 
 pub struct CatalogService {
     pub source: CatalogSearchSourceProvider,
@@ -115,13 +115,28 @@ pub fn search_result(character: &Character, search_text: String, name_sort_key: 
 }
 
 pub async fn site_visits(state: AppState) -> Result<Value, ApiError> {
-    let count: i64 = sqlx::query_scalar("INSERT INTO site_metric(key,value) VALUES('visits_total',1) ON CONFLICT(key) DO UPDATE SET value=site_metric.value+1,updated_at=now() RETURNING value").fetch_one(&state.pool).await?;
+    let count: i64 = sqlx::query_scalar!(
+        r#"
+        INSERT INTO site_metric(key, value) VALUES('visits_total', 1) ON CONFLICT(key) DO UPDATE SET
+        value=site_metric.value+1, updated_at=now() RETURNING value
+        "#,
+    )
+    .fetch_one(&state.pool)
+    .await?;
     Ok(json!({"count":count}))
 }
 pub async fn summary(state: AppState) -> Result<Value, ApiError> {
     let mut conn = state.pool.acquire().await?;
     let version = current_version(&mut conn).await?;
-    let (total, guessable, answerable): (i64,i64,i64) = sqlx::query_as("SELECT COUNT(*),COUNT(*) FILTER(WHERE enabled_as_guess),COUNT(*) FILTER(WHERE enabled_as_answer) FROM character").fetch_one(&mut *conn).await?;
+    let (total, guessable, answerable): (i64, i64, i64) = {
+        let row = sqlx::query!(
+            r#"
+            SELECT COUNT(*) AS "total!", COUNT(*) FILTER(WHERE enabled_as_guess) AS "guessable!", COUNT(*)
+            FILTER(WHERE enabled_as_answer) AS "answerable!" FROM character
+            "#,
+        ).fetch_one(&mut *conn).await?;
+        (row.total, row.guessable, row.answerable)
+    };
     let works = works(&mut conn).await?;
     Ok(
         json!({"version":version,"dailyDateKey":puzzle_date_key(&(state.clock)()),"contents":[{"contentType":"character","label":"角色","total":total,"guessable":guessable,"answerable":answerable,"maxGuesses":QUESTION_SCOPE_DEFAULT_GUESSES,"visibleFieldCount":character_guess_fields().len()}],"works":works}),
@@ -143,10 +158,14 @@ pub async fn full(state: AppState) -> Result<Value, ApiError> {
 pub async fn legacy_characters(state: AppState) -> Result<Value, ApiError> {
     let mut conn = state.pool.acquire().await?;
     let version = current_version(&mut conn).await?;
-    let rows = sqlx::query("SELECT to_jsonb(c) AS data FROM character c WHERE enabled_as_guess ORDER BY name_sort_key,id ASC").fetch_all(&mut *conn).await?;
+    let rows = sqlx::query!(
+        r#"
+        SELECT to_jsonb(c) AS "data!" FROM character c WHERE enabled_as_guess ORDER BY name_sort_key, id ASC
+        "#,
+    ).fetch_all(&mut *conn).await?;
     let mut characters = vec![];
     for row in rows {
-        let raw: Value = row.get("data");
+        let raw: Value = row.data;
         let mut mapped = serde_json::Map::new();
         for (key, value) in raw
             .as_object()
@@ -217,11 +236,15 @@ pub async fn search(
     }
     let mut scope = None;
     let version = if let Some(id) = &p.session_id {
-        let row: Option<(String, Option<Value>)> =
-            sqlx::query_as("SELECT catalog_version,question_scope FROM game_session WHERE id=$1")
-                .bind(id)
-                .fetch_optional(&state.pool)
-                .await?;
+        let row: Option<(String, Option<Value>)> = sqlx::query!(
+            r#"
+            SELECT catalog_version, question_scope FROM game_session WHERE id=$1
+            "#,
+            id,
+        )
+        .fetch_optional(&state.pool)
+        .await?
+        .map(|row| (row.catalog_version, row.question_scope));
         let (version, value) = row.ok_or_else(|| {
             ApiError::new(
                 StatusCode::NOT_FOUND,
@@ -232,7 +255,16 @@ pub async fn search(
         scope = value;
         version
     } else if let Some(id) = &p.room_id {
-        let row: Option<(String,Option<Value>)> = sqlx::query_as("SELECT catalog_version,question_scope FROM multi_match WHERE room_id=$1 AND match_index=$2").bind(id).bind(p.match_index).fetch_optional(&state.pool).await?;
+        let row: Option<(String, Option<Value>)> = sqlx::query!(
+            r#"
+            SELECT catalog_version, question_scope FROM multi_match WHERE room_id=$1 AND match_index=$2
+            "#,
+            id,
+            p.match_index,
+        )
+            .fetch_optional(&state.pool)
+            .await?
+            .map(|row| (row.catalog_version, row.question_scope));
         let (version, value) = row.ok_or_else(|| {
             ApiError::new(
                 StatusCode::NOT_FOUND,

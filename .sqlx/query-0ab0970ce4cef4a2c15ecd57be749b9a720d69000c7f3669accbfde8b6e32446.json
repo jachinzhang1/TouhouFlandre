@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id, m.room_id, m.rule_set_key, m.rule_set_version FROM multi_relay_stage s JOIN multi_match\n        m ON m.id=s.match_id JOIN multi_room r ON r.id=m.room_id WHERE r.mode='relay' AND m.status='playing'\n        AND s.settlement_marker IS NULL AND NOT EXISTS(SELECT 1 FROM multi_relay_encounter e WHERE\n        e.stage_id=s.id AND e.status<>'ended') ORDER BY s.starts_at LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "room_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "room_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "rule_set_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_key"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "rule_set_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0ab0970ce4cef4a2c15ecd57be749b9a720d69000c7f3669accbfde8b6e32446"
+}

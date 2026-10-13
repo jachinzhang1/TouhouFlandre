@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT current_version FROM catalog_state WHERE id='current'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "current_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "catalog_state",
+            "name": "current_version"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c0318c872679bfcfdf802785ea3a8cdf0c70726e1fd1cb3b1d112d87b7554c46"
+}

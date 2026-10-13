@@ -183,12 +183,15 @@ pub async fn stage_view(
     if let Some(bye) = storage::bye(c, &stage.id).await? {
         view["byeMemberId"] = json!(bye.member_id)
     }
-    let settled: Vec<StoredSettlement> = sqlx::query_as(
-        "SELECT * FROM multi_relay_stage_player WHERE stage_id=$1 ORDER BY member_id",
-    )
-    .bind(&stage.id)
-    .fetch_all(&mut *c)
-    .await?;
+    let settled: Vec<StoredSettlement> = sqlx::query_as!(
+        StoredSettlement,
+        r#"
+        SELECT member_id, encounter_id, assignment, outcome, score_before, score_delta, score_after,
+        life_before, life_after, eliminated_stage FROM multi_relay_stage_player WHERE stage_id=$1 ORDER BY
+        member_id
+        "#,
+        &stage.id,
+    ).fetch_all(&mut *c).await?;
     if !settled.is_empty() {
         view["settlement"] = Value::Array(settled.into_iter().map(settlement_view).collect())
     }

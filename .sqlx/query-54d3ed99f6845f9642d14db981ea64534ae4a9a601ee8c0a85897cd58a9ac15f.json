@@ -1,0 +1,162 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat,\n            client_message_id, kind, content, channel, created_at FROM multi_chat_message WHERE room_id=$1 AND\n            position<$2 AND created_at>=$3 ORDER BY position DESC LIMIT 200\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "room_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "room_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "position",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sender_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "sender_member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "sender_display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "sender_display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "sender_role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "sender_role"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sender_seat",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "sender_seat"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "client_message_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "client_message_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "content",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "content"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "channel",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "channel"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_chat_message",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "54d3ed99f6845f9642d14db981ea64534ae4a9a601ee8c0a85897cd58a9ac15f"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT answer_id FROM multi_relay_encounter WHERE match_id=$1 ORDER BY stage_id, encounter_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "answer_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3c7e8ab2a28dbb0ad7a5c902b9e9492b79425788d34aac3a30ce8d5cd880f293"
+}

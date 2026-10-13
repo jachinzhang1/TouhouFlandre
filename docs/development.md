@@ -131,3 +131,30 @@ Web 请求失败时，先确认 API 正在监听 `4000`，再检查 `/readyz`。
 seed 后角色目录使用最新题库，已经开始的题局仍引用原冻结快照。已创建的当天每日题不会因 seed 或判定策略配置变化而改变，日期按 `Asia/Shanghai` 划分。
 
 提交 PR 前通过 Issue 对齐需求、验收或数据来源，遵守[站点开发计划](./site-development-plan.md)。避免混入日志、数据库文件、无关格式化或来源不明媒体。
+
+## SQL 编译检查与离线缓存
+
+业务查询使用 `sqlx::query!`、`query_as!`、`query_scalar!`。SQLx 在编译时检查
+SQL、绑定参数和返回列类型；`query_as!` 根据字段名构造行模型，不通过 `FromRow` 解码。
+计数、`COALESCE` 等由 SQL 保证非空的表达式使用 `AS "value!"` 标注。
+JSON 包装类型使用显式 `Json<T>` 映射，保留原有序列化行为。
+
+`.sqlx/` 是必须提交的查询元数据。`.cargo/config.toml` 默认设置
+`SQLX_OFFLINE=true`，因此普通 build、test、Clippy 和生产镜像构建不需要数据库。
+该离线检查依据缓存的 schema；CI 会再用真实迁移生成的 schema 校验缓存。
+
+修改查询或数据库迁移后，安装与 crate 一致的工具并刷新缓存：
+
+```bash
+cargo install sqlx-cli --version 0.9.0 --locked --no-default-features --features postgres,rustls
+TEST_DATABASE_URL='postgres://touhouflandre:touhouflandre-dev@127.0.0.1:5433/postgres' task db:queries:prepare
+```
+
+`task db:queries:check` 校验已提交的缓存是否与查询和迁移一致。两个命令都会在
+`TEST_DATABASE_URL` 指定的服务器上创建独立临时库，执行全部迁移，再生成或校验
+workspace 的所有 target，最后删除临时库；账号需要建库权限。无需设置编译期
+`DATABASE_URL`，脚本只给 SQLx 子进程传入新建临时库的地址。
+
+迁移引导代码 `src/database.rs` 保留运行时查询，因为旧 Goose ledger、接管标记和
+迁移前的表并不属于固定的最终 schema。集成测试中的历史 schema、故障注入和
+测试数据查询也保留运行时方式。业务查询不使用 unchecked 宏绕过类型检查。

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_member SET role='player', seat=$2, ready=false, rematch_ready=false WHERE id=$1 AND\n        role='spectator' AND status='connected'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "416320218768db0366abbc39243c32d84cd3874e6434bb8d1e0141971c2622ae"
+}

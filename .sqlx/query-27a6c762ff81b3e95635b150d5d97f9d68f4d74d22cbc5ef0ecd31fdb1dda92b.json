@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO multi_round_player(round_id, member_id, status) SELECT $1, member_id, 'active' FROM\n        multi_match_player WHERE match_id=$2 AND status='active'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "27a6c762ff81b3e95635b150d5d97f9d68f4d74d22cbc5ef0ecd31fdb1dda92b"
+}

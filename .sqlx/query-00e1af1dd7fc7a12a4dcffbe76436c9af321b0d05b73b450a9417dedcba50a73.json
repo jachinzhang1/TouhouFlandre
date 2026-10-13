@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_relay_stage SET status='playing' WHERE id=$1 AND status='planned'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "00e1af1dd7fc7a12a4dcffbe76436c9af321b0d05b73b450a9417dedcba50a73"
+}

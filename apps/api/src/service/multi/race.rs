@@ -110,7 +110,16 @@ pub(super) async fn current_round(
     conn: &mut PgConnection,
     room: &str,
 ) -> Result<Option<Round>, ApiError> {
-    Ok(sqlx::query_as("SELECT r.* FROM multi_round r JOIN multi_match m ON m.id=r.match_id WHERE m.room_id=$1 AND m.status='playing' ORDER BY r.round_index DESC LIMIT 1 FOR UPDATE OF r").bind(room).fetch_optional(conn).await?)
+    Ok(sqlx::query_as!(
+        Round,
+        r#"
+        SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at,
+        r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r JOIN
+        multi_match m ON m.id=r.match_id WHERE m.room_id=$1 AND m.status='playing' ORDER BY r.round_index
+        DESC LIMIT 1 FOR UPDATE OF r
+        "#,
+        room,
+    ).fetch_optional(conn).await?)
 }
 // Keep the locked transaction context and frozen room/match/round explicit.
 #[allow(clippy::too_many_arguments)]
@@ -132,7 +141,16 @@ pub async fn complete_round_tx(
     let mut placements = vec![];
     let mut eliminated = vec![];
     if scored {
-        sqlx::query("UPDATE multi_round_player SET status='timed_out',completed_at=$2 WHERE round_id=$1 AND status='active'").bind(&round.id).bind(now).execute(&mut *conn).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_round_player SET status='timed_out', completed_at=$2 WHERE round_id=$1 AND
+            status='active'
+            "#,
+            &round.id,
+            now,
+        )
+        .execute(&mut *conn)
+        .await?;
         let mut participants = store::round_players(conn, &round.id).await?;
         participants.sort_by(|a, b| {
             a.finish_rank
@@ -154,9 +172,27 @@ pub async fn complete_round_tx(
             } else {
                 0
             };
-            sqlx::query("UPDATE multi_round_player SET points_awarded=$3 WHERE round_id=$1 AND member_id=$2").bind(&round.id).bind(&p.member_id).bind(points).execute(&mut *conn).await?;
+            sqlx::query!(
+                r#"
+                UPDATE multi_round_player SET points_awarded=$3 WHERE round_id=$1 AND member_id=$2
+                "#,
+                &round.id,
+                &p.member_id,
+                points,
+            )
+            .execute(&mut *conn)
+            .await?;
             if points > 0 {
-                sqlx::query("UPDATE multi_match_player SET score=score+$3,wins=wins+$3,best_round_score=GREATEST(best_round_score,$3) WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(&p.member_id).bind(points).execute(&mut *conn).await?;
+                sqlx::query!(
+                    r#"
+                    UPDATE multi_match_player SET score=score+$3, wins=wins+$3,
+                    best_round_score=GREATEST(best_round_score, $3) WHERE match_id=$1 AND member_id=$2 AND
+                    status='active'
+                    "#,
+                    &m.id,
+                    &p.member_id,
+                    points,
+                ).execute(&mut *conn).await?;
             }
             let mut view = json!({"memberId":p.member_id,"seat":roster.iter().find(|r|r.member_id==p.member_id).map(|r|r.seat).unwrap_or(0),"status":p.status,"pointsAwarded":points});
             if let Some(rank) = p.finish_rank {
@@ -168,13 +204,37 @@ pub async fn complete_round_tx(
         if m.scoring_mode == "placement" {
             eliminated = elimination_candidates(&players, m.roster_size, round.round_index);
             for member in &eliminated {
-                sqlx::query("UPDATE multi_match_player SET status='eliminated',eliminated_round=$3 WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(member).bind(round.round_index).execute(&mut *conn).await?;
+                sqlx::query!(
+                    r#"
+                    UPDATE multi_match_player SET status='eliminated', eliminated_round=$3 WHERE match_id=$1 AND
+                    member_id=$2 AND status='active'
+                    "#,
+                    &m.id,
+                    member,
+                    round.round_index,
+                ).execute(&mut *conn).await?;
             }
         }
     } else if let Some(id) = winner.as_ref() {
-        sqlx::query("UPDATE multi_match_player SET wins=wins+1,score=score+1,best_round_score=GREATEST(best_round_score,1) WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(id).execute(&mut *conn).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_match_player SET wins=wins+1, score=score+1, best_round_score=GREATEST(best_round_score,
+            1) WHERE match_id=$1 AND member_id=$2 AND status='active'
+            "#,
+            &m.id,
+            id,
+        ).execute(&mut *conn).await?;
     }
-    sqlx::query("UPDATE multi_round SET status='ended',ended_at=$3,winner_member_id=$2,winner_slot=(SELECT seat FROM multi_match_player WHERE match_id=$4 AND member_id=$2) WHERE id=$1").bind(&round.id).bind(&winner).bind(now).bind(&m.id).execute(&mut *conn).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_round SET status='ended', ended_at=$3, winner_member_id=$2, winner_slot=(SELECT seat
+        FROM multi_match_player WHERE match_id=$4 AND member_id=$2) WHERE id=$1
+        "#,
+        &round.id,
+        winner.as_deref(),
+        now,
+        &m.id,
+    ).execute(&mut *conn).await?;
     let players = store::match_players(conn, &m.id).await?;
     let score1 = players
         .iter()
@@ -186,12 +246,16 @@ pub async fn complete_round_tx(
         .find(|p| p.seat == 2)
         .map(|p| p.score)
         .unwrap_or(0);
-    sqlx::query("UPDATE multi_match SET score_slot1=$2,score_slot2=$3 WHERE id=$1")
-        .bind(&m.id)
-        .bind(score1)
-        .bind(score2)
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_match SET score_slot1=$2, score_slot2=$3 WHERE id=$1
+        "#,
+        &m.id,
+        score1,
+        score2,
+    )
+    .execute(&mut *conn)
+    .await?;
     let mut payload = json!({"roundId":round.id,"matchIndex":m.match_index,"roundIndex":round.round_index,"answerId":round.answer_id,"memberScores":projection::scores(&players),"scores":{"slot1":0,"slot2":0},"nextStartsAt":now+state.config.multi.intermission});
     if let Some(id) = &winner {
         payload["winnerMemberId"] = json!(id);
@@ -234,20 +298,26 @@ async fn end_match_tx(
     } else {
         requested_winner.map(str::to_owned)
     };
-    sqlx::query(
-        "UPDATE multi_match SET status='finished',ended_at=$2,winner_member_id=$3 WHERE id=$1",
+    sqlx::query!(
+        r#"
+        UPDATE multi_match SET status='finished', ended_at=$2, winner_member_id=$3 WHERE id=$1
+        "#,
+        &m.id,
+        now,
+        winner.as_deref(),
     )
-    .bind(&m.id)
-    .bind(now)
-    .bind(&winner)
     .execute(&mut *conn)
     .await?;
     let end = now + state.config.multi.finished_retention;
-    sqlx::query("UPDATE multi_room SET status='finished',expires_at=$2 WHERE id=$1")
-        .bind(&room.id)
-        .bind(end)
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_room SET status='finished', expires_at=$2 WHERE id=$1
+        "#,
+        &room.id,
+        end,
+    )
+    .execute(&mut *conn)
+    .await?;
     let mut p = json!({"matchIndex":m.match_index,"memberScores":projection::scores(&players),"scores":{"slot1":0,"slot2":0},"reason":reason,"retentionEndsAt":end});
     if let Some(winner) = winner {
         p["winnerMemberId"] = json!(winner);
@@ -274,9 +344,27 @@ async fn end_round_without_score(
         return Ok(());
     }
     if m.scoring_mode != "wins" {
-        sqlx::query("UPDATE multi_round_player SET status='timed_out',completed_at=$2 WHERE round_id=$1 AND status='active'").bind(&round.id).bind(now).execute(&mut *conn).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_round_player SET status='timed_out', completed_at=$2 WHERE round_id=$1 AND
+            status='active'
+            "#,
+            &round.id,
+            now,
+        )
+        .execute(&mut *conn)
+        .await?;
     }
-    sqlx::query("UPDATE multi_round SET status='ended',ended_at=$2,winner_member_id=$3,winner_slot=(SELECT seat FROM multi_match_player WHERE match_id=$4 AND member_id=$3) WHERE id=$1").bind(&round.id).bind(now).bind(winner).bind(&m.id).execute(&mut *conn).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_round SET status='ended', ended_at=$2, winner_member_id=$3, winner_slot=(SELECT seat
+        FROM multi_match_player WHERE match_id=$4 AND member_id=$3) WHERE id=$1
+        "#,
+        &round.id,
+        now,
+        winner,
+        &m.id,
+    ).execute(&mut *conn).await?;
     let players = store::match_players(conn, &m.id).await?;
     let mut p = json!({"roundId":round.id,"matchIndex":m.match_index,"roundIndex":round.round_index,"answerId":round.answer_id,"memberScores":projection::scores(&players),"scores":{"slot1":0,"slot2":0},"nextStartsAt":now+state.config.multi.intermission});
     if let Some(w) = winner {
@@ -318,7 +406,14 @@ pub(super) async fn settle_roster(
         None
     };
     if !end {
-        let counts:Vec<i64>=sqlx::query_scalar("SELECT count(g.id) FROM multi_round_player p LEFT JOIN multi_guess g ON g.round_id=p.round_id AND g.member_id=p.member_id WHERE p.round_id=$1 AND p.status='active' GROUP BY p.member_id").bind(&round.id).fetch_all(&mut *conn).await?;
+        let counts: Vec<i64> = sqlx::query_scalar!(
+            r#"
+            SELECT count(g.id) AS "value!" FROM multi_round_player p LEFT JOIN multi_guess g ON
+            g.round_id=p.round_id AND g.member_id=p.member_id WHERE p.round_id=$1 AND p.status='active' GROUP BY
+            p.member_id
+            "#,
+            &round.id,
+        ).fetch_all(&mut *conn).await?;
         end = !counts.is_empty()
             && counts.len() == active.len()
             && counts
@@ -375,27 +470,48 @@ pub async fn forfeit_members_tx(
         if reason == "disconnect" {
             // The sweeper's candidate list predates these locks. A reconnect
             // that committed first must retain its place in the frozen roster.
-            let current: Member =
-                sqlx::query_as("SELECT * FROM multi_member WHERE id=$1 FOR UPDATE")
-                    .bind(&member.id)
-                    .fetch_one(&mut *conn)
-                    .await?;
+            let current: Member = sqlx::query_as!(
+                Member,
+                r#"
+                SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,
+                joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id=$1 FOR UPDATE
+                "#,
+                &member.id,
+            ).fetch_one(&mut *conn).await?;
             if current.status != "disconnected" || current.grace_until.is_none_or(|end| end > now) {
                 continue;
             }
         }
-        let affected=sqlx::query("UPDATE multi_match_player SET status='left' WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(&member.id).execute(&mut *conn).await?.rows_affected();
+        let affected = sqlx::query!(
+            r#"
+            UPDATE multi_match_player SET status='left' WHERE match_id=$1 AND member_id=$2 AND status='active'
+            "#,
+            &m.id,
+            &member.id,
+        ).execute(&mut *conn).await?.rows_affected();
         if affected == 0 {
             continue;
         }
         changed.push(member);
         if let Some(r) = round.as_ref().filter(|r| r.status != "ended") {
-            sqlx::query("UPDATE multi_round_player SET status='forfeited',finish_rank=NULL,points_awarded=0,completed_at=$3 WHERE round_id=$1 AND member_id=$2 AND status IN ('active','correct')").bind(&r.id).bind(&member.id).bind(now).execute(&mut *conn).await?;
+            sqlx::query!(
+                r#"
+                UPDATE multi_round_player SET status='forfeited', finish_rank=NULL, points_awarded=0, completed_at=$3
+                WHERE round_id=$1 AND member_id=$2 AND status IN ('active', 'correct')
+                "#,
+                &r.id,
+                &member.id,
+                now,
+            ).execute(&mut *conn).await?;
         }
-        sqlx::query("UPDATE multi_member SET status='left',grace_until=NULL WHERE id=$1")
-            .bind(&member.id)
-            .execute(&mut *conn)
-            .await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_member SET status='left', grace_until=NULL WHERE id=$1
+            "#,
+            &member.id,
+        )
+        .execute(&mut *conn)
+        .await?;
     }
     if changed.is_empty() {
         return Ok(effect);
@@ -502,10 +618,12 @@ pub async fn sweep_room(state: &AppState, room_id: &str) -> Result<RoomEffect, A
     }
     match round.status.as_str() {
         "countdown" if now >= round.starts_at => {
-            sqlx::query(
-                "UPDATE multi_round SET status='playing' WHERE id=$1 AND status='countdown'",
+            sqlx::query!(
+                r#"
+                UPDATE multi_round SET status='playing' WHERE id=$1 AND status='countdown'
+                "#,
+                &round.id,
             )
-            .bind(&round.id)
             .execute(&mut *tx)
             .await?;
             events::append_event(

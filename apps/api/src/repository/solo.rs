@@ -32,14 +32,26 @@ pub async fn load_session(
     id: &str,
     lock: bool,
 ) -> Result<Option<StoredSession>, ApiError> {
-    Ok(sqlx::query_as(if lock {
-        "SELECT * FROM game_session WHERE id=$1 FOR UPDATE"
+    Ok(if lock {
+        sqlx::query_as!(
+            StoredSession,
+            r#"
+            SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses,
+            version, started_at, ended_at, question_scope, answer_match_policy FROM game_session WHERE id=$1 FOR
+            UPDATE
+            "#,
+            id,
+        ).fetch_optional(connection).await?
     } else {
-        "SELECT * FROM game_session WHERE id=$1"
+        sqlx::query_as!(
+            StoredSession,
+            r#"
+            SELECT id, mode, content_type, answer_id, catalog_version, puzzle_key, status, max_guesses, guesses,
+            version, started_at, ended_at, question_scope, answer_match_policy FROM game_session WHERE id=$1
+            "#,
+            id,
+        ).fetch_optional(connection).await?
     })
-    .bind(id)
-    .fetch_optional(connection)
-    .await?)
 }
 
 pub async fn read_record(
@@ -48,5 +60,13 @@ pub async fn read_record(
     now: DateTime<Utc>,
 ) -> Result<ResolveRecord, ApiError> {
     // PostgreSQL infinity stays in SQL; chrono never attempts to decode it.
-    Ok(sqlx::query_as("SELECT request_fingerprint,session_id,resolution,superseded_session_id,(expires_at <= $2) AS expired FROM puzzle_resolve_idempotency WHERE idempotency_key=$1 FOR UPDATE").bind(key).bind(now).fetch_one(connection).await?)
+    Ok(sqlx::query_as!(
+        ResolveRecord,
+        r#"
+        SELECT request_fingerprint, session_id, resolution, superseded_session_id, (expires_at <= $2) AS
+        "expired!" FROM puzzle_resolve_idempotency WHERE idempotency_key=$1 FOR UPDATE
+        "#,
+        key,
+        now,
+    ).fetch_one(connection).await?)
 }

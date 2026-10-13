@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT s.characters FROM catalog_state c JOIN catalog_snapshot s ON s.version = c.current_version\n            WHERE c.id = 'current'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "characters",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "catalog_snapshot",
+            "name": "characters"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "26e40a07adff13944bbe5c8256ddd8e8610c74c0d22c289e7bd88ca9cfbd35b2"
+}

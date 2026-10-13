@@ -69,18 +69,27 @@ pub struct StoredSettlement {
     pub eliminated_stage: Option<i32>,
 }
 pub async fn stages(c: &mut PgConnection, match_id: &str) -> Result<Vec<Stage>, ApiError> {
-    Ok(
-        sqlx::query_as("SELECT * FROM multi_relay_stage WHERE match_id=$1 ORDER BY stage_index")
-            .bind(match_id)
-            .fetch_all(c)
-            .await?,
+    Ok(sqlx::query_as!(
+        Stage,
+        r#"
+        SELECT id, match_id, stage_index, status, planned_encounter_count, starts_at, settled_at,
+        settlement_marker FROM multi_relay_stage WHERE match_id=$1 ORDER BY stage_index
+        "#,
+        match_id,
     )
+    .fetch_all(c)
+    .await?)
 }
 pub async fn encounters(c: &mut PgConnection, stage_id: &str) -> Result<Vec<Encounter>, ApiError> {
-    Ok(sqlx::query_as(
-        "SELECT * FROM multi_relay_encounter WHERE stage_id=$1 ORDER BY encounter_index",
+    Ok(sqlx::query_as!(
+        Encounter,
+        r#"
+        SELECT id, match_id, stage_id, encounter_index, status, answer_id, starts_at, deadline,
+        turn_member_id, turn_deadline, winner_member_id, outcome, ended_at, ended_by_member_id,
+        end_idempotency_key FROM multi_relay_encounter WHERE stage_id=$1 ORDER BY encounter_index
+        "#,
+        stage_id,
     )
-    .bind(stage_id)
     .fetch_all(c)
     .await?)
 }
@@ -88,7 +97,13 @@ pub async fn assignments(
     c: &mut PgConnection,
     encounter_id: &str,
 ) -> Result<Vec<Assignment>, ApiError> {
-    let rows=sqlx::query_as("SELECT member_id,seat,side FROM multi_relay_encounter_member WHERE encounter_id=$1 ORDER BY side").bind(encounter_id).fetch_all(c).await?;
+    let rows = sqlx::query_as!(
+        Assignment,
+        r#"
+        SELECT member_id, seat, side FROM multi_relay_encounter_member WHERE encounter_id=$1 ORDER BY side
+        "#,
+        encounter_id,
+    ).fetch_all(c).await?;
     if rows.len() != 2 {
         return Err(ApiError::invariant(
             "relay encounter assignment count mismatch",
@@ -97,20 +112,27 @@ pub async fn assignments(
     Ok(rows)
 }
 pub async fn turns(c: &mut PgConnection, encounter_id: &str) -> Result<Vec<StoredTurn>, ApiError> {
-    Ok(
-        sqlx::query_as("SELECT * FROM multi_relay_turn WHERE encounter_id=$1 ORDER BY turn_index")
-            .bind(encounter_id)
-            .fetch_all(c)
-            .await?,
+    Ok(sqlx::query_as!(
+        StoredTurn,
+        r#"
+        SELECT id, member_id, turn_index, kind, guess_id, statuses, is_correct, idempotency_key FROM
+        multi_relay_turn WHERE encounter_id=$1 ORDER BY turn_index
+        "#,
+        encounter_id,
     )
+    .fetch_all(c)
+    .await?)
 }
 pub async fn bye(c: &mut PgConnection, stage_id: &str) -> Result<Option<Player>, ApiError> {
-    Ok(
-        sqlx::query_as("SELECT member_id,seat FROM multi_relay_stage_bye WHERE stage_id=$1")
-            .bind(stage_id)
-            .fetch_optional(c)
-            .await?,
+    Ok(sqlx::query_as!(
+        Player,
+        r#"
+        SELECT member_id, seat FROM multi_relay_stage_bye WHERE stage_id=$1
+        "#,
+        stage_id,
     )
+    .fetch_optional(c)
+    .await?)
 }
 pub async fn standings(c: &mut PgConnection, match_id: &str) -> Result<Vec<Standing>, ApiError> {
     #[derive(FromRow)]
@@ -122,7 +144,17 @@ pub async fn standings(c: &mut PgConnection, match_id: &str) -> Result<Vec<Stand
         status: String,
         eliminated_stage: Option<i32>,
     }
-    let rows:Vec<Row>=sqlx::query_as("SELECT p.member_id,p.seat,s.score,s.life_state,p.status,s.eliminated_stage FROM multi_match_player p JOIN multi_relay_match_player_state s ON s.match_id=p.match_id AND s.member_id=p.member_id WHERE p.match_id=$1 ORDER BY p.seat,p.member_id").bind(match_id).fetch_all(c).await?;
+    let rows: Vec<Row> = sqlx::query_as!(
+        Row,
+        r#"
+        SELECT p.member_id, p.seat, s.score, s.life_state, p.status, s.eliminated_stage FROM
+        multi_match_player p JOIN multi_relay_match_player_state s ON s.match_id=p.match_id AND
+        s.member_id=p.member_id WHERE p.match_id=$1 ORDER BY p.seat, p.member_id
+        "#,
+        match_id,
+    )
+    .fetch_all(c)
+    .await?;
     Ok(rows
         .into_iter()
         .map(|r| Standing {

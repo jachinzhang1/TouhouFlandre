@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_round_player SET status='correct', finish_rank=$3, completed_at=$4 WHERE round_id=$1 AND\n            member_id=$2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79f9146958c97c72b2ab22db81989ee2254ab294c0c6320e89fa178ec550db7a"
+}

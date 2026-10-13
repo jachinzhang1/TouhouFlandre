@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,\n        joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE\n        status='disconnected' AND grace_until<=$1 ORDER BY room_id, id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "room_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "room_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seat",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "seat"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "token_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "token_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "ready",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "ready"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "rematch_ready",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "rematch_ready"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "grace_until",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "grace_until"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "joined_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "joined_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "role",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "role"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "chat_rate_tokens",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "chat_rate_tokens"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "chat_rate_refilled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_member",
+            "name": "chat_rate_refilled_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "88c8dfe0219cf567fc48430e0e1ab779208e591d88ae58cca37d12ec63acf7d4"
+}

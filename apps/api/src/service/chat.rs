@@ -114,8 +114,14 @@ pub async fn send(
     let room = store::room(&mut tx, &room_id, true).await?;
     let now = (state.clock)();
     validate_room(&room, now)?;
-    let current: Member = sqlx::query_as("SELECT * FROM multi_member WHERE id=$1 FOR UPDATE")
-        .bind(&member.id)
+    let current: Member = sqlx::query_as!(
+        Member,
+        r#"
+        SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,
+        joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id=$1 FOR UPDATE
+        "#,
+        &member.id,
+    )
         .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(unauthorized)?;
@@ -126,10 +132,24 @@ pub async fn send(
         return Err(forbidden());
     }
     let channel = rules::channel(&current.role).ok_or_else(forbidden)?;
-    if let Some(existing) = sqlx::query_as::<_,Message>("SELECT * FROM multi_chat_message WHERE room_id=$1 AND sender_member_id=$2 AND client_message_id=$3")
-        .bind(&room_id).bind(&current.id).bind(client_id).fetch_optional(&mut *tx).await? {
-        if existing.kind != input.kind || existing.content != content { return Err(multi::conflict("CHAT_IDEMPOTENCY_CONFLICT","该幂等键已用于另一条消息。")); }
-        return Ok(ChatOutcome::Data(project(&existing,&room,&codec(&state))));
+    if let Some(existing) = sqlx::query_as!(
+        Message,
+        r#"
+        SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat,
+        client_message_id, kind, content, channel, created_at FROM multi_chat_message WHERE room_id=$1 AND
+        sender_member_id=$2 AND client_message_id=$3
+        "#,
+        &room_id,
+        &current.id,
+        client_id,
+    ).fetch_optional(&mut *tx).await? {
+        if existing.kind != input.kind || existing.content != content {
+            return Err(multi::conflict(
+                "CHAT_IDEMPOTENCY_CONFLICT",
+                "该幂等键已用于另一条消息。",
+            ));
+        }
+        return Ok(ChatOutcome::Data(project(&existing, &room, &codec(&state))));
     }
     let config = &state.config.multi;
     let member_tokens = rules::refill(
@@ -151,16 +171,46 @@ pub async fn send(
     if wait > 0 {
         return Ok(ChatOutcome::RateLimited(wait));
     }
-    let position: i64 = sqlx::query_scalar("UPDATE multi_room SET chat_seq=chat_seq+1,chat_rate_tokens=$2,chat_rate_refilled_at=$3 WHERE id=$1 RETURNING chat_seq")
-        .bind(&room_id).bind(room_tokens-1.0).bind(now).fetch_one(&mut *tx).await?;
-    sqlx::query("UPDATE multi_member SET chat_rate_tokens=$2,chat_rate_refilled_at=$3 WHERE id=$1")
-        .bind(&current.id)
-        .bind(member_tokens - 1.0)
-        .bind(now)
-        .execute(&mut *tx)
-        .await?;
-    let message: Message = sqlx::query_as("INSERT INTO multi_chat_message(id,room_id,position,sender_member_id,sender_display_name,sender_role,sender_seat,client_message_id,kind,content,channel,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *")
-        .bind(multi::new_id()).bind(&room_id).bind(position).bind(&current.id).bind(&current.display_name).bind(&current.role).bind(current.seat).bind(client_id).bind(input.kind).bind(content).bind(channel).bind(now).fetch_one(&mut *tx).await?;
+    let position: i64 = sqlx::query_scalar!(
+        r#"
+        UPDATE multi_room SET chat_seq=chat_seq+1, chat_rate_tokens=$2, chat_rate_refilled_at=$3 WHERE id=$1
+        RETURNING chat_seq
+        "#,
+        &room_id,
+        room_tokens-1.0,
+        now,
+    ).fetch_one(&mut *tx).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_member SET chat_rate_tokens=$2, chat_rate_refilled_at=$3 WHERE id=$1
+        "#,
+        &current.id,
+        member_tokens - 1.0,
+        now,
+    )
+    .execute(&mut *tx)
+    .await?;
+    let message: Message = sqlx::query_as!(
+        Message,
+        r#"
+        INSERT INTO multi_chat_message(id, room_id, position, sender_member_id, sender_display_name,
+        sender_role, sender_seat, client_message_id, kind, content, channel, created_at) VALUES ($1, $2, $3,
+        $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, room_id, position, sender_member_id,
+        sender_display_name, sender_role, sender_seat, client_message_id, kind, content, channel, created_at
+        "#,
+        multi::new_id(),
+        &room_id,
+        position,
+        &current.id,
+        &current.display_name,
+        &current.role,
+        current.seat,
+        client_id,
+        input.kind,
+        content,
+        channel,
+        now,
+    ).fetch_one(&mut *tx).await?;
     tx.commit().await?;
     state.realtime.notify_chat(&room_id);
     Ok(ChatOutcome::Data(project(&message, &room, &codec(&state))))
@@ -251,8 +301,17 @@ pub async fn list(
         } else {
             room.chat_seq.saturating_add(1)
         };
-        let rows: Vec<Message> = sqlx::query_as("SELECT * FROM multi_chat_message WHERE room_id=$1 AND position<$2 AND created_at>=$3 ORDER BY position DESC LIMIT 200")
-            .bind(&room_id).bind(position).bind(cutoff).fetch_all(&state.pool).await?;
+        let rows: Vec<Message> = sqlx::query_as!(
+            Message,
+            r#"
+            SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat,
+            client_message_id, kind, content, channel, created_at FROM multi_chat_message WHERE room_id=$1 AND
+            position<$2 AND created_at>=$3 ORDER BY position DESC LIMIT 200
+            "#,
+            &room_id,
+            position,
+            cutoff,
+        ).fetch_all(&state.pool).await?;
         let mut messages = Vec::new();
         let mut scanned = 0;
         for row in rows {
@@ -300,24 +359,54 @@ pub async fn append_system(
     if room_id.is_empty() || trigger.is_empty() || content.is_empty() {
         return Err(ApiError::invariant("invalid system chat announcement"));
     }
-    sqlx::query("SELECT id FROM multi_room WHERE id=$1 FOR UPDATE")
-        .bind(room_id)
-        .fetch_one(&mut *conn)
-        .await?;
-    let namespace = Uuid::from_u128(0x9a6c2eaff56a50a4a82cc5bc77fb8f4f);
-    let id = Uuid::new_v5(&namespace, format!("{room_id}\0{trigger}").as_bytes());
-    if let Some(existing)=sqlx::query_as::<_,Message>("SELECT * FROM multi_chat_message WHERE room_id=$1 AND sender_member_id='system' AND client_message_id=$2").bind(room_id).bind(id).fetch_optional(&mut *conn).await? {
-        if existing.content!=content || existing.sender_role!="system" { return Err(ApiError::invariant("system announcement idempotency mismatch")); }
-        return Ok(false);
-    }
-    let position: i64 = sqlx::query_scalar(
-        "UPDATE multi_room SET chat_seq=chat_seq+1 WHERE id=$1 RETURNING chat_seq",
+    sqlx::query!(
+        r#"
+        SELECT id FROM multi_room WHERE id=$1 FOR UPDATE
+        "#,
+        room_id,
     )
-    .bind(room_id)
     .fetch_one(&mut *conn)
     .await?;
-    sqlx::query("INSERT INTO multi_chat_message(id,room_id,position,sender_member_id,sender_display_name,sender_role,sender_seat,client_message_id,kind,content,channel,created_at) VALUES ($1,$2,$3,'system','系统','system',NULL,$4,'text',$5,'room',$6)")
-        .bind(multi::new_id()).bind(room_id).bind(position).bind(id).bind(content).bind(now).execute(conn).await?;
+    let namespace = Uuid::from_u128(0x9a6c2eaff56a50a4a82cc5bc77fb8f4f);
+    let id = Uuid::new_v5(&namespace, format!("{room_id}\0{trigger}").as_bytes());
+    if let Some(existing) = sqlx::query_as!(
+        Message,
+        r#"
+        SELECT id, room_id, position, sender_member_id, sender_display_name, sender_role, sender_seat,
+        client_message_id, kind, content, channel, created_at FROM multi_chat_message WHERE room_id=$1 AND
+        sender_member_id='system' AND client_message_id=$2
+        "#,
+        room_id,
+        id,
+    ).fetch_optional(&mut *conn).await? {
+        if existing.content != content || existing.sender_role != "system" {
+            return Err(ApiError::invariant(
+                "system announcement idempotency mismatch",
+            ));
+        }
+        return Ok(false);
+    }
+    let position: i64 = sqlx::query_scalar!(
+        r#"
+        UPDATE multi_room SET chat_seq=chat_seq+1 WHERE id=$1 RETURNING chat_seq
+        "#,
+        room_id,
+    )
+    .fetch_one(&mut *conn)
+    .await?;
+    sqlx::query!(
+        r#"
+        INSERT INTO multi_chat_message(id, room_id, position, sender_member_id, sender_display_name,
+        sender_role, sender_seat, client_message_id, kind, content, channel, created_at) VALUES ($1, $2, $3,
+        'system', '系统', 'system', NULL, $4, 'text', $5, 'room', $6)
+        "#,
+        multi::new_id(),
+        room_id,
+        position,
+        id,
+        content,
+        now,
+    ).execute(conn).await?;
     Ok(true)
 }
 

@@ -11,7 +11,7 @@ pub struct Room {
     pub status: String,
     pub event_seq: i64,
     pub created_at: DateTime<Utc>,
-    /// None is PostgreSQL infinity, projected by store::ROOM_COLUMNS.
+    /// None is PostgreSQL infinity, projected by repository room queries.
     pub expires_at: Option<DateTime<Utc>>,
     pub mode: String,
     pub turn_seconds: i32,

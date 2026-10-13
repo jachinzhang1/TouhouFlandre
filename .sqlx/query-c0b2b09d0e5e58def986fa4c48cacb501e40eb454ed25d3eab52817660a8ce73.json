@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT to_jsonb(c) AS \"data!\" FROM character c WHERE enabled_as_guess ORDER BY name_sort_key, id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "data!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c0b2b09d0e5e58def986fa4c48cacb501e40eb454ed25d3eab52817660a8ce73"
+}

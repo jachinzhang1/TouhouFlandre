@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT count(g.id) AS \"value!\" FROM multi_round_player p LEFT JOIN multi_guess g ON\n            g.round_id=p.round_id AND g.member_id=p.member_id WHERE p.round_id=$1 AND p.status='active' GROUP BY\n            p.member_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "bec20b172e0fd950dfce5f17f7d07531510f84fed8fdb3409907113f5c20b358"
+}

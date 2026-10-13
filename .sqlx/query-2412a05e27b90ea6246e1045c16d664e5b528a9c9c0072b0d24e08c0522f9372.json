@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE puzzle_resolve_idempotency SET session_id=$2, resolution=$3, superseded_session_id=$4 WHERE\n            idempotency_key=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2412a05e27b90ea6246e1045c16d664e5b528a9c9c0072b0d24e08c0522f9372"
+}

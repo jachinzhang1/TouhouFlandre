@@ -76,11 +76,15 @@ pub async fn start_match_tx(
     );
     let scope = correction.config;
     if correction.changed {
-        sqlx::query("UPDATE multi_room SET question_scope=$2 WHERE id=$1")
-            .bind(&room.id)
-            .bind(json!(scope))
-            .execute(&mut *conn)
-            .await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_room SET question_scope=$2 WHERE id=$1
+            "#,
+            &room.id,
+            json!(scope),
+        )
+        .execute(&mut *conn)
+        .await?;
     }
     let members = store::members(conn, &room.id).await?;
     let relay_elimination = if room.mode == "relay" {
@@ -118,14 +122,46 @@ pub async fn start_match_tx(
         )
     };
     let config = json!({"mode":room.mode,"format":room.format,"turnSeconds":room.turn_seconds,"rosterSize":members.len(),"targetWins":target,"maxRounds":max,"questionScope":scope,"raceEliminationEnabled":room.race_elimination_enabled,"relayEliminationEnabled":relay_elimination,"answerMatchPolicy":state.config.answer_match_policy});
-    let m:Match=sqlx::query_as("INSERT INTO multi_match(id,room_id,match_index,catalog_version,target_wins,status,started_at,question_scope,scoring_mode,roster_size,max_rounds,rule_set_key,rule_set_version,rule_config_snapshot,answer_match_policy) SELECT $1,$2,COALESCE(MAX(match_index),-1)+1,$3,$4,'playing',$5,$6,$7,$8,$9,$10,$11,$12,$13 FROM multi_match WHERE room_id=$2 RETURNING *").bind(new_id()).bind(&room.id).bind(&version).bind(target).bind(now).bind(json!(scope)).bind(scoring).bind(members.len()as i32).bind(max).bind(key).bind(version_rule).bind(config).bind(&state.config.answer_match_policy).fetch_one(&mut *conn).await?;
+    let m: Match = sqlx::query_as!(
+        Match,
+        r#"
+        INSERT INTO multi_match(id, room_id, match_index, catalog_version, target_wins, status, started_at,
+        question_scope, scoring_mode, roster_size, max_rounds, rule_set_key, rule_set_version,
+        rule_config_snapshot, answer_match_policy) SELECT $1, $2, COALESCE(MAX(match_index), -1)+1, $3, $4,
+        'playing', $5, $6, $7, $8, $9, $10, $11, $12, $13 FROM multi_match WHERE room_id=$2 RETURNING id,
+        room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count, status,
+        started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size, max_rounds,
+        rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy
+        "#,
+        new_id(),
+        &room.id,
+        &version,
+        target,
+        now,
+        json!(scope),
+        scoring,
+        members.len()as i32,
+        max,
+        key,
+        version_rule,
+        config,
+        &state.config.answer_match_policy,
+    ).fetch_one(&mut *conn).await?;
     let mut payload = json!({"format":room.format,"mode":room.mode,"turnSeconds":room.turn_seconds,"targetWins":target,"catalogVersion":version,"matchIndex":m.match_index,"questionScope":scope,"activeFields":fields_for_match(&m),"scoringMode":scoring,"ruleSetRef":{"mode":room.mode,"key":key,"version":version_rule},"rosterSize":members.len(),"maxRounds":max});
     if room.mode == "relay" && key == "fixed_points" {
         payload["plannedStages"] = json!(max);
     }
     events::append_event(conn, &room.id, "match.started", payload, now).await?;
     for member in &members {
-        sqlx::query("INSERT INTO multi_match_player(match_id,member_id,seat,wins,status,score,best_round_score) VALUES($1,$2,$3,0,'active',0,0)").bind(&m.id).bind(&member.id).bind(member.seat()).execute(&mut *conn).await?;
+        sqlx::query!(
+            r#"
+            INSERT INTO multi_match_player(match_id, member_id, seat, wins, status, score, best_round_score)
+            VALUES($1, $2, $3, 0, 'active', 0, 0)
+            "#,
+            &m.id,
+            &member.id,
+            member.seat(),
+        ).execute(&mut *conn).await?;
     }
     if room.mode == "relay" {
         relay::start_match_tx(state, conn, room, &m, &members, &characters, now).await?;
@@ -141,10 +177,14 @@ pub async fn start_match_tx(
         )
         .await?;
     }
-    sqlx::query("UPDATE multi_room SET status='playing' WHERE id=$1")
-        .bind(&room.id)
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_room SET status='playing' WHERE id=$1
+        "#,
+        &room.id,
+    )
+    .execute(&mut *conn)
+    .await?;
     Ok(m)
 }
 pub async fn create_round_tx(
@@ -159,10 +199,12 @@ pub async fn create_round_tx(
     let chars = catalog::characters_for_version(conn, &m.catalog_version).await?;
     let runtime =
         build_catalog_runtime(&m.catalog_version, m.answer_match_policy.parse()?, &chars)?;
-    let used: Vec<String> = sqlx::query_scalar(
-        "SELECT answer_id FROM multi_round WHERE match_id=$1 ORDER BY round_index",
+    let used: Vec<String> = sqlx::query_scalar!(
+        r#"
+        SELECT answer_id FROM multi_round WHERE match_id=$1 ORDER BY round_index
+        "#,
+        &m.id,
     )
-    .bind(&m.id)
     .fetch_all(&mut *conn)
     .await?;
     let pool = scope_for_match(m)
@@ -207,12 +249,37 @@ pub async fn create_round_tx(
     } else {
         state.config.multi.round_seconds
     };
-    let round:Round=sqlx::query_as("WITH incremented AS (UPDATE multi_match SET round_count=round_count+1 WHERE id=$1 AND round_count<$2 RETURNING id) INSERT INTO multi_round(id,match_id,round_index,answer_id,status,starts_at,deadline) SELECT $3,id,$4,$5,'countdown',$6,$7 FROM incremented RETURNING *").bind(&m.id).bind(max).bind(new_id()).bind(index).bind(answer).bind(starts).bind(starts+duration).fetch_one(&mut *conn).await?;
-    sqlx::query("INSERT INTO multi_round_player(round_id,member_id,status) SELECT $1,member_id,'active' FROM multi_match_player WHERE match_id=$2 AND status='active'").bind(&round.id).bind(&m.id).execute(&mut *conn).await?;
-    let count: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM multi_match_player WHERE match_id=$1 AND status='active'",
+    let round: Round = sqlx::query_as!(
+        Round,
+        r#"
+        WITH incremented AS (UPDATE multi_match SET round_count=round_count+1 WHERE id=$1 AND round_count<$2
+        RETURNING id) INSERT INTO multi_round(id, match_id, round_index, answer_id, status, starts_at,
+        deadline) SELECT $3, id, $4, $5, 'countdown', $6, $7 FROM incremented RETURNING id, match_id,
+        round_index, answer_id, status, winner_slot, starts_at, deadline, ended_at, turn_slot, turn_deadline,
+        winner_member_id
+        "#,
+        &m.id,
+        max,
+        new_id(),
+        index,
+        answer,
+        starts,
+        starts+duration,
+    ).fetch_one(&mut *conn).await?;
+    sqlx::query!(
+        r#"
+        INSERT INTO multi_round_player(round_id, member_id, status) SELECT $1, member_id, 'active' FROM
+        multi_match_player WHERE match_id=$2 AND status='active'
+        "#,
+        &round.id,
+        &m.id,
+    ).execute(&mut *conn).await?;
+    let count: i64 = sqlx::query_scalar!(
+        r#"
+        SELECT count(*) AS "value!" FROM multi_match_player WHERE match_id=$1 AND status='active'
+        "#,
+        &m.id,
     )
-    .bind(&m.id)
     .fetch_one(&mut *conn)
     .await?;
     events::append_event(conn,&room.id,"round.started",json!({"matchIndex":m.match_index,"roundIndex":index,"startsAt":starts,"deadline":round.deadline,"maxGuesses":max_guesses_for_match(m),"activePlayerCount":count}),now).await?;
@@ -268,10 +335,14 @@ pub async fn rematch(state: AppState, id: String, authorization: &str) -> Result
         .unwrap()
         .rematch_ready;
     if !already {
-        sqlx::query("UPDATE multi_member SET rematch_ready=true WHERE id=$1")
-            .bind(&member.id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_member SET rematch_ready=true WHERE id=$1
+            "#,
+            &member.id,
+        )
+        .execute(&mut *tx)
+        .await?;
         events::append_event(
             &mut tx,
             &id,
@@ -288,10 +359,12 @@ pub async fn rematch(state: AppState, id: String, authorization: &str) -> Result
             .any(|m| m.id == p.member_id && m.status == "connected" && m.rematch_ready)
     }) {
         start_match_tx(&state, &mut tx, &room).await?;
-        sqlx::query(
-            "UPDATE multi_member SET rematch_ready=false WHERE room_id=$1 AND role='player'",
+        sqlx::query!(
+            r#"
+            UPDATE multi_member SET rematch_ready=false WHERE room_id=$1 AND role='player'
+            "#,
+            &id,
         )
-        .bind(&id)
         .execute(&mut *tx)
         .await?;
     }

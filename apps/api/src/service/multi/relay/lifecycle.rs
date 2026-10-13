@@ -49,7 +49,17 @@ pub async fn forfeit_members_tx(
     if !matches!(reason, "forfeit" | "disconnect") {
         return Err(super::domain::Error::Invalid.into());
     }
-    let mut encounters:Vec<Encounter>=sqlx::query_as("SELECT e.* FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND e.status<>'ended' ORDER BY e.id FOR UPDATE OF e").bind(&room.id).fetch_all(&mut *c).await?;
+    let mut encounters: Vec<Encounter> = sqlx::query_as!(
+        Encounter,
+        r#"
+        SELECT e.id, e.match_id, e.stage_id, e.encounter_index, e.status, e.answer_id, e.starts_at,
+        e.deadline, e.turn_member_id, e.turn_deadline, e.winner_member_id, e.outcome, e.ended_at,
+        e.ended_by_member_id, e.end_idempotency_key FROM multi_relay_encounter e JOIN multi_match m ON
+        m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND e.status<>'ended' ORDER BY e.id FOR
+        UPDATE OF e
+        "#,
+        &room.id,
+    ).fetch_all(&mut *c).await?;
     let _room_lock = store::room(c, &room.id, true).await?;
     let Some(m) = store::latest_match(c, &room.id, true)
         .await?
@@ -63,10 +73,14 @@ pub async fn forfeit_members_tx(
         if request.room_id != room.id {
             return Err(super::domain::Error::Invalid.into());
         }
-        let member: Member = sqlx::query_as("SELECT * FROM multi_member WHERE id=$1 FOR UPDATE")
-            .bind(&request.id)
-            .fetch_one(&mut *c)
-            .await?;
+        let member: Member = sqlx::query_as!(
+            Member,
+            r#"
+            SELECT id, room_id, seat, display_name, token_hash, status, ready, rematch_ready, grace_until,
+            joined_at, role, chat_rate_tokens, chat_rate_refilled_at FROM multi_member WHERE id=$1 FOR UPDATE
+            "#,
+            &request.id,
+        ).fetch_one(&mut *c).await?;
         if reason == "disconnect"
             && (member.status != "disconnected"
                 || member.grace_until.is_none_or(|deadline| deadline > now))
@@ -83,17 +97,44 @@ pub async fn forfeit_members_tx(
     let stages = storage::stages(c, &m.id).await?;
     let open: Vec<_> = stages.iter().filter(|s| s.status != "ended").collect();
     for member in &departed {
-        let affected=sqlx::query("UPDATE multi_match_player SET status='left' WHERE match_id=$1 AND member_id=$2 AND status='active'").bind(&m.id).bind(&member.id).execute(&mut *c).await?.rows_affected();
+        let affected = sqlx::query!(
+            r#"
+            UPDATE multi_match_player SET status='left' WHERE match_id=$1 AND member_id=$2 AND status='active'
+            "#,
+            &m.id,
+            &member.id,
+        ).execute(&mut *c).await?.rows_affected();
         if affected > 0 && rule == Rule::Elimination {
-            let stage_index:Option<i32>=sqlx::query_scalar("SELECT s.stage_index FROM multi_relay_stage s WHERE s.match_id=$1 AND s.status<>'ended' AND (EXISTS(SELECT 1 FROM multi_relay_encounter_member a WHERE a.stage_id=s.id AND a.member_id=$2) OR EXISTS(SELECT 1 FROM multi_relay_stage_bye b WHERE b.stage_id=s.id AND b.member_id=$2)) ORDER BY s.stage_index DESC LIMIT 1").bind(&m.id).bind(&member.id).fetch_optional(&mut *c).await?;
+            let stage_index: Option<i32> = sqlx::query_scalar!(
+                r#"
+                SELECT s.stage_index FROM multi_relay_stage s WHERE s.match_id=$1 AND s.status<>'ended' AND
+                (EXISTS(SELECT 1 FROM multi_relay_encounter_member a WHERE a.stage_id=s.id AND a.member_id=$2) OR
+                EXISTS(SELECT 1 FROM multi_relay_stage_bye b WHERE b.stage_id=s.id AND b.member_id=$2)) ORDER BY
+                s.stage_index DESC LIMIT 1
+                "#,
+                &m.id,
+                &member.id,
+            ).fetch_optional(&mut *c).await?;
             let stage_index = stage_index
                 .ok_or_else(|| ApiError::invariant("relay elimination stage missing"))?;
-            sqlx::query("UPDATE multi_relay_match_player_state SET eliminated_stage=COALESCE(eliminated_stage,$3) WHERE match_id=$1 AND member_id=$2").bind(&m.id).bind(&member.id).bind(stage_index).execute(&mut *c).await?;
+            sqlx::query!(
+                r#"
+                UPDATE multi_relay_match_player_state SET eliminated_stage=COALESCE(eliminated_stage, $3) WHERE
+                match_id=$1 AND member_id=$2
+                "#,
+                &m.id,
+                &member.id,
+                stage_index,
+            ).execute(&mut *c).await?;
         }
-        sqlx::query("UPDATE multi_member SET status='left',grace_until=NULL WHERE id=$1")
-            .bind(&member.id)
-            .execute(&mut *c)
-            .await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_member SET status='left', grace_until=NULL WHERE id=$1
+            "#,
+            &member.id,
+        )
+        .execute(&mut *c)
+        .await?;
         effect.forfeits.push(reason.to_owned());
     }
     effect.game = true;
@@ -151,13 +192,27 @@ pub async fn sweep(state: &AppState, limit: i64) -> Result<Vec<RoomEffect>, ApiE
     let now = (state.clock)();
     let limit = if limit <= 0 { 100 } else { limit };
     let mut effects: BTreeMap<String, RoomEffect> = BTreeMap::new();
-    let ids:Vec<String>=sqlx::query_scalar("SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id JOIN multi_room r ON r.id=m.room_id WHERE r.mode='relay' AND m.status='playing' AND ((e.status IN ('planned','countdown') AND e.starts_at<=$1) OR (e.status='playing' AND (e.deadline<=$1 OR e.turn_deadline<=$1))) ORDER BY e.starts_at,e.id LIMIT $2").bind(now).bind(limit).fetch_all(&state.pool).await?;
+    let ids: Vec<String> = sqlx::query_scalar!(
+        r#"
+        SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id JOIN multi_room r ON
+        r.id=m.room_id WHERE r.mode='relay' AND m.status='playing' AND ((e.status IN ('planned', 'countdown')
+        AND e.starts_at<=$1) OR (e.status='playing' AND (e.deadline<=$1 OR e.turn_deadline<=$1))) ORDER BY
+        e.starts_at, e.id LIMIT $2
+        "#,
+        now,
+        limit,
+    ).fetch_all(&state.pool).await?;
     for id in ids {
         let mut tx = state.pool.begin().await?;
-        let Some(mut e) = sqlx::query_as::<_, Encounter>(
-            "SELECT * FROM multi_relay_encounter WHERE id=$1 FOR UPDATE",
+        let Some(mut e) = sqlx::query_as!(
+            Encounter,
+            r#"
+            SELECT id, match_id, stage_id, encounter_index, status, answer_id, starts_at, deadline,
+            turn_member_id, turn_deadline, winner_member_id, outcome, ended_at, ended_by_member_id,
+            end_idempotency_key FROM multi_relay_encounter WHERE id=$1 FOR UPDATE
+            "#,
+            &id,
         )
-        .bind(&id)
         .fetch_optional(&mut *tx)
         .await?
         else {
@@ -201,7 +256,20 @@ pub async fn sweep(state: &AppState, limit: i64) -> Result<Vec<RoomEffect>, ApiE
                 .merge(&effect)
         }
     }
-    let candidates:Vec<(String,String,String,i32)>=sqlx::query_as("SELECT s.id,m.room_id,m.rule_set_key,m.rule_set_version FROM multi_relay_stage s JOIN multi_match m ON m.id=s.match_id JOIN multi_room r ON r.id=m.room_id WHERE r.mode='relay' AND m.status='playing' AND s.settlement_marker IS NULL AND NOT EXISTS(SELECT 1 FROM multi_relay_encounter e WHERE e.stage_id=s.id AND e.status<>'ended') ORDER BY s.starts_at LIMIT $1").bind(limit).fetch_all(&state.pool).await?;
+    let candidates: Vec<(String, String, String, i32)> = sqlx::query!(
+        r#"
+        SELECT s.id, m.room_id, m.rule_set_key, m.rule_set_version FROM multi_relay_stage s JOIN multi_match
+        m ON m.id=s.match_id JOIN multi_room r ON r.id=m.room_id WHERE r.mode='relay' AND m.status='playing'
+        AND s.settlement_marker IS NULL AND NOT EXISTS(SELECT 1 FROM multi_relay_encounter e WHERE
+        e.stage_id=s.id AND e.status<>'ended') ORDER BY s.starts_at LIMIT $1
+        "#,
+        limit,
+    )
+        .fetch_all(&state.pool)
+        .await?
+        .into_iter()
+        .map(|row| (row.id, row.room_id, row.rule_set_key, row.rule_set_version))
+        .collect();
     for (stage, room, key, version) in candidates {
         crate::metrics::METRICS.increment(
             "settlement_retries_total",
@@ -223,7 +291,14 @@ pub async fn sweep(state: &AppState, limit: i64) -> Result<Vec<RoomEffect>, ApiE
 /// Startup/shutdown terminates old active games with the same terminal reason;
 /// ordinary ticks use `sweep`, which can safely retry an interrupted barrier.
 pub async fn terminate_active(state: &AppState) -> Result<Vec<RoomEffect>, ApiError> {
-    let rooms:Vec<String>=sqlx::query_scalar("SELECT DISTINCT m.room_id FROM multi_match m JOIN multi_room r ON r.id=m.room_id WHERE m.status='playing' AND r.mode='relay' ORDER BY m.room_id").fetch_all(&state.pool).await?;
+    let rooms: Vec<String> = sqlx::query_scalar!(
+        r#"
+        SELECT DISTINCT m.room_id FROM multi_match m JOIN multi_room r ON r.id=m.room_id WHERE
+        m.status='playing' AND r.mode='relay' ORDER BY m.room_id
+        "#,
+    )
+    .fetch_all(&state.pool)
+    .await?;
     let mut effects = Vec::new();
     for room in rooms {
         let mut tx = state.pool.begin().await?;
@@ -251,7 +326,13 @@ pub async fn terminate_room_tx(
         chat: false,
         ..Default::default()
     };
-    let _:Vec<String>=sqlx::query_scalar("SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND m.status='playing' AND e.status<>'ended' ORDER BY e.id FOR UPDATE OF e").bind(room_id).fetch_all(&mut *c).await?;
+    let _: Vec<String> = sqlx::query_scalar!(
+        r#"
+        SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND
+        m.status='playing' AND e.status<>'ended' ORDER BY e.id FOR UPDATE OF e
+        "#,
+        room_id,
+    ).fetch_all(&mut *c).await?;
     let _room_lock = store::room(c, room_id, true).await?;
     let Some(m) = store::latest_match(c, room_id, true)
         .await?
@@ -259,22 +340,45 @@ pub async fn terminate_room_tx(
     else {
         return Ok(effect);
     };
-    sqlx::query("UPDATE multi_relay_encounter SET status='ended',outcome='server_restart',winner_member_id=NULL,ended_by_member_id=NULL,end_idempotency_key=NULL,turn_member_id=NULL,turn_deadline=NULL,ended_at=$2 WHERE match_id=$1 AND status<>'ended'").bind(&m.id).bind(now).execute(&mut *c).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_relay_encounter SET status='ended', outcome='server_restart', winner_member_id=NULL,
+        ended_by_member_id=NULL, end_idempotency_key=NULL, turn_member_id=NULL, turn_deadline=NULL,
+        ended_at=$2 WHERE match_id=$1 AND status<>'ended'
+        "#,
+        &m.id,
+        now,
+    ).execute(&mut *c).await?;
     // Pre-stage relay rows remain readable during migration and are terminal too.
-    sqlx::query("UPDATE multi_round SET status='ended',ended_at=$2,turn_slot=NULL,turn_deadline=NULL WHERE match_id=$1 AND status<>'ended'").bind(&m.id).bind(now).execute(&mut *c).await?;
-    sqlx::query(
-        "UPDATE multi_match SET status='finished',ended_at=$2,winner_member_id=NULL WHERE id=$1",
+    sqlx::query!(
+        r#"
+        UPDATE multi_round SET status='ended', ended_at=$2, turn_slot=NULL, turn_deadline=NULL WHERE
+        match_id=$1 AND status<>'ended'
+        "#,
+        &m.id,
+        now,
     )
-    .bind(&m.id)
-    .bind(now)
+    .execute(&mut *c)
+    .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_match SET status='finished', ended_at=$2, winner_member_id=NULL WHERE id=$1
+        "#,
+        &m.id,
+        now,
+    )
     .execute(&mut *c)
     .await?;
     let retention = now + state.config.multi.finished_retention;
-    sqlx::query("UPDATE multi_room SET status='finished',expires_at=$2 WHERE id=$1")
-        .bind(room_id)
-        .bind(retention)
-        .execute(&mut *c)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_room SET status='finished', expires_at=$2 WHERE id=$1
+        "#,
+        room_id,
+        retention,
+    )
+    .execute(&mut *c)
+    .await?;
     let players = store::match_players(c, &m.id).await?;
     let relay = storage::standings(c, &m.id).await?;
     let scores:Vec<_>=players.iter().map(|p|json!({"memberId":p.member_id,"seat":p.seat,"score":if m.rule_set_key=="elimination"{p.score}else{relay.iter().find(|s|s.player.member_id==p.member_id).map(|s|s.score).unwrap_or(p.score)},"status":p.status})).collect();

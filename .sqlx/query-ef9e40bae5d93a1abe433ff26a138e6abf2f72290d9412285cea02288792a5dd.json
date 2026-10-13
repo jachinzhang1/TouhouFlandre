@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT request_fingerprint, session_id, resolution, superseded_session_id, (expires_at <= $2) AS\n        \"expired!\" FROM puzzle_resolve_idempotency WHERE idempotency_key=$1 FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "request_fingerprint",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "puzzle_resolve_idempotency",
+            "name": "request_fingerprint"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "puzzle_resolve_idempotency",
+            "name": "session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "resolution",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "puzzle_resolve_idempotency",
+            "name": "resolution"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "superseded_session_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "puzzle_resolve_idempotency",
+            "name": "superseded_session_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "expired!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "ef9e40bae5d93a1abe433ff26a138e6abf2f72290d9412285cea02288792a5dd"
+}

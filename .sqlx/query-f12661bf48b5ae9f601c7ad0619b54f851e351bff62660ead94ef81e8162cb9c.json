@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_member SET rematch_ready=false WHERE room_id=$1 AND role='player'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f12661bf48b5ae9f601c7ad0619b54f851e351bff62660ead94ef81e8162cb9c"
+}

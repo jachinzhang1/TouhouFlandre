@@ -250,7 +250,23 @@ pub async fn create(state: AppState, body: Result<Value, ApiError>) -> Result<Va
         let code = room_code();
         let now = (state.clock)();
         let mut tx = state.pool.begin().await?;
-        let inserted=sqlx::query("INSERT INTO multi_room(id,code,format,mode,turn_seconds,player_limit,race_elimination_enabled,status,expires_at,question_scope,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'lobby',$8,$9,$10)").bind(&id).bind(&code).bind(format).bind(mode).bind(turn).bind(limit).bind(re.unwrap_or(false)).bind(now+state.config.multi.lobby_ttl).bind(json!(scope)).bind(now).execute(&mut *tx).await;
+        let inserted = sqlx::query!(
+            r#"
+            INSERT INTO multi_room(id, code, format, mode, turn_seconds, player_limit, race_elimination_enabled,
+            status, expires_at, question_scope, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, 'lobby', $8, $9,
+            $10)
+            "#,
+            &id,
+            &code,
+            format,
+            mode,
+            turn,
+            limit,
+            re.unwrap_or(false),
+            now+state.config.multi.lobby_ttl,
+            json!(scope),
+            now,
+        ).execute(&mut *tx).await;
         if let Err(error) = inserted {
             let collision = error.as_database_error().is_some_and(|e| {
                 e.code().as_deref() == Some("23505")
@@ -262,16 +278,28 @@ pub async fn create(state: AppState, body: Result<Value, ApiError>) -> Result<Va
             return Err(ApiError::from(error));
         }
         if mode == "relay" {
-            sqlx::query(
-                "INSERT INTO multi_relay_room_config(room_id,elimination_enabled) VALUES($1,$2) ON CONFLICT(room_id) DO UPDATE SET elimination_enabled=EXCLUDED.elimination_enabled",
-            )
-            .bind(&id)
-            .bind(le.unwrap_or(false))
-            .execute(&mut *tx)
-            .await
-            ?;
+            sqlx::query!(
+                r#"
+                INSERT INTO multi_relay_room_config(room_id, elimination_enabled) VALUES($1, $2) ON CONFLICT(room_id)
+                DO UPDATE SET elimination_enabled=EXCLUDED.elimination_enabled
+                "#,
+                &id,
+                le.unwrap_or(false),
+            ).execute(&mut *tx).await?;
         }
-        let member:Member=sqlx::query_as("INSERT INTO multi_member(id,room_id,seat,role,display_name,token_hash,joined_at) VALUES($1,$2,1,'player',$3,$4,$5) RETURNING *").bind(new_id()).bind(&id).bind(&display).bind(auth::hash_token(&token)).bind(now).fetch_one(&mut *tx).await?;
+        let member: Member = sqlx::query_as!(
+            Member,
+            r#"
+            INSERT INTO multi_member(id, room_id, seat, role, display_name, token_hash, joined_at) VALUES($1, $2,
+            1, 'player', $3, $4, $5) RETURNING id, room_id, seat, display_name, token_hash, status, ready,
+            rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
+            "#,
+            new_id(),
+            &id,
+            &display,
+            auth::hash_token(&token),
+            now,
+        ).fetch_one(&mut *tx).await?;
         let room = store::room(&mut tx, &id, false).await?;
         append_updated(&mut tx, &room, now).await?;
         tx.commit().await?;
@@ -348,7 +376,21 @@ pub async fn join(
         None
     };
     let token = auth::generate_token()?;
-    let member:Member=sqlx::query_as("INSERT INTO multi_member(id,room_id,seat,role,display_name,token_hash,joined_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *").bind(new_id()).bind(&room.id).bind(seat).bind(role).bind(normalize_name(b["displayName"].as_str().unwrap_or(""))).bind(auth::hash_token(&token)).bind(now).fetch_one(&mut *tx).await?;
+    let member: Member = sqlx::query_as!(
+        Member,
+        r#"
+        INSERT INTO multi_member(id, room_id, seat, role, display_name, token_hash, joined_at) VALUES($1, $2,
+        $3, $4, $5, $6, $7) RETURNING id, room_id, seat, display_name, token_hash, status, ready,
+        rematch_ready, grace_until, joined_at, role, chat_rate_tokens, chat_rate_refilled_at
+        "#,
+        new_id(),
+        &room.id,
+        seat,
+        role,
+        normalize_name(b["displayName"].as_str().unwrap_or("")),
+        auth::hash_token(&token),
+        now,
+    ).fetch_one(&mut *tx).await?;
     append_updated(&mut tx, &room, now).await?;
     tx.commit().await?;
     events::publish(&state, &RoomEffect::game(&room.id));
@@ -383,11 +425,15 @@ pub async fn ready(
         tx.commit().await?;
         return Ok(());
     }
-    sqlx::query("UPDATE multi_member SET ready=$2 WHERE id=$1")
-        .bind(&member.id)
-        .bind(desired)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_member SET ready=$2 WHERE id=$1
+        "#,
+        &member.id,
+        desired,
+    )
+    .execute(&mut *tx)
+    .await?;
     let players = store::members(&mut tx, &id).await?;
     if desired && ready_reason(&room, &players).is_none() {
         matches::start_match_tx(&state, &mut tx, &room).await?;
@@ -425,7 +471,14 @@ pub async fn claim(state: AppState, id: String, authorization: &str) -> Result<(
     }
     let seat = next_seat(&store::members(&mut tx, &id).await?, room.player_limit)
         .ok_or_else(|| conflict("ROOM_FULL", "房间已满。"))?;
-    sqlx::query("UPDATE multi_member SET role='player',seat=$2,ready=false,rematch_ready=false WHERE id=$1 AND role='spectator' AND status='connected'").bind(&member.id).bind(seat).execute(&mut *tx).await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_member SET role='player', seat=$2, ready=false, rematch_ready=false WHERE id=$1 AND
+        role='spectator' AND status='connected'
+        "#,
+        &member.id,
+        seat,
+    ).execute(&mut *tx).await?;
     append_updated(&mut tx, &room, (state.clock)()).await?;
     tx.commit().await?;
     state.realtime.invalidate_member(&id, &member.id);
@@ -511,11 +564,15 @@ pub async fn settings(
         }
         for (index, p) in players.iter().enumerate().skip(1) {
             if p.seat() != index as i32 + 1 {
-                sqlx::query("UPDATE multi_member SET seat=$2 WHERE id=$1")
-                    .bind(&p.id)
-                    .bind(index as i32 + 1)
-                    .execute(&mut *tx)
-                    .await?;
+                sqlx::query!(
+                    r#"
+                    UPDATE multi_member SET seat=$2 WHERE id=$1
+                    "#,
+                    &p.id,
+                    index as i32 + 1,
+                )
+                .execute(&mut *tx)
+                .await?;
             }
         }
     }
@@ -528,16 +585,25 @@ pub async fn settings(
         || re.is_some_and(|v| v != room.race_elimination_enabled)
         || le.is_some_and(|v| v != old_relay);
     if changed {
-        sqlx::query(
-            "UPDATE multi_room SET player_limit=$2,race_elimination_enabled=$3 WHERE id=$1",
+        sqlx::query!(
+            r#"
+            UPDATE multi_room SET player_limit=$2, race_elimination_enabled=$3 WHERE id=$1
+            "#,
+            &id,
+            limit,
+            re.unwrap_or(room.race_elimination_enabled),
         )
-        .bind(&id)
-        .bind(limit)
-        .bind(re.unwrap_or(room.race_elimination_enabled))
         .execute(&mut *tx)
         .await?;
         if let Some(enabled) = le {
-            sqlx::query("INSERT INTO multi_relay_room_config(room_id,elimination_enabled) VALUES($1,$2) ON CONFLICT(room_id) DO UPDATE SET elimination_enabled=EXCLUDED.elimination_enabled").bind(&id).bind(enabled).execute(&mut *tx).await?;
+            sqlx::query!(
+                r#"
+                INSERT INTO multi_relay_room_config(room_id, elimination_enabled) VALUES($1, $2) ON CONFLICT(room_id)
+                DO UPDATE SET elimination_enabled=EXCLUDED.elimination_enabled
+                "#,
+                &id,
+                enabled,
+            ).execute(&mut *tx).await?;
         }
         let updated = store::room(&mut tx, &id, false).await?;
         append_updated(&mut tx, &updated, (state.clock)()).await?;
@@ -576,11 +642,15 @@ pub async fn close_tx(
     reason: &str,
     now: DateTime<Utc>,
 ) -> Result<(), ApiError> {
-    sqlx::query("UPDATE multi_room SET status='closed',expires_at=$2 WHERE id=$1")
-        .bind(&room.id)
-        .bind(now + state.config.multi.event_retention)
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_room SET status='closed', expires_at=$2 WHERE id=$1
+        "#,
+        &room.id,
+        now + state.config.multi.event_retention,
+    )
+    .execute(&mut *conn)
+    .await?;
     events::append_event(conn, &room.id, "room.closed", json!({"reason":reason}), now).await?;
     Ok(())
 }
@@ -590,10 +660,14 @@ pub async fn mark_left_tx(
     member: &Member,
     now: DateTime<Utc>,
 ) -> Result<(), ApiError> {
-    sqlx::query("UPDATE multi_member SET status='left',grace_until=NULL WHERE id=$1")
-        .bind(&member.id)
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query!(
+        r#"
+        UPDATE multi_member SET status='left', grace_until=NULL WHERE id=$1
+        "#,
+        &member.id,
+    )
+    .execute(&mut *conn)
+    .await?;
     append_updated(conn, room, now).await
 }
 pub async fn leave(state: AppState, id: String, authorization: &str) -> Result<(), ApiError> {
@@ -624,10 +698,14 @@ pub async fn leave(state: AppState, id: String, authorization: &str) -> Result<(
     } else if member.seat() == 1 {
         close_tx(&state, &mut tx, &room, "host_left", now).await?;
     } else {
-        sqlx::query("DELETE FROM multi_member WHERE id=$1")
-            .bind(&member.id)
-            .execute(&mut *tx)
-            .await?;
+        sqlx::query!(
+            r#"
+            DELETE FROM multi_member WHERE id=$1
+            "#,
+            &member.id,
+        )
+        .execute(&mut *tx)
+        .await?;
         append_updated(&mut tx, &room, now).await?;
     }
     tx.commit().await?;

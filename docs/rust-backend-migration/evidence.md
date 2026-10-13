@@ -303,3 +303,44 @@ Commit preparation: removed extra trailing blank lines in the Cargo/toolchain
 manifests, research notes and saved test output. No executable content or dependency
 version changed; the current identity manifest records this normalization. The
 full test results above apply to the same executable content.
+
+
+## SQLx query macros — R13 (2026-10-13)
+
+Converted every application/repository/seed query to `query!`, `query_as!` or
+`query_scalar!`: 189 call sites, 176 distinct checked-in query metadata files.
+Named projections replace `SELECT *` where a row struct is constructed; fixed
+locking variants have separate literal queries. Room infinity handling, nullable
+fields, JSON encoding, SQL parameters and transaction/commit boundaries remain.
+The migration bootstrap and historical-schema/fixture/failure-injection tests
+retain runtime queries. No unchecked query macros or dependency upgrades added.
+
+Default Cargo compilation uses `.sqlx` offline metadata. The native pinned CLI
+script creates a random disposable database, applies all migrations, prepares or
+checks workspace/all-target metadata, then drops the database. CI runs the same
+check; Taskfile and development instructions expose prepare/check commands. The
+production Dockerfile now copies `.cargo` and `.sqlx` into the builder.
+
+Verification (native Rust 1.99.0; PostgreSQL 18.4 was the only task workload in Docker):
+
+- Full suite: **122 passed, 0 failed, 0 ignored**, including DB concurrency,
+  migrations, seed, HTTP and WebSocket tests; [output](sqlx-macros-tests.txt).
+- Initial regression exposed a test that waited for a lock by matching the old
+  `SELECT e.*` text. It now observes `pg_blocking_pids` for the connection holding
+  the lock; the original post-lock clock/timeout assertions remain and pass.
+- Prepare/check against a fresh migrated database: **pass**. Removing one cache
+  entry caused the expected nonzero stale-cache failure, and the temporary DB was
+  still deleted. The cache was restored and the complete positive check passed.
+- Offline negative check: binding an i64 to a text parameter failed compilation
+  with a type mismatch. The source was restored byte-for-byte afterward.
+- Stopped PostgreSQL, cleaned the API package build artifacts, and built all native
+  binaries with DATABASE_URL/SQLX_OFFLINE unset: **pass**, using Cargo's default
+  offline setting. Offline all-target Clippy with `-D warnings`: **pass**.
+- Formatting, 77-file architecture scan, 10 checker tests and diff checks: **pass**.
+- The isolated database container has been removed; Cargo.lock, migrations and
+  public HTTP/WS contracts are unchanged. No Go source was introduced.
+
+[Verification details](sqlx-macros-verification.json) and
+[current artifact identity](sqlx-macros-sha256.json) supersede earlier identity
+manifests for this follow-up. Frontend/browser and production image execution were
+not rerun; no production operations, commit or push were performed in R13.

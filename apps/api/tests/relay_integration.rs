@@ -736,6 +736,9 @@ async fn queued_action_uses_time_after_encounter_lock() -> Result<()> {
         .bind(&e.id)
         .fetch_one(&mut *blocker)
         .await?;
+    let blocker_pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *blocker)
+        .await?;
     let state = f.state.clone();
     let input = f.action(
         &e,
@@ -746,7 +749,25 @@ async fn queued_action_uses_time_after_encounter_lock() -> Result<()> {
         None,
     );
     let pending = tokio::spawn(async move { act(&state, input).await });
-    tokio::time::timeout(std::time::Duration::from_secs(3),async{loop{let waiting:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT e.* FROM multi_relay_encounter e JOIN multi_relay_stage%')").fetch_one(&f.db.pool).await.unwrap();if waiting{break}tokio::time::sleep(std::time::Duration::from_millis(10)).await;}}).await?;
+    // Observe the actual blocker, independent of the query's projection or formatting.
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let waiting: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM pg_stat_activity
+                 WHERE datname=current_database() AND wait_event_type='Lock'
+                 AND $1 = ANY(pg_blocking_pids(pid)))",
+            )
+            .bind(blocker_pid)
+            .fetch_one(&f.db.pool)
+            .await?;
+            if waiting {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        Ok::<(), sqlx::Error>(())
+    })
+    .await??;
     *f.now.lock().unwrap() += TimeDelta::seconds(31);
     blocker.commit().await?;
     let result = pending.await??;

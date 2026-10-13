@@ -1,3 +1,6 @@
+//! Migration bootstrap intentionally uses runtime queries: Goose/adoption ledgers
+//! may be absent or have an older schema before migration, so the final application
+//! schema used by query! cannot describe every supported starting state.
 use std::time::Duration;
 
 use anyhow::{Context, Result, bail};

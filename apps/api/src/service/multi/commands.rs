@@ -108,14 +108,16 @@ pub async fn guess(
         events::publish(&state, &RoomEffect::game(&room_id));
         return Err(conflict("ROUND_NOT_ACTIVE", "本局已超时（按平局结算）。"));
     }
-    let existing: Option<Guess> = sqlx::query_as(
-        "SELECT * FROM multi_guess WHERE round_id=$1 AND member_id=$2 AND idempotency_key=$3",
-    )
-    .bind(&round.id)
-    .bind(&member.id)
-    .bind(key)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let existing: Option<Guess> = sqlx::query_as!(
+        Guess,
+        r#"
+        SELECT id, round_id, member_id, sequence, guess_id, statuses, is_correct, idempotency_key, created_at
+        FROM multi_guess WHERE round_id=$1 AND member_id=$2 AND idempotency_key=$3
+        "#,
+        &round.id,
+        &member.id,
+        key,
+    ).fetch_optional(&mut *tx).await?;
     let fields = matches::fields_for_match(&m);
     if let Some(existing) = existing {
         let c = chars
@@ -127,12 +129,15 @@ pub async fn guess(
         tx.commit().await?;
         return Ok(response);
     }
-    let count: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM multi_guess WHERE round_id=$1 AND member_id=$2")
-            .bind(&round.id)
-            .bind(&member.id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let count: i64 = sqlx::query_scalar!(
+        r#"
+        SELECT count(*) AS "value!" FROM multi_guess WHERE round_id=$1 AND member_id=$2
+        "#,
+        &round.id,
+        &member.id,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
     let max = matches::max_guesses_for_match(&m);
     if count >= max as i64 {
         return Err(conflict("GUESS_LIMIT_REACHED", "本局猜测次数已用尽。"));
@@ -142,7 +147,23 @@ pub async fn guess(
         .iter()
         .map(|f| serde_json::to_value(f.status).unwrap())
         .collect();
-    let inserted=sqlx::query("INSERT INTO multi_guess(id,round_id,member_id,sequence,guess_id,statuses,is_correct,idempotency_key,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)").bind(new_id()).bind(&round.id).bind(&member.id).bind(count as i32+1).bind(guess).bind(json!(statuses)).bind(result.is_correct).bind(key).bind(now).execute(&mut *tx).await;
+    let inserted = sqlx::query!(
+        r#"
+        INSERT INTO multi_guess(id, round_id, member_id, sequence, guess_id, statuses, is_correct,
+        idempotency_key, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#,
+        new_id(),
+        &round.id,
+        &member.id,
+        count as i32 + 1,
+        guess,
+        json!(statuses),
+        result.is_correct,
+        key,
+        now,
+    )
+    .execute(&mut *tx)
+    .await;
     if let Err(error) = inserted {
         if error
             .as_database_error()
@@ -156,17 +177,33 @@ pub async fn guess(
     let scored = m.scoring_mode != "wins";
     let mut response = json!({"roundIndex":index,"guess":projection::hydrate_guess(runtime.by_id.get(guess).unwrap(),&serde_json::from_value::<Vec<String>>(json!(statuses))?,result.is_correct,&fields,result.match_kind)});
     if scored && result.is_correct {
-        let rank: i64 = sqlx::query_scalar(
-            "SELECT count(*)+1 FROM multi_round_player WHERE round_id=$1 AND status='correct'",
-        )
-        .bind(&round.id)
-        .fetch_one(&mut *tx)
-        .await?;
-        sqlx::query("UPDATE multi_round_player SET status='correct',finish_rank=$3,completed_at=$4 WHERE round_id=$1 AND member_id=$2").bind(&round.id).bind(&member.id).bind(rank as i32).bind(now).execute(&mut *tx).await?;
+        let rank: i64 = sqlx::query_scalar!(
+            r#"
+            SELECT count(*)+1 AS "value!" FROM multi_round_player WHERE round_id=$1 AND status='correct'
+            "#,
+            &round.id,
+        ).fetch_one(&mut *tx).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_round_player SET status='correct', finish_rank=$3, completed_at=$4 WHERE round_id=$1 AND
+            member_id=$2
+            "#,
+            &round.id,
+            &member.id,
+            rank as i32,
+            now,
+        ).execute(&mut *tx).await?;
         response["participationStatus"] = json!("correct");
         response["finishRank"] = json!(rank);
     } else if scored && count + 1 >= max as i64 {
-        sqlx::query("UPDATE multi_round_player SET status='exhausted',completed_at=$3 WHERE round_id=$1 AND member_id=$2").bind(&round.id).bind(&member.id).bind(now).execute(&mut *tx).await?;
+        sqlx::query!(
+            r#"
+            UPDATE multi_round_player SET status='exhausted', completed_at=$3 WHERE round_id=$1 AND member_id=$2
+            "#,
+            &round.id,
+            &member.id,
+            now,
+        ).execute(&mut *tx).await?;
         response["participationStatus"] = json!("exhausted");
     }
     if !scored && result.is_correct {
@@ -184,7 +221,14 @@ pub async fn guess(
     } else if scored {
         settle_roster(&state, &mut tx, &room, &round, &m, None, now).await?;
     } else {
-        let counts:Vec<i64>=sqlx::query_scalar("SELECT count(g.id) FROM multi_round_player p LEFT JOIN multi_guess g ON g.round_id=p.round_id AND g.member_id=p.member_id WHERE p.round_id=$1 AND p.status='active' GROUP BY p.member_id").bind(&round.id).fetch_all(&mut *tx).await?;
+        let counts: Vec<i64> = sqlx::query_scalar!(
+            r#"
+            SELECT count(g.id) AS "value!" FROM multi_round_player p LEFT JOIN multi_guess g ON
+            g.round_id=p.round_id AND g.member_id=p.member_id WHERE p.round_id=$1 AND p.status='active' GROUP BY
+            p.member_id
+            "#,
+            &round.id,
+        ).fetch_all(&mut *tx).await?;
         if !counts.is_empty() && counts.iter().all(|n| *n >= max as i64) {
             complete_round_tx(&state, &mut tx, &room, &round, &m, None, None, now).await?;
         }
@@ -236,7 +280,15 @@ pub async fn forfeit(
     if round.status != "playing" || now < round.starts_at || now >= round.deadline {
         return Err(conflict("ROUND_NOT_ACTIVE", "本局尚未开始或已超时。"));
     }
-    let rows=sqlx::query("UPDATE multi_round_player SET status='forfeited',finish_rank=NULL,completed_at=$3 WHERE round_id=$1 AND member_id=$2 AND status='active'").bind(&round.id).bind(&member.id).bind(now).execute(&mut *tx).await?.rows_affected();
+    let rows = sqlx::query!(
+        r#"
+        UPDATE multi_round_player SET status='forfeited', finish_rank=NULL, completed_at=$3 WHERE round_id=$1
+        AND member_id=$2 AND status='active'
+        "#,
+        &round.id,
+        &member.id,
+        now,
+    ).execute(&mut *tx).await?.rows_affected();
     if rows == 0 {
         return Err(conflict("ROUND_NOT_ACTIVE", "你已放弃本局。"));
     }

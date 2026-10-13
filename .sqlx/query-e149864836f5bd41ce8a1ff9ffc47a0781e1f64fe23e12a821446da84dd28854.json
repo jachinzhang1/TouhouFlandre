@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE multi_round_player SET points_awarded=$3 WHERE round_id=$1 AND member_id=$2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e149864836f5bd41ce8a1ff9ffc47a0781e1f64fe23e12a821446da84dd28854"
+}

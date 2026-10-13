@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT answer_id FROM multi_round WHERE match_id=$1 ORDER BY round_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "answer_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7e87a8d129b48983915f0b25399b4ee6338ff18597aecbf74e08e9ee38cff600"
+}

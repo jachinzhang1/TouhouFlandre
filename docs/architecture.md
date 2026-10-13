@@ -182,7 +182,7 @@ flowchart LR
 
 ## 数据库
 
-数据库迁移位于 `apps/api/db/migrations`，由 SQLx 内嵌迁移器管理。SQLx 参数化查询与对应服务一起维护；类型映射通过 `FromRow` 或显式查询结果类型完成，真实 PostgreSQL 集成测试验证查询和并发事务。现有 Goose 数据库需要停止旧写进程后显式接管一次，日常迁移不会自动接管。单人 `POST /api/puzzles/{mode}/resolve` 使用 `puzzle_resolve_idempotency` 绑定请求指纹与公开 session 引用；相同键重试/并发返回同一结果，不在幂等表存答案。
+数据库迁移位于 `apps/api/db/migrations`，由 SQLx 内嵌迁移器管理。SQLx 参数化查询与对应服务一起维护，业务查询使用 `query!` / `query_as!` / `query_scalar!` 编译检查 SQL、参数和返回列；`.sqlx` 缓存支持离线构建，CI 对新建并完成迁移的数据库校验缓存。`query_as!` 按字段构造行模型，不依赖 `FromRow`。迁移引导与历史 schema 测试保留运行时查询；真实 PostgreSQL 集成测试继续验证事务和并发行为。现有 Goose 数据库需要停止旧写进程后显式接管一次，日常迁移不会自动接管。单人 `POST /api/puzzles/{mode}/resolve` 使用 `puzzle_resolve_idempotency` 绑定请求指纹与公开 session 引用；相同键重试/并发返回同一结果，不在幂等表存答案。
 
 多人房间状态、成员、场次、回合、猜测与事件均持久化在 Postgres。race 继续拥有 `multi_round` 及其计分表；relay 新 match 使用 `multi_relay_stage`、`multi_relay_encounter`、`multi_relay_encounter_member`、`multi_relay_turn`、`multi_relay_stage_player` 和 `multi_relay_match_player_state`。迁移 `0015` 至 `0019` 为 expand-only，旧列与旧双人读取路径保留供应用回滚。Rust 内存中的连接管理器 只保存 WebSocket 连接和热点投影，不作为权威状态。
 

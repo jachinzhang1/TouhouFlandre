@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT match_id, member_id, seat, wins, status, score, best_round_score, eliminated_round FROM\n        multi_match_player WHERE match_id=$1 ORDER BY seat\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "match_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seat",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "seat"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "wins",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "wins"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "score",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "score"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "best_round_score",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "best_round_score"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "eliminated_round",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match_player",
+            "name": "eliminated_round"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "09b309e2c2e0b29ac5f75e6f358266de56605ae61f2f93a1041e8a6e3f6bac53"
+}

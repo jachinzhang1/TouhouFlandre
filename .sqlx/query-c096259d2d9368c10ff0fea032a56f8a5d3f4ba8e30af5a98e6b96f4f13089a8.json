@@ -1,0 +1,191 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, code, format, status, event_seq, created_at, CASE WHEN isfinite(expires_at) THEN\n            expires_at END AS expires_at, mode, turn_seconds, question_scope, player_limit, chat_seq,\n            chat_rate_tokens, chat_rate_refilled_at, race_elimination_enabled FROM multi_room WHERE id=$1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "format",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "format"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "event_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "event_seq"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "expires_at",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "mode"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "turn_seconds",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "turn_seconds"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "question_scope",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "question_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "player_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "player_limit"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "chat_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "chat_seq"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "chat_rate_tokens",
+        "type_info": "Float8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "chat_rate_tokens"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "chat_rate_refilled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "chat_rate_refilled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "race_elimination_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "race_elimination_enabled"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c096259d2d9368c10ff0fea032a56f8a5d3f4ba8e30af5a98e6b96f4f13089a8"
+}

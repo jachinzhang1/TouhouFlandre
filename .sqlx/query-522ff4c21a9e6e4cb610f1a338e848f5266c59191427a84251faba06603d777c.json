@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO multi_relay_turn(id, match_id, stage_id, encounter_id, member_id, turn_index, kind,\n        guess_id, statuses, is_correct, idempotency_key, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8,\n        $9, $10, $11, $12)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Bool",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "522ff4c21a9e6e4cb610f1a338e848f5266c59191427a84251faba06603d777c"
+}

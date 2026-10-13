@@ -1,0 +1,136 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT member_id, encounter_id, assignment, outcome, score_before, score_delta, score_after,\n        life_before, life_after, eliminated_stage FROM multi_relay_stage_player WHERE stage_id=$1 ORDER BY\n        member_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "encounter_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "encounter_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "assignment",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "assignment"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "outcome",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "outcome"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "score_before",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "score_before"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "score_delta",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "score_delta"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "score_after",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "score_after"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "life_before",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "life_before"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "life_after",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "life_after"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "eliminated_stage",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage_player",
+            "name": "eliminated_stage"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4349619b378938ff40f8025b3beb084c7c8249f8064d251f7d1dc70b25c1f40f"
+}

@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT r.id, r.match_id, r.round_index, r.answer_id, r.status, r.winner_slot, r.starts_at,\n        r.deadline, r.ended_at, r.turn_slot, r.turn_deadline, r.winner_member_id FROM multi_round r JOIN\n        multi_match m ON m.id=r.match_id WHERE m.room_id=$1 AND m.status='playing' ORDER BY r.round_index\n        DESC LIMIT 1 FOR UPDATE OF r\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "match_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "round_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "round_index"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "answer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "winner_slot",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "winner_slot"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "deadline",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "deadline"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "ended_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "ended_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "turn_slot",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "turn_slot"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "turn_deadline",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "turn_deadline"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "winner_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round",
+            "name": "winner_member_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d4168a9b21ea4d0c425667444165e0b3a1fd67c82e22f42099b8f274626dae82"
+}

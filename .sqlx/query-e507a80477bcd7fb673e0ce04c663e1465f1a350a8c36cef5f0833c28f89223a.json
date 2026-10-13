@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_match SET score_slot1=$2, score_slot2=$3 WHERE id=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e507a80477bcd7fb673e0ce04c663e1465f1a350a8c36cef5f0833c28f89223a"
+}
