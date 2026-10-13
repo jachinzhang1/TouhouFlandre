@@ -7,9 +7,8 @@ coverage
 *.log
 *.tsbuildinfo
 apps/web/.vite
-apps/api/.openapi.bundled.yaml
-apps/api/server
 packages/data/src/*.demo.xlsx
 AGENTS.md
 .agents/skills/
 .codex/skills/
+target/

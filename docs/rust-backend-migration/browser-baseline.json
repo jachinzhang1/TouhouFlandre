@@ -1,0 +1,105 @@
+{
+  "baseline": "7a5679f22a9991bc9a1d937c3e53c3f59653386d",
+  "stats": {
+    "startTime": "2026-10-13T06:33:18.922Z",
+    "duration": 60733.725000000006,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 8,
+    "flaky": 0
+  },
+  "results": [
+    {
+      "title": "模式切换创建随机题新局",
+      "project": "desktop-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "模式切换创建随机题新局",
+      "project": "mobile-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "创建 → 加入 → 就绪 → 对局 → 互猜 → 局结果",
+      "project": "desktop-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "双人接力使用单 encounter 棋盘并按 turn 锁定输入",
+      "project": "desktop-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "创建 → 加入 → 就绪 → 对局 → 互猜 → 局结果",
+      "project": "mobile-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "双人接力使用单 encounter 棋盘并按 turn 锁定输入",
+      "project": "mobile-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "玩家/观战聊天可见性与闭麦行为",
+      "project": "desktop-chromium",
+      "status": "expected"
+    },
+    {
+      "title": "玩家/观战聊天可见性与闭麦行为",
+      "project": "mobile-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "relay lobby/stage 通过 axe、键盘、缩放和 reduced-motion 检查",
+      "project": "desktop-chromium",
+      "status": "unexpected"
+    },
+    {
+      "title": "relay lobby/stage 通过 axe、键盘、缩放和 reduced-motion 检查",
+      "project": "mobile-chromium",
+      "status": "expected"
+    }
+  ],
+  "additional": {
+    "stats": {
+      "startTime": "2026-10-13T06:41:41.567Z",
+      "duration": 22861.133,
+      "expected": 3,
+      "skipped": 0,
+      "unexpected": 3,
+      "flaky": 0
+    },
+    "results": [
+      {
+        "title": "创建、猜测、反馈、恢复、重建",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建、猜测、反馈、恢复、重建",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "records cold index, hot browser cache and remote connection latency",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "records cold index, hot browser cache and remote connection latency",
+        "project": "mobile-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "3 人积分赛淘汰玩家进入观战并展示完整排行榜",
+        "project": "desktop-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "3 人积分赛淘汰玩家进入观战并展示完整排行榜",
+        "project": "mobile-chromium",
+        "status": "unexpected"
+      }
+    ]
+  }
+}

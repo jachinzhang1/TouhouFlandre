@@ -73,15 +73,16 @@ test.describe("每日题游戏流程", () => {
     await page.reload();
     await expect(page.locator(".status-strip")).toContainText(/进度\s*1\/8/);
 
-    // 伪造旧会话 id → 404 → 自动重建
-      await page.evaluate(() => {
-        localStorage.setItem(
-          "touhouflandre:daily-session",
-          JSON.stringify({
-            id: "stale-session-from-vite",
-            puzzleKey: "2026-08-05",
-          }),
-        );
+    // 页面卸载会保存当前会话，因此在新文档读取缓存前注入过期记录。
+    // 伪造旧会话 id → resolve 不恢复旧局 → 自动重建。
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "touhouflandre:daily-session",
+        JSON.stringify({
+          id: "stale-session-from-vite",
+          puzzleKey: "2026-08-05",
+        }),
+      );
     });
     await page.reload();
     await expect(page.locator(".status-strip")).toContainText(/进度\s*0\/8/);

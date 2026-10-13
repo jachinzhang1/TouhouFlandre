@@ -112,7 +112,7 @@
 
 当前 `public_fields_v1` 还包含初登场作品和初登场年份。两个 `enabledAsGuess` 角色只有在这六个公开词条全部为已知值且精确相同时才属于同一等价组；任一字段缺失、为空、为 `unknown` 或“未知”都禁止自动分组。等价组由版本化题库快照运行时派生，不在数据文件或数据库中另行维护。修改这些字段可能改变新题局的正确答案范围，贡献时应运行全量题库校验并审阅其输出的等价组摘要。
 
-公开词条的权威定义位于 Go 服务端 `internal/game/field_registry.go`。新增角色数据字段后，如需将其公开，必须在新的注册表版本中同时定义规范化、反馈、展示和等价语义；不要在前端另建字段列表。旧字段先停止用于新配置，历史版本定义至少保留到引用它的对局全部过期。
+公开词条的权威定义位于 Rust 服务端 `apps/api/src/game/fields.rs`。新增角色数据字段后，如需将其公开，必须在新的注册表版本中同时定义规范化、反馈、展示和等价语义；不要在前端另建字段列表。旧字段先停止用于新配置，历史版本定义至少保留到引用它的对局全部过期。
 
 ## 难度分层
 
@@ -130,7 +130,7 @@
 
 题库预设的标签、说明、选池范围和规则集中定义在
 `packages/shared/src/questionScope.ts` 的 `QUESTION_DIFFICULTY_PRESET_DEFINITIONS`；
-服务端权威规则集中定义在 `apps/api/internal/game/question_scope.go` 的
+服务端权威规则集中定义在 `apps/api/src/game/scope.rs` 的
 `questionScopePresetDefinitions`。增删预设时还应同步 OpenAPI 枚举并重新生成契约类型。
 每日题可用难度由共享层的 `DAILY_QUESTION_DIFFICULTY_PRESETS` 与服务端定义中的
 `AvailableInDaily` 独立控制；Extra 当前不开放每日题。
@@ -156,7 +156,7 @@
 4. 确认 ID、名称、别名和作品拼音缩写没有冲突。
 5. 确认 `avatarUrl` 指向 `apps/web/public/characters` 中存在的文件。
 6. 运行 `task db:seed`，确认角色及头像出现在搜索页，并用新增的名称、别名或作品缩写验证检索结果。
-7. 运行 `pnpm test` 与 `cd apps/api && go test ./...`。
+7. 运行 `pnpm test` 与 `pnpm test:rust` 与显式测试库上的 `task test:integration`。
 8. 在 Issue 或 PR 中列出涉及字段的资料来源。
 9. 对会影响反馈结果的更新补充或调整比较逻辑测试。
 

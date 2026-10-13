@@ -2,6 +2,7 @@ version: "3"
 
 tasks:
   dev:
+    desc: Run the API and Web natively, with only Postgres in Docker
     deps: [db:up]
     cmds:
       - task --parallel dev:api dev:web
@@ -9,7 +10,7 @@ tasks:
   dev:api:
     dir: apps/api
     cmds:
-      - bash -c 'set -a && . ../../.env && set +a && go run ./cmd/server'
+      - bash -c 'set -a && . ../../.env && set +a && cargo run --bin server'
 
   dev:web:
     cmds:
@@ -29,35 +30,30 @@ tasks:
       - docker compose -f compose-dev.yaml down
 
   db:migrate:
+    desc: Apply SQLx migrations (refuses an unadopted Goose database)
     dir: apps/api
     cmds:
-      - bash -c 'set -a && . ../../.env && set +a && go tool goose -dir migrations up'
+      - bash -c 'set -a && . ../../.env && set +a && cargo run --bin migrate -- up'
+
+  db:adopt-goose:
+    desc: Explicit one-time adoption of an existing Goose database; stop old writers first
+    dir: apps/api
+    cmds:
+      - bash -c 'set -a && . ../../.env && set +a && cargo run --bin migrate -- adopt-goose'
 
   db:seed:
     deps: [catalog:check]
-    cmds:
-      - task: db:seed:go
-
-  db:seed:go:
     dir: apps/api
     cmds:
-      - bash -c 'set -a && . ../../.env && set +a && go run ./cmd/seed'
+      - bash -c 'set -a && . ../../.env && set +a && cargo run --bin seed'
 
   catalog:check:
     cmds:
       - pnpm --config.verify-deps-before-run=false --filter @touhouflandre/data validate
 
   gen:openapi:
-    dir: apps/api
     cmds:
-      - pnpm exec redocly bundle ../../contracts/openapi/openapi.yaml -o .openapi.bundled.yaml
-      # oapi-codegen 版本固定于 go.mod tool 指令（go tool；随 Go 模块缓存复用，CI 免重复下载）
-      - go tool oapi-codegen -config oapi-codegen.yaml .openapi.bundled.yaml
-
-  gen:repo:
-    dir: apps/api
-    cmds:
-      - go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+      - node scripts/generate-rust-contracts.mjs
 
   gen:web:
     cmds:
@@ -66,35 +62,47 @@ tasks:
   gen:
     cmds:
       - task: gen:openapi
-      - task: gen:repo
       - task: gen:web
 
   check:generated:
     cmds:
-      - task: gen
-      - git diff --exit-code -- apps/api/internal/generated apps/web/src/generated
+      - node scripts/generate-rust-contracts.mjs --check
+      - task: gen:web
+      - git diff --exit-code -- apps/web/src/generated
 
   check:ws-protocol:
     cmds:
       - pnpm check:ws-protocol
 
-  test:go:
-    dir: apps/api
+  check:boundaries:
     cmds:
-      - go test ./...
+      - pnpm check:multiplayer-boundaries
 
-  dev:go:
-    dir: apps/api
+  test:rust:
     cmds:
-      - go run ./cmd/server
+      - cargo test --workspace --locked
+
+  test:integration:
+    desc: Run all Rust tests against an explicitly selected disposable Postgres server
+    preconditions:
+      - sh: test -n "$TEST_DATABASE_URL"
+        msg: Set TEST_DATABASE_URL to a disposable local PostgreSQL server with CREATE DATABASE permission
+    cmds:
+      - cargo test --workspace --locked -- --include-ignored
 
   prod:build:
     cmds:
       - docker compose build
 
   prod:up:
+    desc: Build, stop previous writers, migrate and seed, then start healthy services
     cmds:
-      - docker compose up -d --build --wait
+      - docker compose build
+      - docker compose up -d --wait postgres
+      - docker compose stop api migrate seed
+      - docker compose run --rm --no-deps migrate up
+      - docker compose run --rm --no-deps seed
+      - docker compose up -d --no-deps --wait api web
 
   prod:down:
     cmds:

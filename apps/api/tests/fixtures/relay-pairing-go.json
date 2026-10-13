@@ -1,0 +1,2766 @@
+{
+  "provenance": {
+    "implementation": "Original Go backend, exported RandomPairingPolicy.Plan and FirstTurnPlayer",
+    "rng": "math/rand/v2.New(rand.NewPCG(seed[0], seed[1]))",
+    "verification": "Recorded Go IntN bounds and draws are replayed in Rust, so the independent implementations receive identical randomness.",
+    "sourceSha256": {
+      "internal/multi/relay/pairing.go": "8d2f613421570efa7b540f97982d2d35d671ff00e33161cf5593b7bcb27983db",
+      "internal/multi/relay/encounter.go": "3f392c3798ed12624e5cb4486638b5ccb715f1be05638df42ee822ad47fe275e"
+    }
+  },
+  "cases": [
+    {
+      "name": "players-2-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-2-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-2-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-2-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-4-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-4-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ]
+    },
+    {
+      "name": "players-4-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 4,
+          "value": 2
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ]
+    },
+    {
+      "name": "players-4-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 4,
+          "value": 2
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        }
+      ]
+    },
+    {
+      "name": "players-5-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p2",
+          "seat": 2
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ]
+    },
+    {
+      "name": "players-5-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p2",
+          "seat": 2
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-5-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 4,
+          "value": 2
+        },
+        {
+          "n": 4,
+          "value": 3
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p4",
+          "seat": 4
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-5-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 4,
+          "value": 2
+        },
+        {
+          "n": 4,
+          "value": 1
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p4",
+          "seat": 4
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ]
+    },
+    {
+      "name": "players-6-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 6,
+          "value": 4
+        },
+        {
+          "n": 5,
+          "value": 3
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-6-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 6,
+          "value": 3
+        },
+        {
+          "n": 5,
+          "value": 0
+        },
+        {
+          "n": 4,
+          "value": 3
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ]
+    },
+    {
+      "name": "players-6-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 6,
+          "value": 5
+        },
+        {
+          "n": 5,
+          "value": 4
+        },
+        {
+          "n": 4,
+          "value": 1
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ]
+    },
+    {
+      "name": "players-6-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 6,
+          "value": 1
+        },
+        {
+          "n": 5,
+          "value": 3
+        },
+        {
+          "n": 4,
+          "value": 1
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ]
+    },
+    {
+      "name": "players-7-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 6,
+          "value": 4
+        },
+        {
+          "n": 6,
+          "value": 3
+        },
+        {
+          "n": 5,
+          "value": 3
+        },
+        {
+          "n": 4,
+          "value": 2
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p7",
+                "seat": 7
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p6",
+          "seat": 6
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ]
+    },
+    {
+      "name": "players-7-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 6,
+          "value": 3
+        },
+        {
+          "n": 6,
+          "value": 0
+        },
+        {
+          "n": 5,
+          "value": 0
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p7",
+                "seat": 7
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p5",
+          "seat": 5
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ]
+    },
+    {
+      "name": "players-7-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 6,
+          "value": 5
+        },
+        {
+          "n": 6,
+          "value": 5
+        },
+        {
+          "n": 5,
+          "value": 2
+        },
+        {
+          "n": 4,
+          "value": 1
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p7",
+          "seat": 7
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        }
+      ]
+    },
+    {
+      "name": "players-7-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ],
+      "previousBye": "p1",
+      "draws": [
+        {
+          "n": 6,
+          "value": 1
+        },
+        {
+          "n": 6,
+          "value": 3
+        },
+        {
+          "n": 5,
+          "value": 0
+        },
+        {
+          "n": 4,
+          "value": 3
+        },
+        {
+          "n": 3,
+          "value": 1
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p6",
+                "seat": 6
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p7",
+                "seat": 7
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          }
+        ],
+        "bye": {
+          "memberId": "p3",
+          "seat": 3
+        }
+      },
+      "oddFirst": [
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-8-seed-1",
+      "seed": [
+        1,
+        2
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 8,
+          "value": 0
+        },
+        {
+          "n": 7,
+          "value": 4
+        },
+        {
+          "n": 6,
+          "value": 4
+        },
+        {
+          "n": 5,
+          "value": 3
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p6",
+                "seat": 6
+              },
+              {
+                "memberId": "p8",
+                "seat": 8
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p7",
+                "seat": 7
+              }
+            ]
+          },
+          {
+            "encounterIndex": 4,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-8-seed-2",
+      "seed": [
+        2,
+        3
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 8,
+          "value": 4
+        },
+        {
+          "n": 7,
+          "value": 0
+        },
+        {
+          "n": 6,
+          "value": 1
+        },
+        {
+          "n": 5,
+          "value": 4
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 0
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p3",
+                "seat": 3
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p7",
+                "seat": 7
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p8",
+                "seat": 8
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 4,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p5",
+                "seat": 5
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "name": "players-8-seed-3",
+      "seed": [
+        3,
+        4
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 8,
+          "value": 6
+        },
+        {
+          "n": 7,
+          "value": 6
+        },
+        {
+          "n": 6,
+          "value": 2
+        },
+        {
+          "n": 5,
+          "value": 3
+        },
+        {
+          "n": 4,
+          "value": 0
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p6",
+                "seat": 6
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p4",
+                "seat": 4
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          },
+          {
+            "encounterIndex": 4,
+            "members": [
+              {
+                "memberId": "p8",
+                "seat": 8
+              },
+              {
+                "memberId": "p7",
+                "seat": 7
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        }
+      ]
+    },
+    {
+      "name": "players-8-seed-4",
+      "seed": [
+        4,
+        5
+      ],
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        },
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        }
+      ],
+      "previousBye": null,
+      "draws": [
+        {
+          "n": 8,
+          "value": 2
+        },
+        {
+          "n": 7,
+          "value": 4
+        },
+        {
+          "n": 6,
+          "value": 0
+        },
+        {
+          "n": 5,
+          "value": 2
+        },
+        {
+          "n": 4,
+          "value": 3
+        },
+        {
+          "n": 3,
+          "value": 2
+        },
+        {
+          "n": 2,
+          "value": 0
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p2",
+                "seat": 2
+              },
+              {
+                "memberId": "p6",
+                "seat": 6
+              }
+            ]
+          },
+          {
+            "encounterIndex": 2,
+            "members": [
+              {
+                "memberId": "p7",
+                "seat": 7
+              },
+              {
+                "memberId": "p4",
+                "seat": 4
+              }
+            ]
+          },
+          {
+            "encounterIndex": 3,
+            "members": [
+              {
+                "memberId": "p8",
+                "seat": 8
+              },
+              {
+                "memberId": "p1",
+                "seat": 1
+              }
+            ]
+          },
+          {
+            "encounterIndex": 4,
+            "members": [
+              {
+                "memberId": "p5",
+                "seat": 5
+              },
+              {
+                "memberId": "p3",
+                "seat": 3
+              }
+            ]
+          }
+        ]
+      },
+      "oddFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        },
+        {
+          "memberId": "p4",
+          "seat": 4
+        },
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p3",
+          "seat": 3
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p6",
+          "seat": 6
+        },
+        {
+          "memberId": "p7",
+          "seat": 7
+        },
+        {
+          "memberId": "p8",
+          "seat": 8
+        },
+        {
+          "memberId": "p5",
+          "seat": 5
+        }
+      ]
+    },
+    {
+      "draws": [
+        {
+          "n": 2,
+          "value": 1
+        }
+      ],
+      "evenFirst": [
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "name": "players-2-seed-6",
+      "oddFirst": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        }
+      ],
+      "plan": {
+        "pairs": [
+          {
+            "encounterIndex": 1,
+            "members": [
+              {
+                "memberId": "p1",
+                "seat": 1
+              },
+              {
+                "memberId": "p2",
+                "seat": 2
+              }
+            ]
+          }
+        ]
+      },
+      "previousBye": null,
+      "roster": [
+        {
+          "memberId": "p1",
+          "seat": 1
+        },
+        {
+          "memberId": "p2",
+          "seat": 2
+        }
+      ],
+      "seed": [
+        6,
+        7
+      ]
+    }
+  ]
+}

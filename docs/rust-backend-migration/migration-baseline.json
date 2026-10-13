@@ -1,0 +1,166 @@
+{
+  "source_commit": "7a5679f22a9991bc9a1d937c3e53c3f59653386d",
+  "migrations": [
+    {
+      "version": 1,
+      "source": "apps/api/migrations/0001_init.sql",
+      "source_sha256": "122a1556043379f706fbb23edb0622d64e721914747d588bd7bc61ab7b52c4ca",
+      "up_sha256": "fa058cb9ce9bd8e77a0bff10335158b7b3f4555c0dd19e03ff485b49d1d87dd5",
+      "down_sha256": "590eab096920b211f287a07a75c17ebd4076db8a03f66347c981388e03f78404"
+    },
+    {
+      "version": 2,
+      "source": "apps/api/migrations/0002_multiplayer.sql",
+      "source_sha256": "83692c021ee2196cc974fa0cdbf9f0a32b75bcfb9284e3e4425498342f12fb01",
+      "up_sha256": "34c1dc1b6897080db4a4328dafd1463d736848e07990b13bc9a4d69c6406c1b3",
+      "down_sha256": "71dc0b63e7841993bab26a3a1034548a5b0462324b0188f0787b6c9f7f68f231"
+    },
+    {
+      "version": 3,
+      "source": "apps/api/migrations/0003_multiplayer_modes.sql",
+      "source_sha256": "19a42836c29ae16dfc08bac1f594e67a042462df3bf78304c5b6468385ed7416",
+      "up_sha256": "f7dfaca3e7da3265b67842932ab1971ad4073413e3a33f24d78f0907f240a87c",
+      "down_sha256": "e9c4d5064a438f29c86f45bd1ac02e94884bcdcb52995c3b5fa397bef05f1df5"
+    },
+    {
+      "version": 4,
+      "source": "apps/api/migrations/0004_relay_pass_turn.sql",
+      "source_sha256": "4a5bb4d94858c71bb047a8b72ebf78f4302fe80d85ef648e137cdf1618e6d6cd",
+      "up_sha256": "8d7df93e68024ccd0cbc162ffdbbca9f48dddad765905d0e1dfa948fe151c5b2",
+      "down_sha256": "990d841d1973a73e667a495726d92a8e503b3114bff35083ac4b56c57dcf0112"
+    },
+    {
+      "version": 5,
+      "source": "apps/api/migrations/0005_site_metrics.sql",
+      "source_sha256": "8cffa4db55425069ec542659cac39e151c5fecb86e55046bdd5e75b072dbbe61",
+      "up_sha256": "6dabb6d565e3ac0205e00979997a0cc74a8c0536d5cb20a86b6237a8f4d136c5",
+      "down_sha256": "fe3c064e90869b1fbc56fc6cd7a1a9afa18377cbeab49b56cbb7e37c016f3e56"
+    },
+    {
+      "version": 6,
+      "source": "apps/api/migrations/0006_question_scope.sql",
+      "source_sha256": "ec3677bce97ed3f3363047f80e8af359f229d46ddc165706955e7de6453b8715",
+      "up_sha256": "eaece16151e736268cf563dc81f874a080bc5452c30fc0d45abf7a2a47e06614",
+      "down_sha256": "3c394f3a1119121e7288fc101274560756b2d6c083f7dbb970d758b924c49189"
+    },
+    {
+      "version": 7,
+      "source": "apps/api/migrations/0007_spectators.sql",
+      "source_sha256": "a1c6a96b99fac3033d1935135ea316d265f8d94c32f462dab3cc8323985fa01b",
+      "up_sha256": "ccc83b8f9ff9b6d84fbe22b3a98472ddb1f25fd41f03cc27e97842b68b4f6e56",
+      "down_sha256": "c968665b4276684908ad82f84234d9097f7b6b1d3df831dde0a5bbc42b748bc9"
+    },
+    {
+      "version": 8,
+      "source": "apps/api/migrations/0008_work_pinyin_initials.sql",
+      "source_sha256": "6b711e38e64cf12240aad4a4bbe6c3d116cfdc9fb6044f8dfaa22c8855263993",
+      "up_sha256": "b8f2ddb26e7fbbe436b282e4bfb56636fcbabb8cde7f913f186a01c217080a75",
+      "down_sha256": "e8e3cccfff22919eaa99ebc371fb632f67e4a92ad900179c6d6056b5c7b0cc99"
+    },
+    {
+      "version": 9,
+      "source": "apps/api/migrations/0009_member_seat_foundation.sql",
+      "source_sha256": "2dc78f6f70ef06b6d5b61df0302ad8a8d49565bf562e8d68e42dba7323073bd3",
+      "up_sha256": "b0d9266b637c5782d8f94e1c3bbb3f94e03881ce9f24dc42e42112cc78074a3a",
+      "down_sha256": "6d0ead49de1300c67f6762bf2a09e1acdd27bc3dd081e2cb45f12c0789e4d219"
+    },
+    {
+      "version": 10,
+      "source": "apps/api/migrations/0010_n_player_race_roster.sql",
+      "source_sha256": "27a33d5fe32a8a08ec9cf5f8993959c7923f2cc5533c01cdc236939a2e3f0fc5",
+      "up_sha256": "ef47b6283e5af1f2a0920410fa24f9438bf4f3766fb91ab60595c531db37a33b",
+      "down_sha256": "3105b92b1f061d3fa22f5603aae8ec13a178dbe6577e6ef04074837c0893ced4"
+    },
+    {
+      "version": 11,
+      "source": "apps/api/migrations/0011_race_elimination_scoring.sql",
+      "source_sha256": "c6a45a1914503ac90f2b76d04386f60864c4b193d8ac8c726054cad24f1af3e9",
+      "up_sha256": "352a0d2c2338d3d7577b886aa02a8f001565acdd8b585f8c7bbaea82db4d547b",
+      "down_sha256": "e1bf766d543937f73bd62e6210f227f40b25692b6785747199b5e12301b86f37"
+    },
+    {
+      "version": 12,
+      "source": "apps/api/migrations/0012_multi_chat_messages.sql",
+      "source_sha256": "4d5933814da2a0ad310ecf7baa68e3727f94ed0668f07950ab0fba0e72345330",
+      "up_sha256": "8d99d730218eb265911361b23c05f93febda0bcbc23baa33c5b679a6e8de5b07",
+      "down_sha256": "19bc399dd68e79a07654b7f044d035c3d782357d3783fdbb83f4e2be2ceeae57"
+    },
+    {
+      "version": 13,
+      "source": "apps/api/migrations/0013_race_elimination_toggle.sql",
+      "source_sha256": "f721317b2613f2dcd30b4c12b4c1fa0c10c273c1b7a148c97f9bbf465f365249",
+      "up_sha256": "d7488c5f16bb3fb54d9195c4fd77c3a0bf2d00834760475c87ab5e2862b0a6a0",
+      "down_sha256": "fbe8cbf81b754d7dc1d685594b0b7ab90bfcf50b1230bd0e412a563b4325ca88"
+    },
+    {
+      "version": 14,
+      "source": "apps/api/migrations/0014_multi_match_scoring_mode_points.sql",
+      "source_sha256": "78f0d90aa9b72c5513431b4f8680cb0c38d571dfe8d38fe2cc54c69187ce986c",
+      "up_sha256": "d17542b1095c29251212c41de382ecc0dda03fc24b1cd6a1f5af5d6f35c77269",
+      "down_sha256": "37ac111bca0882908aa9a48d3baaa5e818192963734178651c289954160bedcc"
+    },
+    {
+      "version": 15,
+      "source": "apps/api/migrations/0015_relay_stage_encounter_ws_v3.sql",
+      "source_sha256": "bc3907c04ae0ff4956c360336ea5bb3a0eb6ea3c23a86c20c99d1c5aa8dfb288",
+      "up_sha256": "b69910d50fd57db36a950a2fe3ae6363eb9654ccd8fdb4ed578fd0a50a5a5be0",
+      "down_sha256": "d2c18301123ebe788b9b865aec85ce8a39fda880eb50666e418ae972e97d95ac"
+    },
+    {
+      "version": 16,
+      "source": "apps/api/migrations/0016_relay_stage_pairing.sql",
+      "source_sha256": "a2b3af0ddb3967e0baf9ef3ef72c8ed55dd832fb5179a496df6bce982026caa3",
+      "up_sha256": "432a1c10bda9d2d05a95f3f4fd407563f84765cb09a84bae8655a523ee743467",
+      "down_sha256": "717745ec2e9e0c45246a48a351ca4f569b5b3a0c4697184a4afb76d818d3778d"
+    },
+    {
+      "version": 17,
+      "source": "apps/api/migrations/0017_relay_encounter_engine.sql",
+      "source_sha256": "d8539e287998ac32e9d49334ef057600b72f7a3771d5e8428c331f7274690764",
+      "up_sha256": "05905939a7efead45c55d561b526925db1a1ab8517bc239a53c11a3cf55f86a9",
+      "down_sha256": "aa4c6688baab610dfe897933768ca98650407611a58e801c715a4931fc443026"
+    },
+    {
+      "version": 18,
+      "source": "apps/api/migrations/0018_relay_lifecycle_recovery.sql",
+      "source_sha256": "ee8d8fadac7e172b2c925a1484d1902e2f2d2d96971c2b619a948aaaf5fe3c51",
+      "up_sha256": "04ae1912ff1add43900064bc6109213c110ece79b47f6645c7b6a5accd9d4d12",
+      "down_sha256": "32e374399a670586f7884c3fe68637e828dcd2ec6426f9bbb89e18d3c245cabf"
+    },
+    {
+      "version": 19,
+      "source": "apps/api/migrations/0019_relay_room_policy.sql",
+      "source_sha256": "08080381b2a3a3bc14e52a300cb1c570f54905e0002dc9f3c89efda2c9e1f55f",
+      "up_sha256": "8c2e4da3eff697233fbbb776078758a5165800ab6115429aad491d0c7f49981b",
+      "down_sha256": "0c6dfeb890094056292b58bcab35098e314603b58eaec88a21955dd0e28680ba"
+    },
+    {
+      "version": 20,
+      "source": "apps/api/migrations/0020_system_chat_announcements.sql",
+      "source_sha256": "56e7a4ff156a1375cddd57d0c8fd6eea60392eafce0f431c4c7a968147b9ab74",
+      "up_sha256": "ef8df90c770e6a33ebbad71b1ab8166c42c1a450f071174e8a9214e254bd0bed",
+      "down_sha256": "6a14ccda6b968c4c3d9d415570756be689a771a4efdbcbe147a89d8c3ef80df9"
+    },
+    {
+      "version": 21,
+      "source": "apps/api/migrations/0021_answer_match_policy.sql",
+      "source_sha256": "e3dd6b8b61f3e2b0db4fc7cbdc96a3b8b87cef69b7cc072ac663c3bf14d01e8c",
+      "up_sha256": "531cc6dad65f8607de8212a85fc5f8ab054d4634257b4a93819f1ed7ea8bf05f",
+      "down_sha256": "77fa61619f29e9fd06ff137ca80c1f6dfe53219dfce71984ee1230559f1abc6e"
+    },
+    {
+      "version": 22,
+      "source": "apps/api/migrations/0022_dynamic_feedback_statuses.sql",
+      "source_sha256": "4fb15c121ff5004563c757211f1c8ca56ceafb36767e2b99f34328687970adab",
+      "up_sha256": "65021f9c495ccafdd1414ffd3a06d204115bdba5768bf542c46f46f6a5e2afe3",
+      "down_sha256": "4324d6155811e0403bbc98ad5532a31d5b1a8311d0403a4ff57ba4591a88e5ac"
+    },
+    {
+      "version": 23,
+      "source": "apps/api/migrations/0023_puzzle_resolve_idempotency.sql",
+      "source_sha256": "0a4afcb5b98a78786cac54daca1b93825af7f55e7f3af00c5767a125375ace60",
+      "up_sha256": "43d669f7fe8d2b1ceaccb2351859c999cc54481866168ad1f1259791835f497a",
+      "down_sha256": "d24faae563e5aeae2918abf103727375c5f31b28fb535ce10097897851f957c0"
+    }
+  ]
+}

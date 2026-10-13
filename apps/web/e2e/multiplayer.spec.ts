@@ -1,4 +1,4 @@
-// 多人房间端到端（双 context，本地运行；需 task dev 起 Go+Next）。
+// 多人房间端到端（双 context，本地运行；需 task dev 起 Rust+Next）。
 // 场景：创建→加入→就绪→对局→互猜→局结果；断线→重连；刷新恢复；非法房间号 404。
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";

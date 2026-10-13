@@ -1,0 +1,36 @@
+[package]
+name = "touhouflandre-api"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+publish = false
+default-run = "server"
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8.9", features = ["ws"] }
+base64 = "0.23.1"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+futures-util = "0.3"
+hmac = "0.13.0"
+jsonschema = { version = "0.58.6", default-features = false }
+rand = "0.10.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.11.1"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "postgres", "chrono", "uuid", "json", "migrate", "macros"] }
+thiserror = "2"
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
+tokio-util = { version = "0.7.20", features = ["rt"] }
+tower = { version = "0.5.3", features = ["util"] }
+tower-http = { version = "0.7.1", features = ["cors", "trace", "catch-panic"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+unicode-normalization = "0.1"
+unicode-segmentation = "1"
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tokio-tungstenite = "0.29"

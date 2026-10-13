@@ -1,0 +1,253 @@
+{
+  "normalization": [
+    "generated identifiers",
+    "timestamps",
+    "signed cursors",
+    "HMAC column order bound to generated IDs",
+    "human error text (status/code retained)"
+  ],
+  "expected_difference": "relay countdown member array direction only; turn ownership unchanged; separate25 Go golden pairing vectors pass",
+  "results": [
+    {
+      "label": "/api/health",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/livez",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/readyz",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/catalog",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/catalog/full",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/catalog/characters",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/catalog/search-policy",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/characters/search?q=灵梦",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/characters/search?q=REIMU",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "/api/characters/search?q=",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "visits",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily create",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "random create",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily get",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily guess",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily duplicate",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily forfeit",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "daily get closed",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "invalid session",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "invalid mode",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race room create",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race room info",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race room join",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race lobby snapshot",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race host ready",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race guest ready",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race countdown snapshot",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race early guess",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race chat send",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "race chat history",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay room create",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay room info",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay room join",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay lobby snapshot",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay host ready",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay guest ready",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay countdown snapshot",
+      "equal": false,
+      "differences": [
+        {
+          "path": "/body/match/relay/currentStage/encounterDetails/0/members/0/memberId",
+          "go": "memberId:20",
+          "rust": "memberId:18"
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounterDetails/0/members/0/seat",
+          "go": 2,
+          "rust": 1
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounterDetails/0/members/1/memberId",
+          "go": "memberId:18",
+          "rust": "memberId:20"
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounterDetails/0/members/1/seat",
+          "go": 1,
+          "rust": 2
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounters/0/members/0/memberId",
+          "go": "memberId:20",
+          "rust": "memberId:18"
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounters/0/members/0/seat",
+          "go": 2,
+          "rust": 1
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounters/0/members/1/memberId",
+          "go": "memberId:18",
+          "rust": "memberId:20"
+        },
+        {
+          "path": "/body/match/relay/currentStage/encounters/0/members/1/seat",
+          "go": 1,
+          "rust": 2
+        }
+      ]
+    },
+    {
+      "label": "relay early guess",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay chat send",
+      "equal": true,
+      "differences": []
+    },
+    {
+      "label": "relay chat history",
+      "equal": true,
+      "differences": []
+    }
+  ]
+}

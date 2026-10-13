@@ -6,13 +6,17 @@
   "type": "module",
   "scripts": {
     "dev": "task dev",
-    "build": "pnpm -r build",
+    "build": "cargo build --workspace --release --locked && pnpm -r build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck",
     "lint:openapi": "redocly lint contracts/openapi/openapi.yaml",
     "check:openapi-refs": "node scripts/check-openapi-refs.mjs",
     "check:ws-protocol": "node scripts/check-ws-protocol.mjs",
-    "check:multiplayer-boundaries": "cd apps/api && go run ./cmd/check-multiplayer-boundaries"
+    "check:multiplayer-boundaries": "node --test scripts/check-multiplayer-boundaries.test.mjs && node scripts/check-multiplayer-boundaries.mjs",
+    "test:rust": "cargo test --workspace --locked",
+    "test:rust:db": "task test:integration",
+    "gen:rust": "node scripts/generate-rust-contracts.mjs",
+    "check:rust-contracts": "node scripts/generate-rust-contracts.mjs --check"
   },
   "keywords": [
     "touhou",

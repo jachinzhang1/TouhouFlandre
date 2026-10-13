@@ -48,7 +48,9 @@
 ```bash
 pnpm typecheck
 pnpm test
-cd apps/api && go test ./...
+pnpm test:rust
+# 在独立测试 PostgreSQL 上设置 TEST_DATABASE_URL 后运行
+task test:integration
 ```
 
 涉及 API 契约或数据库查询时运行：

@@ -1,0 +1,387 @@
+[
+  {
+    "operationId": "health_check",
+    "method": "GET",
+    "path": "/api/health",
+    "responses": {
+      "200": "HealthCheckResponse200"
+    }
+  },
+  {
+    "operationId": "site_visits_create",
+    "method": "POST",
+    "path": "/api/site/visits",
+    "responses": {
+      "200": "SiteVisitsCreateResponse200",
+      "500": "SiteVisitsCreateResponse500"
+    }
+  },
+  {
+    "operationId": "characters_search",
+    "method": "GET",
+    "path": "/api/characters/search",
+    "queryParameters": "CharactersSearchQuery",
+    "headerParameters": "CharactersSearchHeader",
+    "responses": {
+      "200": "CharactersSearchResponse200",
+      "400": "CharactersSearchResponse400",
+      "404": "CharactersSearchResponse404",
+      "503": "CharactersSearchResponse503"
+    }
+  },
+  {
+    "operationId": "catalog_get",
+    "method": "GET",
+    "path": "/api/catalog",
+    "responses": {
+      "200": "CatalogGetResponse200",
+      "503": "CatalogGetResponse503"
+    }
+  },
+  {
+    "operationId": "catalog_full",
+    "method": "GET",
+    "path": "/api/catalog/full",
+    "responses": {
+      "200": "CatalogFullResponse200",
+      "503": "CatalogFullResponse503"
+    }
+  },
+  {
+    "operationId": "catalog_characters",
+    "method": "GET",
+    "path": "/api/catalog/characters",
+    "responses": {
+      "200": "CatalogCharactersResponse200",
+      "503": "CatalogCharactersResponse503"
+    }
+  },
+  {
+    "operationId": "catalog_search_index",
+    "method": "GET",
+    "path": "/api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}",
+    "pathParameters": "CatalogSearchIndexPath",
+    "responses": {
+      "200": "CatalogSearchIndexResponse200",
+      "400": "CatalogSearchIndexResponse400",
+      "404": "CatalogSearchIndexResponse404",
+      "503": "CatalogSearchIndexResponse503"
+    }
+  },
+  {
+    "operationId": "catalog_search_policy",
+    "method": "GET",
+    "path": "/api/catalog/search-policy",
+    "responses": {
+      "200": "CatalogSearchPolicyResponse200"
+    }
+  },
+  {
+    "operationId": "puzzles_create",
+    "method": "POST",
+    "path": "/api/puzzles/{mode}",
+    "requestBody": "PuzzlesCreateRequestBody",
+    "pathParameters": "PuzzlesCreatePath",
+    "responses": {
+      "200": "PuzzlesCreateResponse200",
+      "400": "PuzzlesCreateResponse400",
+      "500": "PuzzlesCreateResponse500",
+      "503": "PuzzlesCreateResponse503"
+    }
+  },
+  {
+    "operationId": "puzzles_resolve",
+    "method": "POST",
+    "path": "/api/puzzles/{mode}/resolve",
+    "requestBody": "PuzzlesResolveRequestBody",
+    "pathParameters": "PuzzlesResolvePath",
+    "responses": {
+      "200": "PuzzlesResolveResponse200",
+      "400": "PuzzlesResolveResponse400",
+      "409": "PuzzlesResolveResponse409",
+      "500": "PuzzlesResolveResponse500",
+      "503": "PuzzlesResolveResponse503"
+    }
+  },
+  {
+    "operationId": "sessions_submitGuess",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/guess",
+    "requestBody": "SessionsSubmitGuessRequestBody",
+    "pathParameters": "SessionsSubmitGuessPath",
+    "responses": {
+      "200": "SessionsSubmitGuessResponse200",
+      "400": "SessionsSubmitGuessResponse400",
+      "404": "SessionsSubmitGuessResponse404",
+      "409": "SessionsSubmitGuessResponse409",
+      "500": "SessionsSubmitGuessResponse500",
+      "501": "SessionsSubmitGuessResponse501"
+    }
+  },
+  {
+    "operationId": "sessions_timeout",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/timeout",
+    "requestBody": "SessionsTimeoutRequestBody",
+    "pathParameters": "SessionsTimeoutPath",
+    "responses": {
+      "200": "SessionsTimeoutResponse200",
+      "404": "SessionsTimeoutResponse404",
+      "409": "SessionsTimeoutResponse409",
+      "500": "SessionsTimeoutResponse500"
+    }
+  },
+  {
+    "operationId": "sessions_forfeit",
+    "method": "POST",
+    "path": "/api/sessions/{sessionId}/forfeit",
+    "pathParameters": "SessionsForfeitPath",
+    "responses": {
+      "200": "SessionsForfeitResponse200",
+      "404": "SessionsForfeitResponse404",
+      "409": "SessionsForfeitResponse409",
+      "500": "SessionsForfeitResponse500"
+    }
+  },
+  {
+    "operationId": "sessions_get",
+    "method": "GET",
+    "path": "/api/sessions/{sessionId}",
+    "pathParameters": "SessionsGetPath",
+    "responses": {
+      "200": "SessionsGetResponse200",
+      "404": "SessionsGetResponse404"
+    }
+  },
+  {
+    "operationId": "rooms_create",
+    "method": "POST",
+    "path": "/api/rooms",
+    "requestBody": "RoomsCreateRequestBody",
+    "responses": {
+      "201": "RoomsCreateResponse201",
+      "400": "RoomsCreateResponse400",
+      "500": "RoomsCreateResponse500"
+    }
+  },
+  {
+    "operationId": "rooms_getInfo",
+    "method": "GET",
+    "path": "/api/rooms/{roomCode}",
+    "pathParameters": "RoomsGetInfoPath",
+    "responses": {
+      "200": "RoomsGetInfoResponse200",
+      "404": "RoomsGetInfoResponse404",
+      "429": "RoomsGetInfoResponse429"
+    }
+  },
+  {
+    "operationId": "rooms_join",
+    "method": "POST",
+    "path": "/api/rooms/{roomCode}/join",
+    "requestBody": "RoomsJoinRequestBody",
+    "pathParameters": "RoomsJoinPath",
+    "responses": {
+      "201": "RoomsJoinResponse201",
+      "404": "RoomsJoinResponse404",
+      "409": "RoomsJoinResponse409",
+      "429": "RoomsJoinResponse429"
+    }
+  },
+  {
+    "operationId": "rooms_getSnapshot",
+    "method": "GET",
+    "path": "/api/rooms/{roomId}/snapshot",
+    "pathParameters": "RoomsGetSnapshotPath",
+    "queryParameters": "RoomsGetSnapshotQuery",
+    "responses": {
+      "200": "RoomsGetSnapshotResponse200",
+      "401": "RoomsGetSnapshotResponse401",
+      "404": "RoomsGetSnapshotResponse404"
+    }
+  },
+  {
+    "operationId": "rooms_setReady",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/ready",
+    "requestBody": "RoomsSetReadyRequestBody",
+    "pathParameters": "RoomsSetReadyPath",
+    "responses": {
+      "400": "RoomsSetReadyResponse400",
+      "401": "RoomsSetReadyResponse401",
+      "403": "RoomsSetReadyResponse403",
+      "404": "RoomsSetReadyResponse404",
+      "409": "RoomsSetReadyResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_updateSettings",
+    "method": "PATCH",
+    "path": "/api/rooms/{roomId}/settings",
+    "requestBody": "RoomsUpdateSettingsRequestBody",
+    "pathParameters": "RoomsUpdateSettingsPath",
+    "responses": {
+      "400": "RoomsUpdateSettingsResponse400",
+      "401": "RoomsUpdateSettingsResponse401",
+      "403": "RoomsUpdateSettingsResponse403",
+      "404": "RoomsUpdateSettingsResponse404",
+      "409": "RoomsUpdateSettingsResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_claimSeat",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/claim-seat",
+    "pathParameters": "RoomsClaimSeatPath",
+    "responses": {
+      "401": "RoomsClaimSeatResponse401",
+      "403": "RoomsClaimSeatResponse403",
+      "404": "RoomsClaimSeatResponse404",
+      "409": "RoomsClaimSeatResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_rematch",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/rematch",
+    "pathParameters": "RoomsRematchPath",
+    "responses": {
+      "401": "RoomsRematchResponse401",
+      "403": "RoomsRematchResponse403",
+      "404": "RoomsRematchResponse404",
+      "409": "RoomsRematchResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_leave",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/leave",
+    "pathParameters": "RoomsLeavePath",
+    "responses": {
+      "401": "RoomsLeaveResponse401",
+      "404": "RoomsLeaveResponse404",
+      "409": "RoomsLeaveResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_close",
+    "method": "DELETE",
+    "path": "/api/rooms/{roomId}",
+    "pathParameters": "RoomsClosePath",
+    "responses": {
+      "401": "RoomsCloseResponse401",
+      "403": "RoomsCloseResponse403",
+      "404": "RoomsCloseResponse404",
+      "409": "RoomsCloseResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_connectWs",
+    "method": "GET",
+    "path": "/api/rooms/{roomId}/ws",
+    "pathParameters": "RoomsConnectWsPath",
+    "responses": {
+      "400": "RoomsConnectWsResponse400",
+      "401": "RoomsConnectWsResponse401",
+      "404": "RoomsConnectWsResponse404"
+    }
+  },
+  {
+    "operationId": "rooms_listMessages",
+    "method": "GET",
+    "path": "/api/rooms/{roomId}/messages",
+    "pathParameters": "RoomsListMessagesPath",
+    "queryParameters": "RoomsListMessagesQuery",
+    "responses": {
+      "200": "RoomsListMessagesResponse200",
+      "400": "RoomsListMessagesResponse400",
+      "401": "RoomsListMessagesResponse401",
+      "404": "RoomsListMessagesResponse404",
+      "409": "RoomsListMessagesResponse409",
+      "410": "RoomsListMessagesResponse410"
+    }
+  },
+  {
+    "operationId": "rooms_sendMessage",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/messages",
+    "requestBody": "RoomsSendMessageRequestBody",
+    "pathParameters": "RoomsSendMessagePath",
+    "responses": {
+      "200": "RoomsSendMessageResponse200",
+      "400": "RoomsSendMessageResponse400",
+      "401": "RoomsSendMessageResponse401",
+      "403": "RoomsSendMessageResponse403",
+      "404": "RoomsSendMessageResponse404",
+      "409": "RoomsSendMessageResponse409",
+      "429": "RoomsSendMessageResponse429"
+    }
+  },
+  {
+    "operationId": "rooms_submitGuess",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/rounds/{roundIndex}/guess",
+    "requestBody": "RoomsSubmitGuessRequestBody",
+    "pathParameters": "RoomsSubmitGuessPath",
+    "responses": {
+      "200": "RoomsSubmitGuessResponse200",
+      "400": "RoomsSubmitGuessResponse400",
+      "401": "RoomsSubmitGuessResponse401",
+      "403": "RoomsSubmitGuessResponse403",
+      "404": "RoomsSubmitGuessResponse404",
+      "409": "RoomsSubmitGuessResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_forfeitRound",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/rounds/{roundIndex}/forfeit",
+    "pathParameters": "RoomsForfeitRoundPath",
+    "responses": {
+      "401": "RoomsForfeitRoundResponse401",
+      "403": "RoomsForfeitRoundResponse403",
+      "404": "RoomsForfeitRoundResponse404",
+      "409": "RoomsForfeitRoundResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_passRelayTurn",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/rounds/{roundIndex}/pass",
+    "pathParameters": "RoomsPassRelayTurnPath",
+    "responses": {
+      "401": "RoomsPassRelayTurnResponse401",
+      "403": "RoomsPassRelayTurnResponse403",
+      "404": "RoomsPassRelayTurnResponse404",
+      "409": "RoomsPassRelayTurnResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_relayEncounterAction",
+    "method": "POST",
+    "path": "/api/rooms/{roomId}/stages/{stageIndex}/encounters/{encounterId}/actions",
+    "requestBody": "RoomsRelayEncounterActionRequestBody",
+    "pathParameters": "RoomsRelayEncounterActionPath",
+    "responses": {
+      "200": "RoomsRelayEncounterActionResponse200",
+      "400": "RoomsRelayEncounterActionResponse400",
+      "401": "RoomsRelayEncounterActionResponse401",
+      "403": "RoomsRelayEncounterActionResponse403",
+      "404": "RoomsRelayEncounterActionResponse404",
+      "409": "RoomsRelayEncounterActionResponse409"
+    }
+  },
+  {
+    "operationId": "rooms_listRelayStageHistory",
+    "method": "GET",
+    "path": "/api/rooms/{roomId}/matches/{matchIndex}/stages",
+    "pathParameters": "RoomsListRelayStageHistoryPath",
+    "queryParameters": "RoomsListRelayStageHistoryQuery",
+    "responses": {
+      "200": "RoomsListRelayStageHistoryResponse200",
+      "400": "RoomsListRelayStageHistoryResponse400",
+      "401": "RoomsListRelayStageHistoryResponse401",
+      "404": "RoomsListRelayStageHistoryResponse404"
+    }
+  }
+]

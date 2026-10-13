@@ -8,9 +8,9 @@
 
 ```mermaid
 flowchart LR
-    P[postgres] --> M[migrate<br/>goose up]
+    P[postgres] --> M[migrate<br/>SQLx up]
     M --> S[seed<br/>题库快照]
-    S --> A[api<br/>Go + Echo :4000]
+    S --> A[api<br/>Rust + Axum :4000]
     A --> W[web<br/>Next standalone :3000]
     W -->|/api rewrites| A
     A -. /metrics .-> Pm[Prometheus<br/>可选 profile]
@@ -22,9 +22,9 @@ flowchart LR
 | 服务                     | 说明                                                                        |
 | ------------------------ | --------------------------------------------------------------------------- |
 | `postgres`               | Postgres 数据库，保存题库、会话、多人房间和事件。                           |
-| `migrate`                | 一次性迁移任务，执行 goose 数据库迁移。                                     |
+| `migrate`                | 一次性迁移任务，执行二进制内嵌的 SQLx 迁移。                                     |
 | `seed`                   | 一次性题库写入任务，生成版本化题库快照。                                    |
-| `api`                    | Go API 与 WebSocket 服务。                                                  |
+| `api`                    | Rust API 与 WebSocket 服务。                                                  |
 | `web`                    | Next standalone Web 服务。                                                  |
 | `prometheus` / `grafana` | 可选 `monitoring` profile；采集 API `/metrics`、加载 relay 发布告警与面板。 |
 
@@ -61,28 +61,46 @@ cp .env.example .env
 
 ## 启动
 
-推荐使用 Task：
+生产镜像通过固定 Rust 1.99.0 工具链构建 `server`、`migrate`、`seed` 和 `healthcheck`，运行层为非 root distroless。SQLx 迁移内嵌于二进制，不需要外部迁移 CLI。开发仍使用本机 Cargo/pnpm，Docker 只运行数据库。
+
+全新数据库使用：
 
 ```bash
 task prod:up
 ```
 
-等价 Docker Compose 命令：
+Task 与手动 CD 使用同样顺序：先构建，再停止现有 API 和迁移/seed 写进程，成功完成迁移及 seed 后恢复服务。首次上线和日常更新都执行迁移检查：
 
 ```bash
-docker compose up -d --build --wait
-```
-
-生产数据库由 Compose 管理，不需要手动建库、迁移或 seed。完整启动会依次完成：
-
-```bash
+docker compose build
 docker compose up -d --wait postgres
-docker compose up --build migrate
-docker compose up --build seed
-docker compose up -d --build --wait api web
+docker compose stop api migrate seed
+docker compose run --rm --no-deps migrate up
+docker compose run --rm --no-deps seed
+docker compose up -d --no-deps --wait api web
 ```
 
-平时使用单条 `task prod:up` 即可；拆分命令主要用于排查具体失败环节。
+任何步骤失败时不启动新 API；查明并修复后可重跑。`migrate up` 对未接管的 Goose 历史明确失败，不会自行改变迁移工具。另有 systemd、其他 Compose 项目或集群实例写同一数据库时，也必须先停止这些写进程。
+
+### 从 Goose 数据库切换
+
+现有数据库第一次使用 Rust 迁移器时，执行一次显式接管。此步骤由运维在目标环境发起，CD 不自动执行：
+
+1. 提前备份数据库并确认可恢复；停止旧 API、Goose 任务、定时迁移入口和其他数据库写进程。禁用自动重启和旧版本部署入口，确保切换期间不会再次写入。
+2. 在 Rust 版本仓库中构建新镜像并确保数据库在线。
+3. 运行 `migrate adopt-goose`。迁移器检查历史编号为已知连续前缀、基础表存在且没有未完成的 SQLx 接管历史；将已完成版本与 checksum 原子写入 SQLx 记录，再执行待应用迁移。它不会重新执行已完成的建表 SQL。
+4. 接管成功后运行常规部署，并只保留 SQLx 迁移入口。保留旧 Goose 历史表用于审计，不再让 Goose 管理该库。
+
+```bash
+docker compose build
+docker compose up -d --wait postgres
+docker compose stop api migrate seed
+# 另行确认该数据库的其他旧写进程与定时 Goose 入口已经停止。
+docker compose run --rm --no-deps migrate adopt-goose
+task prod:up
+```
+
+接管遇到未知版本、历史缺口、基础表缺失或部分 SQLx 历史时会失败，必须先核查真实数据库状态，不得通过删历史表或修改 checksum 绕过。应用回滚也必须保持 SQLx 作为唯一迁移入口；若需要恢复旧迁移管理，使用已演练的数据库备份恢复流程。
 
 HSO-007 发布门禁已完成，因此当前 Compose 在未覆盖 `CHARACTER_SEARCH_MODE` 时默认启用 `local-primary`。首次部署仍应按下文灰度顺序先显式设置 `CHARACTER_SEARCH_MODE=remote`；紧急回滚同样显式设置为 `remote` 后重新创建 API 容器。
 
@@ -103,7 +121,7 @@ task prod:logs
 | `http://localhost:4000/livez`             | API 进程探活。                         |
 | `http://localhost:4000/readyz`            | API 数据库与当前题库搜索源 readiness。 |
 
-`readyz` 失败通常表示数据库不可达、迁移未完成、当前 CatalogSnapshot 缺失/不可解析或题库未就绪。浏览器索引的独立 wire 投影失败由索引 503 和 snapshot 指标暴露，不会把仍可工作的 Go 远程搜索实例摘出 readiness。
+`readyz` 失败通常表示数据库不可达、迁移未完成、当前 CatalogSnapshot 缺失/不可解析或题库未就绪。浏览器索引的独立 wire 投影失败由索引 503 和 snapshot 指标暴露，不会把仍可工作的 Rust 远程搜索实例摘出 readiness。
 
 `http://localhost:4000/metrics` 输出 Prometheus 文本格式。多人和搜索指标都只使用固定低基数枚举；搜索覆盖 policy、source/snapshot、fallback reason、远程 outcome/latency 和索引构建耗时。标签与结构化日志不得包含查询词、题库版本、session/room/match/角色 ID、令牌、昵称、聊天正文或答案；仍建议只在受信网络内暴露。
 
@@ -116,7 +134,7 @@ git pull
 task prod:up
 ```
 
-`migrate` 和 `seed` 每次启动都会作为一次性服务运行。题库 seed 会写入新的版本化快照；已经开始的会话继续引用旧版本和已冻结的答案判定策略，不受新题库影响。
+`task prod:up` 与 CD 每次部署都运行一次性 `migrate` 和 `seed`，并在迁移前停止旧 API 写进程。题库 seed 会写入新的版本化快照；已经开始的会话继续引用旧版本和已冻结的答案判定策略，不受新题库影响。
 
 API 运行中也可以单独执行版本化 seed。`catalog_state.current_version` 更新后，新建对局会按需加载新题库索引，无需重启 API；进行中的对局继续使用旧索引。直接修改 `character` 行表不是受支持的热更新方式，也不会改变已经缓存或冻结的题库。`catalog_snapshot` 不允许同版本覆盖：同版本同内容可幂等重跑，同版本不同内容会使 seed 失败并回滚事务。
 
@@ -126,10 +144,10 @@ API 运行中也可以单独执行版本化 seed。`catalog_state.current_versio
 
 首次发布按以下顺序执行：
 
-1. 备份数据库并先应用 additive 迁移 `0023_puzzle_resolve_idempotency.sql`。应用回滚时保留该表，不在生产执行 Down。
+1. 备份数据库并先应用 additive 迁移 `0023_puzzle_resolve_idempotency.up.sql`。应用回滚时保留该表，不在生产执行 Down。
 2. 以 `CHARACTER_SEARCH_MODE=remote` 部署全部 API 实例。fleet 尚有旧实例时不得启用 `local-primary`。
 3. 逐实例检查策略、当前题库版本索引、真实缺失版本的结构化 `CATALOG_VERSION_NOT_FOUND`、错误 `Cache-Control: no-store`、CORS fallback header 和旧 `/api/characters/search`。
-4. 从 Go 直连、Next 同源和最终代理/CDN 分别抽查索引的 `ETag`、`Cache-Control: public, max-age=31536000, immutable`、条件请求 `304`、实际 `Content-Encoding` 和传输体积。CDN 可压缩，但不得改变解压后的 JSON、ETag 语义或错误 no-store。
+4. 从 API 直连、Next 同源和最终代理/CDN 分别抽查索引的 `ETag`、`Cache-Control: public, max-age=31536000, immutable`、条件请求 `304`、实际 `Content-Encoding` 和传输体积。CDN 可压缩，但不得改变解压后的 JSON、ETag 语义或错误 no-store。
 5. 先完成 Web 部署和 remote 冒烟，再把所有 API 实例统一改为 `local-primary`。观察角色目录、单人、竞速和接力；索引就绪后的输入不应继续请求 `/api/characters/search`。
 
 可用以下只读请求取得抽查基线，版本替换为 `/api/catalog` 返回值：

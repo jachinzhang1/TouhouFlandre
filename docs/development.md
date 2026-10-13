@@ -1,6 +1,6 @@
 # 开发指南
 
-本文面向希望在本地运行、调试或贡献 TouhouFlandre 的开发者。
+本地 API 和 Web 在宿主机运行，Docker 只负责 PostgreSQL。请在仓库根目录执行本文命令。
 
 ## 环境要求
 
@@ -8,12 +8,12 @@
 |---|---|
 | Node.js | 24 或更高 |
 | pnpm | 11 |
-| Go | 1.26 或更高 |
-| Docker + Compose | 用于本地 Postgres |
+| Rust | 1.99.0，由 `rust-toolchain.toml` 固定；通过 rustup 管理 |
+| Docker + Compose | 仅用于本地 PostgreSQL 18 |
 | Task | 跨语言任务入口 |
 | Git | 版本控制 |
 
-仓库使用 pnpm workspace，Go 为独立 module（`apps/api`）。请在仓库根目录执行本文命令。
+TypeScript 使用 pnpm workspace；Rust 使用根目录 Cargo workspace，API crate 位于 `apps/api`。首次运行 Cargo 时 rustup 会安装固定工具链及 rustfmt、Clippy。
 
 ## 安装与启动
 
@@ -26,7 +26,7 @@ task db:seed
 pnpm dev
 ```
 
-默认服务地址：
+`task dev` 启动数据库后，在本机并行运行 `cargo run --bin server` 和 Next 开发服务器。`task dev:api`、`task db:migrate`、`task db:seed` 会读取根目录 `.env`。直接运行 Cargo 时需自行导出环境变量；seed 的默认数据路径以 `apps/api` 为工作目录。
 
 | 服务 | 地址 |
 |---|---|
@@ -34,7 +34,7 @@ pnpm dev
 | API | `http://localhost:4000` |
 | API 健康检查 | `http://localhost:4000/api/health`、`/livez`、`/readyz` |
 
-Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 API。若要让浏览器直连 Go API，可设置 `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`。本地生产栈则通过 `http://localhost:3000` 提供 Web 与 WebSocket 入口。
+Web 默认通过 Next rewrites 同源代理 `/api`。直连 API 时设置 `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000`，并在 `WEB_ORIGINS` 中登记浏览器来源。
 
 ## 环境变量
 
@@ -42,117 +42,92 @@ Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 AP
 |---|---|
 | `API_PORT` | API 监听端口。 |
 | `NEXT_PUBLIC_API_BASE_URL` | Web 请求的 API 根地址；留空为同源代理。 |
-| `WEB_ORIGINS` | 允许跨域访问 API 的 Web 来源，逗号分隔。 |
-| `POSTGRES_PASSWORD` | compose Postgres 密码。 |
-| `DATABASE_URL_PG` | Go 服务 Postgres 连接串。 |
-| `GOOSE_DBSTRING` | goose 迁移连接串。 |
-| `GOOSE_DRIVER` | goose 驱动。 |
+| `WEB_ORIGINS` | 允许跨域请求和 WebSocket 升级的浏览器来源，逗号分隔。 |
+| `POSTGRES_PASSWORD` | Compose PostgreSQL 密码。 |
+| `DATABASE_URL_PG` | API、迁移和 seed 共用的 PostgreSQL 连接串。 |
+| `TEST_DATABASE_URL` | 集成测试专用本地 PostgreSQL；账号必须有建库权限。 |
+| `CATALOG_DATA_DIR` | seed 数据目录；默认 `../../packages/data/src`。 |
 
-不要提交 `.env`、本地数据库或包含凭据的日志文件。
+其余配置和默认值见 `.env.example`、`apps/api/src/config.rs`。不要提交 `.env`、数据库文件或凭据日志。
 
 ## 常用命令
 
 | 命令 | 说明 |
 |---|---|
-| `pnpm dev` / `task dev` | 同时启动 Go API 与 Web。 |
-| `task db:up` / `task db:down` | 启动/停止本地 Postgres 容器。 |
-| `task db:migrate` | 应用 goose 数据库迁移。 |
-| `task db:seed` | 校验题库并写入 Postgres 快照。 |
-| `pnpm build` | 构建所有 workspace 包。 |
-| `pnpm test` | 运行 shared/data/web 的 Vitest 测试。 |
-| `pnpm typecheck` | 对所有包执行 TypeScript 检查。 |
-| `pnpm --filter @touhouflandre/web test:e2e` | Playwright E2E；需 `task dev` 运行中。 |
-| `cd apps/api && go test ./...` | Go 单元与集成测试；需可访问 Postgres。 |
-| `cd apps/api && go vet ./...` | Go 静态检查。 |
-| `task gen` | 重新生成 OpenAPI 类型与 sqlc 查询。 |
-| `pnpm --filter @touhouflandre/data validate` | 校验角色与作品数据。 |
+| `pnpm dev` / `task dev` | 本机运行 API 与 Web，仅数据库使用 Docker。 |
+| `task db:up` / `task db:down` | 启动/停止本地 PostgreSQL 容器。 |
+| `task db:migrate` | 执行内嵌 SQLx 迁移，拒绝未经接管的 Goose 数据库。 |
+| `task db:adopt-goose` | 已停止旧写进程后，一次性显式接管现有 Goose 数据库。 |
+| `task db:seed` | 校验题库并写入版本化快照。 |
+| `pnpm build` | 构建 Rust release 二进制及 TypeScript workspace 包。 |
+| `pnpm test` | shared/data/web 的 Vitest 测试。 |
+| `pnpm test:rust` | Rust 单元、契约和无数据库测试。 |
+| `task test:integration` | 包括真实 PostgreSQL 测试；必须显式设置 `TEST_DATABASE_URL`。 |
+| `pnpm typecheck` | TypeScript 类型检查。 |
+| `cargo fmt --all --check` | Rust 格式检查。 |
+| `cargo clippy --workspace --all-targets --locked -- -D warnings` | Rust 静态检查。 |
+| `task gen` / `task check:generated` | 生成或核对 Rust DTO、JSON 校验 schema 和 Web API 类型。 |
+| `pnpm check:multiplayer-boundaries` | Rust 模块依赖边界检查及检查器负例测试。 |
+| `pnpm --filter @touhouflandre/web test:e2e` | Playwright E2E；需开发服务运行中。 |
 
-PR 前至少运行 `pnpm typecheck`、`pnpm test` 和 `cd apps/api && go test ./...`。涉及构建配置或前端资源时还应运行 `pnpm build`。
+真实数据库测试会为每个用例创建 UUID 命名的独立数据库，应用迁移后运行，结束时删除。仅指向可丢弃的本地测试服务器，不使用生产连接：
+
+```bash
+TEST_DATABASE_URL='postgres://touhouflandre:touhouflandre-dev@127.0.0.1:5433/postgres' task test:integration
+```
+
+CI 使用独立 PostgreSQL 服务执行包含被忽略集成用例在内的全部 Rust 测试，检查 Clippy、格式、生成物及 release 构建。
 
 ## 项目结构
 
 ```text
-apps/web/
-  src/app/                 Next.js App Router 路由
-  src/components/          页面组件与游戏组件
-  src/domain/              前端展示逻辑
-  src/generated/           openapi-typescript 生成类型
-  src/hooks/               数据 Hook
-  src/lib/api.ts           统一 API 客户端
-  src/stats/               本地统计
 apps/api/
-  cmd/server/              服务入口
-  cmd/seed/                题库 seed 入口
-  internal/game/           权威游戏规则
-  internal/handler/        OpenAPI handler 与错误映射
-  internal/generated/      oapi-codegen / sqlc 生成代码
-  internal/hub/            多人 WebSocket 连接管理
-  internal/multi/          多人模式领域逻辑
-  migrations/              goose 版本化迁移
-  sql/queries/             sqlc 查询源
-packages/shared/src/       前端共享类型、字段、模式、题库校验辅助与分享文本
+  src/bin/                 server、migrate、seed、healthcheck 入口
+  src/game/                字段、答案等价、每日题、范围、搜索与缓存
+  src/catalog/             题库读取、远程搜索与 immutable 索引
+  src/solo/                单人题局、恢复与幂等写入
+  src/multi/               房间、竞速、接力与观察者投影
+  src/chat/                房间聊天与历史
+  src/realtime/            WS v3 帧、同步屏障、队列和连接注册
+  src/ws/                  WebSocket 鉴权与房间服务适配
+  src/contracts/           从 OpenAPI 生成的 DTO/schema 与验证入口
+  src/database.rs          SQLx 迁移与显式旧库接管
+  src/seed.rs              原子题库写入与版本计算
+  db/migrations/           不可变 SQLx up/down SQL
+  tests/                   黄金样例、契约和真实数据库测试
+apps/web/src/              Next 页面、组件、API 客户端及本地统计
+packages/shared/src/       前端共享类型、字段、展示与校验辅助
 packages/data/src/         角色、作品数据与 Zod schema
-contracts/openapi/         HTTP 契约
+contracts/openapi/         HTTP 契约唯一来源
 contracts/ws/              WebSocket 协议
 ```
 
 ## 开发约定
 
-### 前端
+前端以 API 返回的会话、房间及公开索引为准。客户端不选择答案或重新计算反馈，进行中的投影不得包含隐藏答案。交互应覆盖加载、空、错误、禁用和完成状态，样式改动检查窄屏及 `prefers-reduced-motion`。
 
-- 业务状态以 API 返回的会话或房间快照为准。
-- 不在客户端选择答案或重新计算反馈。
-- 路由由 App Router 文件系统管理，动态路由必须校验非法参数。
-- API 默认同源 `/api`，直连用 `NEXT_PUBLIC_API_BASE_URL`。
-- 样式以 Tailwind utility 为主，设计 token 定义在 `globals.css` 的 `@theme`。
-- 交互必须覆盖加载、空、错误、禁用和完成状态。
-- 样式相关工作需要检查窄屏布局和 `prefers-reduced-motion`。
+Axum handler 使用从 OpenAPI 生成的 schema 校验请求，业务错误返回稳定错误码及 `ErrorResponse`。领域规则位于 `src/game`；该模块不得依赖数据库或 HTTP 适配层。PostgreSQL 是会话和多人状态的权威，内存仅保留版本化缓存、活动连接和同步队列。事务提交后才能发布事件。
 
-### API
+`src/realtime` 不依赖房间或数据库服务；`src/ws` 负责连接协议与应用服务的装配。多人共享 models/store/events 不引用具体模式；race 与 relay 不互相导入。模式 domain 不访问数据库或传输适配层，允许无 I/O 的 `sqlx::FromRow` 数据映射派生。边界检查覆盖 grouped use、相对路径、别名和完全限定调用。
 
-- 请求校验由 OpenAPI middleware 承担，不维护第二套 API schema。
-- 进行中的会话不得返回隐藏答案。
-- 可预期业务错误返回统一 `ErrorResponse` 和稳定错误码。
-- handler 实现 oapi-codegen 生成的 strict server interface。
-- 游戏规则、答案选择和角色搜索逻辑位于 `internal/game`，与 handler 分离。
-- 多人状态以 Postgres 为权威，Go 内存只保存活动连接和热点投影。
-
-### 共享逻辑
-
-- `packages/shared` 只保留前端展示和数据校验需要的类型、字段、模式、校验辅助与分享文本；运行时角色搜索不在前端重复实现。
-- 比较、每日题、随机题、会话和并发写入规则以 Go `internal/game` 与 handler 实现为准。
-- 反馈规则相关工作必须添加覆盖边界情况的 Go 测试。
-- 扩展内容类型时同步更新 OpenAPI、Go 规则、前端展示和测试。
+权威规则变更要添加能发现行为回归的 Rust 测试。搜索使用 Rust/TypeScript 共用 fixture；对外契约变更需同步更新生成物和前端调用。
 
 ## 数据库迁移
 
-新增迁移时：
+1. 在 `apps/api/db/migrations` 追加同一编号的 `<version>_<name>.up.sql`、`<version>_<name>.down.sql`。
+2. 保持 expand/contract 原则，不破坏仍在使用的记录或冻结快照。
+3. 执行 `task db:migrate`；SQLx 验证已应用迁移的 checksum。
+4. 修改对应 SQLx 查询及其真实 PostgreSQL 集成用例；查询不再通过独立代码生成器生成。
+5. 数据变更需要时执行 `task db:seed`，然后运行集成测试与前端回归。
 
-1. 新建 `apps/api/migrations/00NN_<change_name>.sql`。
-2. 遵循 expand/contract 原则，避免破坏运行中数据。
-3. 运行 `task db:migrate`。
-4. 若迁移影响 sqlc 查询，运行 `task gen:repo` 并纳入生成代码。
-5. 运行 `task db:seed` 建立新的题库快照。
-6. 运行 Go 测试与前端回归。
+迁移一旦应用即不可变；追加迁移而非修改旧文件。迁移由 `sqlx::migrate!` 内嵌，`build.rs` 监视迁移目录，新增文件后需重新构建二进制。
 
-迁移一旦应用即不可变；如需调整，追加新迁移而非编辑已应用迁移。
+旧库首次切换前停止所有旧 API、Goose 迁移任务和其他写进程，先备份，再显式运行 `task db:adopt-goose`。该命令核对既有迁移历史及基础表存在性并建立 SQLx 记录；普通 `db:migrate` 不会自动接管。成功后只使用 SQLx 迁移入口，不再运行 Goose。生产步骤见[部署指南](./deployment.md)。
 
 ## 故障排查
 
-### Web 可以打开，但请求失败
+Web 请求失败时，先确认 API 正在监听 `4000`，再检查 `/readyz`。503 可能是 PostgreSQL 不可达、迁移未完成或当前题库快照缺失，依次检查 `task db:up`、连接串、迁移及 seed。
 
-确认 API 正在监听 `4000` 端口，并访问 `/api/health`、`/readyz`。`/readyz` 返回 503 表示 Postgres 不可达，先确认 `task db:up` 与 `DATABASE_URL_PG`。
+seed 后角色目录使用最新题库，已经开始的题局仍引用原冻结快照。已创建的当天每日题不会因 seed 或判定策略配置变化而改变，日期按 `Asia/Shanghai` 划分。
 
-### Go 服务启动报数据库连接错误
-
-确认 Postgres 容器健康，且 `.env` 的 `DATABASE_URL_PG` 端口与 compose 配置一致。
-
-### 题库同步后页面仍显示旧数据
-
-重新运行 `task db:seed`。搜索页会使用最新题库；已开始的游戏会话按设计继续使用创建时的冻结快照。当天每日题映射不会因 seed 改变，需要等到下一个 `Asia/Shanghai` 自然日。
-
-## 贡献范围
-
-一个 PR 应聚焦于单一功能或问题。避免同时提交本地日志、数据库文件、格式化无关文件或来源不明的媒体资源。用户可见行为发生变化时，请同步更新相关文档。
-
-提交 PR 前必须先通过 Issue 对齐需求、验收标准或数据来源。未事先在 Issue 中对齐，或明显偏离[站点开发计划](./site-development-plan.md)的 PR 将被直接关闭。
+提交 PR 前通过 Issue 对齐需求、验收或数据来源，遵守[站点开发计划](./site-development-plan.md)。避免混入日志、数据库文件、无关格式化或来源不明媒体。
