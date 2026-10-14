@@ -88,7 +88,9 @@ TouhouFlandre（东方芙一把）是一个无需账号即可游玩的东方 Pro
 | Docker + Compose | 运行本地 Postgres |
 | Task             | 跨语言任务入口    |
 
-本地 API 和 Web 原生运行；Docker 只启动数据库。首次启动：
+本地 API 和 Web 原生运行；Docker 只启动 PostgreSQL。
+
+**首次使用空数据库：**
 
 ```bash
 git clone https://github.com/jachinzhang1/TouhouFlandre.git
@@ -98,8 +100,26 @@ pnpm install
 task db:up
 task db:migrate
 task db:seed
-pnpm dev
+task dev
 ```
+
+**从旧 Go 后端切换，保留已有开发数据：**
+
+保留原有 `.env`，确认 `DATABASE_URL_PG` 指向本地开发库。停止旧 API 和 Goose 迁移进程，备份数据库后执行：
+
+```bash
+pnpm install
+task db:up
+task db:adopt-goose
+task db:seed
+task dev
+```
+
+`db:adopt-goose` 只需执行一次：它核对旧迁移历史，建立 SQLx 记录并执行尚未应用的迁移。普通 `db:migrate` 会拒绝未经接管的 Goose 数据库。
+
+完成初始化后，日常使用 `task dev`（等同于 `pnpm dev`）启动数据库、API 和 Web。**`task dev` 不会自动迁移或初始化题库**；拉取新迁移后先运行 `task db:migrate`，题库更新后运行 `task db:seed`。
+
+如果启动时出现 `startup_recovery` 和 `SQLSTATE 42703`，表示查询引用了不存在的列。先检查数据库迁移是否完成；旧 Goose 库按上面的步骤接管。`.sqlx` 缓存只用于编译检查，不能代替运行数据库的迁移，无需为此删库或删卷。
 
 默认服务地址：
 
@@ -163,6 +183,8 @@ flowchart LR
 | `pnpm dev` / `task dev`                     | 启动本地 Postgres、API 和 Web                |
 | `task db:up` / `task db:down`               | 启停本地开发 Postgres                        |
 | `task db:migrate`                           | 执行 SQLx 数据库迁移                        |
+| `task db:adopt-goose`                       | 一次性接管旧 Goose 开发库并补齐迁移           |
+| `task db:queries:prepare` / `task db:queries:check` | 更新或校验 SQLx 编译检查缓存，需设置 `TEST_DATABASE_URL` |
 | `task test:integration`                    | 在显式 `TEST_DATABASE_URL` 中运行隔离数据库测试 |
 | `task db:seed`                              | 校验题库并写入数据库                         |
 | `pnpm build`                                | 构建 Rust 二进制及 TypeScript 包                        |
