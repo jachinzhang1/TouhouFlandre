@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	legacy "github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
@@ -65,7 +66,7 @@ func NewEncounterService(pool *pgxpool.Pool, clock core.Clock, coordinator *rela
 		clock = core.SystemClock{}
 	}
 	provider := game.NewCatalogRuntimeProvider(func(ctx context.Context, version string) ([]game.Character, error) {
-		return legacy.CharactersForVersion(ctx, repo.New(pool), version)
+		return catalog.CharactersForVersion(ctx, repo.New(pool), version)
 	})
 	return &EncounterService{
 		pool: pool, clock: clock, coordinator: coordinator,
@@ -846,7 +847,7 @@ func (s *EncounterService) endEncounterWithMatchEnd(ctx context.Context, tx pgx.
 		return false, err
 	}
 	legacy.DefaultMetrics.RecordEncounterDuration(relayMetricLabels(match), now.Sub(encounter.StartsAt.Time))
-	characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, q, match.CatalogVersion)
 	if err != nil {
 		return false, err
 	}
@@ -1077,10 +1078,10 @@ func (s *EncounterService) compareGuess(ctx context.Context, q *repo.Queries, ma
 	if err != nil {
 		return nil, false, err
 	}
-	feedback, err := s.guessEvaluator.EvaluateWithLoader(
+	feedback, err := s.guessEvaluator.EvaluateRulesWithLoader(
 		ctx, match.CatalogVersion, policy, answerID, guessID, legacy.StorageFieldsForMatch(match),
 		func(ctx context.Context, version string) ([]game.Character, error) {
-			return legacy.CharactersForVersion(ctx, q, version)
+			return catalog.CharactersForVersion(ctx, q, version)
 		},
 	)
 	if errors.Is(err, game.ErrGuessCharacterMissing) || errors.Is(err, game.ErrGuessCharacterDisabled) {
@@ -1111,7 +1112,7 @@ func hydrateTurn(ctx context.Context, q *repo.Queries, match repo.MultiMatch, an
 	if err := json.Unmarshal(turn.Statuses, &statuses); err != nil {
 		return legacy.RelayTurnRow{}, nil, err
 	}
-	characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, q, match.CatalogVersion)
 	if err != nil {
 		return legacy.RelayTurnRow{}, nil, err
 	}
@@ -1252,7 +1253,7 @@ func (p *EncounterProvisioner) Provision(ctx context.Context, input relaydomain.
 		if err != nil {
 			return nil, err
 		}
-		characters, err := legacy.CharactersForVersion(ctx, q, match.CatalogVersion)
+		characters, err := catalog.CharactersForVersion(ctx, q, match.CatalogVersion)
 		if err != nil {
 			return nil, err
 		}

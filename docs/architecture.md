@@ -102,16 +102,35 @@ flowchart LR
     S --> R[Character / Work 行表]
     S --> V[CatalogSnapshot 版本化快照]
     S --> T[CatalogState.currentVersion]
-    V --> P[CatalogRuntimeProvider<br/>版本 + 判定策略缓存]
+    V --> L[internal/catalog<br/>数据库快照读取]
+    L --> P[CatalogRuntimeProvider<br/>版本 + 判定策略缓存]
     P --> G[GameSession<br/>题库版本 + 判定策略]
     P --> M[MultiMatch<br/>题库版本 + 判定策略]
 ```
 
 seed 会在单事务内 upsert 行表、写不可变的版本化快照并更新当前版本。同版本同内容幂等成功，同版本不同内容立即失败。会话、每日题和多人场次同时记录题库版本与答案判定策略，恢复时按冻结值读取快照，因此题库更新或环境配置变化不会改变已开始题局。
 
-`internal/game.CharacterFieldRegistry` 是公开词条的服务端权威来源。每个版本化字段定义集中登记 key、标签、类型、可选模式、默认模式、规范值、反馈比较、展示值以及是否参与等价判定。`CatalogFull.fieldDefinitions` 驱动前端通用设置界面；对局投影返回冻结的 `activeFields`，棋盘、分享文本和字段数量均读取该列表。QuestionScope schema v3 使用 `fieldModes`，导入层继续读取 v1/v2 固定字段并规范化为 v3；预设缺少新字段时使用注册表默认值，自定义配置缺少字段时隐藏该字段。
+`internal/game.CharacterFieldRegistry` 负责公开字段的应用配置和展示元数据，包括 key、标签、类型、可选模式、默认模式和展示值；规范值、反馈比较与等价签名委托给 `guessing`。`CatalogFull.fieldDefinitions` 驱动前端通用设置界面；对局投影返回冻结的 `activeFields`，棋盘、分享文本和字段数量均读取该列表。QuestionScope schema v3 使用 `fieldModes`，导入层继续读取 v1/v2 固定字段并规范化为 v3；预设缺少新字段时使用注册表默认值，自定义配置缺少字段时隐藏该字段。
 
-`CatalogRuntimeProvider` 按 `catalogVersion + answerMatchPolicy` 缓存角色索引和等价组，并合并同一键的并发首次加载。`GuessEvaluator` 是单人、竞速、兼容接力和 encounter 接力的唯一字段反馈与答案匹配入口。`public_fields_v1` 只对全部等价字段均为已知值的 `enabledAsGuess` 角色分组，多值字段按规范集合签名；本局启用字段和答案池不参与分组。`MatchResult.kind` 区分 `none`、`exact` 与 `equivalent`，终局投影始终保留实际抽中的答案 ID。
+`internal/catalog` 统一读取数据库中的版本化题库快照。`CatalogRuntimeProvider` 按 `catalogVersion + answerMatchPolicy` 缓存应用角色索引和不可变的 `guessing.Catalog`，并合并同一键的并发首次加载。`GuessEvaluator` 是单人、竞速、兼容接力和 encounter 接力的应用入口，负责加载与展示适配，字段反馈和答案匹配统一调用 `guessing`。`public_fields_v1` 只对全部等价字段均为已知值的 `enabledAsGuess` 角色分组，多值字段按规范集合签名；本局启用字段和答案池不参与分组。`MatchResult.kind` 区分 `none`、`exact` 与 `equivalent`，终局投影始终保留实际抽中的答案 ID。
+
+## 可复用猜测包
+
+[`apps/api/guessing`](../apps/api/guessing/README.md) 是现有 Go module 内的公开包，外部导入路径为 `github.com/TouhouFlandre/touhouflandre/apps/api/guessing`。它只依赖标准库，以内存数据完成 `NewCatalog`、`Evaluate`、`ApplyGuess` 和 `ConsumeAttempt`，不依赖数据库、多人模式或显示形式。首版保留初登场作品、年份、种族、阵营、地点和发色六字段角色规则，未引入其他题材的可插拔规则。
+
+```mermaid
+flowchart LR
+    D[数据库快照] --> C[internal/catalog<br/>题库读取]
+    C --> G[internal/game<br/>配置、加载缓存、数据与展示适配]
+    S[单人应用层] --> G
+    M[多人模式应用层] --> G
+    G --> Q[guessing<br/>纯判定与作答状态推进]
+    E[其他 Go 调用方<br/>内存题库与作答历史] --> Q
+```
+
+`Catalog` 在构建时深拷贝题库并冻结等价组，可供并发读取；`Evaluate` 仅返回命中类型与语义反馈。`ApplyGuess` 根据传入历史拒绝重复角色 ID，接受猜测后消耗额度并返回新的 `AttemptState`；`ConsumeAttempt` 在调用方确认超时或空过应计数后消耗一次额度。输入状态不会被修改，`Limit == 0` 表示无限次数，命中或额度耗尽时的 `Closed` 只表示这段作答序列结束。
+
+单人通过 `ApplyGuess` 和 `ConsumeAttempt` 推进会话作答状态。竞速和接力通过 `Evaluate` 复用判定，各自的状态机继续管理历史、额度和轮次；共享棋盘历史与个人额度不能直接混入同一个 `AttemptState`。房间结束、积分、排名和换人仍由玩法层处理。鉴权、时钟、事务、并发冲突、幂等重试、保存和恢复属于调用方；包本身不提供存储或调度。中文标签、头像、符号和格式化值由 `internal/game` 展示适配层补齐，原 API 响应及数据库序列化格式保持兼容。
 
 ## 角色搜索
 
@@ -183,7 +202,9 @@ Go API 的关键目录：
 | -------------------- | -------------------------------------------- |
 | `cmd/server`         | Echo 服务入口和优雅关闭。                    |
 | `cmd/seed`           | 题库写入入口。                               |
-| `internal/game`      | 角色搜索与单人权威规则，纯函数优先。         |
+| `guessing`           | 可复用的字段比较、答案匹配和作答状态推进。   |
+| `internal/catalog`   | 数据库题库快照读取。                         |
+| `internal/game`      | 应用规则配置、题库缓存、展示适配和角色搜索。 |
 | `internal/handler`   | OpenAPI strict handler、错误映射和业务编排。 |
 | `internal/hub`       | WebSocket 连接管理与事件扇出。               |
 | `internal/multi`     | 多人领域类型、投影和规则。                   |
@@ -198,6 +219,7 @@ Go API 的关键目录：
 - 进行中的公开会话不返回答案。
 - 会话和多人场次绑定创建时的题库快照。
 - 每日题、会话和多人场次冻结答案判定策略；所有猜测入口通过 `GuessEvaluator`，不得直接比较答案 ID。
+- 字段比较、等价判定和公共作答推进规则集中在 `guessing`；应用层不得维护第二套实现。
 - 公开词条定义由版本化字段注册表提供，前端不维护独立业务字段列表。
 - 每日题同一天答案固定。
 - 同一角色不能在同一局中重复提交。

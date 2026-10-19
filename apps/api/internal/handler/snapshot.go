@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -372,7 +373,7 @@ func (s *Server) buildSnapshot(ctx context.Context, state snapshotState, observe
 
 // buildRoundView 当前局视图：self（完整棋盘）+ opponent（匿名矩阵，列置换）。
 func (s *Server) buildRoundView(ctx context.Context, state snapshotState, observer repo.MultiMember, projectionStyle core.ProjectionStyle) (*openapi.RoundView, error) {
-	characters, err := multi.CharactersForVersion(ctx, s.q, state.Match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, state.Match.CatalogVersion)
 	if err != nil {
 		return nil, internalError(err)
 	}

@@ -1,0 +1,412 @@
+{
+  "answer-missing": {
+    "error": "answer character missing"
+  },
+  "exact-default-fields": {
+    "result": {
+      "kind": "guess",
+      "guessId": "answer",
+      "guessName": "答案角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": true,
+      "matchKind": "exact",
+      "feedback": [
+        {
+          "field": "firstAppearance",
+          "label": "初登场作品",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "原作"
+          ]
+        },
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "2000"
+          ]
+        },
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "妖怪",
+            "魔法使"
+          ]
+        },
+        {
+          "field": "affiliations",
+          "label": "阵营",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "红魔馆"
+          ]
+        },
+        {
+          "field": "locations",
+          "label": "地点",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "幻想乡"
+          ]
+        },
+        {
+          "field": "hairColors",
+          "label": "头发颜色",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "红",
+            "蓝"
+          ]
+        }
+      ]
+    }
+  },
+  "explicit-empty-fields": {
+    "result": {
+      "kind": "guess",
+      "guessId": "answer",
+      "guessName": "答案角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": true,
+      "matchKind": "exact",
+      "feedback": []
+    }
+  },
+  "guess-disabled": {
+    "error": "guess character disabled"
+  },
+  "guess-missing": {
+    "error": "guess character missing"
+  },
+  "hidden-field-does-not-expand-equivalence": {
+    "result": {
+      "kind": "guess",
+      "guessId": "different",
+      "guessName": "隐藏字段不同角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "妖怪",
+            "魔法使"
+          ]
+        }
+      ]
+    }
+  },
+  "partial-and-miss-default-fields": {
+    "result": {
+      "kind": "guess",
+      "guessId": "partial",
+      "guessName": "部分匹配角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "firstAppearance",
+          "label": "初登场作品",
+          "status": "partial",
+          "symbol": "~",
+          "displayValue": [
+            "另一作品"
+          ]
+        },
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "higher",
+          "symbol": "↑",
+          "displayValue": [
+            "1999"
+          ]
+        },
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "partial",
+          "symbol": "~",
+          "displayValue": [
+            "妖怪",
+            "人类"
+          ]
+        },
+        {
+          "field": "affiliations",
+          "label": "阵营",
+          "status": "miss",
+          "symbol": "X",
+          "displayValue": [
+            "其他阵营"
+          ]
+        },
+        {
+          "field": "locations",
+          "label": "地点",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "幻想乡"
+          ]
+        },
+        {
+          "field": "hairColors",
+          "label": "头发颜色",
+          "status": "partial",
+          "symbol": "~",
+          "displayValue": [
+            "红",
+            "unmapped-color"
+          ]
+        }
+      ]
+    }
+  },
+  "public-fields-equivalent": {
+    "result": {
+      "kind": "guess",
+      "guessId": "equivalent",
+      "guessName": "等价角色",
+      "guessAvatarUrl": "/avatars/equivalent.webp",
+      "isCorrect": true,
+      "matchKind": "equivalent",
+      "feedback": [
+        {
+          "field": "firstAppearance",
+          "label": "初登场作品",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "原作"
+          ]
+        },
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "2000"
+          ]
+        },
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "魔法使",
+            "妖怪",
+            "妖怪"
+          ]
+        },
+        {
+          "field": "affiliations",
+          "label": "阵营",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "红魔馆"
+          ]
+        },
+        {
+          "field": "locations",
+          "label": "地点",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "幻想乡"
+          ]
+        },
+        {
+          "field": "hairColors",
+          "label": "头发颜色",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "蓝",
+            "红"
+          ]
+        }
+      ]
+    }
+  },
+  "strict-rejects-equivalent": {
+    "result": {
+      "kind": "guess",
+      "guessId": "equivalent",
+      "guessName": "等价角色",
+      "guessAvatarUrl": "/avatars/equivalent.webp",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "exact",
+          "symbol": "O",
+          "displayValue": [
+            "魔法使",
+            "妖怪",
+            "妖怪"
+          ]
+        }
+      ]
+    }
+  },
+  "unknown-characters-not-equivalent": {
+    "result": {
+      "kind": "guess",
+      "guessId": "unknown-twin",
+      "guessName": "未知角色",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": []
+        }
+      ]
+    }
+  },
+  "unknown-default-fields": {
+    "result": {
+      "kind": "guess",
+      "guessId": "unknown",
+      "guessName": "未知角色",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "firstAppearance",
+          "label": "初登场作品",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": [
+            "未知作品"
+          ]
+        },
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": [
+            "0"
+          ]
+        },
+        {
+          "field": "species",
+          "label": "种族",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": []
+        },
+        {
+          "field": "affiliations",
+          "label": "阵营",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": []
+        },
+        {
+          "field": "locations",
+          "label": "地点",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": [
+            "未知"
+          ]
+        },
+        {
+          "field": "hairColors",
+          "label": "头发颜色",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": [
+            "unknown"
+          ]
+        }
+      ]
+    }
+  },
+  "unregistered-field": {
+    "result": {
+      "kind": "guess",
+      "guessId": "answer",
+      "guessName": "答案角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": true,
+      "matchKind": "exact",
+      "feedback": [
+        {
+          "field": "abilityTags",
+          "label": "自定义提示",
+          "status": "unknown",
+          "symbol": "?",
+          "displayValue": null
+        }
+      ]
+    }
+  },
+  "year-direction-lower": {
+    "result": {
+      "kind": "guess",
+      "guessId": "later",
+      "guessName": "较晚角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "lower",
+          "symbol": "↓",
+          "displayValue": [
+            "2001"
+          ]
+        }
+      ]
+    }
+  },
+  "year-exact-only-miss": {
+    "result": {
+      "kind": "guess",
+      "guessId": "partial",
+      "guessName": "部分匹配角色",
+      "guessAvatarUrl": "/avatars/answer.webp",
+      "isCorrect": false,
+      "matchKind": "none",
+      "feedback": [
+        {
+          "field": "releaseYear",
+          "label": "初登场年份",
+          "status": "miss",
+          "symbol": "X",
+          "displayValue": [
+            "1999"
+          ]
+        }
+      ]
+    }
+  }
+}
