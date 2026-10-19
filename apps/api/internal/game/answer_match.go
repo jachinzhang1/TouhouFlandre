@@ -3,146 +3,64 @@ package game
 import (
 	"context"
 	"errors"
-	"fmt"
-	"sort"
 	"sync"
+
+	"github.com/TouhouFlandre/touhouflandre/apps/api/guessing"
 )
 
-type AnswerMatchPolicy string
+type AnswerMatchPolicy = guessing.AnswerMatchPolicy
 
 const (
-	AnswerMatchStrict         AnswerMatchPolicy = "strict"
-	AnswerMatchPublicFieldsV1 AnswerMatchPolicy = "public_fields_v1"
+	AnswerMatchStrict         = guessing.AnswerMatchStrict
+	AnswerMatchPublicFieldsV1 = guessing.AnswerMatchPublicFieldsV1
 )
 
 func ParseAnswerMatchPolicy(value string) (AnswerMatchPolicy, error) {
-	policy := AnswerMatchPolicy(value)
-	switch policy {
-	case AnswerMatchStrict, AnswerMatchPublicFieldsV1:
-		return policy, nil
-	default:
-		return "", fmt.Errorf("unknown answer match policy %q", value)
-	}
+	return guessing.ParseAnswerMatchPolicy(value)
 }
 
-type MatchResult struct {
-	Correct bool
-	Kind    MatchKind
-}
+type MatchResult = guessing.MatchResult
 
-type AnswerMatcher interface {
-	Match(runtime *CatalogRuntime, answerID, guessID string) MatchResult
-}
-
-type StrictIdentityMatcher struct{}
-
-func (StrictIdentityMatcher) Match(_ *CatalogRuntime, answerID, guessID string) MatchResult {
-	if answerID == guessID {
-		return MatchResult{Correct: true, Kind: MatchExact}
-	}
-	return MatchResult{Kind: MatchNone}
-}
-
-type PublicFieldEquivalenceMatcherV1 struct{}
-
-func (PublicFieldEquivalenceMatcherV1) Match(runtime *CatalogRuntime, answerID, guessID string) MatchResult {
-	if answerID == guessID {
-		return MatchResult{Correct: true, Kind: MatchExact}
-	}
-	answerGroup, answerOK := runtime.groupByID[answerID]
-	guessGroup, guessOK := runtime.groupByID[guessID]
-	if answerOK && guessOK && answerGroup == guessGroup {
-		return MatchResult{Correct: true, Kind: MatchEquivalent}
-	}
-	return MatchResult{Kind: MatchNone}
-}
-
-func matcherForPolicy(policy AnswerMatchPolicy) (AnswerMatcher, error) {
-	switch policy {
-	case AnswerMatchStrict:
-		return StrictIdentityMatcher{}, nil
-	case AnswerMatchPublicFieldsV1:
-		return PublicFieldEquivalenceMatcherV1{}, nil
-	default:
-		return nil, fmt.Errorf("unsupported answer match policy %q", policy)
-	}
-}
-
+// CatalogRuntime pairs the immutable rule engine with application catalog data.
+// Version and Policy identify the frozen snapshot; Characters and ByID supply
+// presentation and question-selection metadata and must be treated as read-only.
 type CatalogRuntime struct {
 	Version    string
 	Policy     AnswerMatchPolicy
 	Characters []Character
 	ByID       map[string]Character
-	groupByID  map[string]string
+	engine     *guessing.Catalog
 }
 
 func BuildCatalogRuntime(version string, policy AnswerMatchPolicy, characters []Character) (*CatalogRuntime, error) {
-	if _, err := matcherForPolicy(policy); err != nil {
+	entries := make([]guessing.Character, len(characters))
+	for i, character := range characters {
+		entries[i] = ruleCharacter(character)
+	}
+	engine, err := guessing.NewCatalog(policy, entries)
+	if err != nil {
 		return nil, err
 	}
 	runtime := &CatalogRuntime{
 		Version: version, Policy: policy, Characters: append([]Character{}, characters...),
-		ByID: make(map[string]Character, len(characters)), groupByID: make(map[string]string, len(characters)),
+		ByID: make(map[string]Character, len(characters)), engine: engine,
 	}
-	bySignature := make(map[string][]string)
 	for _, character := range characters {
-		if character.ID == "" {
-			return nil, errors.New("catalog contains a character without an id")
-		}
-		if _, duplicate := runtime.ByID[character.ID]; duplicate {
-			return nil, fmt.Errorf("catalog contains duplicate character id %q", character.ID)
-		}
 		runtime.ByID[character.ID] = character
-		runtime.groupByID[character.ID] = character.ID
-		if policy != AnswerMatchPublicFieldsV1 || !character.EnabledAsGuess {
-			continue
-		}
-		signature, ok := CharacterFields.EquivalenceSignature(character)
-		if ok {
-			bySignature[signature] = append(bySignature[signature], character.ID)
-		}
-	}
-	for _, members := range bySignature {
-		if len(members) < 2 {
-			continue
-		}
-		sort.Strings(members)
-		groupKey := "equivalent:" + members[0]
-		for _, id := range members {
-			runtime.groupByID[id] = groupKey
-		}
 	}
 	return runtime, nil
 }
 
 func (runtime *CatalogRuntime) GroupKey(characterID string) string {
-	if group, ok := runtime.groupByID[characterID]; ok {
-		return group
-	}
-	return characterID
+	return runtime.engine.GroupKey(characterID)
 }
 
-// DistinctIDsByGroup keeps the first ID for each frozen answer-equivalence group.
 func (runtime *CatalogRuntime) DistinctIDsByGroup(ids []string) []string {
-	seen := make(map[string]struct{}, len(ids))
-	result := make([]string, 0, len(ids))
-	for _, id := range ids {
-		key := runtime.GroupKey(id)
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		result = append(result, id)
-	}
-	return result
+	return runtime.engine.DistinctIDsByGroup(ids)
 }
 
 func (runtime *CatalogRuntime) Match(answerID, guessID string) (MatchResult, error) {
-	matcher, err := matcherForPolicy(runtime.Policy)
-	if err != nil {
-		return MatchResult{}, err
-	}
-	return matcher.Match(runtime, answerID, guessID), nil
+	return runtime.engine.Match(answerID, guessID)
 }
 
 type CatalogLoader func(context.Context, string) ([]Character, error)
@@ -219,9 +137,9 @@ func (provider *CatalogRuntimeProvider) GetWithLoader(ctx context.Context, versi
 }
 
 var (
-	ErrGuessCharacterMissing  = errors.New("guess character missing")
-	ErrGuessCharacterDisabled = errors.New("guess character disabled")
-	ErrAnswerCharacterMissing = errors.New("answer character missing")
+	ErrGuessCharacterMissing  = guessing.ErrGuessCharacterMissing
+	ErrGuessCharacterDisabled = guessing.ErrGuessCharacterDisabled
+	ErrAnswerCharacterMissing = guessing.ErrAnswerCharacterMissing
 )
 
 type GuessEvaluator struct {
@@ -247,7 +165,9 @@ func (evaluator *GuessEvaluator) Evaluate(
 	return evaluateGuess(runtime, answerID, guessID, fields)
 }
 
-func (evaluator *GuessEvaluator) EvaluateWithLoader(
+// EvaluateRulesWithLoader returns semantic feedback for callers that persist
+// statuses and build their own views, such as the multiplayer adapters.
+func (evaluator *GuessEvaluator) EvaluateRulesWithLoader(
 	ctx context.Context,
 	catalogVersion string,
 	policy AnswerMatchPolicy,
@@ -255,31 +175,49 @@ func (evaluator *GuessEvaluator) EvaluateWithLoader(
 	guessID string,
 	fields []GuessField,
 	loader CatalogLoader,
-) (GuessResult, error) {
+) (guessing.Result, error) {
 	runtime, err := evaluator.catalogs.GetWithLoader(ctx, catalogVersion, policy, loader)
 	if err != nil {
-		return GuessResult{}, err
+		return guessing.Result{}, err
 	}
-	return evaluateGuess(runtime, answerID, guessID, fields)
+	return runtime.engine.Evaluate(answerID, guessID, ruleFields(fields))
 }
 
 func evaluateGuess(runtime *CatalogRuntime, answerID, guessID string, fields []GuessField) (GuessResult, error) {
-	guess, ok := runtime.ByID[guessID]
-	if !ok {
-		return GuessResult{}, ErrGuessCharacterMissing
-	}
-	if !guess.EnabledAsGuess {
-		return GuessResult{}, ErrGuessCharacterDisabled
-	}
-	answer, ok := runtime.ByID[answerID]
-	if !ok {
-		return GuessResult{}, ErrAnswerCharacterMissing
-	}
-	match, err := runtime.Match(answerID, guessID)
+	result, err := runtime.engine.Evaluate(answerID, guessID, ruleFields(fields))
 	if err != nil {
 		return GuessResult{}, err
 	}
-	return CompareCharacterWithMatch(guess, answer, fields, match), nil
+	return presentGuess(runtime.ByID[guessID], fields, result), nil
+}
+
+// GuessAttempt combines application presentation with a storage-free attempt
+// transition. Persist State and Guess atomically in the calling application.
+type GuessAttempt struct {
+	State guessing.AttemptState
+	Guess GuessResult
+}
+
+func (evaluator *GuessEvaluator) ApplyGuess(
+	ctx context.Context,
+	state guessing.AttemptState,
+	catalogVersion string,
+	policy AnswerMatchPolicy,
+	answerID, guessID string,
+	fields []GuessField,
+) (GuessAttempt, error) {
+	runtime, err := evaluator.catalogs.Get(ctx, catalogVersion, policy)
+	if err != nil {
+		return GuessAttempt{}, err
+	}
+	outcome, err := runtime.engine.ApplyGuess(state, answerID, guessID, ruleFields(fields))
+	if err != nil {
+		return GuessAttempt{}, err
+	}
+	return GuessAttempt{
+		State: outcome.State,
+		Guess: presentGuess(runtime.ByID[guessID], fields, outcome.Guess),
+	}, nil
 }
 
 func MatchKindForStoredGuess(correct bool, answerID, guessID string) MatchKind {

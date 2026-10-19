@@ -149,6 +149,7 @@ flowchart LR
 | ----------------------- | ----------------------------------------------------- |
 | `apps/web`              | Next.js 前端、页面组件、本地统计和浏览器端 API 客户端 |
 | `apps/api`              | Go API、权威游戏规则、WebSocket、数据库迁移与查询     |
+| `apps/api/guessing`     | 可复用 Go 包：纯内存猜测判定、历史与次数推进，无数据库、多人和展示依赖 |
 | `packages/data`         | 角色、作品、头像元数据和 Zod 运行时校验               |
 | `packages/shared`       | 前端共享类型、模式配置、展示工具和分享文本            |
 | `contracts/openapi`     | HTTP API 契约唯一来源                                 |
@@ -198,7 +199,7 @@ Docker 命名卷不是备份。公开部署前应配置 Postgres 备份与恢复
 
 - `contracts/openapi/openapi.yaml` 是 HTTP API 契约唯一入口。修改接口后运行 `task gen`，并提交对应 Go 与 Web 生成物。
 - `apps/api/internal/generated` 和 `apps/web/src/generated` 是生成代码，不应手工编辑。
-- 权威答案选择、反馈比较和运行时角色搜索位于 `apps/api/internal/game`。
+- 权威反馈比较、答案匹配和作答次数推进位于 [`apps/api/guessing`](./apps/api/guessing/README.md)；答案选择、题库缓存、展示适配和运行时角色搜索位于 `apps/api/internal/game`。
 - 角色与作品数据位于 `packages/data/src`，写入前通过 Zod 和跨记录规则校验。
 - 题库 seed 会生成版本化快照，已经开始的游戏继续使用创建时的版本。
 

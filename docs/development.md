@@ -63,6 +63,7 @@ Web 默认同源请求 `/api`，由 `next.config.ts` rewrites 代理到本地 AP
 | `pnpm typecheck` | 对所有包执行 TypeScript 检查。 |
 | `pnpm --filter @touhouflandre/web test:e2e` | Playwright E2E；需 `task dev` 运行中。 |
 | `cd apps/api && go test ./...` | Go 单元与集成测试；需可访问 Postgres。 |
+| `cd apps/api && go test ./guessing` | 可复用猜测包的纯内存测试与示例，无需 Postgres。 |
 | `cd apps/api && go vet ./...` | Go 静态检查。 |
 | `task gen` | 重新生成 OpenAPI 类型与 sqlc 查询。 |
 | `pnpm --filter @touhouflandre/data validate` | 校验角色与作品数据。 |
@@ -83,7 +84,9 @@ apps/web/
 apps/api/
   cmd/server/              服务入口
   cmd/seed/                题库 seed 入口
-  internal/game/           权威游戏规则
+  guessing/                公开的猜测判定与作答状态推进包
+  internal/catalog/        数据库题库快照读取
+  internal/game/           应用规则配置、题库缓存、展示适配与搜索
   internal/handler/        OpenAPI handler 与错误映射
   internal/generated/      oapi-codegen / sqlc 生成代码
   internal/hub/            多人 WebSocket 连接管理
@@ -114,15 +117,30 @@ contracts/ws/              WebSocket 协议
 - 进行中的会话不得返回隐藏答案。
 - 可预期业务错误返回统一 `ErrorResponse` 和稳定错误码。
 - handler 实现 oapi-codegen 生成的 strict server interface。
-- 游戏规则、答案选择和角色搜索逻辑位于 `internal/game`，与 handler 分离。
+- 字段比较、答案匹配和公共作答状态推进位于公开包 `guessing`；`internal/game` 负责应用配置、答案选择、题库加载缓存、展示适配与搜索，`internal/catalog` 负责数据库快照读取。
 - 多人状态以 Postgres 为权威，Go 内存只保存活动连接和热点投影。
 
 ### 共享逻辑
 
 - `packages/shared` 只保留前端展示和数据校验需要的类型、字段、模式、校验辅助与分享文本；运行时角色搜索不在前端重复实现。
-- 比较、每日题、随机题、会话和并发写入规则以 Go `internal/game` 与 handler 实现为准。
+- 猜测计算以 Go `guessing` 实现为准；每日题、随机题、会话编排和并发写入由应用层负责。
 - 反馈规则相关工作必须添加覆盖边界情况的 Go 测试。
 - 扩展内容类型时同步更新 OpenAPI、Go 规则、前端展示和测试。
+
+### 复用猜测过程
+
+[`guessing` 使用说明](../apps/api/guessing/README.md)提供完整的纯内存示例。本包仍属于 `apps/api` 的 Go module，外部项目导入 `github.com/TouhouFlandre/touhouflandre/apps/api/guessing`，无需导入任何 `internal` 包。包依赖仅有标准库；首版固定支持现有六字段角色规则，其他题材的规则扩展不在此次提取范围内。
+
+调用方通过 `NewCatalog` 构建不可变题库，再用 `Evaluate` 判定一次猜测，或用 `ApplyGuess` 检查重复、消耗额度并得到新作答状态。`ConsumeAttempt` 可记录调用方已确认应计数的超时或空过，不读取时钟。`AttemptState.Limit == 0` 表示无限次数；`Closed` 只关闭调用方划定的作答序列，不能直接作为多人整场比赛的结束信号。
+
+应用层仍需负责题库版本和答案选择、鉴权、并发控制、事务、持久化、幂等重试、时钟、多人轮次及显示。请在事务内按原有规则验证并保存返回状态，不要把输入状态的不可变性当作并发写入保障。原 HTTP 响应与数据库序列化由适配层保留，规则包的 Go 类型不直接取代这些契约。
+
+修改公共判定或状态推进时，先运行无需数据库的包测试；修改应用接入时，还需执行相关单人和多人回归。仅执行可运行示例可使用：
+
+```bash
+cd apps/api
+go test ./guessing -run Example
+```
 
 ## 数据库迁移
 
