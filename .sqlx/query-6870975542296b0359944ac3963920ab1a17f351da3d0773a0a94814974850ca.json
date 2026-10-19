@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_room SET player_limit=$2, race_elimination_enabled=$3 WHERE id=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6870975542296b0359944ac3963920ab1a17f351da3d0773a0a94814974850ca"
+}

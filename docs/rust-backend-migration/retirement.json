@@ -1,0 +1,10 @@
+{
+  "baseline": "7a5679f22a9991bc9a1d937c3e53c3f59653386d",
+  "removed_files": 220,
+  "removed_go_files": 184,
+  "contract_metadata_only_change": {
+    "path": "contracts/openapi/paths/room-ready.yaml",
+    "reason": "Remove obsolete Go generator type override; ready remains a required non-nullable boolean.",
+    "sha256": "fe72dda62241b9e6511fdf63a322d46f6603e51a6e21971c20dc1993ce2afaf9"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO multi_relay_stage(id, match_id, stage_index, status, planned_encounter_count, starts_at)\n        VALUES($1, $2, $3, 'planned', $4, $5) RETURNING id, match_id, stage_index, status,\n        planned_encounter_count, starts_at, settled_at, settlement_marker\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "match_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stage_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "stage_index"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "planned_encounter_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "planned_encounter_count"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "settled_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "settled_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "settlement_marker",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_stage",
+            "name": "settlement_marker"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "fcff587a35057697c936cca6abd811dffe94b65296e94c4c4bbfd1e80b1e3eaa"
+}

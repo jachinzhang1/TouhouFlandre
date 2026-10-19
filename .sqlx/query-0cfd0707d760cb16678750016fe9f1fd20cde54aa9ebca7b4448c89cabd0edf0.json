@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_round SET status='ended', ended_at=$2, turn_slot=NULL, turn_deadline=NULL WHERE\n        match_id=$1 AND status<>'ended'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0cfd0707d760cb16678750016fe9f1fd20cde54aa9ebca7b4448c89cabd0edf0"
+}

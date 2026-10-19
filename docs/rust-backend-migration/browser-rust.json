@@ -1,0 +1,648 @@
+{
+  "functional": {
+    "stats": {
+      "startTime": "2026-10-13T06:35:41.322Z",
+      "duration": 129886.771,
+      "expected": 87,
+      "skipped": 11,
+      "unexpected": 4,
+      "flaky": 0
+    },
+    "results": [
+      {
+        "title": "首页展示目录摘要与导航",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "未知路径渲染 404 页",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "导航高亮随路由切换",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "首页展示目录摘要与导航",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "未知路径渲染 404 页",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "导航高亮随路由切换",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "关键词与罗马字搜索命中",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "列表视图切换同步 URL",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "关键词与罗马字搜索命中",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "列表视图切换同步 URL",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建、猜测、反馈、恢复、重建",
+        "project": "desktop-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "非法模式返回 404",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建、猜测、反馈、恢复、重建",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "非法模式返回 404",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "matches Go ID order and total in catalog, single, race and relay assemblies",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps index versions, immutable caching, ETag and compressed budget bounded",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "records cold index, hot browser cache and remote connection latency",
+        "project": "desktop-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "does not block single-game rendering while the index prefetch is pending",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "falls back on repeated index packet loss and recovers through one probe",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "limits offline search to the validated same-page five minute window",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "uses local search for the catalog after index readiness",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the random resolve path to one main request and local input",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the daily resolve path to one main request and local input",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps new Web search usable against a legacy API binary",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the legacy single-player flow usable across binary versions",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "matches Go ID order and total in catalog, single, race and relay assemblies",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps index versions, immutable caching, ETag and compressed budget bounded",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "records cold index, hot browser cache and remote connection latency",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "does not block single-game rendering while the index prefetch is pending",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "falls back on repeated index packet loss and recovers through one probe",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "limits offline search to the validated same-page five minute window",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "uses local search for the catalog after index readiness",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the random resolve path to one main request and local input",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the daily resolve path to one main request and local input",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps new Web search usable against a legacy API binary",
+        "project": "mobile-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the legacy single-player flow usable across binary versions",
+        "project": "mobile-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "弃权结束回合会同步给双方并推进下一局",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "刷新恢复会话状态",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "guest 断线 → host 见离线；guest 重连 → 恢复在线",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "非法房间号 → 404；无成员资格访问 → 重定向大厅",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "弃权结束回合会同步给双方并推进下一局",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "刷新恢复会话状态",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "guest 断线 → host 见离线；guest 重连 → 恢复在线",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "非法房间号 → 404；无成员资格访问 → 重定向大厅",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人当前 stage 始终只挂载一张棋盘",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人当前 stage 始终只挂载一张棋盘",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人当前 stage 始终只挂载一张棋盘",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人当前 stage 始终只挂载一张棋盘",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "spectator 只读浏览完整 encounter 标签",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "刷新后恢复浏览的其他 encounter 且保持只读",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人当前 stage 始终只挂载一张棋盘",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人当前 stage 始终只挂载一张棋盘",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人当前 stage 始终只挂载一张棋盘",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人当前 stage 始终只挂载一张棋盘",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "spectator 只读浏览完整 encounter 标签",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "刷新后恢复浏览的其他 encounter 且保持只读",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人 legacy BO 终局、历史和 rematch 保持可用",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人 fixed-points 在最后一张棋盘后统一排名并可读历史",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人 elimination 展示濒死、淘汰和五人轮空",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人 fixed-points 永久离场后以三人和 bye 继续",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人 elimination 以唯一 survivor 结束",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人 legacy BO 终局、历史和 rematch 保持可用",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人 fixed-points 在最后一张棋盘后统一排名并可读历史",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人 elimination 展示濒死、淘汰和五人轮空",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人 fixed-points 永久离场后以三人和 bye 继续",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人 elimination 以唯一 survivor 结束",
+        "project": "mobile-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "聊天 payload 在浏览器中保持纯文本",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "聊天 payload 在浏览器中保持纯文本",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建页按 2 人步进并只发送 relay 设置",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "房主原子保存两项 relay 设置并在刷新后恢复",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "奇数玩家全员准备时只显示服务端阻塞原因",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人接力大厅在桌面和移动端保持可读",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人接力大厅在桌面和移动端保持可读",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人接力大厅在桌面和移动端保持可读",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人接力大厅在桌面和移动端保持可读",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建页按 2 人步进并只发送 relay 设置",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "房主原子保存两项 relay 设置并在刷新后恢复",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "奇数玩家全员准备时只显示服务端阻塞原因",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人接力大厅在桌面和移动端保持可读",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人接力大厅在桌面和移动端保持可读",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "6 人接力大厅在桌面和移动端保持可读",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人接力大厅在桌面和移动端保持可读",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建页使用 2..8 玩家上限并同步竞速配置摘要",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人大厅按 seat 展示容量和成员",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人大厅按 seat 展示容量和成员",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人大厅按 seat 展示容量和成员",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人大厅按 seat 展示容量和成员",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人玩家棋盘仅挂载当前分页且对手保持匿名",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人玩家确认放弃后立即进入只读状态",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人积分赛淘汰玩家进入观战并展示完整排行榜",
+        "project": "desktop-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "满员观战者可在扩容后沿用身份认领席位",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "观战者分页查看完整棋盘且没有玩家操作",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "创建页使用 2..8 玩家上限并同步竞速配置摘要",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "2 人大厅按 seat 展示容量和成员",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人大厅按 seat 展示容量和成员",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "4 人大厅按 seat 展示容量和成员",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人大厅按 seat 展示容量和成员",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "8 人玩家棋盘仅挂载当前分页且对手保持匿名",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人玩家确认放弃后立即进入只读状态",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "3 人积分赛淘汰玩家进入观战并展示完整排行榜",
+        "project": "mobile-chromium",
+        "status": "unexpected"
+      },
+      {
+        "title": "满员观战者可在扩容后沿用身份认领席位",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "观战者分页查看完整棋盘且没有玩家操作",
+        "project": "mobile-chromium",
+        "status": "expected"
+      }
+    ]
+  },
+  "search": {
+    "stats": {
+      "startTime": "2026-10-13T06:43:50.658Z",
+      "duration": 4832.33,
+      "expected": 16,
+      "skipped": 4,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "results": [
+      {
+        "title": "matches Go ID order and total in catalog, single, race and relay assemblies",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps index versions, immutable caching, ETag and compressed budget bounded",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "does not block single-game rendering while the index prefetch is pending",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "falls back on repeated index packet loss and recovers through one probe",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "limits offline search to the validated same-page five minute window",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "uses local search for the catalog after index readiness",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the random resolve path to one main request and local input",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the daily resolve path to one main request and local input",
+        "project": "desktop-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps new Web search usable against a legacy API binary",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the legacy single-player flow usable across binary versions",
+        "project": "desktop-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "matches Go ID order and total in catalog, single, race and relay assemblies",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps index versions, immutable caching, ETag and compressed budget bounded",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "does not block single-game rendering while the index prefetch is pending",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "falls back on repeated index packet loss and recovers through one probe",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "limits offline search to the validated same-page five minute window",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "uses local search for the catalog after index readiness",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the random resolve path to one main request and local input",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps the daily resolve path to one main request and local input",
+        "project": "mobile-chromium",
+        "status": "expected"
+      },
+      {
+        "title": "keeps new Web search usable against a legacy API binary",
+        "project": "mobile-chromium",
+        "status": "skipped"
+      },
+      {
+        "title": "keeps the legacy single-player flow usable across binary versions",
+        "project": "mobile-chromium",
+        "status": "skipped"
+      }
+    ]
+  },
+  "scope": "Backend functional checks; initial full browser suite is not green. Screenshots excluded because repository has no macOS reference images. See evidence.md for original Go failure reproductions.",
+  "daily_recovery_after_test_fix": {
+    "stats": {
+      "startTime": "2026-10-13T06:47:33.940Z",
+      "duration": 5167.351000000001,
+      "expected": 6,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "change": "Inject stale storage with addInitScript in the new document; pagehide otherwise overwrites it. Original assertions retained."
+  }
+}

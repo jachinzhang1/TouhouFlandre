@@ -1,0 +1,3 @@
+[env]
+# Normal builds use checked-in query metadata; cargo sqlx prepare opts into online checking.
+SQLX_OFFLINE = "true"

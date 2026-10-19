@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE multi_round SET status='playing' WHERE id=$1 AND status='countdown'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "12cc514019e106a03595bb360d956c0150c7d27eb46cb42b63195769095724a5"
+}

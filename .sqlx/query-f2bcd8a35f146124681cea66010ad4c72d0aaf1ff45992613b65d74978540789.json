@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE puzzle_resolve_idempotency SET request_fingerprint=$2, mode=$3, session_id=NULL,\n            resolution=NULL, superseded_session_id=NULL, created_at=now(), expires_at='infinity'::timestamptz\n            WHERE idempotency_key=$1 AND expires_at<=now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2bcd8a35f146124681cea66010ad4c72d0aaf1ff45992613b65d74978540789"
+}

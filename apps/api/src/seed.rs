@@ -1,0 +1,218 @@
+//! Transactional catalog ingestion. Struct order below is part of the catalog
+//! identity shared with the former Go seed and the TypeScript catalog loader.
+use crate::game::{self, Character};
+use anyhow::{Context, Result, bail};
+use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, types::Json};
+use std::{collections::HashMap, path::Path};
+
+#[derive(Clone, Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct Work {
+    pub id: String,
+    pub title_zh: String,
+    pub title_ja: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_en: Option<String>,
+    pub short_name: String,
+    #[sqlx(json)]
+    pub pinyin_initials: Vec<String>,
+    #[serde(rename = "type")]
+    #[sqlx(rename = "type")]
+    pub work_type: String,
+    pub release_year: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mainline_index: Option<i32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub era: Option<String>,
+}
+#[derive(Clone, Debug)]
+pub struct SeedCatalog {
+    pub works: Vec<Work>,
+    pub characters: Vec<Character>,
+    pub version: String,
+}
+pub fn load_catalog(data_dir: &Path) -> Result<SeedCatalog> {
+    let works: Vec<Work> = serde_json::from_slice(
+        &std::fs::read(data_dir.join("works.demo.json")).context("read works")?,
+    )
+    .context("parse works")?;
+    let mut characters: Vec<Character> = serde_json::from_slice(
+        &std::fs::read(data_dir.join("characters.demo.json")).context("read characters")?,
+    )
+    .context("parse characters")?;
+    let by_id: HashMap<_, _> = works.iter().map(|work| (work.id.as_str(), work)).collect();
+    for character in &mut characters {
+        let work = by_id
+            .get(character.first_appearance.work_id.as_str())
+            .with_context(|| {
+                format!(
+                    "{} references missing work {}",
+                    character.id, character.first_appearance.work_id
+                )
+            })?;
+        let suffix = character
+            .avatar_url
+            .strip_prefix("/characters/")
+            .and_then(|value| value.strip_suffix(".png"));
+        let Some((order, name)) = suffix.and_then(|value| value.split_once('-')) else {
+            bail!(
+                "avatar URL does not contain a four-digit order: {}",
+                character.avatar_url
+            )
+        };
+        if order.len() != 4
+            || !order.bytes().all(|b| b.is_ascii_digit())
+            || name.is_empty()
+            || name.contains('/')
+        {
+            bail!(
+                "avatar URL does not contain a four-digit order: {}",
+                character.avatar_url
+            );
+        }
+        character.appearance_order = order.parse()?;
+        character.first_appearance = game::FirstAppearance {
+            work_id: work.id.clone(),
+            work_title: work.title_zh.clone(),
+            work_type: work.work_type.clone(),
+            release_year: work.release_year,
+            mainline_index: work.mainline_index,
+            era: work.era.clone(),
+            work_pinyin_initials: work.pinyin_initials.clone(),
+        };
+    }
+    let version = compute_version(&works, &characters)?;
+    Ok(SeedCatalog {
+        works,
+        characters,
+        version,
+    })
+}
+pub fn compute_version(works: &[Work], characters: &[Character]) -> Result<String> {
+    #[derive(Serialize)]
+    struct Payload<'a> {
+        works: &'a [Work],
+        characters: &'a [Character],
+    }
+    let payload = String::from_utf8(game::go_json_bytes(&Payload { works, characters })?)?;
+    Ok(format!("{:08x}", game::hash_string(&payload)))
+}
+pub async fn run(pool: &PgPool, data_dir: &Path) -> Result<String> {
+    persist(pool, &load_catalog(data_dir)?).await
+}
+pub async fn persist(pool: &PgPool, catalog: &SeedCatalog) -> Result<String> {
+    let mut tx = pool.begin().await?;
+    for work in &catalog.works {
+        sqlx::query!(
+            r#"
+            INSERT INTO work (id, title_zh, title_ja, title_en, short_name, pinyin_initials, type, release_year,
+            mainline_index, era) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT(id) DO UPDATE SET
+            title_zh=EXCLUDED.title_zh, title_ja=EXCLUDED.title_ja, title_en=EXCLUDED.title_en,
+            short_name=EXCLUDED.short_name, pinyin_initials=EXCLUDED.pinyin_initials, type=EXCLUDED.type,
+            release_year=EXCLUDED.release_year, mainline_index=EXCLUDED.mainline_index, era=EXCLUDED.era,
+            updated_at=now()
+            "#,
+            &work.id,
+            &work.title_zh,
+            &work.title_ja,
+            work.title_en.as_deref(),
+            &work.short_name,
+            Json(&work.pinyin_initials) as Json<_>,
+            &work.work_type,
+            work.release_year,
+            work.mainline_index,
+            work.era.as_deref(),
+        ).execute(&mut *tx).await?;
+    }
+    for c in &catalog.characters {
+        sqlx::query!(
+            r#"
+            INSERT INTO character (id, avatar_url, display_name, name_sort_key, search_text, appearance_order,
+            first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags,
+            affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess,
+            difficulty_tier, source_refs) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+            $15, $16, $17, $18, $19, $20, $21) ON CONFLICT(id) DO UPDATE SET avatar_url=EXCLUDED.avatar_url,
+            display_name=EXCLUDED.display_name, name_sort_key=EXCLUDED.name_sort_key,
+            search_text=EXCLUDED.search_text, appearance_order=EXCLUDED.appearance_order,
+            first_appearance_work_id=EXCLUDED.first_appearance_work_id, names=EXCLUDED.names,
+            first_appearance=EXCLUDED.first_appearance, species=EXCLUDED.species,
+            ability_display=EXCLUDED.ability_display, ability_tags=EXCLUDED.ability_tags,
+            affiliations=EXCLUDED.affiliations, locations=EXCLUDED.locations, roles=EXCLUDED.roles,
+            hair_colors=EXCLUDED.hair_colors, playable=EXCLUDED.playable,
+            enabled_as_answer=EXCLUDED.enabled_as_answer, enabled_as_guess=EXCLUDED.enabled_as_guess,
+            difficulty_tier=EXCLUDED.difficulty_tier, source_refs=EXCLUDED.source_refs, updated_at=now()
+            "#,
+            &c.id,
+            &c.avatar_url,
+            &c.names.zh_hans,
+            game::character_name_sort_key(c),
+            game::character_search_text(c),
+            c.appearance_order,
+            &c.first_appearance.work_id,
+            Json(&c.names) as Json<_>,
+            Json(&c.first_appearance) as Json<_>,
+            Json(&c.species) as Json<_>,
+            &c.ability_display,
+            Json(&c.ability_tags) as Json<_>,
+            Json(&c.affiliations) as Json<_>,
+            Json(&c.locations) as Json<_>,
+            Json(&c.roles) as Json<_>,
+            Json(&c.hair_colors) as Json<_>,
+            c.playable,
+            c.enabled_as_answer,
+            c.enabled_as_guess,
+            &c.difficulty_tier,
+            Json(&c.source_refs) as Json<_>,
+        ).execute(&mut *tx).await?;
+    }
+    let ids: Vec<_> = catalog.characters.iter().map(|c| c.id.clone()).collect();
+    sqlx::query!(
+        r#"
+        DELETE FROM character WHERE id <> ALL($1::text[])
+        "#,
+        &ids,
+    )
+    .execute(&mut *tx)
+    .await?;
+    let ids: Vec<_> = catalog.works.iter().map(|w| w.id.clone()).collect();
+    sqlx::query!(
+        r#"
+        DELETE FROM work WHERE id <> ALL($1::text[])
+        "#,
+        &ids,
+    )
+    .execute(&mut *tx)
+    .await?;
+    let snapshot = serde_json::to_value(&catalog.characters)?;
+    sqlx::query!(
+        r#"
+        INSERT INTO catalog_snapshot(version, characters) VALUES($1, $2) ON CONFLICT(version) DO NOTHING
+        "#,
+        &catalog.version,
+        &snapshot,
+    ).execute(&mut *tx).await?;
+    let stored: serde_json::Value = sqlx::query_scalar!(
+        r#"
+        SELECT characters FROM catalog_snapshot WHERE version=$1
+        "#,
+        &catalog.version,
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+    if stored != snapshot {
+        bail!(
+            "catalog snapshot {} already exists with different content",
+            catalog.version
+        );
+    }
+    sqlx::query!(
+        r#"
+        INSERT INTO catalog_state(id, current_version) VALUES('current', $1) ON CONFLICT(id) DO UPDATE SET
+        current_version=EXCLUDED.current_version, updated_at=now()
+        "#,
+        &catalog.version,
+    ).execute(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(catalog.version.clone())
+}

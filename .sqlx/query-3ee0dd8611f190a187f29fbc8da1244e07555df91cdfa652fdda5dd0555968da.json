@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_room SET status='closed', expires_at=$2 WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3ee0dd8611f190a187f29fbc8da1244e07555df91cdfa652fdda5dd0555968da"
+}

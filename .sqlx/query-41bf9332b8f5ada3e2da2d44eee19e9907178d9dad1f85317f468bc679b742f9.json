@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO puzzle_resolve_idempotency(idempotency_key, request_fingerprint, mode) VALUES($1, $2, $3)\n        ON CONFLICT(idempotency_key) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "41bf9332b8f5ada3e2da2d44eee19e9907178d9dad1f85317f468bc679b742f9"
+}

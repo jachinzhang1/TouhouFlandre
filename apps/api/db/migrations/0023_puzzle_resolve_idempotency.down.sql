@@ -1,0 +1,1 @@
+DROP TABLE puzzle_resolve_idempotency;

@@ -1,0 +1,134 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, title_zh, title_ja, title_en, short_name, pinyin_initials AS\n        \"pinyin_initials: sqlx::types::Json<Vec<String>>\", type AS work_type, release_year, mainline_index,\n        era FROM work ORDER BY release_year ASC, mainline_index ASC NULLS LAST, short_name ASC, id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "title_zh",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "title_zh"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "title_ja",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "title_ja"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "title_en",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "title_en"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "short_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "short_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "pinyin_initials: sqlx::types::Json<Vec<String>>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "pinyin_initials"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "work_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "release_year",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "release_year"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "mainline_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "mainline_index"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "era",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "work",
+            "name": "era"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "44c0eafc1bff666d80d3afea90057df9d3c15aaae5c90cb7c3a2641ee7b6a66e"
+}

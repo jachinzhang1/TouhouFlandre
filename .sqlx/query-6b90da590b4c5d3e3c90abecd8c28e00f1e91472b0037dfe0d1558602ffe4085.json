@@ -1,0 +1,196 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, match_id, stage_id, encounter_index, status, answer_id, starts_at, deadline,\n            turn_member_id, turn_deadline, winner_member_id, outcome, ended_at, ended_by_member_id,\n            end_idempotency_key FROM multi_relay_encounter WHERE id=$1 FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "match_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "stage_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "stage_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "encounter_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "encounter_index"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "answer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "deadline",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "deadline"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "turn_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "turn_member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "turn_deadline",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "turn_deadline"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "winner_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "winner_member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "outcome",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "outcome"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "ended_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "ended_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "ended_by_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "ended_by_member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "end_idempotency_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "end_idempotency_key"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6b90da590b4c5d3e3c90abecd8c28e00f1e91472b0037dfe0d1558602ffe4085"
+}

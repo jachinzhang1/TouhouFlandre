@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT elimination_enabled FROM multi_relay_room_config WHERE room_id=$1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "elimination_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_room_config",
+            "name": "elimination_enabled"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8ac53fe07544eff2a9647582fb0fbf9221aa3f153b1cef46b36a4a4b0b501129"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO multi_guess(id, round_id, member_id, sequence, guess_id, statuses, is_correct,\n        idempotency_key, created_at) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Jsonb",
+        "Bool",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2983f8789a253753a054c451ba52a56f660d7bf5cd9e8dbebb896d9193629efc"
+}

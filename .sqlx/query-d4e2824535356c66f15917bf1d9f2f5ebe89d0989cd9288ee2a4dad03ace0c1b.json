@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_round_player SET status='forfeited', finish_rank=NULL, completed_at=$3 WHERE round_id=$1\n        AND member_id=$2 AND status='active'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d4e2824535356c66f15917bf1d9f2f5ebe89d0989cd9288ee2a4dad03ace0c1b"
+}

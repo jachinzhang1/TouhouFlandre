@@ -12,7 +12,7 @@
   <a href="https://github.com/jachinzhang1/TouhouFlandre/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jachinzhang1/TouhouFlandre/ci.yml?branch=main&label=CI" alt="CI 状态"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/Node.js-%E2%89%A524-339933?logo=nodedotjs&logoColor=white" alt="Node.js 24 或更高">
-  <img src="https://img.shields.io/badge/Go-%E2%89%A51.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26 或更高">
+  <img src="https://img.shields.io/badge/Rust-1.99-000000?logo=rust&logoColor=white" alt="Rust 1.99.0">
   <img src="https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white" alt="pnpm 11">
 </p>
 
@@ -84,11 +84,13 @@ TouhouFlandre（东方芙一把）是一个无需账号即可游玩的东方 Pro
 | ---------------- | ----------------- |
 | Node.js          | 24 或更高         |
 | pnpm             | 11                |
-| Go               | 1.26 或更高       |
+| Rust（rustup）    | 1.99.0，仓库固定版本 |
 | Docker + Compose | 运行本地 Postgres |
 | Task             | 跨语言任务入口    |
 
-首次启动：
+本地 API 和 Web 原生运行；Docker 只启动 PostgreSQL。
+
+**首次使用空数据库：**
 
 ```bash
 git clone https://github.com/jachinzhang1/TouhouFlandre.git
@@ -98,8 +100,26 @@ pnpm install
 task db:up
 task db:migrate
 task db:seed
-pnpm dev
+task dev
 ```
+
+**从旧 Go 后端切换，保留已有开发数据：**
+
+保留原有 `.env`，确认 `DATABASE_URL_PG` 指向本地开发库。停止旧 API 和 Goose 迁移进程，备份数据库后执行：
+
+```bash
+pnpm install
+task db:up
+task db:adopt-goose
+task db:seed
+task dev
+```
+
+`db:adopt-goose` 只需执行一次：它核对旧迁移历史，建立 SQLx 记录并执行尚未应用的迁移。普通 `db:migrate` 会拒绝未经接管的 Goose 数据库。
+
+完成初始化后，日常使用 `task dev`（等同于 `pnpm dev`）启动数据库、API 和 Web。**`task dev` 不会自动迁移或初始化题库**；拉取新迁移后先运行 `task db:migrate`，题库更新后运行 `task db:seed`。
+
+如果启动时出现 `startup_recovery` 和 `SQLSTATE 42703`，表示查询引用了不存在的列。先检查数据库迁移是否完成；旧 Goose 库按上面的步骤接管。`.sqlx` 缓存只用于编译检查，不能代替运行数据库的迁移，无需为此删库或删卷。
 
 默认服务地址：
 
@@ -124,10 +144,10 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 ```mermaid
 flowchart LR
     U[浏览器] --> W[apps/web<br/>Next.js App Router]
-    W -->|同源 /api rewrites<br/>或直连 API| A[apps/api<br/>Go + Echo]
+    W -->|同源 /api rewrites<br/>或直连 API| A[apps/api<br/>Rust + Axum]
     A --> P[(Postgres)]
     D[packages/data<br/>JSON 题库] -->|校验 + seed| A
-    O[contracts/openapi<br/>HTTP 契约] -->|生成 Go / Web 类型| A
+    O[contracts/openapi<br/>HTTP 契约] -->|生成 Rust / Web 类型| A
     O --> W
 ```
 
@@ -135,11 +155,11 @@ flowchart LR
 | ---------- | ------------------------------------------------------------ | --------------------------------------- |
 | 前端       | Next.js 16 App Router、React 19、TypeScript、Tailwind CSS v4 | 页面路由、交互组件和样式系统            |
 | 前端数据   | openapi-fetch、openapi-typescript、Dexie                     | 类型化 API 调用和 IndexedDB 本地统计    |
-| 后端       | Go 1.26、Echo v5、pgx、coder/websocket                       | HTTP API、权威游戏规则和多人实时通道    |
-| 数据库     | Postgres、goose、sqlc                                        | 题库、会话、每日题、多人房间和事件      |
-| 契约与生成 | OpenAPI、oapi-codegen、Redocly、sqlc                         | 维护契约并生成 Go、Web 和数据库访问代码 |
-| 测试       | Vitest、React Testing Library、Playwright、Go test           | 单元、组件、端到端和 Postgres 集成测试  |
-| 部署       | Docker、Docker Compose、Next standalone、distroless Go 镜像  | 生产全栈部署                            |
+| 后端       | Rust 1.99、Tokio、Axum（WebSocket）、SQLx                       | HTTP API、权威游戏规则和多人实时通道    |
+| 数据库     | Postgres 18、SQLx 内嵌迁移                                        | 题库、会话、每日题、多人房间和事件      |
+| 契约与生成 | OpenAPI、Rust DTO/schema 生成器、Redocly                         | 维护契约并生成 Rust DTO、验证 schema 和 Web 类型 |
+| 测试       | Vitest、React Testing Library、Playwright、cargo test           | 单元、组件、端到端和 Postgres 集成测试  |
+| 部署       | Docker、Docker Compose、Next standalone、distroless Rust 镜像  | 生产全栈部署                            |
 
 详细的数据流、权威边界和系统不变量见[架构说明](./docs/architecture.md)。
 
@@ -148,7 +168,8 @@ flowchart LR
 | 目录                    | 说明                                                  |
 | ----------------------- | ----------------------------------------------------- |
 | `apps/web`              | Next.js 前端、页面组件、本地统计和浏览器端 API 客户端 |
-| `apps/api`              | Go API、权威游戏规则、WebSocket、数据库迁移与查询     |
+| `apps/api`              | Rust API、权威游戏规则、WebSocket、数据库迁移与查询     |
+| `crates/touhouflandre-core`  | 可复用的纯 Rust 猜测判定与作答状态，不依赖数据库、多人或展示 |
 | `packages/data`         | 角色、作品、头像元数据和 Zod 运行时校验               |
 | `packages/shared`       | 前端共享类型、模式配置、展示工具和分享文本            |
 | `contracts/openapi`     | HTTP API 契约唯一来源                                 |
@@ -162,15 +183,18 @@ flowchart LR
 | ------------------------------------------- | -------------------------------------------- |
 | `pnpm dev` / `task dev`                     | 启动本地 Postgres、API 和 Web                |
 | `task db:up` / `task db:down`               | 启停本地开发 Postgres                        |
-| `task db:migrate`                           | 执行 goose 数据库迁移                        |
+| `task db:migrate`                           | 执行 SQLx 数据库迁移                        |
+| `task db:adopt-goose`                       | 一次性接管旧 Goose 开发库并补齐迁移           |
+| `task db:queries:prepare` / `task db:queries:check` | 更新或校验 SQLx 编译检查缓存，需设置 `TEST_DATABASE_URL` |
+| `task test:integration`                    | 在显式 `TEST_DATABASE_URL` 中运行隔离数据库测试 |
 | `task db:seed`                              | 校验题库并写入数据库                         |
-| `pnpm build`                                | 构建全部 workspace 包                        |
+| `pnpm build`                                | 构建 Rust 二进制及 TypeScript 包                        |
 | `pnpm test`                                 | 运行 shared、data 和 web 的 Vitest 测试      |
 | `pnpm typecheck`                            | 执行 TypeScript 类型检查                     |
 | `pnpm lint:openapi`                         | 检查 OpenAPI 契约                            |
-| `task gen`                                  | 重新生成 OpenAPI、sqlc 和 Web API 类型       |
-| `task check:generated`                      | 检查生成物是否与契约和查询保持同步           |
-| `cd apps/api && go test ./...`              | 运行 Go 单元与 Postgres 集成测试             |
+| `task gen`                                  | 重新生成 Rust 契约与 Web API 类型       |
+| `task check:generated`                      | 检查 Rust/Web 生成物是否与契约同步           |
+| `pnpm test:rust`              | 运行 Rust 单元与契约测试             |
 | `pnpm --filter @touhouflandre/web test:e2e` | 运行 Playwright 端到端测试，需先启动开发服务 |
 
 ## 生产部署
@@ -181,6 +205,8 @@ flowchart LR
 cp .env.example .env
 task prod:up
 ```
+
+已有 Goose 数据库首次切换需要先停止旧 API、Goose 任务和其他写进程，备份后显式执行一次 `migrate adopt-goose`；日常迁移不会自动接管。完整操作见[部署指南](./docs/deployment.md#从-goose-数据库切换)。
 
 默认 Web 入口为 `http://localhost:3000`，API 调试入口为 `http://localhost:4000`。公网反向代理通常只需指向 Web 入口，并支持多人房间使用的 WebSocket Upgrade。
 
@@ -196,9 +222,9 @@ Docker 命名卷不是备份。公开部署前应配置 Postgres 备份与恢复
 
 ## 数据与契约
 
-- `contracts/openapi/openapi.yaml` 是 HTTP API 契约唯一入口。修改接口后运行 `task gen`，并提交对应 Go 与 Web 生成物。
-- `apps/api/internal/generated` 和 `apps/web/src/generated` 是生成代码，不应手工编辑。
-- 权威答案选择、反馈比较和运行时角色搜索位于 `apps/api/internal/game`。
+- `contracts/openapi/openapi.yaml` 是 HTTP API 契约唯一入口。修改接口后运行 `task gen`，并提交对应 Rust 与 Web 生成物。
+- `apps/api/src/contracts/{generated.rs,schemas.json,operations.json}` 和 `apps/web/src/generated` 是生成代码，不应手工编辑。
+- 字段比较、答案等价与作答状态位于 [touhouflandre-core](./crates/touhouflandre-core/README.md)；`apps/api/src/game` 保留选题、范围、搜索、缓存和展示适配。
 - 角色与作品数据位于 `packages/data/src`，写入前通过 Zod 和跨记录规则校验。
 - 题库 seed 会生成版本化快照，已经开始的游戏继续使用创建时的版本。
 
@@ -212,7 +238,9 @@ Docker 命名卷不是备份。公开部署前应配置 Postgres 备份与恢复
 pnpm typecheck
 pnpm test
 pnpm lint:openapi
-cd apps/api && go test ./...
+pnpm test:rust
+# 完整数据库回归需先设置测试专用 TEST_DATABASE_URL
+task test:integration
 ```
 
 修改 API 契约、数据库查询或生成物时，额外运行：
@@ -228,7 +256,7 @@ task check:generated
 pnpm --filter @touhouflandre/web test:e2e
 ```
 
-CI 会检查 OpenAPI、WebSocket 协议、类型、测试、Go 构建以及生成物漂移。
+CI 会检查 OpenAPI、WebSocket 协议、类型、测试、Rust 格式、Clippy、真实 Postgres 集成测试和 release 构建以及生成物漂移。
 
 ## 文档导航
 

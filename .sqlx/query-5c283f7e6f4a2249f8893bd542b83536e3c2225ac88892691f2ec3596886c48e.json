@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO multi_chat_message(id, room_id, position, sender_member_id, sender_display_name,\n        sender_role, sender_seat, client_message_id, kind, content, channel, created_at) VALUES ($1, $2, $3,\n        'system', '系统', 'system', NULL, $4, 'text', $5, 'room', $6)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int8",
+        "Uuid",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c283f7e6f4a2249f8893bd542b83536e3c2225ac88892691f2ec3596886c48e"
+}

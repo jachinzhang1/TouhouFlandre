@@ -1,0 +1,10 @@
+DROP TABLE multi_turn;
+ALTER TABLE multi_round
+    DROP COLUMN turn_deadline,
+    DROP COLUMN turn_slot;
+ALTER TABLE multi_room
+    DROP CONSTRAINT multi_room_turn_seconds_check,
+    DROP CONSTRAINT multi_room_mode_check;
+ALTER TABLE multi_room
+    DROP COLUMN turn_seconds,
+    DROP COLUMN mode;

@@ -1,0 +1,256 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, room_id, match_index, catalog_version, target_wins, score_slot1, score_slot2, round_count,\n            status, started_at, ended_at, question_scope, winner_member_id, scoring_mode, roster_size,\n            max_rounds, rule_set_key, rule_set_version, rule_config_snapshot, answer_match_policy FROM\n            multi_match WHERE room_id=$1 ORDER BY match_index DESC LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "room_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "room_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "match_index",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "match_index"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "target_wins",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "target_wins"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "score_slot1",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "score_slot1"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "score_slot2",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "score_slot2"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "round_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "round_count"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "started_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "started_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "ended_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "ended_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "question_scope",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "question_scope"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "winner_member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "winner_member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "scoring_mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "scoring_mode"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "roster_size",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "roster_size"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "max_rounds",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "max_rounds"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "rule_set_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_key"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "rule_set_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_version"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "rule_config_snapshot",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_config_snapshot"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "answer_match_policy",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "answer_match_policy"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "092fad0d49456ff413fca08da1e6f7c69798739f7c18b32366122dc7380049b2"
+}

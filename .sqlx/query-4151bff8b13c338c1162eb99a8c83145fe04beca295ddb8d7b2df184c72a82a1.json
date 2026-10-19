@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_round_player SET status='exhausted', completed_at=$3 WHERE round_id=$1 AND member_id=$2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4151bff8b13c338c1162eb99a8c83145fe04beca295ddb8d7b2df184c72a82a1"
+}

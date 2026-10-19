@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id WHERE m.room_id=$1 AND\n        m.status='playing' AND e.status<>'ended' ORDER BY e.id FOR UPDATE OF e\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d118028354e64482700cc55f42d0f38ac1ef795086f532df4a96d29d3158fc07"
+}

@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT m.rule_set_key, m.rule_set_version, count(*)::bigint AS \"count!\" FROM multi_relay_encounter e\n        JOIN multi_match m ON m.id=e.match_id WHERE m.status='playing' AND e.status<>'ended' GROUP BY\n        m.rule_set_key, m.rule_set_version\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "rule_set_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_key"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_set_version",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "rule_set_version"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "2f0610c878221a70653cfe6952ffb14684ba20e515df590d7c54d77847241464"
+}

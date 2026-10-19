@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    SELECT to_jsonb(t) AS \"value!\" FROM multi_turn t WHERE round_id=$1 ORDER BY turn_index\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value!",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "cf4b6ce15b35fd2bc680280a66b5b016699089582d4f1ac5faa27e6827893796"
+}

@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_relay_encounter SET status='ended', winner_member_id=$2, outcome=$3, ended_at=$4,\n        ended_by_member_id=$5, end_idempotency_key=$6, turn_member_id=NULL, turn_deadline=NULL WHERE id=$1\n        AND status<>'ended'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9530648d80affc3bfbbf19f2dcf85fb79eb65dff1f7268373fbfe89a942395d1"
+}

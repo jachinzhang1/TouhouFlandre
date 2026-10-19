@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO work (id, title_zh, title_ja, title_en, short_name, pinyin_initials, type, release_year,\n            mainline_index, era) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT(id) DO UPDATE SET\n            title_zh=EXCLUDED.title_zh, title_ja=EXCLUDED.title_ja, title_en=EXCLUDED.title_en,\n            short_name=EXCLUDED.short_name, pinyin_initials=EXCLUDED.pinyin_initials, type=EXCLUDED.type,\n            release_year=EXCLUDED.release_year, mainline_index=EXCLUDED.mainline_index, era=EXCLUDED.era,\n            updated_at=now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Int4",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f61ec6f082461538aca1535b782575af537532f0e1c2ea4e30a6a59a3544deee"
+}

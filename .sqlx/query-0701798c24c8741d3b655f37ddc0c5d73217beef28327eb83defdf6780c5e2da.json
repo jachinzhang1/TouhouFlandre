@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0701798c24c8741d3b655f37ddc0c5d73217beef28327eb83defdf6780c5e2da"
+}

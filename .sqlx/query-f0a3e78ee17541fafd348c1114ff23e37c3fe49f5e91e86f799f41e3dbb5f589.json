@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT e.id FROM multi_relay_encounter e JOIN multi_match m ON m.id=e.match_id JOIN multi_room r ON\n        r.id=m.room_id WHERE r.mode='relay' AND m.status='playing' AND ((e.status IN ('planned', 'countdown')\n        AND e.starts_at<=$1) OR (e.status='playing' AND (e.deadline<=$1 OR e.turn_deadline<=$1))) ORDER BY\n        e.starts_at, e.id LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_relay_encounter",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f0a3e78ee17541fafd348c1114ff23e37c3fe49f5e91e86f799f41e3dbb5f589"
+}

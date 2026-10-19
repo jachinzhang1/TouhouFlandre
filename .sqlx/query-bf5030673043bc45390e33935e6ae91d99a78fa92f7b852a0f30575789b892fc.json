@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO catalog_state(id, current_version) VALUES('current', $1) ON CONFLICT(id) DO UPDATE SET\n        current_version=EXCLUDED.current_version, updated_at=now()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf5030673043bc45390e33935e6ae91d99a78fa92f7b852a0f30575789b892fc"
+}

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_member SET status='left', grace_until=NULL WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54857a9326b043210f261c8c582580b3045d708e74a5ceae3fa967b38bcd21de"
+}

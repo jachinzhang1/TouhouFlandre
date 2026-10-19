@@ -141,7 +141,13 @@ jobs:
             exit 1
           fi
 
-          docker compose up -d --build --wait
+          # Build before interrupting the running service. Never adopt Goose implicitly.
+          docker compose build
+          docker compose up -d --wait postgres
+          docker compose stop api migrate seed
+          docker compose run --rm --no-deps migrate up
+          docker compose run --rm --no-deps seed
+          docker compose up -d --no-deps --wait api web
           REMOTE_SCRIPT
 
           printf '### Production deployment\n\n- Commit: `%s`\n' "$DEPLOY_SHA" >> "$GITHUB_STEP_SUMMARY"

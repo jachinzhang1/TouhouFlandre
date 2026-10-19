@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO character (id, avatar_url, display_name, name_sort_key, search_text, appearance_order,\n            first_appearance_work_id, names, first_appearance, species, ability_display, ability_tags,\n            affiliations, locations, roles, hair_colors, playable, enabled_as_answer, enabled_as_guess,\n            difficulty_tier, source_refs) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,\n            $15, $16, $17, $18, $19, $20, $21) ON CONFLICT(id) DO UPDATE SET avatar_url=EXCLUDED.avatar_url,\n            display_name=EXCLUDED.display_name, name_sort_key=EXCLUDED.name_sort_key,\n            search_text=EXCLUDED.search_text, appearance_order=EXCLUDED.appearance_order,\n            first_appearance_work_id=EXCLUDED.first_appearance_work_id, names=EXCLUDED.names,\n            first_appearance=EXCLUDED.first_appearance, species=EXCLUDED.species,\n            ability_display=EXCLUDED.ability_display, ability_tags=EXCLUDED.ability_tags,\n            affiliations=EXCLUDED.affiliations, locations=EXCLUDED.locations, roles=EXCLUDED.roles,\n            hair_colors=EXCLUDED.hair_colors, playable=EXCLUDED.playable,\n            enabled_as_answer=EXCLUDED.enabled_as_answer, enabled_as_guess=EXCLUDED.enabled_as_guess,\n            difficulty_tier=EXCLUDED.difficulty_tier, source_refs=EXCLUDED.source_refs, updated_at=now()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Text",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Jsonb",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "999ea0f57cdbcb5d2976db468ae97df653145234112ec36e44b013c034be29f3"
+}

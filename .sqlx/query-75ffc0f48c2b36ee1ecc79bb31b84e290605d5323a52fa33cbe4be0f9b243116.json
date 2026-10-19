@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_room SET chat_seq=chat_seq+1, chat_rate_tokens=$2, chat_rate_refilled_at=$3 WHERE id=$1\n        RETURNING chat_seq\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chat_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "chat_seq"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "75ffc0f48c2b36ee1ecc79bb31b84e290605d5323a52fa33cbe4be0f9b243116"
+}

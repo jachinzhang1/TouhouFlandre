@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM multi_chat_message WHERE created_at<$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a97ec99adb878f2e7d8ae66542b0420efb9b32d7bed60680c2c138f0474ab309"
+}

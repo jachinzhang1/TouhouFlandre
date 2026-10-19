@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT round_id, member_id, status, finish_rank, points_awarded, completed_at FROM multi_round_player\n        WHERE round_id=$1 ORDER BY member_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "round_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "round_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "member_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "member_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "finish_rank",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "finish_rank"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "points_awarded",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "points_awarded"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "completed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "multi_round_player",
+            "name": "completed_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "04ac632607a0311d7b8099bea31e536b516b4d7a3ca8a9ab8be986507444b89a"
+}

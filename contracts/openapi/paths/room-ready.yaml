@@ -26,7 +26,6 @@ post:
           properties:
             ready:
               type: boolean
-              x-go-type: "*bool"
   responses:
     "204":
       description: 已设置；重复提交相同值不产生事件

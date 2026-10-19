@@ -1,0 +1,94 @@
+[
+  {
+    "name": "random-default",
+    "mode": "random",
+    "body": {
+      "idempotencyKey": "random-default"
+    },
+    "expected": "20a0828a6069fd2e96a30a6161b0b71f4fbca2247facb783639da7d2a04ec50f"
+  },
+  {
+    "name": "daily-default",
+    "mode": "daily",
+    "body": {
+      "idempotencyKey": "daily-default"
+    },
+    "expected": "18e430256e1891ec4f05dec92ec25562ee347f42ed754dce9612643fca087ed1"
+  },
+  {
+    "name": "daily-trimmed",
+    "mode": "daily",
+    "body": {
+      "idempotencyKey": " daily-trimmed ",
+      "resumeSessionId": " existing-session ",
+      "difficulty": "hard"
+    },
+    "expected": "936581072764ca9b1de16101b6da2d7c40c3318f73ec0ea5b7649a877b6a47fe"
+  },
+  {
+    "name": "random-v3-ordered-fields",
+    "mode": "random",
+    "body": {
+      "idempotencyKey": "random-v3",
+      "resumeSessionId": "a\u003c\u0026\u003e\u2028b",
+      "questionScope": {
+        "schemaVersion": 3,
+        "catalogVersion": "old-version",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "a",
+          "b"
+        ],
+        "workStates": [],
+        "rules": {
+          "fieldModes": {
+            "species": "exactOnly",
+            "releaseYear": "directional",
+            "firstAppearance": "hidden"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 60
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 7
+          }
+        }
+      }
+    },
+    "expected": "446e8c645b38ccbd90f29d12e6029ffbfdf0f1be0c9d395c6fcb3f6ea4dca30c"
+  },
+  {
+    "name": "random-v1-legacy-rules",
+    "mode": "random",
+    "body": {
+      "idempotencyKey": "random-v1",
+      "questionScope": {
+        "schemaVersion": 1,
+        "catalogVersion": "old-version",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "a"
+        ],
+        "workStates": [
+          {
+            "workId": "th06",
+            "state": "partial",
+            "selectedCount": 1,
+            "totalCount": 2
+          }
+        ],
+        "rules": {
+          "hiddenFields": [
+            "locations"
+          ],
+          "turnSeconds": 45
+        }
+      }
+    },
+    "expected": "f24437770bcf8f87f788d9deb93ccad160593a52c66ff77e3f10b13df21631d2"
+  }
+]

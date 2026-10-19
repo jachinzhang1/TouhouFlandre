@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT event_seq FROM multi_room WHERE id=$1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "event_seq"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f9e275a0636dc8e59764618cca2a41665d975705e2373fc550e71dd445f173c5"
+}

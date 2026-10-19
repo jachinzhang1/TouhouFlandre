@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_relay_encounter SET status='playing' WHERE id=$1 AND status IN ('planned', 'countdown')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d9ba431f32662d7a0d82a0eb5bfa00e1ff554fbba5df441f86d05d484dc8e0b"
+}

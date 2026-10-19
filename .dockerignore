@@ -9,6 +9,8 @@
 .env.local
 
 # 依赖与构建产物
+target
+**/target
 node_modules
 **/node_modules
 .pnpm-store
@@ -17,8 +19,6 @@ node_modules
 **/test-results
 **/playwright-report
 **/*.tsbuildinfo
-apps/api/server
-apps/api/.openapi.bundled.yaml
 
 # 构建不需要的仓库内容（生成物已提交入库）
 docs

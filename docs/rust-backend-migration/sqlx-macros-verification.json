@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-13T08:59:12.547223+00:00",
+  "toolchain": "Rust 1.99.0",
+  "postgres": "18.4",
+  "macro_call_sites": 189,
+  "distinct_query_metadata": 176,
+  "checks": {
+    "rust_tests": {
+      "result": "pass",
+      "passed": 122,
+      "failed": 0,
+      "ignored": 0,
+      "command": "cargo test --workspace --locked -- --include-ignored"
+    },
+    "cache_check": {
+      "result": "pass",
+      "command": "node scripts/sqlx-prepare.mjs --check",
+      "output": "Applied 1/migrate init (12.439292ms)\nApplied 2/migrate multiplayer (11.732917ms)\nApplied 3/migrate multiplayer modes (4.361542ms)\nApplied 4/migrate relay pass turn (2.774375ms)\nApplied 5/migrate site metrics (1.824625ms)\nApplied 6/migrate question scope (2.402417ms)\nApplied 7/migrate spectators (2.98025ms)\nApplied 8/migrate work pinyin initials (2.554375ms)\nApplied 9/migrate member seat foundation (2.374041ms)\nApplied 10/migrate n player race roster (5.016875ms)\nApplied 11/migrate race elimination scoring (4.695292ms)\nApplied 12/migrate multi chat messages (4.637417ms)\nApplied 13/migrate race elimination toggle (1.080541ms)\nApplied 14/migrate multi match scoring mode points (1.092167ms)\nApplied 15/migrate relay stage encounter ws v3 (14.156625ms)\nApplied 16/migrate relay stage pairing (2.116125ms)\nApplied 17/migrate relay encounter engine (2.742375ms)\nApplied 18/migrate relay lifecycle recovery (1.313666ms)\nApplied 19/migrate relay room policy (1.969125ms)\nApplied 20/migrate system chat announcements (1.245916ms)\nApplied 21/migrate answer match policy (1.696208ms)\nApplied 22/migrate dynamic feedback statuses (1.478166ms)\nApplied 23/migrate puzzle resolve idempotency (2.191959ms)\n   Compiling touhouflandre-api v0.1.0 (/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre/apps/api)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.24s\n"
+    },
+    "missing_cache_negative": {
+      "result": "pass",
+      "expected_exit": 1,
+      "observation": "prepare check failed: .sqlx is missing one or more queries; original file restored; disposable database absent afterward"
+    },
+    "invalid_bind_negative": {
+      "result": "pass",
+      "observation": "Offline check rejected i64 for a text parameter; source restored exactly.",
+      "output": "    Checking touhouflandre-api v0.1.0 (/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre/apps/api)\nerror[E0308]: mismatched types\n  --> apps/api/src/repository/catalog.rs:17:9\n   |\n17 |         42_i64,\n   |         ^^^^^^\n   |         |\n   |         expected `&str`, found `i64`\n   |         expected due to the type of this binding\n\nFor more information about this error, try `rustc --explain E0308`.\nerror: could not compile `touhouflandre-api` (lib) due to 1 previous error\n"
+    },
+    "offline_build": {
+      "result": "pass",
+      "command": "env -u DATABASE_URL -u SQLX_OFFLINE cargo build --workspace --bins --locked",
+      "observation": "Package build artifacts were cleaned and the test PostgreSQL container stopped before rebuilding; Cargo default offline setting used.",
+      "output": "   Compiling touhouflandre-api v0.1.0 (/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre/apps/api)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.73s\n"
+    },
+    "clippy": {
+      "result": "pass",
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "output": "   Compiling touhouflandre-api v0.1.0 (/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre/apps/api)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.43s\n"
+    },
+    "format": {
+      "result": "pass",
+      "command": "cargo fmt --all -- --check"
+    },
+    "boundaries": {
+      "result": "pass",
+      "source_files": 77,
+      "checker_tests": 10
+    },
+    "cleanup": {
+      "result": "pass",
+      "observation": "Temporary prepare databases deleted on success and failure; task-owned PostgreSQL container removed."
+    }
+  }
+}

@@ -1,0 +1,243 @@
+   Compiling touhouflandre-api v0.1.0 (/Users/clct/.codex/worktrees/rust-axum-backend/TouhouFlandre/apps/api)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 13.05s
+     Running unittests src/lib.rs (target/debug/deps/touhouflandre_api-c0e5602121b8d566)
+
+running 8 tests
+test domain::chat::tests::roles_and_bucket_recovery ... ok
+test config::tests::duration_compatibility ... ok
+test database::tests::legacy_history_is_fail_closed ... ok
+test domain::chat::tests::unicode_and_whitespace_match_existing_chat ... ok
+test config::tests::defaults_flags_and_secrets_match_existing_configuration ... ok
+test router::tests::metrics_handler_keeps_content_type_and_cache_headers_when_database_is_down ... ok
+test router::tests::extraction_errors_keep_authentication_and_mode_validation_precedence ... ok
+test router::tests::health_and_public_error_shape ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/bin/healthcheck.rs (target/debug/deps/healthcheck-2ee7fe7a5950b67f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/migrate.rs (target/debug/deps/migrate-efa7fac38bcf1717)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/seed.rs (target/debug/deps/seed-da2e44bb286daa81)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/server.rs (target/debug/deps/server-70519cd8c96e6d35)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/chat_integration.rs (target/debug/deps/chat_integration-61f6a0cd5e5582fc)
+
+running 2 tests
+test chat_retention_and_system_announcement_transactionality ... ok
+test durable_chat_idempotency_visibility_and_rate_limit ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+
+     Running tests/contract_serialization.rs (target/debug/deps/contract_serialization-607c4efbb64c2d61)
+
+running 7 tests
+test optional_nullable_field_has_three_states ... ok
+test validates_bounds_unknown_properties_and_enums ... ok
+test optional_non_nullable_fields_reject_explicit_null ... ok
+test required_nullable_field_cannot_be_omitted ... ok
+test optional_collections_preserve_missing_and_empty ... ok
+test validates_patterns_dates_and_array_limits_without_rewriting_wire_text ... ok
+test all_generated_schemas_compile_and_all_operations_are_indexed ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.71s
+
+     Running tests/database_migrations.rs (target/debug/deps/database_migrations-e428c5de6a0f69fe)
+
+running 7 tests
+test converted_migrations_preserve_all_baseline_sql ... ok
+test legacy_history_gaps_fail_without_recording_sqlx_versions ... ok
+test concurrent_migrators_serialize_and_finish_consistently ... ok
+test interrupted_adoption_rolls_back_and_can_retry ... ok
+test empty_goose_ledger_adopts_and_concurrent_adoption_is_repeatable ... ok
+test fresh_migrate_repeat_and_reverse ... ok
+test goose_adoption_preserves_data_and_applies_pending_only ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s
+
+     Running tests/error_handling.rs (target/debug/deps/error_handling-fe36bdebc556986c)
+
+running 8 tests
+test database_cause_survives_http_conversion ... ok
+test relay_business_mapping_retains_typed_cause_without_server_error_log ... ok
+test system_random_failure_retains_cause_and_generic_http_response ... ok
+test json_and_database_values_are_redacted_from_responses_and_logs ... ok
+test nested_catalog_causes_survive_shared_loads_and_retries ... ok
+test sweeper_reports_each_failure_and_returns_the_original_cause ... ok
+test readiness_keeps_wire_message_and_reports_cause ... ok
+test http_diagnostics_include_route_template_and_database_cause ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/error_integration.rs (target/debug/deps/error_integration-a32eecd66c52a667)
+
+running 2 tests
+test postgres_details_stay_in_source_and_only_sqlstate_reaches_logs ... ok
+test catalog_missing_and_corrupt_snapshot_keep_distinct_typed_causes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/game_parity.rs (target/debug/deps/game_parity-7df7d37185a45279)
+
+running 21 tests
+test search_metrics_only_emit_fixed_labels_and_original_histogram_buckets ... ok
+test scope_presets_limits_and_storage_visibility ... ok
+test field_feedback_handles_unknowns_direction_exact_only_and_partial_sets ... ok
+test equivalence_unknowns_disabled_and_full_public_fields_do_not_merge ... ok
+test shared_ranking_fixture_checks_rune_offsets_and_ties ... ok
+test provider_metrics_distinguish_cache_hits_load_failures_and_build_failures ... ok
+test shared_cache_cancellation_does_not_cancel_load_or_other_readers ... ok
+test runtime_provider_freezes_catalog_and_policy_with_custom_loaders ... ok
+test snapshot_nil_slices_and_go_html_escaping_are_stable ... ok
+test snapshot_rejects_invalid_source_and_schema ... ok
+test daily_timezone_rune_hash_and_deterministic_answer ... ok
+test canonical_signature_matches_go_and_equivalence_ignores_set_order_and_duplicates ... ok
+test shared_cache_retries_failure_and_evicts_least_recently_used ... ok
+test stored_guess_and_mode_wire_contracts ... ok
+test unicode_normalization_and_query_boundaries ... ok
+test snapshot_validation_precedes_loading_and_projection_failure_preserves_source ... ok
+test snapshot_provider_coalesces_24_readers_and_defends_cached_data ... ok
+test search_snapshot_bytes_and_etag_match_pre_migration_go ... ok
+test question_scope_25_pre_migration_go_reference_cases ... ok
+test shared_scoped_search_parity_16_cases ... ok
+test shared_search_parity_23_cases ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/lifecycle_integration.rs (target/debug/deps/lifecycle_integration-7a2117738b0b5ef0)
+
+running 3 tests
+test retention_closes_once_then_deletes_with_dependents ... ok
+test disconnect_grace_rechecks_reconnection_and_closes_lobby_for_host ... ok
+test restart_validates_all_rules_before_settling_any_active_match ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/realtime_primitives.rs (target/debug/deps/realtime_primitives-8643eeb8a54b091c)
+
+running 17 tests
+test ack_compatibility_does_not_invent_watermark_enforcement ... ok
+test game_cursor_cannot_leak_private_payload ... ok
+test chat_cursor_matches_independently_generated_go_golden_vectors ... ok
+test barrier_refuses_to_claim_completion_across_an_unfilled_gap ... ok
+test game_only_connection_never_enables_chat_from_publications ... ok
+test queue_overflow_closes_only_that_connection_without_blocking_publication ... ok
+test chat_replay_waits_for_capacity_without_advancing_early ... ok
+test cursor_binds_room_generation_direction_and_original_bytes ... ok
+test replay_bounds_and_maximum_sequence_do_not_overflow ... ok
+test barrier_deduplicates_overlap_and_separates_game_chat_watermarks ... ok
+test service_restart_has_independent_close_signal_even_for_a_full_queue ... ok
+test replacement_is_fifo_and_stale_cleanup_cannot_unregister_new_generation ... ok
+test strict_hello_preserves_game_only_and_rejection_semantics ... ok
+test identity_invalidation_wakes_blocked_replay_and_drops_buffered_private_data ... ok
+test axum_transport_rejects_post_auth_hello_and_stops_both_tasks ... ok
+test axum_transport_accepts_ack_control_frames_and_sends_service_restart_code ... ok
+test concurrent_publication_cannot_cross_its_completion_watermark ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/relay_domain.rs (target/debug/deps/relay_domain-6300eb525d3ba02f)
+
+running 9 tests
+test timeout_keys_match_go_rfc3339_nano_fraction_trimming ... ok
+test turn_limits_draw_or_keep_actor_when_other_exhausted ... ok
+test pairing_and_provision_are_stable_and_validate_random_bounds ... ok
+test frozen_rule_selection_and_legacy_cap_do_not_award_departure_points ... ok
+test elimination_near_death_requires_another_negative_stage_and_ranks_survival ... ok
+test turns_preserve_third_skip_loss_and_legacy_forfeit ... ok
+test fixed_points_rank_ties_and_byes_without_a_bonus ... ok
+test history_cursor_is_bound_to_match_and_rejects_negative_positions ... ok
+test pairing_and_first_turn_match_independent_go_pcg_vectors ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/relay_integration.rs (target/debug/deps/relay_integration-f74985c96f25b623)
+
+running 13 tests
+test queued_action_uses_time_after_encounter_lock ... ok
+test restart_terminates_active_encounters_once_without_announcements ... ok
+test barrier_recovery_and_last_action_share_consistent_lock_order ... ok
+test action_http_validates_contract_and_snapshot_capabilities ... ok
+test deadlines_commit_conflict_and_legacy_forfeit_keeps_compatibility ... ok
+test elimination_ignores_format_cap_and_settles_survival_winner ... ok
+test siblings_settle_once_under_concurrency_and_idempotent_replay ... ok
+test eight_player_last_encounters_settle_one_barrier_and_no_legacy_scores ... ok
+test odd_active_roster_rotates_byes_and_keeps_questions_distinct ... ok
+test elimination_all_departures_and_restart_snapshots_remain_readable ... ok
+test too_small_initial_pool_rolls_back_frozen_stage_and_roster_changes ... ok
+test sweep_recovery_and_batch_departure_are_transactional ... ok
+test snapshots_hide_live_answers_and_history_reveals_only_terminal_stages ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+     Running tests/rooms_race.rs (target/debug/deps/rooms_race-fac0e7a0571dc505)
+
+running 11 tests
+test identity_and_projection_go_goldens ... ok
+test lobby_capacity_claim_settings_and_auth ... ok
+test recovered_legacy_relay_snapshot_does_not_require_stages ... ok
+test frozen_unknown_rules_and_disabled_modes_reject_without_mutation ... ok
+test wins_rematch_and_timeout_conflict_commit ... ok
+test departures_batch_disconnect_and_reconnect_recheck ... ok
+test equivalent_answers_survive_snapshots_and_round_end_replay ... ok
+test exhaustion_idempotency_round_forfeit_and_concurrent_next_round ... ok
+test concurrent_correct_guesses_unique_finish_ranks_and_secret_projection ... ok
+test relay_public_creation_uses_trigger_backed_config_and_freezes_ready_roster ... ok
+test joining_and_final_ready_have_one_frozen_roster ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.20s
+
+     Running tests/seed_parity.rs (target/debug/deps/seed_parity-15472a9e605fe510)
+
+running 2 tests
+test catalog_hash_matches_original_go_seed ... ok
+test seed_is_idempotent_and_collision_rolls_back_all_writes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+
+     Running tests/solo_parity.rs (target/debug/deps/solo_parity-d4045eebb5abf2a5)
+
+running 8 tests
+test legacy_null_guesses_and_empty_hair_index_projection_remain_compatible ... ok
+test resolve_fingerprints_match_the_original_go_persistent_records ... ok
+test timeout_and_guess_race_consumes_one_turn ... ok
+test daily_uses_shanghai_date_frozen_policy_catalog_and_eight_guesses ... ok
+test daily_and_random_empty_pools_and_missing_answer_keep_error_contracts ... ok
+test catalog_routes_search_validation_and_cache_contract ... ok
+test solo_guess_forfeit_legacy_hydration_and_frozen_catalog ... ok
+test resolve_idempotency_concurrency_resume_supersede_and_expiry ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+
+     Running tests/ws_integration.rs (target/debug/deps/ws_integration-de11a5c9ba2c8773)
+
+running 4 tests
+test websocket_auth_database_failure_is_reported_without_leaking_credentials ... ok
+test websocket_hides_unknown_private_relay_payload ... ok
+test websocket_cursor_rejection_and_private_chat_replay ... ok
+test websocket_replay_live_replacement_and_restart_close ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+
+   Doc-tests touhouflandre_api
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

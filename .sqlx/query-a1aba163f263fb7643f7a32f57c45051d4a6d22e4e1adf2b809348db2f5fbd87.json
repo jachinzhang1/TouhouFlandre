@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE multi_match_player SET score=score+$3, wins=wins+$3,\n                    best_round_score=GREATEST(best_round_score, $3) WHERE match_id=$1 AND member_id=$2 AND\n                    status='active'\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1aba163f263fb7643f7a32f57c45051d4a6d22e4e1adf2b809348db2f5fbd87"
+}

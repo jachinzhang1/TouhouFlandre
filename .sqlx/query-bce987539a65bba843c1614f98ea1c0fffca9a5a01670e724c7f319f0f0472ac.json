@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE multi_match_player SET status='eliminated', eliminated_round=$3 WHERE match_id=$1 AND\n                    member_id=$2 AND status='active'\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bce987539a65bba843c1614f98ea1c0fffca9a5a01670e724c7f319f0f0472ac"
+}

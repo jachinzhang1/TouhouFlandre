@@ -1,0 +1,4367 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "CatalogCharacters": {
+      "type": "object",
+      "required": [
+        "version",
+        "characters"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CharacterSearchResult"
+          }
+        }
+      }
+    },
+    "CatalogCharactersResponse200": {
+      "$ref": "#/definitions/CatalogCharacters"
+    },
+    "CatalogCharactersResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogContentSummary": {
+      "type": "object",
+      "required": [
+        "contentType",
+        "label",
+        "total",
+        "guessable",
+        "answerable",
+        "maxGuesses",
+        "visibleFieldCount"
+      ],
+      "properties": {
+        "contentType": {
+          "$ref": "#/definitions/GameContentType"
+        },
+        "label": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "guessable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "answerable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxGuesses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "visibleFieldCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CatalogFull": {
+      "type": "object",
+      "required": [
+        "version",
+        "works",
+        "characters",
+        "fieldDefinitions",
+        "defaultQuestionScope"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "works": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Work"
+          }
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Character"
+          }
+        },
+        "fieldDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessFieldDefinition"
+          }
+        },
+        "defaultQuestionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        }
+      }
+    },
+    "CatalogFullResponse200": {
+      "$ref": "#/definitions/CatalogFull"
+    },
+    "CatalogFullResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogGetResponse200": {
+      "$ref": "#/definitions/CatalogSummary"
+    },
+    "CatalogGetResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogSearchIndex": {
+      "type": "object",
+      "required": [
+        "catalogVersion",
+        "indexSchemaVersion",
+        "entries"
+      ],
+      "properties": {
+        "catalogVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "indexSchemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CatalogSearchIndexEntry"
+          }
+        }
+      }
+    },
+    "CatalogSearchIndexEntry": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "subtitle",
+        "initials",
+        "avatarUrl",
+        "appearanceOrder",
+        "workId",
+        "firstAppearance",
+        "species",
+        "locations",
+        "affiliations",
+        "hairColors",
+        "searchTerms",
+        "nameSortKey"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "initials": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "appearanceOrder": {
+          "type": "integer"
+        },
+        "workId": {
+          "type": "string"
+        },
+        "firstAppearance": {
+          "type": "object",
+          "required": [
+            "workTitle",
+            "releaseYear"
+          ],
+          "properties": {
+            "workTitle": {
+              "type": "string"
+            },
+            "releaseYear": {
+              "type": "integer"
+            }
+          }
+        },
+        "species": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hairColors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HairColor"
+          }
+        },
+        "searchTerms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/CatalogSearchTerm"
+          }
+        },
+        "nameSortKey": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "CatalogSearchIndexEntryFirstAppearance": {
+      "type": "object",
+      "required": [
+        "workTitle",
+        "releaseYear"
+      ],
+      "properties": {
+        "workTitle": {
+          "type": "string"
+        },
+        "releaseYear": {
+          "type": "integer"
+        }
+      }
+    },
+    "CatalogSearchIndexPath": {
+      "type": "object",
+      "properties": {
+        "catalogVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "indexSchemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "catalogVersion",
+        "indexSchemaVersion"
+      ]
+    },
+    "CatalogSearchIndexResponse200": {
+      "$ref": "#/definitions/CatalogSearchIndex"
+    },
+    "CatalogSearchIndexResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogSearchIndexResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogSearchIndexResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CatalogSearchPolicy": {
+      "type": "object",
+      "required": [
+        "mode",
+        "indexSchemaVersion",
+        "revision",
+        "gameScopeMode",
+        "revalidateAfterSeconds"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "remote",
+            "local-primary"
+          ]
+        },
+        "indexSchemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gameScopeMode": {
+          "type": "string",
+          "enum": [
+            "strict",
+            "full"
+          ]
+        },
+        "revalidateAfterSeconds": {
+          "type": "integer",
+          "enum": [
+            60
+          ]
+        }
+      }
+    },
+    "CatalogSearchPolicyGameScopeMode": {
+      "type": "string",
+      "enum": [
+        "strict",
+        "full"
+      ]
+    },
+    "CatalogSearchPolicyMode": {
+      "type": "string",
+      "enum": [
+        "remote",
+        "local-primary"
+      ]
+    },
+    "CatalogSearchPolicyResponse200": {
+      "$ref": "#/definitions/CatalogSearchPolicy"
+    },
+    "CatalogSearchPolicyRevalidateAfterSeconds": {
+      "type": "integer",
+      "enum": [
+        60
+      ]
+    },
+    "CatalogSearchTerm": {
+      "type": "object",
+      "required": [
+        "value",
+        "source"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "#/definitions/CatalogSearchTermSource"
+        }
+      }
+    },
+    "CatalogSearchTermSource": {
+      "type": "string",
+      "enum": [
+        "zhHans",
+        "zhHant",
+        "ja",
+        "en",
+        "romaji",
+        "alias",
+        "workTitle",
+        "workId",
+        "workPinyinInitials",
+        "mainlineIndex"
+      ]
+    },
+    "CatalogSummary": {
+      "type": "object",
+      "required": [
+        "dailyDateKey",
+        "contents",
+        "works"
+      ],
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "dailyDateKey": {
+          "type": "string"
+        },
+        "contents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CatalogContentSummary"
+          }
+        },
+        "works": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Work"
+          }
+        }
+      }
+    },
+    "Character": {
+      "type": "object",
+      "required": [
+        "id",
+        "avatarUrl",
+        "appearanceOrder",
+        "names",
+        "firstAppearance",
+        "species",
+        "abilityDisplay",
+        "abilityTags",
+        "affiliations",
+        "locations",
+        "roles",
+        "hairColors",
+        "playable",
+        "enabledAsAnswer",
+        "enabledAsGuess",
+        "difficultyTier",
+        "sourceRefs"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "avatarUrl": {
+          "type": "string",
+          "pattern": "^/characters/[^/]+\\.png$"
+        },
+        "appearanceOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9999
+        },
+        "names": {
+          "$ref": "#/definitions/LocalizedNames"
+        },
+        "firstAppearance": {
+          "$ref": "#/definitions/FirstAppearance"
+        },
+        "species": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "abilityDisplay": {
+          "type": "string",
+          "minLength": 1
+        },
+        "abilityTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "hairColors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HairColor"
+          },
+          "minItems": 1
+        },
+        "playable": {
+          "type": "boolean"
+        },
+        "enabledAsAnswer": {
+          "type": "boolean"
+        },
+        "enabledAsGuess": {
+          "type": "boolean"
+        },
+        "difficultyTier": {
+          "$ref": "#/definitions/DifficultyTier"
+        },
+        "sourceRefs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "CharacterSearchResponse": {
+      "type": "object",
+      "required": [
+        "results",
+        "total"
+      ],
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CharacterSearchResult"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CharacterSearchResult": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "subtitle",
+        "initials",
+        "avatarUrl",
+        "appearanceOrder",
+        "workId",
+        "firstAppearance",
+        "species",
+        "locations",
+        "affiliations",
+        "hairColors",
+        "searchText",
+        "nameSortKey"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "initials": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "appearanceOrder": {
+          "type": "integer"
+        },
+        "workId": {
+          "type": "string"
+        },
+        "searchText": {
+          "type": "string"
+        },
+        "nameSortKey": {
+          "type": "string"
+        },
+        "firstAppearance": {
+          "type": "object",
+          "required": [
+            "workTitle",
+            "releaseYear"
+          ],
+          "properties": {
+            "workTitle": {
+              "type": "string"
+            },
+            "releaseYear": {
+              "type": "integer"
+            }
+          }
+        },
+        "species": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "affiliations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hairColors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/HairColor"
+          }
+        }
+      }
+    },
+    "CharacterSearchResultFirstAppearance": {
+      "type": "object",
+      "required": [
+        "workTitle",
+        "releaseYear"
+      ],
+      "properties": {
+        "workTitle": {
+          "type": "string"
+        },
+        "releaseYear": {
+          "type": "integer"
+        }
+      }
+    },
+    "CharactersSearchHeader": {
+      "type": "object",
+      "properties": {
+        "X-Character-Search-Fallback-Reason": {
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "CharactersSearchQuery": {
+      "type": "object",
+      "properties": {
+        "q": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "catalogVersion": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "matchIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "workIds": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "name",
+            "appearance",
+            "relevance"
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ]
+        }
+      },
+      "required": []
+    },
+    "CharactersSearchQueryDirection": {
+      "type": "string",
+      "enum": [
+        "asc",
+        "desc"
+      ]
+    },
+    "CharactersSearchQuerySort": {
+      "type": "string",
+      "enum": [
+        "name",
+        "appearance",
+        "relevance"
+      ]
+    },
+    "CharactersSearchResponse200": {
+      "$ref": "#/definitions/CharacterSearchResponse"
+    },
+    "CharactersSearchResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CharactersSearchResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "CharactersSearchResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "ChatChannel": {
+      "type": "string",
+      "enum": [
+        "room",
+        "spectator"
+      ]
+    },
+    "ChatHistoryResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messages",
+        "hasMore"
+      ],
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChatMessage"
+          }
+        },
+        "hasMore": {
+          "type": "boolean"
+        },
+        "scannedCursor": {
+          "type": "string"
+        },
+        "beforeCursor": {
+          "type": "string"
+        }
+      }
+    },
+    "ChatKind": {
+      "type": "string",
+      "enum": [
+        "text",
+        "emoji"
+      ]
+    },
+    "ChatMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "messageId",
+        "roomId",
+        "senderMemberId",
+        "senderDisplayName",
+        "senderRole",
+        "kind",
+        "content",
+        "channel",
+        "cursor",
+        "createdAt"
+      ],
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]{25}$"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "senderMemberId": {
+          "type": "string"
+        },
+        "senderDisplayName": {
+          "type": "string"
+        },
+        "senderRole": {
+          "$ref": "#/definitions/ChatSenderRole"
+        },
+        "senderSeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "kind": {
+          "$ref": "#/definitions/ChatKind"
+        },
+        "content": {
+          "type": "string"
+        },
+        "channel": {
+          "$ref": "#/definitions/ChatChannel"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ChatResyncRequiredResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "error",
+        "oldestAvailableCursor",
+        "highWatermarkCursor"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "CHAT_RESYNC_REQUIRED"
+          ]
+        },
+        "error": {
+          "type": "string"
+        },
+        "oldestAvailableCursor": {
+          "type": "string"
+        },
+        "highWatermarkCursor": {
+          "type": "string"
+        }
+      }
+    },
+    "ChatResyncRequiredResponseCode": {
+      "type": "string",
+      "enum": [
+        "CHAT_RESYNC_REQUIRED"
+      ]
+    },
+    "ChatSenderRole": {
+      "type": "string",
+      "enum": [
+        "player",
+        "spectator",
+        "system"
+      ]
+    },
+    "CreateRoomResponse": {
+      "type": "object",
+      "required": [
+        "roomId",
+        "roomCode",
+        "guestToken",
+        "viewer"
+      ],
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roomCode": {
+          "type": "string"
+        },
+        "guestToken": {
+          "$ref": "#/definitions/GuestToken"
+        },
+        "viewer": {
+          "$ref": "#/definitions/ParticipantView"
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        }
+      }
+    },
+    "DailyQuestionDifficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "normal",
+        "hard",
+        "lunatic"
+      ]
+    },
+    "DifficultyTier": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "normal",
+        "hard",
+        "lunatic",
+        "extra"
+      ]
+    },
+    "Era": {
+      "type": "string",
+      "enum": [
+        "pc98",
+        "windows",
+        "other"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "code",
+        "error"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_REQUEST",
+            "INVALID_GUESS",
+            "SESSION_NOT_FOUND",
+            "SESSION_CLOSED",
+            "DUPLICATE_GUESS",
+            "CONCURRENT_UPDATE",
+            "UNSUPPORTED_CONTENT_TYPE",
+            "CATALOG_NOT_READY",
+            "CATALOG_VERSION_NOT_FOUND",
+            "IDEMPOTENCY_KEY_REUSED",
+            "INTERNAL",
+            "ROOM_NOT_FOUND",
+            "ROOM_FULL",
+            "ROOM_CLOSED",
+            "GUEST_UNAUTHORIZED",
+            "SPECTATOR_READ_ONLY",
+            "INVALID_FORMAT",
+            "INVALID_PLAYER_LIMIT",
+            "ROOM_SETTINGS_LOCKED",
+            "MATCH_ALREADY_STARTED",
+            "REMATCH_NOT_AVAILABLE",
+            "ROUND_NOT_ACTIVE",
+            "ROUND_ENDED",
+            "NOT_YOUR_TURN",
+            "TURN_EXPIRED",
+            "GUESS_LIMIT_REACHED",
+            "RATE_LIMITED",
+            "CHAT_MESSAGE_INVALID",
+            "CHAT_CURSOR_INVALID",
+            "CHAT_SEND_FORBIDDEN",
+            "CHAT_IDEMPOTENCY_CONFLICT",
+            "CHAT_CURSOR_AHEAD",
+            "CHAT_RESYNC_REQUIRED",
+            "FEATURE_DISABLED",
+            "ENCOUNTER_NOT_FOUND",
+            "NOT_ENCOUNTER_PLAYER",
+            "ENCOUNTER_ENDED",
+            "IDEMPOTENCY_CONFLICT",
+            "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS"
+          ]
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "ErrorResponseCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_REQUEST",
+        "INVALID_GUESS",
+        "SESSION_NOT_FOUND",
+        "SESSION_CLOSED",
+        "DUPLICATE_GUESS",
+        "CONCURRENT_UPDATE",
+        "UNSUPPORTED_CONTENT_TYPE",
+        "CATALOG_NOT_READY",
+        "CATALOG_VERSION_NOT_FOUND",
+        "IDEMPOTENCY_KEY_REUSED",
+        "INTERNAL",
+        "ROOM_NOT_FOUND",
+        "ROOM_FULL",
+        "ROOM_CLOSED",
+        "GUEST_UNAUTHORIZED",
+        "SPECTATOR_READ_ONLY",
+        "INVALID_FORMAT",
+        "INVALID_PLAYER_LIMIT",
+        "ROOM_SETTINGS_LOCKED",
+        "MATCH_ALREADY_STARTED",
+        "REMATCH_NOT_AVAILABLE",
+        "ROUND_NOT_ACTIVE",
+        "ROUND_ENDED",
+        "NOT_YOUR_TURN",
+        "TURN_EXPIRED",
+        "GUESS_LIMIT_REACHED",
+        "RATE_LIMITED",
+        "CHAT_MESSAGE_INVALID",
+        "CHAT_CURSOR_INVALID",
+        "CHAT_SEND_FORBIDDEN",
+        "CHAT_IDEMPOTENCY_CONFLICT",
+        "CHAT_CURSOR_AHEAD",
+        "CHAT_RESYNC_REQUIRED",
+        "FEATURE_DISABLED",
+        "ENCOUNTER_NOT_FOUND",
+        "NOT_ENCOUNTER_PLAYER",
+        "ENCOUNTER_ENDED",
+        "IDEMPOTENCY_CONFLICT",
+        "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS"
+      ]
+    },
+    "FeedbackStatus": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "partial",
+        "miss",
+        "higher",
+        "lower",
+        "unknown"
+      ]
+    },
+    "FeedbackSymbol": {
+      "type": "string",
+      "enum": [
+        "O",
+        "~",
+        "X",
+        "↑",
+        "↓",
+        "?"
+      ]
+    },
+    "FieldFeedback": {
+      "type": "object",
+      "required": [
+        "field",
+        "label",
+        "status",
+        "symbol",
+        "displayValue"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/definitions/GuessFieldKey"
+        },
+        "label": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/FeedbackStatus"
+        },
+        "symbol": {
+          "$ref": "#/definitions/FeedbackSymbol"
+        },
+        "displayValue": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "FirstAppearance": {
+      "type": "object",
+      "required": [
+        "workId",
+        "workTitle",
+        "workType",
+        "releaseYear"
+      ],
+      "properties": {
+        "workId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workTitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workType": {
+          "$ref": "#/definitions/WorkType"
+        },
+        "releaseYear": {
+          "type": "integer"
+        },
+        "mainlineIndex": {
+          "type": "integer"
+        },
+        "era": {
+          "$ref": "#/definitions/Era"
+        }
+      }
+    },
+    "GameContentType": {
+      "type": "string",
+      "enum": [
+        "character"
+      ]
+    },
+    "GameMode": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "random",
+        "multiplayer"
+      ]
+    },
+    "GuessField": {
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "type",
+        "visible",
+        "compareStrategy"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/GuessFieldKey"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "enum",
+            "multi_enum",
+            "number",
+            "hierarchy"
+          ]
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "compareStrategy": {
+          "type": "string"
+        },
+        "helpText": {
+          "type": "string"
+        }
+      }
+    },
+    "GuessFieldDefinition": {
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "type",
+        "configurable",
+        "defaultMode",
+        "modes",
+        "equivalence"
+      ],
+      "properties": {
+        "key": {
+          "$ref": "#/definitions/GuessFieldKey"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "enum",
+            "multi_enum",
+            "number",
+            "hierarchy"
+          ]
+        },
+        "helpText": {
+          "type": "string"
+        },
+        "configurable": {
+          "type": "boolean"
+        },
+        "defaultMode": {
+          "type": "string"
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessFieldModeDefinition"
+          }
+        },
+        "equivalence": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GuessFieldDefinitionType": {
+      "type": "string",
+      "enum": [
+        "string",
+        "enum",
+        "multi_enum",
+        "number",
+        "hierarchy"
+      ]
+    },
+    "GuessFieldKey": {
+      "type": "string"
+    },
+    "GuessFieldModeDefinition": {
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "enabled"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "GuessFieldType": {
+      "type": "string",
+      "enum": [
+        "string",
+        "enum",
+        "multi_enum",
+        "number",
+        "hierarchy"
+      ]
+    },
+    "GuessResponse": {
+      "type": "object",
+      "required": [
+        "roundIndex",
+        "guess"
+      ],
+      "properties": {
+        "roundIndex": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "guess": {
+          "$ref": "#/definitions/GuessResult"
+        },
+        "participationStatus": {
+          "$ref": "#/definitions/RaceRoundParticipantStatus"
+        },
+        "finishRank": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "GuessResult": {
+      "type": "object",
+      "required": [
+        "kind",
+        "guessId",
+        "guessName",
+        "isCorrect",
+        "matchKind",
+        "feedback"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "guess",
+            "timeout"
+          ]
+        },
+        "guessId": {
+          "type": "string"
+        },
+        "guessName": {
+          "type": "string"
+        },
+        "guessAvatarUrl": {
+          "type": "string"
+        },
+        "isCorrect": {
+          "type": "boolean"
+        },
+        "matchKind": {
+          "$ref": "#/definitions/MatchKind"
+        },
+        "feedback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FieldFeedback"
+          }
+        }
+      }
+    },
+    "GuessResultKind": {
+      "type": "string",
+      "enum": [
+        "guess",
+        "timeout"
+      ]
+    },
+    "GuestToken": {
+      "type": "string"
+    },
+    "HairColor": {
+      "type": "string",
+      "enum": [
+        "black",
+        "brown",
+        "blonde",
+        "white",
+        "silver",
+        "red",
+        "pink",
+        "purple",
+        "blue",
+        "green",
+        "orange",
+        "gray",
+        "multicolor",
+        "other",
+        "none"
+      ]
+    },
+    "HealthCheckResponse200": {
+      "type": "object",
+      "required": [
+        "ok",
+        "service"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "service": {
+          "type": "string"
+        }
+      }
+    },
+    "JoinRoomResponse": {
+      "type": "object",
+      "required": [
+        "roomId",
+        "guestToken",
+        "joinRole",
+        "viewer"
+      ],
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "guestToken": {
+          "$ref": "#/definitions/GuestToken"
+        },
+        "joinRole": {
+          "$ref": "#/definitions/ParticipantRole"
+        },
+        "viewer": {
+          "$ref": "#/definitions/ParticipantView"
+        }
+      }
+    },
+    "LocalizedNames": {
+      "type": "object",
+      "required": [
+        "zhHans",
+        "ja",
+        "en",
+        "aliases"
+      ],
+      "properties": {
+        "zhHans": {
+          "type": "string",
+          "minLength": 1
+        },
+        "zhHant": {
+          "type": "string"
+        },
+        "ja": {
+          "type": "string",
+          "minLength": 1
+        },
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "romaji": {
+          "type": "string"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "MatchEndReason": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "forfeit",
+        "disconnect",
+        "server_restart",
+        "round_cap",
+        "insufficient_active_players"
+      ]
+    },
+    "MatchKind": {
+      "type": "string",
+      "enum": [
+        "none",
+        "exact",
+        "equivalent"
+      ]
+    },
+    "MatchPlayerStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "eliminated",
+        "left"
+      ]
+    },
+    "MatchResult": {
+      "type": "string",
+      "enum": [
+        "win",
+        "loss",
+        "draw"
+      ]
+    },
+    "MatchView": {
+      "type": "object",
+      "required": [
+        "matchIndex",
+        "scoringMode",
+        "rosterSize",
+        "targetWins",
+        "scores",
+        "roundIndex",
+        "maxRounds",
+        "rematchReady",
+        "catalogVersion",
+        "activeFields",
+        "ruleSetRef"
+      ],
+      "properties": {
+        "matchIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scoringMode": {
+          "$ref": "#/definitions/ScoringMode"
+        },
+        "rosterSize": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "targetWins": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MemberScoreView"
+          }
+        },
+        "roundIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxRounds": {
+          "type": "integer"
+        },
+        "rematchReady": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MemberRematchReadyView"
+          }
+        },
+        "catalogVersion": {
+          "type": "string"
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        },
+        "activeFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessField"
+          }
+        },
+        "ruleSetRef": {
+          "$ref": "#/definitions/RuleSetRef"
+        },
+        "relay": {
+          "$ref": "#/definitions/RelayMatchFragment"
+        }
+      }
+    },
+    "MemberBoardView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "guesses"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "guesses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessResult"
+          }
+        }
+      }
+    },
+    "MemberRematchReadyView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "ready"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MemberScoreView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "score",
+        "status",
+        "bestRoundScore"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "$ref": "#/definitions/MatchPlayerStatus"
+        },
+        "bestRoundScore": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eliminatedRound": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "MemberStatus": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "disconnected",
+        "left"
+      ]
+    },
+    "MemberView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "displayName",
+        "status",
+        "ready"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/MemberStatus"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "MultiplayerMode": {
+      "type": "string",
+      "enum": [
+        "race",
+        "relay"
+      ]
+    },
+    "OpponentBoardView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "fieldOrder",
+        "rows"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "fieldOrder": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessFieldKey"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OpponentRow"
+          }
+        }
+      }
+    },
+    "OpponentRow": {
+      "type": "object",
+      "required": [
+        "index",
+        "statuses"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/FeedbackStatus"
+          }
+        }
+      }
+    },
+    "ParticipantRole": {
+      "type": "string",
+      "enum": [
+        "player",
+        "spectator"
+      ]
+    },
+    "ParticipantView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "role",
+        "displayName",
+        "status"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/ParticipantRole"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/MemberStatus"
+        }
+      }
+    },
+    "PublicGameSession": {
+      "type": "object",
+      "required": [
+        "id",
+        "mode",
+        "contentType",
+        "status",
+        "maxGuesses",
+        "activeFields",
+        "guesses",
+        "startedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/definitions/GameMode"
+        },
+        "contentType": {
+          "$ref": "#/definitions/GameContentType"
+        },
+        "status": {
+          "$ref": "#/definitions/SessionStatus"
+        },
+        "maxGuesses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "catalogVersion": {
+          "type": "string"
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        },
+        "activeFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessField"
+          }
+        },
+        "puzzleKey": {
+          "type": "string"
+        },
+        "guesses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessResult"
+          }
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "answer": {
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Character"
+            }
+          ]
+        }
+      }
+    },
+    "PublicMemberView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "status",
+        "ready"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "status": {
+          "$ref": "#/definitions/MemberStatus"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PuzzleCreateRequest": {
+      "type": "object",
+      "properties": {
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfigInput"
+        },
+        "difficulty": {
+          "$ref": "#/definitions/DailyQuestionDifficulty"
+        }
+      }
+    },
+    "PuzzleResolution": {
+      "type": "string",
+      "enum": [
+        "created",
+        "resumed"
+      ]
+    },
+    "PuzzleResolveRequest": {
+      "type": "object",
+      "required": [
+        "idempotencyKey"
+      ],
+      "properties": {
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "resumeSessionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfigInput"
+        },
+        "difficulty": {
+          "$ref": "#/definitions/DailyQuestionDifficulty"
+        }
+      }
+    },
+    "PuzzleResolveResponse": {
+      "type": "object",
+      "required": [
+        "puzzleLabel",
+        "session",
+        "resolution"
+      ],
+      "properties": {
+        "puzzleLabel": {
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        },
+        "resolution": {
+          "$ref": "#/definitions/PuzzleResolution"
+        },
+        "supersededSession": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/PublicGameSession"
+            }
+          ]
+        }
+      }
+    },
+    "PuzzleResponse": {
+      "type": "object",
+      "required": [
+        "puzzleLabel",
+        "session"
+      ],
+      "properties": {
+        "puzzleLabel": {
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        }
+      }
+    },
+    "PuzzlesCreatePath": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "daily",
+            "random"
+          ]
+        }
+      },
+      "required": [
+        "mode"
+      ]
+    },
+    "PuzzlesCreatePathMode": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "random"
+      ]
+    },
+    "PuzzlesCreateRequestBody": {
+      "$ref": "#/definitions/PuzzleCreateRequest"
+    },
+    "PuzzlesCreateResponse200": {
+      "$ref": "#/definitions/PuzzleResponse"
+    },
+    "PuzzlesCreateResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesCreateResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesCreateResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesResolvePath": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "daily",
+            "random"
+          ]
+        }
+      },
+      "required": [
+        "mode"
+      ]
+    },
+    "PuzzlesResolvePathMode": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "random"
+      ]
+    },
+    "PuzzlesResolveRequestBody": {
+      "$ref": "#/definitions/PuzzleResolveRequest"
+    },
+    "PuzzlesResolveResponse200": {
+      "$ref": "#/definitions/PuzzleResolveResponse"
+    },
+    "PuzzlesResolveResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesResolveResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesResolveResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "PuzzlesResolveResponse503": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "QuestionDifficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "normal",
+        "hard",
+        "lunatic",
+        "extra",
+        "custom"
+      ]
+    },
+    "QuestionDifficultyPreset": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "normal",
+        "hard",
+        "lunatic",
+        "extra"
+      ]
+    },
+    "QuestionScopeConfig": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "catalogVersion",
+        "mode",
+        "difficulty",
+        "selectedCharacterIds",
+        "workStates",
+        "rules"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "catalogVersion": {
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/definitions/QuestionScopeMode"
+        },
+        "difficulty": {
+          "$ref": "#/definitions/QuestionDifficulty"
+        },
+        "selectedCharacterIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workStates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QuestionScopeWorkState"
+          }
+        },
+        "rules": {
+          "$ref": "#/definitions/QuestionScopeRules"
+        }
+      }
+    },
+    "QuestionScopeConfigInput": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "catalogVersion",
+        "mode",
+        "difficulty",
+        "selectedCharacterIds",
+        "workStates",
+        "rules"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "catalogVersion": {
+          "type": "string"
+        },
+        "mode": {
+          "$ref": "#/definitions/QuestionScopeMode"
+        },
+        "difficulty": {
+          "$ref": "#/definitions/QuestionDifficulty"
+        },
+        "selectedCharacterIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workStates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/QuestionScopeWorkState"
+          }
+        },
+        "rules": {
+          "$ref": "#/definitions/QuestionScopeRulesInput"
+        }
+      }
+    },
+    "QuestionScopeConfigInputSchemaVersion": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "QuestionScopeConfigSchemaVersion": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3
+      ]
+    },
+    "QuestionScopeFieldRules": {
+      "type": "object",
+      "required": [
+        "firstAppearance",
+        "releaseYear",
+        "species",
+        "affiliations",
+        "locations",
+        "hairColors"
+      ],
+      "properties": {
+        "firstAppearance": {
+          "type": "boolean"
+        },
+        "releaseYear": {
+          "$ref": "#/definitions/QuestionScopeReleaseYearMode"
+        },
+        "species": {
+          "type": "boolean"
+        },
+        "affiliations": {
+          "type": "boolean"
+        },
+        "locations": {
+          "type": "boolean"
+        },
+        "hairColors": {
+          "type": "boolean"
+        }
+      }
+    },
+    "QuestionScopeGuessLimit": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "maxGuesses"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "maxGuesses": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "QuestionScopeMode": {
+      "type": "string",
+      "enum": [
+        "preset",
+        "custom"
+      ]
+    },
+    "QuestionScopeReleaseYearMode": {
+      "type": "string",
+      "enum": [
+        "hidden",
+        "exactOnly",
+        "directional"
+      ]
+    },
+    "QuestionScopeRules": {
+      "type": "object",
+      "required": [
+        "fieldModes",
+        "turnLimit",
+        "guessLimit"
+      ],
+      "properties": {
+        "fieldModes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "fields": {
+          "$ref": "#/definitions/QuestionScopeFieldRules"
+        },
+        "turnLimit": {
+          "$ref": "#/definitions/QuestionScopeTurnLimit"
+        },
+        "guessLimit": {
+          "$ref": "#/definitions/QuestionScopeGuessLimit"
+        },
+        "hiddenFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessFieldKey"
+          }
+        },
+        "turnSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "QuestionScopeRulesInput": {
+      "type": "object",
+      "properties": {
+        "fieldModes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "fields": {
+          "$ref": "#/definitions/QuestionScopeFieldRules"
+        },
+        "turnLimit": {
+          "$ref": "#/definitions/QuestionScopeTurnLimit"
+        },
+        "guessLimit": {
+          "$ref": "#/definitions/QuestionScopeGuessLimit"
+        },
+        "hiddenFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessFieldKey"
+          }
+        },
+        "turnSeconds": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "QuestionScopeTurnLimit": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "seconds"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "seconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 120
+        }
+      }
+    },
+    "QuestionScopeWorkSelection": {
+      "type": "string",
+      "enum": [
+        "all",
+        "partial",
+        "none"
+      ]
+    },
+    "QuestionScopeWorkState": {
+      "type": "object",
+      "required": [
+        "workId",
+        "state",
+        "selectedCount",
+        "totalCount"
+      ],
+      "properties": {
+        "workId": {
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/definitions/QuestionScopeWorkSelection"
+        },
+        "selectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "RaceRoundParticipantStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "correct",
+        "forfeited",
+        "exhausted",
+        "timed_out"
+      ]
+    },
+    "RateLimitedErrorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "error",
+        "retryAfterMs"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "RATE_LIMITED"
+          ]
+        },
+        "error": {
+          "type": "string"
+        },
+        "retryAfterMs": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "RateLimitedErrorResponseCode": {
+      "type": "string",
+      "enum": [
+        "RATE_LIMITED"
+      ]
+    },
+    "RelayEncounterActionRequest": {
+      "type": "object",
+      "required": [
+        "action",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "guess",
+            "pass",
+            "forfeit"
+          ]
+        },
+        "guessId": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "RelayEncounterActionRequestAction": {
+      "type": "string",
+      "enum": [
+        "guess",
+        "pass",
+        "forfeit"
+      ]
+    },
+    "RelayEncounterActionResponse": {
+      "type": "object",
+      "required": [
+        "stageIndex",
+        "encounterId",
+        "accepted",
+        "ended"
+      ],
+      "properties": {
+        "stageIndex": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "encounterId": {
+          "type": "string"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "ended": {
+          "type": "boolean"
+        },
+        "turn": {
+          "$ref": "#/definitions/RelayTurnRow"
+        }
+      }
+    },
+    "RelayEncounterCapabilities": {
+      "type": "object",
+      "required": [
+        "canGuess",
+        "canPass",
+        "canForfeit"
+      ],
+      "properties": {
+        "canGuess": {
+          "type": "boolean"
+        },
+        "canPass": {
+          "type": "boolean"
+        },
+        "canForfeit": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RelayEncounterHistoryView": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/RelayEncounterView"
+        },
+        {
+          "type": "object",
+          "required": [
+            "outcome",
+            "winnerMemberId",
+            "answer"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "ended"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "win",
+                "loss",
+                "draw",
+                "forfeit",
+                "timeout"
+              ]
+            },
+            "winnerMemberId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "answer": {
+              "$ref": "#/definitions/Character"
+            }
+          }
+        }
+      ]
+    },
+    "RelayEncounterHistoryViewOutcome": {
+      "type": "string",
+      "enum": [
+        "win",
+        "loss",
+        "draw",
+        "forfeit",
+        "timeout"
+      ]
+    },
+    "RelayEncounterHistoryViewStatus": {
+      "type": "string",
+      "enum": [
+        "ended"
+      ]
+    },
+    "RelayEncounterMemberView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "side"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "side": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        }
+      }
+    },
+    "RelayEncounterMemberViewSide": {
+      "type": "integer",
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "RelayEncounterSummary": {
+      "type": "object",
+      "required": [
+        "encounterId",
+        "encounterIndex",
+        "status",
+        "members"
+      ],
+      "properties": {
+        "encounterId": {
+          "type": "string"
+        },
+        "encounterIndex": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "countdown",
+            "playing",
+            "ended"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/definitions/RelayEncounterMemberView"
+          }
+        }
+      }
+    },
+    "RelayEncounterSummaryStatus": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "countdown",
+        "playing",
+        "ended"
+      ]
+    },
+    "RelayEncounterView": {
+      "type": "object",
+      "required": [
+        "encounterId",
+        "encounterIndex",
+        "status",
+        "members",
+        "capabilities",
+        "rows"
+      ],
+      "properties": {
+        "encounterId": {
+          "type": "string"
+        },
+        "encounterIndex": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "countdown",
+            "playing",
+            "ended"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/definitions/RelayEncounterMemberView"
+          }
+        },
+        "capabilities": {
+          "$ref": "#/definitions/RelayEncounterCapabilities"
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "turnMemberId": {
+          "type": "string"
+        },
+        "turnSeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "turnDeadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "maxTurnsPerPlayer": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSkipsPerPlayer": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "win",
+            "loss",
+            "draw",
+            "forfeit",
+            "timeout"
+          ]
+        },
+        "winnerMemberId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "answer": {
+          "$ref": "#/definitions/Character"
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayTurnRow"
+          }
+        }
+      }
+    },
+    "RelayEncounterViewOutcome": {
+      "type": "string",
+      "enum": [
+        "win",
+        "loss",
+        "draw",
+        "forfeit",
+        "timeout"
+      ]
+    },
+    "RelayEncounterViewStatus": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "countdown",
+        "playing",
+        "ended"
+      ]
+    },
+    "RelayLifeState": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "near_death"
+      ]
+    },
+    "RelayLifeTransition": {
+      "type": "string",
+      "enum": [
+        "none",
+        "entered_near_death",
+        "eliminated"
+      ]
+    },
+    "RelayMatchFragment": {
+      "type": "object",
+      "required": [
+        "ruleSetRef",
+        "standings"
+      ],
+      "properties": {
+        "ruleSetRef": {
+          "$ref": "#/definitions/RuleSetRef"
+        },
+        "standings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayStandingView"
+          }
+        },
+        "plannedStages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "ranking": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayRankingView"
+          }
+        },
+        "currentStage": {
+          "$ref": "#/definitions/RelayStageView"
+        },
+        "historySummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayStageView"
+          }
+        }
+      }
+    },
+    "RelayRankingView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "rank",
+        "score",
+        "status",
+        "lifeState"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "score": {
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/MatchPlayerStatus"
+        },
+        "lifeState": {
+          "$ref": "#/definitions/RelayLifeState"
+        },
+        "eliminatedStage": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "survivedStages": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "RelayStageHistoryView": {
+      "type": "object",
+      "required": [
+        "stageId",
+        "stageIndex",
+        "status",
+        "encounters",
+        "settlement"
+      ],
+      "properties": {
+        "stageId": {
+          "type": "string"
+        },
+        "stageIndex": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ended"
+          ]
+        },
+        "encounters": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/RelayEncounterHistoryView"
+          }
+        },
+        "byeMemberId": {
+          "type": "string"
+        },
+        "settlement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayStageSettlementView"
+          }
+        }
+      }
+    },
+    "RelayStageHistoryViewStatus": {
+      "type": "string",
+      "enum": [
+        "ended"
+      ]
+    },
+    "RelayStageSettlementView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "assignment",
+        "outcome",
+        "scoreBefore",
+        "scoreDelta",
+        "scoreAfter",
+        "lifeBefore",
+        "lifeAfter",
+        "lifeTransition"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "encounterId": {
+          "type": "string"
+        },
+        "assignment": {
+          "type": "string",
+          "enum": [
+            "paired",
+            "bye"
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "win",
+            "loss",
+            "draw",
+            "bye"
+          ]
+        },
+        "scoreBefore": {
+          "type": "integer"
+        },
+        "scoreDelta": {
+          "type": "integer"
+        },
+        "scoreAfter": {
+          "type": "integer"
+        },
+        "lifeBefore": {
+          "$ref": "#/definitions/RelayLifeState"
+        },
+        "lifeAfter": {
+          "$ref": "#/definitions/RelayLifeState"
+        },
+        "lifeTransition": {
+          "$ref": "#/definitions/RelayLifeTransition"
+        },
+        "eliminatedStage": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "RelayStageSettlementViewAssignment": {
+      "type": "string",
+      "enum": [
+        "paired",
+        "bye"
+      ]
+    },
+    "RelayStageSettlementViewOutcome": {
+      "type": "string",
+      "enum": [
+        "win",
+        "loss",
+        "draw",
+        "bye"
+      ]
+    },
+    "RelayStageView": {
+      "type": "object",
+      "required": [
+        "stageId",
+        "stageIndex",
+        "status",
+        "encounters"
+      ],
+      "properties": {
+        "stageId": {
+          "type": "string"
+        },
+        "stageIndex": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "playing",
+            "settling",
+            "ended"
+          ]
+        },
+        "encounters": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/RelayEncounterSummary"
+          }
+        },
+        "byeMemberId": {
+          "type": "string"
+        },
+        "settlement": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayStageSettlementView"
+          }
+        },
+        "encounterDetails": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/RelayEncounterView"
+          }
+        }
+      }
+    },
+    "RelayStageViewStatus": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "playing",
+        "settling",
+        "ended"
+      ]
+    },
+    "RelayStandingView": {
+      "type": "object",
+      "required": [
+        "memberId",
+        "seat",
+        "score",
+        "status",
+        "lifeState"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "score": {
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/definitions/MatchPlayerStatus"
+        },
+        "lifeState": {
+          "$ref": "#/definitions/RelayLifeState"
+        },
+        "eliminatedStage": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "RelayTurnRow": {
+      "type": "object",
+      "required": [
+        "index",
+        "memberId",
+        "seat",
+        "kind"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "guess",
+            "timeout",
+            "pass"
+          ]
+        },
+        "guess": {
+          "$ref": "#/definitions/GuessResult"
+        }
+      }
+    },
+    "RelayTurnRowKind": {
+      "type": "string",
+      "enum": [
+        "guess",
+        "timeout",
+        "pass"
+      ]
+    },
+    "RoomCloseReason": {
+      "type": "string",
+      "enum": [
+        "host_left",
+        "member_left",
+        "ttl",
+        "retention"
+      ]
+    },
+    "RoomEventEnvelope": {
+      "type": "object",
+      "required": [
+        "type",
+        "eventId",
+        "roomId",
+        "sequence",
+        "occurredAt",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "eventId": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "string"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "RoomFormat": {
+      "type": "string",
+      "enum": [
+        "bo1",
+        "bo3",
+        "bo5",
+        "bo7"
+      ]
+    },
+    "RoomInfo": {
+      "type": "object",
+      "required": [
+        "roomCode",
+        "format",
+        "mode",
+        "turnSeconds",
+        "status",
+        "members",
+        "playerCount",
+        "spectatorCount",
+        "joinRole",
+        "playerLimit",
+        "raceEliminationEnabled",
+        "minPlayers",
+        "availableSeats"
+      ],
+      "properties": {
+        "roomCode": {
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/definitions/RoomFormat"
+        },
+        "mode": {
+          "$ref": "#/definitions/MultiplayerMode"
+        },
+        "turnSeconds": {
+          "type": "integer",
+          "enum": [
+            30,
+            60,
+            90,
+            120
+          ]
+        },
+        "status": {
+          "$ref": "#/definitions/RoomStatus"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PublicMemberView"
+          }
+        },
+        "playerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "spectatorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "joinRole": {
+          "$ref": "#/definitions/ParticipantRole"
+        },
+        "playerLimit": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "raceEliminationEnabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "relayEliminationEnabled": {
+          "type": "boolean"
+        },
+        "startBlockedReason": {
+          "$ref": "#/definitions/StartBlockedReason"
+        },
+        "minPlayers": {
+          "type": "integer",
+          "enum": [
+            2
+          ]
+        },
+        "availableSeats": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        }
+      }
+    },
+    "RoomInfoMinPlayers": {
+      "type": "integer",
+      "enum": [
+        2
+      ]
+    },
+    "RoomInfoTurnSeconds": {
+      "type": "integer",
+      "enum": [
+        30,
+        60,
+        90,
+        120
+      ]
+    },
+    "RoomsClaimSeatPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsClaimSeatResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsClaimSeatResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsClaimSeatResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsClaimSeatResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsClosePath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsCloseResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsCloseResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsCloseResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsCloseResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsConnectWsPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsConnectWsResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsConnectWsResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsConnectWsResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsCreateRequestBody": {
+      "type": "object",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/RoomFormat"
+        },
+        "mode": {
+          "$ref": "#/definitions/MultiplayerMode"
+        },
+        "playerLimit": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8,
+          "default": 2
+        },
+        "raceEliminationEnabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "relayEliminationEnabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "turnSeconds": {
+          "type": "integer",
+          "enum": [
+            30,
+            60,
+            90,
+            120
+          ],
+          "default": 60
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfigInput"
+        }
+      }
+    },
+    "RoomsCreateRequestBodyTurnSeconds": {
+      "type": "integer",
+      "enum": [
+        30,
+        60,
+        90,
+        120
+      ],
+      "default": 60
+    },
+    "RoomsCreateResponse201": {
+      "$ref": "#/definitions/CreateRoomResponse"
+    },
+    "RoomsCreateResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsCreateResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsForfeitRoundPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roundIndex": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "roomId",
+        "roundIndex"
+      ]
+    },
+    "RoomsForfeitRoundResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsForfeitRoundResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsForfeitRoundResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsForfeitRoundResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsGetInfoPath": {
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCode"
+      ]
+    },
+    "RoomsGetInfoResponse200": {
+      "$ref": "#/definitions/RoomInfo"
+    },
+    "RoomsGetInfoResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsGetInfoResponse429": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsGetSnapshotPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsGetSnapshotQuery": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "required": []
+    },
+    "RoomsGetSnapshotResponse200": {
+      "$ref": "#/definitions/RoomSnapshot"
+    },
+    "RoomsGetSnapshotResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsGetSnapshotResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsJoinPath": {
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomCode"
+      ]
+    },
+    "RoomsJoinRequestBody": {
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string"
+        }
+      }
+    },
+    "RoomsJoinResponse201": {
+      "$ref": "#/definitions/JoinRoomResponse"
+    },
+    "RoomsJoinResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsJoinResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsJoinResponse429": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsLeavePath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsLeaveResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsLeaveResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsLeaveResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListMessagesPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsListMessagesQuery": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "required": []
+    },
+    "RoomsListMessagesResponse200": {
+      "$ref": "#/definitions/ChatHistoryResponse"
+    },
+    "RoomsListMessagesResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListMessagesResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListMessagesResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListMessagesResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListMessagesResponse410": {
+      "$ref": "#/definitions/ChatResyncRequiredResponse"
+    },
+    "RoomsListRelayStageHistoryPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "matchIndex": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "roomId",
+        "matchIndex"
+      ]
+    },
+    "RoomsListRelayStageHistoryQuery": {
+      "type": "object",
+      "properties": {
+        "after": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 10
+        }
+      },
+      "required": []
+    },
+    "RoomsListRelayStageHistoryResponse200": {
+      "type": "object",
+      "required": [
+        "stages"
+      ],
+      "properties": {
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayStageHistoryView"
+          }
+        },
+        "nextCursor": {
+          "type": "string"
+        }
+      }
+    },
+    "RoomsListRelayStageHistoryResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListRelayStageHistoryResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsListRelayStageHistoryResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomSnapshot": {
+      "type": "object",
+      "required": [
+        "roomId",
+        "roomCode",
+        "format",
+        "mode",
+        "turnSeconds",
+        "status",
+        "expiresAt",
+        "viewer",
+        "members",
+        "playerCount",
+        "spectatorCount",
+        "playerLimit",
+        "raceEliminationEnabled",
+        "minPlayers",
+        "availableSeats",
+        "gameSequence",
+        "events"
+      ],
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roomCode": {
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/definitions/RoomFormat"
+        },
+        "mode": {
+          "$ref": "#/definitions/MultiplayerMode"
+        },
+        "turnSeconds": {
+          "type": "integer",
+          "enum": [
+            30,
+            60,
+            90,
+            120
+          ]
+        },
+        "status": {
+          "$ref": "#/definitions/RoomStatus"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "questionScope": {
+          "$ref": "#/definitions/QuestionScopeConfig"
+        },
+        "viewer": {
+          "$ref": "#/definitions/ParticipantView"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MemberView"
+          }
+        },
+        "playerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "spectatorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "playerLimit": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "raceEliminationEnabled": {
+          "type": "boolean"
+        },
+        "relayEliminationEnabled": {
+          "type": "boolean"
+        },
+        "startBlockedReason": {
+          "$ref": "#/definitions/StartBlockedReason"
+        },
+        "minPlayers": {
+          "type": "integer",
+          "enum": [
+            2
+          ]
+        },
+        "availableSeats": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "gameSequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "match": {
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MatchView"
+            }
+          ]
+        },
+        "round": {
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/definitions/RoundView"
+            }
+          ]
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RoomEventEnvelope"
+          }
+        }
+      }
+    },
+    "RoomSnapshotMinPlayers": {
+      "type": "integer",
+      "enum": [
+        2
+      ]
+    },
+    "RoomSnapshotTurnSeconds": {
+      "type": "integer",
+      "enum": [
+        30,
+        60,
+        90,
+        120
+      ]
+    },
+    "RoomsPassRelayTurnPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roundIndex": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "roomId",
+        "roundIndex"
+      ]
+    },
+    "RoomsPassRelayTurnResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsPassRelayTurnResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsPassRelayTurnResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsPassRelayTurnResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRelayEncounterActionPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "stageIndex": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "encounterId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId",
+        "stageIndex",
+        "encounterId"
+      ]
+    },
+    "RoomsRelayEncounterActionRequestBody": {
+      "$ref": "#/definitions/RelayEncounterActionRequest"
+    },
+    "RoomsRelayEncounterActionResponse200": {
+      "$ref": "#/definitions/RelayEncounterActionResponse"
+    },
+    "RoomsRelayEncounterActionResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRelayEncounterActionResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRelayEncounterActionResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRelayEncounterActionResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRelayEncounterActionResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRematchPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsRematchResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRematchResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRematchResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsRematchResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessagePath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsSendMessageRequestBody": {
+      "$ref": "#/definitions/SendChatMessageRequest"
+    },
+    "RoomsSendMessageResponse200": {
+      "$ref": "#/definitions/ChatMessage"
+    },
+    "RoomsSendMessageResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessageResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessageResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessageResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessageResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSendMessageResponse429": {
+      "$ref": "#/definitions/RateLimitedErrorResponse"
+    },
+    "RoomsSetReadyPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsSetReadyRequestBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ready"
+      ],
+      "properties": {
+        "ready": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RoomsSetReadyResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSetReadyResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSetReadyResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSetReadyResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSetReadyResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSubmitGuessPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        },
+        "roundIndex": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "roomId",
+        "roundIndex"
+      ]
+    },
+    "RoomsSubmitGuessRequestBody": {
+      "type": "object",
+      "required": [
+        "guessId",
+        "idempotencyKey"
+      ],
+      "properties": {
+        "guessId": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "type": "string"
+        }
+      }
+    },
+    "RoomsSubmitGuessResponse200": {
+      "$ref": "#/definitions/GuessResponse"
+    },
+    "RoomsSubmitGuessResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSubmitGuessResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSubmitGuessResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSubmitGuessResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsSubmitGuessResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomStatus": {
+      "type": "string",
+      "enum": [
+        "lobby",
+        "playing",
+        "finished",
+        "closed"
+      ]
+    },
+    "RoomsUpdateSettingsPath": {
+      "type": "object",
+      "properties": {
+        "roomId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "roomId"
+      ]
+    },
+    "RoomsUpdateSettingsRequestBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "playerLimit": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8
+        },
+        "raceEliminationEnabled": {
+          "type": "boolean"
+        },
+        "relayEliminationEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "RoomsUpdateSettingsResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsUpdateSettingsResponse401": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsUpdateSettingsResponse403": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsUpdateSettingsResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoomsUpdateSettingsResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "RoundStatus": {
+      "type": "string",
+      "enum": [
+        "countdown",
+        "playing",
+        "ended"
+      ]
+    },
+    "RoundView": {
+      "type": "object",
+      "required": [
+        "status",
+        "startsAt",
+        "deadline",
+        "maxGuesses",
+        "self",
+        "opponents"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/RoundStatus"
+        },
+        "startsAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "maxGuesses": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "self": {
+          "type": "object",
+          "required": [
+            "guesses"
+          ],
+          "properties": {
+            "memberId": {
+              "type": "string"
+            },
+            "seat": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "participationStatus": {
+              "$ref": "#/definitions/RaceRoundParticipantStatus"
+            },
+            "finishRank": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "guesses": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/GuessResult"
+              }
+            }
+          }
+        },
+        "opponents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OpponentBoardView"
+          }
+        },
+        "boards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MemberBoardView"
+          }
+        },
+        "shared": {
+          "type": "object",
+          "required": [
+            "rows"
+          ],
+          "properties": {
+            "rows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/RelayTurnRow"
+              }
+            }
+          }
+        },
+        "turnMemberId": {
+          "type": "string"
+        },
+        "turnSeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "turnDeadline": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "maxTurnsPerPlayer": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSkipsPerPlayer": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "RoundViewSelf": {
+      "type": "object",
+      "required": [
+        "guesses"
+      ],
+      "properties": {
+        "memberId": {
+          "type": "string"
+        },
+        "seat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "participationStatus": {
+          "$ref": "#/definitions/RaceRoundParticipantStatus"
+        },
+        "finishRank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "guesses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GuessResult"
+          }
+        }
+      }
+    },
+    "RoundViewShared": {
+      "type": "object",
+      "required": [
+        "rows"
+      ],
+      "properties": {
+        "rows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RelayTurnRow"
+          }
+        }
+      }
+    },
+    "RuleSetRef": {
+      "type": "object",
+      "required": [
+        "mode",
+        "key",
+        "version"
+      ],
+      "properties": {
+        "mode": {
+          "$ref": "#/definitions/MultiplayerMode"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ScoringMode": {
+      "type": "string",
+      "enum": [
+        "wins",
+        "points",
+        "placement"
+      ]
+    },
+    "SendChatMessageRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clientMessageId",
+        "kind",
+        "content"
+      ],
+      "properties": {
+        "clientMessageId": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "SessionsForfeitPath": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
+    "SessionsForfeitResponse200": {
+      "type": "object",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        }
+      }
+    },
+    "SessionsForfeitResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsForfeitResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsForfeitResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsGetPath": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
+    "SessionsGetResponse200": {
+      "type": "object",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        }
+      }
+    },
+    "SessionsGetResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsSubmitGuessPath": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
+    "SessionsSubmitGuessRequestBody": {
+      "type": "object",
+      "required": [
+        "guessId"
+      ],
+      "properties": {
+        "guessId": {
+          "type": "string"
+        },
+        "expectedGuessCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SessionsSubmitGuessResponse200": {
+      "type": "object",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        }
+      }
+    },
+    "SessionsSubmitGuessResponse400": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsSubmitGuessResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsSubmitGuessResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsSubmitGuessResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsSubmitGuessResponse501": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionStatus": {
+      "type": "string",
+      "enum": [
+        "playing",
+        "won",
+        "lost"
+      ]
+    },
+    "SessionsTimeoutPath": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
+    "SessionsTimeoutRequestBody": {
+      "type": "object",
+      "properties": {
+        "expectedGuessCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SessionsTimeoutResponse200": {
+      "type": "object",
+      "required": [
+        "session"
+      ],
+      "properties": {
+        "session": {
+          "$ref": "#/definitions/PublicGameSession"
+        }
+      }
+    },
+    "SessionsTimeoutResponse404": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsTimeoutResponse409": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SessionsTimeoutResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "SiteVisitResponse": {
+      "type": "object",
+      "required": [
+        "count"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SiteVisitsCreateResponse200": {
+      "$ref": "#/definitions/SiteVisitResponse"
+    },
+    "SiteVisitsCreateResponse500": {
+      "$ref": "#/definitions/ErrorResponse"
+    },
+    "StartBlockedReason": {
+      "type": "string",
+      "enum": [
+        "not_enough_players",
+        "odd_player_count",
+        "player_not_ready",
+        "player_disconnected",
+        "host_missing",
+        "invalid_player_count"
+      ]
+    },
+    "Work": {
+      "type": "object",
+      "required": [
+        "id",
+        "titleZh",
+        "titleJa",
+        "shortName",
+        "pinyinInitials",
+        "type",
+        "releaseYear"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "titleZh": {
+          "type": "string",
+          "minLength": 1
+        },
+        "titleJa": {
+          "type": "string",
+          "minLength": 1
+        },
+        "titleEn": {
+          "type": "string"
+        },
+        "shortName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pinyinInitials": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+$"
+          }
+        },
+        "type": {
+          "$ref": "#/definitions/WorkType"
+        },
+        "releaseYear": {
+          "type": "integer"
+        },
+        "mainlineIndex": {
+          "type": "integer"
+        },
+        "era": {
+          "$ref": "#/definitions/Era"
+        }
+      }
+    },
+    "WorkType": {
+      "type": "string",
+      "enum": [
+        "game",
+        "ftg",
+        "stg",
+        "print",
+        "music_cd",
+        "other"
+      ]
+    }
+  }
+}

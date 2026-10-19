@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO catalog_snapshot(version, characters) VALUES($1, $2) ON CONFLICT(version) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3f8c2a856e3efafdbb333c108847964964587dc2c9990078bc5781f898288fda"
+}

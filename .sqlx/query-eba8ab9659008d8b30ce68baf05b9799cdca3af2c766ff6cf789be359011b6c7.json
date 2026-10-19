@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                        SELECT catalog_version, answer_id, answer_match_policy FROM daily_puzzle WHERE date_key=$1 AND\n                        difficulty=$2\n                        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "answer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "answer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "answer_match_policy",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "daily_puzzle",
+            "name": "answer_match_policy"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "eba8ab9659008d8b30ce68baf05b9799cdca3af2c766ff6cf789be359011b6c7"
+}

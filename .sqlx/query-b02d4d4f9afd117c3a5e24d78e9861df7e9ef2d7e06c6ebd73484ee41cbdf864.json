@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE multi_relay_encounter SET turn_member_id=$2, turn_deadline=$3 WHERE id=$1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b02d4d4f9afd117c3a5e24d78e9861df7e9ef2d7e06c6ebd73484ee41cbdf864"
+}

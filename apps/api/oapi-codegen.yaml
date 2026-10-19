@@ -1,7 +1,0 @@
-package: openapi
-generate:
-  models: true
-  echo5-server: true
-  strict-server: true
-  embedded-spec: true
-output: internal/generated/openapi/openapi.gen.go

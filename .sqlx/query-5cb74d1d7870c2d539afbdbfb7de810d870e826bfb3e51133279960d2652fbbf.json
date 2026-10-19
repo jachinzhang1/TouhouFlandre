@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_room SET chat_seq=chat_seq+1 WHERE id=$1 RETURNING chat_seq\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "chat_seq",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "multi_room",
+            "name": "chat_seq"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5cb74d1d7870c2d539afbdbfb7de810d870e826bfb3e51133279960d2652fbbf"
+}

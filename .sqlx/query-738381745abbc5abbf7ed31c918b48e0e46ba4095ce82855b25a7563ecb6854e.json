@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_match SET round_count=GREATEST(round_count, $2) WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "738381745abbc5abbf7ed31c918b48e0e46ba4095ce82855b25a7563ecb6854e"
+}

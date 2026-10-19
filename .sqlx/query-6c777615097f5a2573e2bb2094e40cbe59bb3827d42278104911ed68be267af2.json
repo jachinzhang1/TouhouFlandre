@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_relay_stage SET status='ended', settled_at=$2, settlement_marker=$3 WHERE id=$1 AND\n        settlement_marker IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6c777615097f5a2573e2bb2094e40cbe59bb3827d42278104911ed68be267af2"
+}

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT catalog_version, question_scope FROM multi_match WHERE room_id=$1 AND match_index=$2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "catalog_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "catalog_version"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "question_scope",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "multi_match",
+            "name": "question_scope"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "89bef90d766ccc757fb73a82f24c9dd7811bf8e1bc913a5c99572f33fd7e980e"
+}

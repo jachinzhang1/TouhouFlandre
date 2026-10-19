@@ -1,0 +1,18 @@
+✔ pure game rejects direct, grouped and aliased I/O imports (0.925208ms)
+✔ realtime transport remains independent of application state (0.080458ms)
+✔ relative grouped mode dependencies cannot bypass shared boundaries (0.135542ms)
+✔ domain code cannot call adapters or SQL (0.070125ms)
+✔ comments, raw strings, strings and characters are not dependencies (0.112792ms)
+✔ handlers cannot query storage or borrow the database pool (0.34275ms)
+✔ application services cannot depend on HTTP adapters or response types (0.087042ms)
+✔ repositories and domains cannot import application state (0.062916ms)
+✔ route registration has one source (0.065375ms)
+✔ central routes cover every frozen operation and point to concrete handlers (1.346333ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 55.130958

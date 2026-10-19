@@ -1,0 +1,2926 @@
+{
+  "definitions": [
+    {
+      "key": "firstAppearance",
+      "label": "初登场作品",
+      "type": "hierarchy",
+      "helpText": "具体作品相同为命中，同类媒介为部分匹配。",
+      "configurable": true,
+      "defaultMode": "default",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "default",
+          "label": "开启",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    },
+    {
+      "key": "releaseYear",
+      "label": "初登场年份",
+      "type": "number",
+      "helpText": "箭头指向答案所在年份。",
+      "configurable": true,
+      "defaultMode": "directional",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "exactOnly",
+          "label": "仅精确",
+          "enabled": true
+        },
+        {
+          "key": "directional",
+          "label": "方向提示",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    },
+    {
+      "key": "species",
+      "label": "种族",
+      "type": "multi_enum",
+      "configurable": true,
+      "defaultMode": "default",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "default",
+          "label": "开启",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    },
+    {
+      "key": "affiliations",
+      "label": "阵营",
+      "type": "multi_enum",
+      "configurable": true,
+      "defaultMode": "default",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "default",
+          "label": "开启",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    },
+    {
+      "key": "locations",
+      "label": "地点",
+      "type": "multi_enum",
+      "configurable": true,
+      "defaultMode": "default",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "default",
+          "label": "开启",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    },
+    {
+      "key": "hairColors",
+      "label": "头发颜色",
+      "type": "multi_enum",
+      "configurable": true,
+      "defaultMode": "default",
+      "modes": [
+        {
+          "key": "hidden",
+          "label": "关闭",
+          "enabled": false
+        },
+        {
+          "key": "default",
+          "label": "开启",
+          "enabled": true
+        }
+      ],
+      "equivalence": true
+    }
+  ],
+  "etag": "\"8ec5162cf805695af482cfdd23af5c14c15572b977689b956b2dac539817cc2b\"",
+  "hashes": {
+    "": 2166136261,
+    "hello": 1335831723,
+    "touhouflandre:2026-08-03:reimu_hakurei": 1566399782,
+    "博麗霊夢": 4170339466,
+    "𠮷野": 3812502952
+  },
+  "index": {
+    "catalogVersion": "catalog-v1",
+    "entries": [
+      {
+        "affiliations": [
+          "hakurei_shrine"
+        ],
+        "appearanceOrder": 1,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2002,
+          "workTitle": "东方红魔乡"
+        },
+        "hairColors": [
+          "brown"
+        ],
+        "id": "reimu_hakurei",
+        "initials": "博丽",
+        "locations": [
+          "hakurei_shrine"
+        ],
+        "name": "博丽灵梦",
+        "nameSortKey": "hakureireimu",
+        "searchTerms": [
+          {
+            "value": "博丽灵梦",
+            "source": "zhHans"
+          },
+          {
+            "value": "博麗靈夢",
+            "source": "zhHant"
+          },
+          {
+            "value": "博麗霊夢",
+            "source": "ja"
+          },
+          {
+            "value": "reimuhakurei",
+            "source": "en"
+          },
+          {
+            "value": "hakureireimu",
+            "source": "romaji"
+          },
+          {
+            "value": "灵梦",
+            "source": "alias"
+          },
+          {
+            "value": "紅白",
+            "source": "alias"
+          },
+          {
+            "value": "bllm",
+            "source": "alias"
+          },
+          {
+            "value": "东方红魔乡",
+            "source": "workTitle"
+          },
+          {
+            "value": "th06eosd",
+            "source": "workId"
+          },
+          {
+            "value": "dfhx",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "human"
+        ],
+        "subtitle": "Reimu Hakurei · 东方红魔乡",
+        "workId": "th06_eosd"
+      },
+      {
+        "affiliations": [
+          "kirisame_house"
+        ],
+        "appearanceOrder": 2,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2002,
+          "workTitle": "东方红魔乡"
+        },
+        "hairColors": [
+          "blonde"
+        ],
+        "id": "marisa_kirisame",
+        "initials": "雾雨",
+        "locations": [
+          "kirisame_house"
+        ],
+        "name": "雾雨魔理沙",
+        "nameSortKey": "kirisamemarisa",
+        "searchTerms": [
+          {
+            "value": "雾雨魔理沙",
+            "source": "zhHans"
+          },
+          {
+            "value": "霧雨魔理沙",
+            "source": "zhHant"
+          },
+          {
+            "value": "霧雨魔理沙",
+            "source": "ja"
+          },
+          {
+            "value": "marisakirisame",
+            "source": "en"
+          },
+          {
+            "value": "kirisamemarisa",
+            "source": "romaji"
+          },
+          {
+            "value": "魔理沙",
+            "source": "alias"
+          },
+          {
+            "value": "东方红魔乡",
+            "source": "workTitle"
+          },
+          {
+            "value": "th06eosd",
+            "source": "workId"
+          },
+          {
+            "value": "dfhx",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "human"
+        ],
+        "subtitle": "Marisa Kirisame · 东方红魔乡",
+        "workId": "th06_eosd"
+      },
+      {
+        "affiliations": [
+          "scarlet_devil_mansion"
+        ],
+        "appearanceOrder": 3,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2002,
+          "workTitle": "东方红魔乡"
+        },
+        "hairColors": [
+          "purple"
+        ],
+        "id": "patchouli_knowledge",
+        "initials": "帕秋",
+        "locations": [
+          "scarlet_devil_mansion"
+        ],
+        "name": "帕秋莉·诺蕾姬",
+        "nameSortKey": "patchouliknowledge",
+        "searchTerms": [
+          {
+            "value": "帕秋莉诺蕾姬",
+            "source": "zhHans"
+          },
+          {
+            "value": "帕秋莉諾蕾姬",
+            "source": "zhHant"
+          },
+          {
+            "value": "パチュリーノーレッジ",
+            "source": "ja"
+          },
+          {
+            "value": "patchouliknowledge",
+            "source": "en"
+          },
+          {
+            "value": "patchouliknowledge",
+            "source": "romaji"
+          },
+          {
+            "value": "帕秋莉",
+            "source": "alias"
+          },
+          {
+            "value": "东方红魔乡",
+            "source": "workTitle"
+          },
+          {
+            "value": "th06eosd",
+            "source": "workId"
+          },
+          {
+            "value": "dfhx",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th06",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "magician"
+        ],
+        "subtitle": "Patchouli Knowledge · 东方红魔乡",
+        "workId": "th06_eosd"
+      },
+      {
+        "affiliations": [
+          "forest_of_magic"
+        ],
+        "appearanceOrder": 4,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2003,
+          "workTitle": "东方妖妖梦"
+        },
+        "hairColors": [
+          "blonde"
+        ],
+        "id": "alice_margatroid",
+        "initials": "爱丽",
+        "locations": [
+          "forest_of_magic"
+        ],
+        "name": "爱丽丝·玛格特洛依德",
+        "nameSortKey": "alicemargatroid",
+        "searchTerms": [
+          {
+            "value": "爱丽丝玛格特洛依德",
+            "source": "zhHans"
+          },
+          {
+            "value": "愛麗絲瑪格特羅依德",
+            "source": "zhHant"
+          },
+          {
+            "value": "アリスマーガトロイド",
+            "source": "ja"
+          },
+          {
+            "value": "alicemargatroid",
+            "source": "en"
+          },
+          {
+            "value": "alicemargatroid",
+            "source": "romaji"
+          },
+          {
+            "value": "爱丽丝",
+            "source": "alias"
+          },
+          {
+            "value": "东方妖妖梦",
+            "source": "workTitle"
+          },
+          {
+            "value": "th07pcb",
+            "source": "workId"
+          },
+          {
+            "value": "dfyym",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th07",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th07",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "magician"
+        ],
+        "subtitle": "Alice Margatroid · 东方妖妖梦",
+        "workId": "th07_pcb"
+      },
+      {
+        "affiliations": [
+          "aki_sisters"
+        ],
+        "appearanceOrder": 1001,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2005,
+          "workTitle": "东方花映塚"
+        },
+        "hairColors": [
+          "brown"
+        ],
+        "id": "minoriko_aki",
+        "initials": "秋穰",
+        "locations": [
+          "human_village"
+        ],
+        "name": "秋穰子",
+        "nameSortKey": "akiminoriko",
+        "searchTerms": [
+          {
+            "value": "秋穰子",
+            "source": "zhHans"
+          },
+          {
+            "value": "秋穰子",
+            "source": "zhHant"
+          },
+          {
+            "value": "秋穣子",
+            "source": "ja"
+          },
+          {
+            "value": "minorikoaki",
+            "source": "en"
+          },
+          {
+            "value": "akiminoriko",
+            "source": "romaji"
+          },
+          {
+            "value": "秋姐妹",
+            "source": "alias"
+          },
+          {
+            "value": "东方花映塚",
+            "source": "workTitle"
+          },
+          {
+            "value": "th09pofv",
+            "source": "workId"
+          },
+          {
+            "value": "dfhyz",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th09",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th09",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "harvest_goddess"
+        ],
+        "subtitle": "Minoriko Aki · 东方花映塚",
+        "workId": "th09_pofv"
+      },
+      {
+        "affiliations": [
+          "aki_sisters"
+        ],
+        "appearanceOrder": 1001,
+        "avatarUrl": "",
+        "firstAppearance": {
+          "releaseYear": 2005,
+          "workTitle": "东方花映塚"
+        },
+        "hairColors": [
+          "brown"
+        ],
+        "id": "shizuha_aki",
+        "initials": "秋静",
+        "locations": [
+          "human_village"
+        ],
+        "name": "秋静叶",
+        "nameSortKey": "akishizuha",
+        "searchTerms": [
+          {
+            "value": "秋静叶",
+            "source": "zhHans"
+          },
+          {
+            "value": "秋靜葉",
+            "source": "zhHant"
+          },
+          {
+            "value": "秋静葉",
+            "source": "ja"
+          },
+          {
+            "value": "shizuhaaki",
+            "source": "en"
+          },
+          {
+            "value": "akishizuha",
+            "source": "romaji"
+          },
+          {
+            "value": "秋姐妹",
+            "source": "alias"
+          },
+          {
+            "value": "东方花映塚",
+            "source": "workTitle"
+          },
+          {
+            "value": "th09pofv",
+            "source": "workId"
+          },
+          {
+            "value": "dfhyz",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th09",
+            "source": "workPinyinInitials"
+          },
+          {
+            "value": "th09",
+            "source": "mainlineIndex"
+          }
+        ],
+        "species": [
+          "harvest_goddess"
+        ],
+        "subtitle": "Shizuha Aki · 东方花映塚",
+        "workId": "th09_pofv"
+      }
+    ],
+    "indexSchemaVersion": 2
+  },
+  "payload": "{\"catalogVersion\":\"catalog-v1\",\"entries\":[{\"affiliations\":[\"hakurei_shrine\"],\"appearanceOrder\":1,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2002,\"workTitle\":\"东方红魔乡\"},\"hairColors\":[\"brown\"],\"id\":\"reimu_hakurei\",\"initials\":\"博丽\",\"locations\":[\"hakurei_shrine\"],\"name\":\"博丽灵梦\",\"nameSortKey\":\"hakureireimu\",\"searchTerms\":[{\"value\":\"博丽灵梦\",\"source\":\"zhHans\"},{\"value\":\"博麗靈夢\",\"source\":\"zhHant\"},{\"value\":\"博麗霊夢\",\"source\":\"ja\"},{\"value\":\"reimuhakurei\",\"source\":\"en\"},{\"value\":\"hakureireimu\",\"source\":\"romaji\"},{\"value\":\"灵梦\",\"source\":\"alias\"},{\"value\":\"紅白\",\"source\":\"alias\"},{\"value\":\"bllm\",\"source\":\"alias\"},{\"value\":\"东方红魔乡\",\"source\":\"workTitle\"},{\"value\":\"th06eosd\",\"source\":\"workId\"},{\"value\":\"dfhx\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"mainlineIndex\"}],\"species\":[\"human\"],\"subtitle\":\"Reimu Hakurei · 东方红魔乡\",\"workId\":\"th06_eosd\"},{\"affiliations\":[\"kirisame_house\"],\"appearanceOrder\":2,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2002,\"workTitle\":\"东方红魔乡\"},\"hairColors\":[\"blonde\"],\"id\":\"marisa_kirisame\",\"initials\":\"雾雨\",\"locations\":[\"kirisame_house\"],\"name\":\"雾雨魔理沙\",\"nameSortKey\":\"kirisamemarisa\",\"searchTerms\":[{\"value\":\"雾雨魔理沙\",\"source\":\"zhHans\"},{\"value\":\"霧雨魔理沙\",\"source\":\"zhHant\"},{\"value\":\"霧雨魔理沙\",\"source\":\"ja\"},{\"value\":\"marisakirisame\",\"source\":\"en\"},{\"value\":\"kirisamemarisa\",\"source\":\"romaji\"},{\"value\":\"魔理沙\",\"source\":\"alias\"},{\"value\":\"东方红魔乡\",\"source\":\"workTitle\"},{\"value\":\"th06eosd\",\"source\":\"workId\"},{\"value\":\"dfhx\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"mainlineIndex\"}],\"species\":[\"human\"],\"subtitle\":\"Marisa Kirisame · 东方红魔乡\",\"workId\":\"th06_eosd\"},{\"affiliations\":[\"scarlet_devil_mansion\"],\"appearanceOrder\":3,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2002,\"workTitle\":\"东方红魔乡\"},\"hairColors\":[\"purple\"],\"id\":\"patchouli_knowledge\",\"initials\":\"帕秋\",\"locations\":[\"scarlet_devil_mansion\"],\"name\":\"帕秋莉·诺蕾姬\",\"nameSortKey\":\"patchouliknowledge\",\"searchTerms\":[{\"value\":\"帕秋莉诺蕾姬\",\"source\":\"zhHans\"},{\"value\":\"帕秋莉諾蕾姬\",\"source\":\"zhHant\"},{\"value\":\"パチュリーノーレッジ\",\"source\":\"ja\"},{\"value\":\"patchouliknowledge\",\"source\":\"en\"},{\"value\":\"patchouliknowledge\",\"source\":\"romaji\"},{\"value\":\"帕秋莉\",\"source\":\"alias\"},{\"value\":\"东方红魔乡\",\"source\":\"workTitle\"},{\"value\":\"th06eosd\",\"source\":\"workId\"},{\"value\":\"dfhx\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"workPinyinInitials\"},{\"value\":\"th06\",\"source\":\"mainlineIndex\"}],\"species\":[\"magician\"],\"subtitle\":\"Patchouli Knowledge · 东方红魔乡\",\"workId\":\"th06_eosd\"},{\"affiliations\":[\"forest_of_magic\"],\"appearanceOrder\":4,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2003,\"workTitle\":\"东方妖妖梦\"},\"hairColors\":[\"blonde\"],\"id\":\"alice_margatroid\",\"initials\":\"爱丽\",\"locations\":[\"forest_of_magic\"],\"name\":\"爱丽丝·玛格特洛依德\",\"nameSortKey\":\"alicemargatroid\",\"searchTerms\":[{\"value\":\"爱丽丝玛格特洛依德\",\"source\":\"zhHans\"},{\"value\":\"愛麗絲瑪格特羅依德\",\"source\":\"zhHant\"},{\"value\":\"アリスマーガトロイド\",\"source\":\"ja\"},{\"value\":\"alicemargatroid\",\"source\":\"en\"},{\"value\":\"alicemargatroid\",\"source\":\"romaji\"},{\"value\":\"爱丽丝\",\"source\":\"alias\"},{\"value\":\"东方妖妖梦\",\"source\":\"workTitle\"},{\"value\":\"th07pcb\",\"source\":\"workId\"},{\"value\":\"dfyym\",\"source\":\"workPinyinInitials\"},{\"value\":\"th07\",\"source\":\"workPinyinInitials\"},{\"value\":\"th07\",\"source\":\"mainlineIndex\"}],\"species\":[\"magician\"],\"subtitle\":\"Alice Margatroid · 东方妖妖梦\",\"workId\":\"th07_pcb\"},{\"affiliations\":[\"aki_sisters\"],\"appearanceOrder\":1001,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2005,\"workTitle\":\"东方花映塚\"},\"hairColors\":[\"brown\"],\"id\":\"minoriko_aki\",\"initials\":\"秋穰\",\"locations\":[\"human_village\"],\"name\":\"秋穰子\",\"nameSortKey\":\"akiminoriko\",\"searchTerms\":[{\"value\":\"秋穰子\",\"source\":\"zhHans\"},{\"value\":\"秋穰子\",\"source\":\"zhHant\"},{\"value\":\"秋穣子\",\"source\":\"ja\"},{\"value\":\"minorikoaki\",\"source\":\"en\"},{\"value\":\"akiminoriko\",\"source\":\"romaji\"},{\"value\":\"秋姐妹\",\"source\":\"alias\"},{\"value\":\"东方花映塚\",\"source\":\"workTitle\"},{\"value\":\"th09pofv\",\"source\":\"workId\"},{\"value\":\"dfhyz\",\"source\":\"workPinyinInitials\"},{\"value\":\"th09\",\"source\":\"workPinyinInitials\"},{\"value\":\"th09\",\"source\":\"mainlineIndex\"}],\"species\":[\"harvest_goddess\"],\"subtitle\":\"Minoriko Aki · 东方花映塚\",\"workId\":\"th09_pofv\"},{\"affiliations\":[\"aki_sisters\"],\"appearanceOrder\":1001,\"avatarUrl\":\"\",\"firstAppearance\":{\"releaseYear\":2005,\"workTitle\":\"东方花映塚\"},\"hairColors\":[\"brown\"],\"id\":\"shizuha_aki\",\"initials\":\"秋静\",\"locations\":[\"human_village\"],\"name\":\"秋静叶\",\"nameSortKey\":\"akishizuha\",\"searchTerms\":[{\"value\":\"秋静叶\",\"source\":\"zhHans\"},{\"value\":\"秋靜葉\",\"source\":\"zhHant\"},{\"value\":\"秋静葉\",\"source\":\"ja\"},{\"value\":\"shizuhaaki\",\"source\":\"en\"},{\"value\":\"akishizuha\",\"source\":\"romaji\"},{\"value\":\"秋姐妹\",\"source\":\"alias\"},{\"value\":\"东方花映塚\",\"source\":\"workTitle\"},{\"value\":\"th09pofv\",\"source\":\"workId\"},{\"value\":\"dfhyz\",\"source\":\"workPinyinInitials\"},{\"value\":\"th09\",\"source\":\"workPinyinInitials\"},{\"value\":\"th09\",\"source\":\"mainlineIndex\"}],\"species\":[\"harvest_goddess\"],\"subtitle\":\"Shizuha Aki · 东方花映塚\",\"workId\":\"th09_pofv\"}],\"indexSchemaVersion\":2}",
+  "scopeCases": [
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "easy",
+          "selectedCharacterIds": [
+            "easy"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 1,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": false,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": false,
+        "Reason": ""
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "preset",
+        "difficulty": "easy",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 1,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": false,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "easy",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "easy",
+          "selectedCharacterIds": [
+            "easy"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 1,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": false,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "catalog-updated"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "old",
+        "mode": "preset",
+        "difficulty": "easy",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 1,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": false,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "easy-catalog-update",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "normal",
+          "selectedCharacterIds": [
+            "easy",
+            "normal"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": false,
+        "Reason": ""
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "preset",
+        "difficulty": "normal",
+        "selectedCharacterIds": [
+          "easy",
+          "normal"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 2,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "normal",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "normal",
+          "selectedCharacterIds": [
+            "easy",
+            "normal"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "catalog-updated"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "old",
+        "mode": "preset",
+        "difficulty": "normal",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 2,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "normal-catalog-update",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "hard",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 3,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 45
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": false,
+        "Reason": ""
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "preset",
+        "difficulty": "hard",
+        "selectedCharacterIds": [
+          "easy",
+          "normal",
+          "hard"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 3,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 45
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "hard",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "hard",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 3,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 45
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "catalog-updated"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "old",
+        "mode": "preset",
+        "difficulty": "hard",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 3,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "default",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 45
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "hard-catalog-update",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "lunatic",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard",
+            "lunatic"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 4,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "hidden",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": false,
+        "Reason": ""
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "preset",
+        "difficulty": "lunatic",
+        "selectedCharacterIds": [
+          "easy",
+          "normal",
+          "hard",
+          "lunatic"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 4,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "hidden",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "lunatic",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "lunatic",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard",
+            "lunatic"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 4,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "hidden",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "catalog-updated"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "old",
+        "mode": "preset",
+        "difficulty": "lunatic",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "partial",
+            "selectedCount": 4,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "hidden",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "lunatic-catalog-update",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "extra",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard",
+            "lunatic",
+            "extra"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "all",
+              "selectedCount": 5,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "hidden",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": false,
+        "Reason": ""
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "preset",
+        "difficulty": "extra",
+        "selectedCharacterIds": [
+          "easy",
+          "normal",
+          "hard",
+          "lunatic",
+          "extra"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "all",
+            "selectedCount": 5,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "hidden",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "extra",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "extra",
+          "selectedCharacterIds": [
+            "easy",
+            "normal",
+            "hard",
+            "lunatic",
+            "extra"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "all",
+              "selectedCount": 5,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "hidden",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "catalog-updated"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "old",
+        "mode": "preset",
+        "difficulty": "extra",
+        "selectedCharacterIds": [
+          "easy"
+        ],
+        "workStates": [
+          {
+            "workId": "work",
+            "state": "all",
+            "selectedCount": 5,
+            "totalCount": 5
+          },
+          {
+            "workId": "empty",
+            "state": "none",
+            "selectedCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "rules": {
+          "fieldModes": {
+            "affiliations": "default",
+            "firstAppearance": "hidden",
+            "hairColors": "default",
+            "locations": "default",
+            "releaseYear": "directional",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 30
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 8
+          }
+        }
+      },
+      "name": "extra-catalog-update",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 1,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-1-0",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 1,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 60
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "fields": {
+            "firstAppearance": true,
+            "releaseYear": "exactOnly",
+            "species": false,
+            "affiliations": true,
+            "locations": false,
+            "hairColors": true
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-1-1",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "normal",
+          "selectedCharacterIds": [
+            "easy",
+            "normal"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "empty-pool-fallback"
+      },
+      "input": {
+        "schemaVersion": 1,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "bad"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-1-2",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 120
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 1,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 99
+          },
+          "hiddenFields": [
+            "species"
+          ],
+          "turnSeconds": 999
+        }
+      },
+      "name": "legacy-1-3",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 1,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": false,
+            "maxGuesses": 0
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-1-4",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 2,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-2-0",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "hidden",
+              "releaseYear": "exactOnly",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 60
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 1
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 2,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 60
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "fields": {
+            "firstAppearance": true,
+            "releaseYear": "exactOnly",
+            "species": false,
+            "affiliations": true,
+            "locations": false,
+            "hairColors": true
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-2-1",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "normal",
+          "selectedCharacterIds": [
+            "easy",
+            "normal"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "empty-pool-fallback"
+      },
+      "input": {
+        "schemaVersion": 2,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "bad"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-2-2",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 120
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 2,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 99
+          },
+          "hiddenFields": [
+            "species"
+          ],
+          "turnSeconds": 999
+        }
+      },
+      "name": "legacy-2-3",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 2,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": false,
+            "maxGuesses": 0
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-2-4",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "hidden",
+              "firstAppearance": "hidden",
+              "hairColors": "hidden",
+              "locations": "hidden",
+              "releaseYear": "hidden",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 1
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-3-0",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "hidden",
+              "releaseYear": "exactOnly",
+              "species": "hidden"
+            },
+            "turnLimit": {
+              "enabled": true,
+              "seconds": 60
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 1
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": true,
+            "seconds": 60
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "fields": {
+            "firstAppearance": true,
+            "releaseYear": "exactOnly",
+            "species": false,
+            "affiliations": true,
+            "locations": false,
+            "hairColors": true
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-3-1",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "preset",
+          "difficulty": "normal",
+          "selectedCharacterIds": [
+            "easy",
+            "normal"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "empty-pool-fallback"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "bad"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 1
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-3-2",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "hidden",
+              "firstAppearance": "hidden",
+              "hairColors": "hidden",
+              "locations": "hidden",
+              "releaseYear": "hidden",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 20
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "fieldModes": {
+            "future": "default",
+            "releaseYear": "bad",
+            "species": "default"
+          },
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": true,
+            "maxGuesses": 99
+          },
+          "hiddenFields": [
+            "species"
+          ],
+          "turnSeconds": 999
+        }
+      },
+      "name": "legacy-3-3",
+      "version": "v1"
+    },
+    {
+      "expected": {
+        "Config": {
+          "schemaVersion": 3,
+          "catalogVersion": "v1",
+          "mode": "custom",
+          "difficulty": "custom",
+          "selectedCharacterIds": [
+            "easy",
+            "hard"
+          ],
+          "workStates": [
+            {
+              "workId": "work",
+              "state": "partial",
+              "selectedCount": 2,
+              "totalCount": 5
+            },
+            {
+              "workId": "empty",
+              "state": "none",
+              "selectedCount": 0,
+              "totalCount": 0
+            }
+          ],
+          "rules": {
+            "fieldModes": {
+              "affiliations": "default",
+              "firstAppearance": "default",
+              "hairColors": "default",
+              "locations": "default",
+              "releaseYear": "directional",
+              "species": "default"
+            },
+            "turnLimit": {
+              "enabled": false,
+              "seconds": 30
+            },
+            "guessLimit": {
+              "enabled": true,
+              "maxGuesses": 8
+            }
+          }
+        },
+        "Changed": true,
+        "Reason": "invalid-ids-dropped"
+      },
+      "input": {
+        "schemaVersion": 3,
+        "catalogVersion": "v1",
+        "mode": "custom",
+        "difficulty": "custom",
+        "selectedCharacterIds": [
+          "hard",
+          "easy",
+          "bogus",
+          "easy"
+        ],
+        "workStates": null,
+        "rules": {
+          "turnLimit": {
+            "enabled": false,
+            "seconds": 0
+          },
+          "guessLimit": {
+            "enabled": false,
+            "maxGuesses": 0
+          },
+          "hiddenFields": [
+            "species"
+          ]
+        }
+      },
+      "name": "legacy-3-4",
+      "version": "v1"
+    }
+  ],
+  "scopeCharacters": [
+    {
+      "id": "easy",
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "a",
+        "ja": "",
+        "en": "",
+        "aliases": null
+      },
+      "firstAppearance": {
+        "workId": "work",
+        "workTitle": "Work",
+        "workType": "game",
+        "releaseYear": 2000
+      },
+      "species": [
+        "youkai",
+        "magician"
+      ],
+      "abilityDisplay": "",
+      "abilityTags": null,
+      "affiliations": [
+        "group"
+      ],
+      "locations": [
+        "place"
+      ],
+      "roles": null,
+      "hairColors": [
+        "red",
+        "blue"
+      ],
+      "playable": false,
+      "enabledAsAnswer": true,
+      "enabledAsGuess": true,
+      "difficultyTier": "easy",
+      "sourceRefs": null,
+      "appearanceOrder": 1
+    },
+    {
+      "id": "normal",
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "a",
+        "ja": "",
+        "en": "",
+        "aliases": null
+      },
+      "firstAppearance": {
+        "workId": "work",
+        "workTitle": "Work",
+        "workType": "game",
+        "releaseYear": 2000
+      },
+      "species": [
+        "youkai",
+        "magician"
+      ],
+      "abilityDisplay": "",
+      "abilityTags": null,
+      "affiliations": [
+        "group"
+      ],
+      "locations": [
+        "place"
+      ],
+      "roles": null,
+      "hairColors": [
+        "red",
+        "blue"
+      ],
+      "playable": false,
+      "enabledAsAnswer": true,
+      "enabledAsGuess": true,
+      "difficultyTier": "normal",
+      "sourceRefs": null,
+      "appearanceOrder": 2
+    },
+    {
+      "id": "hard",
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "a",
+        "ja": "",
+        "en": "",
+        "aliases": null
+      },
+      "firstAppearance": {
+        "workId": "work",
+        "workTitle": "Work",
+        "workType": "game",
+        "releaseYear": 2000
+      },
+      "species": [
+        "youkai",
+        "magician"
+      ],
+      "abilityDisplay": "",
+      "abilityTags": null,
+      "affiliations": [
+        "group"
+      ],
+      "locations": [
+        "place"
+      ],
+      "roles": null,
+      "hairColors": [
+        "red",
+        "blue"
+      ],
+      "playable": false,
+      "enabledAsAnswer": true,
+      "enabledAsGuess": true,
+      "difficultyTier": "hard",
+      "sourceRefs": null,
+      "appearanceOrder": 3
+    },
+    {
+      "id": "lunatic",
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "a",
+        "ja": "",
+        "en": "",
+        "aliases": null
+      },
+      "firstAppearance": {
+        "workId": "work",
+        "workTitle": "Work",
+        "workType": "game",
+        "releaseYear": 2000
+      },
+      "species": [
+        "youkai",
+        "magician"
+      ],
+      "abilityDisplay": "",
+      "abilityTags": null,
+      "affiliations": [
+        "group"
+      ],
+      "locations": [
+        "place"
+      ],
+      "roles": null,
+      "hairColors": [
+        "red",
+        "blue"
+      ],
+      "playable": false,
+      "enabledAsAnswer": true,
+      "enabledAsGuess": true,
+      "difficultyTier": "lunatic",
+      "sourceRefs": null,
+      "appearanceOrder": 4
+    },
+    {
+      "id": "extra",
+      "avatarUrl": "",
+      "names": {
+        "zhHans": "a",
+        "ja": "",
+        "en": "",
+        "aliases": null
+      },
+      "firstAppearance": {
+        "workId": "work",
+        "workTitle": "Work",
+        "workType": "game",
+        "releaseYear": 2000
+      },
+      "species": [
+        "youkai",
+        "magician"
+      ],
+      "abilityDisplay": "",
+      "abilityTags": null,
+      "affiliations": [
+        "group"
+      ],
+      "locations": [
+        "place"
+      ],
+      "roles": null,
+      "hairColors": [
+        "red",
+        "blue"
+      ],
+      "playable": false,
+      "enabledAsAnswer": true,
+      "enabledAsGuess": true,
+      "difficultyTier": "extra",
+      "sourceRefs": null,
+      "appearanceOrder": 5
+    }
+  ],
+  "signature": "[{\"key\":\"firstAppearance\",\"value\":{\"stringValue\":\"work\"}},{\"key\":\"releaseYear\",\"value\":{\"numberValue\":2000}},{\"key\":\"species\",\"value\":{\"setValue\":[\"magician\",\"youkai\"]}},{\"key\":\"affiliations\",\"value\":{\"setValue\":[\"group\"]}},{\"key\":\"locations\",\"value\":{\"setValue\":[\"place\"]}},{\"key\":\"hairColors\",\"value\":{\"setValue\":[\"blue\",\"red\"]}}]",
+  "reference": {
+    "language": "Go",
+    "commit": "7a5679f22a9991bc9a1d937c3e53c3f59653386d",
+    "package": "apps/api/internal/game",
+    "inputFixture": "docs/hybrid-search-optimization/fixtures/search-parity-v2.json",
+    "scopeCaseCount": 25
+  }
+}

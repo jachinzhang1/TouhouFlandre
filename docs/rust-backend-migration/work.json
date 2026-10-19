@@ -1,0 +1,286 @@
+{
+  "status": "complete",
+  "mode": "execute",
+  "authority": "README.md#outcome-and-authority",
+  "coordinator": "root",
+  "concurrency": {
+    "enabled": false,
+    "max_active_items": 4,
+    "shared_file_owner": "root"
+  },
+  "items": [
+    {
+      "id": "R01",
+      "outcome": "Buildable runtime and safe SQLx migration adoption",
+      "status": "complete",
+      "dependencies": [],
+      "claims": [
+        "C3"
+      ],
+      "owner": "root",
+      "write_scope": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "apps/api/Cargo.toml",
+        "apps/api/build.rs",
+        "apps/api/src/lib.rs",
+        "apps/api/src/config.rs",
+        "apps/api/src/database.rs",
+        "apps/api/src/server.rs",
+        "apps/api/src/bin/**",
+        "apps/api/db/**",
+        "apps/api/tests/database_migrations.rs",
+        "docs/rust-backend-migration/**"
+      ],
+      "verification": [
+        "cargo check --workspace --all-targets",
+        "fresh and Goose-adopted isolated Postgres migration tests",
+        "health/readiness error-shape tests"
+      ]
+    },
+    {
+      "id": "R02",
+      "outcome": "Pure game/search behavior and catalog snapshots",
+      "status": "complete",
+      "dependencies": [],
+      "claims": [
+        "C4"
+      ],
+      "owner": "backend_inventory",
+      "write_scope": [
+        "apps/api/src/game/**",
+        "apps/api/tests/game_parity.rs"
+      ],
+      "verification": [
+        "Rust ported unit tests",
+        "existing search/scoped/ranking JSON fixtures"
+      ]
+    },
+    {
+      "id": "R03",
+      "outcome": "Typed contract boundary generated from existing schemas",
+      "status": "complete",
+      "dependencies": [],
+      "claims": [
+        "C1"
+      ],
+      "owner": "rust_contracts",
+      "write_scope": [
+        "scripts/generate-rust-contracts.mjs",
+        "apps/api/src/contracts/**",
+        "apps/api/tests/contract_serialization.rs"
+      ],
+      "verification": [
+        "deterministic regeneration check",
+        "optional/enum/unknown-field serialization tests"
+      ]
+    },
+    {
+      "id": "R04",
+      "outcome": "WS protocol, cursor and ordered bounded replay primitives",
+      "status": "complete",
+      "dependencies": [],
+      "claims": [
+        "C2"
+      ],
+      "owner": "check_protocols",
+      "write_scope": [
+        "apps/api/src/realtime/**",
+        "apps/api/tests/realtime_primitives.rs"
+      ],
+      "verification": [
+        "Go-compatible cursor vectors",
+        "strict hello tests",
+        "barrier/backpressure/replacement tests"
+      ]
+    },
+    {
+      "id": "R05",
+      "outcome": "Catalog and solo HTTP/seed parity",
+      "status": "complete",
+      "dependencies": [
+        "R01",
+        "R02",
+        "R03"
+      ],
+      "claims": [
+        "C1",
+        "C4",
+        "C5"
+      ]
+    },
+    {
+      "id": "R06",
+      "outcome": "Room membership and race parity",
+      "status": "complete",
+      "dependencies": [
+        "R01",
+        "R02",
+        "R03"
+      ],
+      "claims": [
+        "C1",
+        "C4",
+        "C5"
+      ]
+    },
+    {
+      "id": "R07",
+      "outcome": "Relay/chat/sweeper and integrated realtime parity",
+      "status": "complete",
+      "dependencies": [
+        "R04",
+        "R06"
+      ],
+      "claims": [
+        "C1",
+        "C2",
+        "C4",
+        "C5"
+      ]
+    },
+    {
+      "id": "R08",
+      "outcome": "Full isolated compatibility and recovery evidence",
+      "status": "complete",
+      "dependencies": [
+        "R05",
+        "R07"
+      ],
+      "claims": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5"
+      ]
+    },
+    {
+      "id": "R09",
+      "outcome": "Rust-only tooling and Go retirement",
+      "status": "complete",
+      "dependencies": [
+        "R08"
+      ],
+      "claims": [
+        "C6"
+      ]
+    },
+    {
+      "id": "R10",
+      "outcome": "Typed errors with retained causes and safe diagnostics across HTTP, catalog, solo, multiplayer, WebSocket and background tasks",
+      "status": "complete",
+      "dependencies": [
+        "R09"
+      ],
+      "owner": "root",
+      "claims": [
+        "C1",
+        "C2",
+        "C4",
+        "C5"
+      ],
+      "authority": "User follow-up: 完善 thiserror usage (2026-10-13)",
+      "write_scope": [
+        "apps/api/src/**",
+        "apps/api/tests/**",
+        "docs/rust-backend-migration/**",
+        "docs/architecture.md"
+      ],
+      "verification": [
+        "error-chain and redacted HTTP/log tests",
+        "all Rust tests with isolated PostgreSQL",
+        "cargo fmt and Clippy -D warnings",
+        "architecture boundaries"
+      ],
+      "evidence": "evidence.md#thiserror-follow-up--r10-2026-10-13",
+      "artifact_identity": "error-handling-sha256.json"
+    },
+    {
+      "id": "R11",
+      "outcome": "Upgrade base64, hmac, rand and sha2 to verified stable versions and preserve protocol/cryptographic compatibility",
+      "status": "complete",
+      "dependencies": [
+        "R10"
+      ],
+      "owner": "root",
+      "authority": "User requested dependency upgrades on 2026-10-13, then explicitly excluded tokio-tungstenite; keep it at 0.29.0",
+      "write_scope": [
+        "Cargo.lock",
+        "apps/api/Cargo.toml",
+        "apps/api/src/**",
+        "apps/api/tests/**",
+        "docs/rust-backend-migration/**"
+      ],
+      "verification": [
+        "all Rust tests including PostgreSQL and WS",
+        "cryptographic golden vectors and error-chain regression",
+        "Clippy and fmt",
+        "native build and architecture boundaries"
+      ],
+      "evidence": "evidence.md#dependency-upgrades--r11-2026-10-13",
+      "artifact_identity": "dependency-upgrade-sha256.json"
+    },
+    {
+      "id": "R12",
+      "outcome": "Discoverable handlers and explicit transport/application/storage boundaries with unchanged HTTP, WebSocket and transaction behavior",
+      "status": "complete",
+      "dependencies": [
+        "R11"
+      ],
+      "owner": "root",
+      "authority": "User requested a layered architecture and easily discoverable handlers on 2026-10-13; authorizes local refactor and verification in the existing worktree",
+      "write_scope": [
+        "apps/api/src/**",
+        "apps/api/tests/**",
+        "scripts/check-multiplayer-boundaries*",
+        "docs/architecture.md",
+        "docs/rust-backend-migration/**"
+      ],
+      "verification": [
+        "all registered routes point to handler modules",
+        "no SQLx or pool/transaction operations in handlers",
+        "services contain no Axum extractors or responses and do not depend on handlers/router",
+        "repository does not depend on service/handler",
+        "all Rust tests with isolated PostgreSQL including cryptographic fixtures, transactions and WebSocket",
+        "Clippy -D warnings, fmt, native build and architecture negative tests"
+      ],
+      "recovery": "/tmp/touhouflandre-layers-before-20261013.tar.gz preserves the pre-refactor source; never overwrite unrelated changes",
+      "evidence": "evidence.md#layered-architecture--r12-2026-10-13",
+      "artifact_identity": "layered-architecture-sha256.json"
+    },
+    {
+      "id": "R13",
+      "outcome": "Compile-time checked business SQL with reproducible offline cache and CI schema validation",
+      "status": "complete",
+      "dependencies": [
+        "R12"
+      ],
+      "owner": "root",
+      "authority": "User follow-up on 2026-10-13: sqlx能不能用query!宏; local implementation and isolated verification in the existing worktree",
+      "write_scope": [
+        "apps/api/**",
+        ".sqlx/**",
+        ".cargo/config.toml",
+        ".github/workflows/ci.yml",
+        "Taskfile.yml",
+        "scripts/**",
+        "docs/**"
+      ],
+      "verification": [
+        "offline build without database",
+        "cargo sqlx prepare --check against fresh migrated PostgreSQL",
+        "all Rust tests including isolated database and WebSocket tests",
+        "Clippy, formatting and architecture checks",
+        "SQL behavior and transaction boundaries preserved"
+      ],
+      "recovery": "Committed baseline 6575336; preserve unrelated untracked files.",
+      "evidence": "evidence.md#sqlx-query-macros--r13-2026-10-13",
+      "artifact_identity": "sqlx-macros-sha256.json"
+    }
+  ],
+  "evidence": "evidence.md#sqlx-query-macros--r13-2026-10-13",
+  "artifact_identity": "sqlx-macros-sha256.json",
+  "completed_at": "2026-10-13T08:59:12.547223+00:00"
+}

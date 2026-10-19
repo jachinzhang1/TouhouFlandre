@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE multi_match SET status='finished', ended_at=$2, winner_member_id=$3 WHERE id=$1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79db1cc1f47902b8b58361dc03cda64e5ec8dbe354a0ed6d433cbb8cf109bfcb"
+}
