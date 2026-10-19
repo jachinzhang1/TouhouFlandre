@@ -1,30 +1,33 @@
-// Package game 承载服务端权威游戏逻辑，由 packages/shared 平移而来。
+// Package game adapts catalog data and presentation to the guessing rules,
+// and owns application-specific question selection, configuration, and search.
 package game
 
+import "github.com/TouhouFlandre/touhouflandre/apps/api/guessing"
+
 // FeedbackStatus 对应 shared 的 FEEDBACK_STATUSES。
-type FeedbackStatus string
+type FeedbackStatus = guessing.FeedbackStatus
 
 const (
-	FeedbackExact   FeedbackStatus = "exact"
-	FeedbackPartial FeedbackStatus = "partial"
-	FeedbackMiss    FeedbackStatus = "miss"
-	FeedbackHigher  FeedbackStatus = "higher"
-	FeedbackLower   FeedbackStatus = "lower"
-	FeedbackUnknown FeedbackStatus = "unknown"
+	FeedbackExact   = guessing.FeedbackExact
+	FeedbackPartial = guessing.FeedbackPartial
+	FeedbackMiss    = guessing.FeedbackMiss
+	FeedbackHigher  = guessing.FeedbackHigher
+	FeedbackLower   = guessing.FeedbackLower
+	FeedbackUnknown = guessing.FeedbackUnknown
 )
 
 // GuessFieldKey 对应 shared 的 GUESS_FIELD_KEYS。
-type GuessFieldKey string
+type GuessFieldKey = guessing.FieldKey
 
 const (
-	FieldFirstAppearance GuessFieldKey = "firstAppearance"
-	FieldReleaseYear     GuessFieldKey = "releaseYear"
-	FieldSpecies         GuessFieldKey = "species"
+	FieldFirstAppearance               = guessing.FieldFirstAppearance
+	FieldReleaseYear                   = guessing.FieldReleaseYear
+	FieldSpecies                       = guessing.FieldSpecies
 	FieldAbilityTags     GuessFieldKey = "abilityTags"
-	FieldAffiliations    GuessFieldKey = "affiliations"
-	FieldLocations       GuessFieldKey = "locations"
+	FieldAffiliations                  = guessing.FieldAffiliations
+	FieldLocations                     = guessing.FieldLocations
 	FieldRoles           GuessFieldKey = "roles"
-	FieldHairColors      GuessFieldKey = "hairColors"
+	FieldHairColors                    = guessing.FieldHairColors
 )
 
 // GuessField 对应 shared 的 GuessField。
@@ -56,12 +59,12 @@ type GuessFieldDefinition struct {
 	Equivalence  bool                       `json:"equivalence"`
 }
 
-type MatchKind string
+type MatchKind = guessing.MatchKind
 
 const (
-	MatchNone       MatchKind = "none"
-	MatchExact      MatchKind = "exact"
-	MatchEquivalent MatchKind = "equivalent"
+	MatchNone       = guessing.MatchNone
+	MatchExact      = guessing.MatchExact
+	MatchEquivalent = guessing.MatchEquivalent
 )
 
 // FieldFeedback 对应 shared 的 FieldFeedback。

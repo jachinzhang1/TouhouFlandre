@@ -14,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/guessing"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
@@ -233,7 +235,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	}
 	if s.searchSource == nil {
 		s.searchSource = game.NewCatalogSearchSourceProvider(func(ctx context.Context, version string) ([]game.Character, error) {
-			return multi.CharactersForVersion(ctx, s.q, version)
+			return catalog.CharactersForVersion(ctx, s.q, version)
 		})
 	}
 	if s.searchSnapshot == nil {
@@ -241,7 +243,7 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	}
 	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
 	s.catalogRuntimes = game.NewCatalogRuntimeProvider(func(ctx context.Context, version string) ([]game.Character, error) {
-		return multi.CharactersForVersion(ctx, s.q, version)
+		return catalog.CharactersForVersion(ctx, s.q, version)
 	})
 	s.guessEvaluator = game.NewGuessEvaluator(s.catalogRuntimes)
 	if state, err := s.q.GetCatalogState(context.Background()); err == nil {
@@ -607,10 +609,9 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 			len(guesses) != *request.Body.ExpectedGuessCount {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "本回合已经发生变化，请重新提交。"}
 		}
-		for _, entry := range guesses {
-			if entry.GuessID == guessID {
-				return nil, &ApiError{Status: http.StatusConflict, Code: codeDuplicateGuess, Message: "这个角色已经猜过了。"}
-			}
+		state := sessionAttemptState(session, guesses)
+		if err := state.ValidateGuess(guessID); err != nil {
+			return nil, mapSessionAttemptError(err)
 		}
 
 		characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
@@ -628,7 +629,7 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 		if err != nil {
 			return nil, internalError(err)
 		}
-		result, err := s.guessEvaluator.Evaluate(ctx, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
+		outcome, err := s.guessEvaluator.ApplyGuess(ctx, state, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
 		if err != nil {
 			switch {
 			case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
@@ -639,11 +640,11 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 				return nil, internalError(err)
 			}
 		}
-		nextGuesses := append(guesses, result)
+		nextGuesses := append(guesses, outcome.Guess)
 		nextStatus := game.SessionPlaying
-		if result.IsCorrect {
+		if outcome.Guess.IsCorrect {
 			nextStatus = game.SessionWon
-		} else if len(nextGuesses) >= int(session.MaxGuesses) {
+		} else if outcome.State.Closed {
 			nextStatus = game.SessionLost
 		}
 
@@ -690,8 +691,9 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 		if session.Status != string(game.SessionPlaying) {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
 		}
-		if len(guesses) >= int(session.MaxGuesses) {
-			return nil, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
+		nextState, err := guessing.ConsumeAttempt(sessionAttemptState(session, guesses))
+		if err != nil {
+			return nil, mapSessionAttemptError(err)
 		}
 
 		characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
@@ -706,7 +708,7 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeInvalidRequest, Message: "本局未开启单手限时。"}
 		}
 
-		sequence := len(guesses) + 1
+		sequence := nextState.Used
 		nextGuesses := append(guesses, game.GuessResult{
 			Kind:      "timeout",
 			GuessID:   fmt.Sprintf("__timeout__:%d", sequence),
@@ -715,7 +717,7 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 			Feedback:  []game.FieldFeedback{},
 		})
 		nextStatus := game.SessionPlaying
-		if len(nextGuesses) >= int(session.MaxGuesses) {
+		if nextState.Closed {
 			nextStatus = game.SessionLost
 		}
 

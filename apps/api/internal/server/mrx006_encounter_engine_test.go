@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -802,7 +803,7 @@ func mrx006WrongGuess(t *testing.T, plan relay.StagePlan) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	characters, err := multi.CharactersForVersion(ctx, repo.New(pool), match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, repo.New(pool), match.CatalogVersion)
 	if err != nil {
 		t.Fatal(err)
 	}

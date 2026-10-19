@@ -10,10 +10,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
-	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 func jsonUnmarshal(data []byte, target any) error {
@@ -63,9 +63,9 @@ func (s *Server) getCurrentCatalog(ctx context.Context) (string, []game.Characte
 	return state.CurrentVersion, characters, nil
 }
 
-// charactersForVersion 按版本读取快照角色（解析逻辑在 multi.CharactersForVersion）。
+// charactersForVersion 按版本读取快照角色（解析逻辑在 catalog.CharactersForVersion）。
 func (s *Server) charactersForVersion(ctx context.Context, version string) ([]game.Character, error) {
-	characters, err := multi.CharactersForVersion(ctx, s.q, version)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, version)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库快照缺失：" + version}
@@ -76,7 +76,7 @@ func (s *Server) charactersForVersion(ctx context.Context, version string) ([]ga
 }
 
 func (s *Server) charactersForRequestedVersion(ctx context.Context, version string) ([]game.Character, error) {
-	characters, err := multi.CharactersForVersion(ctx, s.q, version)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, version)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusNotFound, Code: codeCatalogVersionNotFound, Message: "没有找到题库版本：" + version}

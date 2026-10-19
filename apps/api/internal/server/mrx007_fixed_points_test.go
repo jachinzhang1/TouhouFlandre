@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
@@ -366,7 +367,7 @@ func replaceMRX007AnswersWithCatalog(t *testing.T, plan relay.StagePlan) {
 	if err := pool.QueryRow(ctx, `SELECT catalog_version FROM multi_match WHERE id = $1`, plan.Match.MatchID).Scan(&catalogVersion); err != nil {
 		t.Fatal(err)
 	}
-	characters, err := multi.CharactersForVersion(ctx, repo.New(pool), catalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, repo.New(pool), catalogVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
