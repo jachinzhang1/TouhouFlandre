@@ -23,18 +23,9 @@ impl SharedSource {
 
 #[derive(Clone, Debug, thiserror::Error)]
 pub enum GameError {
-    #[error("unknown answer match policy {0:?}")]
-    UnknownAnswerMatchPolicy(String),
-    #[error("catalog contains a character without an id")]
-    MissingCharacterId,
-    #[error("catalog contains duplicate character id {0:?}")]
-    DuplicateCharacterId(String),
-    #[error("guess character missing")]
-    GuessMissing,
-    #[error("guess character disabled")]
-    GuessDisabled,
-    #[error("answer character missing")]
-    AnswerMissing,
+    // Keep the core error as a source rather than translating it into text.
+    #[error("{0}")]
+    Guessing(#[from] touhouflandre_core::Error),
     #[error("daily puzzle requires at least one enabled answer")]
     NoEnabledAnswer,
     #[error("invalid search index: character {0:?}")]
@@ -67,12 +58,7 @@ impl GameError {
     /// Allowlisted diagnostic labels; no character identifiers or input values.
     pub fn kind(&self) -> &'static str {
         match self {
-            Self::UnknownAnswerMatchPolicy(_) => "unknown_answer_match_policy",
-            Self::MissingCharacterId => "missing_character_id",
-            Self::DuplicateCharacterId(_) => "duplicate_character_id",
-            Self::GuessMissing => "guess_missing",
-            Self::GuessDisabled => "guess_disabled",
-            Self::AnswerMissing => "answer_missing",
+            Self::Guessing(_) => "guessing",
             Self::NoEnabledAnswer => "no_enabled_answer",
             Self::InvalidSearchCharacter(_) => "invalid_search_character",
             Self::EmptyCatalogVersion => "empty_catalog_version",
@@ -87,32 +73,14 @@ impl GameError {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum FeedbackStatus {
-    Exact,
-    Partial,
-    Miss,
-    Higher,
-    Lower,
-    Unknown,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum MatchKind {
-    None,
-    Exact,
-    Equivalent,
-}
+pub use touhouflandre_core::{FeedbackStatus, MatchKind};
 
-pub const FIELD_FIRST_APPEARANCE: &str = "firstAppearance";
-pub const FIELD_RELEASE_YEAR: &str = "releaseYear";
-pub const FIELD_SPECIES: &str = "species";
+pub use touhouflandre_core::{
+    FIELD_AFFILIATIONS, FIELD_FIRST_APPEARANCE, FIELD_HAIR_COLORS, FIELD_LOCATIONS,
+    FIELD_RELEASE_YEAR, FIELD_SPECIES,
+};
 pub const FIELD_ABILITY_TAGS: &str = "abilityTags";
-pub const FIELD_AFFILIATIONS: &str = "affiliations";
-pub const FIELD_LOCATIONS: &str = "locations";
 pub const FIELD_ROLES: &str = "roles";
-pub const FIELD_HAIR_COLORS: &str = "hairColors";
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]

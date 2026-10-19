@@ -2135,6 +2135,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "tokio-util",
+ "touhouflandre-core",
  "tower",
  "tower-http",
  "tracing",
@@ -2142,6 +2143,15 @@ dependencies = [
  "unicode-normalization",
  "unicode-segmentation",
  "uuid",
+]
+
+[[package]]
+name = "touhouflandre-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

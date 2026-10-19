@@ -194,8 +194,7 @@ async fn act_tx(
         let policy = m.answer_match_policy.parse()?;
         let runtime = game::build_catalog_runtime(&m.catalog_version, policy, &characters)?;
         if !runtime
-            .by_id
-            .get(guess_id)
+            .character(guess_id)
             .is_some_and(|g| g.enabled_as_guess)
         {
             return Err(Error::InvalidGuess.into());

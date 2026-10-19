@@ -12,6 +12,8 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use sqlx::{PgConnection, types::Json as SqlJson};
 
+mod attempt;
+
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PuzzleInput {
@@ -388,13 +390,8 @@ pub async fn guess(
                 "本回合已经发生变化，请重新提交。",
             ));
         }
-        if guesses.iter().any(|g| g.guess_id == guess_id) {
-            return Err(ApiError::new(
-                StatusCode::CONFLICT,
-                "DUPLICATE_GUESS",
-                "这个角色已经猜过了。",
-            ));
-        }
+        let attempts = attempt::from_stored(&session, &guesses)?;
+        attempts.validate_guess(guess_id).map_err(attempt::error)?;
         let characters =
             catalog::characters_for_version(&mut conn, &session.catalog_version).await?;
         if session.content_type != "character" {
@@ -410,45 +407,21 @@ pub async fn guess(
             &characters,
         )?;
         let policy = session.answer_match_policy.parse()?;
-        let result = state
+        let runtime = state
             .catalog
             .runtimes
-            .evaluate_guess(
-                &session.catalog_version,
-                policy,
+            .get(&session.catalog_version, policy)
+            .await?;
+        let outcome = runtime
+            .apply_guess(
+                &attempts,
                 &session.answer_id,
                 guess_id,
                 Some(&fields_for_question_scope(&scope)),
             )
-            .await
-            .map_err(|e| {
-                if matches!(e, GameError::GuessMissing | GameError::GuessDisabled) {
-                    ApiError::new(
-                        StatusCode::BAD_REQUEST,
-                        "INVALID_GUESS",
-                        "请选择本局题库中的角色。",
-                    )
-                    .with_source(e)
-                } else if matches!(e, GameError::AnswerMissing) {
-                    ApiError::new(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "INTERNAL",
-                        "本局题库快照中缺少答案角色。",
-                    )
-                    .with_source(e)
-                } else {
-                    ApiError::from(e)
-                }
-            })?;
-        let correct = result.is_correct;
-        guesses.push(result);
-        let status = if correct {
-            "won"
-        } else if guesses.len() >= session.max_guesses as usize {
-            "lost"
-        } else {
-            "playing"
-        };
+            .map_err(attempt::game_error)?;
+        let status = attempt::status(&outcome.state, outcome.guess.is_correct);
+        guesses.push(outcome.guess);
         if let Some(updated) = update(&mut conn, &state, &session, &guesses, status).await? {
             return Ok(json!({"session":public_session(&updated,&characters)?}));
         }
@@ -476,13 +449,8 @@ pub async fn timeout(
         if session.status != "playing" {
             return Err(closed());
         }
-        if guesses.len() >= session.max_guesses as usize {
-            return Err(ApiError::new(
-                StatusCode::CONFLICT,
-                "GUESS_LIMIT_REACHED",
-                "本局猜测次数已用尽。",
-            ));
-        }
+        let attempts = attempt::from_stored(&session, &guesses)?;
+        let next = touhouflandre_core::consume_attempt(&attempts).map_err(attempt::error)?;
         let characters =
             catalog::characters_for_version(&mut conn, &session.catalog_version).await?;
         let scope = catalog::scope_from_json(
@@ -506,11 +474,7 @@ pub async fn timeout(
             match_kind: MatchKind::None,
             feedback: vec![],
         });
-        let status = if guesses.len() >= session.max_guesses as usize {
-            "lost"
-        } else {
-            "playing"
-        };
+        let status = attempt::status(&next, false);
         if let Some(updated) = update(&mut conn, &state, &session, &guesses, status).await? {
             return Ok(json!({"session":public_session(&updated,&characters)?}));
         }

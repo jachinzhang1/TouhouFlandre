@@ -6,6 +6,7 @@ WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY .cargo ./.cargo
 COPY .sqlx ./.sqlx
+COPY crates/touhouflandre-core ./crates/touhouflandre-core
 COPY apps/api/Cargo.toml apps/api/build.rs ./apps/api/
 COPY apps/api/src ./apps/api/src
 COPY apps/api/db ./apps/api/db

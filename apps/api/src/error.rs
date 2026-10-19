@@ -134,6 +134,13 @@ internal_from!(
     tokio::task::JoinError
 );
 
+impl From<touhouflandre_core::Error> for ApiError {
+    #[track_caller]
+    fn from(source: touhouflandre_core::Error) -> Self {
+        Self::from(GameError::from(source))
+    }
+}
+
 struct SafeErrorChain<'a>(&'a (dyn Error + 'static));
 impl fmt::Display for SafeErrorChain<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -197,6 +204,9 @@ fn safe_kind(error: &(dyn Error + 'static)) -> &'static str {
         };
     }
     if let Some(error) = error.downcast_ref::<GameError>() {
+        return error.kind();
+    }
+    if let Some(error) = error.downcast_ref::<touhouflandre_core::Error>() {
         return error.kind();
     }
     if let Some(error) = error.downcast_ref::<domain::Error>() {

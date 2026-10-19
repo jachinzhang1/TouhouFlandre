@@ -1,5 +1,5 @@
 [workspace]
-members = ["apps/api"]
+members = ["apps/api", "crates/touhouflandre-core"]
 resolver = "3"
 
 [profile.release]

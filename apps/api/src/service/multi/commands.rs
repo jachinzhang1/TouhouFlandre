@@ -175,7 +175,7 @@ pub async fn guess(
     }
     events::append_event(&mut tx,&room_id,"round.opponent.guess",json!({"roundId":round.id,"memberId":member.id,"guessId":guess,"matchIndex":m.match_index,"roundIndex":index,"memberSlot":member.seat(),"rowIndex":count+1,"statuses":statuses}),now).await?;
     let scored = m.scoring_mode != "wins";
-    let mut response = json!({"roundIndex":index,"guess":projection::hydrate_guess(runtime.by_id.get(guess).unwrap(),&serde_json::from_value::<Vec<String>>(json!(statuses))?,result.is_correct,&fields,result.match_kind)});
+    let mut response = json!({"roundIndex":index,"guess":projection::hydrate_guess(runtime.character(guess).unwrap(),&serde_json::from_value::<Vec<String>>(json!(statuses))?,result.is_correct,&fields,result.match_kind)});
     if scored && result.is_correct {
         let rank: i64 = sqlx::query_scalar!(
             r#"

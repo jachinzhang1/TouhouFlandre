@@ -78,6 +78,8 @@ jobs:
         run: cargo fmt --all --check
       - name: Rust lint
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Standalone guessing core without optional features
+        run: cargo test -p touhouflandre-core --no-default-features --locked
       - name: Rust tests including isolated PostgreSQL integration
         env:
           TEST_DATABASE_URL: postgres://rust_test:rust_test@127.0.0.1:5433/postgres

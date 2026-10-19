@@ -678,7 +678,7 @@ async fn runtime_provider_freezes_catalog_and_policy_with_custom_loaders() {
         MatchKind::Equivalent
     );
     let strict = provider.get("v1", AnswerMatchPolicy::Strict).await.unwrap();
-    assert!(strict.by_id.contains_key("default"));
+    assert!(strict.character("default").is_some());
     assert_eq!(calls.load(Ordering::SeqCst), 1);
     provider.get("v2", AnswerMatchPolicy::Strict).await.unwrap();
     assert_eq!(calls.load(Ordering::SeqCst), 2);

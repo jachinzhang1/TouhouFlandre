@@ -1,20 +1,13 @@
-use super::*;
+use super::{guessing, *};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+use touhouflandre_core::FIELD_KEYS;
 
 pub const CHARACTER_FIELD_REGISTRY_VERSION: i32 = 1;
 pub const FIELD_MODE_HIDDEN: &str = "hidden";
 pub const FIELD_MODE_DEFAULT: &str = "default";
 pub const FIELD_MODE_EXACT_ONLY: &str = "exactOnly";
 pub const FIELD_MODE_DIRECTIONAL: &str = "directional";
-const FIELD_KEYS: [&str; 6] = [
-    FIELD_FIRST_APPEARANCE,
-    FIELD_RELEASE_YEAR,
-    FIELD_SPECIES,
-    FIELD_AFFILIATIONS,
-    FIELD_LOCATIONS,
-    FIELD_HAIR_COLORS,
-];
 pub type FieldModes = BTreeMap<String, String>;
 
 fn mode(key: &str, label: &str, enabled: bool) -> GuessFieldModeDefinition {
@@ -128,10 +121,6 @@ pub struct CanonicalFieldValue {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub set_value: Vec<String>,
 }
-fn known_string(value: &str) -> bool {
-    let value = value.trim();
-    !value.is_empty() && !value.eq_ignore_ascii_case("unknown") && value != "未知"
-}
 fn set_values<'a>(character: &'a Character, key: &str) -> Option<&'a [String]> {
     match key {
         FIELD_SPECIES => Some(&character.species),
@@ -142,38 +131,13 @@ fn set_values<'a>(character: &'a Character, key: &str) -> Option<&'a [String]> {
     }
 }
 pub fn canonical_field_value(character: &Character, key: &str) -> Option<CanonicalFieldValue> {
-    let mut value = CanonicalFieldValue {
-        string_value: None,
-        number_value: None,
-        set_value: vec![],
-    };
-    match key {
-        FIELD_FIRST_APPEARANCE => {
-            if !known_string(&character.first_appearance.work_id) {
-                return None;
-            }
-            value.string_value = Some(character.first_appearance.work_id.clone());
-        }
-        FIELD_RELEASE_YEAR => {
-            if character.first_appearance.release_year == 0 {
-                return None;
-            }
-            value.number_value = Some(character.first_appearance.release_year);
-        }
-        _ => {
-            let values = set_values(character, key)?;
-            if values.is_empty() || values.iter().any(|v| !known_string(v)) {
-                return None;
-            }
-            value.set_value = values
-                .iter()
-                .cloned()
-                .collect::<BTreeSet<_>>()
-                .into_iter()
-                .collect();
-        }
-    }
-    Some(value)
+    let value =
+        touhouflandre_core::canonical_field_value(&guessing::rule_character(character), key)?;
+    Some(CanonicalFieldValue {
+        string_value: value.string_value,
+        number_value: value.number_value,
+        set_value: value.set_value,
+    })
 }
 pub fn display_values_for_field(character: &Character, key: &str) -> Vec<String> {
     match key {
@@ -212,47 +176,11 @@ pub fn compare_feedback(
     answer: &Character,
     field: &GuessField,
 ) -> FeedbackStatus {
-    use FeedbackStatus::*;
-    let (Some(left), Some(right)) = (
-        canonical_field_value(guess, &field.key),
-        canonical_field_value(answer, &field.key),
-    ) else {
-        return Unknown;
-    };
-    match field.key.as_str() {
-        FIELD_FIRST_APPEARANCE => {
-            if left == right {
-                Exact
-            } else if known_string(&guess.first_appearance.work_type)
-                && known_string(&answer.first_appearance.work_type)
-                && guess.first_appearance.work_type == answer.first_appearance.work_type
-            {
-                Partial
-            } else {
-                Miss
-            }
-        }
-        FIELD_RELEASE_YEAR => {
-            if left == right {
-                Exact
-            } else if field.compare_strategy == "numberExact" {
-                Miss
-            } else if guess.first_appearance.release_year < answer.first_appearance.release_year {
-                Higher
-            } else {
-                Lower
-            }
-        }
-        _ => {
-            if left == right {
-                Exact
-            } else if left.set_value.iter().any(|v| right.set_value.contains(v)) {
-                Partial
-            } else {
-                Miss
-            }
-        }
-    }
+    touhouflandre_core::compare_feedback(
+        &guessing::rule_character(guess),
+        &guessing::rule_character(answer),
+        &guessing::rule_field(field),
+    )
 }
 pub fn status_to_symbol(status: FeedbackStatus) -> &'static str {
     match status {
@@ -265,14 +193,7 @@ pub fn status_to_symbol(status: FeedbackStatus) -> &'static str {
     }
 }
 pub fn compare_field(guess: &Character, answer: &Character, field: &GuessField) -> FieldFeedback {
-    let status = compare_feedback(guess, answer, field);
-    FieldFeedback {
-        field: field.key.clone(),
-        label: field.label.clone(),
-        status,
-        symbol: status_to_symbol(status).into(),
-        display_value: display_values_for_field(guess, &field.key),
-    }
+    guessing::present_field(guess, field, compare_feedback(guess, answer, field))
 }
 pub fn compare_character_with_match(
     guess: &Character,
@@ -319,5 +240,8 @@ pub fn equivalence_signature(character: &Character) -> Option<String> {
     )
 }
 pub fn equivalent_characters(left: &Character, right: &Character) -> bool {
-    matches!((equivalence_signature(left), equivalence_signature(right)), (Some(a), Some(b)) if a == b)
+    touhouflandre_core::equivalent_characters(
+        &guessing::rule_character(left),
+        &guessing::rule_character(right),
+    )
 }

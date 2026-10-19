@@ -9,6 +9,7 @@ flowchart LR
     U[浏览器] --> W[apps/web<br/>Next.js App Router]
     W -->|同源 /api rewrites<br/>或直连 API| A[apps/api<br/>Rust + Axum]
     A --> P[(Postgres<br/>SQLx)]
+    A --> G[crates/touhouflandre-core<br/>纯内存猜测规则]
     D[packages/data<br/>JSON 题库] -->|Zod 校验 + Rust seed| A
     O[contracts/openapi] -->|Rust DTO/schema 生成| A
     O -->|openapi-typescript| W
@@ -131,9 +132,31 @@ flowchart LR
 
 seed 会在单事务内 upsert 行表、写不可变的版本化快照并更新当前版本。同版本同内容幂等成功，同版本不同内容立即失败。会话、每日题和多人场次同时记录题库版本与答案判定策略，恢复时按冻结值读取快照，因此题库更新或环境配置变化不会改变已开始题局。
 
-`apps/api/src/game/fields.rs` 是公开词条的服务端权威来源。每个版本化字段定义集中登记 key、标签、类型、可选模式、默认模式、规范值、反馈比较、展示值以及是否参与等价判定。`CatalogFull.fieldDefinitions` 驱动前端通用设置界面；对局投影返回冻结的 `activeFields`，棋盘、分享文本和字段数量均读取该列表。QuestionScope schema v3 使用 `fieldModes`，导入层继续读取 v1/v2 固定字段并规范化为 v3；预设缺少新字段时使用注册表默认值，自定义配置缺少字段时隐藏该字段。
+`crates/touhouflandre-core` 是六字段规范值、反馈比较和答案等价的权威实现。
+`apps/api/src/game/fields.rs` 保留公开字段的标签、类型、可选模式、默认模式和展示值，
+通过适配器调用核心规则。`CatalogFull.fieldDefinitions` 驱动前端通用设置界面；对局投影返回冻结的 `activeFields`，棋盘、分享文本和字段数量均读取该列表。QuestionScope schema v3 使用 `fieldModes`，导入层继续读取 v1/v2 固定字段并规范化为 v3；预设缺少新字段时使用注册表默认值，自定义配置缺少字段时隐藏该字段。
 
-`CatalogRuntimeProvider` 按 `catalogVersion + answerMatchPolicy` 缓存角色索引和等价组，并合并同一键的并发首次加载。`GuessEvaluator` 是单人、竞速、兼容接力和 encounter 接力的唯一字段反馈与答案匹配入口。`public_fields_v1` 只对全部等价字段均为已知值的 `enabledAsGuess` 角色分组，多值字段按规范集合签名；本局启用字段和答案池不参与分组。`MatchResult.kind` 区分 `none`、`exact` 与 `equivalent`，终局投影始终保留实际抽中的答案 ID。
+`CatalogRuntimeProvider` 按 `catalogVersion + answerMatchPolicy` 缓存不可变角色快照和核心题库，并合并同一键的并发首次加载。`CatalogRuntime` 为单人、竞速和接力适配 `touhouflandre_core::Catalog` 的判定结果。`public_fields_v1` 只对全部等价字段均为已知值的 `enabledAsGuess` 角色分组，多值字段按规范集合比较；本局启用字段和答案池不参与分组。`MatchResult.kind` 区分 `none`、`exact` 与 `equivalent`，终局投影始终保留实际抽中的答案 ID。
+
+## 可复用猜测包
+
+`touhouflandre-core` 接收普通 Rust 值并同步返回语义结果，不加载题库、不执行 I/O，
+也不包含名称、头像、中文标签、箭头、玩家身份或房间状态。默认依赖只有 `thiserror`，
+`serde` 为可选功能。纯内存使用方式见[包文档](../crates/touhouflandre-core/README.md)。
+
+- `Catalog::evaluate_guess` 返回命中类型和有序字段状态，供各模式自己的状态机消费。
+- `Catalog::apply_guess` 接收一段作答历史、已用次数、可选额度和关闭状态，
+  校验重复与额度后返回新的状态；错误不消耗次数，也不修改输入。
+- `consume_attempt` 消耗一次机会；时钟、超时是否有效、空过是否计次由外层决定。
+- 单人通过 `service/solo/attempt.rs` 转换存储状态和业务错误，仍在乐观并发更新成功后
+  保存结果。竞速和接力直接使用判定层，保留个人额度、共享历史、换人、计分和终局规则。
+
+`game/guessing.rs` 将应用角色裁剪为判定事实，再将语义结果补全成既有 `GuessResult`。
+HTTP、WebSocket 和历史记录继续由应用维护：隐藏字段不改变等价判定，多人存储仍保留
+完整六字段的顺序，投影时再映射到可见列。旧 JSON 签名兼容编码也留在应用层。
+核心错误经 `GameError::Guessing` 保留为可检查的 source；HTTP 错误码及安全日志在外层映射。
+
+数据库事务、幂等键、行锁、时钟采样及提交后发布不属于本包；调用者仍须协调并发状态写入。
 
 ## 角色搜索
 
@@ -207,7 +230,8 @@ flowchart TD
     R[router.rs：URL 与方法] --> H[handler：请求解析与响应]
     H --> S[service：业务用例与事务]
     S --> P[repository：共用持久化查询与行模型]
-    S --> D[domain / game：规则与计算]
+    S --> D[domain / game：模式规则与应用适配]
+    D --> G[touhouflandre-core：猜测判定与作答状态]
     P --> DB[(Postgres)]
     S --> T[SQLx：用例内事务]
     T --> DB
@@ -243,7 +267,9 @@ flowchart TD
   “先鉴权/检查模式，再报告请求体错误”的响应优先级。
 - `repository` 保存复用的 SQLx 查询、行模型与事件写入，接收池或调用方的连接，
   不持有 `AppState`，不调用 service 或自行提交业务事务。
-- `domain` 和 `game` 保存纯规则；`realtime` 保存协议、队列和连接注册原语。
+- `touhouflandre-core` 保存独立猜测规则，不依赖数据库、HTTP、运行时和应用模块。
+- `domain` 保存模式规则；`game` 保存题目范围、搜索、缓存与核心规则的展示适配。
+  `realtime` 保存协议、队列和连接注册原语。
 - `app.rs` 是共享状态的装配点；`error.rs` 保留 thiserror 错误链和安全诊断。
 
 `pnpm check:multiplayer-boundaries` 同时检查这些层间依赖。配套测试校验全部
@@ -254,7 +280,8 @@ flowchart TD
 | 目录 | 说明 |
 | --- | --- |
 | `src/bin` | server、migrate、seed、healthcheck 入口。 |
-| `src/game` | 公开字段、题目范围、搜索、比较与等价判定。 |
+| `crates/touhouflandre-core`（仓库根目录） | 独立字段比较、答案等价与作答状态。 |
+| `src/game` | 公开字段、题目范围、搜索、缓存与规则/展示适配。 |
 | `src/domain` | 聊天规则、接力配对、计分与状态转换。 |
 | `src/realtime` | WS v3 协议、游标、连接注册与发送队列。 |
 | `src/contracts` | OpenAPI 生成的 Rust DTO、验证 schema 与统一校验入口。 |

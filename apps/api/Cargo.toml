@@ -13,6 +13,7 @@ base64 = "0.23.1"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 futures-util = "0.3"
+touhouflandre-core = { path = "../../crates/touhouflandre-core", features = ["serde"] }
 hmac = "0.13.0"
 jsonschema = { version = "0.58.6", default-features = false }
 rand = "0.10.3"

@@ -169,6 +169,7 @@ flowchart LR
 | ----------------------- | ----------------------------------------------------- |
 | `apps/web`              | Next.js 前端、页面组件、本地统计和浏览器端 API 客户端 |
 | `apps/api`              | Rust API、权威游戏规则、WebSocket、数据库迁移与查询     |
+| `crates/touhouflandre-core`  | 可复用的纯 Rust 猜测判定与作答状态，不依赖数据库、多人或展示 |
 | `packages/data`         | 角色、作品、头像元数据和 Zod 运行时校验               |
 | `packages/shared`       | 前端共享类型、模式配置、展示工具和分享文本            |
 | `contracts/openapi`     | HTTP API 契约唯一来源                                 |
@@ -223,7 +224,7 @@ Docker 命名卷不是备份。公开部署前应配置 Postgres 备份与恢复
 
 - `contracts/openapi/openapi.yaml` 是 HTTP API 契约唯一入口。修改接口后运行 `task gen`，并提交对应 Rust 与 Web 生成物。
 - `apps/api/src/contracts/{generated.rs,schemas.json,operations.json}` 和 `apps/web/src/generated` 是生成代码，不应手工编辑。
-- 权威答案选择、反馈比较和运行时角色搜索位于 `apps/api/src/game`。
+- 字段比较、答案等价与作答状态位于 [touhouflandre-core](./crates/touhouflandre-core/README.md)；`apps/api/src/game` 保留选题、范围、搜索、缓存和展示适配。
 - 角色与作品数据位于 `packages/data/src`，写入前通过 Zod 和跨记录规则校验。
 - 题库 seed 会生成版本化快照，已经开始的游戏继续使用创建时的版本。
 

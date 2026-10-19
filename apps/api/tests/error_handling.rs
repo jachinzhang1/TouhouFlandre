@@ -36,6 +36,27 @@ fn database_cause_survives_http_conversion() {
 }
 
 #[tokio::test]
+async fn guessing_cause_survives_adaptation_without_logging_character_ids() {
+    let source = touhouflandre_core::Error::DuplicateCharacterId("private-character-id".into());
+    let error = ApiError::from(source.clone());
+    assert_eq!(cause::<touhouflandre_core::Error>(&error), Some(&source));
+    assert!(matches!(
+        cause::<GameError>(&error),
+        Some(GameError::Guessing(_))
+    ));
+    let logs = Logs::default();
+    let response = tracing::subscriber::with_default(logs.subscriber(), || error.into_response());
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&body).unwrap(),
+        json!({"code":"INTERNAL","error":"服务器暂时无法处理请求。"})
+    );
+    assert!(logs.text().contains("guessing -> duplicate_character_id"));
+    assert!(!logs.text().contains("private-character-id"));
+}
+
+#[tokio::test]
 async fn system_random_failure_retains_cause_and_generic_http_response() {
     let error = ApiError::from(rand::rngs::SysError::UNSUPPORTED);
     assert_eq!(

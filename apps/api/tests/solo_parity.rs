@@ -420,6 +420,157 @@ async fn timeout_and_guess_race_consumes_one_turn() {
     );
     db.close().await;
 }
+
+#[tokio::test]
+#[ignore = "requires isolated TEST_DATABASE_URL"]
+async fn extracted_attempts_preserve_stored_history_errors_and_last_turn_outcomes() {
+    use touhouflandre_api::game::{AnswerMatchPolicy, build_catalog_runtime};
+
+    let db = Database::new().await;
+    let version = db.seed().await;
+    let app = db.app();
+    let (_, _, full) = request(&app, "GET", "/api/catalog/full", None).await;
+    let mut scope = full["defaultQuestionScope"].clone();
+    scope["rules"]["turnLimit"] = json!({"enabled":true,"seconds":30});
+    scope["rules"]["guessLimit"] = json!({"enabled":true,"maxGuesses":2});
+    let session = create(&app, Some(scope.clone())).await;
+    assert_eq!(session["maxGuesses"], 2);
+    let id = session["id"].as_str().unwrap();
+    let answer_id = answer(&db, id).await;
+    let catalog = seed::load_catalog(&data_dir()).unwrap();
+    let runtime = build_catalog_runtime(
+        &version,
+        AnswerMatchPolicy::PublicFieldsV1,
+        &catalog.characters,
+    )
+    .unwrap();
+    let wrong_id = catalog
+        .characters
+        .iter()
+        .find(|candidate| {
+            candidate.enabled_as_guess
+                && !runtime.match_answer(&answer_id, &candidate.id).correct
+                && scope["selectedCharacterIds"]
+                    .as_array()
+                    .unwrap()
+                    .contains(&json!(candidate.id))
+        })
+        .expect("the seeded scope contains a valid non-equivalent guess")
+        .id
+        .clone();
+    let guess_path = format!("/api/sessions/{id}/guess");
+    let timeout_path = format!("/api/sessions/{id}/timeout");
+    let session_path = format!("/api/sessions/{id}");
+    let (status, _, wrong) = request(
+        &app,
+        "POST",
+        &guess_path,
+        Some(json!({"guessId":wrong_id,"expectedGuessCount":0})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{wrong}");
+    assert_eq!(wrong["session"]["status"], "playing");
+    let first_history = wrong["session"]["guesses"].clone();
+    assert_eq!(first_history.as_array().unwrap().len(), 1);
+    assert_eq!(first_history[0]["guessId"], wrong_id);
+    assert_eq!(first_history[0]["isCorrect"], false);
+
+    for (guess_id, expected_status, code) in [
+        (wrong_id.as_str(), StatusCode::CONFLICT, "DUPLICATE_GUESS"),
+        (
+            "missing-character",
+            StatusCode::BAD_REQUEST,
+            "INVALID_GUESS",
+        ),
+    ] {
+        let (status, _, error) = request(
+            &app,
+            "POST",
+            &guess_path,
+            Some(json!({"guessId":guess_id,"expectedGuessCount":1})),
+        )
+        .await;
+        assert_eq!(status, expected_status, "{error}");
+        assert_eq!(error["code"], code);
+        let (status, _, restored) = request(&app, "GET", &session_path, None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(restored["session"]["status"], "playing");
+        assert_eq!(restored["session"]["guesses"], first_history);
+    }
+
+    let (status, _, exhausted) = request(
+        &app,
+        "POST",
+        &timeout_path,
+        Some(json!({"expectedGuessCount":1})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{exhausted}");
+    assert_eq!(exhausted["session"]["status"], "lost");
+    let final_history = exhausted["session"]["guesses"].clone();
+    assert_eq!(final_history.as_array().unwrap().len(), 2);
+    assert_eq!(final_history[0], first_history[0]);
+    assert_eq!(final_history[1]["kind"], "timeout");
+    assert_eq!(final_history[1]["isCorrect"], false);
+    assert_eq!(final_history[1]["feedback"], json!([]));
+    let (status, _, replay) = request(
+        &app,
+        "POST",
+        &timeout_path,
+        Some(json!({"expectedGuessCount":1})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(replay["session"]["guesses"], final_history);
+    let (status, _, closed) = request(
+        &app,
+        "POST",
+        &guess_path,
+        Some(json!({"guessId":answer_id,"expectedGuessCount":2})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(closed["code"], "SESSION_CLOSED");
+    let (_, _, restored) = request(&app, "GET", &session_path, None).await;
+    assert_eq!(restored["session"]["guesses"], final_history);
+    assert_eq!(restored["session"]["status"], "lost");
+
+    // A saved timeout counts toward the limit, but correctness on the final
+    // available turn still wins instead of being overwritten by exhaustion.
+    let winning = create(&app, Some(scope)).await;
+    let winning_id = winning["id"].as_str().unwrap();
+    let winning_answer = answer(&db, winning_id).await;
+    let (status, _, timed_out) = request(
+        &app,
+        "POST",
+        &format!("/api/sessions/{winning_id}/timeout"),
+        Some(json!({"expectedGuessCount":0})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(timed_out["session"]["status"], "playing");
+    assert_eq!(timed_out["session"]["guesses"].as_array().unwrap().len(), 1);
+    let (status, _, won) = request(
+        &app,
+        "POST",
+        &format!("/api/sessions/{winning_id}/guess"),
+        Some(json!({"guessId":winning_answer,"expectedGuessCount":1})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{won}");
+    assert_eq!(won["session"]["status"], "won");
+    assert_eq!(won["session"]["guesses"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        won["session"]["guesses"][0],
+        timed_out["session"]["guesses"][0]
+    );
+    assert_eq!(won["session"]["guesses"][1]["isCorrect"], true);
+    assert_eq!(won["session"]["guesses"][1]["matchKind"], "exact");
+    assert_eq!(won["session"]["answer"]["id"], winning_answer);
+    contracts::validate_value("PublicGameSession", &won["session"]).unwrap();
+    db.close().await;
+}
+
 #[tokio::test]
 #[ignore = "requires isolated TEST_DATABASE_URL"]
 async fn daily_uses_shanghai_date_frozen_policy_catalog_and_eight_guesses() {

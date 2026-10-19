@@ -3,6 +3,7 @@ mod answer;
 mod cache;
 mod daily;
 mod fields;
+mod guessing;
 mod scope;
 mod search;
 mod search_metrics;

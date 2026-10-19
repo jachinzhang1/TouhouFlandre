@@ -82,6 +82,7 @@ function resolvePath(path, filename) {
 }
 export function checkRustFile(filename, source) {
   const file = filename.replaceAll("\\", "/").replace(/^apps\/api\/src\//, "");
+  const guessingCore = file.startsWith("crates/touhouflandre-core/");
   const errors = [];
   const { paths, aliases } = dependencies(source);
   for (const raw of paths) {
@@ -95,6 +96,12 @@ export function checkRustFile(filename, source) {
     }
     const path = resolvePath(expanded, file), target = path.join("::");
     const fail = (rule) => errors.push(`${file}: ${raw.join("::")} violates ${rule}`);
+    if (guessingCore) {
+      const application = ["touhouflandre_api", "app", "handler", "router", "repository", "service", "database", "realtime"].includes(path[0]);
+      const runtime = ["sqlx", "axum", "tower", "tower_http", "reqwest", "tokio", "tokio_util", "tokio_tungstenite", "async_std", "smol", "hyper", "rusqlite", "diesel", "sea_orm"].includes(path[0]);
+      const io = path[0] === "std" && (["fs", "net", "io", "process", "thread", "env"].includes(path[1]) || (path[1] === "time" && ["Instant", "SystemTime"].includes(path[2])));
+      if (application || runtime || io) fail("guessing core must remain independent of application, I/O and async runtimes");
+    }
     if (file.startsWith("game/") && ["sqlx", "axum", "tower", "tower_http", "reqwest", "app", "error", "handler", "router", "repository", "service", "database"].includes(path[0])) fail("game rules must not depend on storage or HTTP services");
     if (file.startsWith("realtime/") && ["sqlx", "database", "app", "error", "handler", "router", "repository", "service"].includes(path[0])) fail("realtime primitives must not own application or database state");
     if (file.startsWith("handler/") && ["sqlx", "repository", "database"].includes(path[0])) fail("handlers must call application services instead of storage");
@@ -120,13 +127,68 @@ export function checkRustFile(filename, source) {
   if (file.startsWith("handler/") && input.some((value, index) => value === "." && input[index + 1] === "pool")) errors.push(`${file}: handlers must not access the database pool`);
   return [...new Set(errors)];
 }
+
+// A convention check for direct Cargo dependencies, not a general TOML parser.
+// Keep core dependencies explicit: strings, inline tables or dependency tables;
+// inherited/path/git dependencies would hide the actual package being reviewed.
+export function checkGuessingManifest(filename, source) {
+  const errors = [], declarations = [];
+  let dependencySection = false, development = false, current;
+  const fail = (message) => errors.push(`${filename}: ${message}`);
+  const unquote = (key) => key.replace(/^(?:"([^"]+)"|'([^']+)')$/, (_, double, single) => double ?? single);
+  const cleanLine = (line) => {
+    let quote;
+    for (let i = 0; i < line.length; i++) {
+      if (quote === '"' && line[i] === "\\") { i++; continue; }
+      if (quote) { if (line[i] === quote) quote = undefined; }
+      else if (["'", '"'].includes(line[i])) quote = line[i];
+      else if (line[i] === "#") return line.slice(0, i).trim();
+    }
+    return line.trim();
+  };
+  for (const raw of source.split(/\r?\n/)) {
+    const line = cleanLine(raw);
+    if (!line) continue;
+    if (line.startsWith("[")) {
+      const section = /^\[([^\[\]]+)\]$/.exec(line)?.[1];
+      const dependency = section?.match(/(?:^|\.)(build-|dev-)?dependencies(?:\.([A-Za-z0-9_-]+|"[^"]+"|'[^']+'))?$/);
+      dependencySection = Boolean(dependency);
+      development = dependency?.[1] === "dev-";
+      current = dependency?.[2] ? { name: unquote(dependency[2]), development, values: [] } : undefined;
+      if (current) declarations.push(current);
+      continue;
+    }
+    if (!dependencySection) continue;
+    const entry = /^("[^"]+"|'[^']+'|[A-Za-z0-9_-]+)\s*=\s*(.+)$/.exec(line);
+    if (!entry) { fail("use explicit single-line dependency values in guessing core"); continue; }
+    if (current) current.values.push(`${unquote(entry[1])} = ${entry[2]}`);
+    else {
+      const value = entry[2];
+      if (!/^(?:"[^"\n]+"|'[^'\n]+'|\{.*\})$/.test(value)) fail("use explicit single-line dependency values in guessing core");
+      declarations.push({ name: unquote(entry[1]), development, values: [value] });
+    }
+  }
+  for (const { name, development, values } of declarations) {
+    const declaration = values.join("\n");
+    const actual = /\bpackage\s*=\s*["']([^"']+)["']/.exec(declaration)?.[1] ?? name;
+    const allowed = ["thiserror", "serde"].includes(name) || (development && name === "serde_json");
+    if (!allowed || actual !== name) fail(`guessing core dependency ${name} must be thiserror or optional serde; serde_json is allowed only for tests, without package aliases`);
+    if (/\b(?:path|git|workspace)\s*=/.test(declaration)) fail(`guessing core dependency ${name} must declare a registry version directly`);
+    if (name === "serde" && !/\boptional\s*=\s*true\b/.test(declaration)) fail("guessing core serde dependency must be optional");
+  }
+  return [...new Set(errors)];
+}
 function sources(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? sources(join(dir, entry.name)) : entry.name.endsWith(".rs") ? [join(dir, entry.name)] : []);
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? entry.name === "target" ? [] : sources(join(dir, entry.name)) : entry.name.endsWith(".rs") ? [join(dir, entry.name)] : []);
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../apps/api/src");
-  const files = sources(root);
-  const errors = files.flatMap((file) => checkRustFile(relative(root, file), readFileSync(file, "utf8")));
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const files = [...sources(join(root, "apps/api/src")), ...sources(join(root, "crates/touhouflandre-core"))];
+  const manifest = "crates/touhouflandre-core/Cargo.toml";
+  const errors = [
+    ...checkGuessingManifest(manifest, readFileSync(join(root, manifest), "utf8")),
+    ...files.flatMap((file) => checkRustFile(relative(root, file), readFileSync(file, "utf8"))),
+  ];
   if (errors.length) { console.error(errors.join("\n")); process.exitCode = 1; }
   else console.log(`Rust architecture boundaries passed (${files.length} source files).`);
 }

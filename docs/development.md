@@ -13,7 +13,7 @@
 | Task | 跨语言任务入口 |
 | Git | 版本控制 |
 
-TypeScript 使用 pnpm workspace；Rust 使用根目录 Cargo workspace，API crate 位于 `apps/api`。首次运行 Cargo 时 rustup 会安装固定工具链及 rustfmt、Clippy。
+TypeScript 使用 pnpm workspace；Rust 使用根目录 Cargo workspace，API crate 位于 `apps/api`，可复用猜测包位于 `crates/touhouflandre-core`。首次运行 Cargo 时 rustup 会安装固定工具链及 rustfmt、Clippy。
 
 ## 安装与启动
 
@@ -62,6 +62,8 @@ Web 默认通过 Next rewrites 同源代理 `/api`。直连 API 时设置 `NEXT_
 | `pnpm build` | 构建 Rust release 二进制及 TypeScript workspace 包。 |
 | `pnpm test` | shared/data/web 的 Vitest 测试。 |
 | `pnpm test:rust` | Rust 单元、契约和无数据库测试。 |
+| `cargo test -p touhouflandre-core --no-default-features` | 独立猜测规则测试，无需数据库和异步运行时。 |
+| `cargo run -p touhouflandre-core --example memory` | 纯内存作答示例。 |
 | `task test:integration` | 包括真实 PostgreSQL 测试；必须显式设置 `TEST_DATABASE_URL`。 |
 | `pnpm typecheck` | TypeScript 类型检查。 |
 | `cargo fmt --all --check` | Rust 格式检查。 |
@@ -81,15 +83,17 @@ CI 使用独立 PostgreSQL 服务执行包含被忽略集成用例在内的全�
 ## 项目结构
 
 ```text
+crates/touhouflandre-core/      字段比较、答案等价和作答状态，附独立测试与示例
 apps/api/
   src/bin/                 server、migrate、seed、healthcheck 入口
-  src/game/                字段、答案等价、每日题、范围、搜索与缓存
-  src/catalog/             题库读取、远程搜索与 immutable 索引
-  src/solo/                单人题局、恢复与幂等写入
-  src/multi/               房间、竞速、接力与观察者投影
-  src/chat/                房间聊天与历史
+  src/router.rs            所有 URL、方法与 handler 的映射
+  src/handler/             请求解析、HTTP 响应与 WebSocket 传输
+  src/service/             业务用例、事务、题库读取、单人及多人流程
+  src/service/solo/        单人存储状态与核心作答状态的适配
+  src/repository/          共用持久化查询与行模型
+  src/domain/              聊天、接力配对、计分和状态转换
+  src/game/                公开字段、选题、范围、搜索、缓存与猜测展示适配
   src/realtime/            WS v3 帧、同步屏障、队列和连接注册
-  src/ws/                  WebSocket 鉴权与房间服务适配
   src/contracts/           从 OpenAPI 生成的 DTO/schema 与验证入口
   src/database.rs          SQLx 迁移与显式旧库接管
   src/seed.rs              原子题库写入与版本计算
@@ -106,9 +110,9 @@ contracts/ws/              WebSocket 协议
 
 前端以 API 返回的会话、房间及公开索引为准。客户端不选择答案或重新计算反馈，进行中的投影不得包含隐藏答案。交互应覆盖加载、空、错误、禁用和完成状态，样式改动检查窄屏及 `prefers-reduced-motion`。
 
-Axum handler 使用从 OpenAPI 生成的 schema 校验请求，业务错误返回稳定错误码及 `ErrorResponse`。领域规则位于 `src/game`；该模块不得依赖数据库或 HTTP 适配层。PostgreSQL 是会话和多人状态的权威，内存仅保留版本化缓存、活动连接和同步队列。事务提交后才能发布事件。
+Axum handler 使用从 OpenAPI 生成的 schema 校验请求，业务错误返回稳定错误码及 `ErrorResponse`。猜测规则位于 `crates/touhouflandre-core`，不依赖数据库、HTTP、Tokio 或应用模块；`src/game` 负责规则与展示适配、范围和搜索缓存，同样不得依赖数据库或 HTTP 适配层。PostgreSQL 是会话和多人状态的权威，内存仅保留版本化缓存、活动连接和同步队列。事务提交后才能发布事件。
 
-`src/realtime` 不依赖房间或数据库服务；`src/ws` 负责连接协议与应用服务的装配。多人共享 models/store/events 不引用具体模式；race 与 relay 不互相导入。模式 domain 不访问数据库或传输适配层，允许无 I/O 的 `sqlx::FromRow` 数据映射派生。边界检查覆盖 grouped use、相对路径、别名和完全限定调用。
+`src/realtime` 不依赖房间或数据库服务；`src/handler/ws.rs` 与 `src/service/ws.rs` 负责连接协议与应用服务的装配。多人共享 models/store/events 不引用具体模式；race 与 relay 不互相导入。模式 domain 不访问数据库或传输适配层，允许无 I/O 的 `sqlx::FromRow` 数据映射派生。边界检查覆盖 grouped use、相对路径、别名和完全限定调用，并检查核心包 Cargo 依赖。核心包默认依赖仅 `thiserror`，可选 `serde`；`serde_json` 仅用于测试。
 
 权威规则变更要添加能发现行为回归的 Rust 测试。搜索使用 Rust/TypeScript 共用 fixture；对外契约变更需同步更新生成物和前端调用。
 
