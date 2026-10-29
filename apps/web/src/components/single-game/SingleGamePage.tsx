@@ -40,7 +40,7 @@ import type {
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { SuggestionPopover } from "../game/SuggestionPopover";
-import { PaperSearchInput } from "../paper";
+import { PaperButton, PaperSearchInput } from "../paper";
 import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { modeConfig } from "../../gameModes";
@@ -1315,10 +1315,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             </SuggestionPopover>
           </div>
           <div className="guess-form-actions">
-            <button
-              className="primary-button"
+            <PaperButton
+              className="single-game-submit"
               type="submit"
               disabled={!selectedId || inputDisabled}
+              filled
+              tone="theme"
             >
               {submitting ? (
                 <Loader2 className="spin" size={18} aria-hidden="true" />
@@ -1326,7 +1328,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 <Send size={18} aria-hidden="true" />
               )}
               <span>提交猜测</span>
-            </button>
+            </PaperButton>
             <FeedbackLegendButton />
           </div>
         </form>

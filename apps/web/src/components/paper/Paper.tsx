@@ -30,6 +30,7 @@ export interface PaperProps {
   ariaPressed?: boolean;
   animateOnMount?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
+  buttonType?: "button" | "submit" | "reset";
   as?: "article" | "button" | "div" | "span";
   children?: ReactNode;
   className?: string;
@@ -64,6 +65,7 @@ export function Paper({
   ariaPressed,
   animateOnMount = true,
   buttonRef,
+  buttonType = "button",
   as = "span",
   children,
   className = "",
@@ -145,7 +147,7 @@ export function Paper({
     surface = (
       <button
         ref={buttonRef}
-        type="button"
+        type={buttonType}
         disabled={disabledAppearance}
         onClick={disabledAppearance ? undefined : onClick}
         {...paperProps}

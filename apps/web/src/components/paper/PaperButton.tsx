@@ -16,10 +16,11 @@ export interface PaperButtonProps {
   filled?: boolean;
   folded?: boolean;
   iconOnly?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   pattern?: boolean;
   title?: string;
   tone?: PaperButtonTone;
+  type?: "button" | "submit" | "reset";
 }
 
 export function PaperButton({
@@ -38,6 +39,7 @@ export function PaperButton({
   pattern,
   title,
   tone = "plain",
+  type = "button",
 }: PaperButtonProps) {
   const unavailable = disabled;
   const effectiveFilled = filled && !unavailable;
@@ -65,6 +67,7 @@ export function PaperButton({
       ariaLabel={ariaLabel}
       ariaExpanded={ariaExpanded}
       as="button"
+      buttonType={type}
       className={classes}
       disabled={disabled}
       folded={effectiveFolded}

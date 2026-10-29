@@ -334,7 +334,12 @@
 
   .guess-form-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .guess-form-actions .single-game-submit {
+    width: 100%;
+    min-width: 0;
   }
 
   .legend-button {
