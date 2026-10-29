@@ -292,7 +292,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     sort: "relevance",
   });
   const [selectedId, setSelectedId] = useState("");
-  const [activeSuggestionId, setActiveSuggestionId] = useState("");
+  const [highlightedSuggestionId, setHighlightedSuggestionId] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
@@ -352,6 +352,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     () => results.filter((result) => !guessedIds.has(result.id)),
     [guessedIds, results],
   );
+  const activeSuggestionId = selectableResults.some(
+    (result) => result.id === highlightedSuggestionId,
+  )
+    ? highlightedSuggestionId
+    : (selectableResults[0]?.id ?? "");
   const showSuggestions =
     !suggestionsDismissed && query.trim().length > 0 && !inputDisabled;
   const visibleFields = useMemo(
@@ -458,7 +463,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     setMessage("");
     setQuery("");
     setSelectedId("");
-    setActiveSuggestionId("");
+    setHighlightedSuggestionId("");
     setSuggestionsDismissed(false);
     setEndingSession(false);
     setTimingOut(false);
@@ -861,7 +866,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
       }
       setQuery("");
       setSelectedId("");
-      setActiveSuggestionId("");
+      setHighlightedSuggestionId("");
       setSuggestionsDismissed(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "提交失败。");
@@ -1045,15 +1050,17 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const selectSuggestion = useCallback((result: CharacterSearchResult) => {
     setSelectedId(result.id);
     setQuery(result.name);
-    setActiveSuggestionId("");
+    setHighlightedSuggestionId("");
     setSuggestionsDismissed(true);
   }, []);
 
   const moveActiveSuggestion = (step: 1 | -1) => {
     if (!selectableResults.length) return;
-    const currentIndex = selectableResults.findIndex(
-      (result) => result.id === activeSuggestionId,
-    );
+    const currentIndex = showSuggestions
+      ? selectableResults.findIndex(
+          (result) => result.id === activeSuggestionId,
+        )
+      : -1;
     const nextIndex =
       currentIndex < 0
         ? step === 1
@@ -1061,17 +1068,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           : selectableResults.length - 1
         : (currentIndex + step + selectableResults.length) %
           selectableResults.length;
-    setActiveSuggestionId(selectableResults[nextIndex].id);
+    setHighlightedSuggestionId(selectableResults[nextIndex].id);
   };
-
-  useEffect(() => {
-    if (
-      activeSuggestionId &&
-      !selectableResults.some((result) => result.id === activeSuggestionId)
-    ) {
-      setActiveSuggestionId("");
-    }
-  }, [activeSuggestionId, selectableResults]);
 
   useEffect(() => {
     const handleOutsidePointer = (event: PointerEvent) => {
@@ -1084,7 +1082,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         return;
       }
       setSuggestionsDismissed(true);
-      setActiveSuggestionId("");
+      setHighlightedSuggestionId("");
     };
 
     document.addEventListener("pointerdown", handleOutsidePointer);
@@ -1203,11 +1201,11 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               inputRef={inputRef}
               value={query}
               onFocus={() => setSuggestionsDismissed(false)}
-              onBlur={() => setActiveSuggestionId("")}
+              onBlur={() => setHighlightedSuggestionId("")}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setSelectedId("");
-                setActiveSuggestionId("");
+                setHighlightedSuggestionId("");
                 setSuggestionsDismissed(false);
               }}
               onKeyDown={(event) => {
@@ -1220,7 +1218,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 if (event.key === "Escape" && showSuggestions) {
                   event.preventDefault();
                   setSuggestionsDismissed(true);
-                  setActiveSuggestionId("");
+                  setHighlightedSuggestionId("");
                   return;
                 }
                 if (event.key === "Enter" && showSuggestions) {

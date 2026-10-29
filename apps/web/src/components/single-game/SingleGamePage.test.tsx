@@ -806,7 +806,7 @@ describe("SingleGamePage", () => {
     expect(await screen.findByText("teal、无")).toBeTruthy();
   });
 
-  it("selects a search suggestion with the keyboard", async () => {
+  it("automatically highlights the first match and selects it with Enter", async () => {
     vi.mocked(api.catalog).mockResolvedValue({
       dailyDateKey: "2026-08-05",
       contents: [],
@@ -819,7 +819,11 @@ describe("SingleGamePage", () => {
     render(<SingleGamePage mode="daily" />);
     const input = await screen.findByLabelText("搜索东方角色");
     await userEvent.type(input, "帕秋莉");
-    await userEvent.keyboard("{ArrowDown}{Enter}");
+    const firstMatch = await screen.findByRole("option");
+    expect(firstMatch.getAttribute("aria-selected")).toBe("true");
+    expect(firstMatch.classList.contains("selected")).toBe(true);
+    expect(input.getAttribute("aria-activedescendant")).toBe(firstMatch.id);
+    await userEvent.keyboard("{Enter}");
 
     expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
     const submit = screen.getByText("提交猜测").closest("button");
@@ -874,7 +878,7 @@ describe("SingleGamePage", () => {
     const options = await screen.findAllByRole("option");
     expect(options).toHaveLength(12);
 
-    await userEvent.keyboard("{ArrowDown}");
+    expect(options[0].getAttribute("aria-selected")).toBe("true");
     await waitFor(() => {
       expect(scrollIntoView).toHaveBeenCalledWith({
         behavior: "auto",

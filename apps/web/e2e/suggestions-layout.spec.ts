@@ -148,7 +148,10 @@ test.describe("single game suggestion layout", () => {
       ).toBeLessThanOrEqual(layout?.viewportWidth ?? 0);
     }).toPass();
 
-    await input.press("ArrowDown");
+    await expect(suggestionList.locator(".suggestion").first()).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(input).toHaveAttribute(
       "aria-activedescendant",
       /layout_probe_0/,
@@ -258,7 +261,10 @@ test.describe("single game suggestion layout", () => {
     const input = page.getByLabel("搜索东方角色");
     await input.fill("灵梦");
     await expect(page.locator(".suggestion")).toBeVisible();
-    await input.press("ArrowDown");
+    await expect(page.getByRole("option")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(input).toHaveAttribute(
       "aria-activedescendant",
       /reimu_hakurei/,
