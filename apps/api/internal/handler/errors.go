@@ -32,6 +32,7 @@ const (
 	codeUnsupportedContentType openapi.ErrorResponseCode = "UNSUPPORTED_CONTENT_TYPE"
 	codeCatalogNotReady        openapi.ErrorResponseCode = "CATALOG_NOT_READY"
 	codeCatalogVersionNotFound openapi.ErrorResponseCode = "CATALOG_VERSION_NOT_FOUND"
+	codeIdempotencyKeyReused   openapi.ErrorResponseCode = "IDEMPOTENCY_KEY_REUSED"
 	codeInternal               openapi.ErrorResponseCode = "INTERNAL"
 
 	// 多人模式（08 §7.2）

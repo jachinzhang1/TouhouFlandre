@@ -421,6 +421,10 @@ func TestMRX005SettlementFailureRollsBackAndRecoveryKeepsSequence(t *testing.T) 
 	}
 }
 
+// Time suffixes collide on clocks with coarse resolution. All relay fixtures in
+// this process share a sequence so their room codes stay unique.
+var mrx005RoomCodeSequence atomic.Uint32
+
 func createMRX005Fixture(t *testing.T, playerCount int) mrx005Fixture {
 	t.Helper()
 	q := repo.New(pool)
@@ -431,7 +435,7 @@ func createMRX005Fixture(t *testing.T, playerCount int) mrx005Fixture {
 	}
 	roomID := multi.NewID()
 	room, err := q.CreateRoom(ctx, repo.CreateRoomParams{
-		ID: roomID, Code: fmt.Sprintf("M%05d", time.Now().UnixNano()%100000), Format: "bo3", Mode: "relay",
+		ID: roomID, Code: fmt.Sprintf("M%05d", mrx005RoomCodeSequence.Add(1)), Format: "bo3", Mode: "relay",
 		TurnSeconds: 60, PlayerLimit: 2, ExpiresAt: pgtype.Timestamptz{Time: now.Add(time.Hour), Valid: true},
 		QuestionScope: []byte(`{"rules":{},"workIds":[]}`),
 	})

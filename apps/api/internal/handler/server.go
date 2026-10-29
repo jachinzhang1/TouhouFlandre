@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/guessing"
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/config"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
@@ -47,6 +50,8 @@ type Server struct {
 	projectionSecret  []byte   // 对手匿名矩阵 HMAC 密钥（快照/重放/实时共用）
 	rollout           RolloutConfig
 	characterSearch   CharacterSearchConfig
+	searchSource      *game.CatalogSearchSourceProvider
+	searchSnapshot    *game.CatalogSearchSnapshotProvider
 	answerMatchPolicy game.AnswerMatchPolicy
 	catalogRuntimes   *game.CatalogRuntimeProvider
 	guessEvaluator    *game.GuessEvaluator
@@ -59,11 +64,15 @@ type Option func(*Server)
 // character search implementation.
 type CharacterSearchConfig struct {
 	QuestionScopeFilterEnabled bool
+	Mode                       string
+	PolicyRevision             string
 }
 
 func characterSearchConfigFromEnv() CharacterSearchConfig {
 	return CharacterSearchConfig{
 		QuestionScopeFilterEnabled: config.CharacterSearchQuestionScopeFilterEnabled(),
+		Mode:                       config.CharacterSearchMode(),
+		PolicyRevision:             config.CharacterSearchPolicyRevision(),
 	}
 }
 
@@ -72,6 +81,15 @@ func characterSearchConfigFromEnv() CharacterSearchConfig {
 func WithCharacterSearchConfig(searchConfig CharacterSearchConfig) Option {
 	return func(s *Server) {
 		s.characterSearch = searchConfig
+	}
+}
+
+// WithCatalogSearchProviders injects source/snapshot providers for focused
+// handler tests and controlled deployments.
+func WithCatalogSearchProviders(source *game.CatalogSearchSourceProvider, snapshot *game.CatalogSearchSnapshotProvider) Option {
+	return func(s *Server) {
+		s.searchSource = source
+		s.searchSnapshot = snapshot
 	}
 }
 
@@ -209,9 +227,23 @@ func NewServer(pool *pgxpool.Pool, opts ...Option) *Server {
 	for _, opt := range opts {
 		opt(s)
 	}
+	if s.characterSearch.Mode != "local-primary" {
+		s.characterSearch.Mode = "remote"
+	}
+	if strings.TrimSpace(s.characterSearch.PolicyRevision) == "" {
+		s.characterSearch.PolicyRevision = "v1"
+	}
+	if s.searchSource == nil {
+		s.searchSource = game.NewCatalogSearchSourceProvider(func(ctx context.Context, version string) ([]game.Character, error) {
+			return catalog.CharactersForVersion(ctx, s.q, version)
+		})
+	}
+	if s.searchSnapshot == nil {
+		s.searchSnapshot = game.NewCatalogSearchSnapshotProvider(s.searchSource, nil)
+	}
 	s.announcements = multi.NewSystemAnnouncementWriter(s.rollout.SystemAnnouncementsEnabled)
 	s.catalogRuntimes = game.NewCatalogRuntimeProvider(func(ctx context.Context, version string) ([]game.Character, error) {
-		return multi.CharactersForVersion(ctx, s.q, version)
+		return catalog.CharactersForVersion(ctx, s.q, version)
 	})
 	s.guessEvaluator = game.NewGuessEvaluator(s.catalogRuntimes)
 	if state, err := s.q.GetCatalogState(context.Background()); err == nil {
@@ -244,6 +276,17 @@ func (s *Server) HealthCheck(ctx context.Context, _ openapi.HealthCheckRequestOb
 	return openapi.HealthCheck200JSONResponse{Ok: true, Service: "touhouflandre-api"}, nil
 }
 
+// SearchReadiness verifies the shared CatalogSnapshot dependency used by both
+// local index construction and authoritative remote search.
+func (s *Server) SearchReadiness(ctx context.Context) error {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = s.searchSource.GetContext(ctx, state.CurrentVersion)
+	return err
+}
+
 // SiteVisitsCreate 记录一次完整页面访问并返回递增后的全站访问数。
 func (s *Server) SiteVisitsCreate(ctx context.Context, _ openapi.SiteVisitsCreateRequestObject) (openapi.SiteVisitsCreateResponseObject, error) {
 	count, err := s.q.IncrementSiteVisitCount(ctx)
@@ -254,7 +297,22 @@ func (s *Server) SiteVisitsCreate(ctx context.Context, _ openapi.SiteVisitsCreat
 }
 
 // CharactersSearch searches the current catalog or a version-bound snapshot.
-func (s *Server) CharactersSearch(ctx context.Context, request openapi.CharactersSearchRequestObject) (openapi.CharactersSearchResponseObject, error) {
+func (s *Server) CharactersSearch(ctx context.Context, request openapi.CharactersSearchRequestObject) (response openapi.CharactersSearchResponseObject, err error) {
+	fallbackReason := "none"
+	if request.Params.XCharacterSearchFallbackReason != nil {
+		fallbackReason = normalizeFallbackReason(*request.Params.XCharacterSearchFallbackReason)
+	}
+	game.DefaultSearchMetrics.IncFallbackReason(fallbackReason)
+	slog.Debug("character search fallback reason", "reason", fallbackReason)
+	started := time.Now()
+	defer func() {
+		game.DefaultSearchMetrics.ObserveRemoteLatency(time.Since(started))
+		if err != nil {
+			game.DefaultSearchMetrics.IncRemoteOutcome("error")
+		} else {
+			game.DefaultSearchMetrics.IncRemoteOutcome("success")
+		}
+	}()
 	query := ""
 	if request.Params.Q != nil {
 		query = *request.Params.Q
@@ -303,7 +361,7 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 			}
 			return nil, internalError(err)
 		}
-		characters, err = s.charactersForVersion(ctx, session.CatalogVersion)
+		characters, err = s.searchCharactersForVersion(ctx, session.CatalogVersion, false)
 		if err != nil {
 			return nil, err
 		}
@@ -325,7 +383,7 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 			}
 			return nil, internalError(err)
 		}
-		characters, err = s.charactersForVersion(ctx, match.CatalogVersion)
+		characters, err = s.searchCharactersForVersion(ctx, match.CatalogVersion, false)
 		if err != nil {
 			return nil, err
 		}
@@ -338,12 +396,12 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 		}
 	} else if request.Params.CatalogVersion != nil {
 		var err error
-		characters, err = s.charactersForRequestedVersion(ctx, *request.Params.CatalogVersion)
+		characters, err = s.searchCharactersForVersion(ctx, *request.Params.CatalogVersion, true)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		_, currentCharacters, err := s.getCurrentCatalog(ctx)
+		_, currentCharacters, err := s.currentSearchCatalog(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -351,8 +409,13 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 	}
 
 	sortBy := "name"
-	if request.Params.Sort != nil && *request.Params.Sort == openapi.Appearance {
-		sortBy = "appearance"
+	if request.Params.Sort != nil {
+		switch *request.Params.Sort {
+		case openapi.Appearance:
+			sortBy = "appearance"
+		case openapi.Relevance:
+			sortBy = "relevance"
+		}
 	}
 	filters := []game.CharacterSearchFilter{game.EnabledAsGuessSearchFilter()}
 	if filterByWork {
@@ -374,7 +437,8 @@ func (s *Server) CharactersSearch(ctx context.Context, request openapi.Character
 
 // CatalogGet 题库摘要；题库未初始化时返回 503。
 func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObject) (openapi.CatalogGetResponseObject, error) {
-	if _, err := s.q.GetCatalogState(ctx); err != nil {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusServiceUnavailable, Code: codeCatalogNotReady, Message: "题库尚未初始化，请先运行 seed。"}
 		}
@@ -396,6 +460,7 @@ func (s *Server) CatalogGet(ctx context.Context, _ openapi.CatalogGetRequestObje
 		}
 	}
 	summary := openapi.CatalogSummary{
+		Version:      &state.CurrentVersion,
 		DailyDateKey: game.GetPuzzleDateKey(s.now(), nil),
 		Contents: []openapi.CatalogContentSummary{{
 			ContentType:       openapi.GameContentType(game.GameContentCharacter),
@@ -544,10 +609,9 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 			len(guesses) != *request.Body.ExpectedGuessCount {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeConcurrentUpdate, Message: "本回合已经发生变化，请重新提交。"}
 		}
-		for _, entry := range guesses {
-			if entry.GuessID == guessID {
-				return nil, &ApiError{Status: http.StatusConflict, Code: codeDuplicateGuess, Message: "这个角色已经猜过了。"}
-			}
+		state := sessionAttemptState(session, guesses)
+		if err := state.ValidateGuess(guessID); err != nil {
+			return nil, mapSessionAttemptError(err)
 		}
 
 		characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
@@ -565,7 +629,7 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 		if err != nil {
 			return nil, internalError(err)
 		}
-		result, err := s.guessEvaluator.Evaluate(ctx, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
+		outcome, err := s.guessEvaluator.ApplyGuess(ctx, state, session.CatalogVersion, policy, session.AnswerID, guessID, game.FieldsForQuestionScope(scope))
 		if err != nil {
 			switch {
 			case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
@@ -576,11 +640,11 @@ func (s *Server) SessionsSubmitGuess(ctx context.Context, request openapi.Sessio
 				return nil, internalError(err)
 			}
 		}
-		nextGuesses := append(guesses, result)
+		nextGuesses := append(guesses, outcome.Guess)
 		nextStatus := game.SessionPlaying
-		if result.IsCorrect {
+		if outcome.Guess.IsCorrect {
 			nextStatus = game.SessionWon
-		} else if len(nextGuesses) >= int(session.MaxGuesses) {
+		} else if outcome.State.Closed {
 			nextStatus = game.SessionLost
 		}
 
@@ -627,8 +691,9 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 		if session.Status != string(game.SessionPlaying) {
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeSessionClosed, Message: "这一局已经结束。"}
 		}
-		if len(guesses) >= int(session.MaxGuesses) {
-			return nil, &ApiError{Status: http.StatusConflict, Code: codeGuessLimitReached, Message: "本局猜测次数已用尽。"}
+		nextState, err := guessing.ConsumeAttempt(sessionAttemptState(session, guesses))
+		if err != nil {
+			return nil, mapSessionAttemptError(err)
 		}
 
 		characters, err := s.charactersForVersion(ctx, session.CatalogVersion)
@@ -643,7 +708,7 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 			return nil, &ApiError{Status: http.StatusConflict, Code: codeInvalidRequest, Message: "本局未开启单手限时。"}
 		}
 
-		sequence := len(guesses) + 1
+		sequence := nextState.Used
 		nextGuesses := append(guesses, game.GuessResult{
 			Kind:      "timeout",
 			GuessID:   fmt.Sprintf("__timeout__:%d", sequence),
@@ -652,7 +717,7 @@ func (s *Server) SessionsTimeout(ctx context.Context, request openapi.SessionsTi
 			Feedback:  []game.FieldFeedback{},
 		})
 		nextStatus := game.SessionPlaying
-		if len(nextGuesses) >= int(session.MaxGuesses) {
+		if nextState.Closed {
 			nextStatus = game.SessionLost
 		}
 

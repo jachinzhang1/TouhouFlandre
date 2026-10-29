@@ -53,6 +53,30 @@ func TestCharacterSearchQuestionScopeFilterDefaultsOpenAndParsesFalse(t *testing
 	}
 }
 
+func TestCharacterSearchModeDefaultsRemoteAndRejectsUnknown(t *testing.T) {
+	for _, value := range []string{"", "unknown", "LOCAL_PRIMARY"} {
+		t.Setenv("CHARACTER_SEARCH_MODE", value)
+		if got := CharacterSearchMode(); got != "remote" {
+			t.Fatalf("mode %q = %q, want remote", value, got)
+		}
+	}
+	t.Setenv("CHARACTER_SEARCH_MODE", " local-primary ")
+	if got := CharacterSearchMode(); got != "local-primary" {
+		t.Fatalf("normalized local mode = %q", got)
+	}
+}
+
+func TestCharacterSearchPolicyRevisionDefaultsAndTrims(t *testing.T) {
+	t.Setenv("CHARACTER_SEARCH_POLICY_REVISION", "")
+	if got := CharacterSearchPolicyRevision(); got != "v1" {
+		t.Fatalf("default revision = %q", got)
+	}
+	t.Setenv("CHARACTER_SEARCH_POLICY_REVISION", "  repair-2 ")
+	if got := CharacterSearchPolicyRevision(); got != "repair-2" {
+		t.Fatalf("trimmed revision = %q", got)
+	}
+}
+
 func TestAnswerMatchPolicyDefaultsAndValidation(t *testing.T) {
 	t.Setenv("ANSWER_MATCH_POLICY", "")
 	if got := AnswerMatchPolicy(); got != "public_fields_v1" {

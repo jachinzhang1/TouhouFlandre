@@ -22,3 +22,10 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     configurable: true,
   });
 }
+
+if (typeof Element.prototype.scrollIntoView === "undefined") {
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    value: () => {},
+    configurable: true,
+  });
+}

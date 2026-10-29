@@ -1,0 +1,17 @@
+# GET /api/catalog/search-policy
+get:
+  operationId: catalog_search_policy
+  tags:
+    - catalog
+  summary: 获取角色搜索策略
+  responses:
+    "200":
+      description: 当前角色搜索策略
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/character.yaml#/CatalogSearchPolicy"

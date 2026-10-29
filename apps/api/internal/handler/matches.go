@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -32,7 +33,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		}
 		return internalError(err)
 	}
-	characters, err := multi.CharactersForVersion(ctx, q, state.CurrentVersion)
+	characters, err := catalog.CharactersForVersion(ctx, q, state.CurrentVersion)
 	if err != nil {
 		return internalError(err)
 	}
@@ -123,7 +124,7 @@ func (s *Server) startMatchTx(ctx context.Context, q *repo.Queries, room repo.Mu
 		return internalError(err)
 	}
 	runtime, err := s.catalogRuntimes.GetWithLoader(ctx, state.CurrentVersion, s.answerMatchPolicy, func(ctx context.Context, version string) ([]game.Character, error) {
-		return multi.CharactersForVersion(ctx, q, version)
+		return catalog.CharactersForVersion(ctx, q, version)
 	})
 	if err != nil {
 		return internalError(err)
@@ -384,9 +385,9 @@ func (s *Server) RoomsSubmitGuess(ctx context.Context, request openapi.RoomsSubm
 // computeFeedback 校验角色并计算反馈（真实列序状态数组）。
 func (s *Server) computeFeedback(ctx context.Context, q *repo.Queries, catalogVersion, answerID, guessID string, policy game.AnswerMatchPolicy, fields []game.GuessField) (game.Character, []string, game.MatchKind, bool, *ApiError) {
 	loader := func(ctx context.Context, version string) ([]game.Character, error) {
-		return multi.CharactersForVersion(ctx, q, version)
+		return catalog.CharactersForVersion(ctx, q, version)
 	}
-	result, err := s.guessEvaluator.EvaluateWithLoader(ctx, catalogVersion, policy, answerID, guessID, fields, loader)
+	result, err := s.guessEvaluator.EvaluateRulesWithLoader(ctx, catalogVersion, policy, answerID, guessID, fields, loader)
 	if err != nil {
 		switch {
 		case errors.Is(err, game.ErrGuessCharacterMissing), errors.Is(err, game.ErrGuessCharacterDisabled):
@@ -435,7 +436,7 @@ func (s *Server) guessAcceptedResponse(ctx context.Context, roundIndex int, q *r
 	if err := json.Unmarshal(guess.Statuses, &statuses); err != nil {
 		return nil, internalError(err)
 	}
-	characters, err := multi.CharactersForVersion(ctx, q, catalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, q, catalogVersion)
 	if err != nil {
 		return nil, internalError(err)
 	}

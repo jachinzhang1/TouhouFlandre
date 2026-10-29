@@ -1,0 +1,365 @@
+{
+  "contract": "hso.search-ranking.v2",
+  "cases": [
+    {
+      "name": "exact before prefix before substring",
+      "query": "reimu",
+      "descending": false,
+      "entries": [
+        {
+          "id": "substring",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "hakureireimu", "source": "en" }],
+          "expectedRank": {
+            "kind": "substring",
+            "fieldPriority": 1,
+            "position": 7,
+            "lengthGap": 7
+          }
+        },
+        {
+          "id": "prefix",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "reimuhakurei", "source": "en" }],
+          "expectedRank": {
+            "kind": "prefix",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 7
+          }
+        },
+        {
+          "id": "exact",
+          "appearanceOrder": 3,
+          "searchTerms": [{ "value": "reimu", "source": "en" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "unmatched",
+          "appearanceOrder": 0,
+          "searchTerms": [{ "value": "marisa", "source": "zhHans" }],
+          "expectedRank": null
+        }
+      ],
+      "expectedIds": ["exact", "prefix", "substring"]
+    },
+    {
+      "name": "match kind wins before field priority",
+      "query": "reimu",
+      "descending": false,
+      "entries": [
+        {
+          "id": "chinese-prefix",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "reimuhakurei", "source": "zhHans" }],
+          "expectedRank": {
+            "kind": "prefix",
+            "fieldPriority": 0,
+            "position": 0,
+            "lengthGap": 7
+          }
+        },
+        {
+          "id": "alias-exact",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "reimu", "source": "alias" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 2,
+            "position": 0,
+            "lengthGap": 0
+          }
+        }
+      ],
+      "expectedIds": ["alias-exact", "chinese-prefix"]
+    },
+    {
+      "name": "four field groups order equal matches",
+      "query": "灵梦",
+      "descending": false,
+      "entries": [
+        {
+          "id": "work",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "灵梦", "source": "workTitle" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 3,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "alias",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "灵梦", "source": "alias" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 2,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "other-name",
+          "appearanceOrder": 3,
+          "searchTerms": [{ "value": "灵梦", "source": "ja" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "chinese-name",
+          "appearanceOrder": 4,
+          "searchTerms": [{ "value": "灵梦", "source": "zhHans" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 0,
+            "position": 0,
+            "lengthGap": 0
+          }
+        }
+      ],
+      "expectedIds": ["chinese-name", "other-name", "alias", "work"]
+    },
+    {
+      "name": "field priority wins before position and length",
+      "query": "灵梦",
+      "descending": false,
+      "entries": [
+        {
+          "id": "early-short-alias",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "a灵梦", "source": "alias" }],
+          "expectedRank": {
+            "kind": "substring",
+            "fieldPriority": 2,
+            "position": 1,
+            "lengthGap": 1
+          }
+        },
+        {
+          "id": "late-long-chinese",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "abc灵梦long", "source": "zhHant" }],
+          "expectedRank": {
+            "kind": "substring",
+            "fieldPriority": 0,
+            "position": 3,
+            "lengthGap": 7
+          }
+        }
+      ],
+      "expectedIds": ["late-long-chinese", "early-short-alias"]
+    },
+    {
+      "name": "shorter prefix wins within one field group",
+      "query": "aki",
+      "descending": false,
+      "entries": [
+        {
+          "id": "long-prefix",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "akishizuha", "source": "romaji" }],
+          "expectedRank": {
+            "kind": "prefix",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 7
+          }
+        },
+        {
+          "id": "short-prefix",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "akiko", "source": "en" }],
+          "expectedRank": {
+            "kind": "prefix",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 2
+          }
+        }
+      ],
+      "expectedIds": ["short-prefix", "long-prefix"]
+    },
+    {
+      "name": "earlier unicode substring wins within one field group",
+      "query": "灵梦",
+      "descending": false,
+      "entries": [
+        {
+          "id": "late-short",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "ab灵梦", "source": "alias" }],
+          "expectedRank": {
+            "kind": "substring",
+            "fieldPriority": 2,
+            "position": 2,
+            "lengthGap": 2
+          }
+        },
+        {
+          "id": "early-long",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "a灵梦long", "source": "alias" }],
+          "expectedRank": {
+            "kind": "substring",
+            "fieldPriority": 2,
+            "position": 1,
+            "lengthGap": 5
+          }
+        }
+      ],
+      "expectedIds": ["early-long", "late-short"]
+    },
+    {
+      "name": "best field source represents the entry",
+      "query": "reimu",
+      "descending": false,
+      "entries": [
+        {
+          "id": "multiple-sources",
+          "appearanceOrder": 2,
+          "searchTerms": [
+            { "value": "reimu", "source": "alias" },
+            { "value": "reimu", "source": "zhHans" }
+          ],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 0,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "other-name",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "reimu", "source": "en" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        }
+      ],
+      "expectedIds": ["multiple-sources", "other-name"]
+    },
+    {
+      "name": "appearance and id break equal-rank ties",
+      "query": "aki",
+      "descending": false,
+      "entries": [
+        {
+          "id": "later",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "aki", "source": "romaji" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "zeta",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "aki", "source": "en" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "alpha",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "aki", "source": "ja" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        }
+      ],
+      "expectedIds": ["alpha", "zeta", "later"]
+    },
+    {
+      "name": "descending reverses rank but not stable ties",
+      "query": "reimu",
+      "descending": true,
+      "entries": [
+        {
+          "id": "chinese",
+          "appearanceOrder": 3,
+          "searchTerms": [{ "value": "reimu", "source": "zhHans" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 0,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "other-name",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "reimu", "source": "en" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 1,
+            "position": 0,
+            "lengthGap": 0
+          }
+        },
+        {
+          "id": "alias",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "reimu", "source": "alias" }],
+          "expectedRank": {
+            "kind": "exact",
+            "fieldPriority": 2,
+            "position": 0,
+            "lengthGap": 0
+          }
+        }
+      ],
+      "expectedIds": ["alias", "other-name", "chinese"]
+    },
+    {
+      "name": "empty query falls back to appearance and id",
+      "query": "",
+      "descending": true,
+      "entries": [
+        {
+          "id": "later",
+          "appearanceOrder": 2,
+          "searchTerms": [{ "value": "reimu", "source": "zhHans" }],
+          "expectedRank": null
+        },
+        {
+          "id": "zeta",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "marisa", "source": "en" }],
+          "expectedRank": null
+        },
+        {
+          "id": "alpha",
+          "appearanceOrder": 1,
+          "searchTerms": [{ "value": "sanae", "source": "alias" }],
+          "expectedRank": null
+        }
+      ],
+      "expectedIds": ["alpha", "zeta", "later"]
+    }
+  ]
+}

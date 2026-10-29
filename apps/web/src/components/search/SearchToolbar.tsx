@@ -44,7 +44,7 @@ export function SearchToolbar({
       <PaperSearchInput
         ariaLabel="搜索角色"
         onChange={handleQueryChange}
-        placeholder="输入关键词搜索：灵梦 / Reimu / 红白……"
+        placeholder="角色名 / 别名 / 咲夜@红魔乡"
         value={query}
       />
       <div className="catalog-controls" aria-label="角色目录显示设置">

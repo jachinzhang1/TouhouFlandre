@@ -24,6 +24,10 @@ import { MatchBoard } from "../../../components/multiplayer/MatchBoard";
 import { MemberPaginator } from "../../../components/multiplayer/MemberPaginator";
 import { memberScoreEntries } from "../../../components/multiplayer/MemberScoreStrip";
 import {
+  useCharacterSearchPrefetch,
+  type MultiplayerCharacterSearchContext,
+} from "../../../hooks/useCharacterSearch";
+import {
   boardResultBadges,
   formatBoardTitle,
 } from "../../../components/multiplayer/boardMeta";
@@ -82,6 +86,19 @@ export function RaceMatchExperience({
   const match = state.match;
   const round = state.round;
   const roomStatus = state.room?.status;
+  const searchContext: MultiplayerCharacterSearchContext | undefined =
+    match && state.room
+      ? {
+          kind: "multiplayer-match",
+          roomId: state.room.roomId,
+          matchIndex: match.matchIndex,
+          catalogVersion: match.catalogVersion,
+          selectedCharacterIds:
+            match.questionScope?.selectedCharacterIds ??
+            state.questionScope?.selectedCharacterIds,
+        }
+      : undefined;
+  useCharacterSearchPrefetch(searchContext);
   const viewerStatus = match?.scores.find(
     (score) => score.memberId === memberId,
   )?.status;
@@ -245,15 +262,8 @@ export function RaceMatchExperience({
       <GuessInputBar
         onGuess={actions.submitGuess}
         disabled={!hasOpponent || raceReadOnly}
-        searchContext={
-          state.room
-            ? {
-                kind: "multiplayer-match",
-                roomId: state.room.roomId,
-                matchIndex: match.matchIndex,
-              }
-            : undefined
-        }
+        key={`${state.room?.roomId ?? ""}:${match.matchIndex}`}
+        searchContext={searchContext}
         guessedIds={guessedIds}
       />
     ) : null;

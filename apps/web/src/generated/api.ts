@@ -109,6 +109,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog/{catalogVersion}/search-index/{indexSchemaVersion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取版本化角色搜索索引 */
+        get: operations["catalog_search_index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog/search-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 获取角色搜索策略 */
+        get: operations["catalog_search_policy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/puzzles/{mode}": {
         parameters: {
             query?: never;
@@ -120,6 +154,23 @@ export interface paths {
         put?: never;
         /** 创建题局 */
         post: operations["puzzles_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/puzzles/{mode}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 恢复或创建单人题局 */
+        post: operations["puzzles_resolve"];
         delete?: never;
         options?: never;
         head?: never;
@@ -565,7 +616,7 @@ export interface components {
         /** @description 统一错误结构。code 为稳定错误码，error 为人类可读消息（旧客户端仅读取该字段）。 */
         ErrorResponse: {
             /** @enum {string} */
-            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT" | "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS";
+            code: "INVALID_REQUEST" | "INVALID_GUESS" | "SESSION_NOT_FOUND" | "SESSION_CLOSED" | "DUPLICATE_GUESS" | "CONCURRENT_UPDATE" | "UNSUPPORTED_CONTENT_TYPE" | "CATALOG_NOT_READY" | "CATALOG_VERSION_NOT_FOUND" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL" | "ROOM_NOT_FOUND" | "ROOM_FULL" | "ROOM_CLOSED" | "GUEST_UNAUTHORIZED" | "SPECTATOR_READ_ONLY" | "INVALID_FORMAT" | "INVALID_PLAYER_LIMIT" | "ROOM_SETTINGS_LOCKED" | "MATCH_ALREADY_STARTED" | "REMATCH_NOT_AVAILABLE" | "ROUND_NOT_ACTIVE" | "ROUND_ENDED" | "NOT_YOUR_TURN" | "TURN_EXPIRED" | "GUESS_LIMIT_REACHED" | "RATE_LIMITED" | "CHAT_MESSAGE_INVALID" | "CHAT_CURSOR_INVALID" | "CHAT_SEND_FORBIDDEN" | "CHAT_IDEMPOTENCY_CONFLICT" | "CHAT_CURSOR_AHEAD" | "CHAT_RESYNC_REQUIRED" | "FEATURE_DISABLED" | "ENCOUNTER_NOT_FOUND" | "NOT_ENCOUNTER_PLAYER" | "ENCOUNTER_ENDED" | "IDEMPOTENCY_CONFLICT" | "QUESTION_POOL_TOO_SMALL_FOR_PAIRINGS";
             error: string;
         };
         /** @description 站点访问数记录结果。 */
@@ -660,10 +711,57 @@ export interface components {
             visibleFieldCount: number;
         };
         CatalogSummary: {
+            /** @description 当前题库版本；旧 API 可以省略，新 API 必须返回非空值。 */
+            version?: string;
             /** @description 业务日期键（UTC 每日题日期，格式 YYYY-MM-DD）。 */
             dailyDateKey: string;
             contents: components["schemas"]["CatalogContentSummary"][];
             works: components["schemas"]["Work"][];
+        };
+        /** @description 版本化角色搜索索引中的公开角色条目，不包含答案专用字段。 */
+        CatalogSearchIndexEntry: {
+            id: string;
+            name: string;
+            subtitle: string;
+            initials: string;
+            avatarUrl: string;
+            appearanceOrder: number;
+            workId: string;
+            firstAppearance: {
+                workTitle: string;
+                releaseYear: number;
+            };
+            species: string[];
+            locations: string[];
+            affiliations: string[];
+            hairColors: components["schemas"]["HairColor"][];
+            searchTerms: components["schemas"]["CatalogSearchTerm"][];
+            nameSortKey: string;
+        };
+        /** @description 已标准化且保留字段来源的搜索词条。 */
+        CatalogSearchTerm: {
+            value: string;
+            source: components["schemas"]["CatalogSearchTermSource"];
+        };
+        /**
+         * @description 搜索词条的原始字段来源，用于相关度排序中的字段优先级。
+         * @enum {string}
+         */
+        CatalogSearchTermSource: "zhHans" | "zhHant" | "ja" | "en" | "romaji" | "alias" | "workTitle" | "workId" | "workPinyinInitials" | "mainlineIndex";
+        CatalogSearchIndex: {
+            catalogVersion: string;
+            indexSchemaVersion: number;
+            entries: components["schemas"]["CatalogSearchIndexEntry"][];
+        };
+        CatalogSearchPolicy: {
+            /** @enum {string} */
+            mode: "remote" | "local-primary";
+            indexSchemaVersion: number;
+            revision: string;
+            /** @enum {string} */
+            gameScopeMode: "strict" | "full";
+            /** @enum {integer} */
+            revalidateAfterSeconds: 60;
         };
         /** @enum {string} */
         QuestionDifficultyPreset: "easy" | "normal" | "hard" | "lunatic" | "extra";
@@ -732,6 +830,12 @@ export interface components {
             defaultQuestionScope: components["schemas"]["QuestionScopeConfig"];
         };
         PuzzleCreateRequest: {
+            questionScope?: components["schemas"]["QuestionScopeConfigInput"];
+            difficulty?: components["schemas"]["DailyQuestionDifficulty"];
+        };
+        PuzzleResolveRequest: {
+            idempotencyKey: string;
+            resumeSessionId?: string;
             questionScope?: components["schemas"]["QuestionScopeConfigInput"];
             difficulty?: components["schemas"]["DailyQuestionDifficulty"];
         };
@@ -814,6 +918,16 @@ export interface components {
         PuzzleResponse: {
             puzzleLabel: string;
             session: components["schemas"]["PublicGameSession"];
+        };
+        /** @enum {string} */
+        PuzzleResolution: "created" | "resumed";
+        /** @description 单人题局恢复或创建结果。 */
+        PuzzleResolveResponse: {
+            puzzleLabel: string;
+            session: components["schemas"]["PublicGameSession"];
+            resolution: components["schemas"]["PuzzleResolution"];
+            /** @description 请求的旧会话与当前 mode、日期或难度不匹配时返回。 */
+            supersededSession?: components["schemas"]["PublicGameSession"];
         };
         /** @description 服务端字段注册表提供的稳定字段 key。 */
         GuessFieldKey: string;
@@ -1481,7 +1595,7 @@ export interface operations {
     characters_search: {
         parameters: {
             query?: {
-                /** @description 原始用户查询词（可为空）；服务端统一归一化并按单个搜索字段匹配。 */
+                /** @description 原始用户查询词（可为空）。不含 ASCII @ 时，仅按角色字段匹配； 包含时以第一个 @ 分隔角色字段查询和初登场作品字段查询，两侧分别匹配并取交集。 */
                 q?: string;
                 /** @description 单人游戏会话 id；提供后按该会话冻结的题库版本和题库范围搜索。 */
                 sessionId?: string;
@@ -1495,10 +1609,15 @@ export interface operations {
                 workIds?: string;
                 limit?: number;
                 offset?: number;
-                sort?: "name" | "appearance";
+                /** @description 排序键；relevance 按输入与单个搜索词条的连续匹配程度排序。 */
+                sort?: "name" | "appearance" | "relevance";
+                /** @description 排序方向；relevance 使用 asc 时最优匹配排在前面。 */
                 direction?: "asc" | "desc";
             };
-            header?: never;
+            header?: {
+                /** @description 可选的低基数远程回退观测原因；不参与搜索语义。 */
+                "X-Character-Search-Fallback-Reason"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1629,6 +1748,88 @@ export interface operations {
             };
         };
     };
+    catalog_search_index: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogVersion: string;
+                indexSchemaVersion: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 不可变角色搜索索引 */
+            200: {
+                headers: {
+                    ETag?: string;
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSearchIndex"];
+                };
+            };
+            /** @description 索引内容未变化 */
+            304: {
+                headers: {
+                    ETag?: string;
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 索引 schema 版本不支持 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库版本不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库未初始化或快照不可读 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    catalog_search_policy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 当前角色搜索策略 */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSearchPolicy"];
+                };
+            };
+        };
+    };
     puzzles_create: {
         parameters: {
             query?: never;
@@ -1655,6 +1856,68 @@ export interface operations {
             };
             /** @description 模式不合法 */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库中没有可作为答案的角色 */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 题库未初始化 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    puzzles_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mode: "daily" | "random";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PuzzleResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description 题局恢复或创建成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PuzzleResolveResponse"];
+                };
+            };
+            /** @description 请求或模式不合法 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 幂等键已被其他请求指纹使用 */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

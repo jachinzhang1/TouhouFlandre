@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi/core"
@@ -539,7 +540,7 @@ func (s *Sweeper) advanceRound(ctx context.Context, roundID, roomID, matchID str
 	}
 
 	// 开下一局（round_count+1 + 3×N 上限；CreateRound 影响 0 行 = 达上限 → round_cap）
-	characters, err := CharactersForVersion(ctx, q, match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, q, match.CatalogVersion)
 	if err != nil {
 		return err
 	}

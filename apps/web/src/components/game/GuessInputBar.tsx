@@ -10,6 +10,7 @@ import {
   useCharacterSearch,
   type MultiplayerCharacterSearchContext,
 } from "../../hooks/useCharacterSearch";
+import { useActiveOptionScrollRef } from "../../hooks/useActiveOptionScrollRef";
 import {
   Paper,
   PaperButton,
@@ -46,10 +47,13 @@ export function GuessInputBar({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const submittingRef = useRef(false);
+  const activeSuggestionScrollRef =
+    useActiveOptionScrollRef<HTMLButtonElement>();
   const { results, loading, error } = useCharacterSearch(query, {
     context: searchContext,
     enabled: Boolean(searchContext) && !disabled && !submitting,
     limit: GAME_SEARCH_RESULT_LIMIT,
+    sort: "relevance",
   });
   const selectableResults = results.filter(
     (result) => !guessedIds.has(result.id),
@@ -174,7 +178,7 @@ export function GuessInputBar({
                 placeholder={
                   disabled
                     ? (statusMessage ?? "等待当前轮次……")
-                    : "输入角色名、别名或初登场作品"
+                    : "角色名或别名，@ 筛选初登场作品"
                 }
                 role="combobox"
                 value={query}
@@ -187,7 +191,7 @@ export function GuessInputBar({
                 {loading ? (
                   <div className="suggestion-state" role="status">
                     <Loader2 className="spin" size={17} aria-hidden="true" />
-                    <span>正在搜索</span>
+                    <span>正在加载搜索索引</span>
                   </div>
                 ) : error ? (
                   <div
@@ -204,6 +208,11 @@ export function GuessInputBar({
                         className="suggestion paper-data-table-row"
                         id={`${listboxId}-${result.id}`}
                         key={result.id}
+                        ref={
+                          highlightIndex === index
+                            ? activeSuggestionScrollRef
+                            : undefined
+                        }
                         onClick={() => {
                           selectResult(result);
                           void submitGuess(result.id);

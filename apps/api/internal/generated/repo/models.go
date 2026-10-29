@@ -297,6 +297,17 @@ type MultiTurn struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type PuzzleResolveIdempotency struct {
+	IdempotencyKey      string             `json:"idempotency_key"`
+	RequestFingerprint  string             `json:"request_fingerprint"`
+	Mode                string             `json:"mode"`
+	SessionID           pgtype.Text        `json:"session_id"`
+	Resolution          pgtype.Text        `json:"resolution"`
+	SupersededSessionID pgtype.Text        `json:"superseded_session_id"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt           pgtype.Timestamptz `json:"expires_at"`
+}
+
 type RoomEvent struct {
 	ID         int64              `json:"id"`
 	RoomID     string             `json:"room_id"`

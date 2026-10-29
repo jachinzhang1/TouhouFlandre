@@ -276,7 +276,7 @@ function SearchLoadingState() {
   return (
     <div className="catalog-state" role="status">
       <Loader2 className="spin" size={20} aria-hidden="true" />
-      <span>正在加载题库</span>
+      <span>正在加载搜索索引</span>
     </div>
   );
 }

@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react";
 import { message as antdMessage } from "antd";
-import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -28,19 +27,33 @@ import {
   QUESTION_DIFFICULTY_LABELS,
   DAILY_QUESTION_DIFFICULTY_PRESETS,
   isUnlimitedGuessLimit,
+  normalizeQuestionScope,
+  normalizeQuestionScopeRules,
 } from "@touhouflandre/shared";
 import type {
   CharacterSearchResult,
   DailyQuestionDifficulty,
   FieldFeedback,
   PublicGameSession,
+  QuestionScopeConfig,
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
+import { SuggestionPopover } from "../game/SuggestionPopover";
+import { PaperSearchInput } from "../paper";
 import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { modeConfig } from "../../gameModes";
-import { useCharacterSearch } from "../../hooks/useCharacterSearch";
+import {
+  useCharacterSearch,
+  useCharacterSearchPrefetch,
+} from "../../hooks/useCharacterSearch";
+import { useActiveOptionScrollRef } from "../../hooks/useActiveOptionScrollRef";
+import {
+  createPuzzleApi,
+  PuzzleResolveUnsupportedError,
+  type PuzzleResolveResponse,
+} from "../../lib/puzzleApi";
 import { api } from "../../lib/api";
 import { useForegroundTimer, useWallClockTimer } from "../../stats/timer";
 import {
@@ -51,12 +64,18 @@ import {
 } from "../../stats/singleRecorder";
 import {
   catalogFullToSnapshot,
-  loadLocalQuestionScope,
+  readLocalQuestionScopeInput,
+  saveLocalQuestionScope,
 } from "../../lib/questionScopeStorage";
 
 const GAME_SEARCH_RESULT_LIMIT = 12;
 const DEFAULT_DAILY_DIFFICULTY: DailyQuestionDifficulty = "normal";
 const DAILY_DIFFICULTIES = DAILY_QUESTION_DIFFICULTY_PRESETS;
+
+const newResolveIdempotencyKey = () =>
+  typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const writeStatsInBackground = (operation: Promise<unknown>) => {
   void operation.catch((error) => console.error("本地单人统计写入失败", error));
@@ -140,6 +159,37 @@ const validTimestamp = (value: unknown): number | undefined =>
     ? value
     : undefined;
 
+const sameEffectiveQuestionScope = (
+  left: QuestionScopeConfig,
+  right: QuestionScopeConfig | undefined,
+) => {
+  if (
+    !right ||
+    left.mode !== right.mode ||
+    left.difficulty !== right.difficulty ||
+    left.selectedCharacterIds.length !== right.selectedCharacterIds.length ||
+    right.selectedCharacterIds.length === 0
+  ) {
+    return false;
+  }
+  const selected = new Set(left.selectedCharacterIds);
+  if (!right.selectedCharacterIds.every((id) => selected.has(id))) return false;
+
+  const leftRules = normalizeQuestionScopeRules(left.rules);
+  const rightRules = normalizeQuestionScopeRules(right.rules);
+  const leftModes = Object.entries(leftRules.fieldModes);
+  return (
+    leftModes.length === Object.keys(rightRules.fieldModes).length &&
+    leftModes.every(
+      ([key, fieldMode]) => rightRules.fieldModes[key] === fieldMode,
+    ) &&
+    leftRules.turnLimit.enabled === rightRules.turnLimit.enabled &&
+    leftRules.turnLimit.seconds === rightRules.turnLimit.seconds &&
+    leftRules.guessLimit.enabled === rightRules.guessLimit.enabled &&
+    leftRules.guessLimit.maxGuesses === rightRules.guessLimit.maxGuesses
+  );
+};
+
 const formatGuessDuration = (timings: number[], index: number) => {
   const completedAt = timings[index];
   const previousCompletedAt = index > 0 ? timings[index - 1] : 0;
@@ -147,80 +197,6 @@ const formatGuessDuration = (timings: number[], index: number) => {
   if (index > 0 && !Number.isFinite(previousCompletedAt)) return "--:--";
   return formatDuration((completedAt - previousCompletedAt) / 1000);
 };
-
-function SuggestionPopover({
-  anchor,
-  children,
-  id,
-  open,
-}: {
-  anchor: React.RefObject<HTMLLabelElement | null>;
-  children: React.ReactNode;
-  id: string;
-  open: boolean;
-}) {
-  const [position, setPosition] = useState<{
-    bottom?: number;
-    left: number;
-    maxHeight: number;
-    top?: number;
-    width: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
-
-    const updatePosition = () => {
-      const element = anchor.current;
-      if (!element) return;
-      const rect = element.getBoundingClientRect();
-      const margin = 12;
-      const gap = 7;
-      const width = Math.min(rect.width, window.innerWidth - margin * 2);
-      const left = Math.min(
-        Math.max(margin, rect.left),
-        window.innerWidth - width - margin,
-      );
-      const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
-      const spaceAbove = rect.top - gap - margin;
-      const placeBelow = spaceBelow >= 220 || spaceBelow >= spaceAbove;
-      const availableSpace = placeBelow ? spaceBelow : spaceAbove;
-
-      setPosition({
-        bottom: placeBelow ? undefined : window.innerHeight - rect.top + gap,
-        left,
-        maxHeight: Math.max(80, Math.min(320, availableSpace)),
-        top: placeBelow ? rect.bottom + gap : undefined,
-        width,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [anchor, open]);
-
-  if (!open || !position) return null;
-  return createPortal(
-    <div
-      className="suggestion-list"
-      id={id}
-      role="listbox"
-      aria-label="搜索建议"
-      style={position}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
 
 function DailyDifficultyButtons({
   active,
@@ -278,10 +254,32 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const [messageApi, messageContextHolder] = antdMessage.useMessage();
   const searchBoxRef = useRef<HTMLLabelElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeSuggestionScrollRef =
+    useActiveOptionScrollRef<HTMLButtonElement>();
   const loadRequestIdRef = useRef(0);
+  const initialLoadModeRef = useRef<SinglePlayerGameMode | null>(null);
+  const loadCleanupVersionRef = useRef(0);
+  const puzzleApi = useMemo(() => createPuzzleApi(), []);
   const [session, setSession] = useState<PublicGameSession | null>(null);
   const [puzzleLabel, setPuzzleLabel] = useState(modeConfig[mode].puzzleLabel);
   const [query, setQuery] = useState("");
+  const searchContext = useMemo(
+    () =>
+      session
+        ? {
+            kind: "single-session" as const,
+            sessionId: session.id,
+            catalogVersion: session.catalogVersion,
+            selectedCharacterIds: session.questionScope?.selectedCharacterIds,
+          }
+        : undefined,
+    [
+      session?.catalogVersion,
+      session?.id,
+      session?.questionScope?.selectedCharacterIds,
+    ],
+  );
+  useCharacterSearchPrefetch(searchContext);
   const {
     error: searchError,
     loading: searchLoading,
@@ -290,9 +288,8 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   } = useCharacterSearch(query, {
     enabled: Boolean(session),
     limit: GAME_SEARCH_RESULT_LIMIT,
-    context: session
-      ? { kind: "single-session", sessionId: session.id }
-      : undefined,
+    context: searchContext,
+    sort: "relevance",
   });
   const [selectedId, setSelectedId] = useState("");
   const [activeSuggestionId, setActiveSuggestionId] = useState("");
@@ -415,9 +412,17 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     setDailyStatuses((current) => ({ ...current, [difficulty]: status }));
   };
 
-  const refreshDailyStatuses = async (dateKey: string) => {
+  const refreshDailyStatuses = async (
+    dateKey: string,
+    activeDifficulty: DailyQuestionDifficulty,
+    activeStatus: DailySessionStatus,
+    requestId: number,
+  ) => {
     const entries = await Promise.all(
       DAILY_DIFFICULTIES.map(async (difficulty) => {
+        if (difficulty === activeDifficulty) {
+          return [difficulty, activeStatus] as const;
+        }
         const storedValue = localStorage.getItem(dailyStorageKey(difficulty));
         if (!storedValue) return [difficulty, null] as const;
         try {
@@ -431,6 +436,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
         }
       }),
     );
+    if (loadRequestIdRef.current !== requestId) return;
     setDailyStatuses(
       entries.reduce((acc, [difficulty, status]) => {
         acc[difficulty] = status;
@@ -461,149 +467,211 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     if (nextMode === "daily") setDailyDifficulty(difficulty);
 
     try {
-      let dailyDateKey: string | undefined;
-      if (nextMode === "daily") {
-        dailyDateKey = (await api.catalog()).dailyDateKey;
-        if (!isCurrentRequest()) return;
-        void refreshDailyStatuses(dailyDateKey);
-      }
       const storedValue = localStorage.getItem(
         storageKeyForMode(nextMode, difficulty),
       );
-      if (storedValue) {
-        try {
-          const storedSession = parseStoredSession(storedValue);
-          const restored = await api.getSession(storedSession.id);
+      const storedSession = storedValue
+        ? parseStoredSession(storedValue)
+        : undefined;
+      const requestBody = {
+        idempotencyKey: newResolveIdempotencyKey(),
+        resumeSessionId: storedSession?.id,
+        ...(nextMode === "daily"
+          ? { difficulty }
+          : { questionScope: readLocalQuestionScopeInput() }),
+      };
+
+      let resolved: PuzzleResolveResponse;
+      try {
+        resolved = await puzzleApi.resolvePuzzle(nextMode, requestBody);
+      } catch (error) {
+        if (!(error instanceof PuzzleResolveUnsupportedError)) throw error;
+
+        let dailyDateKey: string | undefined;
+        if (nextMode === "daily") {
+          dailyDateKey = (await api.catalog()).dailyDateKey;
           if (!isCurrentRequest()) return;
-          const restoredDifficulty = restored.questionScope?.difficulty;
-          const mismatchedSession =
-            restored.mode !== nextMode ||
-            (nextMode === "daily" &&
-              (restored.puzzleKey !== dailyDateKey ||
-                restoredDifficulty !== difficulty));
-          if (mismatchedSession) {
-            const oldTimings = normalizeGuessTimings(
-              storedSession.guessCompletedElapsedMs ??
-                storedSession.guessCompletedElapsedSeconds?.map(
-                  (value) => value * 1000,
-                ),
-              restored.guesses.length,
-            );
-            const oldElapsed = Math.max(
-              0,
-              storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0,
-            );
-            if (restored.status !== "playing") {
-              writeStatsInBackground(
-                recordSingleSession(restored, nextMode, oldElapsed, oldTimings),
-              );
-            } else {
-              writeStatsInBackground(deleteSingleStatsDraft(restored.id));
+        }
+        const fallbackRandomScope =
+          nextMode === "random"
+            ? normalizeQuestionScope(
+                readLocalQuestionScopeInput(),
+                catalogFullToSnapshot(await api.catalogFull()),
+              ).config
+            : undefined;
+        if (!isCurrentRequest()) return;
+        let restored: PublicGameSession | undefined;
+        if (storedSession) {
+          try {
+            restored = await api.getSession(storedSession.id);
+          } catch (restoreError) {
+            if (
+              typeof restoreError !== "object" ||
+              restoreError === null ||
+              !("status" in restoreError) ||
+              restoreError.status !== 404
+            ) {
+              throw restoreError;
             }
-            localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
-          } else {
-            const localTimings = normalizeGuessTimings(
-              storedSession.guessCompletedElapsedMs ??
-                storedSession.guessCompletedElapsedSeconds?.map(
-                  (value) => value * 1000,
-                ),
-              restored.guesses.length,
-            );
-            const draft = await loadSingleStatsDraft(restored.id);
-            const restoredTimings = localTimings.length
-              ? localTimings
-              : normalizeGuessTimings(
-                  draft?.guessCompletedElapsedMs,
-                  restored.guesses.length,
-                );
-            const baseElapsed = Math.max(
-              storedSession.activeElapsedMs ?? 0,
-              draft?.activeElapsedMs ?? 0,
-              restoredTimings.at(-1) ?? 0,
-            );
-            const savedAtMs =
-              validTimestamp(storedSession.savedAtMs) ??
-              validTimestamp(
-                draft?.updatedAt ? Date.parse(draft.updatedAt) : undefined,
-              );
-            const restoredElapsed =
-              nextMode === "daily" &&
-              restored.status === "playing" &&
-              restored.guesses.length > 0 &&
-              savedAtMs
-                ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
-                : baseElapsed;
-            setSession(restored);
-            setGuessCompletedElapsedMs(restoredTimings);
-            setInitialElapsedMs(restoredElapsed);
-            setPuzzleLabel(
+          }
+        }
+        if (!isCurrentRequest()) return;
+        const restoredDifficulty = restored?.questionScope?.difficulty;
+        const resumable =
+          restored !== undefined &&
+          restored.mode === nextMode &&
+          (nextMode === "random"
+            ? fallbackRandomScope !== undefined &&
+              sameEffectiveQuestionScope(
+                fallbackRandomScope,
+                restored.questionScope,
+              )
+            : restored.puzzleKey === dailyDateKey &&
+              restoredDifficulty === difficulty);
+        if (resumable && restored) {
+          resolved = {
+            puzzleLabel:
               nextMode === "daily"
                 ? dailyPuzzleLabel(restored.puzzleKey, difficulty)
                 : modeConfig[nextMode].puzzleLabel,
-            );
-            if (nextMode === "daily")
-              setDailyStatus(difficulty, restored.status);
-            if (restored.status !== "playing") {
-              writeStatsInBackground(
-                recordSingleSession(
-                  restored,
-                  nextMode,
-                  restoredElapsed,
-                  restoredTimings,
-                ),
-              );
-            } else {
-              writeStatsInBackground(
-                saveSingleStatsDraft(
-                  restored,
-                  nextMode,
-                  restoredElapsed,
-                  restoredTimings,
-                ),
-              );
-            }
-            return;
-          }
-        } catch (error) {
-          if (
-            typeof error !== "object" ||
-            error === null ||
-            !("status" in error) ||
-            error.status !== 404
-          ) {
-            throw error;
-          }
-          localStorage.removeItem(storageKeyForMode(nextMode, difficulty));
+            resolution: "resumed" as const,
+            session: restored,
+          };
+        } else {
+          const createBody =
+            nextMode === "daily"
+              ? { difficulty }
+              : {
+                  questionScope: fallbackRandomScope,
+                };
+          const created = await api.createPuzzle(nextMode, createBody);
+          if (!isCurrentRequest()) return;
+          resolved = {
+            ...created,
+            resolution: "created" as const,
+            supersededSession: restored,
+          };
+        }
+      }
+      if (!isCurrentRequest()) return;
+
+      if (resolved.supersededSession && storedSession) {
+        const oldTimings = normalizeGuessTimings(
+          storedSession.guessCompletedElapsedMs ??
+            storedSession.guessCompletedElapsedSeconds?.map(
+              (value) => value * 1000,
+            ),
+          resolved.supersededSession.guesses.length,
+        );
+        const oldElapsed = Math.max(
+          0,
+          storedSession.activeElapsedMs ?? oldTimings.at(-1) ?? 0,
+        );
+        if (resolved.supersededSession.status !== "playing") {
+          writeStatsInBackground(
+            recordSingleSession(
+              resolved.supersededSession,
+              nextMode,
+              oldElapsed,
+              oldTimings,
+            ),
+          );
+        } else {
+          writeStatsInBackground(
+            deleteSingleStatsDraft(resolved.supersededSession.id),
+          );
         }
       }
 
-      const createBody =
-        nextMode === "daily"
-          ? { difficulty }
-          : {
-              questionScope: loadLocalQuestionScope(
-                catalogFullToSnapshot(await api.catalogFull()),
-              ).config,
-            };
-      const created = await api.createPuzzle(nextMode, createBody);
-      if (!isCurrentRequest()) return;
-      setSession(created.session);
-      setGuessCompletedElapsedMs([]);
-      setInitialElapsedMs(0);
+      let restoredTimings: number[] = [];
+      let restoredElapsed = 0;
+      if (resolved.resolution === "resumed" && storedSession) {
+        const localTimings = normalizeGuessTimings(
+          storedSession.guessCompletedElapsedMs ??
+            storedSession.guessCompletedElapsedSeconds?.map(
+              (value) => value * 1000,
+            ),
+          resolved.session.guesses.length,
+        );
+        const draft = await loadSingleStatsDraft(resolved.session.id);
+        if (!isCurrentRequest()) return;
+        restoredTimings = localTimings.length
+          ? localTimings
+          : normalizeGuessTimings(
+              draft?.guessCompletedElapsedMs,
+              resolved.session.guesses.length,
+            );
+        const baseElapsed = Math.max(
+          storedSession.activeElapsedMs ?? 0,
+          draft?.activeElapsedMs ?? 0,
+          restoredTimings.at(-1) ?? 0,
+        );
+        const savedAtMs =
+          validTimestamp(storedSession.savedAtMs) ??
+          validTimestamp(
+            draft?.updatedAt ? Date.parse(draft.updatedAt) : undefined,
+          );
+        restoredElapsed =
+          nextMode === "daily" &&
+          resolved.session.status === "playing" &&
+          resolved.session.guesses.length > 0 &&
+          savedAtMs
+            ? baseElapsed + Math.max(0, Date.now() - savedAtMs)
+            : baseElapsed;
+      }
+
+      setSession(resolved.session);
+      setGuessCompletedElapsedMs(restoredTimings);
+      setInitialElapsedMs(restoredElapsed);
       setPuzzleLabel(
         nextMode === "daily"
-          ? dailyPuzzleLabel(
-              created.session.puzzleKey ?? dailyDateKey,
-              difficulty,
-            )
-          : created.puzzleLabel,
+          ? dailyPuzzleLabel(resolved.session.puzzleKey, difficulty)
+          : resolved.puzzleLabel,
       );
-      persistSession(nextMode, created.session, [], 0, difficulty);
-      if (nextMode === "daily")
-        setDailyStatus(difficulty, created.session.status);
-      writeStatsInBackground(
-        saveSingleStatsDraft(created.session, nextMode, 0, []),
+      persistSession(
+        nextMode,
+        resolved.session,
+        restoredTimings,
+        restoredElapsed,
+        difficulty,
       );
+      if (
+        nextMode === "random" &&
+        resolved.resolution === "created" &&
+        resolved.session.questionScope
+      ) {
+        saveLocalQuestionScope(resolved.session.questionScope);
+      }
+      if (nextMode === "daily") {
+        setDailyStatus(difficulty, resolved.session.status);
+        if (resolved.session.puzzleKey) {
+          void refreshDailyStatuses(
+            resolved.session.puzzleKey,
+            difficulty,
+            resolved.session.status,
+            requestId,
+          );
+        }
+      }
+      if (resolved.session.status !== "playing") {
+        writeStatsInBackground(
+          recordSingleSession(
+            resolved.session,
+            nextMode,
+            restoredElapsed,
+            restoredTimings,
+          ),
+        );
+      } else {
+        writeStatsInBackground(
+          saveSingleStatsDraft(
+            resolved.session,
+            nextMode,
+            restoredElapsed,
+            restoredTimings,
+          ),
+        );
+      }
     } catch (error) {
       if (!isCurrentRequest()) return;
       setMessage(error instanceof Error ? error.message : "加载游戏失败。");
@@ -678,9 +746,21 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   };
 
   useEffect(() => {
-    void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    // React StrictMode probes effects in development. Keep the probe from
+    // starting a second resolve request; real mode changes still start a new
+    // request and advance loadRequestIdRef inside loadSession.
+    loadCleanupVersionRef.current += 1;
+    if (initialLoadModeRef.current !== mode) {
+      initialLoadModeRef.current = mode;
+      void loadSession(mode, DEFAULT_DAILY_DIFFICULTY);
+    }
     return () => {
-      loadRequestIdRef.current += 1;
+      const cleanupVersion = ++loadCleanupVersionRef.current;
+      queueMicrotask(() => {
+        if (loadCleanupVersionRef.current === cleanupVersion) {
+          loadRequestIdRef.current += 1;
+        }
+      });
     };
   }, [mode]);
 
@@ -1118,55 +1198,53 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           }}
         >
           <div className="search-combobox">
-            <label className="search-box" ref={searchBoxRef}>
-              <Search size={18} aria-hidden="true" />
-              <input
-                ref={inputRef}
-                value={query}
-                onFocus={() => setSuggestionsDismissed(false)}
-                onBlur={() => setActiveSuggestionId("")}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setSelectedId("");
-                  setActiveSuggestionId("");
+            <PaperSearchInput
+              containerRef={searchBoxRef}
+              inputRef={inputRef}
+              value={query}
+              onFocus={() => setSuggestionsDismissed(false)}
+              onBlur={() => setActiveSuggestionId("")}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setSelectedId("");
+                setActiveSuggestionId("");
+                setSuggestionsDismissed(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
                   setSuggestionsDismissed(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setSuggestionsDismissed(false);
-                    moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
-                    return;
-                  }
-                  if (event.key === "Escape" && showSuggestions) {
-                    event.preventDefault();
-                    setSuggestionsDismissed(true);
-                    setActiveSuggestionId("");
-                    return;
-                  }
-                  if (event.key === "Enter" && showSuggestions) {
-                    const activeResult = selectableResults.find(
-                      (result) => result.id === activeSuggestionId,
-                    );
-                    if (activeResult) {
-                      event.preventDefault();
-                      selectSuggestion(activeResult);
-                    }
-                  }
-                }}
-                disabled={inputDisabled}
-                placeholder="输入角色名、别名或初登场作品"
-                aria-label="搜索东方角色"
-                aria-autocomplete="list"
-                aria-controls={listboxId}
-                aria-activedescendant={
-                  showSuggestions && activeSuggestionId
-                    ? `${listboxId}-${activeSuggestionId}`
-                    : undefined
+                  moveActiveSuggestion(event.key === "ArrowDown" ? 1 : -1);
+                  return;
                 }
-                aria-expanded={showSuggestions}
-              />
-            </label>
+                if (event.key === "Escape" && showSuggestions) {
+                  event.preventDefault();
+                  setSuggestionsDismissed(true);
+                  setActiveSuggestionId("");
+                  return;
+                }
+                if (event.key === "Enter" && showSuggestions) {
+                  const activeResult = selectableResults.find(
+                    (result) => result.id === activeSuggestionId,
+                  );
+                  if (activeResult) {
+                    event.preventDefault();
+                    selectSuggestion(activeResult);
+                  }
+                }
+              }}
+              disabled={inputDisabled}
+              placeholder="角色名或别名，@ 筛选初登场作品"
+              ariaLabel="搜索东方角色"
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-activedescendant={
+                showSuggestions && activeSuggestionId
+                  ? `${listboxId}-${activeSuggestionId}`
+                  : undefined
+              }
+              aria-expanded={showSuggestions}
+            />
             <SuggestionPopover
               anchor={searchBoxRef}
               id={listboxId}
@@ -1175,7 +1253,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               {searchLoading ? (
                 <div className="suggestion-state" role="status">
                   <Loader2 className="spin" size={17} aria-hidden="true" />
-                  <span>正在搜索</span>
+                  <span>正在加载搜索索引</span>
                 </div>
               ) : searchError ? (
                 <div className="suggestion-state suggestion-error" role="alert">
@@ -1194,9 +1272,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                   const active = activeSuggestionId === result.id;
                   return (
                     <button
-                      className={active ? "suggestion selected" : "suggestion"}
+                      className={`suggestion paper-data-table-row${active ? " selected" : ""}`}
                       id={`${listboxId}-${result.id}`}
                       key={result.id}
+                      ref={active ? activeSuggestionScrollRef : undefined}
                       type="button"
                       tabIndex={-1}
                       disabled={disabled}
@@ -1207,12 +1286,14 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                         selectSuggestion(result);
                       }}
                     >
-                      <CharacterAvatar
-                        avatarUrl={result.avatarUrl}
-                        name={result.name}
-                        initials={result.initials}
-                        className="suggestion-avatar"
-                      />
+                      <span className="suggestion-avatar-cell">
+                        <CharacterAvatar
+                          avatarUrl={result.avatarUrl}
+                          name={result.name}
+                          initials={result.initials}
+                          className="suggestion-avatar"
+                        />
+                      </span>
                       <span className="suggestion-main">
                         <strong>{result.name}</strong>
                         <small>{result.subtitle}</small>
@@ -1338,7 +1419,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                           size={20}
                           aria-hidden="true"
                         />{" "}
-                        正在连接本地题库
+                        正在准备题局
                       </span>
                     ) : !session && message ? (
                       <span>

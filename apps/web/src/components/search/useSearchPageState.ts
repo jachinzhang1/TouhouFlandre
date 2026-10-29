@@ -52,6 +52,7 @@ export function useSearchPageState({
   }, [direction, sort, view]);
 
   return {
+    catalogVersion: catalog?.version,
     direction,
     query,
     selectedWorkIds,

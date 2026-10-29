@@ -1,5 +1,7 @@
 package game
 
+import "github.com/TouhouFlandre/touhouflandre/apps/api/guessing"
+
 // HairColorLabel 对应 shared 的 HAIR_COLOR_LABELS。
 var HairColorLabels = map[string]string{
 	"black":      "黑",
@@ -55,36 +57,22 @@ func DisplayValuesForField(character Character, field GuessFieldKey) []string {
 	return CharacterFields.DisplayValues(character, field)
 }
 
-// CompareField 对应 shared 的 compareField。
+// CompareField presents the reusable core's semantic comparison.
 func CompareField(guess, answer Character, field GuessField) FieldFeedback {
-	status := CharacterFields.CompareFeedback(guess, answer, field)
-
-	return FieldFeedback{
-		Field:        field.Key,
-		Label:        field.Label,
-		Status:       status,
-		Symbol:       StatusToSymbol(status),
-		DisplayValue: DisplayValuesForField(guess, field.Key),
-	}
+	return presentField(guess, field, CharacterFields.CompareFeedback(guess, answer, field))
 }
 
+// CompareCharacterWithMatch preserves the application result shape for callers
+// that already hold a match decision. Authoritative guesses use GuessEvaluator.
 func CompareCharacterWithMatch(guess, answer Character, fields []GuessField, match MatchResult) GuessResult {
-	if fields == nil {
-		fields = CharacterGuessFields
+	rules := ruleFields(fields)
+	feedback := make([]guessing.FieldFeedback, 0, len(rules))
+	for _, field := range rules {
+		feedback = append(feedback, guessing.FieldFeedback{
+			Field: field.Key, Status: guessing.CompareField(ruleCharacter(guess), ruleCharacter(answer), field),
+		})
 	}
-	feedback := make([]FieldFeedback, 0, len(fields))
-	for _, field := range fields {
-		if field.Visible {
-			feedback = append(feedback, CompareField(guess, answer, field))
-		}
-	}
-	return GuessResult{
-		Kind:           "guess",
-		GuessID:        guess.ID,
-		GuessName:      guess.Names.ZhHans,
-		GuessAvatarURL: guess.AvatarURL,
-		IsCorrect:      match.Correct,
-		MatchKind:      match.Kind,
-		Feedback:       feedback,
-	}
+	return presentGuess(guess, fields, guessing.Result{
+		GuessID: guess.ID, IsCorrect: match.Correct, MatchKind: match.Kind, Feedback: feedback,
+	})
 }

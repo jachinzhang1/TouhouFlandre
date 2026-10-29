@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
@@ -248,7 +249,7 @@ func (s *Server) loadRelayProjectionBatch(ctx context.Context, match repo.MultiM
 	for _, turn := range turns {
 		batch.turnsByEncounterID[turn.EncounterID] = append(batch.turnsByEncounterID[turn.EncounterID], turn)
 	}
-	characters, err := multi.CharactersForVersion(ctx, s.q, match.CatalogVersion)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, match.CatalogVersion)
 	if err != nil {
 		return batch, err
 	}

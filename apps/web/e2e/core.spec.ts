@@ -151,8 +151,9 @@ test.describe("每日题游戏流程", () => {
     await page.reload();
     await expect(page.locator(".status-strip")).toContainText(/进度\s*1\/8/);
 
-    // 伪造旧会话 id → 404 → 自动重建
-    await page.evaluate(() => {
+    // Set the stale ID before hydration, so the previous page's timer cannot
+    // overwrite it while navigation is starting.
+    await page.addInitScript(() => {
       localStorage.setItem(
         "touhouflandre:daily-session",
         JSON.stringify({

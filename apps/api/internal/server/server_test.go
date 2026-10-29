@@ -363,6 +363,20 @@ func TestSearchReimu(t *testing.T) {
 	}
 }
 
+func TestSearchRelevanceOrdering(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=aki&sort=relevance&direction=asc", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d: %s", resp.StatusCode, payload)
+	}
+	var search openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &search); err != nil {
+		t.Fatal(err)
+	}
+	if len(search.Results) < 2 || search.Results[0].Id != "shizuha_aki" || search.Results[1].Id != "minoriko_aki" {
+		t.Fatalf("expected shorter Aki prefix first, got %+v", search.Results)
+	}
+}
+
 func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID string) bool {
 	for _, result := range search.Results {
 		if result.Id == characterID {
@@ -373,8 +387,20 @@ func searchContainsCharacter(search openapi.CharacterSearchResponse, characterID
 }
 
 func TestSearchByWorkPinyinInitialsAndFieldBoundary(t *testing.T) {
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=hmx&sort=appearance", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unscoped work query status %d: %s", resp.StatusCode, payload)
+	}
+	var unscoped openapi.CharacterSearchResponse
+	if err := json.Unmarshal(payload, &unscoped); err != nil {
+		t.Fatal(err)
+	}
+	if unscoped.Total != 0 {
+		t.Fatalf("unscoped work query must not match work fields: %+v", unscoped)
+	}
+
 	for _, query := range []string{"hmx", "dfhmx"} {
-		resp, payload := request(http.MethodGet, "/api/characters/search?q="+query+"&sort=appearance", nil)
+		resp, payload := request(http.MethodGet, "/api/characters/search?q=@"+query+"&sort=appearance", nil)
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("%s status %d: %s", query, resp.StatusCode, payload)
 		}
@@ -392,7 +418,7 @@ func TestSearchByWorkPinyinInitialsAndFieldBoundary(t *testing.T) {
 		}
 	}
 
-	resp, payload := request(http.MethodGet, "/api/characters/search?q=%E6%A2%A6%E4%B8%9C", nil)
+	resp, payload = request(http.MethodGet, "/api/characters/search?q=%E6%A2%A6%E4%B8%9C", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("boundary status %d: %s", resp.StatusCode, payload)
 	}
@@ -410,7 +436,7 @@ func TestSearchCatalogVersionAndScopeValidation(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT current_version FROM catalog_state WHERE id = 'current'`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	resp, payload := request(http.MethodGet, "/api/characters/search?q=hmx&catalogVersion="+version, nil)
+	resp, payload := request(http.MethodGet, "/api/characters/search?q=@hmx&catalogVersion="+version, nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("version search status %d: %s", resp.StatusCode, payload)
 	}

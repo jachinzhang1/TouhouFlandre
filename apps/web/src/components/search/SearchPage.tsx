@@ -25,6 +25,7 @@ export function SearchPage({
   });
   const search = useCharacterSearch(state.query, {
     limit: 250,
+    version: state.catalogVersion,
     sort: state.sort,
     direction: state.direction,
     workIds: state.selectedWorkIdsParam,

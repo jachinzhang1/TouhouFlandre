@@ -107,6 +107,26 @@ func CharacterSearchQuestionScopeFilterEnabled() bool {
 	return boolFromEnv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", true)
 }
 
+// CharacterSearchMode controls whether the browser may prefer its local index.
+// Missing, empty, and unknown values deliberately fall back to remote.
+func CharacterSearchMode() string {
+	switch value := strings.ToLower(strings.TrimSpace(os.Getenv("CHARACTER_SEARCH_MODE"))); value {
+	case "local-primary":
+		return value
+	default:
+		return "remote"
+	}
+}
+
+// CharacterSearchPolicyRevision is an operator-controlled revision salt for
+// structural search fixes that do not require a new index schema.
+func CharacterSearchPolicyRevision() string {
+	if value := strings.TrimSpace(os.Getenv("CHARACTER_SEARCH_POLICY_REVISION")); value != "" {
+		return value
+	}
+	return "v1"
+}
+
 // AnswerMatchPolicy freezes the answer matcher selected for newly created games.
 func AnswerMatchPolicy() string {
 	value := strings.ToLower(strings.TrimSpace(os.Getenv("ANSWER_MATCH_POLICY")))

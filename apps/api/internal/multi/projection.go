@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
 )
@@ -440,7 +441,7 @@ func charactersForVersionCached(ctx context.Context, q *repo.Queries, version st
 	if chars, ok := cache[version]; ok {
 		return chars, nil
 	}
-	characters, err := CharactersForVersion(ctx, q, version)
+	characters, err := catalog.CharactersForVersion(ctx, q, version)
 	if err != nil {
 		return nil, err
 	}

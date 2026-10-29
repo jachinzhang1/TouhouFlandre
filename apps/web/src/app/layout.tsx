@@ -5,6 +5,7 @@ import { SiteFooter } from "../components/layout/SiteFooter";
 import { SiteNav } from "../components/layout/SiteNav";
 import { MusicPlayerRoot } from "../features/music-player/MusicPlayerRoot";
 import { createAppearanceBootstrapScript } from "../lib/appearanceBootstrap";
+import { CharacterSearchProvider } from "../features/character-search/CharacterSearchProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,24 +36,26 @@ export default function RootLayout({
   return (
     <html lang="zh-Hans" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
-        <Script id="appearance-bootstrap" strategy="beforeInteractive">
-          {appearanceBootstrapScript}
-        </Script>
-        <div className="site-shell">
-          <SiteNav />
-          <main
-            className="site-main pb-11 pt-[22px] max-[680px]:pb-7 max-[680px]:pt-3"
-            tabIndex={-1}
-          >
-            {children}
-          </main>
-          <SiteFooter />
-        </div>
-        <MusicPlayerRoot />
-        {process.env.NODE_ENV === "development" &&
-        process.env.NEXT_PUBLIC_AGENTATION_DISABLED !== "true" ? (
-          <AgentationToolbar />
-        ) : null}
+        <CharacterSearchProvider>
+          <Script id="appearance-bootstrap" strategy="beforeInteractive">
+            {appearanceBootstrapScript}
+          </Script>
+          <div className="site-shell">
+            <SiteNav />
+            <main
+              className="site-main pb-11 pt-[22px] max-[680px]:pb-7 max-[680px]:pt-3"
+              tabIndex={-1}
+            >
+              {children}
+            </main>
+            <SiteFooter />
+          </div>
+          <MusicPlayerRoot />
+          {process.env.NODE_ENV === "development" &&
+          process.env.NEXT_PUBLIC_AGENTATION_DISABLED !== "true" ? (
+            <AgentationToolbar />
+          ) : null}
+        </CharacterSearchProvider>
       </body>
     </html>
   );

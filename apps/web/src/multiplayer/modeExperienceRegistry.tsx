@@ -47,6 +47,11 @@ const RelayExperience: ComponentType<MultiplayerMatchExperienceProps> = (
       projection={state.relay}
       members={state.members}
       viewer={state.viewer}
+      catalogVersion={state.match.catalogVersion}
+      selectedCharacterIds={
+        state.match.questionScope?.selectedCharacterIds ??
+        state.questionScope?.selectedCharacterIds
+      }
       fields={props.fields}
       roomStatus={state.room?.status ?? "playing"}
       retentionEndsAt={

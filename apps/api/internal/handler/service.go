@@ -8,13 +8,12 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/catalog"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/game"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/openapi"
 	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/generated/repo"
-	"github.com/TouhouFlandre/touhouflandre/apps/api/internal/multi"
 )
 
 func jsonUnmarshal(data []byte, target any) error {
@@ -64,9 +63,9 @@ func (s *Server) getCurrentCatalog(ctx context.Context) (string, []game.Characte
 	return state.CurrentVersion, characters, nil
 }
 
-// charactersForVersion 按版本读取快照角色（解析逻辑在 multi.CharactersForVersion）。
+// charactersForVersion 按版本读取快照角色（解析逻辑在 catalog.CharactersForVersion）。
 func (s *Server) charactersForVersion(ctx context.Context, version string) ([]game.Character, error) {
-	characters, err := multi.CharactersForVersion(ctx, s.q, version)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, version)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusInternalServerError, Code: codeInternal, Message: "题库快照缺失：" + version}
@@ -77,7 +76,7 @@ func (s *Server) charactersForVersion(ctx context.Context, version string) ([]ga
 }
 
 func (s *Server) charactersForRequestedVersion(ctx context.Context, version string) ([]game.Character, error) {
-	characters, err := multi.CharactersForVersion(ctx, s.q, version)
+	characters, err := catalog.CharactersForVersion(ctx, s.q, version)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, &ApiError{Status: http.StatusNotFound, Code: codeCatalogVersionNotFound, Message: "没有找到题库版本：" + version}
@@ -85,6 +84,35 @@ func (s *Server) charactersForRequestedVersion(ctx context.Context, version stri
 		return nil, internalError(err)
 	}
 	return characters, nil
+}
+
+func (s *Server) searchCharactersForVersion(ctx context.Context, version string, requested bool) ([]game.Character, error) {
+	characters, err := s.searchSource.GetContext(ctx, version)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) && requested {
+			return nil, &ApiError{Status: http.StatusNotFound, Code: codeCatalogVersionNotFound, Message: "没有找到题库版本：" + version}
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, &ApiError{Status: http.StatusServiceUnavailable, Code: codeCatalogNotReady, Message: "题库快照不可用。"}
+		}
+		return nil, internalError(err)
+	}
+	return characters, nil
+}
+
+func (s *Server) currentSearchCatalog(ctx context.Context) (string, []game.Character, error) {
+	state, err := s.q.GetCatalogState(ctx)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil, &ApiError{Status: http.StatusServiceUnavailable, Code: codeCatalogNotReady, Message: "题库尚未初始化，请先运行 seed。"}
+		}
+		return "", nil, internalError(err)
+	}
+	characters, err := s.searchCharactersForVersion(ctx, state.CurrentVersion, false)
+	if err != nil {
+		return "", nil, err
+	}
+	return state.CurrentVersion, characters, nil
 }
 
 // getOrCreateDailyPuzzle 对应 game.ts 的 getOrCreateDailyPuzzle。
@@ -131,21 +159,13 @@ func (s *Server) getOrCreateDailyPuzzle(ctx context.Context, dateKey string, dif
 		AnswerID:          answer.ID,
 		AnswerMatchPolicy: string(s.answerMatchPolicy),
 	}); err != nil {
-		// 并发创建冲突时重读已有记录。
-		if isUniqueViolation(err) {
+		// 并发创建由 ON CONFLICT 合并；未插入时重读权威记录。
+		if errors.Is(err, pgx.ErrNoRows) {
 			return s.getOrCreateDailyPuzzle(ctx, dateKey, difficulty, scope)
 		}
 		return game.Character{}, "", "", internalError(err)
 	}
 	return answer, version, s.answerMatchPolicy, nil
-}
-
-func isUniqueViolation(err error) bool {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		return pgErr.Code == "23505"
-	}
-	return false
 }
 
 // selectAnswer 按模式选择答案。

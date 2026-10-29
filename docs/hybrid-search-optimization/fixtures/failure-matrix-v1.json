@@ -1,0 +1,327 @@
+{
+  "contract": "hso.failure-matrix.v1",
+  "catalogVersion": "catalog-v1",
+  "indexSchemaVersion": 1,
+  "policyRevision": "v1",
+  "fallbackReasons": [
+    "policy_remote",
+    "policy_unavailable",
+    "context_incomplete",
+    "index_transient",
+    "index_invalid",
+    "engine_error"
+  ],
+  "cases": [
+    {
+      "name": "policy cold start 404",
+      "state": {
+        "hasValidatedPolicy": false,
+        "hasLoadedIndex": false,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": null,
+        "lastKnownGoodAgeSeconds": null,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 404,
+        "body": "not-found"
+      },
+      "indexResponse": null,
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "policy_missing",
+        "nextProbeAfterSeconds": 60,
+        "fallbackReason": "policy_unavailable"
+      }
+    },
+    {
+      "name": "policy cold start 405",
+      "state": {
+        "hasValidatedPolicy": false,
+        "hasLoadedIndex": false,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": null,
+        "lastKnownGoodAgeSeconds": null,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 405,
+        "body": "method-not-allowed"
+      },
+      "indexResponse": null,
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "policy_missing",
+        "nextProbeAfterSeconds": 60,
+        "fallbackReason": "policy_unavailable"
+      }
+    },
+    {
+      "name": "policy timeout at three seconds",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": false,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": null,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "timeout",
+        "afterMs": 3000
+      },
+      "indexResponse": null,
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "policy_transient",
+        "nextProbeAfterSeconds": 60,
+        "fallbackReason": "policy_unavailable"
+      }
+    },
+    {
+      "name": "index timeout first probe",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 12,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "timeout",
+        "afterMs": 5000
+      },
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "index_transient",
+        "nextProbeAfterSeconds": 5,
+        "fallbackReason": "index_transient"
+      }
+    },
+    {
+      "name": "index timeout second probe",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 30,
+        "retryStage": 1
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "timeout",
+        "afterMs": 5000
+      },
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "index_transient",
+        "nextProbeAfterSeconds": 30,
+        "fallbackReason": "index_transient"
+      }
+    },
+    {
+      "name": "index timeout third probe",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 120,
+        "retryStage": 2
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "timeout",
+        "afterMs": 5000
+      },
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "index_transient",
+        "nextProbeAfterSeconds": 120,
+        "fallbackReason": "index_transient"
+      }
+    },
+    {
+      "name": "index timeout fourth probe",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 300,
+        "retryStage": 3
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "timeout",
+        "afterMs": 5000
+      },
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "index_transient",
+        "nextProbeAfterSeconds": 300,
+        "fallbackReason": "index_transient"
+      }
+    },
+    {
+      "name": "last known good within five minutes",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 299,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "timeout",
+        "afterMs": 3000
+      },
+      "indexResponse": null,
+      "expected": {
+        "resultSource": "local",
+        "faultClass": "policy_transient",
+        "nextProbeAfterSeconds": 60,
+        "fallbackReason": "policy_unavailable"
+      }
+    },
+    {
+      "name": "last known good expired",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 301,
+        "retryStage": 0
+      },
+      "policyResponse": {
+        "kind": "timeout",
+        "afterMs": 3000
+      },
+      "indexResponse": null,
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "policy_transient",
+        "nextProbeAfterSeconds": 60,
+        "fallbackReason": "policy_unavailable"
+      }
+    },
+    {
+      "name": "cache repair succeeds",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 18,
+        "retryStage": 0,
+        "cacheState": "corrupt"
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "schema-mismatch",
+        "afterReload": "ok"
+      },
+      "expected": {
+        "resultSource": "local",
+        "faultClass": "repairable_cache",
+        "nextProbeAfterSeconds": 0,
+        "fallbackReason": "none"
+      }
+    },
+    {
+      "name": "cache repair fails",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 18,
+        "retryStage": 0,
+        "cacheState": "corrupt"
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary"
+      },
+      "indexResponse": {
+        "kind": "schema-mismatch",
+        "afterReload": "schema-mismatch"
+      },
+      "expected": {
+        "resultSource": "remote",
+        "faultClass": "structural",
+        "nextProbeAfterSeconds": null,
+        "fallbackReason": "index_invalid"
+      }
+    },
+    {
+      "name": "policy revision change resets circuit",
+      "state": {
+        "hasValidatedPolicy": true,
+        "hasLoadedIndex": true,
+        "catalogVersion": "catalog-v1",
+        "indexSchemaVersion": 1,
+        "policyRevision": "v1",
+        "lastKnownGoodAgeSeconds": 42,
+        "retryStage": 2,
+        "circuitOpen": true
+      },
+      "policyResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "local-primary",
+        "revision": "v2"
+      },
+      "indexResponse": {
+        "kind": "response",
+        "status": 200,
+        "body": "ok"
+      },
+      "expected": {
+        "resultSource": "local",
+        "faultClass": "reset",
+        "nextProbeAfterSeconds": 0,
+        "fallbackReason": "none"
+      }
+    }
+  ]
+}

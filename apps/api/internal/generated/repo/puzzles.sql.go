@@ -12,6 +12,7 @@ import (
 const createDailyPuzzle = `-- name: CreateDailyPuzzle :one
 INSERT INTO daily_puzzle (date_key, difficulty, catalog_version, answer_id, answer_match_policy)
 VALUES ($1, $2, $3, $4, COALESCE(NULLIF($5::text, ''), 'strict'))
+ON CONFLICT (date_key, difficulty) DO NOTHING
 RETURNING date_key, catalog_version, answer_id, created_at, difficulty, answer_match_policy
 `
 
