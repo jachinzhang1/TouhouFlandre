@@ -230,8 +230,13 @@
   box-shadow: inset 4px 0 0 var(--theme-color);
 }
 
+.paper-shortcut-featured .paper-shortcut-title,
+.paper-shortcut-featured .paper-shortcut-action {
+  color: var(--theme-color);
+}
+
 .paper-shortcut-featured .paper-shortcut-icon {
-  opacity: 0.52;
+  opacity: 1;
 }
 
 .paper-shortcut-featured .paper-shortcut-description {
