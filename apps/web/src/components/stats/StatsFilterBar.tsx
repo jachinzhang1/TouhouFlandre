@@ -239,7 +239,7 @@ function DateRangeFilter({
               inputReadOnly
               allowClear={false}
               aria-label="开始日期"
-              popupClassName={PAPER_DATE_PICKER_POPUP_CLASS_NAME}
+              classNames={{ popup: { root: PAPER_DATE_PICKER_POPUP_CLASS_NAME } }}
               disabledDate={(current) =>
                 Boolean(toDate && current.isAfter(toDate, "day"))
               }
@@ -269,7 +269,7 @@ function DateRangeFilter({
               inputReadOnly
               allowClear={false}
               aria-label="结束日期"
-              popupClassName={PAPER_DATE_PICKER_POPUP_CLASS_NAME}
+              classNames={{ popup: { root: PAPER_DATE_PICKER_POPUP_CLASS_NAME } }}
               disabledDate={(current) =>
                 Boolean(fromDate && current.isBefore(fromDate, "day"))
               }
