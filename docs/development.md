@@ -8,12 +8,14 @@
 | ---------------- | ----------------- |
 | Node.js          | 26.12.1 或更高    |
 | pnpm             | 11                |
-| Go               | 1.26 或更高       |
+| Go               | 1.26.10 或更高    |
 | Docker + Compose | 用于本地 Postgres |
 | Task             | 跨语言任务入口    |
 | Git              | 版本控制          |
 
 仓库使用 pnpm workspace，Go 为独立 module（`apps/api`）。请在仓库根目录执行本文命令。
+
+Go module 的最低版本为 1.26.10，CI 和 API 构建容器也使用该版本；具体要求以 `apps/api/go.mod` 为准。
 
 `.nvmrc` 固定 Node.js 26.12.1，使用 nvm 时可执行 `nvm install` 和 `nvm use`。CI 与 Web 容器使用相同版本。Node.js 26 不再自带 Corepack；如尚未安装 pnpm，可执行 `npm install --global pnpm@11.9.0`。
 

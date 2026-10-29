@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- 构建层：静态编译，产物含 server/seed/goose/healthcheck ----------
-FROM golang:1.26-alpine AS build
+FROM golang:1.26.10-alpine AS build
 WORKDIR /src
 RUN apk add --no-cache ca-certificates
 # 依赖层缓存：仅 go.mod/go.sum 变化才重下模块
