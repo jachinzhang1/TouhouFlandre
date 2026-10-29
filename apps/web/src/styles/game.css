@@ -2835,6 +2835,84 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   text-align: center;
 }
 
+.single-game-guess-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.single-game-guess-table {
+  --guess-cell-inset: 12px;
+  --guess-avatar-size: 42px;
+  --guess-character-gap: 9px;
+  --guess-feedback-icon-size: 22px;
+  --guess-feedback-gap: 7px;
+  --guess-character-column-width: 188px;
+  --guess-feedback-column-width: 128px;
+  --guess-duration-column-width: 124px;
+  --guess-table-width: calc(
+    var(--guess-character-column-width) + var(--guess-feedback-count, 6) *
+      var(--guess-feedback-column-width) + var(--guess-duration-column-width)
+  );
+}
+
+.single-game-guess-table .guess-feedback-column {
+  width: var(--guess-feedback-column-width);
+}
+
+.single-game-guess-table .guess-duration-column {
+  width: var(--guess-duration-column-width);
+}
+
+.single-game-guess-table :is(th, td) {
+  padding: 12px var(--guess-cell-inset);
+  text-align: left;
+}
+
+.single-game-guess-table thead th {
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.single-game-guess-table .guess-character-heading {
+  padding-inline-start: calc(
+    var(--guess-cell-inset) + var(--guess-avatar-size) +
+      var(--guess-character-gap)
+  );
+}
+
+.single-game-guess-table .guess-feedback-heading {
+  padding-inline-start: calc(
+    var(--guess-cell-inset) + var(--guess-feedback-icon-size) +
+      var(--guess-feedback-gap)
+  );
+}
+
+.single-game-guess-table .guess-character {
+  gap: var(--guess-character-gap);
+}
+
+.single-game-guess-table .guess-avatar {
+  width: var(--guess-avatar-size);
+  height: var(--guess-avatar-size);
+  flex: 0 0 var(--guess-avatar-size);
+}
+
+.single-game-guess-table .feedback {
+  grid-template-columns: var(--guess-feedback-icon-size) minmax(0, 1fr);
+  gap: var(--guess-feedback-gap);
+}
+
+.single-game-guess-table .feedback > b {
+  width: var(--guess-feedback-icon-size);
+  height: var(--guess-feedback-icon-size);
+}
+
+.single-game-guess-table .guess-duration-cell {
+  text-align: center;
+}
+
 .guess-table tbody th.guess-timeout-cell {
   position: relative;
   height: var(--single-game-guess-row-height);

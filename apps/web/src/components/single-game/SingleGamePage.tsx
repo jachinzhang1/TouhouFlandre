@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { message as antdMessage } from "antd";
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useId,
@@ -1335,15 +1336,44 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
 
         {message ? <p className="message error">{message}</p> : null}
 
-        <div className="table-wrap">
-          <table className="guess-table">
+        <div
+          className="table-wrap single-game-guess-table-wrap"
+          role="region"
+          aria-label="猜测记录"
+          tabIndex={0}
+        >
+          <table
+            className="guess-table single-game-guess-table"
+            style={
+              {
+                "--guess-feedback-count": visibleFields.length,
+              } as CSSProperties
+            }
+          >
+            <colgroup>
+              <col className="guess-character-column" />
+              {visibleFields.map((field) => (
+                <col className="guess-feedback-column" key={field.key} />
+              ))}
+              <col className="guess-duration-column" />
+            </colgroup>
             <thead>
               <tr>
-                <th>角色</th>
+                <th scope="col" className="guess-character-heading">
+                  角色
+                </th>
                 {visibleFields.map((field) => (
-                  <th key={field.key}>{field.label}</th>
+                  <th
+                    scope="col"
+                    className="guess-feedback-heading"
+                    key={field.key}
+                  >
+                    {field.label}
+                  </th>
                 ))}
-                <th>本次猜测用时</th>
+                <th scope="col" className="guess-duration-cell">
+                  本次猜测用时
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1398,7 +1428,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                           ))}
                         </>
                       )}
-                      <td>
+                      <td className="guess-duration-cell">
                         <span className="guess-duration">
                           {formatGuessDuration(guessCompletedElapsedMs, index)}
                         </span>

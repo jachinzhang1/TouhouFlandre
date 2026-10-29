@@ -372,6 +372,16 @@
     z-index: 7;
   }
 
+  .single-game-guess-table :is(thead th:first-child, tbody th[scope="row"]) {
+    position: sticky;
+    left: 0;
+    background: var(--page-background);
+  }
+
+  .single-game-guess-table thead th:first-child {
+    z-index: 3;
+  }
+
   .single-game-history-footer th:first-child {
     text-align: center;
   }
