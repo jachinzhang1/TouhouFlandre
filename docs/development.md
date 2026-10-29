@@ -6,7 +6,7 @@
 
 | 工具             | 版本              |
 | ---------------- | ----------------- |
-| Node.js          | 24 或更高         |
+| Node.js          | 26.12.1 或更高    |
 | pnpm             | 11                |
 | Go               | 1.26 或更高       |
 | Docker + Compose | 用于本地 Postgres |
@@ -14,6 +14,8 @@
 | Git              | 版本控制          |
 
 仓库使用 pnpm workspace，Go 为独立 module（`apps/api`）。请在仓库根目录执行本文命令。
+
+`.nvmrc` 固定 Node.js 26.12.1，使用 nvm 时可执行 `nvm install` 和 `nvm use`。CI 与 Web 容器使用相同版本。Node.js 26 不再自带 Corepack；如尚未安装 pnpm，可执行 `npm install --global pnpm@11.9.0`。
 
 ## 安装与启动
 
