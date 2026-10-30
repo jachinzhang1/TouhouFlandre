@@ -129,9 +129,9 @@ describe("ChatDock", () => {
     const user = userEvent.setup();
     renderDock(baseChat, { placement: "deck" });
 
-    expect(screen.getByText("聊天", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText("房间聊天", { selector: "strong" })).toBeTruthy();
     expect(screen.getByText("房间消息")).toBeTruthy();
-    expect(screen.getByRole("form", { name: "聊天" })).toBeTruthy();
+    expect(screen.getByRole("form", { name: "房间聊天" })).toBeTruthy();
     await user.type(screen.getByLabelText("聊天输入"), "开局吧");
     const send = screen.getByLabelText("发送消息");
     expect(send.dataset.paperTone).toBe("neutral");
@@ -187,7 +187,9 @@ describe("ChatDock", () => {
     const input = screen.getByLabelText("聊天输入");
     expect((input as HTMLInputElement).value).toBe("🌸");
     expect(document.activeElement).toBe(input);
-    expect((input as HTMLInputElement).placeholder).toBe("请输入消息");
+    expect((input as HTMLInputElement).placeholder).toBe(
+      "和房间里的玩家聊聊……",
+    );
     const send = screen.getByLabelText("发送消息");
     expect(send.dataset.paperVariant).toBe("tinted");
     expect(send.dataset.paperFolded).toBe("true");

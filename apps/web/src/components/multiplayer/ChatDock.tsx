@@ -1,6 +1,6 @@
 "use client";
 
-import { History, RefreshCw, Send, Smile } from "lucide-react";
+import { History, MessageCircle, RefreshCw, Send, Smile } from "lucide-react";
 import {
   useEffect,
   useId,
@@ -218,7 +218,7 @@ export function ChatDock({
     placement === "inline"
       ? "chat-dock-inline"
       : placement === "deck"
-        ? "chat-dock-deck multiplayer-command-channel"
+        ? "chat-dock-deck multiplayer-command-channel [--chat-control-size:40px]"
         : "chat-dock-fixed";
   const channelStatus = muted
     ? "聊天已关闭"
@@ -246,9 +246,16 @@ export function ChatDock({
       </div>
 
       {placement === "deck" ? (
-        <header className="multiplayer-command-channel-heading">
-          <strong id={headingId}>聊天</strong>
-          <span>{channelStatus}</span>
+        <header className="flex items-center gap-1.5 text-[0.68rem] text-ink-soft">
+          <MessageCircle size={13} aria-hidden="true" />
+          <strong id={headingId} className="font-semibold">
+            房间聊天
+          </strong>
+          <span
+            className={channelStatus === "房间消息" ? "sr-only" : "ml-auto"}
+          >
+            {channelStatus}
+          </span>
         </header>
       ) : null}
 
@@ -346,7 +353,7 @@ export function ChatDock({
                 setDraft(event.target.value);
                 if (chat.sendError) onClearError();
               }}
-              placeholder="请输入消息"
+              placeholder="和房间里的玩家聊聊……"
               value={draft}
             />
           </div>

@@ -53,7 +53,7 @@ export function SelfBoard({
 
   return (
     <GuessTable
-      title={showHeading ? "我" : undefined}
+      title={showHeading ? "我的棋盘" : undefined}
       subtitle={showHeading ? subtitle : undefined}
       rows={rows}
       emptyLabel={playing ? "搜索角色开始猜测。" : "本局尚未猜测。"}

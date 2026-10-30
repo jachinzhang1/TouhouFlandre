@@ -927,7 +927,10 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .chat-dock-form {
   position: relative;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  grid-template-columns: var(--chat-control-size, 48px) minmax(0, 1fr) var(
+      --chat-control-size,
+      48px
+    );
   align-items: stretch;
   gap: 8px;
   pointer-events: auto;
@@ -1010,20 +1013,26 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .paper-segment-group.chat-dock-composer-group {
   display: grid;
   width: 100%;
-  grid-template-columns: minmax(0, 1fr) 1px 48px 1px 48px;
+  grid-template-columns: minmax(0, 1fr) 1px var(
+      --chat-control-size,
+      48px
+    ) 1px var(--chat-control-size, 48px);
 }
 
-.chat-dock-composer-group .chat-dock-composer-button {
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
+.chat-dock-composer-group
+  .paper-surface.paper-button.chat-dock-composer-button {
+  width: var(--chat-control-size, 48px);
+  min-width: var(--chat-control-size, 48px);
+  height: var(--chat-control-size, 48px);
+  min-height: var(--chat-control-size, 48px);
   padding: 0;
 }
 
-.chat-dock-standalone-button {
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
+.paper-surface.paper-button.chat-dock-standalone-button {
+  width: var(--chat-control-size, 48px);
+  min-width: var(--chat-control-size, 48px);
+  height: var(--chat-control-size, 48px);
+  min-height: var(--chat-control-size, 48px);
   padding: 0;
 }
 
@@ -1031,14 +1040,15 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   position: relative;
   display: flex;
   min-width: 0;
-  height: 48px;
+  height: var(--chat-control-size, 48px);
   align-items: center;
 }
 
-.chat-dock-input-segment,
-.chat-dock-text-control {
+.paper-surface.chat-dock-input-segment,
+.paper-surface.chat-dock-text-control {
   width: 100%;
-  height: 48px;
+  height: var(--chat-control-size, 48px);
+  min-height: var(--chat-control-size, 48px);
 }
 
 .chat-dock-input {
@@ -1379,15 +1389,6 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 
 .multiplayer-icon-feedback-cell .match-feedback-compact {
   margin-inline: auto;
-}
-
-.multiplayer-board[data-highlight="true"] .multiplayer-board-paper {
-  outline: 2px solid var(--semantic-success);
-  outline-offset: -2px;
-}
-
-.multiplayer-board[data-highlight-tone="danger"] .multiplayer-board-paper {
-  outline-color: var(--semantic-danger);
 }
 
 .multiplayer-board-empty-row td {
@@ -3099,37 +3100,37 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   background: var(--semantic-info);
 }
 
-.guess-table .feedback-cell {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell {
   color: var(--neutral-text);
 }
 
-.guess-table .feedback-cell-exact {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-exact {
   --paper-tinted-cell-color: var(--semantic-success);
   --paper-tinted-cell-background: var(--semantic-success-tint);
 }
 
-.guess-table .feedback-cell-partial {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-partial {
   --paper-tinted-cell-color: var(--semantic-warning);
   --paper-tinted-cell-background: var(--semantic-warning-tint);
 }
 
-.guess-table .feedback-cell-higher {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-higher {
   --paper-tinted-cell-color: var(--semantic-danger);
   --paper-tinted-cell-background: var(--semantic-danger-tint);
 }
 
-.guess-table .feedback-cell-lower {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-lower {
   --paper-tinted-cell-color: var(--semantic-info);
   --paper-tinted-cell-background: var(--semantic-info-tint);
 }
 
-.guess-table .feedback-cell-miss,
-.guess-table .feedback-cell-unknown {
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-miss,
+:is(.guess-table, .multiplayer-relay-table) .feedback-cell-unknown {
   --paper-tinted-cell-color: var(--semantic-neutral);
   --paper-tinted-cell-background: var(--semantic-neutral-tint);
 }
 
-.guess-table .feedback {
+:is(.guess-table, .multiplayer-relay-table) .feedback {
   min-height: 0;
   align-items: center;
   padding: 0;
@@ -3859,4 +3860,106 @@ body:has(.single-game-shell) main {
   50% {
     opacity: 0.62;
   }
+}
+
+/* Shared paper/table rules are unlayered. Keep their multiplayer overrides
+   here; layout, controls and responsive behavior use Tailwind in components. */
+.paper-surface.multiplayer-board-paper {
+  --guess-character-column-width: 144px;
+  --guess-table-width: 560px;
+  width: max(100%, var(--guess-table-width));
+  min-width: var(--guess-table-width);
+}
+
+.multiplayer-board[data-board-variant="opponent"] .multiplayer-board-paper {
+  --guess-character-column-width: 72px;
+  --guess-table-width: 430px;
+}
+
+.guess-table.multiplayer-guess-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.multiplayer-guess-table thead th {
+  height: 38px;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--surface-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.multiplayer-guess-table thead th:first-child {
+  width: var(--guess-character-column-width);
+}
+
+.multiplayer-guess-table tbody :is(th, td) {
+  height: 62px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.multiplayer-guess-table tbody th[scope="row"] {
+  width: var(--guess-character-column-width);
+  min-width: var(--guess-character-column-width);
+  background: var(--surface);
+}
+
+.multiplayer-guess-table tbody tr:last-child > :is(th, td) {
+  border-bottom: 0;
+}
+
+.multiplayer-guess-table .guess-character {
+  gap: 7px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.multiplayer-guess-table .feedback {
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.multiplayer-guess-table .feedback b {
+  width: 16px;
+  height: 16px;
+}
+
+.multiplayer-guess-table .match-feedback-compact {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  justify-content: center;
+  margin-inline: auto;
+}
+
+.multiplayer-board[data-board-variant="opponent"] thead th {
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .match-summary-paper .member-score-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
+
+/* Keep site links accessible below the measured multiplayer action dock. */
+body:has([data-multiplayer-match-frame]) .site-footer {
+  position: fixed;
+  bottom: 0;
+  background: var(--page-background);
 }

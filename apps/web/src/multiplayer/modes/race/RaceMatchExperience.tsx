@@ -19,6 +19,7 @@ import type { components } from "../../../generated/api";
 import type { RoomActions, RoomUiState } from "../../../hooks/useRoom";
 import { formatRemaining, useRoomClock } from "../../../hooks/useRoomClock";
 import { GuessInputBar } from "../../../components/game/GuessInputBar";
+import { PaperButton } from "../../../components/paper";
 import { GuessTable, type GuessRow } from "../../../components/game/GuessTable";
 import { MatchBoard } from "../../../components/multiplayer/MatchBoard";
 import { MemberPaginator } from "../../../components/multiplayer/MemberPaginator";
@@ -200,13 +201,9 @@ export function RaceMatchExperience({
         : (participationMessage ?? "竞速进行中");
   const statusActions =
     roomStatus === "finished" ? undefined : readOnlyViewer ? (
-      <button
-        type="button"
-        onClick={onLeave}
-        className="min-h-8 rounded-[5px] border border-line-strong bg-paper px-3 text-[0.72rem] font-bold"
-      >
+      <PaperButton compact onClick={onLeave}>
         退出房间
-      </button>
+      </PaperButton>
     ) : round?.status === "playing" && !raceReadOnly && !selectedArchive ? (
       <RoundForfeitButton
         confirm={forfeitConfirm}
@@ -267,20 +264,11 @@ export function RaceMatchExperience({
         guessedIds={guessedIds}
       />
     ) : null;
-  const bottomControls = guessControl ? (
-    <div className="race-bottom-controls">
-      {guessControl}
-      <MatchSummaryBar model={summaryModel} />
-      {!matchFinished ? (
-        <MatchStatusBand model={statusModel} actions={statusActions} />
-      ) : null}
-    </div>
-  ) : undefined;
 
   return (
     <div data-race-match-experience>
-      <MultiplayerMatchFrame bottomDock={bottomControls}>
-        {!bottomControls ? <MatchSummaryBar model={summaryModel} /> : null}
+      <MultiplayerMatchFrame bottomDock={guessControl ?? undefined}>
+        <MatchSummaryBar model={summaryModel} />
 
         {countdownTarget ? (
           <MatchCountdownBand
@@ -316,7 +304,7 @@ export function RaceMatchExperience({
           />
         ) : null}
 
-        {!bottomControls && !matchFinished ? (
+        {!matchFinished ? (
           <MatchStatusBand model={statusModel} actions={statusActions} />
         ) : null}
 
@@ -379,16 +367,18 @@ function RoundForfeitButton({
   onClick: () => void | Promise<void>;
 }) {
   return (
-    <button
-      type="button"
+    <PaperButton
+      compact
+      filled={confirm}
+      tone="danger"
       onClick={() => void onClick()}
       disabled={busy}
       title={confirm ? "再次点击确认放弃本局" : "放弃本局"}
-      className="race-forfeit-button inline-flex min-h-12 w-[148px] items-center justify-center gap-2 border-0 bg-vermilion px-4 text-sm font-bold text-[var(--accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="race-forfeit-button"
     >
       <Flag size={18} aria-hidden="true" />
       {busy ? "提交中……" : confirm ? "再次点击确认放弃" : "放弃本局"}
-    </button>
+    </PaperButton>
   );
 }
 

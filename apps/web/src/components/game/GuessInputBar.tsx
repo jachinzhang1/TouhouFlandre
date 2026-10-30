@@ -1,10 +1,10 @@
 "use client";
 
 // 与单人模式一致的“先选择、再提交”猜测组件；定位由多人猜测底栏负责。
-import { Loader2, Search, Send } from "lucide-react";
+import { Check, Loader2, Search, Target } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { CharacterAvatar } from "./CharacterAvatar";
-import { FeedbackLegend } from "./FeedbackLegend";
+import { FeedbackLegendButton } from "./FeedbackLegendButton";
 import { SuggestionPopover } from "./SuggestionPopover";
 import {
   useCharacterSearch,
@@ -136,139 +136,167 @@ export function GuessInputBar({
   return (
     <section
       aria-label="多人猜测区域"
-      className="multiplayer-guess-bar"
+      className="multiplayer-guess-bar mx-auto grid w-full max-w-[720px] min-w-0 gap-2 max-[680px]:gap-1.5"
       data-guess-input-bar
     >
-      <FeedbackLegend className="single-game-feedback-legend" />
-      <div className="single-game-input-group">
-        <form
-          aria-label="猜测"
-          className="guess-form"
-          onSubmit={(event) => {
-            const restoreFocus = document.activeElement === inputRef.current;
-            event.preventDefault();
-            void submitSelected(restoreFocus);
-          }}
-        >
-          <PaperSegmentGroup
-            className="single-game-guess-group"
-            label="猜测操作"
+      <div className="single-game-input-group gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <form
+            aria-label="猜测"
+            className="guess-form min-w-0 flex-1"
+            onSubmit={(event) => {
+              const restoreFocus = document.activeElement === inputRef.current;
+              event.preventDefault();
+              void submitSelected(restoreFocus);
+            }}
           >
-            <div className="search-combobox">
-              <PaperSearchInput
-                aria-activedescendant={
-                  showPopover && selectableResults[highlightIndex]
-                    ? `${listboxId}-${selectableResults[highlightIndex].id}`
-                    : undefined
-                }
-                aria-autocomplete="list"
-                aria-controls={listboxId}
-                aria-expanded={showPopover}
-                ariaLabel="搜索角色"
-                className="single-game-search-control"
-                containerRef={searchBoxRef}
-                disabled={disabled}
-                inputRef={inputRef}
+            <div className="flex min-w-0">
+              <Paper
+                as="span"
+                animateOnMount={false}
+                className="flex min-h-12 shrink-0 items-center gap-1.5 px-3 font-brand text-[0.78rem] font-black max-[680px]:px-2 max-[680px]:text-[0.7rem]"
                 folded={false}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setSelectedId("");
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  disabled
-                    ? (statusMessage ?? "等待当前轮次……")
-                    : "角色名或别名，@ 筛选初登场作品"
-                }
-                role="combobox"
-                value={query}
-              />
-              <SuggestionPopover
-                anchor={searchBoxRef}
-                id={listboxId}
-                open={showPopover}
+                sticker={false}
+                unfoldOnHover={false}
+                variant="tinted"
               >
-                {loading ? (
-                  <div className="suggestion-state" role="status">
-                    <Loader2 className="spin" size={17} aria-hidden="true" />
-                    <span>正在加载搜索索引</span>
-                  </div>
-                ) : error ? (
-                  <div
-                    className="suggestion-state suggestion-error"
-                    role="alert"
+                <Target
+                  size={16}
+                  className="max-[680px]:hidden"
+                  aria-hidden="true"
+                />
+                <span>角色竞猜</span>
+              </Paper>
+              <PaperSegmentGroup
+                className="single-game-guess-group min-w-0 flex-1"
+                label="猜测操作"
+              >
+                <div className="search-combobox">
+                  <PaperSearchInput
+                    aria-activedescendant={
+                      showPopover && selectableResults[highlightIndex]
+                        ? `${listboxId}-${selectableResults[highlightIndex].id}`
+                        : undefined
+                    }
+                    aria-autocomplete="list"
+                    aria-controls={listboxId}
+                    aria-expanded={showPopover}
+                    ariaLabel="搜索角色"
+                    className="single-game-search-control"
+                    containerRef={searchBoxRef}
+                    disabled={disabled}
+                    inputRef={inputRef}
+                    folded={false}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setSelectedId("");
+                    }}
+                    onKeyDown={handleKeyDown}
+                    placeholder={
+                      disabled
+                        ? (statusMessage ?? "等待当前轮次……")
+                        : "角色名或别名，@ 筛选初登场作品"
+                    }
+                    role="combobox"
+                    value={query}
+                  />
+                  <SuggestionPopover
+                    anchor={searchBoxRef}
+                    id={listboxId}
+                    open={showPopover}
                   >
-                    <span>{error}</span>
-                  </div>
-                ) : selectableResults.length > 0 ? (
-                  <>
-                    {selectableResults.map((result, index) => (
-                      <button
-                        aria-selected={highlightIndex === index}
-                        className="suggestion paper-data-table-row"
-                        id={`${listboxId}-${result.id}`}
-                        key={result.id}
-                        ref={
-                          highlightIndex === index
-                            ? activeSuggestionScrollRef
-                            : undefined
-                        }
-                        onClick={() => {
-                          selectResult(result);
-                          void submitGuess(result.id);
-                        }}
-                        onMouseEnter={() => setHighlightIndex(index)}
-                        onPointerDown={(event) => event.preventDefault()}
-                        role="option"
-                        tabIndex={-1}
-                        type="button"
+                    {loading ? (
+                      <div className="suggestion-state" role="status">
+                        <Loader2
+                          className="spin"
+                          size={17}
+                          aria-hidden="true"
+                        />
+                        <span>正在加载搜索索引</span>
+                      </div>
+                    ) : error ? (
+                      <div
+                        className="suggestion-state suggestion-error"
+                        role="alert"
                       >
-                        <span className="suggestion-avatar-cell">
-                          <CharacterAvatar
-                            avatarUrl={result.avatarUrl}
-                            className="suggestion-avatar"
-                            initials={result.initials}
-                            name={result.name}
-                          />
-                        </span>
-                        <span className="suggestion-main">
-                          <strong>{result.name}</strong>
-                          <small>{result.subtitle}</small>
-                        </span>
-                        <span className="suggestion-meta">选择</span>
-                      </button>
-                    ))}
-                    <div
-                      aria-hidden="true"
-                      className="suggestion-columns paper-data-table-header paper-data-table-row"
-                    >
-                      <span>头像</span>
-                      <span>角色</span>
-                      <span>选择</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="suggestion-state" role="status">
-                    <Search size={17} aria-hidden="true" />
-                    <span>没有找到匹配角色</span>
-                  </div>
-                )}
-              </SuggestionPopover>
+                        <span>{error}</span>
+                      </div>
+                    ) : selectableResults.length > 0 ? (
+                      <>
+                        {selectableResults.map((result, index) => (
+                          <button
+                            aria-selected={highlightIndex === index}
+                            className="suggestion paper-data-table-row"
+                            id={`${listboxId}-${result.id}`}
+                            key={result.id}
+                            ref={
+                              highlightIndex === index
+                                ? activeSuggestionScrollRef
+                                : undefined
+                            }
+                            onClick={() => {
+                              selectResult(result);
+                              void submitGuess(result.id);
+                            }}
+                            onMouseEnter={() => setHighlightIndex(index)}
+                            onPointerDown={(event) => event.preventDefault()}
+                            role="option"
+                            tabIndex={-1}
+                            type="button"
+                          >
+                            <span className="suggestion-avatar-cell">
+                              <CharacterAvatar
+                                avatarUrl={result.avatarUrl}
+                                className="suggestion-avatar"
+                                initials={result.initials}
+                                name={result.name}
+                              />
+                            </span>
+                            <span className="suggestion-main">
+                              <strong>{result.name}</strong>
+                              <small>{result.subtitle}</small>
+                            </span>
+                            <span className="suggestion-meta">选择</span>
+                          </button>
+                        ))}
+                        <div
+                          aria-hidden="true"
+                          className="suggestion-columns paper-data-table-header paper-data-table-row"
+                        >
+                          <span>头像</span>
+                          <span>角色</span>
+                          <span>选择</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="suggestion-state" role="status">
+                        <Search size={17} aria-hidden="true" />
+                        <span>没有找到匹配角色</span>
+                      </div>
+                    )}
+                  </SuggestionPopover>
+                </div>
+                <PaperSegmentSeparator />
+                <PaperButton
+                  ariaLabel="提交猜测"
+                  className="single-game-submit max-[680px]:[&>span]:hidden"
+                  disabled={submitDisabled}
+                  filled={!submitDisabled}
+                  onClick={() => void submitSelected()}
+                  tone="theme"
+                >
+                  <Check size={18} aria-hidden="true" />
+                  <span>提交猜测</span>
+                </PaperButton>
+              </PaperSegmentGroup>
             </div>
-            <PaperSegmentSeparator />
-            <PaperButton
-              ariaLabel="提交猜测"
-              className="single-game-submit"
-              disabled={submitDisabled}
-              filled={!submitDisabled}
-              onClick={() => void submitSelected()}
-              tone="theme"
-            >
-              <Send size={18} aria-hidden="true" />
-              <span>提交猜测</span>
-            </PaperButton>
-          </PaperSegmentGroup>
-        </form>
+          </form>
+          <FeedbackLegendButton
+            className="shrink-0 max-[680px]:w-12"
+            placement="above"
+            showLabel
+          />
+        </div>
         {statusMessage ? (
           <Paper
             animateOnMount={false}

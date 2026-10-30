@@ -10,9 +10,11 @@ import { FEEDBACK_LEGEND_ITEMS } from "./FeedbackLegend";
 export function FeedbackLegendButton({
   className = "",
   placement = "below",
+  showLabel = false,
 }: {
   className?: string;
   placement?: "above" | "below";
+  showLabel?: boolean;
 }) {
   const legendId = useId();
   const controlRef = useRef<HTMLDivElement>(null);
@@ -78,13 +80,14 @@ export function FeedbackLegendButton({
         ariaControls={open ? legendId : undefined}
         ariaExpanded={open}
         ariaLabel="查看反馈图例"
-        className="legend-button"
+        className="legend-button max-[680px]:[&>span]:hidden"
         folded={false}
-        iconOnly
+        iconOnly={!showLabel}
         onClick={() => setOpen((value) => !value)}
         title="查看反馈图例"
       >
         <Search size={18} aria-hidden="true" />
+        {showLabel ? <span>查看图例</span> : null}
       </PaperButton>
       {open && position
         ? createPortal(

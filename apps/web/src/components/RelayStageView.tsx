@@ -1,5 +1,7 @@
 "use client";
 
+import { PaperButton } from "./paper";
+
 import { FastForward, Flag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type {
@@ -312,18 +314,20 @@ export function RelayStageView({
         <span className="rounded bg-paper-muted px-2 py-1 text-[0.7rem] font-bold text-ink-soft">
           空过 {skips.used}/{skips.maximum} · 剩余 {skips.remaining}
         </span>
-        <button
-          type="button"
+        <PaperButton
+          compact
+          iconOnly
           title={skips.remaining > 0 ? "主动空过本手" : "本局空过次数已用完"}
           onClick={() => void act("pass")}
           disabled={!canPass || actionBusy !== null}
-          className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line-strong bg-paper-muted text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="主动空过本手"
+
+          ariaLabel="主动空过本手"
         >
           <FastForward size={15} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
+        </PaperButton>
+        <PaperButton
+          compact
+          iconOnly
           title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
           onClick={() => {
             if (!forfeitConfirm) {
@@ -334,11 +338,12 @@ export function RelayStageView({
             void act("forfeit");
           }}
           disabled={!canForfeit || actionBusy !== null}
-          className={`inline-flex size-8 items-center justify-center rounded-[5px] border disabled:cursor-not-allowed disabled:opacity-40 ${forfeitConfirm ? "border-vermilion bg-vermilion-soft text-vermilion" : "border-line-strong bg-paper-muted text-ink-soft"}`}
-          aria-label={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
+          tone="danger"
+          filled={forfeitConfirm}
+          ariaLabel={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
         >
           <Flag size={15} aria-hidden="true" />
-        </button>
+        </PaperButton>
       </div>
     ) : undefined;
 

@@ -141,7 +141,7 @@ export function RoomView({ code }: { code: string }) {
     stored?.roomId &&
     stored?.guestToken ? (
       <ChatDock
-        placement={state.room.status === "lobby" ? "inline" : "fixed"}
+        placement={state.room.status === "lobby" ? "inline" : "deck"}
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
@@ -369,7 +369,7 @@ function ConnectionNotice({
 function GuessErrorToast({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <div className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
+    <div className="fixed inset-x-0 top-[calc(var(--site-nav-height)_+_12px)] z-50 flex justify-center px-4">
       <p
         className="rounded-[6px] border border-vermilion-soft bg-vermilion-soft px-4 py-2 text-[0.8rem] font-semibold text-vermilion shadow-sm"
         role="alert"

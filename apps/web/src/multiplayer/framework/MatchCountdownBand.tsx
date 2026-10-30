@@ -14,7 +14,7 @@ export function MatchCountdownBand({
   const remaining = useRoomClock(targetAt);
   return (
     <div
-      className="match-countdown-band mb-3 flex min-h-14 items-center justify-center border-y border-amber bg-paper px-3 py-2.5 text-center"
+      className="match-countdown-band flex min-h-14 items-center justify-center border-y border-amber bg-paper px-3 py-2.5 text-center"
       data-match-countdown
       data-countdown-kind={kind}
       role="status"

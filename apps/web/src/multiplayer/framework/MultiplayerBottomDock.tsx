@@ -32,6 +32,7 @@ export function MultiplayerBottomDockProvider({
   const [actionTarget, setActionTarget] = useState<HTMLDivElement | null>(null);
   const [actionCount, setActionCount] = useState(0);
   const [controlsHeight, setControlsHeight] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(0);
   const hasPersistentDock = Boolean(persistentDock);
   const hasDockContent = hasPersistentDock || actionCount > 0;
 
@@ -46,10 +47,12 @@ export function MultiplayerBottomDockProvider({
       return;
     }
 
+    const footer = document.querySelector(".site-footer");
     const updateHeight = () => {
       setControlsHeight(
         Math.ceil(controlsElement.getBoundingClientRect().height),
       );
+      setFooterHeight(Math.ceil(footer?.getBoundingClientRect().height ?? 0));
     };
 
     updateHeight();
@@ -60,6 +63,7 @@ export function MultiplayerBottomDockProvider({
 
     const observer = new ResizeObserver(updateHeight);
     observer.observe(controlsElement);
+    if (footer) observer.observe(footer);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updateHeight);
@@ -79,28 +83,25 @@ export function MultiplayerBottomDockProvider({
           <div
             aria-hidden="true"
             data-multiplayer-bottom-dock-spacer
-            style={{ height: controlsHeight }}
+            style={{ height: controlsHeight + footerHeight }}
           />
           <div
             ref={setControlsElement}
-            className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col border-t border-line bg-paper/95 backdrop-blur max-[680px]:bottom-[68px]"
+            className="pointer-events-none fixed inset-x-0 z-45 grid gap-2 bg-[linear-gradient(to_bottom,transparent,var(--page-background)_18px)] px-[max(18px,calc((100%_-_var(--site-content-max))_/_2))] pt-[18px] pb-[calc(12px_+_env(safe-area-inset-bottom,0px))] max-[680px]:gap-1.5 max-[680px]:px-3.5 max-[680px]:pt-3.5 max-[680px]:pb-[calc(8px_+_env(safe-area-inset-bottom,0px))]"
+            style={{ bottom: footerHeight }}
             data-multiplayer-bottom-dock
           >
             {hasPersistentDock ? (
               <div
-                className={`pointer-events-auto relative z-20 px-[18px] pt-2 ${
-                  actionCount > 0 ? "pb-0" : "pb-2"
-                }`}
+                className="pointer-events-auto relative z-20 w-full min-w-0 max-w-[520px] justify-self-center"
                 data-multiplayer-persistent-dock
               >
-                <div className="mx-auto w-full max-w-[560px]">
-                  {persistentDock}
-                </div>
+                {persistentDock}
               </div>
             ) : null}
             <div
               ref={setActionTarget}
-              className="pointer-events-auto relative z-30 empty:hidden"
+              className="pointer-events-auto relative z-30 w-full min-w-0 max-w-[var(--site-content-max)] justify-self-center empty:hidden"
               data-multiplayer-action-dock
             />
           </div>

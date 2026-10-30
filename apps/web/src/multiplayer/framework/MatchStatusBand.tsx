@@ -23,7 +23,7 @@ export function MatchStatusBand({
             : "text-ink";
   return (
     <div
-      className={`match-status-band flex min-h-12 flex-wrap items-center justify-between gap-3 ${toneClass}`}
+      className={`match-status-band flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-2 border-l-[3px] border-current bg-paper-muted px-3.5 py-2.5 ${toneClass}`}
       data-match-status
       role="status"
       aria-live="polite"

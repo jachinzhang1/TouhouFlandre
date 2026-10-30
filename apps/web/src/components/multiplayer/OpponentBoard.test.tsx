@@ -105,11 +105,11 @@ describe("OpponentBoard", () => {
       />,
     );
 
-    const headers = Array.from(container.querySelectorAll("tfoot th")).map(
+    const headers = Array.from(container.querySelectorAll("thead th")).map(
       (header) => header.textContent,
     );
     expect(headers).toEqual([
-      "角色",
+      "猜测",
       "初登场作品",
       "初登场年份",
       "种族",

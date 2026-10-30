@@ -75,7 +75,11 @@ export function MatchBoard({
         : "";
 
   const boards = (
-    <div className="multiplayer-room-board-grid" data-race-board-layout>
+    <div
+      className={`grid min-w-0 items-start gap-5 max-[900px]:grid-cols-1 ${ended ? "grid-cols-1" : "grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"}`}
+      data-race-board-layout
+      data-ended={ended}
+    >
       {ended && roundResult ? (
         <EndedBoards
           roundResult={roundResult}
@@ -85,19 +89,18 @@ export function MatchBoard({
         />
       ) : (
         <>
+          <SelfBoard
+            guesses={round?.self.guesses ?? []}
+            playing={round?.status === "playing"}
+            maxGuesses={round?.maxGuesses}
+            fields={fields}
+          />
           <OpponentPages
             round={round}
             memberId={memberId}
             match={match}
             members={members ?? []}
             fields={fields}
-          />
-          <SelfBoard
-            guesses={round?.self.guesses ?? []}
-            playing={round?.status === "playing"}
-            maxGuesses={round?.maxGuesses}
-            fields={fields}
-            showHeading={false}
           />
         </>
       )}
@@ -247,7 +250,7 @@ function EndedBoards({
     ),
   );
   return (
-    <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid min-w-0 items-start gap-5 min-[901px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       {selfBoard ? (
         <GuessTable
           title="我"

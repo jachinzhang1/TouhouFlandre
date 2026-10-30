@@ -80,7 +80,7 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
         const tone = entry.tone ?? "default";
         return (
           <li
-            className="member-score-item"
+            className="member-score-item flex min-w-0 items-center gap-1 bg-[var(--surface-muted)] px-2 py-[5px] text-[0.7rem] text-ink-soft data-[viewer=true]:bg-vermilion-soft data-[viewer=true]:text-vermilion data-[tone=danger]:bg-[var(--error-bg)] data-[tone=danger]:text-[var(--error-text)] max-[680px]:shrink-0 max-[680px]:px-1.5 max-[680px]:py-[3px]"
             data-tone={tone}
             data-viewer={entry.isViewer ? "true" : undefined}
             data-winner={entry.isWinner ? "true" : undefined}
@@ -102,7 +102,9 @@ export function MemberScoreStrip(props: MemberScoreStripProps) {
                 </span>
               </>
             )}
-            <strong className="tabular-nums">{entry.score}</strong>
+            <strong className="ml-1 text-[0.9rem] text-ink tabular-nums">
+              {entry.score}
+            </strong>
             {entry.isWinner && entry.winnerBeforeStatuses ? (
               <span>胜</span>
             ) : null}

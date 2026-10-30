@@ -289,7 +289,7 @@ describe("GuessInputBar", () => {
     expect(onGuess).toHaveBeenCalledTimes(1);
   });
 
-  it("在多人底部输入栏展示共用反馈图例", () => {
+  it("通过猜测栏右侧的按钮向上展开反馈图例", () => {
     render(
       <GuessInputBar
         onGuess={onGuess}
@@ -298,9 +298,16 @@ describe("GuessInputBar", () => {
       />,
     );
 
-    expect(screen.getByRole("list", { name: "反馈图例" })).toBeTruthy();
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    expect(screen.queryByRole("list", { name: "反馈图例" })).toBeNull();
+    const button = screen.getByRole("button", { name: "查看反馈图例" });
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("tooltip").className).toContain(
+      "feedback-legend-tooltip-above",
+    );
     expect(screen.getAllByRole("listitem")).toHaveLength(6);
-    expect(screen.getByText("未知，遇到请反馈")).toBeTruthy();
+    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
 
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("tooltip")).toBeNull();

@@ -31,7 +31,7 @@ export function MatchOutcomeBand({
           : "text-ink";
   return (
     <section
-      className={`mb-3 border-y px-3 py-3 ${toneClass}`}
+      className={`border-y px-3 py-3 ${toneClass}`}
       data-match-outcome
       aria-labelledby="multiplayer-round-outcome"
     >

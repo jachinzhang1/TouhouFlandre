@@ -10,6 +10,7 @@ import type { components } from "../generated/api";
 import { CharacterAvatar } from "./game/CharacterAvatar";
 import { FeedbackStatusIcon } from "./game/FeedbackStatusIcon";
 import { STATUS_LABEL } from "./game/GuessTable";
+import { Paper } from "./paper";
 
 type MemberView = components["schemas"]["MemberView"];
 
@@ -27,11 +28,11 @@ export function RelayEncounterBoard({
   const unlimited = isUnlimitedGuessLimit(maximumTurns);
   return (
     <section
-      className="min-h-[360px] rounded-[6px] border border-line bg-paper p-3 shadow-sm"
+      className="min-w-0"
       data-relay-board={encounter.encounterId}
       aria-labelledby={`relay-board-${encounter.encounterId}`}
     >
-      <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+      <div className="mb-2.5 flex min-h-9 min-w-0 flex-wrap items-center justify-between gap-2.5">
         <h2
           id={`relay-board-${encounter.encounterId}`}
           className="m-0 min-w-0 overflow-wrap-anywhere text-[0.82rem] font-black text-ink"
@@ -50,55 +51,63 @@ export function RelayEncounterBoard({
         </p>
       ) : null}
       <div
-        className="max-w-full overflow-x-auto"
+        className="multiplayer-board-scroll max-w-full"
         tabIndex={0}
         role="region"
         aria-label="接力回合记录"
       >
-        <table className="w-full min-w-[640px] border-collapse text-[0.78rem]">
-          <thead>
-            <tr>
-              <th className="w-36 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
-                回合
-              </th>
-              <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
-                角色
-              </th>
-              {fields.map((field) => (
-                <th
-                  key={field.key}
-                  className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
-                >
-                  {field.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {encounter.rows.length === 0 ? (
+        <Paper
+          as="div"
+          className="min-w-[640px]"
+          animateOnMount={false}
+          folded={false}
+          sticker={false}
+        >
+          <table className="multiplayer-relay-table w-full [&_tbody_td]:h-[60px] [&_tbody_th]:h-[60px] min-w-[640px] border-collapse text-[0.78rem]">
+            <thead>
               <tr>
-                <td
-                  colSpan={fields.length + 2}
-                  className="h-24 text-center text-ink-soft"
-                >
-                  {encounter.status === "ended"
-                    ? "本局没有猜测记录。"
-                    : "等待第一手猜测。"}
-                </td>
+                <th className="w-36 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
+                  回合
+                </th>
+                <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
+                  角色
+                </th>
+                {fields.map((field) => (
+                  <th
+                    key={field.key}
+                    className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
+                  >
+                    {field.label}
+                  </th>
+                ))}
               </tr>
-            ) : (
-              encounter.rows.map((row) => (
-                <RelayTurn
-                  key={row.index}
-                  row={row}
-                  members={members}
-                  fields={fields}
-                  winnerMemberId={encounter.winnerMemberId}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {encounter.rows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={fields.length + 2}
+                    className="h-24 text-center text-ink-soft"
+                  >
+                    {encounter.status === "ended"
+                      ? "本局没有猜测记录。"
+                      : "等待第一手猜测。"}
+                  </td>
+                </tr>
+              ) : (
+                encounter.rows.map((row) => (
+                  <RelayTurn
+                    key={row.index}
+                    row={row}
+                    members={members}
+                    fields={fields}
+                    winnerMemberId={encounter.winnerMemberId}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </Paper>
       </div>
     </section>
   );
@@ -171,7 +180,7 @@ function RelayTurn({
       </th>
       <th
         scope="row"
-        className="border-b border-line p-1.5 align-top text-left font-normal"
+        className="border-b border-line p-1.5 align-middle text-left font-normal"
       >
         <span className="flex items-center gap-1.5">
           <CharacterAvatar
@@ -193,7 +202,7 @@ function RelayTurn({
       {feedback.map((field, index) => (
         <td
           key={fields[index]?.key ?? index}
-          className="border-b border-line p-1.5 align-top"
+          className={`feedback-cell feedback-cell-${field.status} paper-tinted-cell border-b border-line p-1.5 align-middle`}
         >
           <span
             className={`feedback match-feedback feedback-${field.status}`}
