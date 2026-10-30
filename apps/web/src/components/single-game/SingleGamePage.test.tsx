@@ -593,7 +593,7 @@ describe("SingleGamePage", () => {
     expect(screen.getByText("该属性完全未命中")).toBeTruthy();
     expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
-    expect(tooltip.querySelector(".feedback-slashed-check-icon")).toBeTruthy();
+    expect(tooltip.querySelector(".lucide-triangle")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
     expect(tooltip.querySelector(".lucide-chevrons-down")).toBeTruthy();
     expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);

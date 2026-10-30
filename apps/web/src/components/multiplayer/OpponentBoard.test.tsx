@@ -51,7 +51,7 @@ describe("OpponentBoard", () => {
       ),
     ).toEqual([
       "lucide lucide-check",
-      "lucide lucide-check",
+      "lucide lucide-triangle",
       "lucide lucide-x",
       "lucide lucide-chevrons-up",
       "lucide lucide-chevrons-down",

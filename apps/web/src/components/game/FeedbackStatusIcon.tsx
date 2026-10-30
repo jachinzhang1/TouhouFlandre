@@ -1,5 +1,5 @@
-import { Check, ChevronsDown, ChevronsUp, X } from "lucide-react";
-import type { HTMLAttributes, SVGProps } from "react";
+import { Check, ChevronsDown, ChevronsUp, Triangle, X } from "lucide-react";
+import type { SVGProps } from "react";
 import type { FeedbackStatus } from "@touhouflandre/shared";
 
 const ICON_LABEL: Record<FeedbackStatus, string> = {
@@ -37,42 +37,6 @@ function QuestionMarkIcon({
   );
 }
 
-function SlashedCheckIcon({
-  size,
-  ...props
-}: {
-  size: number;
-} & HTMLAttributes<HTMLSpanElement>) {
-  return (
-    <span
-      className="feedback-slashed-check-icon"
-      style={{ width: size, height: size }}
-      {...props}
-    >
-      <Check aria-hidden="true" size={size} strokeWidth={2.4} />
-      <svg
-        aria-hidden="true"
-        className="feedback-check-slash-overlay"
-        fill="none"
-        height={size}
-        viewBox="0 0 24 24"
-        width={size}
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <line
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeWidth="2.4"
-          x1="12"
-          x2="18"
-          y1="7"
-          y2="13"
-        />
-      </svg>
-    </span>
-  );
-}
-
 export function FeedbackStatusIcon({
   status,
   decorative = false,
@@ -88,7 +52,7 @@ export function FeedbackStatusIcon({
 
   if (status === "exact") return <Check size={size} {...accessibilityProps} />;
   if (status === "partial")
-    return <SlashedCheckIcon size={size} {...accessibilityProps} />;
+    return <Triangle size={size * 0.75} {...accessibilityProps} />;
   if (status === "higher")
     return <ChevronsUp size={size} {...accessibilityProps} />;
   if (status === "lower")
