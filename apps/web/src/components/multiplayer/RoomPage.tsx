@@ -141,6 +141,7 @@ export function RoomView({ code }: { code: string }) {
     stored?.roomId &&
     stored?.guestToken ? (
       <ChatDock
+        placement={state.room.status === "lobby" ? "inline" : "fixed"}
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
@@ -202,7 +203,7 @@ export function RoomView({ code }: { code: string }) {
 
   if (isSpectator && state.room && state.room.status === "lobby") {
     return (
-      <MultiplayerBottomDockProvider persistentDock={chatDock}>
+      <div className="room-lobby-view">
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -239,12 +240,13 @@ export function RoomView({ code }: { code: string }) {
           }}
           onLeave={handleLeave}
         />
+        {chatDock}
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-      </MultiplayerBottomDockProvider>
+      </div>
     );
   }
 
@@ -281,7 +283,7 @@ export function RoomView({ code }: { code: string }) {
 
   if (status === "lobby" || status === "connecting") {
     return (
-      <MultiplayerBottomDockProvider persistentDock={chatDock}>
+      <div className="room-lobby-view">
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -318,12 +320,13 @@ export function RoomView({ code }: { code: string }) {
           }}
           onLeave={handleLeave}
         />
+        {chatDock}
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-      </MultiplayerBottomDockProvider>
+      </div>
     );
   }
 
