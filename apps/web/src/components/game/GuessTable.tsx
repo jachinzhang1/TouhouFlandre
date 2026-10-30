@@ -98,13 +98,13 @@ export function GuessTable({
         >
           <Paper
             as="div"
-            className="multiplayer-board-paper"
+            className="guess-record-paper multiplayer-board-paper"
             animateOnMount={false}
             folded={false}
             sticker={false}
             unfoldOnHover={false}
           >
-            <table className="guess-table multiplayer-guess-table">
+            <table className="guess-table guess-record-table multiplayer-guess-table">
               <thead className="paper-data-table-header multiplayer-board-footer">
                 <tr>
                   <th scope="col">{isOpponent ? "猜测" : "角色"}</th>

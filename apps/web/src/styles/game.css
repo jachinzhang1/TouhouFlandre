@@ -2924,76 +2924,14 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   overscroll-behavior-x: contain;
 }
 
-.single-game-guess-table {
-  --guess-cell-inset: 12px;
-  --guess-avatar-size: 42px;
-  --guess-character-gap: 9px;
-  --guess-feedback-icon-size: 22px;
-  --guess-feedback-gap: 7px;
-  --guess-character-column-width: 188px;
-  --guess-feedback-column-width: 128px;
-  --guess-duration-column-width: 124px;
-  --guess-table-width: calc(
-    var(--guess-character-column-width) + var(--guess-feedback-count, 6) *
-      var(--guess-feedback-column-width) + var(--guess-duration-column-width)
-  );
-}
-
-.single-game-guess-table .guess-feedback-column {
-  width: var(--guess-feedback-column-width);
-}
-
-.single-game-guess-table .guess-duration-column {
-  width: var(--guess-duration-column-width);
-}
-
-.single-game-guess-table :is(th, td) {
-  padding: 12px var(--guess-cell-inset);
-  text-align: left;
-}
-
-.single-game-guess-table thead th {
-  font-size: 0.78rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.single-game-guess-table .guess-character-heading {
-  padding-inline-start: calc(
-    var(--guess-cell-inset) + var(--guess-avatar-size) +
-      var(--guess-character-gap)
-  );
-}
-
-.single-game-guess-table .guess-feedback-heading {
-  padding-inline-start: calc(
-    var(--guess-cell-inset) + var(--guess-feedback-icon-size) +
-      var(--guess-feedback-gap)
-  );
-}
-
-.single-game-guess-table .guess-character {
-  gap: var(--guess-character-gap);
-}
-
-.single-game-guess-table .guess-avatar {
-  width: var(--guess-avatar-size);
-  height: var(--guess-avatar-size);
-  flex: 0 0 var(--guess-avatar-size);
-}
-
-.single-game-guess-table .feedback {
-  grid-template-columns: var(--guess-feedback-icon-size) minmax(0, 1fr);
-  gap: var(--guess-feedback-gap);
-}
-
-.single-game-guess-table .feedback > b {
-  width: var(--guess-feedback-icon-size);
-  height: var(--guess-feedback-icon-size);
-}
-
+.single-game-guess-table .guess-duration-column,
 .single-game-guess-table .guess-duration-cell {
+  width: 100px;
   text-align: center;
+}
+
+.single-game-guess-table tbody .guess-duration-cell {
+  background: var(--surface);
 }
 
 .guess-table tbody th.guess-timeout-cell {
@@ -3862,13 +3800,16 @@ body:has(.single-game-shell) main {
   }
 }
 
-/* Shared paper/table rules are unlayered. Keep their multiplayer overrides
-   here; layout, controls and responsive behavior use Tailwind in components. */
-.paper-surface.multiplayer-board-paper {
+/* Shared record tables for daily, random and multiplayer games. */
+.paper-surface.guess-record-paper {
   --guess-character-column-width: 144px;
   --guess-table-width: 560px;
   width: max(100%, var(--guess-table-width));
   min-width: var(--guess-table-width);
+}
+
+.paper-surface.single-game-record-paper {
+  --guess-table-width: calc(144px + var(--guess-feedback-count, 6) * 110px + 100px);
 }
 
 .multiplayer-board[data-board-variant="opponent"] .multiplayer-board-paper {
@@ -3876,14 +3817,15 @@ body:has(.single-game-shell) main {
   --guess-table-width: 430px;
 }
 
-.guess-table.multiplayer-guess-table {
+.guess-table.guess-record-table {
+  --single-game-guess-row-height: 62px;
   width: 100%;
   table-layout: auto;
   border-collapse: collapse;
   font-size: 0.75rem;
 }
 
-.multiplayer-guess-table thead th {
+.guess-record-table thead th {
   height: 38px;
   padding: 9px 8px;
   border-bottom: 1px solid var(--line);
@@ -3895,34 +3837,40 @@ body:has(.single-game-shell) main {
   white-space: nowrap;
 }
 
-.multiplayer-guess-table thead th:first-child {
+.guess-record-table thead th:first-child {
   width: var(--guess-character-column-width);
 }
 
-.multiplayer-guess-table tbody :is(th, td) {
+.guess-record-table tbody :is(th, td) {
   height: 62px;
   padding: 8px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
 
-.multiplayer-guess-table tbody th[scope="row"] {
+.guess-record-table tbody th[scope="row"] {
   width: var(--guess-character-column-width);
   min-width: var(--guess-character-column-width);
   background: var(--surface);
 }
 
-.multiplayer-guess-table tbody tr:last-child > :is(th, td) {
+.guess-record-table tbody tr:last-child > :is(th, td) {
   border-bottom: 0;
 }
 
-.multiplayer-guess-table .guess-character {
+.guess-record-table .guess-character {
   gap: 7px;
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.multiplayer-guess-table .feedback {
+.guess-record-table .guess-avatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+.guess-record-table .feedback {
   min-width: 0;
   min-height: 0;
   grid-template-columns: 16px minmax(0, 1fr);
@@ -3933,12 +3881,12 @@ body:has(.single-game-shell) main {
   line-height: 1.5;
 }
 
-.multiplayer-guess-table .feedback b {
+.guess-record-table .feedback b {
   width: 16px;
   height: 16px;
 }
 
-.multiplayer-guess-table .match-feedback-compact {
+.guess-record-table .match-feedback-compact {
   display: flex;
   width: 28px;
   height: 28px;

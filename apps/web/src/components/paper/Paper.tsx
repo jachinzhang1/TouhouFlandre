@@ -31,7 +31,7 @@ export interface PaperProps {
   animateOnMount?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
   buttonType?: "button" | "submit" | "reset";
-  as?: "article" | "button" | "div" | "span";
+  as?: "article" | "aside" | "button" | "div" | "span";
   children?: ReactNode;
   className?: string;
   disabled?: boolean;
@@ -157,6 +157,8 @@ export function Paper({
     );
   } else if (as === "article") {
     surface = <article {...paperProps}>{children}</article>;
+  } else if (as === "aside") {
+    surface = <aside {...paperProps}>{children}</aside>;
   } else if (as === "div") {
     surface = <div {...paperProps}>{children}</div>;
   } else {

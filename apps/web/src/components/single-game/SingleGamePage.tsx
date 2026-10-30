@@ -41,7 +41,11 @@ import type {
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
 import { SuggestionPopover } from "../game/SuggestionPopover";
-import { PaperButton, PaperSearchInput } from "../paper";
+import {
+  Paper,
+  PaperButton,
+  PaperSearchInput,
+} from "../paper";
 import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
 import { modeConfig } from "../../gameModes";
@@ -1342,140 +1346,168 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
           aria-label="猜测记录"
           tabIndex={0}
         >
-          <table
-            className="guess-table single-game-guess-table"
+          <div
             style={
               {
                 "--guess-feedback-count": visibleFields.length,
               } as CSSProperties
             }
           >
-            <colgroup>
-              <col className="guess-character-column" />
-              {visibleFields.map((field) => (
-                <col className="guess-feedback-column" key={field.key} />
-              ))}
-              <col className="guess-duration-column" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th scope="col" className="guess-character-heading">
-                  角色
-                </th>
-                {visibleFields.map((field) => (
-                  <th
-                    scope="col"
-                    className="guess-feedback-heading"
-                    key={field.key}
-                  >
-                    {field.label}
-                  </th>
-                ))}
-                <th scope="col" className="guess-duration-cell">
-                  本次猜测用时
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {session?.guesses.length ? (
-                session.guesses.map((guess, index) => {
-                  const timeout = guess.kind === "timeout";
-                  return (
-                    <tr
-                      key={guess.guessId}
-                      style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
-                    >
-                      {timeout ? (
-                        <th
-                          scope="row"
-                          colSpan={visibleFields.length + 1}
-                          className="guess-timeout-cell"
+            <Paper
+              as="div"
+              className="guess-record-paper single-game-record-paper"
+              animateOnMount={false}
+              folded={false}
+              sticker={false}
+              unfoldOnHover={false}
+            >
+              <table className="guess-table guess-record-table single-game-guess-table">
+                <colgroup>
+                  <col className="guess-character-column" />
+                  {visibleFields.map((field) => (
+                    <col className="guess-feedback-column" key={field.key} />
+                  ))}
+                  <col className="guess-duration-column" />
+                </colgroup>
+                <thead className="paper-data-table-header">
+                  <tr>
+                    <th scope="col" className="guess-character-heading">
+                      角色
+                    </th>
+                    {visibleFields.map((field) => (
+                      <th
+                        scope="col"
+                        className="guess-feedback-heading"
+                        key={field.key}
+                      >
+                        {field.label}
+                      </th>
+                    ))}
+                    <th scope="col" className="guess-duration-cell">
+                      本次猜测用时
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {session?.guesses.length ? (
+                    session.guesses.map((guess, index) => {
+                      const timeout = guess.kind === "timeout";
+                      return (
+                        <tr
+                          key={guess.guessId}
+                          style={{
+                            animationDelay: `${Math.min(index, 7) * 45}ms`,
+                          }}
                         >
-                          <span>超时空过</span>
-                        </th>
-                      ) : (
-                        <>
-                          <th scope="row">
-                            <span className="guess-character">
-                              <CharacterAvatar
-                                avatarUrl={guess.guessAvatarUrl}
-                                name={guess.guessName}
-                                initials={guess.guessName.slice(0, 2)}
-                                className="guess-avatar"
-                              />
-                              <span>{guess.guessName}</span>
-                              {guess.matchKind === "equivalent" ? (
-                                <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                                  等价命中
-                                </span>
-                              ) : null}
-                            </span>
-                          </th>
-                          {guess.feedback.map((feedback) => (
-                            <td key={feedback.field}>
-                              <span
-                                className={feedbackClass(feedback)}
-                                title={`${feedback.label}: ${feedback.status}`}
-                              >
-                                <b>
-                                  <FeedbackStatusIcon
-                                    status={feedback.status}
-                                  />
-                                </b>
-                                <span>{formatFeedbackValue(feedback)}</span>
+                          {timeout ? (
+                            <td colSpan={visibleFields.length + 1}>
+                              <span className="inline-flex rounded bg-vermilion-soft px-2 py-1 text-[0.72rem] font-black text-vermilion">
+                                超时空过
                               </span>
                             </td>
-                          ))}
-                        </>
-                      )}
-                      <td className="guess-duration-cell">
-                        <span className="guess-duration">
-                          {formatGuessDuration(guessCompletedElapsedMs, index)}
-                        </span>
+                          ) : (
+                            <>
+                              <th scope="row">
+                                <span className="guess-character">
+                                  <CharacterAvatar
+                                    avatarUrl={guess.guessAvatarUrl}
+                                    name={guess.guessName}
+                                    initials={guess.guessName.slice(0, 2)}
+                                    className="guess-avatar"
+                                  />
+                                  <span>{guess.guessName}</span>
+                                  {guess.matchKind === "equivalent" ? (
+                                    <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
+                                      等价命中
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </th>
+                              {guess.feedback.map((feedback) => (
+                                <td
+                                  key={feedback.field}
+                                  className={`feedback-cell feedback-cell-${feedback.status} paper-tinted-cell`}
+                                >
+                                  <span
+                                    className={feedbackClass(feedback)}
+                                    title={`${feedback.label}: ${feedback.status}`}
+                                  >
+                                    <b>
+                                      <FeedbackStatusIcon
+                                        status={feedback.status}
+                                      />
+                                    </b>
+                                    <span>{formatFeedbackValue(feedback)}</span>
+                                  </span>
+                                </td>
+                              ))}
+                            </>
+                          )}
+                          <td className="guess-duration-cell">
+                            <span className="guess-duration">
+                              {formatGuessDuration(
+                                guessCompletedElapsedMs,
+                                index,
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td
+                        className="empty-state"
+                        colSpan={visibleFields.length + 2}
+                      >
+                        {loading ? (
+                          <span>
+                            <Loader2
+                              className="spin"
+                              size={20}
+                              aria-hidden="true"
+                            />{" "}
+                            正在准备题局
+                          </span>
+                        ) : !session && message ? (
+                          <span>
+                            <X size={20} aria-hidden="true" /> 本局加载失败
+                          </span>
+                        ) : (
+                          <span>
+                            <Search size={20} aria-hidden="true" />{" "}
+                            等待第一次猜测
+                          </span>
+                        )}
                       </td>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td
-                    className="empty-state"
-                    colSpan={visibleFields.length + 2}
-                  >
-                    {loading ? (
-                      <span>
-                        <Loader2
-                          className="spin"
-                          size={20}
-                          aria-hidden="true"
-                        />{" "}
-                        正在准备题局
-                      </span>
-                    ) : !session && message ? (
-                      <span>
-                        <X size={20} aria-hidden="true" /> 本局加载失败
-                      </span>
-                    ) : (
-                      <span>
-                        <Search size={20} aria-hidden="true" /> 等待第一次猜测
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  )}
+                </tbody>
+              </table>
+            </Paper>
+          </div>
         </div>
       </section>
 
       {session && isFinished ? (
-        <aside className="result-panel" aria-label="游戏结果">
-          <div className="result-summary">
-            <p className="kicker">
+        <Paper
+          as="aside"
+          ariaLabel="游戏结果"
+          className="single-game-result-card mt-3.5 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-[18px] border-l-4 border-l-vermilion p-[22px] max-[680px]:p-4"
+          animateOnMount={false}
+          elevation="sm"
+          folded={false}
+          sticker={false}
+          unfoldOnHover={false}
+        >
+          <div className="min-w-0">
+            <p className="m-0 mb-2 text-[0.72rem] font-black tracking-[0.12em] text-vermilion">
               {session.status === "won" ? "Clear" : "Failed"}
             </p>
-            <h2>{session.status === "won" ? "猜中了" : "本次游戏结束"}</h2>
-            <p>
+            <h2 className="m-0 font-brand text-[1.55rem] font-black text-ink">
+              {session.status === "won" ? "猜中了" : "本次游戏结束"}
+            </h2>
+            <p className="mt-2 mb-0 text-[0.9rem] leading-relaxed text-ink-soft">
               答案是 <strong>{session.answer?.names.zhHans}</strong>，共使用{" "}
               {session.guesses.length} 次猜测。
               {session.status === "won" &&
@@ -1489,59 +1521,66 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
               avatarUrl={session.answer.avatarUrl}
               name={session.answer.names.zhHans}
               initials={session.answer.names.zhHans.slice(0, 2)}
-              className="answer-token"
+              className="answer-token size-[70px]! justify-self-end"
             />
           ) : null}
           {session.answer ? (
-            <dl className="answer-details" aria-label="答案角色资料">
-              <div>
-                <dt>日文名</dt>
-                <dd lang="ja">{session.answer.names.ja}</dd>
-              </div>
-              <div>
-                <dt>首次登场作品</dt>
-                <dd>{session.answer.firstAppearance.workTitle}</dd>
-              </div>
-              <div>
-                <dt>种族</dt>
-                <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
-              </div>
-              <div>
-                <dt>能力</dt>
-                <dd>{session.answer.abilityDisplay}</dd>
-              </div>
-              <div>
-                <dt>出现地点</dt>
-                <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
-              </div>
-              <div>
-                <dt>身份</dt>
-                <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
-              </div>
+            <dl
+              className="col-span-full m-0 grid min-w-0 grid-cols-3 gap-x-6 gap-y-[18px] border-t border-line pt-[18px] max-[680px]:grid-cols-2 max-[420px]:grid-cols-1"
+              aria-label="答案角色资料"
+            >
+              {[
+                { label: "日文名", value: session.answer.names.ja, lang: "ja" },
+                {
+                  label: "首次登场作品",
+                  value: session.answer.firstAppearance.workTitle,
+                },
+                {
+                  label: "种族",
+                  value: session.answer.species.join("、") || "暂无资料",
+                },
+                { label: "能力", value: session.answer.abilityDisplay },
+                {
+                  label: "出现地点",
+                  value: session.answer.locations.join("、") || "暂无资料",
+                },
+                {
+                  label: "身份",
+                  value: session.answer.roles.join("、") || "暂无资料",
+                },
+              ].map(({ label, value, lang }) => (
+                <div key={label} className="min-w-0">
+                  <dt className="mb-[5px] text-[0.68rem] font-black text-ink-soft">
+                    {label}
+                  </dt>
+                  <dd
+                    lang={lang}
+                    className="m-0 text-[0.88rem] leading-relaxed font-bold text-ink overflow-wrap-anywhere"
+                  >
+                    {value}
+                  </dd>
+                </div>
+              ))}
             </dl>
           ) : null}
-          <div className="result-actions">
+          <div className="col-span-full flex flex-wrap items-center gap-3 max-[420px]:[&>button]:w-full">
             {mode === "random" ? (
-              <button
-                className="primary-button"
-                type="button"
+              <PaperButton
+                filled
+                tone="theme"
                 onClick={() => void requestFreshSession()}
                 disabled={loading || submitting}
               >
                 <RotateCcw size={18} aria-hidden="true" />
                 <span>再来一局</span>
-              </button>
+              </PaperButton>
             ) : null}
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => void copyShare()}
-            >
+            <PaperButton filled tone="theme" onClick={() => void copyShare()}>
               <Copy size={18} aria-hidden="true" />
               <span>复制分享</span>
-            </button>
+            </PaperButton>
           </div>
-        </aside>
+        </Paper>
       ) : null}
     </>
   );
