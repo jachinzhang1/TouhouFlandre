@@ -14,11 +14,14 @@ export function MultiplayerMatchFrame({
 }) {
   return (
     <section
-      className="px-[18px] pt-4 pb-4"
+      className="mx-auto w-full max-w-[var(--site-content-max)] py-[22px] max-[680px]:px-3.5 max-[680px]:py-4"
       data-multiplayer-match-frame
+      data-has-bottom-dock={bottomDock ? "true" : "false"}
       data-testid={testId}
     >
-      <div className="mx-auto max-w-[1280px]">{children}</div>
+      <div className="multiplayer-race-shell grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3.5 max-[680px]:gap-3">
+        {children}
+      </div>
       {bottomDock ? (
         <MultiplayerBottomDockAction>{bottomDock}</MultiplayerBottomDockAction>
       ) : null}

@@ -1,4 +1,4 @@
-import { SingleLobby } from "../../components/SingleLobby";
+import { SingleLobby } from "../../components/single-game/SingleLobby";
 
 export default function SingleLobbyPage() {
   return <SingleLobby />;

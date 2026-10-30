@@ -61,7 +61,9 @@ test.describe("single game suggestion layout", () => {
     });
 
     await page.goto("/single/daily");
-    const input = page.locator(".search-box input");
+    // Exercise portal positioning even when an ancestor clips its children.
+    await page.addStyleTag({ content: "main { overflow: hidden; }" });
+    const input = page.locator(".paper-search-control input");
     await expect(input).toBeEnabled();
     await input.fill("layout");
 
@@ -69,11 +71,38 @@ test.describe("single game suggestion layout", () => {
     await expect(suggestionList).toBeVisible();
     await expect(suggestionList.locator(".suggestion")).toHaveCount(12);
 
+    const alignedRow = await suggestionList
+      .locator(".suggestion")
+      .nth(1)
+      .evaluate((row) => {
+        const rowRect = row.getBoundingClientRect();
+        return {
+          backgroundImage: getComputedStyle(row).backgroundImage,
+          row: { top: rowRect.top, bottom: rowRect.bottom },
+          cells: [...row.children].map((cell) => {
+            const rect = cell.getBoundingClientRect();
+            return {
+              top: rect.top,
+              bottom: rect.bottom,
+              borderTopStyle: getComputedStyle(cell).borderTopStyle,
+            };
+          }),
+        };
+      });
+    expect(alignedRow.backgroundImage).toBe("none");
+    for (const cell of alignedRow.cells) {
+      expect(Math.abs(cell.top - alignedRow.row.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(cell.bottom - alignedRow.row.bottom)).toBeLessThanOrEqual(
+        1,
+      );
+      expect(cell.borderTopStyle).toBe("dashed");
+    }
+
     await expect(async () => {
       const layout = await page.evaluate(() => {
-        const surface = document.querySelector(".game-surface");
-        const input = document.querySelector(".search-box");
-        const list = document.querySelector(".suggestion-list");
+        const surface = document.querySelector("main");
+        const input = document.querySelector(".paper-search-control");
+        const list = document.querySelector(".suggestion-list-positioner");
         if (!surface || !input || !list) return null;
 
         const inputRect = input.getBoundingClientRect();
@@ -95,12 +124,21 @@ test.describe("single game suggestion layout", () => {
       expect(layout).not.toBeNull();
       expect(layout?.bodyParent).toBe(true);
       expect(layout?.overflow).toBe("hidden");
+      const expectedWidth = Math.min(
+        640,
+        layout?.inputWidth ?? 0,
+        (layout?.viewportWidth ?? 0) - 24,
+      );
+      const expectedLeft = Math.min(
+        Math.max(12, layout?.inputLeft ?? 0),
+        (layout?.viewportWidth ?? 0) - expectedWidth - 12,
+      );
       expect(
-        Math.abs((layout?.inputLeft ?? 0) - (layout?.listLeft ?? 0)),
-      ).toBeLessThan(2);
+        Math.abs(expectedLeft - (layout?.listLeft ?? 0)),
+      ).toBeLessThanOrEqual(2);
       expect(
-        Math.abs((layout?.inputWidth ?? 0) - (layout?.listWidth ?? 0)),
-      ).toBeLessThan(2);
+        Math.abs(expectedWidth - (layout?.listWidth ?? 0)),
+      ).toBeLessThanOrEqual(2);
       expect(layout?.listTop).toBeGreaterThanOrEqual(0);
       expect(layout?.listBottom).toBeLessThanOrEqual(
         layout?.viewportHeight ?? 0,
@@ -110,13 +148,20 @@ test.describe("single game suggestion layout", () => {
       ).toBeLessThanOrEqual(layout?.viewportWidth ?? 0);
     }).toPass();
 
-    await input.press("ArrowDown");
+    await expect(suggestionList.locator(".suggestion").first()).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(input).toHaveAttribute(
       "aria-activedescendant",
       /layout_probe_0/,
     );
     await expect
-      .poll(() => suggestionList.evaluate((list) => list.scrollTop))
+      .poll(() =>
+        suggestionList
+          .locator(".suggestion-list-body")
+          .evaluate((list) => list.scrollTop),
+      )
       .toBe(0);
 
     await input.press("ArrowUp");
@@ -127,7 +172,7 @@ test.describe("single game suggestion layout", () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const list = document.querySelector(".suggestion-list");
+          const list = document.querySelector(".suggestion-list-body");
           const active = document.querySelector(".suggestion.selected");
           if (!list || !active) return false;
           const listRect = list.getBoundingClientRect();
@@ -150,7 +195,7 @@ test.describe("single game suggestion layout", () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          const list = document.querySelector(".suggestion-list");
+          const list = document.querySelector(".suggestion-list-body");
           const active = document.querySelector(".suggestion.selected");
           if (!list || !active) return false;
           const listRect = list.getBoundingClientRect();
@@ -216,7 +261,10 @@ test.describe("single game suggestion layout", () => {
     const input = page.getByLabel("搜索东方角色");
     await input.fill("灵梦");
     await expect(page.locator(".suggestion")).toBeVisible();
-    await input.press("ArrowDown");
+    await expect(page.getByRole("option")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(input).toHaveAttribute(
       "aria-activedescendant",
       /reimu_hakurei/,

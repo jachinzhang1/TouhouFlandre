@@ -18,19 +18,20 @@ import { ROOM_FORMAT_SHORT } from "../../../domain/multiRoom";
 import type { components } from "../../../generated/api";
 import type { RoomActions, RoomUiState } from "../../../hooks/useRoom";
 import { formatRemaining, useRoomClock } from "../../../hooks/useRoomClock";
-import { GuessInputBar } from "../../../components/GuessInputBar";
+import { GuessInputBar } from "../../../components/game/GuessInputBar";
+import { PaperButton } from "../../../components/paper";
+import { GuessTable, type GuessRow } from "../../../components/game/GuessTable";
+import { MatchBoard } from "../../../components/multiplayer/MatchBoard";
+import { MemberPaginator } from "../../../components/multiplayer/MemberPaginator";
+import { memberScoreEntries } from "../../../components/multiplayer/MemberScoreStrip";
 import {
   useCharacterSearchPrefetch,
   type MultiplayerCharacterSearchContext,
 } from "../../../hooks/useCharacterSearch";
-import { GuessTable, type GuessRow } from "../../../components/GuessTable";
-import { MatchBoard } from "../../../components/MatchBoard";
-import { MemberPaginator } from "../../../components/MemberPaginator";
-import { memberScoreEntries } from "../../../components/MemberScoreStrip";
 import {
   boardResultBadges,
   formatBoardTitle,
-} from "../../../components/boardMeta";
+} from "../../../components/multiplayer/boardMeta";
 import {
   BoardBrowser,
   MatchCountdownBand,
@@ -200,13 +201,9 @@ export function RaceMatchExperience({
         : (participationMessage ?? "竞速进行中");
   const statusActions =
     roomStatus === "finished" ? undefined : readOnlyViewer ? (
-      <button
-        type="button"
-        onClick={onLeave}
-        className="min-h-8 rounded-[5px] border border-line-strong bg-paper px-3 text-[0.72rem] font-bold"
-      >
+      <PaperButton compact onClick={onLeave}>
         退出房间
-      </button>
+      </PaperButton>
     ) : round?.status === "playing" && !raceReadOnly && !selectedArchive ? (
       <RoundForfeitButton
         confirm={forfeitConfirm}
@@ -227,49 +224,51 @@ export function RaceMatchExperience({
       />
     ) : undefined;
 
+  const summaryModel = {
+    identityLabel: `竞速 · ${ruleLabel}`,
+    scoreEntries: memberScoreEntries({
+      members: state.members,
+      scores: state.matchResult?.scores ?? match.scores,
+      viewerMemberId: memberId,
+      winnerMemberId: state.matchResult?.winnerMemberId,
+    }),
+    progressLabel: `第 ${match.roundIndex} 局${progressDetail ? ` · ${progressDetail}` : ""}`,
+    indicators: readOnlyViewer ? (
+      <span className={eliminated ? "text-vermilion" : "text-jade"}>
+        {eliminated ? "已淘汰 · 观战" : "观战席"}
+      </span>
+    ) : scoringMode === "placement" ? (
+      <span className={eliminatesThisRound ? "text-vermilion" : "text-jade"}>
+        {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
+      </span>
+    ) : undefined,
+  };
+  const statusModel = {
+    message: statusMessage,
+    active: !selectedArchive && !raceReadOnly && round?.status === "playing",
+    timers:
+      !selectedArchive && round?.status === "playing"
+        ? [{ label: "本局", deadline: round.deadline }]
+        : undefined,
+  };
+  const guessControl =
+    role === "player" &&
+    !eliminated &&
+    round?.status === "playing" &&
+    !selectedArchive ? (
+      <GuessInputBar
+        onGuess={actions.submitGuess}
+        disabled={!hasOpponent || raceReadOnly}
+        key={`${state.room?.roomId ?? ""}:${match.matchIndex}`}
+        searchContext={searchContext}
+        guessedIds={guessedIds}
+      />
+    ) : null;
+
   return (
     <div data-race-match-experience>
-      <MultiplayerMatchFrame
-        bottomDock={
-          role === "player" &&
-          !eliminated &&
-          round?.status === "playing" &&
-          !selectedArchive ? (
-            <GuessInputBar
-              key={`${state.room?.roomId ?? ""}:${match.matchIndex}`}
-              onGuess={actions.submitGuess}
-              disabled={!hasOpponent || raceReadOnly}
-              searchContext={searchContext}
-              guessedIds={guessedIds}
-            />
-          ) : undefined
-        }
-      >
-        <MatchSummaryBar
-          model={{
-            identityLabel: `竞速 · ${ruleLabel}`,
-            scoreEntries: memberScoreEntries({
-              members: state.members,
-              scores: state.matchResult?.scores ?? match.scores,
-              viewerMemberId: memberId,
-              winnerMemberId: state.matchResult?.winnerMemberId,
-            }),
-            progressLabel: `第 ${match.roundIndex} 局${progressDetail ? ` · ${progressDetail}` : ""}`,
-            indicators: readOnlyViewer ? (
-              <span
-                className={`rounded px-2 py-0.5 text-[0.72rem] font-black ${eliminated ? "bg-vermilion-soft text-vermilion" : "bg-jade-soft text-jade"}`}
-              >
-                {eliminated ? "已淘汰 · 观战" : "观战席"}
-              </span>
-            ) : scoringMode === "placement" ? (
-              <span
-                className={`rounded px-2 py-0.5 text-[0.72rem] font-black ${eliminatesThisRound ? "bg-vermilion-soft text-vermilion" : "bg-jade-soft text-jade"}`}
-              >
-                {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
-              </span>
-            ) : undefined,
-          }}
-        />
+      <MultiplayerMatchFrame bottomDock={guessControl ?? undefined}>
+        <MatchSummaryBar model={summaryModel} />
 
         {countdownTarget ? (
           <MatchCountdownBand
@@ -306,20 +305,7 @@ export function RaceMatchExperience({
         ) : null}
 
         {!matchFinished ? (
-          <MatchStatusBand
-            model={{
-              message: statusMessage,
-              active:
-                !selectedArchive &&
-                !raceReadOnly &&
-                round?.status === "playing",
-              timers:
-                !selectedArchive && round?.status === "playing"
-                  ? [{ label: "本局", deadline: round.deadline }]
-                  : undefined,
-            }}
-            actions={statusActions}
-          />
+          <MatchStatusBand model={statusModel} actions={statusActions} />
         ) : null}
 
         <BoardBrowser
@@ -381,16 +367,18 @@ function RoundForfeitButton({
   onClick: () => void | Promise<void>;
 }) {
   return (
-    <button
-      type="button"
+    <PaperButton
+      compact
+      filled={confirm}
+      tone="danger"
       onClick={() => void onClick()}
       disabled={busy}
       title={confirm ? "再次点击确认放弃本局" : "放弃本局"}
-      className={`inline-flex min-h-8 items-center gap-1.5 rounded-[5px] border px-3 text-[0.72rem] font-bold disabled:cursor-not-allowed disabled:opacity-50 ${confirm ? "border-vermilion bg-vermilion-soft text-vermilion" : "border-line-strong bg-paper-muted text-ink-soft"}`}
+      className="race-forfeit-button"
     >
-      <Flag size={14} aria-hidden="true" />
+      <Flag size={18} aria-hidden="true" />
       {busy ? "提交中……" : confirm ? "再次点击确认放弃" : "放弃本局"}
-    </button>
+    </PaperButton>
   );
 }
 

@@ -1,0 +1,109 @@
+.info-disclosure-card details > summary {
+  position: relative;
+  padding-right: 46px;
+  list-style: none;
+}
+
+.info-disclosure-card details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.info-disclosure-card details > summary::after {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  color: var(--theme-color);
+  content: "+";
+  font-size: 1.15rem;
+  font-weight: 900;
+  transform: translateY(-50%);
+}
+
+.info-disclosure-card details[open] > summary::after {
+  content: "−";
+}
+
+.rules-diagonal-diagram {
+  position: relative;
+  display: grid;
+  min-height: 230px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px;
+  padding: 22px 24px 50px;
+  isolation: isolate;
+}
+
+.rules-diagonal-diagram::before {
+  position: absolute;
+  top: 50%;
+  right: 7%;
+  left: 7%;
+  z-index: -1;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--theme-color) 0 10px,
+    transparent 10px 17px
+  );
+  content: "";
+  transform: rotate(7deg);
+  transform-origin: center;
+}
+
+.rules-diagonal-node {
+  display: grid;
+  min-height: 132px;
+  align-content: center;
+  gap: 6px;
+  padding: 18px;
+}
+
+.rules-diagonal-node:nth-child(2) {
+  transform: translateY(25px);
+}
+
+.rules-diagonal-node:nth-child(3) {
+  transform: translateY(50px);
+}
+
+.rules-diagonal-node small {
+  color: var(--theme-color);
+  font-weight: 900;
+}
+
+.rules-diagonal-node strong {
+  font-family: var(--font-brand);
+  font-size: 1.15rem;
+}
+
+.rules-diagonal-node span {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 680px) {
+  .rules-diagonal-diagram {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 0;
+  }
+
+  .rules-diagonal-diagram::before {
+    top: 8%;
+    right: auto;
+    bottom: 8%;
+    left: 24px;
+    width: 2px;
+    height: auto;
+    transform: none;
+  }
+
+  .rules-diagonal-node,
+  .rules-diagonal-node:nth-child(2),
+  .rules-diagonal-node:nth-child(3) {
+    min-height: 94px;
+    margin-left: 18px;
+    transform: none;
+  }
+}

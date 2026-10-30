@@ -1,6 +1,7 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { LogOut, RotateCcw } from "lucide-react";
+import { PaperButton } from "../../components/paper";
 import type { MatchRankingEntry } from "./types";
 
 export function MatchFinishedBand({
@@ -23,7 +24,7 @@ export function MatchFinishedBand({
   const titleId = "multiplayer-final-ranking";
   return (
     <section
-      className="mb-3 border-y border-jade bg-jade-soft px-3 py-3"
+      className="border-y border-jade bg-jade-soft px-3 py-3"
       aria-labelledby={titleId}
       data-match-finished
     >
@@ -37,22 +38,20 @@ export function MatchFinishedBand({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <PaperButton
+            compact
+            filled
+            tone="theme"
             onClick={onRematch}
             disabled={ready}
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-[5px] bg-vermilion px-3 text-[0.72rem] font-bold text-white disabled:opacity-50"
           >
             <RotateCcw size={14} aria-hidden="true" />
             {readyLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onLeave}
-            className="min-h-8 rounded-[5px] border border-line-strong bg-paper px-3 text-[0.72rem] font-bold"
-          >
+          </PaperButton>
+          <PaperButton compact onClick={onLeave}>
+            <LogOut size={14} aria-hidden="true" />
             退出房间
-          </button>
+          </PaperButton>
         </div>
       </div>
       <ol className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">

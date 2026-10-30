@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/jachinzhang1/TouhouFlandre/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/jachinzhang1/TouhouFlandre/ci.yml?branch=main&label=CI" alt="CI 状态"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Node.js-%E2%89%A524-339933?logo=nodedotjs&logoColor=white" alt="Node.js 24 或更高">
-  <img src="https://img.shields.io/badge/Go-%E2%89%A51.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26 或更高">
+  <img src="https://img.shields.io/badge/Node.js-%E2%89%A526.12.1-339933?logo=nodedotjs&logoColor=white" alt="Node.js 26.12.1 或更高">
+  <img src="https://img.shields.io/badge/Go-%E2%89%A51.26.10-00ADD8?logo=go&logoColor=white" alt="Go 1.26.10 或更高">
   <img src="https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white" alt="pnpm 11">
 </p>
 
@@ -82,9 +82,9 @@ TouhouFlandre（东方芙一把）是一个无需账号即可游玩的东方 Pro
 
 | 工具             | 版本或用途        |
 | ---------------- | ----------------- |
-| Node.js          | 24 或更高         |
+| Node.js          | 26.12.1 或更高    |
 | pnpm             | 11                |
-| Go               | 1.26 或更高       |
+| Go               | 1.26.10 或更高    |
 | Docker + Compose | 运行本地 Postgres |
 | Task             | 跨语言任务入口    |
 

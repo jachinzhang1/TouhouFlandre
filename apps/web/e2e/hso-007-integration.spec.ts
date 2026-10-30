@@ -307,7 +307,9 @@ test.describe("HSO-007 integration gate", () => {
       new URL(response.url()).pathname.endsWith(indexPath),
     );
     await page.goto("/search");
-    expect((await firstIndex).status()).toBe(200);
+    const firstIndexResponse = await firstIndex;
+    expect(firstIndexResponse.status()).toBe(200);
+    await firstIndexResponse.finished();
     const coldEntry = await page.evaluate((path) => {
       const entries = performance
         .getEntriesByType("resource")
@@ -329,7 +331,9 @@ test.describe("HSO-007 integration gate", () => {
       new URL(response.url()).pathname.endsWith(indexPath),
     );
     await page.reload();
-    expect((await cachedIndex).status()).toBe(200);
+    const cachedIndexResponse = await cachedIndex;
+    expect(cachedIndexResponse.status()).toBe(200);
+    await cachedIndexResponse.finished();
     const hotEntry = await page.evaluate((path) => {
       const entries = performance
         .getEntriesByType("resource")
@@ -501,8 +505,8 @@ test.describe("HSO-007 integration gate", () => {
     await page.goto("/search");
     const input = page.getByLabel("搜索角色");
     await input.fill("灵梦");
-    await expect(page.getByText("博丽灵梦")).toBeVisible();
-    expect(indexAttempts).toBe(1);
+    await expect(page.getByText("博丽灵梦", { exact: true })).toBeVisible();
+    await expect.poll(() => indexAttempts).toBe(1);
     expect(remoteRequests).toBeGreaterThan(0);
 
     await page.evaluate(() => {
@@ -516,7 +520,7 @@ test.describe("HSO-007 integration gate", () => {
     await expect
       .poll(() => remoteRequests)
       .toBeGreaterThan(remoteBeforeSecondFailure);
-    await expect(page.getByText("雾雨魔理沙")).toBeVisible();
+    await expect(page.getByText("雾雨魔理沙", { exact: true })).toBeVisible();
     const remoteAfterSecondFailure = remoteRequests;
 
     await page.evaluate(() => {
@@ -526,7 +530,7 @@ test.describe("HSO-007 integration gate", () => {
     });
     await input.fill("咲夜");
     await expect.poll(() => indexAttempts).toBe(3);
-    await expect(page.getByText("十六夜咲夜")).toBeVisible();
+    await expect(page.getByText("十六夜咲夜", { exact: true })).toBeVisible();
     expect(remoteRequests).toBe(remoteAfterSecondFailure);
   });
 
@@ -548,10 +552,15 @@ test.describe("HSO-007 integration gate", () => {
       if (new URL(requestEvent.url()).pathname === "/api/characters/search")
         remoteRequests += 1;
     });
+    const indexReady = page.waitForResponse(
+      (response) =>
+        response.url().includes("/search-index/") && response.status() === 200,
+    );
     await page.goto("/search");
+    await indexReady;
     const input = page.getByLabel("搜索角色");
     await input.fill("灵梦");
-    await expect(page.getByText("博丽灵梦")).toBeVisible();
+    await expect(page.getByText("博丽灵梦", { exact: true })).toBeVisible();
     remoteRequests = 0;
 
     await page.context().setOffline(true);
@@ -561,8 +570,8 @@ test.describe("HSO-007 integration gate", () => {
       ).__hso007ClockOffset = 60_000;
     });
     await input.fill("魔理沙");
-    await expect(page.getByText("博丽灵梦")).toHaveCount(0);
-    await expect(page.getByText("雾雨魔理沙")).toBeVisible();
+    await expect(page.getByText("博丽灵梦", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("雾雨魔理沙", { exact: true })).toBeVisible();
     expect(remoteRequests).toBe(0);
 
     await page.evaluate(() => {
@@ -571,13 +580,13 @@ test.describe("HSO-007 integration gate", () => {
       ).__hso007ClockOffset = 300_001;
     });
     await input.fill("咲夜");
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.locator("main").getByRole("alert")).toBeVisible();
     await expect(page.getByRole("button", { name: "重新加载" })).toBeVisible();
     expect(remoteRequests).toBeGreaterThan(0);
 
     await page.context().setOffline(false);
     await page.getByRole("button", { name: "重新加载" }).click();
-    await expect(page.getByText("十六夜咲夜")).toBeVisible();
+    await expect(page.getByText("十六夜咲夜", { exact: true })).toBeVisible();
 
     await page.route("**/api/catalog/search-policy", (route) =>
       route.abort("connectionfailed"),
@@ -587,7 +596,7 @@ test.describe("HSO-007 integration gate", () => {
     );
     await page.reload();
     await page.getByLabel("搜索角色").fill("灵梦");
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.locator("main").getByRole("alert")).toBeVisible();
     await expect(page.getByRole("button", { name: "重新加载" })).toBeVisible();
   });
 
@@ -624,7 +633,7 @@ test.describe("HSO-007 integration gate", () => {
 
     const input = page.getByLabel("搜索角色");
     await input.fill("灵梦");
-    await expect(page.getByText("博丽灵梦")).toBeVisible();
+    await expect(page.getByText("博丽灵梦", { exact: true })).toBeVisible();
     expect(searchRequests).toEqual([]);
   });
 
@@ -736,7 +745,7 @@ test.describe("HSO-007 integration gate", () => {
     const input = page.getByLabel("搜索角色");
     await expect(input).toBeEnabled();
     await input.fill("灵梦");
-    await expect(page.getByText("博丽灵梦")).toBeVisible();
+    await expect(page.getByText("博丽灵梦", { exact: true })).toBeVisible();
     expect(remoteRequests.length).toBeGreaterThanOrEqual(1);
     expect(
       remoteRequests.every(

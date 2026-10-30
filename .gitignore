@@ -13,3 +13,4 @@ packages/data/src/*.demo.xlsx
 AGENTS.md
 .agents/skills/
 .codex/skills/
+skills-lock.json

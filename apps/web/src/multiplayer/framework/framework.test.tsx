@@ -36,10 +36,9 @@ describe("multiplayer match framework", () => {
     );
     const actionSlot = action.closest("[data-multiplayer-action-dock]");
     const host = persistent.closest("[data-multiplayer-bottom-dock]");
+    expect(host).not.toBeNull();
     expect(persistentSlot).not.toBeNull();
     expect(actionSlot).not.toBeNull();
-    expect(host?.className).toContain("bg-paper/95");
-    expect(host?.className).toContain("border-t");
     expect(persistentSlot?.className).not.toContain("bg-paper");
     expect(persistentSlot?.className).not.toContain("border-t");
     expect(

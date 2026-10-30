@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# ---------- 基础层：corepack 提供 pnpm（版本取 package.json packageManager） ----------
-FROM node:24-alpine AS base
-RUN corepack enable
+# ---------- 基础层：安装 pnpm（版本取 package.json packageManager） ----------
+FROM node:26.12.1-alpine AS base
+WORKDIR /repo
+COPY package.json ./
+RUN npm install --global "$(node -p "require('./package.json').packageManager")"
 
 # ---------- 依赖层：只拷贝 workspace 清单，最大化依赖层缓存 ----------
 FROM base AS deps
@@ -35,7 +37,7 @@ RUN --mount=type=cache,target=/repo/apps/web/.next/cache \
     pnpm --filter @touhouflandre/web build
 
 # ---------- 运行层：非 root，仅拷贝 standalone 产物 ----------
-FROM node:24-alpine AS runner
+FROM node:26.12.1-alpine AS runner
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 ENV NODE_ENV=production

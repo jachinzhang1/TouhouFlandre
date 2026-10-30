@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { MemberScoreStripEntry } from "../../components/MemberScoreStrip";
+import type { MemberScoreStripEntry } from "../../components/multiplayer/MemberScoreStrip";
 
 export interface MatchSummaryModel {
   identityLabel: string;

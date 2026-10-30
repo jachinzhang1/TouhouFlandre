@@ -1,0 +1,131 @@
+// 局结果弹窗：查看对局本地关闭；下一局倒计时由服务端 startsAt 驱动展示。
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { act } from "react";
+import type { RoundEndedPayload } from "@touhouflandre/shared";
+import { RoundResultOverlay } from "./RoundResultOverlay";
+
+// fake 时钟 2026-08-06T12:00:00Z；下一局 4 秒后 → 12:00:04Z
+const RESULT: RoundEndedPayload = {
+  matchIndex: 0,
+  roundIndex: 1,
+  viewerResult: "win",
+  winnerMemberId: "member-host",
+  answer: {
+    id: "reimu_hakurei",
+    name: "博丽灵梦",
+    avatarUrl: "/c.png",
+    workId: "th01",
+    workTitle: "东方灵异传",
+    workCode: "TH01",
+  },
+  boards: [
+    { memberId: "member-host", seat: 1, guesses: [] },
+    { memberId: "member-guest", seat: 2, guesses: [] },
+  ],
+  scores: [
+    { memberId: "member-host", seat: 1, score: 1 },
+    { memberId: "member-guest", seat: 2, score: 0 },
+  ],
+  results: [
+    { memberId: "member-host", seat: 1, result: "win" },
+    { memberId: "member-guest", seat: 2, result: "loss" },
+  ],
+  nextStartsAt: "2026-08-06T12:00:04Z",
+};
+
+describe("RoundResultOverlay", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-06T12:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("展示胜负与答案", () => {
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "你赢得本局" })).toBeTruthy();
+    expect(screen.getByText("博丽灵梦")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "本局结果与总分" }),
+    ).toBeTruthy();
+    expect(screen.getByText("1 分")).toBeTruthy();
+    expect(screen.getByRole("dialog").getAttribute("aria-modal")).toBe("true");
+  });
+
+  it("点击查看对局本地关闭弹窗", () => {
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "查看本局棋盘" }));
+    expect(screen.queryByRole("heading", { name: "你赢得本局" })).toBeNull();
+  });
+
+  it("Escape dismisses the modal", () => {
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("显示下一局倒计时（服务端 startsAt 驱动）", () => {
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+      />,
+    );
+    const timer = screen.getByRole("timer", { name: "下一局 4 秒后开始" });
+    expect(timer.textContent).toBe("0:04");
+  });
+
+  it("无下一局（对局结束）不显示倒计时", () => {
+    render(
+      <RoundResultOverlay
+        result={{ ...RESULT, nextStartsAt: undefined }}
+        memberId="member-host"
+        nextRoundStartsAt={null}
+      />,
+    );
+    expect(screen.queryByRole("timer")).toBeNull();
+    expect(screen.getByRole("button", { name: "查看整场结果" })).toBeTruthy();
+  });
+
+  it("启用自动关闭时在倒计时结束后触发关闭", () => {
+    const onDismiss = vi.fn();
+    render(
+      <RoundResultOverlay
+        result={RESULT}
+        memberId="member-host"
+        nextRoundStartsAt={RESULT.nextStartsAt ?? null}
+        autoDismissAtCountdownEnd
+        onDismiss={onDismiss}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "查看本局棋盘" })).toBeNull();
+  });
+});
