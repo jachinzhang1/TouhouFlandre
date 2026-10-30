@@ -351,21 +351,31 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
 .multi-lobby-format-option {
   width: 100%;
   min-height: 64px;
-  transition: background-color 180ms ease, box-shadow 180ms ease;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .paper-radio-option.multi-lobby-format-option:hover:not(:disabled):not(
       [aria-checked="true"]
     ) {
-    background: color-mix(in srgb, var(--theme-color) 9%, var(--paper-plain-bg));
+    background: color-mix(
+      in srgb,
+      var(--theme-color) 9%,
+      var(--paper-plain-bg)
+    );
     box-shadow: inset 0 -2px 0 var(--accent-hover-border);
   }
 
   .paper-radio-option.multi-lobby-format-option[aria-checked="true"]:hover:not(
       :disabled
     ) {
-    background: color-mix(in srgb, var(--theme-color) 22%, var(--paper-plain-bg));
+    background: color-mix(
+      in srgb,
+      var(--theme-color) 22%,
+      var(--paper-plain-bg)
+    );
   }
 }
 
@@ -2592,6 +2602,35 @@ body:has(.multiplayer-command-deck) .guess-error-toast {
   display: inline-flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.status-strip.single-game-session-status {
+  grid-template-columns: minmax(200px, 1fr) 100px 72px 64px 76px auto;
+  gap: 16px;
+  padding: 0 64px 0 0;
+}
+
+.paper-segment-group.single-game-session-actions {
+  align-items: stretch;
+  gap: 0;
+}
+
+.paper-surface.paper-button.single-game-session-action {
+  min-width: 112px;
+  min-height: 44px;
+  padding-inline: 14px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.paper-surface.paper-button.single-game-session-forfeit:not(:disabled) {
+  color: var(--error-text);
+  background: var(--error-bg-soft);
+}
+
+.paper-surface.paper-button.single-game-session-forfeit:not(:disabled):hover {
+  color: var(--error-text);
+  background: var(--error-bg);
 }
 
 .guess-form {

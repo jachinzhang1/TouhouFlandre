@@ -468,6 +468,28 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .status-strip.single-game-session-status {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0;
+  }
+
+  .single-game-session-status .puzzle-status {
+    grid-column: 1 / -1;
+  }
+
+  .single-game-session-status .puzzle-status > strong {
+    display: block;
+    padding-inline-end: 64px;
+  }
+
+  .single-game-session-status .single-game-session-actions {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
 @media (min-width: 681px) and (max-width: 1100px) {
   .single-game-shell .status-strip.daily {
     grid-template-areas:
@@ -502,6 +524,10 @@
 }
 
 @media (max-width: 680px) {
+  .status-strip.single-game-session-status {
+    padding: 12px 18px 0;
+  }
+
   .single-game-shell {
     --single-game-shell-gap: 7px;
     min-width: 0;

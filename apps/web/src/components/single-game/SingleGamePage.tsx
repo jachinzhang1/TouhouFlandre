@@ -45,6 +45,8 @@ import {
   Paper,
   PaperButton,
   PaperSearchInput,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
 } from "../paper";
 import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
 import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
@@ -1099,7 +1101,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
     <>
       {messageContextHolder}
       <section className="game-surface" aria-label="TouhouFlandre 游戏区域">
-        <div className="status-strip">
+        <div className="status-strip single-game-session-status">
           <div className="puzzle-status">
             <span className="label">题目</span>
             <strong>{puzzleLabel}</strong>
@@ -1122,7 +1124,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             </span>
           </div>
           <div>
-            <span className="label">本次猜测倒计时</span>
+            <span className="label">本次时限</span>
             <strong
               className={`tabular-nums ${
                 turnLimitEnabled ? "text-vermilion" : "text-jade"
@@ -1159,25 +1161,33 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                   : "进行中"}
             </strong>
           </div>
-          <div className="status-actions">
+          <PaperSegmentGroup
+            className="status-actions single-game-session-actions"
+            label="本局操作"
+          >
             {mode === "random" ? (
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => void requestFreshSession()}
-                title="重新开始"
-                aria-label="重新开始随机题"
-                disabled={loading || submitting || endingSession || timingOut}
-              >
-                <RotateCcw size={18} aria-hidden="true" />
-              </button>
+              <>
+                <PaperButton
+                  className="single-game-session-action"
+                  compact
+                  onClick={() => void requestFreshSession()}
+                  title="重新开始"
+                  ariaLabel="重新开始随机题"
+                  disabled={loading || submitting || endingSession || timingOut}
+                >
+                  <RotateCcw size={16} aria-hidden="true" />
+                  <span>重新开始</span>
+                </PaperButton>
+                <PaperSegmentSeparator />
+              </>
             ) : null}
-            <button
-              className="icon-button"
-              type="button"
+            <PaperButton
+              className="single-game-session-action single-game-session-forfeit"
+              compact
+              tone="danger"
               onClick={() => void forfeitSession()}
               title="放弃本局"
-              aria-label="放弃本局"
+              ariaLabel="放弃本局"
               disabled={
                 loading ||
                 submitting ||
@@ -1187,9 +1197,10 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 timingOut
               }
             >
-              <Flag size={18} aria-hidden="true" />
-            </button>
-          </div>
+              <Flag size={16} aria-hidden="true" />
+              <span>放弃本局</span>
+            </PaperButton>
+          </PaperSegmentGroup>
         </div>
 
         <form
