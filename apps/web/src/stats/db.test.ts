@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Envelope } from "@touhouflandre/shared";
 import { clearStatistics, putStatsRecord, stableRecordId, statsDb } from "./db";
 import {
@@ -51,6 +51,18 @@ describe("stats IndexedDB", () => {
     const first = await stableRecordId("single:secret-session");
     expect(first).toBe(await stableRecordId("single:secret-session"));
     expect(first).not.toContain("secret-session");
+  });
+
+  it("在 Web Crypto 不可用时给出明确的本地统计错误", async () => {
+    vi.stubGlobal("crypto", { subtle: undefined });
+
+    try {
+      await expect(stableRecordId("single:session")).rejects.toThrow(
+        "当前浏览器环境不支持 Web Crypto，无法读写本地统计。",
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("清除边界阻止旧终态通过重放重新写回", async () => {

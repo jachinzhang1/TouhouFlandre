@@ -193,7 +193,11 @@ export function subscribeStatsChanges(
 
 export async function stableRecordId(sourceKey: string): Promise<string> {
   const bytes = new TextEncoder().encode(sourceKey);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle || typeof subtle.digest !== "function") {
+    throw new Error("当前浏览器环境不支持 Web Crypto，无法读写本地统计。");
+  }
+  const digest = await subtle.digest("SHA-256", bytes);
   const hash = Array.from(new Uint8Array(digest), (value) =>
     value.toString(16).padStart(2, "0"),
   ).join("");
