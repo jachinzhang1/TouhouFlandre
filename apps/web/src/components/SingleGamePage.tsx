@@ -666,7 +666,12 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             ),
           resolved.session.guesses.length,
         );
-        const draft = await loadSingleStatsDraft(resolved.session.id);
+        let draft: Awaited<ReturnType<typeof loadSingleStatsDraft>>;
+        try {
+          draft = await loadSingleStatsDraft(resolved.session.id);
+        } catch (error) {
+          console.warn("本地统计草稿读取失败，继续恢复游戏", error);
+        }
         if (!isCurrentRequest()) return;
         restoredTimings = localTimings.length
           ? localTimings

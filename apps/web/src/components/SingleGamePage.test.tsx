@@ -148,6 +148,7 @@ vi.mock("../stats/timer", () => ({
 import { api } from "../lib/api";
 import { PuzzleResolveUnsupportedError } from "../lib/puzzleApi";
 import { stableRecordId, statsDb } from "../stats/db";
+import * as singleRecorder from "../stats/singleRecorder";
 
 describe("SingleGamePage", () => {
   beforeEach(() => {
@@ -428,6 +429,48 @@ describe("SingleGamePage", () => {
       JSON.stringify(matchingScope),
     );
   });
+
+  it.each(["daily", "random"] as const)(
+    "continues restoring a %s session when its local stats draft cannot be read",
+    async (mode) => {
+      const sessionId = `${mode}-session`;
+      const session = {
+        ...playingSession,
+        id: sessionId,
+        mode,
+        puzzleKey: mode === "daily" ? playingSession.puzzleKey : undefined,
+      } as PublicGameSession;
+      localStorage.setItem(
+        mode === "daily"
+          ? "touhouflandre:daily-session"
+          : "touhouflandre:random-session",
+        JSON.stringify({ id: sessionId }),
+      );
+      puzzleResolveMock.mockResolvedValue({
+        session,
+        puzzleLabel: mode === "daily" ? dailyTitle : "随机题",
+        resolution: "resumed",
+      });
+      vi.spyOn(singleRecorder, "loadSingleStatsDraft").mockRejectedValueOnce(
+        new Error("Web Crypto unavailable"),
+      );
+      const warnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => undefined);
+
+      try {
+        render(<SingleGamePage mode={mode} />);
+
+        expect(await screen.findByText("0/8")).toBeTruthy();
+        expect(
+          ((await screen.findByRole("textbox")) as HTMLInputElement).disabled,
+        ).toBe(false);
+        expect(screen.queryByText("Web Crypto unavailable")).toBeNull();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    },
+  );
 
   it("creates a random session when the legacy fallback scope differs", async () => {
     const oldScope = {
