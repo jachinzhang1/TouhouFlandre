@@ -42,10 +42,10 @@ func TestMultiRolloutFlagsDefaultOpen(t *testing.T) {
 	}
 }
 
-func TestCharacterSearchQuestionScopeFilterDefaultsOpenAndParsesFalse(t *testing.T) {
+func TestCharacterSearchQuestionScopeFilterDefaultsClosedAndParsesFalse(t *testing.T) {
 	t.Setenv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", "")
-	if !CharacterSearchQuestionScopeFilterEnabled() {
-		t.Fatal("question scope search filter should default to enabled")
+	if CharacterSearchQuestionScopeFilterEnabled() {
+		t.Fatal("question scope search filter should default to disabled")
 	}
 	t.Setenv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", "off")
 	if CharacterSearchQuestionScopeFilterEnabled() {

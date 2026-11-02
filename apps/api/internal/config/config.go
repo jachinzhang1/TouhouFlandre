@@ -104,7 +104,7 @@ func boolFromEnv(key string, fallback bool) bool {
 // CharacterSearchQuestionScopeFilterEnabled controls whether in-game searches
 // are restricted to the selected answer pool frozen for that game.
 func CharacterSearchQuestionScopeFilterEnabled() bool {
-	return boolFromEnv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", true)
+	return boolFromEnv("CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED", false)
 }
 
 // CharacterSearchMode controls whether the browser may prefer its local index.

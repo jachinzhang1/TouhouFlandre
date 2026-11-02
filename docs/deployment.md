@@ -46,7 +46,7 @@ cp .env.example .env
 | `WEB_ORIGINS`                                                                              | 浏览器实际访问源，例如 `https://game.example.com`。                                                                            |
 | `NEXT_PUBLIC_API_BASE_URL`                                                                 | 通常留空，使用同源 `/api`。                                                                                                    |
 | `LOG_LEVEL`                                                                                | 生产建议 `info`。                                                                                                              |
-| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                           | 默认 `true`；对应 `gameScopeMode=strict`。设为 `false` 时游戏入口强制远程以保持 full 语义。                                    |
+| `CHARACTER_SEARCH_QUESTION_SCOPE_FILTER_ENABLED`                                           | 默认 `false`；对应 `gameScopeMode=full`。设为 `true` 时游戏入口才会启用题库范围过滤和 `strict` 语义。                          |
 | `CHARACTER_SEARCH_MODE`                                                                    | 当前生产 Compose 默认 `local-primary`；首次混合部署或紧急回滚时显式设为 `remote`。API 收到非法/留空值仍按 `remote` fail-safe。 |
 | `CHARACTER_SEARCH_POLICY_REVISION`                                                         | 默认 `v1`；索引 schema 不变但部署结构性修复时显式提升，确保浏览器丢弃旧策略/熔断状态。                                         |
 | `ANSWER_MATCH_POLICY`                                                                      | 新对局答案判定，默认 `public_fields_v1`；可设为 `strict`，未知值会阻止 API 启动。                                              |
