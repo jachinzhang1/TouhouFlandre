@@ -248,7 +248,6 @@ export function FixedTagCombobox({
           <div
             className="fixed-tag-combobox-track"
             data-has-tags={selectedOptions.length ? "true" : "false"}
-            role="list"
           >
             {selectedOptions.map((option, index) => (
               <Fragment key={option.id}>
@@ -338,7 +337,7 @@ function SelectedTag({
   option: FixedTagComboboxOption;
 }) {
   return (
-    <span className="fixed-tag-combobox-tag-slot" role="listitem">
+    <span className="fixed-tag-combobox-tag-slot">
       <Paper
         animateOnMount={false}
         as="div"

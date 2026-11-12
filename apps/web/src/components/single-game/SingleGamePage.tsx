@@ -1,18 +1,7 @@
 "use client";
 
-import {
-  Check,
-  Copy,
-  Flag,
-  Loader2,
-  Play,
-  RotateCcw,
-  Search,
-  Send,
-  X,
-} from "lucide-react";
+import { Loader2, Search, Send } from "lucide-react";
 import { message as antdMessage } from "antd";
-import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -32,13 +21,25 @@ import {
 import type {
   CharacterSearchResult,
   DailyQuestionDifficulty,
-  FieldFeedback,
   PublicGameSession,
   SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
-import { FeedbackLegendButton } from "../game/FeedbackLegendButton";
-import { FeedbackStatusIcon } from "../game/FeedbackStatusIcon";
+import { SuggestionPopover } from "../game/SuggestionPopover";
+import {
+  Paper,
+  PaperButton,
+  PaperSearchInput,
+  PaperSegmentGroup,
+  PaperSegmentSeparator,
+} from "@/components/paper";
+import { FeedbackLegend } from "../game/FeedbackLegend";
+import {
+  SingleGameResult,
+  SingleGameStatusBar,
+  SingleGuessHistory,
+  type DailySessionStatus,
+} from "./SingleGamePanels";
 import { modeConfig } from "../../gameModes";
 import { useCharacterSearch } from "../../hooks/useCharacterSearch";
 import { api } from "../../lib/api";
@@ -72,8 +73,6 @@ type StoredSession = {
   guessCompletedElapsedSeconds?: number[];
 };
 
-type DailySessionStatus = "won" | "lost" | "playing" | null;
-
 const dailyStorageKey = (difficulty: DailyQuestionDifficulty) =>
   difficulty === DEFAULT_DAILY_DIFFICULTY
     ? modeConfig.daily.storageKey
@@ -105,18 +104,6 @@ const parseStoredSession = (value: string): StoredSession => {
   return { id: value };
 };
 
-const feedbackClass = (feedback: FieldFeedback) =>
-  `feedback feedback-${feedback.status}`;
-const formatFeedbackValue = (feedback: FieldFeedback) =>
-  feedback.displayValue.join("、");
-
-const formatDuration = (seconds: number) => {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainingSeconds = safeSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
-};
-
 const dailyPuzzleLabel = (
   dateKey: string | undefined,
   difficulty: DailyQuestionDifficulty,
@@ -139,139 +126,6 @@ const validTimestamp = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value > 0
     ? value
     : undefined;
-
-const formatGuessDuration = (timings: number[], index: number) => {
-  const completedAt = timings[index];
-  const previousCompletedAt = index > 0 ? timings[index - 1] : 0;
-  if (!Number.isFinite(completedAt)) return "--:--";
-  if (index > 0 && !Number.isFinite(previousCompletedAt)) return "--:--";
-  return formatDuration((completedAt - previousCompletedAt) / 1000);
-};
-
-function SuggestionPopover({
-  anchor,
-  children,
-  id,
-  open,
-}: {
-  anchor: React.RefObject<HTMLLabelElement | null>;
-  children: React.ReactNode;
-  id: string;
-  open: boolean;
-}) {
-  const [position, setPosition] = useState<{
-    bottom?: number;
-    left: number;
-    maxHeight: number;
-    top?: number;
-    width: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      setPosition(null);
-      return;
-    }
-
-    const updatePosition = () => {
-      const element = anchor.current;
-      if (!element) return;
-      const rect = element.getBoundingClientRect();
-      const margin = 12;
-      const gap = 7;
-      const width = Math.min(rect.width, window.innerWidth - margin * 2);
-      const left = Math.min(
-        Math.max(margin, rect.left),
-        window.innerWidth - width - margin,
-      );
-      const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
-      const spaceAbove = rect.top - gap - margin;
-      const placeBelow = spaceBelow >= 220 || spaceBelow >= spaceAbove;
-      const availableSpace = placeBelow ? spaceBelow : spaceAbove;
-
-      setPosition({
-        bottom: placeBelow ? undefined : window.innerHeight - rect.top + gap,
-        left,
-        maxHeight: Math.max(80, Math.min(320, availableSpace)),
-        top: placeBelow ? rect.bottom + gap : undefined,
-        width,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-    return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [anchor, open]);
-
-  if (!open || !position) return null;
-  return createPortal(
-    <div
-      className="suggestion-list"
-      id={id}
-      role="listbox"
-      aria-label="搜索建议"
-      style={position}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
-
-function DailyDifficultyButtons({
-  active,
-  disabled,
-  onSelect,
-  statuses,
-}: {
-  active: DailyQuestionDifficulty;
-  disabled: boolean;
-  onSelect: (difficulty: DailyQuestionDifficulty) => void;
-  statuses: Record<DailyQuestionDifficulty, DailySessionStatus>;
-}) {
-  return (
-    <div
-      className="mt-2 flex flex-wrap gap-1.5"
-      role="group"
-      aria-label="每日题难度"
-    >
-      {DAILY_DIFFICULTIES.map((difficulty) => {
-        const status = statuses[difficulty];
-        const completedClass =
-          status === "won"
-            ? "border-[var(--jade-border)] bg-jade-soft text-jade"
-            : status === "lost"
-              ? "border-vermilion bg-vermilion-soft text-vermilion"
-              : active === difficulty
-                ? "border-vermilion bg-vermilion text-[var(--accent-contrast)]"
-                : "border-line bg-paper-muted text-ink-soft";
-        return (
-          <button
-            key={difficulty}
-            type="button"
-            disabled={disabled && active !== difficulty}
-            aria-pressed={active === difficulty}
-            className={`inline-flex min-h-7 items-center gap-1 rounded-[4px] border px-2 text-[0.7rem] font-black ${completedClass} disabled:opacity-60`}
-            onClick={() => onSelect(difficulty)}
-          >
-            <span>{QUESTION_DIFFICULTY_LABELS[difficulty]}</span>
-            {status === "won" ? (
-              <Check size={13} aria-hidden="true" />
-            ) : status === "lost" ? (
-              <X size={13} aria-hidden="true" />
-            ) : (
-              <Play size={12} aria-hidden="true" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   const listboxId = useId();
@@ -363,10 +217,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   );
   const maxGuesses = session?.maxGuesses ?? QUESTION_SCOPE_DEFAULT_GUESSES;
   const hasUnlimitedGuesses = isUnlimitedGuessLimit(maxGuesses);
-  const guessProgressPercent = Math.min(
-    100,
-    ((session?.guesses.length ?? 0) / maxGuesses) * 100,
-  );
+  const submitDisabled = inputDisabled || !selectedId;
 
   useEffect(() => {
     if (!restoreFocusRequested) return;
@@ -1013,102 +864,32 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
   }, []);
 
   return (
-    <>
+    <section
+      className={`single-game-shell ${mode}`}
+      aria-label="TouhouFlandre 游戏区域"
+      data-suggestions-open={showSuggestions ? "true" : "false"}
+    >
       {messageContextHolder}
-      <section className="game-surface" aria-label="TouhouFlandre 游戏区域">
-        <div className="status-strip">
-          <div className="puzzle-status">
-            <span className="label">题目</span>
-            <strong>{puzzleLabel}</strong>
-            {mode === "daily" ? (
-              <DailyDifficultyButtons
-                active={dailyDifficulty}
-                disabled={loading || submitting || endingSession || timingOut}
-                statuses={dailyStatuses}
-                onSelect={(difficulty) =>
-                  void switchDailyDifficulty(difficulty)
-                }
-              />
-            ) : null}
-            <span className="progress-track" aria-hidden="true">
-              <span
-                style={{
-                  width: `${guessProgressPercent}%`,
-                }}
-              />
-            </span>
-          </div>
-          <div>
-            <span className="label">本次猜测倒计时</span>
-            <strong
-              className={`tabular-nums ${
-                turnLimitEnabled ? "text-vermilion" : "text-jade"
-              }`}
-            >
-              {turnLimitEnabled && turnRemainingSeconds !== null
-                ? formatDuration(turnRemainingSeconds)
-                : "无限制"}
-            </strong>
-          </div>
-          <div>
-            <span className="label">计时</span>
-            <strong>{formatDuration(currentElapsedSeconds)}</strong>
-          </div>
-          <div>
-            <span className="label">进度</span>
-            <strong className={hasUnlimitedGuesses ? "text-jade" : undefined}>
-              {hasUnlimitedGuesses ? (
-                "无限制"
-              ) : (
-                <>
-                  {session?.guesses.length ?? 0}/{maxGuesses}
-                </>
-              )}
-            </strong>
-          </div>
-          <div>
-            <span className="label">状态</span>
-            <strong className={`session-state ${session?.status ?? "playing"}`}>
-              {session?.status === "won"
-                ? "已猜中"
-                : session?.status === "lost"
-                  ? "未猜中"
-                  : "进行中"}
-            </strong>
-          </div>
-          <div className="status-actions">
-            {mode === "random" ? (
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => void requestFreshSession()}
-                title="重新开始"
-                aria-label="重新开始随机题"
-                disabled={loading || submitting || endingSession || timingOut}
-              >
-                <RotateCcw size={18} aria-hidden="true" />
-              </button>
-            ) : null}
-            <button
-              className="icon-button"
-              type="button"
-              onClick={() => void forfeitSession()}
-              title="放弃本局"
-              aria-label="放弃本局"
-              disabled={
-                loading ||
-                submitting ||
-                endingSession ||
-                !session ||
-                isFinished ||
-                timingOut
-              }
-            >
-              <Flag size={18} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
+      <div className="single-game-history-region">
+        <SingleGuessHistory
+          session={session}
+          visibleFields={visibleFields}
+          guessCompletedElapsedMs={guessCompletedElapsedMs}
+          loading={loading}
+          message={message}
+        />
+        {session && isFinished ? (
+          <SingleGameResult
+            mode={mode}
+            session={session}
+            disabled={loading || submitting}
+            onRestart={() => void requestFreshSession()}
+            onShare={() => void copyShare()}
+          />
+        ) : null}
+      </div>
+      <FeedbackLegend className="single-game-feedback-legend" />
+      <div className="single-game-input-group">
         <form
           className="guess-form"
           onSubmit={(event) => {
@@ -1117,13 +898,27 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
             void submitGuess(undefined, { restoreFocus });
           }}
         >
-          <div className="search-combobox">
-            <label className="search-box" ref={searchBoxRef}>
-              <Search size={18} aria-hidden="true" />
-              <input
-                ref={inputRef}
-                value={query}
-                onFocus={() => setSuggestionsDismissed(false)}
+          <PaperSegmentGroup
+            className="single-game-guess-group"
+            label="猜测操作"
+          >
+            <div className="search-combobox">
+              <PaperSearchInput
+                aria-activedescendant={
+                  showSuggestions && activeSuggestionId
+                    ? `${listboxId}-${activeSuggestionId}`
+                    : undefined
+                }
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+                aria-expanded={showSuggestions}
+                ariaLabel="搜索东方角色"
+                role="combobox"
+                className="single-game-search-control"
+                containerRef={searchBoxRef}
+                disabled={inputDisabled}
+                inputRef={inputRef}
+                folded={false}
                 onBlur={() => setActiveSuggestionId("")}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -1131,6 +926,7 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                   setActiveSuggestionId("");
                   setSuggestionsDismissed(false);
                 }}
+                onFocus={() => setSuggestionsDismissed(false)}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
                     event.preventDefault();
@@ -1154,92 +950,104 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                     }
                   }
                 }}
-                disabled={inputDisabled}
+
                 placeholder="输入角色名、别名或初登场作品"
-                aria-label="搜索东方角色"
-                aria-autocomplete="list"
-                aria-controls={listboxId}
-                aria-activedescendant={
-                  showSuggestions && activeSuggestionId
-                    ? `${listboxId}-${activeSuggestionId}`
-                    : undefined
-                }
-                aria-expanded={showSuggestions}
+                value={query}
               />
-            </label>
-            <SuggestionPopover
-              anchor={searchBoxRef}
-              id={listboxId}
-              open={showSuggestions}
-            >
-              {searchLoading ? (
-                <div className="suggestion-state" role="status">
-                  <Loader2 className="spin" size={17} aria-hidden="true" />
-                  <span>正在搜索</span>
-                </div>
-              ) : searchError ? (
-                <div className="suggestion-state suggestion-error" role="alert">
-                  <span>{searchError}</span>
-                  <button
-                    type="button"
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={retrySearch}
+              <SuggestionPopover
+                anchor={searchBoxRef}
+                id={listboxId}
+                open={showSuggestions}
+              >
+                {searchLoading ? (
+                  <div className="suggestion-state" role="status">
+                    <Loader2 className="spin" size={17} aria-hidden="true" />
+                    <span>正在搜索</span>
+                  </div>
+                ) : searchError ? (
+                  <div
+                    className="suggestion-state suggestion-error"
+                    role="alert"
                   >
-                    重试
-                  </button>
-                </div>
-              ) : results.length ? (
-                results.map((result) => {
-                  const disabled = guessedIds.has(result.id);
-                  const active = activeSuggestionId === result.id;
-                  return (
-                    <button
-                      className={active ? "suggestion selected" : "suggestion"}
-                      id={`${listboxId}-${result.id}`}
-                      key={result.id}
-                      type="button"
-                      tabIndex={-1}
-                      disabled={disabled}
-                      role="option"
-                      aria-selected={active}
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        selectSuggestion(result);
-                      }}
+                    <span>{searchError}</span>
+                    <span onPointerDown={(event) => event.preventDefault()}>
+                      <PaperButton
+                        compact
+                        folded={false}
+                        onClick={retrySearch}
+                        tone="danger"
+                      >
+                        重试
+                      </PaperButton>
+                    </span>
+                  </div>
+                ) : results.length ? (
+                  <>
+                    {results.map((result) => {
+                      const disabled = guessedIds.has(result.id);
+                      const active = activeSuggestionId === result.id;
+                      return (
+                        <button
+                          className="suggestion paper-data-table-row"
+                          id={`${listboxId}-${result.id}`}
+                          key={result.id}
+                          type="button"
+                          tabIndex={-1}
+                          disabled={disabled}
+                          role="option"
+                          aria-selected={active}
+                          onPointerDown={(event) => event.preventDefault()}
+                          onClick={() => selectSuggestion(result)}
+                        >
+                          <span className="suggestion-avatar-cell">
+                            <CharacterAvatar
+                              avatarUrl={result.avatarUrl}
+                              name={result.name}
+                              initials={result.initials}
+                              className="suggestion-avatar"
+                            />
+                          </span>
+                          <span className="suggestion-main">
+                            <strong>{result.name}</strong>
+                            <small>{result.subtitle}</small>
+                          </span>
+                          <span className="suggestion-meta">
+                            {disabled
+                              ? "已猜"
+                              : result.hairColors
+                                  .map(
+                                    (color) =>
+                                      HAIR_COLOR_LABELS[color] ?? color,
+                                  )
+                                  .join("、")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                    <div
+                      aria-hidden="true"
+                      className="suggestion-columns paper-data-table-header paper-data-table-row"
                     >
-                      <CharacterAvatar
-                        avatarUrl={result.avatarUrl}
-                        name={result.name}
-                        initials={result.initials}
-                        className="suggestion-avatar"
-                      />
-                      <span className="suggestion-main">
-                        <strong>{result.name}</strong>
-                        <small>{result.subtitle}</small>
-                      </span>
-                      <span className="suggestion-meta">
-                        {disabled
-                          ? "已猜"
-                          : result.hairColors
-                              .map((color) => HAIR_COLOR_LABELS[color] ?? color)
-                              .join("、")}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="suggestion-state" role="status">
-                  <Search size={17} aria-hidden="true" />
-                  <span>没有找到匹配角色</span>
-                </div>
-              )}
-            </SuggestionPopover>
-          </div>
-          <div className="guess-form-actions">
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={!selectedId || inputDisabled}
+                      <span>头像</span>
+                      <span>角色</span>
+                      <span>发色 / 状态</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="suggestion-state" role="status">
+                    <Search size={17} aria-hidden="true" />
+                    <span>没有找到匹配角色</span>
+                  </div>
+                )}
+              </SuggestionPopover>
+            </div>
+            <PaperSegmentSeparator />
+            <PaperButton
+              className="single-game-submit"
+              disabled={submitDisabled}
+              filled={!submitDisabled}
+              onClick={() => void submitGuess()}
+              tone="theme"
             >
               {submitting ? (
                 <Loader2 className="spin" size={18} aria-hidden="true" />
@@ -1247,191 +1055,46 @@ export function SingleGamePage({ mode }: { mode: SinglePlayerGameMode }) {
                 <Send size={18} aria-hidden="true" />
               )}
               <span>提交猜测</span>
-            </button>
-            <FeedbackLegendButton />
-          </div>
+            </PaperButton>
+          </PaperSegmentGroup>
         </form>
 
-        {message ? <p className="message error">{message}</p> : null}
+        {message ? (
+          <Paper
+            animateOnMount={false}
+            as="div"
+            className="single-game-message"
+            folded={false}
+            pattern={false}
+            role="alert"
+            sticker={false}
+            tone="danger"
+            unfoldOnHover={false}
+          >
+            {message}
+          </Paper>
+        ) : null}
+      </div>
 
-        <div className="table-wrap">
-          <table className="guess-table">
-            <thead>
-              <tr>
-                <th>角色</th>
-                {visibleFields.map((field) => (
-                  <th key={field.key}>{field.label}</th>
-                ))}
-                <th>本次猜测用时</th>
-              </tr>
-            </thead>
-            <tbody>
-              {session?.guesses.length ? (
-                session.guesses.map((guess, index) => {
-                  const timeout = guess.kind === "timeout";
-                  return (
-                    <tr
-                      key={guess.guessId}
-                      style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
-                    >
-                      {timeout ? (
-                        <th
-                          scope="row"
-                          colSpan={visibleFields.length + 1}
-                          className="guess-timeout-cell"
-                        >
-                          <span>超时空过</span>
-                        </th>
-                      ) : (
-                        <>
-                          <th scope="row">
-                            <span className="guess-character">
-                              <CharacterAvatar
-                                avatarUrl={guess.guessAvatarUrl}
-                                name={guess.guessName}
-                                initials={guess.guessName.slice(0, 2)}
-                                className="guess-avatar"
-                              />
-                              <span>{guess.guessName}</span>
-                              {guess.matchKind === "equivalent" ? (
-                                <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                                  等价命中
-                                </span>
-                              ) : null}
-                            </span>
-                          </th>
-                          {guess.feedback.map((feedback) => (
-                            <td key={feedback.field}>
-                              <span
-                                className={feedbackClass(feedback)}
-                                title={`${feedback.label}: ${feedback.status}`}
-                              >
-                                <b>
-                                  <FeedbackStatusIcon
-                                    status={feedback.status}
-                                  />
-                                </b>
-                                <span>{formatFeedbackValue(feedback)}</span>
-                              </span>
-                            </td>
-                          ))}
-                        </>
-                      )}
-                      <td>
-                        <span className="guess-duration">
-                          {formatGuessDuration(guessCompletedElapsedMs, index)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td
-                    className="empty-state"
-                    colSpan={visibleFields.length + 2}
-                  >
-                    {loading ? (
-                      <span>
-                        <Loader2
-                          className="spin"
-                          size={20}
-                          aria-hidden="true"
-                        />{" "}
-                        正在连接本地题库
-                      </span>
-                    ) : !session && message ? (
-                      <span>
-                        <X size={20} aria-hidden="true" /> 本局加载失败
-                      </span>
-                    ) : (
-                      <span>
-                        <Search size={20} aria-hidden="true" /> 等待第一次猜测
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {session && isFinished ? (
-        <aside className="result-panel" aria-label="游戏结果">
-          <div className="result-summary">
-            <p className="kicker">
-              {session.status === "won" ? "Clear" : "Failed"}
-            </p>
-            <h2>{session.status === "won" ? "猜中了" : "本次游戏结束"}</h2>
-            <p>
-              答案是 <strong>{session.answer?.names.zhHans}</strong>，共使用{" "}
-              {session.guesses.length} 次猜测。
-              {session.status === "won" &&
-              session.guesses.at(-1)?.matchKind === "equivalent"
-                ? " 本局通过公开词条等价角色命中。"
-                : ""}
-            </p>
-          </div>
-          {session.answer ? (
-            <CharacterAvatar
-              avatarUrl={session.answer.avatarUrl}
-              name={session.answer.names.zhHans}
-              initials={session.answer.names.zhHans.slice(0, 2)}
-              className="answer-token"
-            />
-          ) : null}
-          {session.answer ? (
-            <dl className="answer-details" aria-label="答案角色资料">
-              <div>
-                <dt>日文名</dt>
-                <dd lang="ja">{session.answer.names.ja}</dd>
-              </div>
-              <div>
-                <dt>首次登场作品</dt>
-                <dd>{session.answer.firstAppearance.workTitle}</dd>
-              </div>
-              <div>
-                <dt>种族</dt>
-                <dd>{session.answer.species.join("、") || "暂无资料"}</dd>
-              </div>
-              <div>
-                <dt>能力</dt>
-                <dd>{session.answer.abilityDisplay}</dd>
-              </div>
-              <div>
-                <dt>出现地点</dt>
-                <dd>{session.answer.locations.join("、") || "暂无资料"}</dd>
-              </div>
-              <div>
-                <dt>身份</dt>
-                <dd>{session.answer.roles.join("、") || "暂无资料"}</dd>
-              </div>
-            </dl>
-          ) : null}
-          <div className="result-actions">
-            {mode === "random" ? (
-              <button
-                className="primary-button"
-                type="button"
-                onClick={() => void requestFreshSession()}
-                disabled={loading || submitting}
-              >
-                <RotateCcw size={18} aria-hidden="true" />
-                <span>再来一局</span>
-              </button>
-            ) : null}
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => void copyShare()}
-            >
-              <Copy size={18} aria-hidden="true" />
-              <span>复制分享</span>
-            </button>
-          </div>
-        </aside>
-      ) : null}
-    </>
+      <SingleGameStatusBar
+        mode={mode}
+        puzzleLabel={puzzleLabel}
+        dailyDifficulty={dailyDifficulty}
+        dailyStatuses={dailyStatuses}
+        disabled={loading || submitting || endingSession || timingOut}
+        turnLimitEnabled={turnLimitEnabled}
+        turnRemainingSeconds={turnRemainingSeconds}
+        elapsedSeconds={currentElapsedSeconds}
+        guessCount={session?.guesses.length ?? 0}
+        maxGuesses={maxGuesses}
+        unlimitedGuesses={hasUnlimitedGuesses}
+        sessionStatus={session?.status}
+        onDifficultyChange={(difficulty) =>
+          void switchDailyDifficulty(difficulty)
+        }
+        onRestart={() => void requestFreshSession()}
+        onForfeit={() => void forfeitSession()}
+      />
+    </section>
   );
 }

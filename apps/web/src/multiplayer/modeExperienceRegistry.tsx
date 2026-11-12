@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type {
   GuessField,
   MultiParticipantRole,
@@ -18,6 +18,7 @@ export interface MultiplayerMatchExperienceProps {
   role: MultiParticipantRole | null;
   actions: RoomActions;
   onLeave: () => void;
+  chat?: ReactNode;
 }
 
 const RaceExperience: ComponentType<MultiplayerMatchExperienceProps> = (
@@ -31,6 +32,7 @@ const RaceExperience: ComponentType<MultiplayerMatchExperienceProps> = (
     role={props.role}
     actions={props.actions}
     onLeave={props.onLeave}
+    chat={props.chat}
   />
 );
 
@@ -57,6 +59,7 @@ const RelayExperience: ComponentType<MultiplayerMatchExperienceProps> = (
       actions={props.actions}
       onRematch={props.actions.rematch}
       onLeave={props.onLeave}
+      chat={props.chat}
     />
   );
 };

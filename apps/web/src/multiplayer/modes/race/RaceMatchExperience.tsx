@@ -1,10 +1,13 @@
 "use client";
 
 import { Flag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { PaperButton } from "@/components/paper";
+import { CountdownOverlay } from "../../../components/multiplayer/CountdownOverlay";
+import { RoundResultOverlay } from "../../../components/multiplayer/RoundResultOverlay";
+import { MatchResultOverlay } from "../../../components/multiplayer/MatchResultOverlay";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   GuessField,
-  MatchEndedPayload,
   MultiParticipantRole,
   RoundEndedPayload,
 } from "@touhouflandre/shared";
@@ -14,29 +17,20 @@ import {
   resultForMemberId,
   sortMembersBySeat,
 } from "../../../domain/memberCollections";
-import { ROOM_FORMAT_SHORT } from "../../../domain/multiRoom";
 import type { components } from "../../../generated/api";
 import type { RoomActions, RoomUiState } from "../../../hooks/useRoom";
-import { formatRemaining, useRoomClock } from "../../../hooks/useRoomClock";
 import { GuessInputBar } from "../../../components/game/GuessInputBar";
 import { GuessTable, type GuessRow } from "../../../components/game/GuessTable";
-import { MatchBoard } from "../../../components/multiplayer/MatchBoard";
+import {
+  MatchBoard,
+  MatchSummary,
+} from "../../../components/multiplayer/MatchBoard";
 import { MemberPaginator } from "../../../components/multiplayer/MemberPaginator";
-import { memberScoreEntries } from "../../../components/multiplayer/MemberScoreStrip";
 import {
   boardResultBadges,
   formatBoardTitle,
 } from "../../../components/multiplayer/boardMeta";
-import {
-  BoardBrowser,
-  MatchCountdownBand,
-  MatchFinishedBand,
-  MatchOutcomeBand,
-  MatchStatusBand,
-  MatchSummaryBar,
-  MultiplayerMatchFrame,
-  type MatchRankingEntry,
-} from "../../framework";
+import { BoardBrowser, MultiplayerMatchFrame } from "../../framework";
 
 type SpectatorBoardGuess =
   | components["schemas"]["GuessResult"]
@@ -48,15 +42,6 @@ type SpectatorBoards = Array<{
   guesses: SpectatorBoardGuess[];
 }>;
 
-const REASON_LABEL: Record<string, string> = {
-  normal: "正常完赛",
-  forfeit: "有玩家弃赛",
-  disconnect: "有玩家断线",
-  server_restart: "服务重启",
-  round_cap: "局数上限",
-  insufficient_active_players: "人数不足",
-};
-
 export function RaceMatchExperience({
   state,
   format,
@@ -65,6 +50,7 @@ export function RaceMatchExperience({
   role,
   actions,
   onLeave,
+  chat,
 }: {
   state: RoomUiState;
   format: string;
@@ -73,6 +59,7 @@ export function RaceMatchExperience({
   role: MultiParticipantRole | null;
   actions: RoomActions;
   onLeave: () => void;
+  chat?: ReactNode;
 }) {
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [roundActionBusy, setRoundActionBusy] = useState(false);
@@ -109,12 +96,6 @@ export function RaceMatchExperience({
   const effectiveArchiveKey = displayArchive
     ? archiveKey(displayArchive)
     : null;
-  const retentionRemaining = useRoomClock(
-    roomStatus === "finished"
-      ? (state.matchResult?.retentionEndsAt ?? state.room?.expiresAt)
-      : null,
-  );
-
   useEffect(() => {
     setSelectedArchiveKey(null);
   }, [match?.matchIndex]);
@@ -132,22 +113,6 @@ export function RaceMatchExperience({
 
   if (!match) return null;
 
-  const scoringMode = match.scoringMode ?? "wins";
-  const rosterSize = match.rosterSize ?? match.scores.length;
-  const activePlayers = match.scores.filter(
-    (score) => score.status === undefined || score.status === "active",
-  ).length;
-  const eliminatesThisRound =
-    scoringMode === "placement" &&
-    match.roundIndex >= Math.floor(rosterSize / 2) &&
-    rosterSize > 2;
-  const ruleLabel = raceRuleLabel(scoringMode, format);
-  const progressDetail = raceProgressDetail(
-    scoringMode,
-    match,
-    activePlayers,
-    rosterSize,
-  );
   const participationMessage = raceParticipationMessage(
     round?.self.participationStatus,
     roundActionBusy,
@@ -168,7 +133,6 @@ export function RaceMatchExperience({
         : outcome?.nextStartsAt
           ? outcome.nextStartsAt
           : null;
-  const initialCountdown = Boolean(countdownTarget && !outcome);
   const raceReadOnly = Boolean(participationMessage) || readOnlyViewer;
   const hasOpponent = state.members.length >= 2;
   const guessedIds = new Set(
@@ -210,33 +174,6 @@ export function RaceMatchExperience({
       />
     ) : undefined;
 
-  const summaryModel = {
-    identityLabel: `竞速 · ${ruleLabel}`,
-    scoreEntries: memberScoreEntries({
-      members: state.members,
-      scores: state.matchResult?.scores ?? match.scores,
-      viewerMemberId: memberId,
-      winnerMemberId: state.matchResult?.winnerMemberId,
-    }),
-    progressLabel: `第 ${match.roundIndex} 局${progressDetail ? ` · ${progressDetail}` : ""}`,
-    indicators: readOnlyViewer ? (
-      <span className={eliminated ? "text-vermilion" : "text-jade"}>
-        {eliminated ? "已淘汰 · 观战" : "观战席"}
-      </span>
-    ) : scoringMode === "placement" ? (
-      <span className={eliminatesThisRound ? "text-vermilion" : "text-jade"}>
-        {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
-      </span>
-    ) : undefined,
-  };
-  const statusModel = {
-    message: statusMessage,
-    active: !selectedArchive && !raceReadOnly && round?.status === "playing",
-    timers:
-      !selectedArchive && round?.status === "playing"
-        ? [{ label: "本局", deadline: round.deadline }]
-        : undefined,
-  };
   const guessControl =
     role === "player" &&
     !eliminated &&
@@ -255,83 +192,52 @@ export function RaceMatchExperience({
             : undefined
         }
         guessedIds={guessedIds}
+        statusMessage={raceReadOnly ? statusMessage : undefined}
       />
     ) : null;
-  const bottomControls = guessControl ? (
-    <div className="race-bottom-controls">
-      {guessControl}
-      <MatchSummaryBar model={summaryModel} />
-      {!matchFinished ? (
-        <MatchStatusBand model={statusModel} actions={statusActions} />
-      ) : null}
-    </div>
-  ) : undefined;
-
   return (
-    <div data-race-match-experience>
-      <MultiplayerMatchFrame bottomDock={bottomControls}>
-        {!bottomControls ? <MatchSummaryBar model={summaryModel} /> : null}
-
-        {countdownTarget ? (
-          <MatchCountdownBand
-            targetAt={countdownTarget}
-            label={initialCountdown ? "对局" : "下一局"}
-            kind={initialCountdown ? "initial" : "intermission"}
+    <div className="multiplayer-experience" data-race-match-experience>
+      <MultiplayerMatchFrame
+        navigation={
+          <BoardBrowser
+            model={{
+              ariaLabel: "竞速棋盘导航",
+              returnLabel: "返回当前局",
+              currentScopeId: "current",
+              selectedScopeId: historyScope,
+              scopeLabel: "选择局次",
+              scopeOptions: [
+                { id: "current", label: "当前局" },
+                ...currentArchives.map((archive) => ({
+                  id: `archive:${archiveKey(archive)}`,
+                  label: `第 ${archive.roundIndex} 局 · ${archiveResultLabel(archive, memberId)}`,
+                })),
+              ],
+            }}
+            onScopeChange={(scopeId) => {
+              setSelectedArchiveKey(
+                scopeId === "current" ? null : scopeId.slice("archive:".length),
+              );
+            }}
           />
-        ) : null}
-
-        {matchFinished && state.matchResult ? (
-          <MatchFinishedBand
-            title="对局结果"
-            subtitle={`${ruleLabel} · ${REASON_LABEL[state.matchResult.reason] ?? state.matchResult.reason} · 房间保留 ${formatRemaining(retentionRemaining)}`}
-            ranking={raceRankingEntries(
-              state.matchResult,
-              state.members,
-              memberId,
-            )}
-            ready={state.rematchReady.some(
-              (entry) => entry.memberId === memberId && entry.ready,
-            )}
-            readyLabel={rematchLabel(state.rematchReady, memberId)}
-            onRematch={actions.rematch}
-            onLeave={onLeave}
-          />
-        ) : null}
-
-        {showRoundOutcome && outcome ? (
-          <RaceRoundOutcome
-            result={outcome}
+        }
+        bottomDock={guessControl}
+        chat={chat}
+        summary={
+          <MatchSummary
+            format={format}
+            match={match}
+            round={round}
             members={state.members}
-            viewerMemberId={memberId}
+            memberId={memberId}
+            roundResult={selectedArchive ?? state.roundResult}
+            roundActions={statusActions}
+            viewLabel={
+              spectator ? "观战席" : eliminated ? "已淘汰 · 观战" : undefined
+            }
           />
-        ) : null}
-
-        {!bottomControls && !matchFinished ? (
-          <MatchStatusBand model={statusModel} actions={statusActions} />
-        ) : null}
-
-        <BoardBrowser
-          model={{
-            ariaLabel: "竞速棋盘导航",
-            returnLabel: "返回当前局",
-            currentScopeId: "current",
-            selectedScopeId: historyScope,
-            scopeLabel: "选择局次",
-            scopeOptions: [
-              { id: "current", label: "当前局" },
-              ...currentArchives.map((archive) => ({
-                id: `archive:${archiveKey(archive)}`,
-                label: `第 ${archive.roundIndex} 局 · ${archiveResultLabel(archive, memberId)}`,
-              })),
-            ],
-          }}
-          onScopeChange={(scopeId) => {
-            setSelectedArchiveKey(
-              scopeId === "current" ? null : scopeId.slice("archive:".length),
-            );
-          }}
-        />
-
+        }
+      >
         {readOnlyViewer ? (
           <SpectatorRaceBoards
             boards={displayArchive?.boards ?? round?.boards ?? []}
@@ -342,19 +248,43 @@ export function RaceMatchExperience({
           />
         ) : (
           <MatchBoard
-            embedded
-            format={format}
             match={match}
             round={round}
             memberId={memberId}
             members={state.members}
             roundResult={selectedArchive ?? state.roundResult}
-            onGuess={actions.submitGuess}
-            disabled={!hasOpponent}
             fields={fields}
           />
         )}
       </MultiplayerMatchFrame>
+      <div className="multiplayer-state-overlays">
+        {countdownTarget && !showRoundOutcome ? (
+          <CountdownOverlay startsAt={countdownTarget} />
+        ) : null}
+
+        {matchFinished && state.matchResult ? (
+          <MatchResultOverlay
+            result={state.matchResult}
+            memberId={memberId}
+            members={state.members}
+            format={format}
+            rematchReady={state.rematchReady}
+            onRematch={actions.rematch}
+            onLeave={onLeave}
+          />
+        ) : null}
+
+        {showRoundOutcome && outcome ? (
+          <RoundResultOverlay
+            key={`${outcome.matchIndex}:${outcome.roundIndex}`}
+            result={outcome}
+            memberId={memberId}
+            members={state.members}
+            nextRoundStartsAt={countdownTarget ?? null}
+            autoDismissAtCountdownEnd
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -369,64 +299,17 @@ function RoundForfeitButton({
   onClick: () => void | Promise<void>;
 }) {
   return (
-    <button
-      type="button"
+    <PaperButton
       onClick={() => void onClick()}
       disabled={busy}
       title={confirm ? "再次点击确认放弃本局" : "放弃本局"}
-      className="race-forfeit-button inline-flex min-h-12 w-[148px] items-center justify-center gap-2 border-0 bg-vermilion px-4 text-sm font-bold text-[var(--accent-contrast)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="single-game-forfeit race-forfeit-button"
+      tone="danger"
+      filled
     >
       <Flag size={18} aria-hidden="true" />
       {busy ? "提交中……" : confirm ? "再次点击确认放弃" : "放弃本局"}
-    </button>
-  );
-}
-
-function RaceRoundOutcome({
-  result,
-  members,
-  viewerMemberId,
-}: {
-  result: RoundEndedPayload;
-  members: readonly components["schemas"]["MemberView"][];
-  viewerMemberId: string | null;
-}) {
-  const viewerResult =
-    result.viewerResult ??
-    resultForMemberId(result.results, viewerMemberId) ??
-    "draw";
-  const tone =
-    viewerResult === "win"
-      ? ("success" as const)
-      : viewerResult === "loss"
-        ? ("danger" as const)
-        : ("default" as const);
-  return (
-    <MatchOutcomeBand
-      eyebrow={`ROUND ${result.roundIndex}`}
-      title={`${viewerResult === "win" ? "本局获胜" : viewerResult === "loss" ? "本局失利" : "本局平局"} · 答案：${result.answer.name}`}
-      tone={tone}
-      detail={`当前比分 ${sortMembersBySeat(result.scores)
-        .map((entry) => entry.score)
-        .join(" : ")}`}
-    >
-      <ul className="mt-2 mb-0 flex flex-wrap gap-1.5" aria-label="本局结果">
-        {sortMembersBySeat(result.results).map((entry) => {
-          const score =
-            result.scores.find((item) => item.memberId === entry.memberId)
-              ?.score ?? 0;
-          return (
-            <li
-              key={entry.memberId}
-              className={`rounded border px-2 py-1 text-[0.7rem] ${entry.memberId === viewerMemberId ? "border-vermilion bg-paper" : "border-line bg-paper-muted"}`}
-            >
-              {memberLabel(entry, members, viewerMemberId)} · {score} 分 ·{" "}
-              {resultLabel(entry.result)}
-            </li>
-          );
-        })}
-      </ul>
-    </MatchOutcomeBand>
+    </PaperButton>
   );
 }
 
@@ -505,50 +388,6 @@ function SpectatorRaceBoards({
   );
 }
 
-function raceRankingEntries(
-  result: MatchEndedPayload,
-  members: readonly components["schemas"]["MemberView"][],
-  viewerMemberId: string | null,
-): MatchRankingEntry[] {
-  if (result.ranking?.length) {
-    return result.ranking.map((entry) => ({
-      id: entry.memberId,
-      rank: entry.rank,
-      order: entry.rank * 100 + entry.seat,
-      label: memberLabel(entry, members, viewerMemberId),
-      scoreLabel: `${entry.score} 分${entry.eliminatedRound ? ` · 第 ${entry.eliminatedRound} 局淘汰` : entry.status === "left" ? " · 离场" : ""}`,
-      isViewer: entry.memberId === viewerMemberId,
-    }));
-  }
-  return sortMembersBySeat(result.results).map((entry) => ({
-    id: entry.memberId,
-    rankLabel: resultLabel(entry.result),
-    order: entry.seat,
-    label: memberLabel(entry, members, viewerMemberId),
-    scoreLabel: `${result.scores.find((score) => score.memberId === entry.memberId)?.score ?? 0} 分`,
-    isViewer: entry.memberId === viewerMemberId,
-  }));
-}
-
-function raceRuleLabel(scoringMode: string, format: string) {
-  if (scoringMode === "placement") return "积分淘汰";
-  if (scoringMode === "points") return "积分累计";
-  return ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format;
-}
-
-function raceProgressDetail(
-  scoringMode: string,
-  match: NonNullable<RoomUiState["match"]>,
-  activePlayers: number,
-  rosterSize: number,
-) {
-  if (scoringMode === "placement") {
-    return `剩余 ${activePlayers}/${rosterSize} 人`;
-  }
-  if (scoringMode === "points") return `共 ${match.maxRounds} 局`;
-  return match.targetWins > 1 ? `先胜 ${match.targetWins} 局` : "";
-}
-
 function raceParticipationMessage(
   status: components["schemas"]["RaceRoundParticipantStatus"] | undefined,
   busy: boolean,
@@ -559,17 +398,6 @@ function raceParticipationMessage(
   if (status === "exhausted") return "本局猜测次数已用尽";
   if (status === "timed_out") return "本局已超时";
   return null;
-}
-
-function rematchLabel(
-  ready: readonly { memberId: string; ready: boolean }[],
-  viewerMemberId: string | null,
-) {
-  const mine = ready.some(
-    (entry) => entry.memberId === viewerMemberId && entry.ready,
-  );
-  const count = ready.filter((entry) => entry.ready).length;
-  return mine ? `已确认 ${count}` : "再来一局";
 }
 
 function archiveKey(
@@ -597,15 +425,4 @@ function archiveResultLabel(
 
 function resultLabel(result: string) {
   return result === "win" ? "胜" : result === "loss" ? "负" : "平";
-}
-
-function memberLabel(
-  entry: { memberId: string; seat: number },
-  members: readonly components["schemas"]["MemberView"][],
-  viewerMemberId: string | null,
-) {
-  const name =
-    members.find((member) => member.memberId === entry.memberId)?.displayName ??
-    `玩家 ${entry.seat}`;
-  return `${name}(${entry.memberId === viewerMemberId ? "我" : `P${entry.seat}`})`;
 }

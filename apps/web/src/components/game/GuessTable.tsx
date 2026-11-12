@@ -1,18 +1,19 @@
 "use client";
 
-// 联机对局棋盘表格（左右双栏：左自己 / 右对手，手机端上下堆叠）：
-// 列标签只出现一次（表头，复用单人模式字段序）；单元格统一 feedback feedback-{status}
-// 语义类（两边同色同高）；对手匿名行只渲染状态色块，永不含名称/标签/值（08 §4.5）。
+// 联机棋盘复用单人模式的全宽台账：字段标签固定在表尾，反馈单元格与行高一致。
+// 对手行保留相同几何，但只公开匿名状态，不携带角色名或属性值（08 §4.5）。
 import type { ReactNode } from "react";
-import {
-  CHARACTER_GUESS_FIELDS,
-  type FeedbackStatus,
-  type GuessField,
-  type GuessFieldKey,
-  type MatchKind,
+import type {
+  FeedbackStatus,
+  GuessField,
+  GuessFieldKey,
+  MatchKind,
 } from "@touhouflandre/shared";
+import { CHARACTER_GUESS_FIELDS } from "@touhouflandre/shared";
 import { CharacterAvatar } from "./CharacterAvatar";
 import { FeedbackStatusIcon } from "./FeedbackStatusIcon";
+import { Paper } from "@/components/paper";
+import { SectionHeading } from "../layout/SectionHeading";
 
 export const STATUS_LABEL: Record<FeedbackStatus, string> = {
   exact: "命中",
@@ -56,7 +57,7 @@ export function GuessTable({
   highlightTone = "success",
 }: {
   title?: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   headerExtra?: ReactNode;
   rows: GuessRow[];
   emptyLabel: string;
@@ -66,155 +67,162 @@ export function GuessTable({
   highlightTone?: "success" | "danger";
 }) {
   const isOpponent = variant === "opponent";
-  const borderClass = highlight
-    ? highlightTone === "danger"
-      ? "border-vermilion"
-      : "border-jade"
-    : "border-line";
 
   return (
     <section
-      className={`multiplayer-board multiplayer-board-paper rounded-[6px] border bg-paper p-3 shadow-sm ${borderClass}`}
+      className={`multiplayer-board${isOpponent ? "" : " single-game-history-region"}`}
       data-board-variant={variant}
+      data-highlight={highlight ? "true" : "false"}
+      data-highlight-tone={highlight ? highlightTone : undefined}
     >
       <div
-        aria-label={isOpponent ? (title ?? "对手猜测记录") : "我的猜测记录"}
+        aria-label={isOpponent ? undefined : "我的猜测记录"}
         className={`multiplayer-board-scroll${isOpponent ? "" : " single-game-history-scroll"}`}
-        role="region"
-        tabIndex={0}
+        role={isOpponent ? undefined : "region"}
       >
         {!isOpponent ? (
           <div className="single-game-history-fade-spacer" aria-hidden="true" />
         ) : null}
-        <table
-          className={`guess-table multiplayer-guess-table w-full border-collapse text-[0.78rem] ${
-            isOpponent ? "min-w-[940px]" : "min-w-[940px]"
+        <Paper
+          animateOnMount={false}
+          as="div"
+          elevation="sm"
+          className={`paper-data-table multiplayer-board-paper${
+            isOpponent ? "" : " single-game-history-table-paper"
           }`}
+          folded={false}
+          pattern={false}
+          tone={highlight ? highlightTone : "default"}
+          sticker={false}
+          unfoldOnHover={false}
+          variant="plain"
         >
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={fields.length + 1}
-                  className="py-4 text-center text-ink-soft"
-                >
-                  {emptyLabel}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                if (row.notice) {
-                  return (
-                    <tr key={row.key}>
-                      <td
-                        colSpan={fields.length + 1}
-                        className="border-b border-line p-2"
+          <table className="guess-table multiplayer-guess-table">
+            <colgroup>
+              <col className="guess-character-column" />
+              {fields.map((field) => (
+                <col className="guess-feedback-column" key={field.key} />
+              ))}
+            </colgroup>
+            <tbody className="paper-data-table-body">
+              {rows.length === 0 ? (
+                <tr className="paper-data-table-row multiplayer-board-empty-row">
+                  <td colSpan={fields.length + 1}>{emptyLabel}</td>
+                </tr>
+              ) : (
+                rows.map((row, rowIndex) => {
+                  if (row.notice) {
+                    return (
+                      <tr
+                        className="paper-data-table-row guess-timeout-row"
+                        key={row.key}
                       >
-                        <span
-                          className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-black ${
-                            row.tone === "danger"
-                              ? "bg-vermilion-soft text-vermilion"
-                              : "bg-paper-muted text-ink-soft"
-                          }`}
+                        <th scope="row" className="guess-timeout-cell">
+                          <span>{row.notice}</span>
+                        </th>
+                        {fields.map((field) => (
+                          <td
+                            aria-hidden="true"
+                            className="guess-timeout-placeholder-cell"
+                            key={field.key}
+                          />
+                        ))}
+                      </tr>
+                    );
+                  }
+
+                  const cells = cellsForFields(row.cells, fields);
+                  return (
+                    <tr
+                      className={`paper-data-table-row${row.isCorrect ? " guess-correct-row" : ""}`}
+                      data-match-kind={row.matchKind}
+                      key={row.key}
+                      style={{
+                        animationDelay: `${Math.min(rowIndex, 7) * 45}ms`,
+                      }}
+                    >
+                      <th scope="row">
+                        {row.name ? (
+                          <span className="guess-character">
+                            <CharacterAvatar
+                              avatarUrl={row.avatarUrl}
+                              name={row.name}
+                              initials={row.name.slice(0, 2)}
+                              className="guess-avatar"
+                            />
+                            <span>
+                              {row.name}
+                              {row.matchKind === "equivalent" ? (
+                                <small className="guess-equivalent-label">
+                                  等价命中
+                                </small>
+                              ) : null}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="multiplayer-anonymous-guess">
+                            第 {row.key} 猜
+                          </span>
+                        )}
+                      </th>
+                      {cells.map((cell, index) => (
+                        <td
+                          className={[
+                            "paper-tinted-cell",
+                            "feedback-cell",
+                            `feedback-cell-${cell.status}`,
+                            isOpponent ? "multiplayer-icon-feedback-cell" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          key={fields[index]?.key ?? index}
                         >
-                          {row.notice}
-                        </span>
-                      </td>
+                          <span
+                            aria-label={
+                              isOpponent ? STATUS_LABEL[cell.status] : undefined
+                            }
+                            className={`feedback feedback-${cell.status}${
+                              isOpponent ? " match-feedback-compact" : ""
+                            }`}
+                            role={isOpponent ? "img" : undefined}
+                            title={STATUS_LABEL[cell.status]}
+                          >
+                            <b>
+                              <FeedbackStatusIcon
+                                status={cell.status}
+                                decorative={isOpponent}
+                              />
+                            </b>
+                            {!isOpponent && cell.value ? (
+                              <span>{cell.value}</span>
+                            ) : null}
+                          </span>
+                        </td>
+                      ))}
                     </tr>
                   );
-                }
-
-                const cells = cellsForFields(row.cells, fields);
-                return (
-                  <tr key={row.key}>
-                    <th
-                      scope="row"
-                      className="border-b border-line p-1.5 align-top text-left font-normal"
-                    >
-                      {row.name ? (
-                        <span className="flex items-center gap-1.5">
-                          <CharacterAvatar
-                            avatarUrl={row.avatarUrl}
-                            name={row.name}
-                            initials={row.name.slice(0, 1)}
-                            className="!size-5 shrink-0"
-                          />
-                          <span className="min-w-0 overflow-wrap-anywhere">
-                            {row.name}
-                            {row.isCorrect && (
-                              <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
-                                {row.matchKind === "equivalent"
-                                  ? "等价命中"
-                                  : "命中"}
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="text-ink-soft">第 {row.key} 猜</span>
-                      )}
-                    </th>
-                    {cells.map((cell, index) => (
-                      <td
-                        key={fields[index]?.key ?? index}
-                        className={`feedback-cell feedback-cell-${cell.status} paper-tinted-cell border-b border-line p-1.5 align-top ${isOpponent ? "multiplayer-icon-feedback-cell" : ""}`}
-                      >
-                        <span
-                          className={`feedback match-feedback ${
-                            isOpponent ? "match-feedback-compact" : ""
-                          } feedback-${cell.status}`}
-                          title={STATUS_LABEL[cell.status]}
-                          role={row.name ? undefined : "img"}
-                          aria-label={
-                            row.name ? undefined : STATUS_LABEL[cell.status]
-                          }
-                        >
-                          <b>
-                            <FeedbackStatusIcon
-                              status={cell.status}
-                              decorative={!row.name}
-                            />
-                          </b>
-                          {!isOpponent && cell.value && (
-                            <span>{cell.value}</span>
-                          )}
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-          <tfoot className="paper-data-table-header single-game-history-footer multiplayer-board-footer">
-            <tr>
-              <th
-                className={`border-t border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft ${
-                  isOpponent ? "w-16" : "w-24"
-                }`}
-              >
-                角色
-              </th>
-              {fields.map((field) => (
-                <th
-                  key={field.key}
-                  className="border-t border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
-                >
-                  {field.label}
-                </th>
-              ))}
-            </tr>
-          </tfoot>
-        </table>
+                })
+              )}
+            </tbody>
+            <tfoot className="paper-data-table-header single-game-history-footer multiplayer-board-footer">
+              <tr className="paper-data-table-row">
+                <th>角色</th>
+                {fields.map((field) => (
+                  <th key={field.key}>{field.label}</th>
+                ))}
+              </tr>
+            </tfoot>
+          </table>
+        </Paper>
       </div>
       {title || subtitle || headerExtra ? (
-        <div className="multiplayer-board-heading">
-          <div className="multiplayer-board-heading-copy">
-            {title ? <h3>{title}</h3> : null}
-            {subtitle ? <span>{subtitle}</span> : null}
-          </div>
-          {headerExtra}
-        </div>
+        <SectionHeading
+          action={headerExtra}
+          className="multiplayer-board-heading"
+          description={subtitle}
+          title={title ?? "棋盘"}
+          titleAs="h2"
+        />
       ) : null}
     </section>
   );

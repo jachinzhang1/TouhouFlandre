@@ -315,6 +315,7 @@ function GuessSequence({
   return (
     <div
       className="flex w-max min-w-max items-center gap-1 py-1"
+      role="group"
       aria-label={`猜测角色：${guesses.map((guess) => guess.name).join("、")}`}
     >
       {guesses.slice(0, 9).map((guess, index) => (
@@ -340,6 +341,7 @@ function AnswerSequence({ rounds }: { rounds: StatsRound[] }) {
   return (
     <div
       className="flex w-max min-w-max items-center gap-1 py-1"
+      role="group"
       aria-label={`答案角色：${rounds.map((round) => round.answer.name).join("、")}`}
     >
       {rounds.map((round) => (

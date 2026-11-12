@@ -130,7 +130,7 @@
 
   .home-hero-shortcuts {
     position: absolute;
-    right: var(--appearance-corner-safe-area);
+    right: 0;
     bottom: calc(var(--site-footer-height) + 40px);
     left: 0;
     margin: 0;
@@ -228,6 +228,10 @@
     var(--paper-plain-bg)
   );
   box-shadow: inset 4px 0 0 var(--theme-color);
+}
+
+.paper-surface.paper-shortcut-featured {
+  color: var(--ink);
 }
 
 .paper-shortcut-featured .paper-shortcut-icon {

@@ -11,7 +11,7 @@ export function PageHeader({
   rightSlotInset = "icon-button",
   title,
 }: {
-  description: ReactNode;
+  description?: ReactNode;
   descriptionRole?: AriaRole;
   leftSlot?: ReactNode;
   rightSlot?: ReactNode;
@@ -27,9 +27,11 @@ export function PageHeader({
       ) : null}
       <div className="page-header-copy">
         <h1 className="page-header-title">{title}</h1>
-        <p className="page-header-description" role={descriptionRole}>
-          {description}
-        </p>
+        {description != null ? (
+          <p className="page-header-description" role={descriptionRole}>
+            {description}
+          </p>
+        ) : null}
       </div>
       {rightSlot ? (
         <div className="page-header-slot page-header-slot-right">

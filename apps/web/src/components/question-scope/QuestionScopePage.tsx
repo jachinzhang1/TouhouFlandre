@@ -327,7 +327,8 @@ function QuestionScopeTransferActions({
       <input
         ref={importInputRef}
         accept="application/json,.json"
-        className="sr-only"
+        hidden
+        aria-label="导入题库设置文件"
         onChange={handleImport}
         type="file"
       />
@@ -336,7 +337,7 @@ function QuestionScopeTransferActions({
         disabled={!canExport}
         onClick={onExport}
       >
-        <Upload size={18} aria-hidden="true" />
+        <Download size={18} aria-hidden="true" />
         <span className="question-scope-action-label">导出</span>
       </PageHeaderAction>
       <PageHeaderAction
@@ -344,7 +345,7 @@ function QuestionScopeTransferActions({
         disabled={!canImport}
         onClick={() => importInputRef.current?.click()}
       >
-        <Download size={18} aria-hidden="true" />
+        <Upload size={18} aria-hidden="true" />
         <span className="question-scope-action-label">导入</span>
       </PageHeaderAction>
     </div>

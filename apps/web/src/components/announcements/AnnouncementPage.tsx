@@ -36,6 +36,15 @@ export function AnnouncementPage({
     page * ANNOUNCEMENT_PAGE_SIZE,
   );
   const tearTimersRef = useRef<Set<number>>(new Set());
+  const listRef = useRef<HTMLDivElement>(null);
+  const previousPage = useRef(page);
+
+  useEffect(() => {
+    if (previousPage.current === page) return;
+    previousPage.current = page;
+    listRef.current?.focus({ preventScroll: true });
+    listRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [page]);
 
   useEffect(() => {
     const syncReadIds = () => setReadIds(readAnnouncementIds());
@@ -139,7 +148,13 @@ export function AnnouncementPage({
       ) : null}
 
       {announcements.length ? (
-        <div id="announcement-list" className="mt-6 grid gap-4">
+        <div
+          id="announcement-list"
+          ref={listRef}
+          tabIndex={-1}
+          aria-label={`公告第 ${page} 页`}
+          className="mt-6 grid scroll-mt-[calc(var(--site-nav-height)+24px)] gap-4"
+        >
           {visibleAnnouncements.map((announcement, index) => {
             const unread = !readIds.has(announcement.id);
             const tearing = tearingIds.has(announcement.id);
@@ -152,6 +167,7 @@ export function AnnouncementPage({
                 {announcement.pinned ? (
                   <span
                     className="announcement-pin-corner"
+                    role="img"
                     aria-label="置顶公告"
                     title="置顶公告"
                   >
@@ -173,6 +189,7 @@ export function AnnouncementPage({
                   {unread ? (
                     <span
                       className="announcement-unread-dot"
+                      role="img"
                       aria-label="未读公告"
                       title="未读公告"
                     />

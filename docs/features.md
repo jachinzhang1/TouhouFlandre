@@ -15,19 +15,19 @@ TouhouFlandre 是浏览器端东方角色推理游戏。服务端负责角色搜
 
 ## 功能范围
 
-| 能力 | 说明 |
-|---|---|
-| 每日题 | 同一天使用固定题目，支持恢复会话。 |
-| 随机题 | 创建独立随机会话，可重新开始。 |
-| 角色搜索 | 角色目录与猜测输入框使用一致的搜索规则，支持多语言名称、别名和初登场作品等检索方式。 |
-| 属性反馈 | 服务端字段注册表提供六个 `public_fields_v1` 词条及动态配置，含完全、部分、方向与不匹配状态。 |
-| 结果分享 | 复制无剧透的纯文本摘要。 |
-| 答案资料 | 单人题结束后展示答案角色的日文名、首次登场、种族、能力、地点和身份。 |
-| 会话恢复 | Postgres 保存游戏会话，浏览器保存会话标识。 |
-| 多人房间 | 创建/加入房间、总局数与积分赛淘汰开关、竞速、接力、再来一局和 WebSocket 实时同步。 |
-| 本地统计 | 浏览器本地记录单人/多人游玩、作品、猜测次数、有效耗时与历史；支持筛选、清除和 JSON 导入导出。 |
-| 公告 | 通过仓库内 Markdown 内容提供站点公告。 |
-| 站点访问数 | 页脚展示全站访问次数；每次完整页面加载或刷新记录一次。 |
+| 能力           | 说明                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------ |
+| 每日题         | 同一天使用固定题目，支持恢复会话。                                                                           |
+| 随机题         | 创建独立随机会话，可重新开始。                                                                               |
+| 角色搜索       | 角色目录与猜测输入框使用一致的搜索规则，支持多语言名称、别名和初登场作品等检索方式。                         |
+| 属性反馈       | 服务端字段注册表提供六个 `public_fields_v1` 词条及动态配置，含完全、部分、方向与不匹配状态。                 |
+| 结果分享       | 复制无剧透的纯文本摘要。                                                                                     |
+| 答案资料       | 单人题结束后展示答案角色的日文名、首次登场、种族、能力、地点和身份。                                         |
+| 会话恢复       | Postgres 保存游戏会话，浏览器保存会话标识。                                                                  |
+| 多人房间       | 创建/加入房间、总局数与积分赛淘汰开关、竞速、接力、再来一局和 WebSocket 实时同步。                           |
+| 本地统计       | 浏览器本地记录单人/多人游玩、作品、猜测次数、有效耗时与历史；支持筛选、清除和 JSON 导入导出。                |
+| 公告           | 通过仓库内 Markdown 内容提供站点公告。                                                                       |
+| 站点访问数     | 页脚展示全站访问次数；每次完整页面加载或刷新记录一次。                                                       |
 | 全站音乐播放器 | 右上角悬浮入口提供本地曲库播放、进度、音量和曲目筛选；站内软导航保持播放，整页刷新保持暂停并恢复已保存设置。 |
 
 ### 音乐播放器边界
@@ -40,18 +40,18 @@ TouhouFlandre 是浏览器端东方角色推理游戏。服务端负责角色搜
 
 ## 页面与路由
 
-| 路由 | 页面职责 |
-|---|---|
-| `/` | 首页与主要游戏入口。 |
-| `/single` | 单人模式选择。 |
-| `/single/daily` | 每日题。 |
-| `/single/random` | 随机题。 |
-| `/search` | 角色题库搜索。 |
-| `/multi` | 多人大厅：创建房间或输入房间号加入。 |
+| 路由                 | 页面职责                                 |
+| -------------------- | ---------------------------------------- |
+| `/`                  | 首页与主要游戏入口。                     |
+| `/single`            | 单人模式选择。                           |
+| `/single/daily`      | 每日题。                                 |
+| `/single/random`     | 随机题。                                 |
+| `/search`            | 角色题库搜索。                           |
+| `/multi`             | 多人大厅：创建房间或输入房间号加入。     |
 | `/multi/room/[code]` | 多人房间：大厅、对局、观战和结果状态机。 |
-| `/stats` | 本地游玩统计、图表、历史记录与数据管理。 |
-| `/announcement` | 公告列表与正文。 |
-| `/links` | 友链与第三方素材鸣谢。 |
+| `/stats`             | 本地游玩统计、图表、历史记录与数据管理。 |
+| `/announcement`      | 公告列表与正文。                         |
+| `/links`             | 友链与第三方素材鸣谢。                   |
 
 `/single/[mode]` 只接受已注册的单人模式，非法模式返回 404。多人房间页会校验房间号和成员资格。
 
@@ -85,37 +85,40 @@ TouhouFlandre 是浏览器端东方角色推理游戏。服务端负责角色搜
 
 `contracts/openapi/openapi.yaml` 是 HTTP 契约唯一入口。Go 侧使用 oapi-codegen 生成 handler 接口和 DTO，前端使用 openapi-typescript 生成类型并通过 openapi-fetch 调用。
 
-| 方法 | 路径 | 用途 |
-|---|---|---|
-| `GET` | `/api/health` | 服务健康检查。 |
-| `POST` | `/api/site/visits` | 记录一次站点访问并返回全站访问数。 |
-| `GET` | `/api/catalog` | 获取内容类型与题库统计。 |
-| `GET` | `/api/catalog/characters` | （已弃用）获取完整可猜角色表，供旧客户端兼容。 |
-| `GET` | `/api/characters/search` | 在当前题库或指定题局的题库快照中搜索、筛选、排序和分页读取可猜角色。 |
-| `POST` | `/api/puzzles/{mode}` | 按已注册模式创建游戏会话。 |
-| `GET` | `/api/sessions/{sessionId}` | 恢复公开会话状态。 |
-| `POST` | `/api/sessions/{sessionId}/guess` | 提交猜测并获取更新后的会话。 |
-| `POST` | `/api/sessions/{sessionId}/forfeit` | 主动放弃单人会话并进入终态。 |
-| `POST` | `/api/rooms` | 创建多人房间（race 可配置玩家上限与积分赛淘汰开关）。 |
-| `GET` | `/api/rooms/{roomCode}` | 加入前读取公开房间信息。 |
-| `POST` | `/api/rooms/{roomCode}/join` | 加入多人房间。 |
-| `POST` | `/api/rooms/{roomId}/ready` | 设置多人房间准备状态。 |
-| `POST` | `/api/rooms/{roomId}/leave` | 离开多人房间。 |
-| `DELETE` | `/api/rooms/{roomId}` | 房主关闭多人房间。 |
-| `GET` | `/api/rooms/{roomId}/snapshot` | 获取房间快照与事件补齐。 |
-| `POST` | `/api/rooms/{roomId}/rounds/{roundIndex}/guess` | 提交多人小局猜测。 |
-| `POST` | `/api/rooms/{roomId}/rounds/{roundIndex}/forfeit` | 放弃当前多人小局。 |
-| `POST` | `/api/rooms/{roomId}/rounds/{roundIndex}/pass` | 接力模式主动空过当前轮次。 |
-| `POST` | `/api/rooms/{roomId}/rematch` | 结束后请求再来一局。 |
-| `GET` | `/api/rooms/{roomId}/ws` | 多人房间 WebSocket 事件通道。 |
+| 方法     | 路径                                              | 用途                                                                 |
+| -------- | ------------------------------------------------- | -------------------------------------------------------------------- |
+| `GET`    | `/api/health`                                     | 服务健康检查。                                                       |
+| `POST`   | `/api/site/visits`                                | 记录一次站点访问并返回全站访问数。                                   |
+| `GET`    | `/api/catalog`                                    | 获取内容类型与题库统计。                                             |
+| `GET`    | `/api/catalog/characters`                         | （已弃用）获取完整可猜角色表，供旧客户端兼容。                       |
+| `GET`    | `/api/characters/search`                          | 在当前题库或指定题局的题库快照中搜索、筛选、排序和分页读取可猜角色。 |
+| `POST`   | `/api/puzzles/{mode}`                             | 按已注册模式创建游戏会话。                                           |
+| `GET`    | `/api/sessions/{sessionId}`                       | 恢复公开会话状态。                                                   |
+| `POST`   | `/api/sessions/{sessionId}/guess`                 | 提交猜测并获取更新后的会话。                                         |
+| `POST`   | `/api/sessions/{sessionId}/forfeit`               | 主动放弃单人会话并进入终态。                                         |
+| `POST`   | `/api/rooms`                                      | 创建多人房间（race 可配置玩家上限与积分赛淘汰开关）。                |
+| `GET`    | `/api/rooms/{roomCode}`                           | 加入前读取公开房间信息。                                             |
+| `POST`   | `/api/rooms/{roomCode}/join`                      | 加入多人房间。                                                       |
+| `POST`   | `/api/rooms/{roomId}/ready`                       | 设置多人房间准备状态。                                               |
+| `POST`   | `/api/rooms/{roomId}/leave`                       | 离开多人房间。                                                       |
+| `DELETE` | `/api/rooms/{roomId}`                             | 房主关闭多人房间。                                                   |
+| `GET`    | `/api/rooms/{roomId}/snapshot`                    | 获取房间快照与事件补齐。                                             |
+| `POST`   | `/api/rooms/{roomId}/rounds/{roundIndex}/guess`   | 提交多人小局猜测。                                                   |
+| `POST`   | `/api/rooms/{roomId}/rounds/{roundIndex}/forfeit` | 放弃当前多人小局。                                                   |
+| `POST`   | `/api/rooms/{roomId}/rounds/{roundIndex}/pass`    | 接力模式主动空过当前轮次。                                           |
+| `POST`   | `/api/rooms/{roomId}/rematch`                     | 结束后请求再来一局。                                                 |
+| `GET`    | `/api/rooms/{roomId}/ws`                          | 多人房间 WebSocket 事件通道。                                        |
 
-前端默认请求同源 `/api`，由 Next rewrites 代理到 Go API。设置 `NEXT_PUBLIC_API_BASE_URL` 后，浏览器会直连指定 API 地址。
+前端默认请求同源 `/api`，由 Next rewrites 代理到 Go API。设置 `NEXT_PUBLIC_API_BASE_URL` 后，浏览器会直连指定 API 地址。多人 WebSocket 使用相同的 API 主机与端口，仅将协议切换为 `ws` / `wss`，不会将 `localhost` 改写为另一个主机。
 
 ## 兼容性与无障碍
 
 客户端面向支持 ES modules、Fetch API、History API 和 Clipboard API 的现代浏览器。界面应满足以下基础要求：
 
 - 所有主要操作可通过键盘完成。
+- 单人与多人猜测建议贴近输入框显示，支持方向键选择；选择角色后通过提交按钮或再次按回车确认猜测，反馈图例常驻输入栏上方。
+- 公告翻页后，将焦点和视口移到新一页内容起点；鸣谢保留响应式卡片，关于与规则页面按分节标题完整展示正文。
+- 单人与竞速棋盘保留底部字段表头、输入栏与紧凑状态区；竞速聊天位于侧边，小屏按顺序排列，避免覆盖猜测输入。
 - 图标按钮具备可访问名称或提示。
 - 状态不只依赖颜色表达。
 - 小屏幕可横向查看反馈表格。

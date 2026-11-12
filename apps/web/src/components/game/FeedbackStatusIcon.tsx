@@ -84,7 +84,7 @@ export function FeedbackStatusIcon({
 }) {
   const accessibilityProps = decorative
     ? { "aria-hidden": true as const }
-    : { "aria-label": ICON_LABEL[status] };
+    : { role: "img" as const, "aria-label": ICON_LABEL[status] };
 
   if (status === "exact") return <Check size={size} {...accessibilityProps} />;
   if (status === "partial")

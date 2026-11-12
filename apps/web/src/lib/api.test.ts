@@ -16,15 +16,15 @@ describe("roomWsUrl", () => {
   it("uses ws protocol for same-origin API proxy", async () => {
     const roomWsUrl = await loadRoomWsUrl("");
 
-    expect(roomWsUrl("room-1")).toBe("ws://127.0.0.1:3000/api/rooms/room-1/ws");
+    expect(roomWsUrl("room-1")).toBe(
+      `${window.location.origin.replace(/^http/, "ws")}/api/rooms/room-1/ws`,
+    );
   });
 
-  it("uses ws protocol and IPv4 localhost for direct local API", async () => {
+  it("preserves the configured local API hostname", async () => {
     const roomWsUrl = await loadRoomWsUrl("http://localhost:4000");
 
-    expect(roomWsUrl("room-1")).toBe(
-      "ws://127.0.0.1:4000/api/rooms/room-1/ws",
-    );
+    expect(roomWsUrl("room-1")).toBe("ws://localhost:4000/api/rooms/room-1/ws");
   });
 
   it("uses wss protocol for direct HTTPS API", async () => {

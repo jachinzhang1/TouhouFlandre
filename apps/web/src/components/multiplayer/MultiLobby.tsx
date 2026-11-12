@@ -207,16 +207,7 @@ export function MultiLobby() {
         ) : null}
 
         <div className="multi-lobby-layout">
-          <Paper
-            animateOnMount={false}
-            as="article"
-            className="multi-lobby-pane"
-            elevation="sm"
-            folded={false}
-            pattern={false}
-            sticker={false}
-            unfoldOnHover={false}
-          >
+          <section className="multi-lobby-pane">
             <SectionHeading
               description="选择玩法和赛制，创建房间后邀请好友加入。"
               title="创建房间"
@@ -360,18 +351,9 @@ export function MultiLobby() {
               <Users size={16} aria-hidden="true" />
               {busy === "create" ? "创建中……" : "创建房间"}
             </PaperButton>
-          </Paper>
+          </section>
 
-          <Paper
-            animateOnMount={false}
-            as="article"
-            className="multi-lobby-pane"
-            elevation="sm"
-            folded={false}
-            pattern={false}
-            sticker={false}
-            unfoldOnHover={false}
-          >
+          <section className="multi-lobby-pane">
             <SectionHeading
               description="输入好友分享的 6 位房间号。"
               title="加入房间"
@@ -467,7 +449,7 @@ export function MultiLobby() {
                   ? "进入观战"
                   : "加入房间"}
             </PaperButton>
-          </Paper>
+          </section>
         </div>
       </div>
     </section>

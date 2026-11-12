@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RoundEndedPayload } from "@touhouflandre/shared";
-import { MatchBoard } from "./MatchBoard";
+import { MatchBoard, MatchSummary } from "./MatchBoard";
 
 const members = [
   {
@@ -41,7 +41,7 @@ describe("MatchBoard", () => {
 
   it("shows whether the current placement round can eliminate players", () => {
     render(
-      <MatchBoard
+      <MatchSummary
         format="bo3"
         match={{
           matchIndex: 0,
@@ -75,15 +75,13 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
-        fields={[]}
       />,
     );
 
-    expect(screen.getByText("本局不淘汰选手")).toBeTruthy();
+    expect(screen.getByText(/本局不淘汰/)).toBeTruthy();
 
     render(
-      <MatchBoard
+      <MatchSummary
         format="bo3"
         match={{
           matchIndex: 0,
@@ -117,8 +115,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
-        fields={[]}
       />,
     );
 
@@ -194,7 +190,6 @@ describe("MatchBoard", () => {
 
     render(
       <MatchBoard
-        format="bo3"
         match={{
           matchIndex: 0,
           targetWins: 2,
@@ -212,7 +207,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={result}
-        onGuess={vi.fn()}
         fields={[]}
       />,
     );
@@ -223,7 +217,7 @@ describe("MatchBoard", () => {
 
   it("shows points mode without elimination hints", () => {
     render(
-      <MatchBoard
+      <MatchSummary
         format="bo3"
         match={{
           matchIndex: 0,
@@ -257,8 +251,6 @@ describe("MatchBoard", () => {
         memberId="self"
         members={members}
         roundResult={null}
-        onGuess={vi.fn()}
-        fields={[]}
       />,
     );
 

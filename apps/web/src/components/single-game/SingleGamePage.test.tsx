@@ -78,9 +78,6 @@ const nextDailySession = {
   puzzleKey: "2026-08-06",
 } as unknown as PublicGameSession;
 
-const dailyTitle = "每日题 2026-08-05 - Normal Level";
-const nextDailyTitle = "每日题 2026-08-06 - Normal Level";
-
 const forfeitedSession = {
   ...playingSession,
   status: "lost",
@@ -181,7 +178,11 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="daily" />);
 
-    expect(await screen.findByText(dailyTitle)).toBeTruthy();
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
     expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(screen.getByText("进行中")).toBeTruthy();
@@ -189,49 +190,6 @@ describe("SingleGamePage", () => {
       "sess-1",
     );
     expect(screen.queryByLabelText("重新开始随机题")).toBeNull();
-  });
-
-  it("shows the feedback icon legend from the guess form", async () => {
-    vi.mocked(api.catalog).mockResolvedValue({
-      dailyDateKey: "2026-08-05",
-      contents: [],
-    } as never);
-    vi.mocked(api.createPuzzle).mockResolvedValue({
-      session: playingSession,
-      puzzleLabel: "每日题 2026-08-05",
-    } as never);
-
-    render(<SingleGamePage mode="daily" />);
-    await screen.findByText(dailyTitle);
-
-    const submitButton = screen.getByRole("button", { name: "提交猜测" });
-    expect(submitButton.querySelector(".lucide-send")).toBeTruthy();
-    expect(submitButton.querySelector(".lucide-search")).toBeNull();
-
-    const legendButton = screen.getByRole("button", { name: "查看反馈图例" });
-    expect(legendButton.querySelector(".lucide-search")).toBeTruthy();
-    expect(screen.queryByRole("tooltip")).toBeNull();
-
-    await userEvent.click(legendButton);
-
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toBeTruthy();
-    expect(tooltip.parentElement).toBe(document.body);
-    expect(screen.getByText("该属性完全命中")).toBeTruthy();
-    expect(screen.getByText("该属性仅部分命中")).toBeTruthy();
-    expect(screen.getByText("该属性正确答案的数值高于本条猜测")).toBeTruthy();
-    expect(screen.getByText("该属性正确答案的数值低于本条猜测")).toBeTruthy();
-    expect(screen.getByText("该属性完全未命中")).toBeTruthy();
-    expect(screen.getByText("属性值缺失或无法判断，若遇到请反馈")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-check")).toBeTruthy();
-    expect(tooltip.querySelector(".feedback-slashed-check-icon")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-chevrons-up")).toBeTruthy();
-    expect(tooltip.querySelector(".lucide-chevrons-down")).toBeTruthy();
-    expect(tooltip.querySelectorAll(".lucide-x")).toHaveLength(1);
-    expect(tooltip.querySelector(".feedback-question-mark-icon")).toBeTruthy();
-
-    await userEvent.click(document.body);
-    expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
   it("renders win panel after guessing correctly", async () => {
@@ -246,14 +204,18 @@ describe("SingleGamePage", () => {
     vi.mocked(api.submitGuess).mockResolvedValue(wonSession as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText(dailyTitle);
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
 
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "帕秋莉");
     await userEvent.click(screen.getByText("帕秋莉·诺蕾姬"));
     await userEvent.click(screen.getByText("提交猜测"));
 
-    expect(await screen.findByText("猜中了")).toBeTruthy();
-    expect(screen.getByText(/共使用 1 次猜测/)).toBeTruthy();
+    const result = await screen.findByLabelText("游戏结果");
+    expect(result.textContent).toContain("帕秋莉·诺蕾姬");
     expect(screen.getByText("パチュリー・ノーレッジ")).toBeTruthy();
     expect(screen.getByText("东方红魔乡")).toBeTruthy();
     expect(screen.getByText("魔法使", { selector: "dd" })).toBeTruthy();
@@ -282,9 +244,13 @@ describe("SingleGamePage", () => {
     vi.mocked(api.forfeitSession).mockResolvedValue(forfeitedSession as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText(dailyTitle);
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
 
-    await userEvent.click(screen.getByLabelText("放弃本局"));
+    await userEvent.click(screen.getByLabelText("放弃游戏"));
 
     expect(await screen.findByText("本次游戏结束")).toBeTruthy();
     expect(
@@ -309,8 +275,12 @@ describe("SingleGamePage", () => {
     } as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText(dailyTitle);
-    await userEvent.click(screen.getByLabelText("放弃本局"));
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
+    await userEvent.click(screen.getByLabelText("放弃游戏"));
 
     expect(confirm).toHaveBeenCalledOnce();
     expect(api.forfeitSession).not.toHaveBeenCalled();
@@ -354,7 +324,11 @@ describe("SingleGamePage", () => {
 
     render(<SingleGamePage mode="daily" />);
 
-    expect(await screen.findByText(nextDailyTitle)).toBeTruthy();
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
     expect(screen.getByText("0/8")).toBeTruthy();
     expect(localStorage.getItem("touhouflandre:daily-session")).toContain(
       "sess-next-day",
@@ -437,7 +411,11 @@ describe("SingleGamePage", () => {
     } as never);
 
     render(<SingleGamePage mode="daily" />);
-    await screen.findByText(dailyTitle);
+    await waitFor(() =>
+      expect((screen.getByRole("combobox") as HTMLInputElement).disabled).toBe(
+        false,
+      ),
+    );
     await userEvent.type(screen.getByLabelText("搜索东方角色"), "测试");
 
     expect(await screen.findByText("teal、无")).toBeTruthy();
@@ -487,7 +465,7 @@ describe("SingleGamePage", () => {
     });
 
     render(<SingleGamePage mode="daily" />);
-    const input = await screen.findByRole("textbox");
+    const input = await screen.findByRole("combobox");
     await userEvent.type(input, "帕秋莉");
     await userEvent.keyboard("{ArrowDown}{Enter}");
     expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");
@@ -515,7 +493,7 @@ describe("SingleGamePage", () => {
     });
 
     render(<SingleGamePage mode="random" />);
-    const input = await screen.findByRole("textbox");
+    const input = await screen.findByRole("combobox");
     await userEvent.type(input, "帕秋莉");
     await userEvent.keyboard("{ArrowDown}{Enter}");
     expect((input as HTMLInputElement).value).toBe("帕秋莉·诺蕾姬");

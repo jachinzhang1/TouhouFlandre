@@ -1,6 +1,7 @@
-// 底部搜索条键盘导航（↑↓ 移动指针、Enter 提交高亮项；默认指向第一项）。
+// Arrow keys select a suggestion; guessing requires explicit confirmation.
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { GuessInputBar } from "./GuessInputBar";
 
 vi.mock("../../hooks/useCharacterSearch", () => {
@@ -49,7 +50,7 @@ describe("GuessInputBar", () => {
     vi.restoreAllMocks();
   });
 
-  it("默认高亮第一项，下键移动高亮，回车提交高亮项", async () => {
+  it("selects with arrow keys without submitting until confirmed", async () => {
     render(
       <GuessInputBar
         onGuess={onGuess}
@@ -64,7 +65,6 @@ describe("GuessInputBar", () => {
     expect(options.length).toBeGreaterThanOrEqual(2);
     const isHighlighted = (element: HTMLElement) =>
       element.getAttribute("aria-selected") === "true";
-    // 默认第一项高亮（非高亮项仅带 hover: 前缀）
     expect(isHighlighted(options[0])).toBe(true);
     expect(isHighlighted(options[1])).toBe(false);
     // 下键 → 高亮移到第二项
@@ -73,8 +73,11 @@ describe("GuessInputBar", () => {
 
     expect(isHighlighted(fresh[1])).toBe(true);
     expect(isHighlighted(fresh[0])).toBe(false);
-    // 回车 → 提交第二项（圣白莲）并清空输入
+    // Enter selects the highlighted character; submission remains explicit.
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(onGuess).not.toHaveBeenCalled();
+    expect((input as HTMLInputElement).value).toBe("圣白莲");
+    await userEvent.click(screen.getByRole("button", { name: "提交猜测" }));
     expect(onGuess).toHaveBeenCalledWith("byakuren_hijiri");
     await waitFor(() =>
       expect(
@@ -83,7 +86,7 @@ describe("GuessInputBar", () => {
     );
   });
 
-  it("直接回车提交默认第一项", async () => {
+  it("selects the first suggestion and confirms it with a second Enter", async () => {
     render(
       <GuessInputBar
         onGuess={onGuess}
@@ -94,7 +97,10 @@ describe("GuessInputBar", () => {
     const input = screen.getByLabelText("搜索角色");
     fireEvent.change(input, { target: { value: "灵梦" } });
     await screen.findByRole("option", { name: /博丽灵梦/ });
-    fireEvent.keyDown(input, { key: "Enter" });
+    input.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(onGuess).not.toHaveBeenCalled();
+    await userEvent.keyboard("{Enter}");
     expect(onGuess).toHaveBeenCalledWith("reimu_hakurei");
     await waitFor(() => expect((input as HTMLInputElement).value).toBe(""));
   });
@@ -118,7 +124,7 @@ describe("GuessInputBar", () => {
     fireEvent.change(input, { target: { value: "灵梦" } });
     await screen.findByRole("option", { name: /博丽灵梦/ });
 
-    fireEvent.keyDown(input, { key: "Enter" });
+    await userEvent.keyboard("{Enter}{Enter}");
 
     expect(handleGuess).toHaveBeenCalledWith("reimu_hakurei");
     await waitFor(() => expect(document.activeElement).toBe(input));
@@ -138,11 +144,14 @@ describe("GuessInputBar", () => {
     await screen.findByRole("option", { name: /博丽灵梦/ });
 
     fireEvent.click(screen.getByRole("option", { name: /博丽灵梦/ }));
+    await userEvent.click(screen.getByRole("button", { name: "提交猜测" }));
 
     await waitFor(() =>
       expect(rejectGuess).toHaveBeenCalledWith("reimu_hakurei"),
     );
-    expect((input as HTMLInputElement).value).toBe("灵梦");
+    expect((input as HTMLInputElement).value).toBe("博丽灵梦");
+    await userEvent.click(screen.getByRole("button", { name: "提交猜测" }));
+    expect(rejectGuess).toHaveBeenCalledTimes(2);
   });
 
   it("在多人底部输入栏展示共用反馈图例", () => {

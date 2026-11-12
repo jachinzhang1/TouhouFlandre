@@ -1,30 +1,37 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { MultiplayerBottomDockAction } from "./MultiplayerBottomDock";
 
 export function MultiplayerMatchFrame({
   children,
   bottomDock,
+  summary,
+  navigation,
+  chat,
+  mode = "race",
   testId,
 }: {
   children: ReactNode;
   bottomDock?: ReactNode;
+  summary?: ReactNode;
+  navigation?: ReactNode;
+  chat?: ReactNode;
+  mode?: "race" | "relay";
   testId?: string;
 }) {
   return (
-    <section
-      className="multiplayer-match-page px-[18px] pt-4 pb-4"
-      data-multiplayer-match-frame
-      data-has-bottom-dock={bottomDock ? "true" : "false"}
-      data-testid={testId}
-    >
-      <div className="multiplayer-race-shell mx-auto max-w-[1280px]">
+    <div className={`multiplayer-game-layout multiplayer-game-layout--${mode}`}>
+      {navigation}
+      <section
+        className={`multiplayer-match-page ${mode === "race" ? "multiplayer-race-shell" : "relay-original-page"}`}
+        data-multiplayer-match-frame
+        data-testid={testId}
+      >
         {children}
-      </div>
-      {bottomDock ? (
-        <MultiplayerBottomDockAction>{bottomDock}</MultiplayerBottomDockAction>
-      ) : null}
-    </section>
+        {bottomDock}
+        {summary}
+        {chat}
+      </section>
+    </div>
   );
 }

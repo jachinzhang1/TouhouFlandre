@@ -1,7 +1,9 @@
 "use client";
 
 import { FastForward, Flag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Paper, PaperButton } from "@/components/paper";
+import { CountdownOverlay } from "./multiplayer/CountdownOverlay";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   GuessField,
   MatchEndedPayload,
@@ -25,7 +27,6 @@ import { formatRemaining, useRoomClock } from "../hooks/useRoomClock";
 import {
   BoardBrowser,
   BoardViewport,
-  MatchCountdownBand,
   MatchFinishedBand,
   MatchStatusBand,
   MatchSummaryBar,
@@ -56,6 +57,7 @@ export function RelayStageView({
   actions,
   onRematch,
   onLeave,
+  chat,
 }: {
   roomId: string;
   token: string;
@@ -71,6 +73,7 @@ export function RelayStageView({
   actions: RoomActions;
   onRematch: () => void;
   onLeave: () => void;
+  chat?: ReactNode;
 }) {
   const selectionKey = `touhouflandre:relay-view:${roomId}:${projection.matchIndex}`;
   const [selection, setSelection] = useState<RelayViewSelection>({
@@ -293,18 +296,17 @@ export function RelayStageView({
         <span className="rounded bg-paper-muted px-2 py-1 text-[0.7rem] font-bold text-ink-soft">
           空过 {skips.used}/{skips.maximum} · 剩余 {skips.remaining}
         </span>
-        <button
-          type="button"
+        <PaperButton
           title={skips.remaining > 0 ? "主动空过本手" : "本局空过次数已用完"}
           onClick={() => void act("pass")}
           disabled={!canPass || actionBusy !== null}
-          className="inline-flex size-8 items-center justify-center rounded-[5px] border border-line-strong bg-paper-muted text-ink-soft disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="主动空过本手"
+          className="relay-turn-action"
+          iconOnly
+          ariaLabel="主动空过本手"
         >
           <FastForward size={15} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
+        </PaperButton>
+        <PaperButton
           title={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
           onClick={() => {
             if (!forfeitConfirm) {
@@ -315,153 +317,142 @@ export function RelayStageView({
             void act("forfeit");
           }}
           disabled={!canForfeit || actionBusy !== null}
-          className={`inline-flex size-8 items-center justify-center rounded-[5px] border disabled:cursor-not-allowed disabled:opacity-40 ${forfeitConfirm ? "border-vermilion bg-vermilion-soft text-vermilion" : "border-line-strong bg-paper-muted text-ink-soft"}`}
-          aria-label={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
+          className="relay-turn-action"
+          iconOnly
+          tone="danger"
+          filled={forfeitConfirm}
+          ariaLabel={forfeitConfirm ? "再次点击确认放弃本局" : "放弃本局"}
         >
           <Flag size={15} aria-hidden="true" />
-        </button>
+        </PaperButton>
       </div>
     ) : undefined;
 
   return (
-    <div data-relay-stage-view>
+    <div className="multiplayer-experience" data-relay-stage-view>
       <MultiplayerMatchFrame
+        mode="relay"
+        navigation={
+          <BoardBrowser
+            model={{
+              ariaLabel: "接力棋盘导航",
+              returnLabel: "返回当前轮",
+              currentScopeId: "current",
+              selectedScopeId:
+                selection.scope === "history" && selection.stageIndex
+                  ? `history:${selection.stageIndex}`
+                  : "current",
+              scopeLabel: "选择轮次",
+              scopeOptions: [
+                { id: "current", label: "当前轮" },
+                ...historyStages.map((stage) => ({
+                  id: `history:${stage.stageIndex}`,
+                  label: `第 ${stage.stageIndex} 轮`,
+                })),
+              ],
+              boardLabel: "选择对局",
+              selectedBoardId: selection.encounterId,
+              boardOptions: navigationEncounters.map((encounter) => ({
+                id: encounter.encounterId,
+                label: relayEncounterTitle(encounter, members),
+              })),
+              trailing: navigationByeMemberId ? (
+                <span className="rounded bg-jade-soft px-2 py-1 text-[0.7rem] font-bold text-jade">
+                  本轮有轮空
+                </span>
+              ) : undefined,
+            }}
+            onScopeChange={(scopeId) => {
+              if (scopeId === "current") selectCurrent();
+              else selectHistory(Number(scopeId.slice("history:".length)));
+            }}
+            onBoardChange={selectEncounter}
+          />
+        }
+        chat={chat}
         bottomDock={
-          viewer.role === "player" &&
-          selected.ownEncounter?.status === "playing" &&
-          selected.standing?.status === "active" &&
-          isCurrent ? (
-            <GuessInputBar
-              onGuess={(guessId) => {
-                if (!canGuess || !actionTarget) return Promise.resolve(false);
-                return actions.relayEncounterAction(
-                  actionTarget,
-                  "guess",
-                  guessId,
-                );
-              }}
-              disabled={!canGuess}
-              searchContext={{
-                kind: "multiplayer-match",
-                roomId,
-                matchIndex: projection.matchIndex,
-              }}
-              guessedIds={guessedIds}
-              statusMessage={!canGuess ? statusMessage : null}
-            />
-          ) : undefined
+          <div className="multiplayer-guess-dock">
+            {viewer.role === "player" &&
+            selected.ownEncounter?.status === "playing" &&
+            selected.standing?.status === "active" &&
+            isCurrent ? (
+              <GuessInputBar
+                onGuess={(guessId) => {
+                  if (!canGuess || !actionTarget) return Promise.resolve(false);
+                  return actions.relayEncounterAction(
+                    actionTarget,
+                    "guess",
+                    guessId,
+                  );
+                }}
+                disabled={!canGuess}
+                searchContext={{
+                  kind: "multiplayer-match",
+                  roomId,
+                  matchIndex: projection.matchIndex,
+                }}
+                guessedIds={guessedIds}
+                statusMessage={!canGuess ? statusMessage : null}
+              />
+            ) : undefined}
+          </div>
         }
       >
-        <MatchSummaryBar
-          model={{
-            identityLabel: `接力 · ${ruleSetLabel(projection.ruleSetRef.key)} · ${ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}`,
-            scoreEntries,
-            progressLabel: currentStage
-              ? `第 ${currentStage.stageIndex}${projection.plannedStages ? `/${projection.plannedStages}` : ""} 轮`
-              : "等待轮次",
-          }}
-        />
-
-        {isInitialStageCountdown || isStageIntermission ? (
-          <div
-            data-relay-stage-countdown
-            data-relay-intermission={isStageIntermission ? "" : undefined}
-            data-relay-initial-countdown={
-              isInitialStageCountdown ? "" : undefined
-            }
-          >
-            <MatchCountdownBand
-              targetAt={projectedStageStartsAt!}
-              label={isInitialStageCountdown ? "对局" : "下一局"}
-              kind={isInitialStageCountdown ? "initial" : "intermission"}
-            />
-          </div>
-        ) : null}
-
-        {matchFinished ? (
-          <MatchFinishedBand
-            ranking={projection.ranking.map((entry) => {
-              const name =
-                members.find((member) => member.memberId === entry.memberId)
-                  ?.displayName ?? "玩家";
-              const suffix =
-                entry.memberId === viewer.memberId ? "我" : `P${entry.seat}`;
-              return {
-                id: entry.memberId,
-                rank: entry.rank,
-                label: `${name}(${suffix})`,
-                scoreLabel: `${entry.score} 分${entry.survivedStages !== undefined ? ` · 存留 ${entry.survivedStages} 轮` : ""}`,
-                isViewer: entry.memberId === viewer.memberId,
-              };
-            })}
-            subtitle={`房间保留 ${formatRemaining(retentionRemaining)}`}
-            ready={ready}
-            readyLabel={ready ? `已确认 ${readyCount}` : "再来一局"}
-            onRematch={onRematch}
-            onLeave={onLeave}
+        <Paper
+          as="div"
+          className="relay-original-summary"
+          animateOnMount={false}
+          folded={false}
+          pattern={false}
+          sticker={false}
+          unfoldOnHover={false}
+        >
+          <MatchSummaryBar
+            model={{
+              identityLabel: `接力 · ${ruleSetLabel(projection.ruleSetRef.key)} · ${ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format}`,
+              scoreEntries,
+              progressLabel: currentStage
+                ? `第 ${currentStage.stageIndex}${projection.plannedStages ? `/${projection.plannedStages}` : ""} 轮`
+                : "等待轮次",
+            }}
           />
-        ) : null}
+        </Paper>
 
         {!matchFinished ? (
           <div data-relay-status>
-            <MatchStatusBand
-              model={{
-                message: statusMessage,
-                active: canGuess,
-                timers:
-                  isCurrent && selected.encounter?.status === "playing"
-                    ? [
-                        {
-                          label: "本手",
-                          deadline: selected.encounter.turnDeadline,
-                        },
-                        {
-                          label: "本局",
-                          deadline: selected.encounter.deadline,
-                        },
-                      ]
-                    : undefined,
-              }}
-              actions={statusActions}
-            />
+            <Paper
+              as="div"
+              className="relay-original-turn"
+              variant={canGuess ? "tinted" : "plain"}
+              animateOnMount={false}
+              folded={false}
+              pattern={false}
+              sticker={false}
+              unfoldOnHover={false}
+            >
+              <MatchStatusBand
+                model={{
+                  message: statusMessage,
+                  active: canGuess,
+                  timers:
+                    isCurrent && selected.encounter?.status === "playing"
+                      ? [
+                          {
+                            label: "本手",
+                            deadline: selected.encounter.turnDeadline,
+                          },
+                          {
+                            label: "本局",
+                            deadline: selected.encounter.deadline,
+                          },
+                        ]
+                      : undefined,
+                }}
+                actions={statusActions}
+              />
+            </Paper>
           </div>
         ) : null}
-
-        <BoardBrowser
-          model={{
-            ariaLabel: "接力棋盘导航",
-            returnLabel: "返回当前轮",
-            currentScopeId: "current",
-            selectedScopeId:
-              selection.scope === "history" && selection.stageIndex
-                ? `history:${selection.stageIndex}`
-                : "current",
-            scopeLabel: "选择轮次",
-            scopeOptions: [
-              { id: "current", label: "当前轮" },
-              ...historyStages.map((stage) => ({
-                id: `history:${stage.stageIndex}`,
-                label: `第 ${stage.stageIndex} 轮`,
-              })),
-            ],
-            boardLabel: "选择对局",
-            selectedBoardId: selection.encounterId,
-            boardOptions: navigationEncounters.map((encounter) => ({
-              id: encounter.encounterId,
-              label: relayEncounterTitle(encounter, members),
-            })),
-            trailing: navigationByeMemberId ? (
-              <span className="rounded bg-jade-soft px-2 py-1 text-[0.7rem] font-bold text-jade">
-                本轮有轮空
-              </span>
-            ) : undefined,
-          }}
-          onScopeChange={(scopeId) => {
-            if (scopeId === "current") selectCurrent();
-            else selectHistory(Number(scopeId.slice("history:".length)));
-          }}
-          onBoardChange={selectEncounter}
-        />
 
         <BoardViewport
           state={
@@ -501,6 +492,43 @@ export function RelayStageView({
           }
         />
       </MultiplayerMatchFrame>
+      <div className="multiplayer-state-overlays">
+        {isInitialStageCountdown || isStageIntermission ? (
+          <div
+            data-relay-stage-countdown
+            data-relay-intermission={isStageIntermission ? "" : undefined}
+            data-relay-initial-countdown={
+              isInitialStageCountdown ? "" : undefined
+            }
+          >
+            <CountdownOverlay startsAt={projectedStageStartsAt!} />
+          </div>
+        ) : null}
+
+        {matchFinished ? (
+          <MatchFinishedBand
+            ranking={projection.ranking.map((entry) => {
+              const name =
+                members.find((member) => member.memberId === entry.memberId)
+                  ?.displayName ?? "玩家";
+              const suffix =
+                entry.memberId === viewer.memberId ? "我" : `P${entry.seat}`;
+              return {
+                id: entry.memberId,
+                rank: entry.rank,
+                label: `${name}(${suffix})`,
+                scoreLabel: `${entry.score} 分${entry.survivedStages !== undefined ? ` · 存留 ${entry.survivedStages} 轮` : ""}`,
+                isViewer: entry.memberId === viewer.memberId,
+              };
+            })}
+            subtitle={`房间保留 ${formatRemaining(retentionRemaining)}`}
+            ready={ready}
+            readyLabel={ready ? `已确认 ${readyCount}` : "再来一局"}
+            onRematch={onRematch}
+            onLeave={onLeave}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

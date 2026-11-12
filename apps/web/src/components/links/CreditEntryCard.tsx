@@ -13,6 +13,7 @@ export function CreditEntryCard({
       as="article"
       className="credit-entry-card grid min-h-[96px] grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-4 p-4 font-brand"
       foldSize={18}
+      pattern
       stackOrder={stackOrder}
       variant="plain"
     >

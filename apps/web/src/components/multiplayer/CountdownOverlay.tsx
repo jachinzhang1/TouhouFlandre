@@ -37,6 +37,8 @@ export function CountdownOverlay({ startsAt }: { startsAt: string }) {
         <p
           className="m-0 font-brand text-[3rem] leading-none tabular-nums"
           aria-live="polite"
+          role="timer"
+          aria-label="开局倒计时"
         >
           {seconds}
         </p>

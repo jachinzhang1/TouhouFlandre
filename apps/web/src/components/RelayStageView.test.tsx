@@ -176,7 +176,9 @@ describe("RelayStageView", () => {
       (screen.getByTestId("relay-guess-input") as HTMLButtonElement).disabled,
     ).toBe(false);
     expect(
-      screen.getByTestId("relay-guess-input").getAttribute("data-search-room-id"),
+      screen
+        .getByTestId("relay-guess-input")
+        .getAttribute("data-search-room-id"),
     ).toBe("room-1");
     expect(
       screen
@@ -334,11 +336,9 @@ describe("RelayStageView", () => {
       }),
     );
 
-    const message = await screen.findByText(/对局将于 [1-5] 秒后开始/);
-    const countdown = message.closest("[data-match-countdown]");
-    expect(countdown?.classList.contains("match-countdown-band")).toBe(true);
-    expect(countdown?.getAttribute("data-countdown-kind")).toBe("initial");
-    expect(screen.queryByText(/下一局将于/)).toBeNull();
+    const timer = await screen.findByRole("timer", { name: "开局倒计时" });
+    expect(Number(timer.textContent)).toBeGreaterThan(0);
+    expect(Number(timer.textContent)).toBeLessThanOrEqual(5);
   });
 
   it("keeps the ended board visible during the server-timed stage intermission", async () => {
@@ -401,7 +401,9 @@ describe("RelayStageView", () => {
       }),
     );
 
-    expect(await screen.findByText(/下一局将于 [1-5] 秒后开始/)).not.toBeNull();
+    expect(
+      await screen.findByRole("timer", { name: "开局倒计时" }),
+    ).toBeTruthy();
     expect(
       screen.getByRole("heading", {
         name: "同名玩家(P1) vs 同名玩家(P2)",
@@ -413,7 +415,7 @@ describe("RelayStageView", () => {
     expect(screen.queryByText("等待棋盘同步。")).toBeNull();
   });
 
-  it("shows terminal encounter, spectator and final ranking as inline regions", () => {
+  it("shows final rankings while keeping spectator game actions read-only", () => {
     const ended = encounter(1);
     ended.status = "ended";
     ended.capabilities = { canGuess: false, canPass: false, canForfeit: false };
@@ -498,10 +500,7 @@ describe("RelayStageView", () => {
         onLeave={vi.fn()}
       />,
     );
-    const ranking = screen
-      .getByRole("heading", { name: "最终排名" })
-      .closest("section");
-    expect(ranking).not.toBeNull();
+    const ranking = screen.getByRole("dialog", { name: "最终排名" });
     expect(within(ranking!).getAllByText(/第 1 名/)).toHaveLength(2);
     expect(container.querySelector("[data-relay-status]")).toBeNull();
     expect(screen.queryByText("你已猜中本局")).toBeNull();
@@ -509,6 +508,5 @@ describe("RelayStageView", () => {
     expect(screen.queryByRole("button", { name: "主动空过本手" })).toBeNull();
     expect(screen.queryByRole("button", { name: "放弃本局" })).toBeNull();
     expect(container.querySelectorAll("[data-relay-board]")).toHaveLength(1);
-    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

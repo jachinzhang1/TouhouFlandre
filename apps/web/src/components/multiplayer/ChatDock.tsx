@@ -1,14 +1,7 @@
 "use client";
 
 import { History, RefreshCw, Send, Smile } from "lucide-react";
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { components } from "../../generated/api";
 import {
   CHAT_EMOJI_WHITELIST,
@@ -32,7 +25,7 @@ interface ChatDockProps {
   viewer: ParticipantView | null;
   chat: RoomChatState;
   disabled?: boolean;
-  placement?: "inline" | "fixed" | "deck";
+  placement?: "inline" | "fixed" | "side";
   sendEnabled?: boolean;
   onSend: (draft: string) => Promise<boolean>;
   onRetry: (clientMessageId: string) => Promise<void>;
@@ -57,10 +50,10 @@ export function ChatDock({
   onLoadOlder,
   onClearError,
 }: ChatDockProps) {
-  const headingId = useId();
   const storageKey = `touhouflandre:multi:receive-chat:${roomId}:${viewer?.memberId ?? "anonymous"}`;
   const [draft, setDraft] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [desktopHistory, setDesktopHistory] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [receiveChatPreference, setReceiveChatPreference] = useState({
     storageKey: "",
@@ -75,6 +68,22 @@ export function ChatDock({
     receiveChatPreference.storageKey === storageKey
       ? receiveChatPreference.value
       : true;
+
+  useEffect(() => {
+    if (placement !== "side" || typeof window.matchMedia !== "function") {
+      setDesktopHistory(false);
+      return;
+    }
+    const media = window.matchMedia("(min-width: 2100px)");
+    const update = () => setDesktopHistory(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [placement]);
+
+  const persistentHistory = placement === "side" && desktopHistory;
+  const historyFrameVisible = receiveChat && (persistentHistory || historyOpen);
+  const historyMessagesVisible = historyFrameVisible && receiveChat;
 
   useEffect(() => {
     let value = true;
@@ -157,7 +166,7 @@ export function ChatDock({
         )
       : [];
     previousVisibleIdsRef.current = currentIds;
-    if (!receiveChat || historyOpen || newEntries.length === 0) return;
+    if (!receiveChat || historyFrameVisible || newEntries.length === 0) return;
     setToasts((current) => {
       const next = [
         ...current,
@@ -165,12 +174,10 @@ export function ChatDock({
       ];
       return next.slice(-3);
     });
-  }, [allSentMessages, historyOpen, receiveChat, sentVisibleMessages]);
-
-  const historyVisible = historyOpen && receiveChat;
+  }, [allSentMessages, historyFrameVisible, receiveChat, sentVisibleMessages]);
 
   useEffect(() => {
-    if (!historyVisible) return;
+    if (!historyMessagesVisible) return;
     const history = historyRef.current;
     if (!history) return;
     if (typeof history.scrollTo === "function") {
@@ -181,7 +188,7 @@ export function ChatDock({
       return;
     }
     history.scrollTop = history.scrollHeight;
-  }, [historyVisible, visibleMessages.length]);
+  }, [historyMessagesVisible, visibleMessages.length]);
 
   const muted = !receiveChat;
   const historyDisabled = disabled || muted || !viewer;
@@ -217,16 +224,9 @@ export function ChatDock({
   const placementClass =
     placement === "inline"
       ? "chat-dock-inline"
-      : placement === "deck"
-        ? "chat-dock-deck multiplayer-command-channel"
+      : placement === "side"
+        ? "chat-dock-side"
         : "chat-dock-fixed";
-  const channelStatus = muted
-    ? "聊天已关闭"
-    : disabled || viewer?.status !== "connected"
-      ? "连接恢复中"
-      : !sendEnabled
-        ? "聊天只读"
-        : "房间消息";
 
   return (
     <div className={`chat-dock ${placementClass}`}>
@@ -245,19 +245,12 @@ export function ChatDock({
         ))}
       </div>
 
-      {placement === "deck" ? (
-        <header className="multiplayer-command-channel-heading">
-          <strong id={headingId}>聊天</strong>
-          <span>{channelStatus}</span>
-        </header>
-      ) : null}
-
       <Paper
         animateOnMount={false}
-        ariaHidden={!historyVisible}
+        ariaHidden={!historyFrameVisible}
         as="div"
         className={`chat-dock-history-paper ${
-          historyVisible
+          historyFrameVisible
             ? "pointer-events-auto mb-2 h-72 translate-y-0 opacity-100"
             : "pointer-events-none mb-0 h-0 translate-y-2 opacity-0"
         }`}
@@ -268,7 +261,7 @@ export function ChatDock({
         unfoldOnHover={false}
         variant="plain"
       >
-        {historyVisible ? (
+        {historyFrameVisible ? (
           <div
             ref={historyRef}
             className="chat-dock-history-log"
@@ -277,7 +270,7 @@ export function ChatDock({
           >
             {chat.hasMoreOlder && chat.beforeCursor ? (
               <PaperButton
-                className="mb-2 w-full"
+                className="w-full"
                 compact
                 disabled={chat.loadingOlder}
                 folded={false}
@@ -311,14 +304,15 @@ export function ChatDock({
       </Paper>
 
       <form
-        aria-label={placement === "deck" ? undefined : "房间聊天"}
-        aria-labelledby={placement === "deck" ? headingId : undefined}
+        aria-label="房间聊天"
         onSubmit={handleSubmit}
         className="chat-dock-form"
       >
         <PaperButton
-          ariaLabel="展开聊天记录"
-          ariaPressed={historyOpen}
+          ariaLabel={
+            historyOpen || persistentHistory ? "收起聊天记录" : "展开聊天记录"
+          }
+          ariaPressed={historyOpen || persistentHistory}
           className="chat-dock-standalone-button"
           disabled={historyDisabled}
           folded={false}
@@ -346,7 +340,7 @@ export function ChatDock({
                 setDraft(event.target.value);
                 if (chat.sendError) onClearError();
               }}
-              placeholder="请输入消息"
+              placeholder={muted ? "聊天已关闭" : "请输入消息"}
               value={draft}
             />
           </div>
@@ -423,7 +417,7 @@ export function ChatDock({
         ) : null}
       </form>
 
-      {!historyVisible && failedOwnMessages.length > 0 ? (
+      {!historyFrameVisible && failedOwnMessages.length > 0 ? (
         <Paper
           animateOnMount={false}
           as="div"

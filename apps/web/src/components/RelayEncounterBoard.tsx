@@ -10,6 +10,7 @@ import type { components } from "../generated/api";
 import { CharacterAvatar } from "./game/CharacterAvatar";
 import { FeedbackStatusIcon } from "./game/FeedbackStatusIcon";
 import { STATUS_LABEL } from "./game/GuessTable";
+import { Paper } from "@/components/paper";
 
 type MemberView = components["schemas"]["MemberView"];
 
@@ -27,79 +28,76 @@ export function RelayEncounterBoard({
   const unlimited = isUnlimitedGuessLimit(maximumTurns);
   return (
     <section
-      className="min-h-[360px] rounded-[6px] border border-line bg-paper p-3 shadow-sm"
+      className="relay-encounter-region"
       data-relay-board={encounter.encounterId}
       aria-labelledby={`relay-board-${encounter.encounterId}`}
     >
-      <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <h2
-          id={`relay-board-${encounter.encounterId}`}
-          className="m-0 min-w-0 overflow-wrap-anywhere text-[0.82rem] font-black text-ink"
-        >
-          {title}
-        </h2>
-        <span className="shrink-0 text-[0.72rem] text-ink-soft tabular-nums">
-          {unlimited
-            ? "无次数限制"
-            : `已消耗 ${encounter.rows.length}/${maximumTurns * 2} 手`}
-        </span>
-      </div>
-      {encounter.status === "ended" && encounter.answer ? (
-        <p className="mb-2 rounded bg-jade-soft px-2 py-1 text-[0.72rem] font-bold text-jade">
-          答案：{encounter.answer.name} · {encounter.answer.workTitle}
-        </p>
-      ) : null}
-      <div
-        className="max-w-full overflow-x-auto"
-        tabIndex={0}
-        role="region"
-        aria-label="接力回合记录"
+      <Paper
+        animateOnMount={false}
+        as="div"
+        className="paper-data-table relay-original-board"
+        elevation="sm"
+        folded={false}
+        pattern={false}
+        sticker={false}
+        unfoldOnHover={false}
       >
-        <table className="w-full min-w-[640px] border-collapse text-[0.78rem]">
-          <thead>
-            <tr>
-              <th className="w-36 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
-                回合
-              </th>
-              <th className="w-28 border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft">
-                角色
-              </th>
-              {fields.map((field) => (
-                <th
-                  key={field.key}
-                  className="border-b border-line bg-paper-muted p-2 text-left text-[0.72rem] font-bold text-ink-soft"
-                >
-                  {field.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {encounter.rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={fields.length + 2}
-                  className="h-24 text-center text-ink-soft"
-                >
-                  {encounter.status === "ended"
-                    ? "本局没有猜测记录。"
-                    : "等待第一手猜测。"}
-                </td>
+        <header className="relay-original-board-heading">
+          <h2 id={`relay-board-${encounter.encounterId}`}>{title}</h2>
+          <span>
+            {unlimited
+              ? "无次数限制"
+              : `已消耗 ${encounter.rows.length}/${maximumTurns * 2} 手`}
+          </span>
+        </header>
+        {encounter.status === "ended" && encounter.answer ? (
+          <p className="mb-2 rounded bg-jade-soft px-2 py-1 text-[0.72rem] font-bold text-jade">
+            答案：{encounter.answer.name} · {encounter.answer.workTitle}
+          </p>
+        ) : null}
+        <div
+          className="relay-original-table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="接力回合记录"
+        >
+          <table className="relay-original-table" aria-label="共享接力棋盘">
+            <thead className="paper-data-table-header">
+              <tr className="paper-data-table-row">
+                <th>回合</th>
+                <th>角色</th>
+                {fields.map((field) => (
+                  <th key={field.key}>{field.label}</th>
+                ))}
               </tr>
-            ) : (
-              encounter.rows.map((row) => (
-                <RelayTurn
-                  key={row.index}
-                  row={row}
-                  members={members}
-                  fields={fields}
-                  winnerMemberId={encounter.winnerMemberId}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="paper-data-table-body">
+              {encounter.rows.length === 0 ? (
+                <tr className="paper-data-table-row">
+                  <td
+                    colSpan={fields.length + 2}
+                    className="relay-original-empty"
+                  >
+                    {encounter.status === "ended"
+                      ? "本局没有猜测记录。"
+                      : "等待第一手猜测。"}
+                  </td>
+                </tr>
+              ) : (
+                encounter.rows.map((row) => (
+                  <RelayTurn
+                    key={row.index}
+                    row={row}
+                    members={members}
+                    fields={fields}
+                    winnerMemberId={encounter.winnerMemberId}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Paper>
     </section>
   );
 }
@@ -136,17 +134,12 @@ function RelayTurn({
   const owner = `${member?.displayName ?? "玩家"}(P${row.seat})`;
   if (row.kind !== "guess" || !row.guess) {
     return (
-      <tr>
-        <th
-          scope="row"
-          className="border-b border-line p-1.5 text-left font-normal text-ink-soft"
-        >
+      <tr className="paper-data-table-row">
+        <th scope="row">
           第 {row.index} 手 · {owner}
         </th>
-        <td colSpan={fields.length + 1} className="border-b border-line p-1.5">
-          <span
-            className={`inline-flex rounded px-2 py-1 text-[0.72rem] font-bold ${row.kind === "pass" ? "bg-amber-soft text-amber" : "bg-paper-muted text-ink-soft"}`}
-          >
+        <td colSpan={fields.length + 1}>
+          <span className="relay-original-pass" data-kind={row.kind}>
             {row.kind === "pass" ? "主动空过" : "超时空过"}
           </span>
         </td>
@@ -157,23 +150,19 @@ function RelayTurn({
   const feedback = feedbackForFields(row.guess.feedback, fields);
   return (
     <tr
-      className={
+      className="paper-data-table-row"
+      data-paper-row-tone={
         row.memberId === winnerMemberId && row.guess.isCorrect
-          ? "bg-jade-soft"
+          ? "success"
           : undefined
       }
+      data-match-kind={row.guess.matchKind}
     >
-      <th
-        scope="row"
-        className="border-b border-line p-1.5 text-left font-normal text-ink-soft"
-      >
+      <th scope="row">
         第 {row.index} 手 · {owner}
       </th>
-      <th
-        scope="row"
-        className="border-b border-line p-1.5 align-top text-left font-normal"
-      >
-        <span className="flex items-center gap-1.5">
+      <th scope="row">
+        <span className="relay-original-character">
           <CharacterAvatar
             avatarUrl={row.guess.guessAvatarUrl}
             name={row.guess.guessName}
@@ -183,7 +172,7 @@ function RelayTurn({
           <span className="min-w-0 overflow-wrap-anywhere">
             {row.guess.guessName}
             {row.guess.isCorrect ? (
-              <span className="ml-1 rounded bg-jade-soft px-1 py-0.5 text-[0.62rem] font-bold text-jade">
+              <span className="relay-original-hit">
                 {row.guess.matchKind === "equivalent" ? "等价命中" : "命中"}
               </span>
             ) : null}
@@ -191,10 +180,7 @@ function RelayTurn({
         </span>
       </th>
       {feedback.map((field, index) => (
-        <td
-          key={fields[index]?.key ?? index}
-          className="border-b border-line p-1.5 align-top"
-        >
+        <td key={fields[index]?.key ?? index}>
           <span
             className={`feedback match-feedback feedback-${field.status}`}
             title={STATUS_LABEL[field.status]}

@@ -714,7 +714,7 @@ html[data-theme-mode="dark"] {
 
 .paper-segment-button[data-paper-variant="tinted"] {
   z-index: 2;
-  color: var(--theme-color);
+  color: var(--ink);
   background: color-mix(in srgb, var(--theme-color) 14%, var(--paper-plain-bg));
   box-shadow: inset 0 -2px 0 var(--theme-color);
 }
@@ -796,13 +796,13 @@ html[data-theme-mode="dark"] {
 .paper-radio-option[data-paper-variant="tinted"] {
   --paper-ornament-image: none;
   --paper-ornament-size: auto;
-  color: var(--theme-color);
+  color: var(--ink);
   background: color-mix(in srgb, var(--theme-color) 14%, var(--paper-plain-bg));
   box-shadow: inset 0 -2px 0 var(--theme-color);
 }
 
 .paper-radio-option[data-paper-variant="tinted"] .paper-radio-description {
-  color: var(--paper-tinted-ink-muted);
+  color: var(--ink-soft);
 }
 
 .paper-radio-copy {
@@ -1181,7 +1181,7 @@ html[data-theme-mode="dark"] {
   align-items: center;
   justify-content: center;
   padding-inline: 8px;
-  color: var(--theme-color);
+  color: var(--ink);
   background: color-mix(in srgb, var(--theme-color) 12%, transparent);
   font-family: var(--font-brand);
   font-size: 0.86rem;

@@ -1,3 +1,20 @@
+.links-page {
+  min-height: 520px;
+  padding: 40px 0 32px;
+}
+
+@media (max-width: 680px) {
+  .links-page {
+    padding: 28px 18px 18px;
+  }
+}
+
+.credit-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+}
+
 .credit-avatar {
   display: block;
   width: 48px;

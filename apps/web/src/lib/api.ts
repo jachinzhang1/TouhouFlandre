@@ -52,14 +52,9 @@ export const guestAuthHeader = (token: string) => ({
   Authorization: `Bearer guest:${token}`,
 });
 
-/** WS 地址推导：直连模式由 NEXT_PUBLIC_API_BASE_URL http→ws；否则同源。
- *  实测：Chromium 在页面加载期间对 localhost（→ ::1）的 WS 握手会延迟数十秒，
- *  127.0.0.1（IPv4）瞬时完成——WS 地址统一归一化为 IPv4。 */
+/** WebSocket uses the configured API origin, or the page's same-origin proxy. */
 export function roomWsUrl(roomId: string): string {
   const url = new URL(API_BASE_URL || window.location.origin);
-  if (url.hostname === "localhost") {
-    url.hostname = "127.0.0.1";
-  }
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = `/api/rooms/${encodeURIComponent(roomId)}/ws`;
   url.search = "";

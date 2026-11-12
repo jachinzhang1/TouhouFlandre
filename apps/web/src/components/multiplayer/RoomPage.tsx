@@ -15,7 +15,6 @@ import {
   isChatUiEnabled,
 } from "../../config/multiplayerRollout";
 import { api } from "../../lib/api";
-import { MultiplayerBottomDockProvider } from "../../multiplayer/framework";
 import { matchExperienceFor } from "../../multiplayer/modeExperienceRegistry";
 import { migrateLegacyMultiplayerDraft } from "../../stats/multiplayerRecorder";
 import { ChatDock } from "./ChatDock";
@@ -141,6 +140,13 @@ export function RoomView({ code }: { code: string }) {
     stored?.roomId &&
     stored?.guestToken ? (
       <ChatDock
+        placement={
+          status === "lobby" || status === "connecting"
+            ? "inline"
+            : mode === "race"
+              ? "side"
+              : "fixed"
+        }
         roomId={stored.roomId}
         viewer={state.viewer}
         chat={state.chat}
@@ -192,6 +198,7 @@ export function RoomView({ code }: { code: string }) {
         <section className="px-[18px] pt-16 text-center text-ink-soft">
           观战席同步中……
         </section>
+        {chatDock}
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
@@ -202,7 +209,7 @@ export function RoomView({ code }: { code: string }) {
 
   if (isSpectator && state.room && state.room.status === "lobby") {
     return (
-      <MultiplayerBottomDockProvider persistentDock={chatDock}>
+      <>
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -239,12 +246,13 @@ export function RoomView({ code }: { code: string }) {
           }}
           onLeave={handleLeave}
         />
+        {chatDock}
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-      </MultiplayerBottomDockProvider>
+      </>
     );
   }
 
@@ -258,13 +266,14 @@ export function RoomView({ code }: { code: string }) {
   ) {
     const MatchExperience = matchExperienceFor(mode);
     return (
-      <MultiplayerBottomDockProvider persistentDock={chatDock}>
+      <>
         <MatchExperience
           roomId={stored.roomId}
           token={stored.guestToken}
           state={state}
           format={format}
           fields={visibleFields}
+          chat={chatDock}
           memberId={memberId}
           role={effectiveRole}
           actions={actions}
@@ -275,13 +284,13 @@ export function RoomView({ code }: { code: string }) {
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-      </MultiplayerBottomDockProvider>
+      </>
     );
   }
 
   if (status === "lobby" || status === "connecting") {
     return (
-      <MultiplayerBottomDockProvider persistentDock={chatDock}>
+      <>
         <RoomLobby
           roomCode={normalized}
           format={format}
@@ -318,12 +327,13 @@ export function RoomView({ code }: { code: string }) {
           }}
           onLeave={handleLeave}
         />
+        {chatDock}
         <ConnectionNotice
           message={state.connectionIssue}
           onReconnect={actions.reconnect}
         />
         <GuessErrorToast message={guessError} />
-      </MultiplayerBottomDockProvider>
+      </>
     );
   }
 
@@ -343,7 +353,7 @@ function ConnectionNotice({
 }) {
   if (!message) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-16 z-50 flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--site-nav-height)+12px)] z-[1050] flex justify-center px-4">
       <div
         className="pointer-events-auto flex items-center gap-2 rounded-[6px] border border-amber-soft bg-paper px-4 py-2 text-[0.78rem] font-semibold text-ink-soft shadow-sm"
         role="status"

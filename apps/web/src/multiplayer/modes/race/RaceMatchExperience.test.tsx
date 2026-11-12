@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GuessField } from "@touhouflandre/shared";
 import {
@@ -164,16 +164,12 @@ describe("RaceMatchExperience", () => {
     );
 
     expect(
-      container.querySelector("[data-multiplayer-match-frame]"),
-    ).toBeTruthy();
-    expect(container.querySelector("[data-race-board-layout]")).toBeTruthy();
-    expect(
       Array.from(container.querySelectorAll("[data-board-variant]")).map(
         (board) => board.getAttribute("data-board-variant"),
       ),
     ).toEqual(["opponent", "self"]);
     expect(screen.queryByRole("heading", { name: "我" })).toBeNull();
-    expect(screen.getByRole("heading", { name: "玩家二(P2)" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /玩家二/ })).toBeTruthy();
     const opponentRow = container.querySelector("[data-member-board] tbody tr");
     expect(opponentRow?.textContent).not.toContain("博丽灵梦");
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -187,31 +183,6 @@ describe("RaceMatchExperience", () => {
         },
       }),
     );
-  });
-
-  it("mounts the shared pulse class on the initial countdown", () => {
-    const countdownState = state();
-    countdownState.round = {
-      ...countdownState.round!,
-      status: "countdown",
-      startsAt: "2099-08-25T00:00:05Z",
-    };
-
-    const { container } = render(
-      <RaceMatchExperience
-        state={countdownState}
-        format="bo3"
-        fields={fields}
-        memberId="one"
-        role="player"
-        actions={actions}
-        onLeave={vi.fn()}
-      />,
-    );
-
-    const countdown = container.querySelector("[data-match-countdown]");
-    expect(countdown?.classList.contains("match-countdown-band")).toBe(true);
-    expect(countdown?.getAttribute("data-countdown-kind")).toBe("initial");
   });
 
   it("keeps spectator desktop pagination and actions read-only", () => {
@@ -250,7 +221,8 @@ describe("RaceMatchExperience", () => {
     expect(screen.getByRole("button", { name: "退出房间" })).toBeTruthy();
   });
 
-  it("renders countdown and final ranking as inline regions", () => {
+  it("reveals final results and leaves only rematch or exit actions", () => {
+    const onLeave = vi.fn();
     const finished = state();
     finished.room!.status = "finished";
     finished.round = null;
@@ -287,16 +259,15 @@ describe("RaceMatchExperience", () => {
         memberId="three"
         role="player"
         actions={actions}
-        onLeave={vi.fn()}
+        onLeave={onLeave}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "对局结果" })).toBeTruthy();
-    expect(screen.getByText(/第 1 名 · 玩家一\(P1\)/)).toBeTruthy();
-    expect(screen.queryByText(/下一局将于/)).toBeNull();
-    expect(screen.queryByText("竞速进行中")).toBeNull();
-    expect(document.querySelector("[data-match-status]")).toBeNull();
-    expect(screen.getAllByRole("button", { name: "退出房间" })).toHaveLength(1);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /再来一局/ }));
+    expect(actions.rematch).toHaveBeenCalledOnce();
+    fireEvent.click(within(dialog).getByRole("button", { name: "返回大厅" }));
+    expect(onLeave).toHaveBeenCalledOnce();
+    expect(screen.queryByLabelText("搜索角色")).toBeNull();
   });
 });

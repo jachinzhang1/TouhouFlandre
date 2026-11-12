@@ -436,8 +436,8 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
 
 .paper-surface.appearance-toggle {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: calc(var(--appearance-collapsed-leg) / 3 - 24px);
+  bottom: calc(var(--appearance-collapsed-leg) / 3 - 24px);
   z-index: 5;
   width: 48px;
   min-width: 48px;
@@ -464,7 +464,9 @@ html[data-theme-mode="dark"] .nav-active-copy .nav-unread-dot {
 .appearance-palette-icon,
 .appearance-mode-icon {
   position: absolute;
-  translate: 2px 2px;
+  inset: 0;
+  margin: auto;
+  translate: none;
   transition:
     opacity 150ms ease,
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);

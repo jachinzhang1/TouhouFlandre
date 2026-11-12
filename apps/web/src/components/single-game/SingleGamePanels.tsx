@@ -19,10 +19,10 @@ import {
 } from "react";
 import {
   QUESTION_DIFFICULTY_LABELS,
-  QUESTION_DIFFICULTY_PRESETS,
+  DAILY_QUESTION_DIFFICULTY_PRESETS,
   type FieldFeedback,
   type PublicGameSession,
-  type QuestionDifficultyPreset,
+  type DailyQuestionDifficulty,
   type SinglePlayerGameMode,
 } from "@touhouflandre/shared";
 import { CharacterAvatar } from "../game/CharacterAvatar";
@@ -72,8 +72,8 @@ export function SingleGameStatusBar({
 }: {
   mode: SinglePlayerGameMode;
   puzzleLabel: string;
-  dailyDifficulty: QuestionDifficultyPreset;
-  dailyStatuses: Record<QuestionDifficultyPreset, DailySessionStatus>;
+  dailyDifficulty: DailyQuestionDifficulty;
+  dailyStatuses: Record<DailyQuestionDifficulty, DailySessionStatus>;
   disabled: boolean;
   turnLimitEnabled: boolean;
   turnRemainingSeconds: number | null;
@@ -82,7 +82,7 @@ export function SingleGameStatusBar({
   maxGuesses: number;
   unlimitedGuesses: boolean;
   sessionStatus: PublicGameSession["status"] | undefined;
-  onDifficultyChange: (difficulty: QuestionDifficultyPreset) => void;
+  onDifficultyChange: (difficulty: DailyQuestionDifficulty) => void;
   onRestart: () => void;
   onForfeit: () => void;
 }) {
@@ -300,6 +300,7 @@ export function SingleGuessHistory({
                         .filter(Boolean)
                         .join(" ")}
                       key={guess.guessId}
+                      data-match-kind={guess.matchKind}
                       style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
                     >
                       {timeout ? (
@@ -325,7 +326,14 @@ export function SingleGuessHistory({
                                 initials={guess.guessName.slice(0, 2)}
                                 className="guess-avatar"
                               />
-                              <span>{guess.guessName}</span>
+                              <span>
+                                {guess.guessName}
+                                {guess.matchKind === "equivalent" ? (
+                                  <small className="guess-equivalent-label">
+                                    等价命中
+                                  </small>
+                                ) : null}
+                              </span>
                             </span>
                           </th>
                           {guess.feedback.map((feedback) => (
@@ -512,7 +520,7 @@ export function SingleGameResult({
                     </>
                   ) : (
                     <>
-                      你用尽了{session.guesses.length}次机会也没能猜出
+                      本局未能猜出
                       <strong>{answerName}</strong>。
                     </>
                   )}
@@ -597,14 +605,14 @@ function DailyDifficultyButtons({
   onSelect,
   statuses,
 }: {
-  active: QuestionDifficultyPreset;
+  active: DailyQuestionDifficulty;
   disabled: boolean;
-  onSelect: (difficulty: QuestionDifficultyPreset) => void;
-  statuses: Record<QuestionDifficultyPreset, DailySessionStatus>;
+  onSelect: (difficulty: DailyQuestionDifficulty) => void;
+  statuses: Record<DailyQuestionDifficulty, DailySessionStatus>;
 }) {
   return (
     <PaperSegmentGroup className="single-game-difficulties" label="每日题难度">
-      {QUESTION_DIFFICULTY_PRESETS.map((difficulty, index) => {
+      {DAILY_QUESTION_DIFFICULTY_PRESETS.map((difficulty, index) => {
         const status = statuses[difficulty];
         const selected = active === difficulty;
         return (

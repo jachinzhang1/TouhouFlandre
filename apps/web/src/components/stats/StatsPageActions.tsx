@@ -33,7 +33,8 @@ export function StatsPageActions({
     <div className="stats-page-actions">
       <input
         ref={fileInputRef}
-        className="sr-only"
+        hidden
+        aria-label="导入统计文件"
         type="file"
         accept="application/json,.json"
         onChange={handleImport}

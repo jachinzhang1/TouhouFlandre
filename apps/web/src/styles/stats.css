@@ -2,7 +2,7 @@
   width: 100%;
   max-width: var(--site-content-max);
   margin-inline: auto;
-  padding: 40px 18px 80px;
+  padding: 40px 0 80px;
 }
 
 .stats-page-actions {
@@ -208,7 +208,7 @@
   min-width: 0;
   flex-wrap: wrap;
   gap: 2px 5px;
-  color: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--ink-soft);
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.25;
@@ -462,6 +462,7 @@
 }
 
 .stats-outcome {
+  color: var(--ink);
   font-size: inherit;
   font-weight: 800;
 }

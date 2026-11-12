@@ -2,7 +2,7 @@
   width: 100%;
   max-width: var(--site-content-max);
   margin-inline: auto;
-  padding: 40px 18px 80px;
+  padding: 40px 0 80px;
   --question-scope-toolbar-height: 70px;
 }
 

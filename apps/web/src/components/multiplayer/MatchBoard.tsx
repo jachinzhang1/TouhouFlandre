@@ -1,7 +1,7 @@
 "use client";
 
-// 对局视图（08 §10.2 布局调整）：比分条 + 双棋盘左右排布（左自己、右对手；
-// 窄屏 max-[680px] 堆叠为上下）。搜索输入在底部固定条（GuessInputBar）。
+// 对局视图：比分条后按单人模式的全宽台账依次展示自己与当前对手。
+// 聊天与猜测操作由 RoomPage 的固定底部栏分别承载。
 import type { ReactNode } from "react";
 import type { components } from "../../generated/api";
 import type { GuessField, RoundEndedPayload } from "@touhouflandre/shared";
@@ -18,24 +18,21 @@ import { SelfBoard } from "./SelfBoard";
 import { GuessTable, type GuessRow } from "../game/GuessTable";
 import { MemberPaginator } from "./MemberPaginator";
 import { MemberScoreStrip } from "./MemberScoreStrip";
-import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 import type { RoomUiState } from "../../hooks/useRoom";
+import { boardResultBadges, formatBoardTitle } from "./boardMeta";
 
 type MatchView = NonNullable<RoomUiState["match"]>;
 type RoundView = components["schemas"]["RoundView"];
 
-export function MatchBoard({
+export function MatchSummary({
   format,
   match,
   round,
   memberId,
   members,
   roundResult,
-  onGuess,
-  disabled,
   roundActions,
-  fields,
-  embedded = false,
+  viewLabel,
 }: {
   format: string;
   match: MatchView;
@@ -43,20 +40,12 @@ export function MatchBoard({
   memberId?: string | null;
   members?: components["schemas"]["MemberView"][];
   roundResult: RoundEndedPayload | null;
-  onGuess: (guessId: string) => void;
-  disabled?: boolean;
   roundActions?: ReactNode;
-  fields?: readonly GuessField[];
-  embedded?: boolean;
+  viewLabel?: string;
 }) {
   const remaining = useRoomClock(round?.deadline ?? null);
-
-  // 局末（roundResult 存在且未进入下一局）展示双方完整棋盘
   const ended = Boolean(roundResult);
-  const scoringMode = match.scoringMode ?? "wins";
-  const winsScoring = scoringMode === "wins";
-  const pointsScoring = scoringMode === "points";
-  const placementScoring = scoringMode === "placement";
+  const placementScoring = match.scoringMode === "placement";
   const rosterSize = match.rosterSize ?? match.scores.length;
   const activePlayers = match.scores.filter(
     (score) => score.status === undefined || score.status === "active",
@@ -66,16 +55,96 @@ export function MatchBoard({
     placementScoring && Boolean(round) && !ended && rosterSize > 2;
   const eliminatesThisRound =
     showEliminationRule && match.roundIndex >= eliminationThreshold;
-  const roundProgress = placementScoring
-    ? `剩余 ${activePlayers}/${rosterSize} 人`
-    : pointsScoring
-      ? `共 ${match.maxRounds} 局`
-      : winsScoring && match.targetWins > 1
-        ? `先胜 ${match.targetWins} 局`
-        : "";
+  const roundExpired = Boolean(round && !ended && remaining <= 0);
 
-  const boards = (
-    <div className="multiplayer-room-board-grid" data-race-board-layout>
+  const roundLabel = `第 ${roundResult?.roundIndex ?? match.roundIndex} 局`;
+  const modeLabel = placementScoring
+    ? "积分制"
+    : match.scoringMode === "points"
+      ? "积分累计"
+      : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ?? format);
+  const progressLabel = placementScoring
+    ? `剩余 ${activePlayers}/${rosterSize} 人`
+    : match.scoringMode === "points"
+      ? `共 ${match.maxRounds} 局`
+      : match.targetWins > 1
+        ? `先胜 ${match.targetWins} 局`
+        : modeLabel;
+
+  return (
+    <section
+      aria-label="对局概览"
+      className="status-strip multiplayer-room-summary"
+    >
+      <div className="puzzle-status">
+        <span className="label">{modeLabel}</span>
+        {viewLabel ? <span className="label">{viewLabel}</span> : null}
+        <strong className="single-game-puzzle-title">{roundLabel}</strong>
+      </div>
+      <MemberScoreStrip
+        members={members ?? []}
+        scores={roundResult?.scores ?? match.scores}
+        viewerMemberId={memberId}
+        winnerMemberId={roundResult?.winnerMemberId}
+      />
+      <dl className="single-game-metrics multiplayer-room-metrics">
+        <div>
+          <dt>本局剩余</dt>
+          <dd
+            aria-label={`本局剩余 ${formatRemaining(remaining)}`}
+            className="multiplayer-room-clock tabular-nums"
+            role={round && !ended ? "timer" : undefined}
+          >
+            {round && !ended
+              ? roundExpired
+                ? "等待结算"
+                : formatRemaining(remaining)
+              : "已结束"}
+          </dd>
+        </div>
+        <div>
+          <dt>{showEliminationRule ? "淘汰规则" : "赛制"}</dt>
+          <dd
+            className={
+              eliminatesThisRound
+                ? "multiplayer-elimination-rule is-eliminating"
+                : "multiplayer-elimination-rule"
+            }
+          >
+            {showEliminationRule
+              ? eliminatesThisRound
+                ? "本局末位淘汰"
+                : "本局不淘汰"
+              : progressLabel}
+          </dd>
+        </div>
+      </dl>
+      <div className="status-actions">{!ended ? roundActions : null}</div>
+    </section>
+  );
+}
+
+export function MatchBoard({
+  match,
+  round,
+  memberId,
+  members,
+  roundResult,
+  fields,
+}: {
+  match: MatchView;
+  round: RoundView | null;
+  memberId?: string | null;
+  members?: components["schemas"]["MemberView"][];
+  roundResult: RoundEndedPayload | null;
+  fields?: readonly GuessField[];
+}) {
+  const remaining = useRoomClock(round?.deadline ?? null);
+  const ended = Boolean(roundResult);
+  const roundExpired = Boolean(round && !ended && remaining <= 0);
+
+  return (
+    <section className="multiplayer-board-region">
       {ended && roundResult ? (
         <EndedBoards
           roundResult={roundResult}
@@ -84,7 +153,7 @@ export function MatchBoard({
           fields={fields}
         />
       ) : (
-        <>
+        <div className="multiplayer-room-board-grid">
           <OpponentPages
             round={round}
             memberId={memberId}
@@ -94,59 +163,13 @@ export function MatchBoard({
           />
           <SelfBoard
             guesses={round?.self.guesses ?? []}
-            playing={round?.status === "playing"}
+            playing={round?.status === "playing" && !roundExpired}
             maxGuesses={round?.maxGuesses}
             fields={fields}
             showHeading={false}
           />
-        </>
+        </div>
       )}
-    </div>
-  );
-
-  if (embedded) return boards;
-
-  return (
-    <section className="px-[18px] pt-5 pb-28">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[6px] border border-line bg-paper px-4 py-2.5 shadow-sm">
-        <span className="rounded bg-vermilion-soft px-2 py-0.5 text-[0.72rem] font-black text-vermilion">
-          {placementScoring
-            ? "积分淘汰"
-            : pointsScoring
-              ? "积分累计"
-              : (ROOM_FORMAT_SHORT[format as keyof typeof ROOM_FORMAT_SHORT] ??
-                format)}
-        </span>
-        {showEliminationRule ? (
-          <span
-            className={`rounded px-2 py-0.5 text-[0.72rem] font-black ${
-              eliminatesThisRound
-                ? "bg-vermilion-soft text-vermilion"
-                : "bg-jade-soft text-jade"
-            }`}
-          >
-            {eliminatesThisRound ? "本局末位淘汰" : "本局不淘汰选手"}
-          </span>
-        ) : null}
-        <MemberScoreStrip
-          members={members ?? []}
-          scores={roundResult?.scores ?? match.scores}
-          viewerMemberId={memberId}
-          winnerMemberId={roundResult?.winnerMemberId}
-        />
-        <span className="text-[0.75rem] text-ink-soft">
-          第 {roundResult?.roundIndex ?? match.roundIndex} 局
-          {roundProgress ? ` · ${roundProgress}` : ""}
-        </span>
-        {round && !ended && (
-          <span className="text-[0.72rem] text-ink-soft tabular-nums">
-            剩余 {formatRemaining(remaining)}
-          </span>
-        )}
-        {!ended ? roundActions : null}
-      </div>
-
-      {boards}
     </section>
   );
 }
@@ -170,13 +193,13 @@ function OpponentPages({
         opponent.memberId !== memberId &&
         isActiveMatchMember(match.scores, opponent.memberId),
     )
-    .sort((a, b) => a.seat - b.seat);
+    .sort((left, right) => left.seat - right.seat);
   const opponentLabel = (opponent: (typeof opponents)[number] | undefined) => {
     if (!opponent) return "对手棋盘";
     const member = members.find(
       (entry) => entry.memberId === opponent.memberId,
     );
-    return formatBoardTitle(member, opponent.seat);
+    return `P${opponent.seat} ${member?.displayName ?? `玩家 ${opponent.seat}`}`;
   };
   return (
     <MemberPaginator
@@ -247,10 +270,10 @@ function EndedBoards({
     ),
   );
   return (
-    <div className="grid min-w-0 items-start gap-3 min-[900px]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="multiplayer-board-stack">
       {selfBoard ? (
         <GuessTable
-          title="我"
+          title="我的棋盘"
           headerExtra={boardResultBadges({
             winner: selfWinner,
             eliminated: selfEliminated,
@@ -277,6 +300,7 @@ function EndedBoards({
                 members.find((member) => member.memberId === board.memberId),
                 board.seat,
               )}
+              subtitle="局末已揭示完整猜测记录。"
               headerExtra={boardResultBadges({ winner, eliminated })}
               rows={toRows(board.memberId)}
               emptyLabel="该玩家本局未猜测。"

@@ -1,13 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import {
-  CHARACTER_GUESS_FIELDS,
-  type GuessResult,
-} from "@touhouflandre/shared";
+import type { GuessResult } from "@touhouflandre/shared";
 import { SelfBoard } from "./SelfBoard";
 
 describe("SelfBoard", () => {
-  it("renders timeout events as one spanning status row", () => {
+  it("renders a timeout as a status rather than a character guess", () => {
     const timeout: GuessResult = {
       kind: "timeout",
       guessId: "timeout-1",
@@ -18,46 +15,32 @@ describe("SelfBoard", () => {
 
     render(<SelfBoard guesses={[timeout]} maxGuesses={8} playing />);
 
-    const status = screen.getByText("超时跳过");
-    const row = status.closest("tr");
-    expect(row?.querySelectorAll("td")).toHaveLength(1);
-    expect(row?.querySelector("td")?.getAttribute("colspan")).toBe("7");
-    expect(row?.querySelector(".avatar")).toBeNull();
-    expect(row?.textContent).not.toContain("超超时空过");
-    expect(status.closest(".multiplayer-board")).toBeTruthy();
-    expect(status.closest(".multiplayer-board-paper")).toBeTruthy();
+    expect(screen.getByRole("rowheader", { name: "超时跳过" })).toBeTruthy();
+    expect(screen.queryByRole("img")).toBeNull();
   });
 
-  it("uses the single-player tinted feedback cell structure", () => {
+  it("distinguishes an equivalent winning guess from an exact match", () => {
     const guess: GuessResult = {
-      kind: "guess",
       guessId: "reimu_hakurei",
       guessName: "博丽灵梦",
-      guessAvatarUrl: "/characters/0001-博丽灵梦.png",
-      isCorrect: false,
-      feedback: [
-        {
-          field: "firstAppearance",
-          label: "初登场作品",
-          status: "exact",
-          symbol: "O",
-          displayValue: ["东方红魔乡"],
-        },
-      ],
+      isCorrect: true,
+      matchKind: "equivalent",
+      feedback: [],
     };
-
-    const { container } = render(
+    const view = render(
+      <SelfBoard guesses={[guess]} fields={[]} playing={false} />,
+    );
+    expect(
+      screen.getByRole("rowheader", { name: /博丽灵梦.*等价命中/ }),
+    ).toBeTruthy();
+    view.rerender(
       <SelfBoard
-        fields={[CHARACTER_GUESS_FIELDS[0]]}
-        guesses={[guess]}
-        maxGuesses={8}
-        playing
+        guesses={[{ ...guess, matchKind: "exact" }]}
+        fields={[]}
+        playing={false}
       />,
     );
-
-    const cell = container.querySelector(".feedback-cell-exact");
-    expect(cell?.classList.contains("paper-tinted-cell")).toBe(true);
-    expect(cell?.querySelector(".feedback-exact")).toBeTruthy();
-    expect(cell?.querySelector(".feedback-exact > b > svg")).toBeTruthy();
+    expect(screen.getByRole("rowheader", { name: /博丽灵梦/ })).toBeTruthy();
+    expect(screen.queryByText("等价命中")).toBeNull();
   });
 });

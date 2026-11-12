@@ -78,6 +78,7 @@ export function GuessInputBar({
   }, [disabled, restoreFocusRequested, submitting]);
 
   const selectResult = (result: (typeof selectableResults)[number]) => {
+    setQuery(result.name);
     setSelectedId(result.id);
     setHighlightIndex(0);
   };
@@ -120,7 +121,6 @@ export function GuessInputBar({
       const result = selectableResults[highlightIndex];
       if (result) {
         selectResult(result);
-        void submitGuess(result.id, true);
       }
     } else if (event.key === "Escape") {
       event.preventDefault();
@@ -204,10 +204,7 @@ export function GuessInputBar({
                         className="suggestion paper-data-table-row"
                         id={`${listboxId}-${result.id}`}
                         key={result.id}
-                        onClick={() => {
-                          selectResult(result);
-                          void submitGuess(result.id);
-                        }}
+                        onClick={() => selectResult(result)}
                         onMouseEnter={() => setHighlightIndex(index)}
                         onPointerDown={(event) => event.preventDefault()}
                         role="option"
